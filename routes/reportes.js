@@ -1,13 +1,44 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
-const { getDB } = require('../database/db');
+const { getDB, hoyLocal } = require('../database/db');
 const SECRET = process.env.JWT_SECRET || 'lucebien-secret-2026-xK9mP3qR';
 
 function auth(req,res,next){try{var h=req.headers['authorization'];if(!h||!h.startsWith('Bearer '))return res.status(401).json({error:'Token requerido'});req.user=jwt.verify(h.slice(7),SECRET);next();}catch(e){return res.status(401).json({error:'Token invalido'});}}
 
-// Fecha LOCAL (YYYY-MM-DD) — toISOString() es UTC y en Perú (UTC-5) da un día
-// adelante después de las 7pm local. Usar SIEMPRE para comparar contra reportes.fecha.
-function hoyLocal(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// El id de reporte tiene formato `DD-MM-YY_TURNO-SEDE` (ej. 15-04-26_T-ST).
+// Derivar la fecha desde el id es la única fuente de verdad — así la fecha no
+// puede ser corrompida por clocks desajustados, evaluaciones futuras, o cualquier
+// otra ruta que pretenda actualizarla.
+function fechaDesdeId(id){
+  if(!id)return null;
+  var m=String(id).match(/^(\d{2})-(\d{2})-(\d{2})_/);
+  if(!m)return null;
+  var dd=m[1], mm=m[2], yy=m[3];
+  // Aceptar yy de 2 dígitos: 00-69 → 20XX, 70-99 → 19XX (no aplicable aquí, pero defensivo)
+  var fullYear = parseInt(yy,10) < 70 ? '20'+yy : '19'+yy;
+  return fullYear+'-'+mm+'-'+dd;
+}
+
+// Migración silenciosa: reparar filas cuya fecha no coincide con la fecha
+// codificada en el id (por bug histórico). Se ejecuta una sola vez al cargar
+// el módulo. Si todo está consistente, no hace nada.
+(function repararFechasReportes(){
+  try{
+    var db=getDB();
+    var rows=db.prepare("SELECT id, fecha FROM reportes WHERE id LIKE '__-__-___%'").all();
+    var fixed=0;
+    var upd=db.prepare('UPDATE reportes SET fecha=? WHERE id=?');
+    rows.forEach(function(r){
+      var f=fechaDesdeId(r.id);
+      if(f && f!==r.fecha){
+        upd.run(f, r.id);
+        fixed++;
+        console.log('[reportes] fecha reparada: '+r.id+' '+r.fecha+' → '+f);
+      }
+    });
+    if(fixed) console.log('[reportes] '+fixed+' fecha(s) reparada(s) desde id');
+  }catch(e){console.warn('[reportes] reparación fecha:', e.message);}
+})();
 
 // GET /api/reportes?sede=&fecha=
 router.get('/', auth, function(req,res){
@@ -41,17 +72,23 @@ router.get('/alertas/:sede', auth, function(req,res){
 });
 
 // POST /api/reportes
+// La fecha del reporte SIEMPRE se deriva del id (formato DD-MM-YY_TURNO-SEDE),
+// NUNCA del payload del cliente ni del reloj del servidor. El id se genera al
+// iniciar el turno; si la evaluación ocurre al día siguiente, esto garantiza
+// que la fecha permanece anclada al día real del turno y no contamina los
+// reportes del día actual.
 router.post('/', auth, function(req,res){
   try{var db=getDB();var b=req.body;
     if(db.prepare('SELECT id FROM reportes WHERE id=?').get(b.id))return res.status(409).json({error:'Reporte ya existe'});
-    db.prepare('INSERT INTO reportes (id,sede,turno,fecha,encargado,puntaje,act_total,act_done,bloqueado) VALUES (?,?,?,?,?,?,?,?,1)').run(b.id,b.sede,b.turno,b.fecha,b.encargado,b.puntaje||0,b.actTotal||0,b.actDone||0);
+    var fechaReal = fechaDesdeId(b.id) || b.fecha || hoyLocal();
+    db.prepare('INSERT INTO reportes (id,sede,turno,fecha,encargado,puntaje,act_total,act_done,bloqueado) VALUES (?,?,?,?,?,?,?,?,1)').run(b.id,b.sede,b.turno,fechaReal,b.encargado,b.puntaje||0,b.actTotal||0,b.actDone||0);
     var insTrab=db.prepare('INSERT INTO reporte_trabajadores (reporte_id,nombre) VALUES (?,?)');
     (b.trabajadores||[]).forEach(function(n){insTrab.run(b.id,n);});
     var insAct=db.prepare('INSERT INTO reporte_actividades (reporte_id,cod,nombre,cat,peso,realizada,obs) VALUES (?,?,?,?,?,?,?)');
     (b.actividades||[]).forEach(function(a){insAct.run(b.id,a.cod,a.nombre,a.cat,a.peso,1,a.obs||'');});
     if(b.extras&&b.extras.length){var insExt=db.prepare('INSERT INTO reporte_extras (reporte_id,tipo,nombre,cantidad,precio_unitario,monto_total,detalle,registrado_por) VALUES (?,?,?,?,?,?,?,?)');b.extras.forEach(function(e){insExt.run(b.id,e.tipo,e.nombre,e.cantidad||1,e.precio_unitario||0,e.monto_total||0,e.detalle||'',e.registrado_por||'');});}
-    if(b.incidencias&&b.incidencias.length){var insInc=db.prepare('INSERT INTO incidencias (sede,fecha,tipo,descripcion,nivel,responsable,reporte_id) VALUES (?,?,?,?,?,?,?)');b.incidencias.forEach(function(i){insInc.run(b.sede,b.fecha,i.tipo,i.descripcion||'',i.nivel||'Medio',i.responsable||'—',b.id);});}
-    res.json({id:b.id,ok:true});
+    if(b.incidencias&&b.incidencias.length){var insInc=db.prepare('INSERT INTO incidencias (sede,fecha,tipo,descripcion,nivel,responsable,reporte_id) VALUES (?,?,?,?,?,?,?)');b.incidencias.forEach(function(i){insInc.run(b.sede,fechaReal,i.tipo,i.descripcion||'',i.nivel||'Medio',i.responsable||'—',b.id);});}
+    res.json({id:b.id,ok:true,fecha:fechaReal});
   }catch(e){res.status(500).json({error:e.message});}
 });
 
