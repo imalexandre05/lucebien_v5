@@ -5,6 +5,10 @@ const SECRET = process.env.JWT_SECRET || 'lucebien-secret-2026-xK9mP3qR';
 
 function auth(req,res,next){try{var h=req.headers['authorization'];if(!h||!h.startsWith('Bearer '))return res.status(401).json({error:'Token requerido'});req.user=jwt.verify(h.slice(7),SECRET);next();}catch(e){return res.status(401).json({error:'Token invalido'});}}
 
+// Fecha LOCAL (YYYY-MM-DD) — toISOString() es UTC y en Perú (UTC-5) da un día
+// adelante después de las 7pm local. Usar SIEMPRE para comparar contra reportes.fecha.
+function hoyLocal(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+
 // GET /api/reportes?sede=&fecha=
 router.get('/', auth, function(req,res){
   try{var db=getDB();var sql='SELECT * FROM reportes WHERE 1=1';var p=[];
@@ -21,7 +25,7 @@ router.get('/', auth, function(req,res){
 // GET /api/reportes/alertas/:sede
 // Devuelve estado de turnos de hoy + el reporte pendiente de evaluar más antiguo (puede ser de ayer).
 router.get('/alertas/:sede', auth, function(req,res){
-  try{var db=getDB();var sede=req.params.sede;var hoy=new Date().toISOString().slice(0,10);
+  try{var db=getDB();var sede=req.params.sede;var hoy=hoyLocal();
     var hoyR=db.prepare('SELECT * FROM reportes WHERE sede=? AND fecha=?').all(sede,hoy);
     // Reporte pendiente más antiguo (sin importar fecha) — para cargar la evaluación incluso si es de ayer.
     var pendienteEval=db.prepare("SELECT * FROM reportes WHERE sede=? AND evaluado=0 AND bloqueado=1 ORDER BY fecha ASC, created_at ASC LIMIT 1").get(sede);
@@ -56,6 +60,11 @@ router.get('/:id/detalle', auth, function(req,res){
   try{var db=getDB();
     var rep=db.prepare('SELECT * FROM reportes WHERE id=?').get(req.params.id);
     if(!rep)return res.status(404).json({error:'Reporte no encontrado'});
+    // Defensa cross-sede: non-admins solo ven reportes de su propia sede
+    var rol=req.user&&req.user.rol;
+    if(rol!=='admin'&&rol!=='dueno'&&req.user.sede&&rep.sede&&req.user.sede!==rep.sede){
+      return res.status(403).json({error:'Reporte de otra sede'});
+    }
     rep.trabajadores=db.prepare('SELECT nombre FROM reporte_trabajadores WHERE reporte_id=?').all(req.params.id).map(function(x){return x.nombre;});
     rep.actividades=db.prepare('SELECT * FROM reporte_actividades WHERE reporte_id=?').all(req.params.id);
     rep.extras=db.prepare('SELECT * FROM reporte_extras WHERE reporte_id=?').all(req.params.id);

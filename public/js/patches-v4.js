@@ -71,7 +71,7 @@ window.prepararEval = function() {
   // Aviso de fecha: destaca si es de AYER o anterior
   var fechaBanner = '';
   if (STATE.fr01.pendFecha) {
-    var hoy = new Date().toISOString().slice(0,10);
+    var hoy = hoyLocal();
     var turnoL = {M:'Mañana',T:'Tarde',C:'Completo'}[STATE.fr01.pendTurno] || '';
     if (STATE.fr01.pendFecha < hoy) {
       fechaBanner = '<div style="margin-bottom:10px;padding:10px 12px;background:linear-gradient(90deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;border-radius:8px;font-size:12px;font-weight:600;color:#92400e">⏰ <strong>Evaluación pendiente de AYER</strong> — Reporte del ' + STATE.fr01.pendFecha + (turnoL?' ('+turnoL+')':'') + '. Debes completarla antes de registrar el reporte de hoy.</div>';

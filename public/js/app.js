@@ -178,7 +178,7 @@ async function checkAlertas() {
   // ── Detección de cambio de día — si el navegador estuvo abierto y cambió la fecha,
   // y no hay reporte propio enviado ni pendiente en servidor, reseteamos el estado local
   // para que el trabajador pueda registrar actividades del nuevo día sin refrescar.
-  var hoyStr = data.hoy || now.toISOString().slice(0,10);
+  var hoyStr = data.hoy || hoyLocal();
   if (STATE._lastDate && STATE._lastDate !== hoyStr) {
     console.log('[LuceBien] Cambio de día detectado:', STATE._lastDate, '→', hoyStr);
     if (!pendEval && STATE.fr01.enviado === false) {
@@ -239,24 +239,34 @@ async function checkAlertas() {
   }
 
   // ── Block turno buttons ──
+  // Reglas de horario (solo tiendas):
+  //   <8      → todo bloqueado (antes de apertura)
+  //   8–15    → M + C habilitados, T bloqueado (aún no es tarde)
+  //   15–23   → T habilitado, M + C bloqueados (turno tarde corriendo)
+  //   23+     → todo bloqueado (cierre)
+  // Además: si ya se envió M/T/C hoy, ese botón queda bloqueado.
   var btns=document.querySelectorAll('#fr01TurnoGroup .btn-sel');
   if(btns.length>=3){
     var bM=btns[0],bT=btns[1],bC=btns[2];
-    bM.disabled=false;bT.disabled=false;bC.disabled=false;
-    bM.style.opacity='';bT.style.opacity='';bC.style.opacity='';
-    bM.style.pointerEvents='';bT.style.pointerEvents='';bC.style.pointerEvents='';
-    bM.title='';bT.title='';bC.title='';
-    if(tieneM){bM.disabled=true;bM.style.opacity='0.35';bM.style.pointerEvents='none';bM.title='Ya enviado hoy';}
-    if(tieneT){bT.disabled=true;bT.style.opacity='0.35';bT.style.pointerEvents='none';bT.title='Ya enviado hoy';}
-    if(tieneM||tieneT){bC.disabled=true;bC.style.opacity='0.35';bC.style.pointerEvents='none';bC.title='Ya hay turno parcial enviado';}
-    if(hh>=15&&!tieneM){bM.disabled=true;bM.style.opacity='0.35';bM.style.pointerEvents='none';bM.title='Cerrado (pasó 3pm)';}
-    if(hh>=23){bT.disabled=true;bT.style.opacity='0.35';bT.style.pointerEvents='none';bT.title='Cerrado (pasó 11pm)';bC.disabled=true;bC.style.opacity='0.35';bC.style.pointerEvents='none';bC.title='Cerrado (pasó 11pm)';}
+    var _reset=function(b){b.disabled=false;b.style.opacity='';b.style.pointerEvents='';b.title='';};
+    var _dis=function(b,t){b.disabled=true;b.style.opacity='0.35';b.style.pointerEvents='none';b.title=t;};
+    _reset(bM);_reset(bT);_reset(bC);
+    var esAlmacenBtn = SEDES[STATE.sede]?.tipo === 'almacen';
+    if(!esAlmacenBtn){
+      if(hh<8){_dis(bM,'Disponible desde las 8am');_dis(bT,'Turno tarde: desde las 3pm');_dis(bC,'Disponible desde las 8am');}
+      else if(hh<15){_dis(bT,'Turno tarde: desde las 3pm');}
+      else if(hh<23){_dis(bM,'Cerrado (pasó 3pm) — turno mañana ya no se puede enviar');_dis(bC,'Completo solo se envía de mañana');}
+      else {_dis(bM,'Cerrado (pasó 11pm)');_dis(bT,'Cerrado (pasó 11pm)');_dis(bC,'Cerrado (pasó 11pm)');}
+    }
+    if(tieneM)_dis(bM,'Ya enviado hoy');
+    if(tieneT)_dis(bT,'Ya enviado hoy');
+    if(tieneM||tieneT)_dis(bC,'Ya hay turno parcial enviado');
     var cur=document.getElementById('fr01Turno')?.value;
     if(bM.disabled&&cur==='M'){if(!bT.disabled)btnSelVal('fr01TurnoGroup','fr01Turno',bT,'T');else if(!bC.disabled)btnSelVal('fr01TurnoGroup','fr01Turno',bC,'C');}
-    if(bT.disabled&&cur==='T'){if(!bM.disabled)btnSelVal('fr01TurnoGroup','fr01Turno',bM,'M');}
+    if(bT.disabled&&cur==='T'){if(!bM.disabled)btnSelVal('fr01TurnoGroup','fr01Turno',bM,'M');else if(!bC.disabled)btnSelVal('fr01TurnoGroup','fr01Turno',bC,'C');}
     if(bC.disabled&&cur==='C'){if(!bT.disabled)btnSelVal('fr01TurnoGroup','fr01Turno',bT,'T');else if(!bM.disabled)btnSelVal('fr01TurnoGroup','fr01Turno',bM,'M');}
     var allBlocked=bM.disabled&&bT.disabled&&bC.disabled;
-    if(sb){sb.disabled=allBlocked;if(allBlocked)sb.style.opacity='0.4';}
+    if(sb){sb.disabled=allBlocked;if(allBlocked)sb.style.opacity='0.4';else sb.style.opacity='';}
   }
 
   // ── Alerts ──
@@ -397,7 +407,7 @@ async function buildActTable() {
   let acts = [];
   try {
     var turno = document.getElementById('fr01Turno')?.value || 'M';
-    const data = await API.get('/actividades?sede=' + encodeURIComponent(STATE.sede) + '&fecha=' + new Date().toISOString().slice(0,10) + '&turno=' + turno);
+    const data = await API.get('/actividades?sede=' + encodeURIComponent(STATE.sede) + '&fecha=' + hoyLocal() + '&turno=' + turno);
     if (data && data.actividades && data.actividades.length > 0) {
       acts = data.actividades.map(a => ({ cod: a.cod, nombre: a.nombre, cat: a.categoria || a.cat || 'PO', peso: a.peso || 0, obs: '', pendiente: a.pendiente_acumulado }));
     }
@@ -481,7 +491,7 @@ async function buildExtrasSection() {
   const box = document.getElementById('extrasBody'); if (!box) return;
   let extras_p = [], extras_r = [];
   try {
-    const data = await API.get('/actividades?sede=' + encodeURIComponent(STATE.sede) + '&fecha=' + new Date().toISOString().slice(0,10));
+    const data = await API.get('/actividades?sede=' + encodeURIComponent(STATE.sede) + '&fecha=' + hoyLocal());
     if (data) { extras_p = data.extras_puntos || []; extras_r = data.extras_remuneradas || []; }
   } catch(e) {}
   STATE._extras_puntos = extras_p;
@@ -932,14 +942,19 @@ function genReporteId(sede,turno){
 async function triggerEnviarFR01() {
   if(STATE.fr01.bloqueado){showToast('Completa la Evaluación primero','error');return;}
   const turno=document.getElementById('fr01Turno')?.value;
-  // Time restrictions
+  // Time restrictions (alineadas con botones de checkAlertas)
   var _now=new Date(),_hh=_now.getHours();
-  if(turno==='M'&&_hh>=15){showToast('⏰ El turno mañana cerró a las 3:00pm','error');return;}
-  if((turno==='T'||turno==='C')&&_hh>=23){showToast('⏰ El turno cerró a las 11:00pm','error');return;}
+  var esAlmacenSend = SEDES[STATE.sede]?.tipo === 'almacen';
+  if(!esAlmacenSend){
+    if(_hh<8){showToast('⏰ Reportes disponibles desde las 8:00am','error');return;}
+    if((turno==='M'||turno==='C')&&_hh>=15){showToast('⏰ Mañana/Completo solo hasta las 3:00pm — envía turno Tarde','error');return;}
+    if(turno==='T'&&_hh<15){showToast('⏰ Turno Tarde: disponible desde las 3:00pm','error');return;}
+    if(_hh>=23){showToast('⏰ Cerrado — pasó las 11:00pm','error');return;}
+  }
   const emisorEl=document.getElementById('fr01Emisor');
   const emisorCod=emisorEl?.dataset.realCod||emisorEl?.value;
 
-  const hoy=new Date().toISOString().slice(0,10);
+  const hoy=hoyLocal();
   const reportesHoy=await API.reportes({sede:STATE.sede,fecha:hoy});
   if(reportesHoy&&reportesHoy.length>0){
     const turnM=reportesHoy.find(r=>r.turno==='M'||r.turno==='C');
@@ -990,11 +1005,11 @@ async function triggerEnviarFR01() {
     var totalMax = max + layoutZonas.filter(z => z.tipo !== 'area').reduce((s,z) => s + (z.peso||0), 0);
     var totalPts = pts + LayoutMap.calcPoints(layoutZonas);
     var puntajeFinal = totalMax > 0 ? Math.round(totalPts / totalMax * 100) : puntaje;
-    const r=await API.enviarReporte({id:rid,sede:STATE.sede,turno,fecha:new Date().toISOString().slice(0,10),encargado:encs.join(', '),trabajadores:trabs,actividades:actData,extras:extrasData,incidencias:incs,puntaje:puntajeFinal,actTotal:totalActs,actDone:totalDone});
+    const r=await API.enviarReporte({id:rid,sede:STATE.sede,turno,fecha:hoyLocal(),encargado:encs.join(', '),trabajadores:trabs,actividades:actData,extras:extrasData,incidencias:incs,puntaje:puntajeFinal,actTotal:totalActs,actDone:totalDone});
     if(!r)return;
     STATE.fr01.reportId=rid;STATE.fr01.actividadesRealizadas=actData;STATE.fr01.trabajadoresTurno=[...trabs];
     STATE.fr01.bloqueado=true;STATE.fr01.enviado=true;
-    STATE.fr01.pendFecha=new Date().toISOString().slice(0,10);
+    STATE.fr01.pendFecha=hoyLocal();
     STATE.fr01.pendTurno=turno;
     document.getElementById('fr01Blocked')?.classList.add('show');
     var ov=document.getElementById('fr01Overlay');if(ov)ov.style.display='';document.getElementById('fr01Content')&&(document.getElementById('fr01Content').style.display='none');
@@ -1011,8 +1026,17 @@ async function triggerEnviarFR01() {
 
 async function limpiarFR01() {
   if(STATE.fr01.bloqueado){showToast('Completa la Evaluación primero','error');return;}
+  // Resetear residuos del reporte anterior (post-evaluación)
+  STATE.fr01.reportId=null;
+  STATE.fr01.pendFecha=null;
+  STATE.fr01.pendTurno=null;
+  STATE.fr01.actividadesRealizadas=[];
+  STATE.fr01.trabajadoresTurno=[];
+  STATE.fr01.extras=[];
+  STATE.fr01.incidencias=[];
   await buildActTable();
   document.getElementById('fr01Status').textContent='Sin enviar';document.getElementById('fr01Status').className='badge badge-gold';
+  var rid=document.getElementById('fr01ReportId');if(rid){rid.textContent='';rid.classList.add('hidden');}
   const b=document.getElementById('incBody');if(b)b.innerHTML='<div id="incPlaceholder" style="font-size:12px;color:var(--text3);font-family:var(--font-m)">Sin incidencias registradas.</div>';
 }
 
