@@ -886,7 +886,7 @@ async function enviarListaLav() {
   var resp_traslado=document.getElementById('lavRespTraslado')?.value;
   var items=STATE.lavList.map(function(p){return Object.assign({},p,{destino:p.destino==='Compostura'?'compostura':'recepcion'});});
   showConfirm('¿Enviar lista?',STATE.lavList.length+' prendas · '+totalGen+' accesorios',async function(){
-    var r=await API.enviarLista({sede:STATE.sede,tipo:'LAV',items:items,generales:gen,resp_inv:resp_inv,resp_traslado:resp_traslado,fecha:new Date().toISOString().slice(0,10)});
+    var r=await API.enviarLista({sede:STATE.sede,tipo:'LAV',items:items,generales:gen,resp_inv:resp_inv,resp_traslado:resp_traslado,fecha:hoyLocal()});
     if(r){STATE.lavList=[];['lavCamisas','lavCorbatas','lavMichis','lavCorbatones'].forEach(function(id){var el=document.getElementById(id);if(el)el.value='0';});renderLavTable();showToast('Lista '+r.id+' enviada','success');}
   },'📦');
 }
@@ -927,7 +927,7 @@ function renderRefTable() {
 async function enviarListaRef() {
   if(!STATE.refList.length){showToast('La lista está vacía','error');return;}
   showConfirm('¿Enviar lista de refacción?',`${STATE.refList.length} prenda(s)`,async()=>{
-    const r=await API.enviarLista({sede:STATE.sede,tipo:'REF',items:STATE.refList.map(function(p){return Object.assign({},p,{destino:'compostura'})}),generales:{},resp_inv:document.getElementById('refRespInv')?.value||'',resp_traslado:document.getElementById('refRespTraslado')?.value||'',fecha:new Date().toISOString().slice(0,10)});
+    const r=await API.enviarLista({sede:STATE.sede,tipo:'REF',items:STATE.refList.map(function(p){return Object.assign({},p,{destino:'compostura'})}),generales:{},resp_inv:document.getElementById('refRespInv')?.value||'',resp_traslado:document.getElementById('refRespTraslado')?.value||'',fecha:hoyLocal()});
     if(r){STATE.refList=[];renderRefTable();showToast(`✅ Lista ${r.id} enviada`,'success');}
   },'🪡');
 }
@@ -1421,7 +1421,7 @@ async function checkEvalValoresHabilitado() {
 }
 
 async function initEvalValores() {
-  const mes=document.getElementById('evalVMes')?.value||new Date().toISOString().slice(0,7);
+  const mes=document.getElementById('evalVMes')?.value||mesLocal();
   const compañeros=await API.misValores(mes);
   if(!compañeros)return;
   const box=document.getElementById('evalVList');if(!box)return;
@@ -1471,7 +1471,7 @@ function setLikert(idx, val) {
 
 async function enviarEvalValores() {
   const empId=document.getElementById('evalVEmpId')?.value;
-  const mes=document.getElementById('evalVMes')?.value||new Date().toISOString().slice(0,7);
+  const mes=document.getElementById('evalVMes')?.value||mesLocal();
   const vals={};
   VALORES_KEYS.forEach((k,i)=>{vals[k]=parseInt(document.getElementById(`lk-${i}`)?.value||3);});
   const r=await API.enviarValores({evaluado_id:empId,mes,...vals});
@@ -1874,7 +1874,7 @@ function abrirIncidenciaRapidaModal(){
   var empOpts=emps.map(function(e){return '<option value="'+e.nombre+'">'+e.nombre+' ('+(e.tiendas||[])[0]+')</option>';}).join('');
   var h='<div id="incRapModal" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px" onclick="this.remove()"><div style="background:#fff;border-radius:14px;width:95%;max-width:520px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column" onclick="event.stopPropagation()"><div class="modal-header"><h2>🚨 Agregar Incidencia</h2><button class="modal-close" onclick="document.getElementById(\'incRapModal\').remove()">✕</button></div><div style="flex:1;overflow-y:auto;padding:16px">';
   h+='<div class="grid-2"><div class="field"><label>Sede</label><select id="irSede"><option value="ST">Stan</option><option value="LB">LuceBien</option><option value="AL">Almacén</option><option value="TR">Trece</option></select></div>';
-  h+='<div class="field"><label>Fecha</label><input type="date" id="irFecha" value="'+new Date().toISOString().slice(0,10)+'"></div></div>';
+  h+='<div class="field"><label>Fecha</label><input type="date" id="irFecha" value="'+hoyLocal()+'"></div></div>';
   h+='<div class="field"><label>Colaborador involucrado</label><select id="irTrab"><option value="">— Seleccionar —</option>'+empOpts+'</select></div>';
   h+='<div class="field"><label>Tipo</label><select id="irTipo"><optgroup label="Uniforme"><option>No contar con el uniforme completo</option></optgroup><optgroup label="Seguridad al cerrar"><option>No colocar candados en su lugar al abrir</option><option>Cerrar mal puertas</option><option>No cerrar llaves del agua</option><option>No bajar cuchillas de luz</option></optgroup><optgroup label="Equipos eléctricos"><option>Dejar prendida la PC</option><option>Dejar prendidas las luces</option><option>Dejar prendida la plancha</option><option>No desconectar plancha</option></optgroup><optgroup label="Orden y limpieza"><option>Dejar desordenada la tienda</option></optgroup><optgroup label="Documentación"><option>No actualizar cuadernillos físicos</option><option>No subir lista de actividades diarias</option><option>No evaluó al turno anterior</option></optgroup><optgroup label="Graves"><option>Hurto o robo de prenda</option><option>Prenda entregada en mal estado</option><option>Accidente dentro del local</option><option>Conflicto grave con cliente</option><option>Faltante de caja significativo</option><option>Pérdida o extravío de documento</option><option>Daño en infraestructura</option></optgroup><optgroup label="Otros"><option>Otro (especificar)</option></optgroup></select></div>';
   h+='<div class="field"><label>Descripción</label><textarea id="irDesc" placeholder="Detalla lo ocurrido..." style="min-height:50px"></textarea></div>';

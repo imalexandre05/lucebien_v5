@@ -9,6 +9,12 @@ function hoyLocal(){
   var d=new Date();
   return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 }
+// Mes local (YYYY-MM) — mismo razonamiento que hoyLocal: toISOString puede
+// cruzar de mes en la última hora del día 31 en Perú (UTC-5).
+function mesLocal(){
+  var d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+}
 
 const SEDES = {
   ST: { label:'Stan 101-102', short:'Stan',    icon:'🏪', tipo:'tienda',  abrev:'ST' },

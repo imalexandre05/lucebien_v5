@@ -1,63 +1,46 @@
-// ═══════════════════════════════════════════════════════
-// LUCEBIEN · routes/garantias.js — Devolución de garantía (Yape)
-// ═══════════════════════════════════════════════════════
 const router = require('express').Router();
-const { getDB } = require('../database/db');
-const { verifyToken, requireAdmin } = require('../middleware/auth');
+const jwt = require('jsonwebtoken');
+const { getDB, hoyLocal } = require('../database/db');
+const SECRET = process.env.JWT_SECRET || 'lucebien-secret-2026-xK9mP3qR';
 
-// GET /api/garantias?tienda=&estado=
-router.get('/', verifyToken, (req, res) => {
-  const db = getDB();
-  let sql = 'SELECT * FROM devoluciones_garantia WHERE 1=1';
-  const p = [];
-  if (req.query.tienda) { sql += ' AND tienda=?'; p.push(req.query.tienda); }
-  if (req.query.estado) { sql += ' AND estado=?'; p.push(req.query.estado); }
-  sql += ' ORDER BY created_at DESC LIMIT 200';
-  res.json(db.prepare(sql).all(...p));
+function auth(req,res,next){try{var h=req.headers['authorization'];if(!h||!h.startsWith('Bearer '))return res.status(401).json({error:'Token requerido'});req.user=jwt.verify(h.slice(7),SECRET);next();}catch(e){return res.status(401).json({error:'Token invalido'});}}
+
+router.get('/', auth, function(req,res){
+  try{var db=getDB();var sql='SELECT * FROM devoluciones_garantia WHERE 1=1';var p=[];
+    if(req.query.tienda){sql+=' AND tienda=?';p.push(req.query.tienda);}
+    sql+=' ORDER BY fecha_registro DESC LIMIT 100';
+    res.json(db.prepare(sql).all(...p));
+  }catch(e){res.status(500).json({error:e.message});}
 });
 
-// GET /api/garantias/resumen — estadísticas rápidas
-router.get('/resumen', verifyToken, (req, res) => {
-  const db = getDB();
-  const sede = req.query.tienda;
-  let where = '1=1';
-  const p = [];
-  if (sede) { where = 'tienda=?'; p.push(sede); }
-  const pend  = db.prepare(`SELECT COUNT(*) as n, COALESCE(SUM(monto),0) as total FROM devoluciones_garantia WHERE ${where} AND estado='pendiente'`).get(...p);
-  const hecho = db.prepare(`SELECT COUNT(*) as n, COALESCE(SUM(monto),0) as total FROM devoluciones_garantia WHERE ${where} AND estado='devuelto'`).get(...p);
-  res.json({ pendientes: pend, devueltos: hecho });
+router.get('/resumen', auth, function(req,res){
+  try{var db=getDB();var t=req.query.tienda||'';
+    var w=t?' AND tienda=?':'';var p=t?[t]:[];
+    var pend=db.prepare('SELECT COUNT(*) as n, COALESCE(SUM(monto),0) as total FROM devoluciones_garantia WHERE estado=?'+w).get('pendiente',...p);
+    var dev=db.prepare('SELECT COUNT(*) as n, COALESCE(SUM(monto),0) as total FROM devoluciones_garantia WHERE estado=?'+w).get('devuelto',...p);
+    res.json({pendientes:pend,devueltos:dev});
+  }catch(e){res.status(500).json({error:e.message});}
 });
 
-// POST /api/garantias — registrar nueva devolución pendiente
-router.post('/', verifyToken, (req, res) => {
-  const db = getDB();
-  const { nombre_cliente, celular, num_boleta, monto, tienda, responsable, obs } = req.body;
-  if (!nombre_cliente || !celular || !monto) return res.status(400).json({ error: 'Nombre, celular y monto requeridos' });
-  const r = db.prepare(`INSERT INTO devoluciones_garantia
-    (nombre_cliente,celular,num_boleta,monto,tienda,responsable,estado,fecha_registro,obs)
-    VALUES (?,?,?,?,?,?,'pendiente',?,?)`)
-    .run(nombre_cliente, celular, num_boleta||'', monto, tienda||'', responsable||'',
-         new Date().toISOString().slice(0,10), obs||'');
-  res.json({ id: r.lastInsertRowid, ok: true });
+router.post('/', auth, function(req,res){
+  try{var db=getDB();var b=req.body;
+    if(!b.nombre_cliente||!b.celular||!b.monto)return res.status(400).json({error:'Datos incompletos'});
+    var fecha=hoyLocal();
+    var r=db.prepare('INSERT INTO devoluciones_garantia (nombre_cliente,celular,num_boleta,monto,tienda,responsable,fecha_registro) VALUES (?,?,?,?,?,?,?)')
+      .run(b.nombre_cliente,b.celular,b.num_boleta||'',b.monto,b.tienda||'',b.responsable||req.user.nombre||'',fecha);
+    res.json({id:r.lastInsertRowid,ok:true});
+  }catch(e){res.status(500).json({error:e.message});}
 });
 
-// PUT /api/garantias/:id — marcar como devuelto
-router.put('/:id', verifyToken, (req, res) => {
-  const db = getDB();
-  const { estado, responsable, obs } = req.body;
-  const gar = db.prepare('SELECT * FROM devoluciones_garantia WHERE id=?').get(req.params.id);
-  if (!gar) return res.status(404).json({ error: 'Garantía no encontrada' });
-  const nuevoEstado = estado || 'devuelto';
-  const fechaDev = nuevoEstado === 'devuelto' ? new Date().toISOString().slice(0,10) : null;
-  db.prepare('UPDATE devoluciones_garantia SET estado=?,fecha_devolucion=?,responsable=COALESCE(?,responsable),obs=COALESCE(?,obs) WHERE id=?')
-    .run(nuevoEstado, fechaDev, responsable||null, obs||null, req.params.id);
-  res.json({ ok: true });
-});
-
-// DELETE /api/garantias/:id (admin)
-router.delete('/:id', requireAdmin, (req, res) => {
-  getDB().prepare('DELETE FROM devoluciones_garantia WHERE id=?').run(req.params.id);
-  res.json({ ok: true });
+router.put('/:id', auth, function(req,res){
+  try{var db=getDB();var b=req.body;var fecha=hoyLocal();
+    var sets=['estado=?'];var params=[b.estado||'devuelto'];
+    if(b.estado==='devuelto'){sets.push('fecha_devolucion=?');params.push(fecha);}
+    if(b.responsable){sets.push('responsable=?');params.push(b.responsable);}
+    params.push(req.params.id);
+    db.prepare('UPDATE devoluciones_garantia SET '+sets.join(',')+' WHERE id=?').run(...params);
+    res.json({ok:true});
+  }catch(e){res.status(500).json({error:e.message});}
 });
 
 module.exports = router;

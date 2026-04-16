@@ -398,16 +398,21 @@ window.gaMoverZonaAlFondo = function(idx) {
 };
 
 // ── 10d. Alinear a grilla (snap to 10px grid) ──
+// Excluye PISO y CALLE que son zonas especiales de fondo y no deben snaplearse.
 window.gaSnapToGrid = function() {
   var gridSize = 10; // px in virtual 800×580
+  var SPECIALS = ['PISO', 'CALLE'];
+  var snapped = 0;
   _gaLayoutZonas.forEach(function(z) {
+    if (SPECIALS.indexOf(z.cod) >= 0) return;
     z.pos_x = Math.round(z.pos_x / gridSize) * gridSize;
     z.pos_y = Math.round(z.pos_y / gridSize) * gridSize;
     z.ancho = Math.round(z.ancho / gridSize) * gridSize || gridSize;
     z.alto = Math.round(z.alto / gridSize) * gridSize || gridSize;
+    snapped++;
   });
   _glmR();
-  showToast('Zonas alineadas a grilla', 'success');
+  showToast(snapped + ' zonas alineadas a grilla', 'success');
 };
 
 // ── 10e. Clonar layout de otra sede ──
@@ -436,10 +441,14 @@ window._gaDoCloneLayout = async function(desde) {
   var zonas = await API.get('/layout?sede=' + desde);
   if (!zonas || !zonas.length) { showToast('La sede origen no tiene layout', 'error'); return; }
   _gaLayoutZonas = zonas.map(function(z) {
+    // NOTE: stripping `id` so backend INSERTs fresh rows
     return { cod: z.cod, nombre: z.nombre, turno: z.turno, tipo: z.tipo, peso: z.peso, pos_x: z.pos_x, pos_y: z.pos_y, ancho: z.ancho, alto: z.alto, color: z.color, forma: z.forma, nivel: z.nivel || 'piso', sobre_cod: z.sobre_cod || '', frecuencia_dias: z.frecuencia_dias || 0, dia_semana: z.dia_semana || '' };
   });
+  // Clear any stale selection from previous sede — codes may no longer exist
+  if (LayoutMap && LayoutMap._sel) LayoutMap._sel = {};
   _glmR();
-  showToast(zonas.length + ' zonas copiadas de ' + (SEDES[desde]?.label || desde), 'success');
+  if (typeof _gaUpdateStats === 'function') _gaUpdateStats();
+  showToast(zonas.length + ' zonas copiadas de ' + (SEDES[desde]?.label || desde) + ' (no olvides guardar)', 'success');
 };
 
 // ── 10f. Expanded context menu with new tools ──
@@ -626,6 +635,7 @@ window._gaDeselectAll = function() {
 
   window.gaLayoutEditZonaIdx = function(idx) {
     var z = _gaLayoutZonas[idx]; if (!z) return;
+    var oldCod = z.cod; // save for sobre_cod reference update
     _gaZonaModal('Editar: ' + z.cod, {
       cod: z.cod, nombre: z.nombre, tipo: z.tipo, turno: z.turno, peso: z.peso,
       ancho: Math.round(z.ancho), alto: Math.round(z.alto),
@@ -634,12 +644,25 @@ window._gaDeselectAll = function() {
       color: z.color || _TC[z.turno] || '#6b7280'
     }, function(r) {
       var color = r._color || z.color || _TC[r.turno] || '#6b7280';
+      // Check cod uniqueness if changed
+      if (r.cod !== oldCod) {
+        var dup = _gaLayoutZonas.find(function(x) { return x !== z && x.cod === r.cod; });
+        if (dup) { showToast('Código ' + r.cod + ' ya existe — cambio revertido', 'error'); r.cod = oldCod; }
+      }
       z.cod = r.cod; z.nombre = r.nombre || z.nombre; z.tipo = r.tipo; z.turno = r.turno;
-      z.peso = r.peso; z.ancho = r.ancho; z.alto = r.alto;
+      z.peso = (r.peso != null ? r.peso : z.peso); z.ancho = r.ancho; z.alto = r.alto;
       z.nivel = r.nivel || 'piso'; z.sobre_cod = r.sobre_cod || '';
       z.color = color;
       z.forma = (_ZONA_TIPOS.find(function(t) { return t.v === r.tipo; }) || {}).f || 'rect';
       z.frecuencia_dias = r.frecuencia_dias || 0; z.dia_semana = r.dia_semana || '';
+      // Update sobre_cod references in other zones if this zone's code changed
+      if (r.cod !== oldCod) {
+        var updated = 0;
+        _gaLayoutZonas.forEach(function(other) {
+          if (other !== z && other.sobre_cod === oldCod) { other.sobre_cod = r.cod; updated++; }
+        });
+        if (updated) showToast(updated + ' referencia(s) actualizada(s)', 'success');
+      }
       // Auto-snap sobre zones to parent position
       if (z.nivel === 'sobre' && z.sobre_cod) {
         var parent = _gaLayoutZonas.find(function(p) { return p.cod === z.sobre_cod; });
@@ -659,6 +682,9 @@ window._gaDeselectAll = function() {
 (function() {
   var _origRender = LayoutMap.render.bind(LayoutMap);
   LayoutMap.render = function(cId, zonas, opts) {
+    // Defensive: guard undefined opts / zonas
+    opts = opts || {};
+    zonas = zonas || [];
     // Sort zonas so 'sobre' zones are last in array = rendered on top in DOM
     // Don't mutate original array for editor mode
     var sortedZonas = zonas;
@@ -670,6 +696,57 @@ window._gaDeselectAll = function() {
       });
     }
     _origRender(cId, sortedZonas, opts);
+  };
+})();
+
+// ── 10m. Fix: gaLayoutDeleteZona renumbers codes but orphans sobre_cod refs ──
+// v3 version splices + renumbers siblings by prefix, but doesn't update zones
+// whose sobre_cod pointed at the deleted/renumbered codes. Wrap to fix both.
+(function() {
+  var _origDelete = window.gaLayoutDeleteZona;
+  window.gaLayoutDeleteZona = function(idx) {
+    var z = _gaLayoutZonas[idx]; if (!z) return;
+    // Block deletion of reserved zones
+    if (z.cod === 'PISO' || z.cod === 'CALLE') {
+      showToast('No se puede eliminar ' + z.cod + ' (zona reservada)', 'error');
+      return;
+    }
+    showConfirm('Eliminar?', z.cod + ' ' + z.nombre, function() {
+      // Snapshot old codes for same-prefix siblings BEFORE the splice/renumber
+      var prefix = z.cod.replace(/[0-9]/g, '');
+      var deletedCod = z.cod;
+      var oldCodsByPrefix = _gaLayoutZonas
+        .filter(function(zz) { return zz.cod.replace(/[0-9]/g, '') === prefix; })
+        .map(function(zz) { return zz.cod; });
+      // Do the splice + renumber (mirror of v3 logic)
+      _gaLayoutZonas.splice(idx, 1);
+      var count = 0, oldToNew = {};
+      _gaLayoutZonas.forEach(function(zz) {
+        if (zz.cod.replace(/[0-9]/g, '') === prefix) {
+          count++;
+          var newCod = prefix + String(count).padStart(2, '0');
+          if (zz.cod !== newCod) oldToNew[zz.cod] = newCod;
+          zz.cod = newCod;
+        }
+      });
+      // Orphaned sobre_cod: zones pointing at the deleted cod → clear + demote to 'piso'
+      // Renumbered sobre_cod: point at the new code
+      var orphaned = 0, remapped = 0;
+      _gaLayoutZonas.forEach(function(zz) {
+        if (!zz.sobre_cod) return;
+        if (zz.sobre_cod === deletedCod) {
+          zz.sobre_cod = ''; zz.nivel = 'piso'; orphaned++;
+        } else if (oldToNew[zz.sobre_cod]) {
+          zz.sobre_cod = oldToNew[zz.sobre_cod]; remapped++;
+        }
+      });
+      _glmR();
+      if (typeof _gaUpdateStats === 'function') _gaUpdateStats();
+      var msg = 'Eliminado ' + deletedCod;
+      if (orphaned) msg += ' · ' + orphaned + ' hijo(s) demovidos a piso';
+      if (remapped) msg += ' · ' + remapped + ' ref(s) actualizadas';
+      showToast(msg, 'success');
+    });
   };
 })();
 
