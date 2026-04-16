@@ -20,7 +20,12 @@ function initDB() {
     CREATE TABLE IF NOT EXISTS empleados (
       id TEXT PRIMARY KEY, cod TEXT UNIQUE NOT NULL, nombre TEXT NOT NULL,
       iniciales TEXT NOT NULL, rol TEXT NOT NULL DEFAULT 'trabajador',
-      activo INTEGER NOT NULL DEFAULT 1, cod_hash TEXT NOT NULL
+      activo INTEGER NOT NULL DEFAULT 1, cod_hash TEXT NOT NULL,
+      estado TEXT DEFAULT 'activo',
+      dni TEXT DEFAULT '', telefono TEXT DEFAULT '', direccion TEXT DEFAULT '',
+      fecha_nacimiento TEXT DEFAULT '', fecha_ingreso TEXT DEFAULT '',
+      contacto_emergencia TEXT DEFAULT '', tel_emergencia TEXT DEFAULT '',
+      notas TEXT DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS empleado_tiendas (
       emp_id TEXT NOT NULL, tienda TEXT NOT NULL,
@@ -66,7 +71,7 @@ function initDB() {
       sede TEXT NOT NULL, cod TEXT NOT NULL, nombre TEXT NOT NULL,
       categoria TEXT DEFAULT 'PO',
       tipo_act TEXT DEFAULT 'obligatoria',
-      peso INTEGER DEFAULT 5, activa INTEGER DEFAULT 1,
+      peso REAL DEFAULT 5, activa INTEGER DEFAULT 1,
       aparece_dia INTEGER DEFAULT 0,
       frecuencia_dias INTEGER DEFAULT 0,
       turno TEXT DEFAULT 'ambos',
@@ -103,6 +108,7 @@ function initDB() {
       obs_calidad TEXT,
       aprobada INTEGER DEFAULT 0,
       envio_id INTEGER,
+      lista_lavanderia_id TEXT,
       fecha_ingreso TEXT NOT NULL,
       fecha_actualizado TEXT DEFAULT (datetime('now','localtime')),
       created_at TEXT DEFAULT (datetime('now','localtime'))
@@ -196,21 +202,46 @@ function initDB() {
     );
 
     -- ═══ PRÉSTAMOS + BAJAS ═══
-    CREATE TABLE IF NOT EXISTS prestamos_prendas (
+    -- ═══ PRÉSTAMOS DE PRENDAS (por lote) ═══
+    CREATE TABLE IF NOT EXISTS prestamos_lotes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      fecha TEXT NOT NULL, quien_lleva TEXT NOT NULL,
-      codigo TEXT NOT NULL, tienda_origen TEXT NOT NULL,
-      tienda_destino TEXT NOT NULL,
-      tipo_prenda TEXT, color TEXT, talla TEXT,
-      responsable TEXT, estado TEXT DEFAULT 'prestado',
-      devuelto INTEGER DEFAULT 0, para_lavanderia INTEGER DEFAULT 0,
-      obs TEXT, created_at TEXT DEFAULT (datetime('now','localtime'))
+      fecha TEXT NOT NULL,
+      sede_origen TEXT NOT NULL,
+      sede_destino TEXT NOT NULL,
+      quien_lleva TEXT NOT NULL,
+      responsable_registro TEXT NOT NULL,
+      obs TEXT,
+      notificado INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now','localtime'))
     );
+    CREATE TABLE IF NOT EXISTS prestamo_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lote_id INTEGER NOT NULL,
+      codigo TEXT NOT NULL,
+      descripcion TEXT,
+      estado TEXT DEFAULT 'prestada',
+      fecha_estado TEXT,
+      obs_estado TEXT,
+      cambiado_por TEXT,
+      cambiado_sede TEXT,
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+      FOREIGN KEY (lote_id) REFERENCES prestamos_lotes(id)
+    );
+    -- ═══ PRENDAS PARA DAR DE BAJA (vendidas) ═══
     CREATE TABLE IF NOT EXISTS prendas_baja (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      codigo TEXT NOT NULL, tipo_prenda TEXT, color TEXT, talla TEXT,
-      tienda TEXT NOT NULL, motivo TEXT, fecha TEXT NOT NULL,
-      responsable TEXT, prestamo_id INTEGER,
+      codigo TEXT NOT NULL,
+      descripcion TEXT,
+      sede_origen TEXT NOT NULL,
+      sede_destino TEXT,
+      motivo TEXT DEFAULT 'vendida',
+      fecha TEXT NOT NULL,
+      responsable TEXT,
+      lote_id INTEGER,
+      item_id INTEGER,
+      procesada INTEGER DEFAULT 0,
+      procesada_por TEXT,
+      fecha_procesada TEXT,
       created_at TEXT DEFAULT (datetime('now','localtime'))
     );
 
@@ -226,34 +257,95 @@ function initDB() {
     );
 
     -- ═══ SOLICITUD DE PRENDAS ═══
-    CREATE TABLE IF NOT EXISTS solicitudes_prendas (
+    -- ═══ SOLICITUDES (prendas + artículos) ═══
+    CREATE TABLE IF NOT EXISTS solicitudes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      sede_solicitante TEXT NOT NULL,
-      sede_destino TEXT NOT NULL,
+      sede TEXT NOT NULL,
       solicitante TEXT NOT NULL,
       fecha TEXT NOT NULL,
+      urgencia TEXT DEFAULT 'media',
       estado TEXT DEFAULT 'pendiente',
       aprobado_por TEXT,
       fecha_respuesta TEXT,
+      entregado_por TEXT,
+      fecha_entrega TEXT,
+      confirmado INTEGER DEFAULT 0,
+      confirmado_por TEXT,
+      fecha_confirmacion TEXT,
       obs TEXT,
+      obs_respuesta TEXT,
       created_at TEXT DEFAULT (datetime('now','localtime'))
     );
     CREATE TABLE IF NOT EXISTS solicitud_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       solicitud_id INTEGER NOT NULL,
-      codigo TEXT,
-      tipo_prenda TEXT,
+      categoria TEXT NOT NULL,
+      tipo TEXT NOT NULL,
+      cantidad INTEGER DEFAULT 1,
       color TEXT,
       talla TEXT,
-      cantidad INTEGER DEFAULT 1,
+      tela TEXT,
+      modelo TEXT,
+      detalle TEXT,
       obs TEXT,
-      FOREIGN KEY (solicitud_id) REFERENCES solicitudes_prendas(id)
+      FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id)
+    );
+
+    -- ═══ ASISTENCIAS ═══
+
+    CREATE TABLE IF NOT EXISTS asistencias (
+
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+      emp_id TEXT NOT NULL,
+
+      fecha TEXT NOT NULL,
+
+      hora_entrada TEXT,
+
+      hora_salida TEXT,
+
+      minutos_tardanza INTEGER DEFAULT 0,
+
+      fuente TEXT DEFAULT 'manual',
+
+      obs TEXT,
+
+      created_at TEXT DEFAULT (datetime('now','localtime')),
+
+      UNIQUE(emp_id, fecha),
+
+      FOREIGN KEY (emp_id) REFERENCES empleados(id)
+
     );
 
     -- ═══ CONFIG GLOBAL (admin) ═══
     CREATE TABLE IF NOT EXISTS config (
       clave TEXT PRIMARY KEY,
       valor TEXT
+    );
+
+    -- ═══ ACCESORIOS LOG (granel) ═══
+    CREATE TABLE IF NOT EXISTS accesorios_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tipo TEXT NOT NULL,
+      cantidad INTEGER DEFAULT 0,
+      responsable TEXT,
+      fecha TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now','localtime'))
+    );
+
+    -- ═══ PUNTOS PRODUCTIVIDAD PIPELINE ═══
+    CREATE TABLE IF NOT EXISTS pipeline_puntos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      emp_cod TEXT NOT NULL,
+      emp_nombre TEXT NOT NULL,
+      prenda_id INTEGER,
+      etapa TEXT NOT NULL,
+      puntos REAL NOT NULL DEFAULT 0,
+      detalle TEXT,
+      fecha TEXT NOT NULL,
+      created_at TEXT DEFAULT (datetime('now','localtime'))
     );
   `);
 
@@ -262,8 +354,144 @@ function initDB() {
   ins.run('eval_valores_habilitado', '0');
   ins.run('precio_lavado_mano', '5.00');
   ins.run('precio_michi', '3.00');
+  // Puntos por etapa (admin editable)
+  ins.run('pts_lavado_normal', '1');
+  ins.run('pts_lavado_seco', '3');
+  ins.run('pts_lavado_especializado', '5');
+  ins.run('pts_empatado', '0.5');
+  ins.run('pts_refaccion', '2');
+  ins.run('pts_compostura', '5');
+  ins.run('pts_planchado', '3');
+  ins.run('pts_control_calidad', '2');
+  ins.run('pts_accesorio', '0.5');
+
+  // Migraciones seguras para BD existentes
+  try { d.exec('ALTER TABLE prendas ADD COLUMN lista_lavanderia_id TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE prendas ADD COLUMN obs_general TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE reporte_actividades ADD COLUMN obs_eval TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE reporte_actividades ADD COLUMN calificacion REAL'); } catch(e) {}
+  try { d.exec('ALTER TABLE actividades_config ADD COLUMN dia_semana TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE actividades_config ADD COLUMN descuento REAL DEFAULT 0'); } catch(e) {}
+  try { d.exec('ALTER TABLE incidencias ADD COLUMN reportado_por TEXT'); } catch(e) {}
+  // Migrar prestamos viejo → nuevo
+  try { d.exec('ALTER TABLE prendas_baja ADD COLUMN descripcion TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE prendas_baja ADD COLUMN sede_origen TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE prendas_baja ADD COLUMN sede_destino TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE prendas_baja ADD COLUMN lote_id INTEGER'); } catch(e) {}
+  try { d.exec('ALTER TABLE prendas_baja ADD COLUMN item_id INTEGER'); } catch(e) {}
+  try { d.exec('ALTER TABLE prendas_baja ADD COLUMN procesada INTEGER DEFAULT 0'); } catch(e) {}
+  try { d.exec('ALTER TABLE prendas_baja ADD COLUMN procesada_por TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE prendas_baja ADD COLUMN fecha_procesada TEXT'); } catch(e) {}
+  // Crear tablas nuevas de prestamos si no existen
+  try { d.exec(`CREATE TABLE IF NOT EXISTS prestamos_lotes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT NOT NULL,
+    sede_origen TEXT NOT NULL, sede_destino TEXT NOT NULL,
+    quien_lleva TEXT NOT NULL, responsable_registro TEXT NOT NULL,
+    obs TEXT, notificado INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+  )`); } catch(e) {}
+  try { d.exec(`CREATE TABLE IF NOT EXISTS prestamo_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, lote_id INTEGER NOT NULL,
+    codigo TEXT NOT NULL, descripcion TEXT,
+    estado TEXT DEFAULT 'prestada', fecha_estado TEXT,
+    obs_estado TEXT, cambiado_por TEXT, cambiado_sede TEXT,
+    created_at TEXT DEFAULT (datetime('now','localtime')),
+    FOREIGN KEY (lote_id) REFERENCES prestamos_lotes(id)
+  )`); } catch(e) {}
+  try { d.exec(`CREATE TABLE IF NOT EXISTS pipeline_puntos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, emp_cod TEXT NOT NULL, emp_nombre TEXT NOT NULL,
+    prenda_id INTEGER, etapa TEXT NOT NULL, puntos REAL NOT NULL DEFAULT 0,
+    detalle TEXT, fecha TEXT NOT NULL, created_at TEXT DEFAULT (datetime('now','localtime'))
+  )`); } catch(e) {}
+
+  // ═══ AUDITORÍA — Registro de TODA acción en el sistema ═══
+  try { d.exec(`CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    fecha TEXT NOT NULL,
+    hora TEXT NOT NULL,
+    usuario_cod TEXT,
+    usuario_nombre TEXT,
+    sede TEXT,
+    accion TEXT NOT NULL,
+    modulo TEXT,
+    detalle TEXT,
+    ip TEXT,
+    created_at TEXT DEFAULT (datetime('now','localtime'))
+  )`); } catch(e) {}
+
+  // Solicitudes nueva tabla
+  try { d.exec(`CREATE TABLE IF NOT EXISTS solicitudes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, sede TEXT NOT NULL, solicitante TEXT NOT NULL,
+    fecha TEXT NOT NULL, urgencia TEXT DEFAULT 'media', estado TEXT DEFAULT 'pendiente',
+    aprobado_por TEXT, fecha_respuesta TEXT, entregado_por TEXT, fecha_entrega TEXT,
+    confirmado INTEGER DEFAULT 0, confirmado_por TEXT, fecha_confirmacion TEXT,
+    obs TEXT, obs_respuesta TEXT, created_at TEXT DEFAULT (datetime('now','localtime'))
+  )`); } catch(e) {}
+  // Agregar columnas faltantes a solicitudes existente
+  try { d.exec("ALTER TABLE solicitudes ADD COLUMN urgencia TEXT DEFAULT 'media'"); } catch(e) {}
+  try { d.exec('ALTER TABLE solicitudes ADD COLUMN sede TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE solicitudes ADD COLUMN entregado_por TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE solicitudes ADD COLUMN fecha_entrega TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE solicitudes ADD COLUMN confirmado INTEGER DEFAULT 0'); } catch(e) {}
+  try { d.exec('ALTER TABLE solicitudes ADD COLUMN confirmado_por TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE solicitudes ADD COLUMN fecha_confirmacion TEXT'); } catch(e) {}
+  try { d.exec('ALTER TABLE solicitudes ADD COLUMN obs_respuesta TEXT'); } catch(e) {}
+  // Agregar columnas faltantes a solicitudes existente
+  try { d.exec("ALTER TABLE solicitudes ADD COLUMN urgencia TEXT DEFAULT 'media'"); } catch(e) {}
+  try { d.exec("ALTER TABLE solicitudes ADD COLUMN sede TEXT"); } catch(e) {}
+  try { d.exec("ALTER TABLE solicitudes ADD COLUMN entregado_por TEXT"); } catch(e) {}
+  try { d.exec("ALTER TABLE solicitudes ADD COLUMN fecha_entrega TEXT"); } catch(e) {}
+  try { d.exec("ALTER TABLE solicitudes ADD COLUMN confirmado INTEGER DEFAULT 0"); } catch(e) {}
+  try { d.exec("ALTER TABLE solicitudes ADD COLUMN confirmado_por TEXT"); } catch(e) {}
+  try { d.exec("ALTER TABLE solicitudes ADD COLUMN fecha_confirmacion TEXT"); } catch(e) {}
+  try { d.exec("ALTER TABLE solicitudes ADD COLUMN obs_respuesta TEXT"); } catch(e) {}
+  // Migrar solicitud_items vieja si no tiene categoria
+  try { d.prepare('SELECT categoria FROM solicitud_items LIMIT 0').all(); }
+  catch(e) {
+    try { d.exec('DROP TABLE IF EXISTS solicitud_items'); } catch(e2) {}
+    try { d.exec(`CREATE TABLE IF NOT EXISTS solicitud_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT, solicitud_id INTEGER NOT NULL,
+      categoria TEXT NOT NULL DEFAULT 'prenda', tipo TEXT NOT NULL, cantidad INTEGER DEFAULT 1,
+      color TEXT, talla TEXT, tela TEXT, modelo TEXT, detalle TEXT, obs TEXT,
+      FOREIGN KEY (solicitud_id) REFERENCES solicitudes(id)
+    )`); } catch(e2) {}
+  }
+  // Migrar solicitudes_prendas vieja → solicitudes
+  try { d.prepare('SELECT id FROM solicitudes_prendas LIMIT 0').all();
+    d.exec('DROP TABLE IF EXISTS solicitudes_prendas');
+  } catch(e) {}
 
   console.log('✅ Base de datos inicializada:', DB_PATH);
 }
 
-module.exports = { getDB, initDB };
+// ═══ FECHA LOCAL — evita bug UTC off-by-one en Peru UTC-5 después de 7pm ═══
+// toISOString() convierte a UTC; en Peru (UTC-5) a partir de las 19:00 ya es al
+// día siguiente en UTC y queda mal la fecha guardada. Esta función usa
+// componentes locales y siempre devuelve la fecha real del servidor.
+function hoyLocal() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function mesLocal() {
+  var d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
+
+// ═══ FUNCIÓN DE AUDITORÍA — usar desde cualquier ruta ═══
+function registrarAudit(req, accion, modulo, detalle) {
+  try {
+    var db = getDB();
+    var fecha = hoyLocal();
+    var hora = new Date().toLocaleTimeString('es-PE', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    var usuario_cod = req.user?.cod || '';
+    var usuario_nombre = req.user?.nombre || '';
+    var sede = req.user?.sede || req.body?.sede || req.body?.sede_origen || '';
+    var ip = req.headers['x-forwarded-for'] || req.connection?.remoteAddress || '';
+    var det = typeof detalle === 'object' ? JSON.stringify(detalle) : (detalle || '');
+    if (det.length > 500) det = det.substring(0, 500) + '...';
+    db.prepare('INSERT INTO audit_log (fecha,hora,usuario_cod,usuario_nombre,sede,accion,modulo,detalle,ip) VALUES (?,?,?,?,?,?,?,?,?)')
+      .run(fecha, hora, usuario_cod, usuario_nombre, sede, accion, modulo || '', det, ip);
+  } catch(e) { console.error('[Audit]', e.message); }
+}
+
+module.exports = { getDB, initDB, registrarAudit, hoyLocal, mesLocal };
