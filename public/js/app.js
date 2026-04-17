@@ -1511,32 +1511,59 @@ function showPrompt(title,placeholder,callback,icon){
 
 // ═══ ROLE-BASED ACCESS CONTROL ═══
 var EMP_ROLES_LABEL = {admin:'👑 Administrador',dueno:'👑 Dueña',encargado_tienda:'🏪 Encargado',encargado_almacen:'📦 Enc. Almacén',ventas_junior:'🛍 Ventas Jr.',ventas_junior_2:'🛍 Ventas Jr. 2',auxiliar:'📦 Auxiliar',confeccionista:'✂️ Confeccionista',trabajador:'👤 Colaborador'};
+// ──────────────────────────────────────────────────────────────────────────
+// PAGES_CONFIG — Inventario REAL de módulos.
+// Cada id debe coincidir con el argumento de goTo('...') en el nav del HTML.
+// `section` agrupa visualmente en el modal de Configurar Accesos.
+// Sectores:
+//   turno     → operación diaria del turno (reporte, eval, lavandería, solicitudes)
+//   personal  → vistas propias del colaborador
+//   almacen   → flujos de almacén/pipeline (kanban, envíos, retornos, garantías)
+//   gestion   → panel admin (colaboradores, incidencias, auditoría)
+// ──────────────────────────────────────────────────────────────────────────
 var PAGES_CONFIG = {
-  'reporte':           {label:'Reporte de Actividades',icon:'📋',section:'operaciones'},
-  'evaluacion':        {label:'Evaluación de Reporte',icon:'⭐',section:'operaciones'},
-  'lavanderia-envio':  {label:'Envío a Lavandería',icon:'👔',section:'operaciones'},
-  'prendas-recibidas': {label:'Prendas Recibidas',icon:'📦',section:'operaciones'},
-  'mi-desempeno':      {label:'Mi Desempeño',icon:'📊',section:'personal'},
-  'solicitudes':       {label:'Solicitudes',icon:'📩',section:'operaciones'},
-  'pipeline':          {label:'Pipeline',icon:'🔄',section:'gestion'},
-  'empleados':         {label:'Colaboradores',icon:'👥',section:'gestion'},
-  'incidencias-admin': {label:'Incidencias',icon:'⚡',section:'gestion'},
-  'gestion-actividades':{label:'Gestión Actividades',icon:'📝',section:'gestion'},
-  'reportes-admin':    {label:'Reportes',icon:'📈',section:'gestion'},
-  'valores':           {label:'Valores',icon:'💎',section:'gestion'},
-  'evaluaciones':      {label:'Evaluaciones',icon:'🏆',section:'gestion'},
-  'horarios':          {label:'Horarios',icon:'🕐',section:'gestion'},
+  // — Turno —
+  'reporte':            {label:'Reporte de Actividades',icon:'📋',section:'turno'},
+  'evaluacion':         {label:'Evaluación de Reporte', icon:'⭐',section:'turno'},
+  'lavanderia':         {label:'Envío a Lavandería',    icon:'👔',section:'turno'},
+  'solicitudes':        {label:'Solicitudes',           icon:'📩',section:'turno'},
+  'prestamos':          {label:'Préstamo de Prendas',   icon:'🔄',section:'turno'},
+  // — Personal —
+  'mi-desempeno':       {label:'Mi Desempeño',          icon:'📊',section:'personal'},
+  'eval-valores':       {label:'Evaluar Compañeros',    icon:'💎',section:'personal'},
+  // — Almacén / Pipeline —
+  'kanban-almacen':     {label:'Prendas Recibidas (Almacén)',icon:'📦',section:'almacen'},
+  'pipeline-envios':    {label:'Envíos Recibidos (Tienda)',  icon:'📬',section:'almacen'},
+  'retorno':            {label:'Retorno de Prendas',    icon:'↩️',section:'almacen'},
+  'garantias':          {label:'Garantías',             icon:'🛡️',section:'almacen'},
+  'config-pipeline':    {label:'Configurar Pipeline',   icon:'⚙️',section:'almacen'},
+  // — Gestión (admin) —
+  'dashboard':          {label:'Dashboard',             icon:'📊',section:'gestion'},
+  'empleados':          {label:'Colaboradores',         icon:'👥',section:'gestion'},
+  'incidencias-admin':  {label:'Incidencias',           icon:'⚡',section:'gestion'},
+  'gestion-actividades':{label:'Gestión Actividades',   icon:'📝',section:'gestion'},
+  'admin-reportes':     {label:'Reportes de Actividad', icon:'📈',section:'gestion'},
+  'evaluacion-mensual': {label:'Evaluación Mensual',    icon:'🏆',section:'gestion'},
+  'audit-log':          {label:'Auditoría',             icon:'🔍',section:'gestion'},
+};
+
+// Etiqueta legible + color por sector para la UI de configuración.
+var SECTION_META = {
+  turno:    {label:'Operación de Turno', icon:'📋', color:'#1e3a5f', bg:'#eff6ff'},
+  personal: {label:'Vista Personal',     icon:'🙋', color:'#7c3aed', bg:'#faf5ff'},
+  almacen:  {label:'Almacén y Pipeline', icon:'📦', color:'#0d6939', bg:'#f0fdf4'},
+  gestion:  {label:'Gestión (Admin)',    icon:'👑', color:'#b45309', bg:'#fffbeb'},
 };
 
 var DEFAULT_PERMS = {
   dueno:              Object.keys(PAGES_CONFIG),
   admin:              Object.keys(PAGES_CONFIG),
-  encargado_tienda:   ['reporte','evaluacion','lavanderia-envio','prendas-recibidas','mi-desempeno','solicitudes','incidencias-admin'],
-  encargado_almacen:  ['reporte','evaluacion','prendas-recibidas','mi-desempeno','solicitudes','pipeline'],
-  ventas_junior:      ['reporte','evaluacion','mi-desempeno','solicitudes'],
-  ventas_junior_2:    ['reporte','evaluacion','mi-desempeno','solicitudes'],
-  auxiliar:           ['reporte','evaluacion','mi-desempeno','solicitudes','prendas-recibidas'],
-  confeccionista:     ['mi-desempeno','solicitudes'],
+  encargado_tienda:   ['reporte','evaluacion','lavanderia','solicitudes','prestamos','mi-desempeno','eval-valores','pipeline-envios','retorno','incidencias-admin'],
+  encargado_almacen:  ['reporte','evaluacion','solicitudes','prestamos','mi-desempeno','eval-valores','kanban-almacen','retorno','garantias','incidencias-admin'],
+  ventas_junior:      ['reporte','evaluacion','lavanderia','solicitudes','mi-desempeno','eval-valores','pipeline-envios'],
+  ventas_junior_2:    ['reporte','evaluacion','lavanderia','solicitudes','mi-desempeno','eval-valores','pipeline-envios'],
+  auxiliar:           ['reporte','evaluacion','solicitudes','mi-desempeno','eval-valores','kanban-almacen'],
+  confeccionista:     ['mi-desempeno','solicitudes','eval-valores'],
   trabajador:         ['reporte','evaluacion','mi-desempeno','solicitudes'],
 };
 

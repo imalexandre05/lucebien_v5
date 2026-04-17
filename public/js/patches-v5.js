@@ -750,5 +750,433 @@ window._gaDeselectAll = function() {
   };
 })();
 
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIGURAR ACCESOS — rebuild completo (v5.4.1)
+// Reemplaza el modal de abrirConfigAccesos con:
+//   · Matriz de accesos agrupada por sector
+//   · Puestos = rol hardcoded + puestos_custom (del config DB)
+//   · Grupos de rangos (bulk apply) con editor propio
+//   · Gestión CRUD de puestos personalizados
+// Mantiene compatibilidad con el endpoint /config/permisos existente.
+// ═══════════════════════════════════════════════════════════════════════════
+(function(){
+  // Puestos builtin — orden y estilo estable.
+  var BUILTIN_PUESTOS = [
+    {cod:'dueno',            label:'Dueña',         icon:'👑', sector:'gestion',  builtin:true, admin:true},
+    {cod:'admin',            label:'Administrador', icon:'👑', sector:'gestion',  builtin:true, admin:true},
+    {cod:'encargado_tienda', label:'Enc. Tienda',   icon:'🏪', sector:'turno',    builtin:true},
+    {cod:'encargado_almacen',label:'Enc. Almacén',  icon:'📦', sector:'almacen',  builtin:true},
+    {cod:'ventas_junior',    label:'Ventas Jr.',    icon:'🛍', sector:'turno',    builtin:true},
+    {cod:'ventas_junior_2',  label:'Ventas Jr. 2',  icon:'🛍', sector:'turno',    builtin:true},
+    {cod:'auxiliar',         label:'Auxiliar',      icon:'📦', sector:'almacen',  builtin:true},
+    {cod:'confeccionista',   label:'Confección',    icon:'✂️', sector:'personal', builtin:true},
+    {cod:'trabajador',       label:'Colaborador',   icon:'👤', sector:'turno',    builtin:true},
+  ];
+
+  var _cfgCache = { puestos:[], grupos:[], perms:{} };
+
+  async function _cargarConfig(){
+    try{ _cfgCache.perms   = (await API.get('/config/permisos'))||{}; }catch(e){ _cfgCache.perms={}; }
+    try{ _cfgCache.puestos = (await API.get('/config/puestos'))||[]; }catch(e){ _cfgCache.puestos=[]; }
+    try{ _cfgCache.grupos  = (await API.get('/config/grupos-rangos'))||[]; }catch(e){ _cfgCache.grupos=[]; }
+    if(!Array.isArray(_cfgCache.puestos)) _cfgCache.puestos=[];
+    if(!Array.isArray(_cfgCache.grupos))  _cfgCache.grupos=[];
+  }
+
+  function _todosPuestos(){
+    // builtin primero, luego custom (evitando colisiones de cod)
+    var out = BUILTIN_PUESTOS.slice();
+    var builtCods = {}; out.forEach(function(p){ builtCods[p.cod]=1; });
+    (_cfgCache.puestos||[]).forEach(function(p){
+      if(p && p.cod && !builtCods[p.cod]) out.push({
+        cod:p.cod, label:p.label||p.cod, icon:p.icon||'👤',
+        sector:p.sector||'turno', builtin:false
+      });
+    });
+    return out;
+  }
+
+  function _permsPara(rol){
+    if(_cfgCache.perms && _cfgCache.perms[rol]) return _cfgCache.perms[rol].slice();
+    if(window.DEFAULT_PERMS && DEFAULT_PERMS[rol]) return DEFAULT_PERMS[rol].slice();
+    return [];
+  }
+
+  // ───────────────────── Modal principal ─────────────────────
+  window.abrirConfigAccesos = async function(){
+    var prev = document.getElementById('accesosModal'); if(prev) prev.remove();
+    await _cargarConfig();
+    // refresca también la cache de app.js para applyPermissions()
+    if(window.STATE) STATE._permisos = Object.keys(_cfgCache.perms).length ? _cfgCache.perms : null;
+
+    var puestos = _todosPuestos();
+    var pages   = window.PAGES_CONFIG || {};
+    var sections= window.SECTION_META || {
+      turno:{label:'Turno',color:'#1e3a5f',bg:'#eff6ff',icon:'📋'},
+      personal:{label:'Personal',color:'#7c3aed',bg:'#faf5ff',icon:'🙋'},
+      almacen:{label:'Almacén',color:'#0d6939',bg:'#f0fdf4',icon:'📦'},
+      gestion:{label:'Gestión',color:'#b45309',bg:'#fffbeb',icon:'👑'},
+    };
+
+    var m = document.createElement('div'); m.id='accesosModal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1100;display:flex;align-items:center;justify-content:center;padding:14px';
+    m.onclick=function(e){ if(e.target===m) m.remove(); };
+
+    var inner = document.createElement('div');
+    inner.style.cssText='background:#fff;border-radius:16px;width:98%;max-width:1100px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 70px rgba(0,0,0,.35)';
+    inner.onclick=function(e){e.stopPropagation();};
+
+    // — Header —
+    var hdr = document.createElement('div');
+    hdr.style.cssText='padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff';
+    hdr.innerHTML =
+      '<div>'+
+        '<div style="font-size:15px;font-weight:800">⚙ Configurar Accesos</div>'+
+        '<div style="font-size:10px;color:#cbd5e1;margin-top:2px">Matriz de permisos · puestos + grupos de rangos</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px;align-items:center">'+
+        '<button id="btnGestPuestos" class="btn btn-ghost btn-xs" style="color:#fff;border:1px solid rgba(255,255,255,.25);font-size:10px">👥 Gestionar Puestos</button>'+
+        '<button id="btnGestGrupos"  class="btn btn-ghost btn-xs" style="color:#fff;border:1px solid rgba(255,255,255,.25);font-size:10px">🗂 Gestionar Grupos</button>'+
+        '<button id="btnCerrarAcc"   class="btn btn-ghost btn-xs" style="color:#fff;font-size:14px">✕</button>'+
+      '</div>';
+    inner.appendChild(hdr);
+
+    // — Toolbar: grupo shortcut —
+    var bar = document.createElement('div');
+    bar.style.cssText='padding:10px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;background:#f8fafc;flex-wrap:wrap;font-size:11px';
+    var gruposHtml = '<option value="">— Aplicar a grupo —</option>' +
+      _cfgCache.grupos.map(function(g){ return '<option value="'+g.id+'">'+g.nombre+' ('+(g.puestos||[]).length+')</option>'; }).join('');
+    bar.innerHTML =
+      '<span style="font-weight:700;color:var(--text2)">Atajos:</span>'+
+      '<select id="accGrupoSel" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px">'+gruposHtml+'</select>'+
+      '<button id="accGrupoAllOn"  class="btn btn-ghost btn-xs" style="font-size:10px">✅ Todo</button>'+
+      '<button id="accGrupoAllOff" class="btn btn-ghost btn-xs" style="font-size:10px">☐ Nada</button>'+
+      '<span style="margin-left:auto;color:var(--text3);font-size:10px">Total módulos: <strong>'+Object.keys(pages).length+'</strong> · Puestos: <strong>'+puestos.length+'</strong></span>';
+    inner.appendChild(bar);
+
+    // — Body: matriz agrupada por sector —
+    var body = document.createElement('div');
+    body.style.cssText='flex:1;overflow:auto;padding:14px 20px;background:#fff';
+
+    // Header columnas (sticky)
+    var colHdr = '<thead><tr style="position:sticky;top:0;z-index:2;background:#fff;box-shadow:0 2px 0 #e2e8f0">'+
+      '<th style="text-align:left;padding:8px 10px;font-size:9px;color:var(--text3);min-width:230px;border-right:2px solid #e2e8f0;background:#fff">MÓDULO</th>';
+    puestos.forEach(function(p){
+      var adminFlag = p.admin ? ' style="opacity:.55"' : '';
+      colHdr += '<th'+adminFlag+' style="text-align:center;padding:6px 3px;font-size:8px;color:var(--text2);min-width:66px;background:#fff;font-weight:700">'+
+        '<div style="font-size:12px;margin-bottom:2px">'+p.icon+'</div>'+
+        '<div style="font-size:8px">'+p.label+'</div>'+
+        (p.builtin?'':'<div style="font-size:6px;color:#7c3aed;margin-top:1px">CUSTOM</div>')+
+      '</th>';
+    });
+    colHdr += '</tr></thead>';
+
+    // Filas agrupadas por sector
+    var secOrder = ['turno','personal','almacen','gestion'];
+    var pagesBySec = {};
+    Object.entries(pages).forEach(function(e){
+      var sec = (e[1].section)||'turno';
+      (pagesBySec[sec]=pagesBySec[sec]||[]).push([e[0], e[1]]);
+    });
+
+    var tbody = '<tbody>';
+    secOrder.forEach(function(sec){
+      var list = pagesBySec[sec]; if(!list||!list.length) return;
+      var meta = sections[sec] || {label:sec,color:'#64748b',bg:'#f1f5f9',icon:'📁'};
+      // Sector header row
+      tbody += '<tr style="background:'+meta.bg+'"><td colspan="'+(puestos.length+1)+'" style="padding:8px 12px;font-weight:800;font-size:11px;color:'+meta.color+';border-top:2px solid '+meta.color+'33">'+
+        meta.icon+' '+meta.label+
+        ' <span style="font-weight:500;color:var(--text3);font-size:9px">· '+list.length+' módulo(s)</span>'+
+        ' <button class="accSecAll" data-sec="'+sec+'" data-val="1" style="float:right;margin-left:4px;font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid '+meta.color+'55;background:#fff;color:'+meta.color+';cursor:pointer;font-weight:700">✅ Todo</button>'+
+        ' <button class="accSecAll" data-sec="'+sec+'" data-val="0" style="float:right;font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid '+meta.color+'55;background:#fff;color:'+meta.color+';cursor:pointer;font-weight:700">☐ Nada</button>'+
+      '</td></tr>';
+      // Module rows
+      list.forEach(function(pair){
+        var pid=pair[0], pg=pair[1];
+        tbody += '<tr class="accRow" data-sec="'+sec+'" style="border-bottom:1px solid #f1f5f9">';
+        tbody += '<td style="padding:7px 10px;font-weight:600;font-size:11px;border-right:1px solid #f1f5f9"><span style="font-size:13px;margin-right:4px">'+pg.icon+'</span>'+pg.label+'<div style="font-size:8px;color:var(--text3);font-family:var(--font-m)">'+pid+'</div></td>';
+        puestos.forEach(function(p){
+          var allowed = p.admin ? true : (_permsPara(p.cod).indexOf(pid)>=0);
+          var disabled = p.admin?'disabled':'';
+          var cls = p.admin?'accCbAdmin':'acc-cb';
+          tbody += '<td style="text-align:center;padding:3px"><input type="checkbox" class="'+cls+'" data-role="'+p.cod+'" data-page="'+pid+'" '+(allowed?'checked':'')+' '+disabled+' style="width:15px;height:15px;accent-color:'+meta.color+';cursor:'+(p.admin?'not-allowed':'pointer')+'"></td>';
+        });
+        tbody += '</tr>';
+      });
+    });
+    tbody += '</tbody>';
+
+    body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px">'+colHdr+tbody+'</table>';
+    inner.appendChild(body);
+
+    // — Footer —
+    var ftr = document.createElement('div');
+    ftr.style.cssText='padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;background:#f8fafc';
+    ftr.innerHTML =
+      '<div style="font-size:10px;color:var(--text3)">👑 Admin y Dueña tienen acceso total y no son editables.</div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button id="accReset" class="btn btn-ghost btn-sm">↺ Restaurar defaults</button>'+
+        '<button id="accSave"  class="btn btn-primary btn-sm">💾 Guardar Accesos</button>'+
+      '</div>';
+    inner.appendChild(ftr);
+
+    m.appendChild(inner);
+    document.body.appendChild(m);
+
+    // — Handlers —
+    document.getElementById('btnCerrarAcc').onclick = function(){ m.remove(); };
+    document.getElementById('btnGestPuestos').onclick = function(){ abrirGestionPuestos(); };
+    document.getElementById('btnGestGrupos').onclick  = function(){ abrirGestionGrupos(); };
+
+    // "Todo / Nada" por sector
+    body.querySelectorAll('.accSecAll').forEach(function(b){
+      b.onclick = function(){
+        var sec=b.dataset.sec, val=b.dataset.val==='1';
+        body.querySelectorAll('tr.accRow[data-sec="'+sec+'"] .acc-cb').forEach(function(cb){ cb.checked=val; });
+      };
+    });
+
+    // Shortcut por grupo
+    document.getElementById('accGrupoAllOn').onclick  = function(){ _accAplicarGrupo(body, true);  };
+    document.getElementById('accGrupoAllOff').onclick = function(){ _accAplicarGrupo(body, false); };
+
+    document.getElementById('accReset').onclick = function(){
+      body.querySelectorAll('.acc-cb').forEach(function(cb){
+        var r=cb.dataset.role, p=cb.dataset.page;
+        cb.checked = ((window.DEFAULT_PERMS||{})[r]||[]).indexOf(p)>=0;
+      });
+      showToast('Defaults restaurados — guarda para aplicar','info');
+    };
+
+    document.getElementById('accSave').onclick = _accGuardar;
+  };
+
+  function _accAplicarGrupo(body, valor){
+    var sel = document.getElementById('accGrupoSel');
+    var gid = sel ? sel.value : '';
+    if(!gid){ showToast('Selecciona un grupo primero','warn'); return; }
+    var g = _cfgCache.grupos.find(function(x){ return x.id===gid; });
+    if(!g){ return; }
+    (g.puestos||[]).forEach(function(cod){
+      body.querySelectorAll('.acc-cb[data-role="'+cod+'"]').forEach(function(cb){ cb.checked=valor; });
+    });
+    showToast((valor?'✅ Todo':'☐ Nada')+' aplicado a '+g.nombre,'success');
+  }
+
+  async function _accGuardar(){
+    var perms = {};
+    document.querySelectorAll('#accesosModal .acc-cb').forEach(function(cb){
+      var r=cb.dataset.role, p=cb.dataset.page;
+      (perms[r]=perms[r]||[]);
+      if(cb.checked) perms[r].push(p);
+    });
+    var r = await API.put('/config/permisos', perms);
+    if(r && r.ok){
+      _cfgCache.perms = perms;
+      if(window.STATE) STATE._permisos = perms;
+      document.getElementById('accesosModal')?.remove();
+      if(typeof applyPermissions==='function') applyPermissions();
+      showToast('✅ Accesos actualizados','success');
+    } else {
+      showToast('Error al guardar accesos','error');
+    }
+  }
+
+  // ═══════════════════ Gestión de Puestos ════════════════════
+  window.abrirGestionPuestos = async function(){
+    var prev = document.getElementById('puestosModal'); if(prev) prev.remove();
+    if(!_cfgCache.puestos.length && !_cfgCache.grupos.length) await _cargarConfig();
+
+    var m = document.createElement('div'); m.id='puestosModal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px';
+    m.onclick=function(e){ if(e.target===m) m.remove(); };
+
+    var inner=document.createElement('div');
+    inner.style.cssText='background:#fff;border-radius:16px;width:95%;max-width:640px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column';
+    inner.onclick=function(e){e.stopPropagation();};
+
+    var hdr=document.createElement('div');
+    hdr.style.cssText='padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#1e3a5f;color:#fff';
+    hdr.innerHTML='<div><div style="font-size:14px;font-weight:800">👥 Gestión de Puestos</div><div style="font-size:10px;color:#cbd5e1;margin-top:2px">Agrega o elimina puestos personalizados</div></div>'+
+      '<button id="pClose" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer">✕</button>';
+    inner.appendChild(hdr);
+
+    var body=document.createElement('div'); body.id='puestosBody';
+    body.style.cssText='flex:1;overflow:auto;padding:14px 18px;background:#fff;font-size:12px';
+    inner.appendChild(body);
+
+    var ftr=document.createElement('div');
+    ftr.style.cssText='padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;background:#f8fafc';
+    ftr.innerHTML='<button id="pAdd" class="btn btn-primary btn-sm">➕ Agregar Puesto</button>'+
+      '<button id="pSave" class="btn btn-primary btn-sm" style="background:#16a34a">💾 Guardar Cambios</button>';
+    inner.appendChild(ftr);
+
+    m.appendChild(inner); document.body.appendChild(m);
+
+    document.getElementById('pClose').onclick=function(){ m.remove(); };
+
+    var listaTmp = _cfgCache.puestos.slice();  // solo editables (custom)
+    function renderList(){
+      var h='<div style="margin-bottom:10px;padding:8px 10px;background:#eff6ff;border-left:3px solid #1e3a5f;border-radius:4px;font-size:10px;color:#1e3a5f">'+
+        '<strong>Puestos del sistema</strong> (no editables): '+BUILTIN_PUESTOS.filter(function(p){return !p.admin}).map(function(p){return p.icon+' '+p.label;}).join(' · ')+'</div>';
+      if(!listaTmp.length){
+        h += '<div style="text-align:center;padding:30px 20px;color:var(--text3);font-size:11px">Sin puestos personalizados. Usa <strong>Agregar Puesto</strong> para crear uno.</div>';
+      } else {
+        h += '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#f8fafc"><th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">ICON</th><th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">NOMBRE</th><th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">CÓDIGO</th><th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">SECTOR</th><th style="width:30px"></th></tr></thead><tbody>';
+        listaTmp.forEach(function(p,i){
+          h+='<tr style="border-bottom:1px solid #f1f5f9">'+
+            '<td style="padding:4px 6px"><input data-i="'+i+'" data-k="icon" value="'+(p.icon||'👤')+'" style="width:40px;text-align:center;padding:4px;border:1px solid var(--border);border-radius:4px;font-size:14px"></td>'+
+            '<td style="padding:4px 6px"><input data-i="'+i+'" data-k="label" value="'+(p.label||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:11px"></td>'+
+            '<td style="padding:4px 6px"><input data-i="'+i+'" data-k="cod" value="'+(p.cod||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:10px;font-family:monospace"></td>'+
+            '<td style="padding:4px 6px"><select data-i="'+i+'" data-k="sector" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:10px">'+
+              ['turno','personal','almacen','gestion'].map(function(s){return '<option value="'+s+'" '+(p.sector===s?'selected':'')+'>'+s+'</option>';}).join('')+
+            '</select></td>'+
+            '<td style="text-align:center"><button data-del="'+i+'" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:14px">✕</button></td>'+
+          '</tr>';
+        });
+        h += '</tbody></table>';
+      }
+      body.innerHTML=h;
+      body.querySelectorAll('input,select').forEach(function(el){
+        el.oninput = el.onchange = function(){
+          var i=+el.dataset.i, k=el.dataset.k;
+          if(!listaTmp[i]) return;
+          listaTmp[i][k] = el.value;
+        };
+      });
+      body.querySelectorAll('button[data-del]').forEach(function(b){
+        b.onclick=function(){
+          var i=+b.dataset.del; listaTmp.splice(i,1); renderList();
+        };
+      });
+    }
+    renderList();
+
+    document.getElementById('pAdd').onclick=function(){
+      listaTmp.push({cod:'nuevo_'+Date.now().toString(36).slice(-4), label:'Nuevo Puesto', icon:'👤', sector:'turno'});
+      renderList();
+    };
+    document.getElementById('pSave').onclick=async function(){
+      // Validar: cod único, label no vacío
+      var seen={}, err=null;
+      listaTmp.forEach(function(p){
+        if(!p.cod||!p.label){ err='Código y nombre son obligatorios'; return; }
+        p.cod = String(p.cod).toLowerCase().replace(/[^a-z0-9_]/g,'_');
+        if(seen[p.cod]){ err='Código duplicado: '+p.cod; return; }
+        seen[p.cod]=1;
+      });
+      if(err){ showToast(err,'error'); return; }
+      var r = await API.put('/config/puestos', listaTmp);
+      if(r && r.ok){
+        _cfgCache.puestos = r.puestos||listaTmp;
+        showToast('✅ Puestos actualizados','success');
+        m.remove();
+        // refrescar modal de accesos si sigue abierto
+        if(document.getElementById('accesosModal')) abrirConfigAccesos();
+      } else showToast('Error al guardar puestos','error');
+    };
+  };
+
+  // ═══════════════════ Gestión de Grupos ═════════════════════
+  window.abrirGestionGrupos = async function(){
+    var prev=document.getElementById('gruposModal'); if(prev) prev.remove();
+    if(!_cfgCache.puestos.length) await _cargarConfig();
+
+    var m=document.createElement('div'); m.id='gruposModal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px';
+    m.onclick=function(e){ if(e.target===m) m.remove(); };
+
+    var inner=document.createElement('div');
+    inner.style.cssText='background:#fff;border-radius:16px;width:95%;max-width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column';
+    inner.onclick=function(e){e.stopPropagation();};
+
+    var hdr=document.createElement('div');
+    hdr.style.cssText='padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#7c3aed;color:#fff';
+    hdr.innerHTML='<div><div style="font-size:14px;font-weight:800">🗂 Gestión de Grupos de Rangos</div><div style="font-size:10px;color:#e9d5ff;margin-top:2px">Agrupa puestos para aplicar permisos en lote</div></div>'+
+      '<button id="gClose" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer">✕</button>';
+    inner.appendChild(hdr);
+
+    var body=document.createElement('div'); body.id='gruposBody';
+    body.style.cssText='flex:1;overflow:auto;padding:14px 18px;background:#fff;font-size:12px';
+    inner.appendChild(body);
+
+    var ftr=document.createElement('div');
+    ftr.style.cssText='padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;background:#f8fafc';
+    ftr.innerHTML='<button id="gAdd" class="btn btn-primary btn-sm" style="background:#7c3aed">➕ Agregar Grupo</button>'+
+      '<button id="gSave" class="btn btn-primary btn-sm" style="background:#16a34a">💾 Guardar Cambios</button>';
+    inner.appendChild(ftr);
+
+    m.appendChild(inner); document.body.appendChild(m);
+    document.getElementById('gClose').onclick=function(){ m.remove(); };
+
+    var listaTmp = _cfgCache.grupos.slice();
+    var puestosAll = _todosPuestos().filter(function(p){ return !p.admin; });
+
+    function renderList(){
+      if(!listaTmp.length){
+        body.innerHTML='<div style="text-align:center;padding:30px 20px;color:var(--text3);font-size:11px">Sin grupos. Usa <strong>Agregar Grupo</strong> para crear uno.<br><br>Ejemplo: crea un grupo <em>"Ventas"</em> con todos los puestos de ventas para aplicar permisos en lote.</div>';
+        return;
+      }
+      var h=listaTmp.map(function(g,i){
+        var chips = puestosAll.map(function(p){
+          var on = (g.puestos||[]).indexOf(p.cod)>=0;
+          return '<label style="display:inline-flex;align-items:center;gap:3px;padding:3px 7px;margin:2px;border-radius:14px;background:'+(on?'#ede9fe':'#f1f5f9')+';border:1px solid '+(on?'#7c3aed':'#e2e8f0')+';font-size:10px;cursor:pointer;font-weight:'+(on?'700':'400')+';color:'+(on?'#7c3aed':'var(--text2)')+'">'+
+            '<input type="checkbox" data-gi="'+i+'" data-cod="'+p.cod+'" '+(on?'checked':'')+' style="margin:0;width:11px;height:11px;accent-color:#7c3aed">'+
+            p.icon+' '+p.label+'</label>';
+        }).join('');
+        return '<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;padding:10px;background:#fafbfc">'+
+          '<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">'+
+            '<input data-gi="'+i+'" data-k="nombre" value="'+(g.nombre||'').replace(/"/g,'&quot;')+'" placeholder="Nombre del grupo" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:700">'+
+            '<input type="color" data-gi="'+i+'" data-k="color" value="'+(g.color||'#7c3aed')+'" style="width:36px;height:32px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer">'+
+            '<button data-gdel="'+i+'" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px">Eliminar</button>'+
+          '</div>'+
+          '<div style="font-size:9px;color:var(--text3);margin-bottom:4px;font-weight:700">PUESTOS DEL GRUPO</div>'+
+          '<div>'+chips+'</div>'+
+        '</div>';
+      }).join('');
+      body.innerHTML=h;
+
+      body.querySelectorAll('input[data-k]').forEach(function(el){
+        el.oninput=el.onchange=function(){
+          var i=+el.dataset.gi, k=el.dataset.k;
+          if(!listaTmp[i]) return;
+          listaTmp[i][k]=el.value;
+        };
+      });
+      body.querySelectorAll('input[type=checkbox][data-cod]').forEach(function(cb){
+        cb.onchange=function(){
+          var i=+cb.dataset.gi, cod=cb.dataset.cod;
+          if(!listaTmp[i]) return;
+          listaTmp[i].puestos = listaTmp[i].puestos||[];
+          var idx = listaTmp[i].puestos.indexOf(cod);
+          if(cb.checked && idx<0) listaTmp[i].puestos.push(cod);
+          else if(!cb.checked && idx>=0) listaTmp[i].puestos.splice(idx,1);
+          renderList(); // re-render para refrescar chip styles
+        };
+      });
+      body.querySelectorAll('button[data-gdel]').forEach(function(b){
+        b.onclick=function(){ listaTmp.splice(+b.dataset.gdel,1); renderList(); };
+      });
+    }
+    renderList();
+
+    document.getElementById('gAdd').onclick=function(){
+      listaTmp.push({id:'grupo_'+Date.now().toString(36).slice(-4), nombre:'Nuevo Grupo', color:'#7c3aed', puestos:[]});
+      renderList();
+    };
+    document.getElementById('gSave').onclick=async function(){
+      var r=await API.put('/config/grupos-rangos', listaTmp);
+      if(r && r.ok){
+        _cfgCache.grupos = r.grupos||listaTmp;
+        showToast('✅ Grupos actualizados','success');
+        m.remove();
+        if(document.getElementById('accesosModal')) abrirConfigAccesos();
+      } else showToast('Error al guardar grupos','error');
+    };
+  };
+
+  console.log('[LuceBien] Configurar Accesos v2 — cargado (sectores + puestos + grupos)');
+})();
+
 console.log('[LuceBien] patches-v5.js — Global system changes + Layout tools loaded');
 })();
