@@ -174,7 +174,8 @@ var LayoutMap={
     var pending=myT.filter(function(z){return !sel[z.cod]});
     var pct=myT.length?Math.round(done.length/myT.length*100):0;
     var totalP=L.calcPoints(zonas);
-    var maxP=myT.reduce(function(s,z){return s+z.peso},0)+extT.reduce(function(s,z){return s+z.peso},0);
+    // Redondear a 1 decimal para evitar drift IEEE754 (e.g. 43.099999... → 43.1)
+    var maxP=Math.round((myT.reduce(function(s,z){return s+(z.peso||0)},0)+extT.reduce(function(s,z){return s+(z.peso||0)},0))*10)/10;
 
     function row(z,isDone,isExtra){
       var ic=IC[z.tipo]||'📦';
@@ -378,6 +379,11 @@ var LayoutMap={
   },
 
   getSelected:function(){var r=[];Object.keys(LayoutMap._sel||{}).forEach(function(k){if(LayoutMap._sel[k])r.push(k);});return r;},
-  calcPoints:function(zonas){var t=0,s=LayoutMap._sel||{};(zonas||[]).forEach(function(z){if(s[z.cod]&&z.tipo!=='area')t+=(z.peso||0);});return t;},
+  // calcPoints: suma los pesos de zonas seleccionadas. Redondeado a 1 decimal
+  // para evitar float drift (e.g. 0.1+0.2+... acumula en IEEE754 → 43.0999...).
+  calcPoints:function(zonas){var t=0,s=LayoutMap._sel||{};(zonas||[]).forEach(function(z){if(s[z.cod]&&z.tipo!=='area')t+=(z.peso||0);});return Math.round(t*10)/10;},
+  // Helper público para formatear puntajes con drift de float controlado.
+  // Uso: LayoutMap.fmt(43.099999999999994) → "43.1", LayoutMap.fmt(0) → "0".
+  fmt:function(n){if(n===null||n===undefined||isNaN(n))return '0';var r=Math.round(Number(n)*10)/10;return (r%1===0)?String(r):r.toFixed(1);},
   calcEvalPoints:function(zonas){var t=0,s=LayoutMap._sel||{},ec=LayoutMap._ec||{};(zonas||[]).forEach(function(z){if(s[z.cod]&&z.tipo!=='area')t+=(z.peso||0)*(ec[z.cod]!==undefined?ec[z.cod]:1);});return t;}
 };

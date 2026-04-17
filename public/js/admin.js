@@ -869,7 +869,7 @@ function _renderChkGroup(data,label,color){
   var pctTotal = maxPts > 0 ? Math.round((totalPts/maxPts)*100) : 0;
   var pctColor = pctTotal>=80?'#16a34a':pctTotal>=50?'#ca8a04':'#dc2626';
   var h='<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div style="font-size:12px;font-weight:700;color:'+color+'">'+label+'</div>';
-  h+='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--text3)">'+Math.round(totalPts)+' / '+maxPts+' pts</span><span style="font-size:14px;font-weight:800;color:'+pctColor+'">'+data.nota20+'/20</span></div></div>';
+  h+='<div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--text3)">'+Math.round(totalPts)+' / '+(Math.round(maxPts*10)/10)+' pts</span><span style="font-size:14px;font-weight:800;color:'+pctColor+'">'+data.nota20+'/20</span></div></div>';
   // Progress bar
   h+='<div style="background:var(--s3);border-radius:4px;height:6px;margin-bottom:8px;overflow:hidden"><div style="width:'+pctTotal+'%;height:100%;background:'+pctColor+';border-radius:4px;transition:width .5s"></div></div>';
   h+='<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--s3)"><th style="padding:5px 8px;text-align:left">Actividad</th><th style="padding:5px 8px;text-align:center;width:50px">Peso</th><th style="padding:5px 8px;text-align:center;width:70px">Reportes</th><th style="padding:5px 8px;text-align:center;width:90px">Puntos</th></tr></thead><tbody>';
@@ -885,7 +885,7 @@ function _renderChkGroup(data,label,color){
     h+='<td style="padding:5px 8px;text-align:center"><strong style="color:'+barClr+'">'+pts+'</strong><span style="color:var(--text3)"> / '+maxP+'</span></td>';
     h+='</tr>';
   });
-  h+='<tr style="background:var(--s3);font-weight:700"><td style="padding:6px 8px">Total</td><td></td><td></td><td style="padding:6px 8px;text-align:center;color:'+pctColor+'">'+Math.round(totalPts)+' / '+maxPts+'</td></tr>';
+  h+='<tr style="background:var(--s3);font-weight:700"><td style="padding:6px 8px">Total</td><td></td><td></td><td style="padding:6px 8px;text-align:center;color:'+pctColor+'">'+Math.round(totalPts)+' / '+(Math.round(maxPts*10)/10)+'</td></tr>';
   h+='</tbody></table></div>';
   return h;
 }
