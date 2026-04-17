@@ -6,7 +6,7 @@
 <title>LUCEBIEN &middot; Sistema de Control Interno</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=1775834000">
+<link rel="stylesheet" href="/css/style.css?v=1776000000">
 <link rel="stylesheet" href="/css/enhancements.css?v=1775834000">
 </head>
 <body>
@@ -723,21 +723,24 @@
   </div>
   <div class="card">
     <div class="card-header"><span class="card-title">Equipo</span>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3);cursor:pointer"><input type="checkbox" id="empShowCod" onchange="renderEmpleados()" style="accent-color:var(--navy)"> Códigos</label>
-        <select id="empSort" onchange="renderEmpleados()" style="background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px;font-size:11px;outline:none;color:var(--text)">
+      <div class="filter-bar">
+        <label class="filter-toggle"><input type="checkbox" id="empShowCod" onchange="renderEmpleados()"> Códigos</label>
+        <span class="filter-sep"></span>
+        <span class="filter-label">Ordenar</span>
+        <select id="empSort" class="filter-ctrl" onchange="renderEmpleados()">
           <option value="nombre">A-Z Nombre</option>
           <option value="rol">Por cargo</option>
           <option value="sede">Por sede</option>
           <option value="estado">Por estado</option>
         </select>
-        <select id="empFilterEstado" onchange="renderEmpleados()" style="background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px;font-size:11px;outline:none;color:var(--text)">
+        <span class="filter-label">Estado</span>
+        <select id="empFilterEstado" class="filter-ctrl" onchange="renderEmpleados()">
           <option value="todos">Todos</option>
           <option value="activo" selected>Activos</option>
           <option value="suspendido">Suspendidos</option>
           <option value="deshabilitado">Deshabilitados</option>
         </select>
-        <input type="text" id="empSearch" placeholder="Buscar..." style="background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:5px 10px;font-size:11px;outline:none;color:var(--text);width:160px" oninput="renderEmpleados()">
+        <input type="search" id="empSearch" class="filter-ctrl filter-search" placeholder="🔍 Buscar…" oninput="renderEmpleados()">
       </div>
     </div>
     <div style="overflow-x:auto">
@@ -758,21 +761,26 @@
   <div class="grid-4" style="margin-bottom:18px" id="incAdminStats"></div>
   <div class="card">
     <div class="card-header"><span class="card-title">Filtros</span>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <select id="incFiltroSede" class="inline-select" onchange="renderIncidenciasAdmin()">
-          <option value="">Todas las sedes</option>
+      <div class="filter-bar">
+        <span class="filter-label">Sede</span>
+        <select id="incFiltroSede" class="filter-ctrl" onchange="renderIncidenciasAdmin()">
+          <option value="">Todas</option>
           <option value="ST">Stan</option><option value="LB">LuceBien</option>
           <option value="AL">Almac&eacute;n</option><option value="TR">Trece</option>
         </select>
-        <select id="incFiltroNivel" class="inline-select" onchange="renderIncidenciasAdmin()">
-          <option value="">Todos los niveles</option>
+        <span class="filter-label">Nivel</span>
+        <select id="incFiltroNivel" class="filter-ctrl" onchange="renderIncidenciasAdmin()">
+          <option value="">Todos</option>
           <option>Alto</option><option>Medio</option><option>Bajo</option>
         </select>
-        <select id="incFiltroTrab" class="inline-select" onchange="renderIncidenciasAdmin()">
+        <select id="incFiltroTrab" class="filter-ctrl" onchange="renderIncidenciasAdmin()">
           <option value="">Todos los trabajadores</option>
         </select>
-        <input type="date" id="incFiltroDesde" class="inline-select" onchange="renderIncidenciasAdmin()" title="Desde" style="font-size:11px">
-        <input type="date" id="incFiltroHasta" class="inline-select" onchange="renderIncidenciasAdmin()" title="Hasta" style="font-size:11px">
+        <span class="filter-sep"></span>
+        <span class="filter-label">Desde</span>
+        <input type="date" id="incFiltroDesde" class="filter-ctrl" onchange="renderIncidenciasAdmin()">
+        <span class="filter-label">Hasta</span>
+        <input type="date" id="incFiltroHasta" class="filter-ctrl" onchange="renderIncidenciasAdmin()">
       </div>
     </div>
     <div style="overflow-x:auto">
@@ -1447,16 +1455,20 @@
   <div class="page-header"><div><div class="page-title">Reportes de <span>Actividad</span></div><div class="page-sub">Historial completo de todos los reportes enviados y evaluados</div></div></div>
   <div class="card">
     <div class="card-header"><span class="card-title">Filtros</span></div>
-    <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-      <select id="arFiltroSede" onchange="renderAdminReportes()" style="padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:12px">
-        <option value="">Todas las sedes</option>
-        <option value="ST">Stan 101-102</option>
-        <option value="LB">LuceBien</option>
-        <option value="TR">Trece</option>
-        <option value="AL">Almac&eacute;n</option>
-      </select>
-      <input type="date" id="arFiltroFecha" onchange="renderAdminReportes()" style="padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:12px">
-      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('arFiltroFecha').value='';document.getElementById('arFiltroSede').value='';renderAdminReportes()">Limpiar filtros</button>
+    <div class="card-body">
+      <div class="filter-bar filter-bar-lg">
+        <span class="filter-label">Sede</span>
+        <select id="arFiltroSede" class="filter-ctrl filter-ctrl-lg" onchange="renderAdminReportes()">
+          <option value="">Todas</option>
+          <option value="ST">Stan 101-102</option>
+          <option value="LB">LuceBien</option>
+          <option value="TR">Trece</option>
+          <option value="AL">Almac&eacute;n</option>
+        </select>
+        <span class="filter-label">Fecha</span>
+        <input type="date" id="arFiltroFecha" class="filter-ctrl filter-ctrl-lg" onchange="renderAdminReportes()">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('arFiltroFecha').value='';document.getElementById('arFiltroSede').value='';renderAdminReportes()">↺ Limpiar</button>
+      </div>
     </div>
   </div>
   <div class="card" style="margin-top:12px">
@@ -1540,8 +1552,9 @@
   <div id="soliBulkBar" style="display:none;align-items:center;gap:10px;padding:8px 14px;margin-bottom:8px;background:rgba(184,165,21,.06);border:1.5px solid rgba(184,165,21,.2);border-radius:8px"></div>
   <div class="card">
     <div class="card-header"><span class="card-title">Solicitudes</span>
-      <div style="display:flex;gap:8px;align-items:center">
-        <select id="soliFiltroEstado" class="inline-select" onchange="renderSolicitudes()" style="font-size:11px">
+      <div class="filter-bar">
+        <span class="filter-label">Estado</span>
+        <select id="soliFiltroEstado" class="filter-ctrl" onchange="renderSolicitudes()">
           <option value="">Activas</option>
           <option value="pendiente">&#9203; Pendientes</option>
           <option value="aprobada">&#9989; Aprobadas</option>
@@ -1550,7 +1563,8 @@
           <option value="rechazada">&#10060; Rechazadas</option>
           <option value="_all">&#128196; Ver absolutamente todas</option>
         </select>
-        <select id="soliFiltroSede" class="inline-select" onchange="renderSolicitudes()" style="font-size:11px">
+        <span class="filter-label">Sede</span>
+        <select id="soliFiltroSede" class="filter-ctrl" onchange="renderSolicitudes()">
           <option value="">Todas</option>
           <option value="ST">Stan</option><option value="LB">LuceBien</option>
           <option value="TR">Trece</option><option value="AL">Almac&eacute;n</option>
@@ -1570,14 +1584,14 @@
 <div class="toast" id="toast"><span id="toastIcon"></span><span id="toastMsg"></span></div>
 
 <script src="/js/api.js?v=1775834000"></script>
-<script src="/js/data.js?v=1775960000"></script>
-<script src="/js/app.js?v=1775960000"></script>
-<script src="/js/layout-map.js?v=1775960000"></script>
-<script src="/js/admin.js?v=1775960000"></script>
+<script src="/js/data.js?v=1776000000"></script>
+<script src="/js/app.js?v=1776000000"></script>
+<script src="/js/layout-map.js?v=1776000000"></script>
+<script src="/js/admin.js?v=1776000000"></script>
 <script src="/js/patches-v3.js?v=1775890000"></script>
 <script src="/js/patches-v4.js?v=1775870000"></script>
-<script src="/js/patches-v5.js?v=1775980000"></script>
-<script src="/js/modulos.js?v=1775960000"></script>
+<script src="/js/patches-v5.js?v=1776000000"></script>
+<script src="/js/modulos.js?v=1776000000"></script>
 <script src="/js/pipeline-ui.js?v=1775840000"></script>
 <!-- SheetJS (xlsx) para importar/exportar Excel de horarios -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
