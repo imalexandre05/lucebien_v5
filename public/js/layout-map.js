@@ -82,17 +82,18 @@ var LayoutMap={
       var plOv=isPlch?'<div style="position:absolute;inset:0;border-radius:10px;background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.15) 3px,rgba(255,255,255,.15) 6px);pointer-events:none"></div>':'';
       if(isRiel)plOv='<div style="position:absolute;inset:0;border-radius:3px;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.2) 3px,rgba(255,255,255,.2) 5px);pointer-events:none"></div>';
 
-      // Tooltip with cleaning instructions
+      // Tooltip with cleaning instructions — custom (admin) override + defaults
       var tipInstr={maniqui:'Desempolvar con escobilla para ternos',vitrina:'Limpiar con limpiavidrios y trapo especial para vidrios',espejo:'Limpiar con limpiavidrios y paño seco',mueble:'Limpiar superficie con trapo húmedo y limpiatodo',riel:'Desempolvar ternos colgados y limpiar el tubo/varilla',silla:'Limpiar cojín con trapo si hay suciedad',equipo:'Limpiar mesa de plancha y tanque de agua',area:'Limpiar y ordenar el área',piso:'Barrer y trapear todo el interior',calle:'Barrer y baldear con agua y detergente'};
+      var prefInstr={MC:'Limpiar mesa de máquina de costura con trapo',CB:'Limpiar mueble colgante y todos los objetos que contiene',CT:'Desempolvar rieles colgantes del techo (cada 2 semanas)',PC:'Limpiar computadora y mueble donde está ubicada',CO:'Limpiar corbatero con trapo',ME:'Limpiar estante y reorganizar contenido'};
+      // Admin overrides via window.LB_LAYOUT_TOOLTIPS (cargado desde /config/layout-tooltips)
+      var _cust=window.LB_LAYOUT_TOOLTIPS||{};
+      if(_cust.byTipo)Object.keys(_cust.byTipo).forEach(function(k){tipInstr[k]=_cust.byTipo[k];});
+      if(_cust.byPrefix)Object.keys(_cust.byPrefix).forEach(function(k){prefInstr[k]=_cust.byPrefix[k];});
       var instrTxt=tipInstr[z.tipo]||'Limpiar y ordenar';
-      // Override by cod prefix
+      // Override por prefijo del código (2 letras iniciales)
       var codUp=z.cod.toUpperCase();
-      if(codUp.startsWith('MC'))instrTxt='Limpiar mesa de máquina de costura con trapo';
-      else if(codUp.startsWith('CB'))instrTxt='Limpiar mueble colgante y todos los objetos que contiene';
-      else if(codUp.startsWith('CT'))instrTxt='Desempolvar rieles colgantes del techo (cada 2 semanas)';
-      else if(codUp.startsWith('PC'))instrTxt='Limpiar computadora y mueble donde está ubicada';
-      else if(codUp.startsWith('CO'))instrTxt='Limpiar corbatero con trapo';
-      else if(codUp.startsWith('ME'))instrTxt='Limpiar estante y reorganizar contenido';
+      var pref2=codUp.slice(0,2);
+      if(prefInstr[pref2])instrTxt=prefInstr[pref2];
       var tip='<div class="lz-tip" data-name="'+z.nombre+'" data-instr="'+instrTxt+'"></div>';
 
       var clk=mode==='report'?'onclick="LayoutMap._tz(this,\''+z.cod+'\',event)"':(mode==='eval'?'onclick="LayoutMap._cyc(\''+z.cod+'\',event)"':'');

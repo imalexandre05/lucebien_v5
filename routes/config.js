@@ -66,4 +66,36 @@ router.put('/grupos-rangos',auth,admin,function(q,r){
   }catch(e){r.status(500).json({error:e.message});}
 });
 
+// ─── Layout tooltips (layout_tooltips) ──────────────────────────────────
+// Estructura JSON: { byTipo:{maniqui:'texto',...}, byPrefix:{MC:'texto',...} }
+// Se aplica en el cliente al renderizar el mapa del layout: si existe un
+// texto custom para el código (prefijo) o tipo, se usa en lugar del default.
+router.get('/layout-tooltips',function(q,r){
+  try{var db=getDB();var row=db.prepare("SELECT valor FROM config WHERE clave='layout_tooltips'").get();
+    r.json(row?JSON.parse(row.valor):{byTipo:{},byPrefix:{}});
+  }catch(e){r.json({byTipo:{},byPrefix:{}});}
+});
+router.put('/layout-tooltips',auth,admin,function(q,r){
+  try{var db=getDB();
+    var b=q.body||{};
+    var clean={byTipo:{},byPrefix:{}};
+    if(b.byTipo&&typeof b.byTipo==='object'){
+      Object.keys(b.byTipo).forEach(function(k){
+        var key=String(k).toLowerCase().slice(0,20);
+        var val=String(b.byTipo[k]||'').trim().slice(0,300);
+        if(key&&val)clean.byTipo[key]=val;
+      });
+    }
+    if(b.byPrefix&&typeof b.byPrefix==='object'){
+      Object.keys(b.byPrefix).forEach(function(k){
+        var key=String(k).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6);
+        var val=String(b.byPrefix[k]||'').trim().slice(0,300);
+        if(key&&val)clean.byPrefix[key]=val;
+      });
+    }
+    db.prepare("INSERT OR REPLACE INTO config (clave,valor) VALUES ('layout_tooltips',?)").run(JSON.stringify(clean));
+    r.json({ok:true});
+  }catch(e){r.status(500).json({error:e.message});}
+});
+
 module.exports=router;

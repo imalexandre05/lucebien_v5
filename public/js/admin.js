@@ -224,18 +224,28 @@ async function renderIncidenciasAdmin() {
     <div class="stat-card accent-yellow"><div class="stat-label">Medio</div><div class="stat-val" style="color:var(--yellow)">${pN.Medio}</div></div>
     <div class="stat-card accent-green"><div class="stat-label">Bajo</div><div class="stat-val" style="color:var(--green)">${pN.Bajo}</div></div>
     <div class="stat-card accent-navy"><div class="stat-label">Total</div><div class="stat-val">${incs.length}</div></div>`;
-  if(!incs.length){body.innerHTML='<tr><td class="empty-cell" colspan="7">Sin incidencias</td></tr>';return;}
+  if(!incs.length){body.innerHTML='<tr><td class="empty-cell" colspan="10">Sin incidencias</td></tr>';return;}
   const bdgs={Alto:'badge-red',Medio:'badge-yellow',Bajo:'badge-green'};
-  body.innerHTML=incs.map(inc=>`
-    <tr class="inc-${inc.nivel?.toLowerCase()}">
+  const origBdg={manual:'badge-navy',reporte:'badge-gold'};
+  const origLbl={manual:'Manual',reporte:'Reporte'};
+  body.innerHTML=incs.map(inc=>{
+    const pts=(inc.puntos_penalidad!=null&&!isNaN(inc.puntos_penalidad))?Math.round(inc.puntos_penalidad*10)/10:0;
+    const rep=inc.reportado_por||'—';
+    const repCod=inc.reportado_por_cod?` <span class="mono" style="font-size:10px;color:var(--text3)">[${inc.reportado_por_cod}]</span>`:'';
+    const orig=inc.origen||'manual';
+    return `
+    <tr class="inc-${inc.nivel?inc.nivel.toLowerCase():'medio'}">
       <td class="mono" style="font-size:11px">${inc.fecha}</td>
       <td>${SEDES[inc.sede]?.label||inc.sede}</td>
       <td style="font-size:12.5px">${inc.tipo}</td>
-      <td style="font-size:11px;color:var(--text2)">${inc.descripcion||'—'}</td>
+      <td style="font-size:11px;color:var(--text2);max-width:220px;white-space:normal">${inc.descripcion||'—'}</td>
       <td><span class="badge ${bdgs[inc.nivel]||'badge-gray'}">${inc.nivel}</span></td>
+      <td style="font-size:12px;font-weight:700;color:var(--red);text-align:center">-${pts}</td>
       <td style="font-size:12px">${inc.responsable||'—'}</td>
+      <td style="font-size:12px">${rep}${repCod}</td>
+      <td><span class="badge ${origBdg[orig]||'badge-gray'}" style="font-size:10px">${origLbl[orig]||orig}</span></td>
       <td><button class="btn btn-danger btn-xs" onclick="eliminarIncidencia(${inc.id})">✕</button></td>
-    </tr>`).join('');
+    </tr>`;}).join('');
 }
 
 async function eliminarIncidencia(id) {

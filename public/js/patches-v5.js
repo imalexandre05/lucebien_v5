@@ -159,27 +159,50 @@ window.addIncidencia = function() {
   body.appendChild(div);
 };
 
-// Override incidencia rápida modal — prevent self-report
+// Override incidencia rápida modal — prevent self-report + cargar tipos dinámicos
 var _origAbrirIncRap = window.abrirIncidenciaRapidaModal;
-window.abrirIncidenciaRapidaModal = function() {
+window.abrirIncidenciaRapidaModal = async function() {
   _origAbrirIncRap();
+  // No permitir auto-reportarse
   setTimeout(function() {
     var sel = document.getElementById('irTrab');
     if (sel && STATE.user) {
-      // Remove self from options
       for (var i = sel.options.length - 1; i >= 0; i--) {
         if (sel.options[i].value === STATE.user.nombre) sel.remove(i);
       }
     }
-    // Replace tipo select with complete list
-    var tipoSel = document.getElementById('irTipo');
-    if (tipoSel) {
-      tipoSel.innerHTML = TIPOS_INCIDENCIA_COMPLETOS.map(function(t) {
-        if (t.startsWith('—')) return '<optgroup label="' + t.replace(/—/g, '').trim() + '">';
-        return '<option>' + t + '</option>';
-      }).join('');
-    }
   }, 50);
+  // Cargar tipos desde catálogo y auto-ajustar puntos/nivel según tipificación
+  try {
+    var tipos = await API.get('/incidencias/tipos/list');
+    if (tipos && tipos.length) {
+      setTimeout(function(){
+        var tipoSel = document.getElementById('irTipo');
+        if (!tipoSel) return;
+        // Agrupar por categoría
+        var porCat = {};
+        tipos.forEach(function(t){ var c=t.categoria||'Otros'; (porCat[c]=porCat[c]||[]).push(t); });
+        var html = '';
+        Object.keys(porCat).forEach(function(c){
+          html += '<optgroup label="'+c+'">';
+          porCat[c].forEach(function(t){
+            html += '<option value="'+t.tipo.replace(/"/g,'&quot;')+'" data-pts="'+t.puntos_default+'" data-niv="'+t.nivel_default+'">'+t.tipo+'</option>';
+          });
+          html += '</optgroup>';
+        });
+        tipoSel.innerHTML = html;
+        // Sincronizar puntos + nivel cuando cambia tipo
+        tipoSel.addEventListener('change', function(){
+          var opt = tipoSel.options[tipoSel.selectedIndex]; if(!opt) return;
+          var pts = opt.getAttribute('data-pts'); var niv = opt.getAttribute('data-niv');
+          if (niv) { var nivSel=document.getElementById('irNivel'); if (nivSel) nivSel.value = niv; }
+          if (pts != null) { var p=document.getElementById('irPuntos'); if (p) p.value = pts; }
+        });
+        // Disparar primera sincronización
+        tipoSel.dispatchEvent(new Event('change'));
+      }, 60);
+    }
+  } catch(e) { console.warn('[tipos] fallback a lista estática'); }
 };
 
 // ═══════════════════════════════════════════════════════
@@ -473,9 +496,6 @@ window._gaDoCloneLayout = async function(desde) {
       { l: '📋 Duplicar', fn: function() { var nz = Object.assign({}, z); nz.cod = _gzAutoCode(z.tipo); nz.pos_x += 30; nz.pos_y += 20; nz.nombre += ' (copia)'; _gaLayoutZonas.push(nz); _glmR(); } },
       { l: '🔄 Rotar (swap ancho/alto)', fn: function() { gaRotarZona(idx); } },
       0,
-      { l: '⬆ Traer al frente', fn: function() { gaMoverZonaAlFrente(idx); } },
-      { l: '⬇ Enviar al fondo', fn: function() { gaMoverZonaAlFondo(idx); } },
-      0,
       { l: (nv === 'piso' ? '● ' : '') + 'Piso', fn: function() { z.nivel = 'piso'; z.sobre_cod = ''; _glmR(); } },
       { l: (nv === 'sobre' ? '● ' : '') + 'Sobre mueble…', fn: function() { z.nivel = 'sobre'; gaLayoutEditZonaIdx(idx); setTimeout(function() { _gzSelNivel(document.querySelector('.gz-n-btn[data-val="sobre"]')); }, 100); } },
       { l: (nv === 'techo' ? '● ' : '') + 'Techo', fn: function() { z.nivel = 'techo'; z.pos_y = 30; z.sobre_cod = ''; _glmR(); } },
@@ -520,9 +540,6 @@ window._gaDoCloneLayout = async function(desde) {
         '<button class="btn btn-ghost btn-xs" onclick="gaRecodificarLayout()" title="Reasignar códigos correctos a cada zona según su tipo" style="font-size:9px;padding:2px 6px">🔢 Recodificar</button>' +
         '<button class="btn btn-ghost btn-xs" onclick="gaSnapToGrid()" title="Alinear todas las zonas a una grilla de 10px" style="font-size:9px;padding:2px 6px">⊞ Alinear grilla</button>' +
         '<button class="btn btn-ghost btn-xs" onclick="gaClonarLayout()" title="Copiar layout completo de otra sede" style="font-size:9px;padding:2px 6px">📥 Clonar de sede</button>' +
-        '<span style="width:1px;height:12px;background:var(--border);margin:0 2px"></span>' +
-        '<button class="btn btn-ghost btn-xs" onclick="_gaSelectAll()" title="Seleccionar todas las zonas" style="font-size:9px;padding:2px 6px">☑ Sel. todo</button>' +
-        '<button class="btn btn-ghost btn-xs" onclick="_gaDeselectAll()" title="Quitar selección" style="font-size:9px;padding:2px 6px">☐ Des. todo</button>' +
         '<span style="flex:1"></span>' +
         '<span id="glmStats" style="font-size:8px;color:var(--text3)"></span>';
       headerParent.after(toolsRow);
@@ -1403,6 +1420,219 @@ window._gaDeselectAll = function() {
   };
 
   console.log('[LuceBien] Import Excel Horarios — cargado');
+})();
+
+// ═══════════════════════════════════════════════════════
+// EDITOR DE TIPIFICACIONES DE INCIDENCIAS (admin)
+// ═══════════════════════════════════════════════════════
+// Cada tipificación define: tipo (descripción corta), categoría, nivel por
+// defecto y puntos que descuenta. Si una incidencia creada no coincide con
+// ninguna tipificación, en la evaluación mensual se calificará manualmente.
+(function(){
+  window.abrirEditorTiposIncidencia = async function() {
+    var prev = document.getElementById('tipInModal'); if (prev) prev.remove();
+    var tipos = await API.get('/incidencias/tipos/list?all=1');
+    if (!tipos) return;
+    var h = '<div id="tipInModal" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1050;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">' +
+      '<div style="background:#fff;border-radius:14px;width:96%;max-width:940px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column" onclick="event.stopPropagation()">' +
+      '<div class="modal-header"><h2>⚙️ Tipificaciones de Incidencias</h2><button class="modal-close" onclick="document.getElementById(\'tipInModal\').remove()">✕</button></div>' +
+      '<div style="padding:10px 14px 0;font-size:11px;color:var(--text3);line-height:1.45">' +
+      'Cada tipificación define los puntos que descuenta en la evaluación mensual. ' +
+      'Si una incidencia creada <b>no está tipificada</b>, deberá calificarse manualmente al evaluar al colaborador.' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;padding:12px 14px">' +
+      '<div class="filter-bar" style="margin-bottom:8px">' +
+      '<button class="btn btn-primary btn-xs" id="tipInAdd">＋ Nueva tipificación</button>' +
+      '<span class="filter-sep"></span>' +
+      '<span class="filter-label">Categoría</span>' +
+      '<select id="tipInCatFilt" class="filter-ctrl"><option value="">Todas</option></select>' +
+      '<span class="filter-label">Estado</span>' +
+      '<select id="tipInEstFilt" class="filter-ctrl"><option value="">Todos</option><option value="1">Activos</option><option value="0">Inactivos</option></select>' +
+      '</div>' +
+      '<div style="overflow-x:auto"><table class="data-table"><thead><tr>' +
+      '<th style="width:30%">Tipo</th><th>Categoría</th><th>Nivel</th><th>Puntos</th><th>Activa</th><th></th>' +
+      '</tr></thead><tbody id="tipInBody"></tbody></table></div>' +
+      '</div>' +
+      '<div class="modal-footer">' +
+      '<button class="btn btn-ghost" onclick="document.getElementById(\'tipInModal\').remove()">Cancelar</button>' +
+      '<button class="btn btn-primary" id="tipInSave">💾 Guardar todo</button>' +
+      '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', h);
+
+    var body = document.getElementById('tipInBody');
+    function rowHtml(t, idx) {
+      return '<tr data-idx="'+idx+'">' +
+        '<td><input type="text" class="t-tipo" value="'+ (t.tipo||'').replace(/"/g,'&quot;') +'" style="width:100%;font-size:12px;padding:5px 7px;border:1px solid var(--border);border-radius:6px"></td>' +
+        '<td><input type="text" class="t-cat" value="'+ (t.categoria||'').replace(/"/g,'&quot;') +'" style="width:130px;font-size:12px;padding:5px 7px;border:1px solid var(--border);border-radius:6px"></td>' +
+        '<td><select class="t-niv" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px">' +
+          ['Alto','Medio','Bajo'].map(function(n){return '<option'+(t.nivel_default===n?' selected':'')+'>'+n+'</option>';}).join('') +
+        '</select></td>' +
+        '<td><input type="number" class="t-pts" min="0" max="20" step="0.5" value="'+ (t.puntos_default!=null?t.puntos_default:2) +'" style="width:70px;font-size:12px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-weight:700;color:var(--red);text-align:center"></td>' +
+        '<td style="text-align:center"><input type="checkbox" class="t-act"'+ (t.activo!==0?' checked':'') +'></td>' +
+        '<td><button class="btn btn-danger btn-xs" onclick="this.closest(\'tr\').remove()">✕</button></td>' +
+      '</tr>';
+    }
+    function render(list) {
+      body.innerHTML = list.length ? list.map(rowHtml).join('') : '<tr><td class="empty-cell" colspan="6">Sin tipificaciones</td></tr>';
+    }
+    render(tipos);
+
+    // Filtro de categoría
+    var cats = {};
+    tipos.forEach(function(t){ if(t.categoria) cats[t.categoria]=1; });
+    var catSel = document.getElementById('tipInCatFilt');
+    Object.keys(cats).sort().forEach(function(c){ catSel.insertAdjacentHTML('beforeend','<option>'+c+'</option>'); });
+    function applyFilter() {
+      var cat = catSel.value;
+      var est = document.getElementById('tipInEstFilt').value;
+      var list = tipos.filter(function(t){
+        if (cat && t.categoria !== cat) return false;
+        if (est === '1' && t.activo === 0) return false;
+        if (est === '0' && t.activo !== 0) return false;
+        return true;
+      });
+      render(list);
+    }
+    catSel.onchange = applyFilter;
+    document.getElementById('tipInEstFilt').onchange = applyFilter;
+
+    document.getElementById('tipInAdd').onclick = function() {
+      var nuevo = {tipo:'Nueva incidencia', categoria:'Otros', nivel_default:'Medio', puntos_default:2, activo:1};
+      tipos.push(nuevo);
+      applyFilter();
+    };
+
+    document.getElementById('tipInSave').onclick = async function() {
+      // Tomar el DOM actual (respetando ediciones en vista filtrada)
+      var rows = Array.from(body.querySelectorAll('tr[data-idx]'));
+      var acumulado = [];
+      rows.forEach(function(tr){
+        var tipo = tr.querySelector('.t-tipo').value.trim();
+        if (!tipo) return;
+        acumulado.push({
+          tipo: tipo,
+          categoria: tr.querySelector('.t-cat').value.trim() || 'Otros',
+          nivel_default: tr.querySelector('.t-niv').value,
+          puntos_default: parseFloat(tr.querySelector('.t-pts').value)||0,
+          activo: tr.querySelector('.t-act').checked ? 1 : 0
+        });
+      });
+      // Dedupe por tipo (case-insensitive): se queda con la última ocurrencia
+      var seen={};var limpio=[];
+      for (var i=acumulado.length-1;i>=0;i--){var k=acumulado[i].tipo.toLowerCase();if(seen[k])continue;seen[k]=1;limpio.unshift(acumulado[i]);}
+      var btn = this; btn.disabled=true; btn.textContent='Guardando…';
+      var r = await API.put('/incidencias/tipos/list', { tipos: limpio });
+      btn.disabled=false; btn.textContent='💾 Guardar todo';
+      if (r && r.ok) {
+        showToast('✅ '+r.count+' tipificaciones guardadas','success');
+        document.getElementById('tipInModal').remove();
+      }
+    };
+  };
+  console.log('[LuceBien] Editor de Tipificaciones de Incidencias — cargado');
+})();
+
+// ═══════════════════════════════════════════════════════
+// LAYOUT TOOLTIPS — carga al boot + editor en Config del Layout
+// ═══════════════════════════════════════════════════════
+(function(){
+  // Cargar tooltips custom al iniciar (no requiere auth para GET)
+  window.LB_LAYOUT_TOOLTIPS = window.LB_LAYOUT_TOOLTIPS || {byTipo:{},byPrefix:{}};
+  async function _loadTips(){
+    try{
+      var t = await API.get('/config/layout-tooltips');
+      if (t && (t.byTipo||t.byPrefix)) window.LB_LAYOUT_TOOLTIPS = t;
+    }catch(e){}
+  }
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(_loadTips, 600); });
+
+  // Editor de tooltips del layout (solo admin)
+  window.abrirEditorTooltipsLayout = async function(){
+    var t = await API.get('/config/layout-tooltips') || {byTipo:{},byPrefix:{}};
+    var tipos = [
+      ['maniqui','Maniquí','Desempolvar con escobilla para ternos'],
+      ['vitrina','Vitrina','Limpiar con limpiavidrios y trapo especial para vidrios'],
+      ['espejo','Espejo','Limpiar con limpiavidrios y paño seco'],
+      ['mueble','Mueble','Limpiar superficie con trapo húmedo y limpiatodo'],
+      ['riel','Riel','Desempolvar ternos colgados y limpiar el tubo/varilla'],
+      ['silla','Silla','Limpiar cojín con trapo si hay suciedad'],
+      ['equipo','Equipo','Limpiar mesa de plancha y tanque de agua'],
+      ['area','Área','Limpiar y ordenar el área'],
+      ['piso','Piso','Barrer y trapear todo el interior'],
+      ['calle','Calle','Barrer y baldear con agua y detergente']
+    ];
+    var prefs = [
+      ['MC','Máquinas de costura','Limpiar mesa de máquina de costura con trapo'],
+      ['CB','Cajones/cubetas','Limpiar mueble colgante y todos los objetos que contiene'],
+      ['CT','Cortineros/techo','Desempolvar rieles colgantes del techo (cada 2 semanas)'],
+      ['PC','Computadora','Limpiar computadora y mueble donde está ubicada'],
+      ['CO','Corbateros','Limpiar corbatero con trapo'],
+      ['ME','Estantes','Limpiar estante y reorganizar contenido']
+    ];
+    var esc=function(s){return (s||'').replace(/"/g,'&quot;');};
+    var rowsTipo = tipos.map(function(r){
+      var val = (t.byTipo&&t.byTipo[r[0]]) || '';
+      return '<tr><td style="font-weight:700;font-size:11px;padding:5px 6px">'+r[1]+'</td>'+
+        '<td style="font-size:10px;color:var(--text3);padding:5px 6px;width:34%">'+r[2]+'</td>'+
+        '<td style="padding:3px 4px"><input type="text" data-tipo="'+r[0]+'" placeholder="(usar por defecto)" value="'+esc(val)+'" style="width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:5px;font-size:11px"></td></tr>';
+    }).join('');
+    var rowsPref = prefs.map(function(r){
+      var val = (t.byPrefix&&t.byPrefix[r[0]]) || '';
+      return '<tr><td style="font-weight:700;font-family:var(--font-m);font-size:11px;padding:5px 6px">'+r[0]+'</td>'+
+        '<td style="font-size:11px;padding:5px 6px">'+r[1]+'</td>'+
+        '<td style="font-size:10px;color:var(--text3);padding:5px 6px;width:30%">'+r[2]+'</td>'+
+        '<td style="padding:3px 4px"><input type="text" data-pref="'+r[0]+'" placeholder="(usar por defecto)" value="'+esc(val)+'" style="width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:5px;font-size:11px"></td></tr>';
+    }).join('');
+    var h = '<div id="tipLayModal" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1250;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">' +
+      '<div style="background:#fff;border-radius:14px;width:96%;max-width:820px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column" onclick="event.stopPropagation()">' +
+      '<div class="modal-header"><h2>💬 Mensajes de tooltip del Layout</h2><button class="modal-close" onclick="document.getElementById(\'tipLayModal\').remove()">✕</button></div>' +
+      '<div style="padding:10px 14px 0;font-size:11px;color:var(--text3);line-height:1.45">Edita lo que aparece cuando el usuario pasa el mouse sobre un elemento del layout. Dejar vacío = usar el texto por defecto.</div>' +
+      '<div style="flex:1;overflow-y:auto;padding:12px 14px">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">POR TIPO DE ELEMENTO</div>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px"><thead><tr style="background:var(--s2)"><th style="padding:5px 6px;text-align:left">Tipo</th><th style="padding:5px 6px;text-align:left">Default</th><th style="padding:5px 6px;text-align:left">Mensaje custom</th></tr></thead><tbody>'+rowsTipo+'</tbody></table>' +
+      '<div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">POR PREFIJO DE CÓDIGO <span style="font-weight:400;color:var(--text3);font-size:10px">(las 2 primeras letras del código)</span></div>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--s2)"><th style="padding:5px 6px;text-align:left">Prefijo</th><th style="padding:5px 6px;text-align:left">Familia</th><th style="padding:5px 6px;text-align:left">Default</th><th style="padding:5px 6px;text-align:left">Mensaje custom</th></tr></thead><tbody>'+rowsPref+'</tbody></table>' +
+      '</div>' +
+      '<div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById(\'tipLayModal\').remove()">Cancelar</button><button class="btn btn-primary" id="tipLaySave">💾 Guardar</button></div>' +
+      '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', h);
+    document.getElementById('tipLaySave').onclick = async function(){
+      var payload = {byTipo:{},byPrefix:{}};
+      document.querySelectorAll('#tipLayModal input[data-tipo]').forEach(function(i){
+        var v=i.value.trim(); if(v) payload.byTipo[i.dataset.tipo]=v;
+      });
+      document.querySelectorAll('#tipLayModal input[data-pref]').forEach(function(i){
+        var v=i.value.trim(); if(v) payload.byPrefix[i.dataset.pref]=v;
+      });
+      this.disabled=true; this.textContent='Guardando…';
+      var r = await API.put('/config/layout-tooltips', payload);
+      if (r && r.ok){
+        window.LB_LAYOUT_TOOLTIPS = payload;
+        showToast('✅ Tooltips actualizados','success');
+        document.getElementById('tipLayModal').remove();
+        if (typeof _glmR==='function') try{_glmR();}catch(e){}
+      } else {
+        this.disabled=false; this.textContent='💾 Guardar';
+      }
+    };
+  };
+
+  // Inyectar botón "Mensajes tooltip" en el modal de Configuración del Layout
+  document.addEventListener('click', function(e){
+    if (e.target && e.target.closest && e.target.closest('[onclick*="_gaLayoutConfig"]')) {
+      setTimeout(function(){
+        var mc = document.getElementById('gaConfigModal'); if (!mc) return;
+        if (mc.querySelector('#tipLayInjectBtn')) return;
+        var body = mc.querySelector('.modal-footer')?.previousElementSibling || mc.querySelector('div[style*="overflow-y:auto"]');
+        if (!body) return;
+        var sec = document.createElement('div');
+        sec.innerHTML = '<div style="margin-top:16px;padding:10px 12px;background:var(--s3);border-radius:8px;border-left:3px solid var(--navy)"><div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px">💬 MENSAJES DE TOOLTIP</div><div style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.4">Edita el texto que aparece al pasar el mouse sobre cada elemento del layout (por tipo y por prefijo de código).</div><button id="tipLayInjectBtn" class="btn btn-primary btn-xs" onclick="abrirEditorTooltipsLayout()">Abrir editor de tooltips</button></div>';
+        body.appendChild(sec);
+      }, 80);
+    }
+  });
+
+  console.log('[LuceBien] Layout tooltips editor — cargado');
 })();
 
 console.log('[LuceBien] patches-v5.js — Global system changes + Layout tools loaded');

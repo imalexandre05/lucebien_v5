@@ -87,7 +87,19 @@ router.post('/', auth, function(req,res){
     var insAct=db.prepare('INSERT INTO reporte_actividades (reporte_id,cod,nombre,cat,peso,realizada,obs) VALUES (?,?,?,?,?,?,?)');
     (b.actividades||[]).forEach(function(a){insAct.run(b.id,a.cod,a.nombre,a.cat,a.peso,1,a.obs||'');});
     if(b.extras&&b.extras.length){var insExt=db.prepare('INSERT INTO reporte_extras (reporte_id,tipo,nombre,cantidad,precio_unitario,monto_total,detalle,registrado_por) VALUES (?,?,?,?,?,?,?,?)');b.extras.forEach(function(e){insExt.run(b.id,e.tipo,e.nombre,e.cantidad||1,e.precio_unitario||0,e.monto_total||0,e.detalle||'',e.registrado_por||'');});}
-    if(b.incidencias&&b.incidencias.length){var insInc=db.prepare('INSERT INTO incidencias (sede,fecha,tipo,descripcion,nivel,responsable,reporte_id) VALUES (?,?,?,?,?,?,?)');b.incidencias.forEach(function(i){insInc.run(b.sede,fechaReal,i.tipo,i.descripcion||'',i.nivel||'Medio',i.responsable||'—',b.id);});}
+    if(b.incidencias&&b.incidencias.length){
+      // reportado_por = encargado del turno del reporte; puntos según catálogo si no vienen
+      var tipos={};try{db.prepare('SELECT tipo,puntos_default,nivel_default FROM incidencia_tipos WHERE activo=1').all().forEach(function(r){tipos[r.tipo]=r;});}catch(e){}
+      var insInc=db.prepare('INSERT INTO incidencias (sede,fecha,tipo,descripcion,nivel,responsable,reporte_id,reportado_por,reportado_por_cod,origen,puntos_penalidad) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+      b.incidencias.forEach(function(i){
+        var niv=(i.nivel||'Medio').replace(/[^\wáéíóúñÁÉÍÓÚÑ ]/g,'').trim();
+        if(!/^(Alto|Medio|Bajo)$/.test(niv)) niv='Medio';
+        var puntos=(i.puntos_penalidad!==undefined&&i.puntos_penalidad!==null&&i.puntos_penalidad!=='')?parseFloat(i.puntos_penalidad):null;
+        if(puntos===null||isNaN(puntos)){var t=tipos[i.tipo];if(t){puntos=t.puntos_default;if(!i.nivel)niv=t.nivel_default||niv;}}
+        if(puntos===null||isNaN(puntos))puntos=(niv==='Alto'?5:(niv==='Bajo'?1:2));
+        insInc.run(b.sede,fechaReal,i.tipo,i.descripcion||'',niv,i.responsable||'—',b.id,b.encargado||null,null,'reporte',puntos);
+      });
+    }
     res.json({id:b.id,ok:true,fecha:fechaReal});
   }catch(e){res.status(500).json({error:e.message});}
 });
