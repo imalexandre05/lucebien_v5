@@ -944,7 +944,12 @@
   <div id="evalTabAsistencias" style="display:none">
     <div class="card" id="cardHorario" style="display:none">
       <div class="card-header"><span class="card-title">Horario Semanal</span>
-        <button class="btn btn-primary btn-xs" onclick="guardarHorario()">Guardar</button></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-ghost btn-xs" onclick="descargarPlantillaHorarios()" title="Descargar Excel plantilla">📥 Plantilla</button>
+          <button class="btn btn-ghost btn-xs" onclick="abrirImportHorariosExcel()" title="Importar horarios de múltiples colaboradores desde Excel">📎 Importar Excel</button>
+          <button class="btn btn-primary btn-xs" onclick="guardarHorario()">Guardar</button>
+        </div>
+      </div>
       <div class="card-body" style="padding:8px;overflow-x:auto">
         <table class="data-table" style="font-size:11px" id="horarioTable">
           <thead><tr><th style="width:70px"></th><th>Lun</th><th>Mar</th><th>Mi&eacute;</th><th>Jue</th><th>Vie</th><th>S&aacute;b</th><th>Dom</th></tr></thead>
@@ -1571,9 +1576,11 @@
 <script src="/js/admin.js?v=1775960000"></script>
 <script src="/js/patches-v3.js?v=1775890000"></script>
 <script src="/js/patches-v4.js?v=1775870000"></script>
-<script src="/js/patches-v5.js?v=1775960000"></script>
+<script src="/js/patches-v5.js?v=1775980000"></script>
 <script src="/js/modulos.js?v=1775960000"></script>
 <script src="/js/pipeline-ui.js?v=1775840000"></script>
+<!-- SheetJS (xlsx) para importar/exportar Excel de horarios -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>

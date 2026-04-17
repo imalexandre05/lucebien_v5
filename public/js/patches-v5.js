@@ -1178,5 +1178,232 @@ window._gaDeselectAll = function() {
   console.log('[LuceBien] Configurar Accesos v2 — cargado (sectores + puestos + grupos)');
 })();
 
+// ═══════════════════════════════════════════════════════════════════════════
+// IMPORT/EXPORT EXCEL DE HORARIOS (v5.4.1)
+// Requisito: SheetJS (XLSX) cargado globalmente vía CDN en index.html.
+// Formato esperado del Excel:
+//   Col A: Nombre del colaborador (match case-insensitive contra empleados.nombre)
+//   Cols B-O: sede code por slot, orden fijo:
+//     lunes_M, lunes_T, martes_M, martes_T, ..., domingo_M, domingo_T
+//   Valores válidos por celda: ST, LB, AL, TR, o vacío (= libre)
+//   Primera fila = encabezados (se ignora).
+// ═══════════════════════════════════════════════════════════════════════════
+(function(){
+  var DIAS = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+  var SEDES_VALIDAS = ['ST','LB','AL','TR'];
+
+  function _colHeaders(){
+    var out = ['Nombre'];
+    DIAS.forEach(function(d){
+      out.push(d+'_M');
+      out.push(d+'_T');
+    });
+    return out;
+  }
+
+  window.descargarPlantillaHorarios = async function(){
+    if (typeof XLSX === 'undefined') { showToast('Librería Excel no cargó (sin conexión?)','error'); return; }
+    // Construir plantilla con empleados actuales (si los hay) y slots vacíos
+    var empleados = [];
+    try { empleados = await API.get('/empleados')||[]; } catch(e){}
+    if (!Array.isArray(empleados)) empleados = [];
+    var headers = _colHeaders();
+    var rows = [headers];
+    empleados
+      .filter(function(e){ return (e.estado||'activo')==='activo'; })
+      .sort(function(a,b){ return String(a.nombre||'').localeCompare(String(b.nombre||'')); })
+      .forEach(function(e){
+        var row = [e.nombre||''];
+        for (var i=0; i<14; i++) row.push('');
+        rows.push(row);
+      });
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    // Ancho de columnas
+    ws['!cols'] = [{wch:28}].concat(headers.slice(1).map(function(){return{wch:10};}));
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Horarios');
+    // Hoja de referencia
+    var refRows = [
+      ['Valores permitidos por celda:'],
+      ['ST = Stan'],
+      ['LB = LuceBien'],
+      ['AL = Almacén'],
+      ['TR = Trece'],
+      ['(vacío) = Libre / no trabaja'],
+      [''],
+      ['Formato de columnas:'],
+      ['<día>_M = turno Mañana'],
+      ['<día>_T = turno Tarde'],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(refRows), 'Instrucciones');
+    XLSX.writeFile(wb, 'plantilla_horarios_lucebien.xlsx');
+    showToast('📥 Plantilla descargada','success');
+  };
+
+  window.abrirImportHorariosExcel = function(){
+    if (typeof XLSX === 'undefined') {
+      showToast('Librería Excel no cargó — revisa conexión a Internet','error');
+      return;
+    }
+    var prev = document.getElementById('impHorModal'); if (prev) prev.remove();
+
+    var m = document.createElement('div'); m.id='impHorModal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px';
+    m.onclick=function(e){ if(e.target===m) m.remove(); };
+
+    var inner = document.createElement('div');
+    inner.style.cssText='background:#fff;border-radius:16px;width:96%;max-width:880px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column';
+    inner.onclick=function(e){e.stopPropagation();};
+
+    inner.innerHTML =
+      '<div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#1e3a5f;color:#fff">'+
+        '<div><div style="font-size:15px;font-weight:800">📎 Importar Horarios desde Excel</div><div style="font-size:10px;color:#cbd5e1">Sobrescribe horarios de los empleados que aparezcan en el archivo</div></div>'+
+        '<button id="ihClose" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '<div style="padding:16px 20px;flex:1;overflow:auto;background:#fafbfc">'+
+        '<div style="padding:10px 14px;border:1px dashed #94a3b8;border-radius:10px;background:#fff;margin-bottom:12px">'+
+          '<div style="font-size:11px;color:var(--text2);margin-bottom:8px"><strong>Paso 1:</strong> Descarga la plantilla, complétala y sube el archivo aquí.</div>'+
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+            '<button id="ihPlantilla" class="btn btn-ghost btn-sm">📥 Descargar plantilla</button>'+
+            '<input id="ihFile" type="file" accept=".xlsx,.xls,.csv" style="font-size:11px">'+
+          '</div>'+
+        '</div>'+
+        '<div id="ihPreview"></div>'+
+      '</div>'+
+      '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;background:#f8fafc">'+
+        '<div id="ihStats" style="font-size:11px;color:var(--text3)"></div>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button id="ihCancel" class="btn btn-ghost btn-sm">Cancelar</button>'+
+          '<button id="ihApply"  class="btn btn-primary btn-sm" disabled style="background:#16a34a;opacity:.5">Aplicar Horarios</button>'+
+        '</div>'+
+      '</div>';
+
+    m.appendChild(inner);
+    document.body.appendChild(m);
+
+    document.getElementById('ihClose').onclick=function(){ m.remove(); };
+    document.getElementById('ihCancel').onclick=function(){ m.remove(); };
+    document.getElementById('ihPlantilla').onclick=descargarPlantillaHorarios;
+
+    var _parsed = null; // [{emp_id, nombre, slots:[...], matched:bool, reason}]
+
+    document.getElementById('ihFile').onchange = async function(ev){
+      var file = ev.target.files[0]; if (!file) return;
+      var buf  = await file.arrayBuffer();
+      var wb;
+      try { wb = XLSX.read(buf, {type:'array'}); }
+      catch(err){ showToast('No se pudo leer el archivo: '+err.message,'error'); return; }
+
+      var sheet = wb.Sheets[wb.SheetNames[0]];
+      var rows  = XLSX.utils.sheet_to_json(sheet, {header:1, raw:false, defval:''});
+      if (!rows || rows.length<2) { showToast('Archivo vacío o sin filas de datos','error'); return; }
+
+      // Validar encabezado (flexible: ignora mayúsculas/acentos)
+      var expected = _colHeaders();
+      var header = (rows[0]||[]).map(function(c){return String(c||'').trim().toLowerCase();});
+      var expectedLower = expected.map(function(c){return c.toLowerCase();});
+      var headerOk = expectedLower.every(function(h,i){ return (header[i]||'').indexOf(h)===0 || h==='nombre' && /nombre|colab/.test(header[0]||''); });
+
+      // Cargar empleados
+      var empleados = [];
+      try { empleados = await API.get('/empleados')||[]; } catch(e){ empleados = []; }
+      var byNombre = {};
+      empleados.forEach(function(e){
+        if (e && e.nombre) byNombre[String(e.nombre).trim().toLowerCase()] = e;
+      });
+
+      _parsed = [];
+      for (var i=1; i<rows.length; i++){
+        var r = rows[i]; if (!r || !r[0]) continue;
+        var nombre = String(r[0]).trim(); if (!nombre) continue;
+        var emp = byNombre[nombre.toLowerCase()];
+        var slots = [];
+        var warns = [];
+        for (var j=0; j<DIAS.length; j++){
+          ['M','T'].forEach(function(turno, kk){
+            var idx = 1 + j*2 + kk;
+            var val = String(r[idx]||'').trim().toUpperCase();
+            if (!val) return;
+            if (SEDES_VALIDAS.indexOf(val) < 0){
+              warns.push(DIAS[j]+' '+turno+'="'+val+'" inválido');
+              return;
+            }
+            slots.push({dia:DIAS[j], turno:turno, sede:val});
+          });
+        }
+        _parsed.push({
+          nombre:nombre,
+          emp_id: emp ? emp.id : null,
+          matched: !!emp,
+          slots: slots,
+          warns: warns,
+        });
+      }
+
+      // Render preview
+      var preview = document.getElementById('ihPreview');
+      var matched = _parsed.filter(function(x){return x.matched;}).length;
+      var unmatched = _parsed.length - matched;
+      var totalSlots = _parsed.reduce(function(s,x){return s+x.slots.length;}, 0);
+      var headerHtml = '<div style="margin-bottom:8px;display:flex;gap:12px;font-size:11px">'+
+        '<div style="padding:6px 10px;border-radius:6px;background:#dcfce7;color:#166534;font-weight:700">✓ '+matched+' reconocidos</div>'+
+        (unmatched ? '<div style="padding:6px 10px;border-radius:6px;background:#fee2e2;color:#991b1b;font-weight:700">✗ '+unmatched+' no encontrados</div>' : '')+
+        '<div style="padding:6px 10px;border-radius:6px;background:#e0e7ff;color:#3730a3;font-weight:700">∑ '+totalSlots+' slots</div>'+
+        (!headerOk ? '<div style="padding:6px 10px;border-radius:6px;background:#fef3c7;color:#92400e;font-weight:700">⚠ Encabezado no estándar</div>' : '')+
+      '</div>';
+
+      var rowsHtml = '<table style="width:100%;border-collapse:collapse;font-size:10px">'+
+        '<thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 8px">Colaborador</th><th style="text-align:center">Estado</th><th style="text-align:center">Slots</th><th style="text-align:left">Observaciones</th></tr></thead><tbody>';
+      _parsed.forEach(function(x){
+        var statusBg = x.matched ? '#dcfce7' : '#fee2e2';
+        var statusFg = x.matched ? '#166534' : '#991b1b';
+        var status   = x.matched ? '✓ OK' : '✗ No encontrado';
+        rowsHtml += '<tr style="border-bottom:1px solid #f1f5f9">'+
+          '<td style="padding:5px 8px;font-weight:600">'+x.nombre+'</td>'+
+          '<td style="padding:5px 8px;text-align:center"><span style="padding:2px 7px;border-radius:5px;font-weight:700;background:'+statusBg+';color:'+statusFg+'">'+status+'</span></td>'+
+          '<td style="padding:5px 8px;text-align:center">'+x.slots.length+'</td>'+
+          '<td style="padding:5px 8px;color:#92400e">'+(x.warns.length?x.warns.join(' · '):'—')+'</td>'+
+        '</tr>';
+      });
+      rowsHtml += '</tbody></table>';
+
+      preview.innerHTML = headerHtml + rowsHtml;
+      document.getElementById('ihStats').textContent = matched+' de '+_parsed.length+' empleados aplicables · '+totalSlots+' slots';
+
+      var applyBtn = document.getElementById('ihApply');
+      applyBtn.disabled = !matched;
+      applyBtn.style.opacity = matched ? '1' : '.5';
+    };
+
+    document.getElementById('ihApply').onclick = async function(){
+      if (!_parsed) return;
+      var aplicables = _parsed.filter(function(x){return x.matched;});
+      if (!aplicables.length){ showToast('Nada para aplicar','warn'); return; }
+      if (!confirm('Se sobrescribirán los horarios de '+aplicables.length+' colaborador(es). ¿Continuar?')) return;
+      var payload = { empleados: aplicables.map(function(x){ return {emp_id:x.emp_id, slots:x.slots}; }) };
+      var btn = document.getElementById('ihApply'); btn.disabled=true; btn.textContent='Aplicando…';
+      try {
+        var r = await API.post('/asistencias/horarios/bulk', payload);
+        if (r && r.ok){
+          showToast('✅ '+r.empleados+' horarios actualizados ('+r.slots+' slots)','success');
+          m.remove();
+          // Si el editor de horario está visible para algún empleado, recargar
+          if (typeof cargarAsistencias === 'function') {
+            try { cargarAsistencias(); } catch(e){}
+          }
+        } else {
+          showToast((r&&r.error)||'Error al aplicar horarios','error');
+          btn.disabled=false; btn.textContent='Aplicar Horarios';
+        }
+      } catch(err){
+        showToast('Error: '+err.message,'error');
+        btn.disabled=false; btn.textContent='Aplicar Horarios';
+      }
+    };
+  };
+
+  console.log('[LuceBien] Import Excel Horarios — cargado');
+})();
+
 console.log('[LuceBien] patches-v5.js — Global system changes + Layout tools loaded');
 })();
