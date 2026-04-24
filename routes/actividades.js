@@ -1,220 +1,119 @@
-// ═══════════════════════════════════════════════════════
-// LUCEBIEN · routes/actividades.js
-// Gestión de actividades configurables por admin
-// ═══════════════════════════════════════════════════════
 const router = require('express').Router();
+const jwt = require('jsonwebtoken');
 const { getDB } = require('../database/db');
-const { verifyToken, requireAdmin } = require('../middleware/auth');
-
-// ── OBTENER actividades de una sede ──────────────────
-// GET /api/actividades?sede=LB&fecha=2026-03-05
-router.get('/', verifyToken, (req, res) => {
-  const db = getDB();
-  const { sede, fecha } = req.query;
-  if (!sede) return res.status(400).json({ error: 'sede requerida' });
-
-  // Cargar TODAS las actividades configuradas para esta sede
-  let allActs = db.prepare(
-    'SELECT * FROM actividades_config WHERE sede=? AND activa=1 ORDER BY orden, id'
-  ).all(sede);
-
-  if (!allActs.length) {
-    return res.json({ actividades: [], extras_puntos: [], extras_remuneradas: [], defaults: true });
+const SECRET = process.env.JWT_SECRET || 'lucebien-secret-2026-xK9mP3qR';
+function auth(q,r,n){try{var h=q.headers['authorization'];if(!h||!h.startsWith('Bearer '))return r.status(401).json({error:'Token requerido'});q.user=jwt.verify(h.slice(7),SECRET);n();}catch(e){return r.status(401).json({error:'Token invalido'});}}
+function admin(q,r,n){auth(q,r,function(){if(q.user.rol!=='admin'&&q.user.rol!=='dueno')return r.status(403).json({error:'Solo admin'});n();});}
+function actAplicaHoy(a, fecha, turno) {
+  var d=new Date(fecha+'T12:00:00');var diaDelMes=d.getDate();var diaSemIdx=d.getDay();
+  var diaSemNombres=['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+  var diaSemana=diaSemNombres[diaSemIdx];
+  var actTurno=(a.turno||'ambos').toLowerCase();
+  if(actTurno!=='ambos'){
+    var t=(turno||'').toUpperCase();
+    if(t==='M'&&actTurno!=='m'&&actTurno!=='mañana')return false;
+    if(t==='T'&&actTurno!=='t'&&actTurno!=='tarde')return false;
   }
-
-  // Separar por tipo
-  let obligatorias = allActs.filter(a => a.tipo_act === 'obligatoria' || (!a.tipo_act && a.categoria !== 'EXT'));
-  const extras_puntos = allActs.filter(a => a.tipo_act === 'por_puntos');
-  const extras_remuneradas = allActs.filter(a => a.tipo_act === 'remunerada');
-
-  // Filtrar obligatorias por día/frecuencia si hay fecha
-  if (fecha) {
-    const diaDelMes = new Date(fecha + 'T12:00:00').getDate();
-    obligatorias = obligatorias.filter(a => {
-      if (a.aparece_dia > 0 && diaDelMes < a.aparece_dia) return false;
-      if (a.frecuencia_dias > 1 && (diaDelMes % a.frecuencia_dias !== 0)) return false;
-      return true;
-    });
+  var freq=parseInt(a.frecuencia_dias)||0;
+  if(freq<=1)return true;
+  if(freq===2)return diaDelMes%2===0;
+  if(freq===7){
+    if(!a.dia_semana)return true;
+    var diaOk=a.dia_semana.toLowerCase().split(',').map(function(x){return x.trim()}).indexOf(diaSemana)>=0;
+    if(!diaOk)return false;
+    var cadaSemanas=parseInt(a.aparece_dia)||1;
+    if(cadaSemanas<=1)return true;
+    var weekNum=Math.floor((d.getTime()-new Date(d.getFullYear(),0,1).getTime())/(7*24*60*60*1000));
+    return weekNum%cadaSemanas===0;
   }
-
-  // Pendientes acumulados
-  const pendientes = db.prepare(
-    'SELECT DISTINCT act_cod FROM actividades_pendientes WHERE sede=? AND resuelta=0'
-  ).all(sede).map(r => r.act_cod);
-
-  obligatorias = obligatorias.map(a => ({ ...a, pendiente_acumulado: pendientes.includes(a.cod) }));
-
-  // Pendientes forzados
-  if (fecha) {
-    const pendExtras = pendientes.filter(cod => !obligatorias.find(a => a.cod === cod));
-    for (const cod of pendExtras) {
-      const actBase = db.prepare('SELECT * FROM actividades_config WHERE sede=? AND cod=? AND activa=1').get(sede, cod);
-      if (actBase && actBase.acumula && actBase.tipo_act !== 'por_puntos' && actBase.tipo_act !== 'remunerada') {
-        obligatorias.push({ ...actBase, pendiente_acumulado: true, forzada: true });
-      }
+  if(freq===15){var diaBase=parseInt(a.aparece_dia)||1;return diaDelMes===diaBase||diaDelMes===diaBase+15;}
+  if(freq===30){var diaM=parseInt(a.aparece_dia)||1;return diaDelMes===diaM;}
+  return true;
+}
+router.get('/',auth,function(req,res){
+  try{
+    var db=getDB(),sede=req.query.sede,fecha=req.query.fecha,turno=req.query.turno||'';
+    if(!sede)return res.status(400).json({error:'sede requerida'});
+    var allActs=db.prepare("SELECT * FROM actividades_config WHERE (sede=? OR sede='GLOBAL') AND activa=1 ORDER BY orden,id").all(sede);
+    if(!allActs.length)return res.json({actividades:[],extras_puntos:[],extras_remuneradas:[],pendientes:[]});
+    var obligatorias=allActs.filter(function(a){return a.tipo_act==='obligatoria'||(!a.tipo_act&&a.categoria!=='EXT');});
+    var extras_puntos=allActs.filter(function(a){return a.tipo_act==='por_puntos';});
+    var extras_remuneradas=allActs.filter(function(a){return a.tipo_act==='remunerada';});
+    if(fecha){obligatorias=obligatorias.filter(function(a){return actAplicaHoy(a,fecha,turno);});}
+    var pendientes=[];
+    try{pendientes=db.prepare('SELECT DISTINCT act_cod FROM actividades_pendientes WHERE sede=? AND resuelta=0').all(sede).map(function(r){return r.act_cod;});}catch(e){}
+    var codsHoy={};obligatorias.forEach(function(a){codsHoy[a.cod]=true;});
+    obligatorias=obligatorias.map(function(a){return Object.assign({},a,{pendiente_acumulado:pendientes.indexOf(a.cod)>=0});});
+    if(pendientes.length){
+      try{var ph=pendientes.map(function(){return'?'}).join(',');
+        var pendActs=db.prepare("SELECT * FROM actividades_config WHERE (sede=? OR sede='GLOBAL') AND activa=1 AND acumula=1 AND cod IN ("+ph+")").all(sede,...pendientes);
+        pendActs.forEach(function(a){if(!codsHoy[a.cod]){obligatorias.push(Object.assign({},a,{pendiente_acumulado:true}));}});
+      }catch(e){}
     }
-  }
-
-  res.json({ actividades: obligatorias, extras_puntos, extras_remuneradas, defaults: false });
+    res.json({actividades:obligatorias,extras_puntos:extras_puntos,extras_remuneradas:extras_remuneradas,pendientes:pendientes});
+  }catch(e){res.status(500).json({error:e.message});}
 });
-
-// ── OBTENER todas para admin ─────────────────────────
-// GET /api/actividades/admin?sede=LB
-router.get('/admin', verifyToken, requireAdmin, (req, res) => {
-  const db = getDB();
-  const { sede } = req.query;
-  let sql = 'SELECT * FROM actividades_config WHERE 1=1';
-  const p = [];
-  if (sede) { sql += ' AND sede=?'; p.push(sede); }
-  sql += ' ORDER BY sede, orden, id';
-  res.json(db.prepare(sql).all(...p));
+router.get('/admin',admin,function(req,res){
+  try{var db=getDB();var sql='SELECT * FROM actividades_config WHERE 1=1';var p=[];
+    if(req.query.sede){sql+=" AND (sede=? OR sede='GLOBAL')";p.push(req.query.sede);}
+    sql+=' ORDER BY sede,categoria,orden,id';res.json(db.prepare(sql).all(...p));
+  }catch(e){res.status(500).json({error:e.message});}
 });
-
-// ── CREAR actividad ──────────────────────────────────
-// POST /api/actividades
-router.post('/', verifyToken, requireAdmin, (req, res) => {
-  const db = getDB();
-  const { sede, cod, nombre, categoria, tipo_act, peso, precio_unitario, unidad, turno, aparece_dia, frecuencia_dias, acumula, orden } = req.body;
-  if (!sede || !nombre) return res.status(400).json({ error: 'sede y nombre requeridos' });
-  const c = (cod || `ACT${Date.now()}`).toUpperCase();
-  try {
-    const result = db.prepare(
-      `INSERT INTO actividades_config (sede,cod,nombre,categoria,tipo_act,peso,precio_unitario,unidad,turno,aparece_dia,frecuencia_dias,acumula,orden)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
-    ).run(sede, c, nombre, categoria||'PO', tipo_act||'obligatoria', peso||0, precio_unitario||0, unidad||'unidad', turno||'ambos', aparece_dia||0, frecuencia_dias||0, acumula!==false?1:0, orden||0);
-    res.status(201).json({ id: result.lastInsertRowid, cod: c });
-  } catch(e) {
-    if (e.message.includes('UNIQUE')) return res.status(409).json({ error: 'Código ya existe en esta sede' });
-    res.status(500).json({ error: e.message });
-  }
+router.post('/',admin,function(req,res){
+  try{var db=getDB();var b=req.body;if(!b.nombre)return res.status(400).json({error:'nombre requerido'});
+    var sede=b.sede||'GLOBAL';var cod=(b.cod||(b.categoria||'ACT')+String(Date.now()).slice(-4)).toUpperCase();
+    var r=db.prepare('INSERT INTO actividades_config (sede,cod,nombre,categoria,tipo_act,peso,precio_unitario,unidad,turno,aparece_dia,frecuencia_dias,dia_semana,acumula,orden,activa,descuento) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)')
+      .run(sede,cod,b.nombre,b.categoria||'PO',b.tipo_act||'obligatoria',b.peso||1,b.precio_unitario||0,b.unidad||'unidad',b.turno||'ambos',b.aparece_dia||0,b.frecuencia_dias||0,b.dia_semana||'',b.acumula?1:0,b.orden||0,b.descuento||0);
+    res.status(201).json({id:r.lastInsertRowid,cod:cod});
+  }catch(e){if(e.message.includes('UNIQUE'))return res.status(409).json({error:'Código ya existe en esta sede'});res.status(500).json({error:e.message});}
 });
-
-// ── ACTUALIZAR actividad ─────────────────────────────
-// PUT /api/actividades/:id
-router.put('/:id', verifyToken, requireAdmin, (req, res) => {
-  const db = getDB();
-  const { nombre, categoria, tipo_act, peso, precio_unitario, unidad, turno, aparece_dia, frecuencia_dias, acumula, orden, activa } = req.body;
-  db.prepare(
-    `UPDATE actividades_config SET nombre=?,categoria=?,tipo_act=?,peso=?,precio_unitario=?,unidad=?,turno=?,aparece_dia=?,frecuencia_dias=?,acumula=?,orden=?,activa=?
-     WHERE id=?`
-  ).run(nombre, categoria, tipo_act||'obligatoria', peso||0, precio_unitario||0, unidad||'unidad', turno||'ambos', aparece_dia||0, frecuencia_dias||0, acumula?1:0, orden||0, activa!==false?1:0, req.params.id);
-  res.json({ ok: true });
+// ═══ FIX CRÍTICO: PUT NO actualiza sede — solo campos de contenido ═══
+router.put('/:id',admin,function(req,res){
+  try{var db=getDB();var b=req.body;
+    // NUNCA actualizar sede aquí — usar sync-sedes para eso
+    db.prepare('UPDATE actividades_config SET nombre=?,categoria=?,tipo_act=?,peso=?,precio_unitario=?,unidad=?,turno=?,aparece_dia=?,frecuencia_dias=?,dia_semana=?,acumula=?,orden=?,activa=?,descuento=? WHERE id=?')
+      .run(b.nombre,b.categoria,b.tipo_act||'obligatoria',b.peso||0,b.precio_unitario||0,b.unidad||'unidad',b.turno||'ambos',b.aparece_dia||0,b.frecuencia_dias||0,b.dia_semana||'',b.acumula?1:0,b.orden||0,b.activa!==undefined?(b.activa?1:0):1,b.descuento||0,req.params.id);
+    res.json({ok:true});
+  }catch(e){res.status(500).json({error:e.message});}
 });
-
-// ── ELIMINAR actividad ───────────────────────────────
-// DELETE /api/actividades/:id
-router.delete('/:id', verifyToken, requireAdmin, (req, res) => {
-  const db = getDB();
-  db.prepare('DELETE FROM actividades_config WHERE id=?').run(req.params.id);
-  res.json({ ok: true });
+router.delete('/:id',admin,function(req,res){
+  try{
+    var db=getDB();
+    // Buscar cod+sede antes de eliminar, para limpiar pendientes huérfanos
+    var a=db.prepare('SELECT cod,sede FROM actividades_config WHERE id=?').get(req.params.id);
+    db.transaction(function(){
+      db.prepare('DELETE FROM actividades_config WHERE id=?').run(req.params.id);
+      if(a){try{db.prepare('DELETE FROM actividades_pendientes WHERE act_cod=? AND sede=?').run(a.cod,a.sede);}catch(e){}}
+    })();
+    res.json({ok:true});
+  }catch(e){res.status(500).json({error:e.message});}
 });
-
-// ── REORDENAR (drag & drop) ──────────────────────────
-// PUT /api/actividades/reorder
-router.put('/reorder/batch', verifyToken, requireAdmin, (req, res) => {
-  const db = getDB();
-  const { items } = req.body; // [{id, orden}]
-  const update = db.prepare('UPDATE actividades_config SET orden=? WHERE id=?');
-  const tx = db.transaction(() => { for (const i of items) update.run(i.orden, i.id); });
-  tx();
-  res.json({ ok: true });
+router.post('/duplicar',admin,function(req,res){
+  try{var db=getDB();var b=req.body;if(!b.desde||!b.hacia)return res.status(400).json({error:'desde y hacia requeridos'});
+    var acts=db.prepare('SELECT * FROM actividades_config WHERE sede=? AND activa=1').all(b.desde);
+    var ins=db.prepare('INSERT OR IGNORE INTO actividades_config (sede,cod,nombre,categoria,tipo_act,peso,precio_unitario,unidad,turno,aparece_dia,frecuencia_dias,dia_semana,acumula,orden,activa,descuento) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)');
+    var count=0;db.transaction(function(){acts.forEach(function(a){try{ins.run(b.hacia,a.cod,a.nombre,a.categoria,a.tipo_act,a.peso,a.precio_unitario,a.unidad,a.turno,a.aparece_dia,a.frecuencia_dias,a.dia_semana,a.acumula,a.orden,a.descuento||0);count++;}catch(e){}});})();
+    res.json({ok:true,duplicadas:count});
+  }catch(e){res.status(500).json({error:e.message});}
 });
-
-// ── ACTIVIDADES PENDIENTES ────────────────────────────
-// POST /api/actividades/pendiente — registrar que no se hizo
-router.post('/pendiente', verifyToken, (req, res) => {
-  const db = getDB();
-  const { actos_no_realizados, sede, fecha, turno } = req.body;
-  if (!actos_no_realizados?.length || !sede) return res.json({ ok: true });
-  const ins = db.prepare(
-    'INSERT OR IGNORE INTO actividades_pendientes (act_cod,sede,desde_fecha,desde_turno) VALUES (?,?,?,?)'
-  );
-  const tx = db.transaction(() => {
-    for (const cod of actos_no_realizados) ins.run(cod, sede, fecha, turno||'');
-  });
-  tx();
-  res.json({ ok: true });
+router.post('/sync-sedes',admin,function(req,res){
+  try{var db=getDB();var b=req.body;if(!b.cod||!b.sedes||!b.payload)return res.status(400).json({error:'cod, sedes, payload requeridos'});
+    var existing=db.prepare('SELECT sede FROM actividades_config WHERE cod=?').all(b.cod).map(function(r){return r.sede;});
+    var toAdd=b.sedes.filter(function(s){return existing.indexOf(s)<0;});
+    var toRemove=existing.filter(function(s){return b.sedes.indexOf(s)<0;});
+    var p=b.payload;
+    var ins=db.prepare('INSERT OR IGNORE INTO actividades_config (sede,cod,nombre,categoria,tipo_act,peso,precio_unitario,unidad,turno,aparece_dia,frecuencia_dias,dia_semana,acumula,orden,activa,descuento) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?)');
+    var del=db.prepare('DELETE FROM actividades_config WHERE cod=? AND sede=?');
+    var upd=db.prepare('UPDATE actividades_config SET nombre=?,categoria=?,tipo_act=?,peso=?,unidad=?,turno=?,frecuencia_dias=?,dia_semana=?,acumula=?,orden=?,descuento=?,aparece_dia=? WHERE cod=? AND sede=?');
+    db.transaction(function(){
+      toAdd.forEach(function(s){ins.run(s,b.cod,p.nombre,p.categoria,p.tipo_act||'obligatoria',p.peso||0,0,p.unidad||'unidad',p.turno||'ambos',p.aparece_dia||0,p.frecuencia_dias||0,p.dia_semana||'',p.acumula?1:0,p.orden||0,p.descuento||0);});
+      toRemove.forEach(function(s){del.run(b.cod,s);});
+      b.sedes.forEach(function(s){if(toAdd.indexOf(s)<0)upd.run(p.nombre,p.categoria,p.tipo_act||'obligatoria',p.peso||0,p.unidad||'unidad',p.turno||'ambos',p.frecuencia_dias||0,p.dia_semana||'',p.acumula?1:0,p.orden||0,p.descuento||0,p.aparece_dia||0,b.cod,s);});
+    })();
+    res.json({ok:true,added:toAdd.length,removed:toRemove.length});
+  }catch(e){res.status(500).json({error:e.message});}
 });
-
-// POST /api/actividades/resolver — marcar pendientes como resueltos
-router.post('/resolver', verifyToken, (req, res) => {
-  const db = getDB();
-  const { actos_realizados, sede, fecha } = req.body;
-  if (!actos_realizados?.length) return res.json({ ok: true });
-  const upd = db.prepare(
-    'UPDATE actividades_pendientes SET resuelta=1, resuelta_en=? WHERE act_cod=? AND sede=? AND resuelta=0'
-  );
-  const tx = db.transaction(() => {
-    for (const cod of actos_realizados) upd.run(fecha, cod, sede);
-  });
-  tx();
-  res.json({ ok: true });
-});
-
-// GET /api/actividades/pendientes?sede=LB
-router.get('/pendientes', verifyToken, (req, res) => {
-  const db = getDB();
-  const { sede } = req.query;
-  const rows = db.prepare(
-    'SELECT ap.*, ac.nombre, ac.categoria, ac.peso FROM actividades_pendientes ap LEFT JOIN actividades_config ac ON ap.act_cod=ac.cod AND ap.sede=ac.sede WHERE ap.sede=? AND ap.resuelta=0 ORDER BY ap.desde_fecha'
-  ).all(sede||'');
-  res.json(rows);
-});
-
-// ── IMPORTAR actividades por defecto para una sede ───
-// POST /api/actividades/importar-defaults
-router.post('/importar-defaults', verifyToken, requireAdmin, (req, res) => {
-  const db = getDB();
-  const { sede } = req.body;
-  if (!sede) return res.status(400).json({ error: 'sede requerida' });
-
-  const DEFAULTS_TIENDA = [
-    {cod:'AS01',nombre:'Revisión y control de prendas para entrega',  cat:'PO', peso:5},
-    {cod:'AS02',nombre:'Control de devoluciones vencidas',            cat:'PO', peso:5},
-    {cod:'AS03',nombre:'Revisión de prendas a confeccionar',          cat:'PO', peso:5},
-    {cod:'AT01',nombre:'Alistado de trajes',                          cat:'PO', peso:5},
-    {cod:'AT02',nombre:'Control del cuaderno de préstamos',           cat:'PO', peso:5},
-    {cod:'AT03',nombre:'Planchado de ternos',                         cat:'PO', peso:5},
-    {cod:'AT04',nombre:'Planchado y doblado de camisas',              cat:'PO', peso:5},
-    {cod:'AT05',nombre:'Refacción de trajes y corbatas',              cat:'PO', peso:5},
-    {cod:'OL01',nombre:'Limpieza del piso',                           cat:'IND',peso:5},
-    {cod:'OL02',nombre:'Limpieza de muebles y mostradores',           cat:'IND',peso:3},
-    {cod:'OL03',nombre:'Limpieza de mamparas y espejos',              cat:'IND',peso:3},
-    {cod:'OL04',nombre:'Limpieza y orden de accesorios',              cat:'IND',peso:1},
-    {cod:'OL05',nombre:'Limpieza de plancha',                         cat:'IND',peso:1},
-    {cod:'OL06',nombre:'Limpieza del área de trabajo al cierre',      cat:'IND',peso:5},
-    {cod:'BS01',nombre:'Actualización de garantías',                  cat:'SO', peso:5},
-    {cod:'BS02',nombre:'Actualización de documentos',                 cat:'SO', peso:3},
-    {cod:'BS03',nombre:'Control de lista de lavandería',              cat:'SO', peso:1},
-    {cod:'BS04',nombre:'Control de lista de refacciones',             cat:'SO', peso:1},
-    {cod:'BS05',nombre:'Cierre de caja',                              cat:'SO', peso:3},
-    {cod:'BT01',nombre:'Cambio de maniquíes',                         cat:'SO', peso:5},
-    {cod:'BT02',nombre:'Orden de prendas en exhibición',              cat:'SO', peso:5},
-    {cod:'BT03',nombre:'Codificación y etiquetado de prendas',        cat:'SO', peso:5},
-  ];
-  const DEFAULTS_AL = [
-    {cod:'AM01',nombre:'Recepción y registro de prendas recibidas',  cat:'ALM',peso:5},
-    {cod:'AM02',nombre:'Clasificación de prendas por estado',         cat:'ALM',peso:5},
-    {cod:'AM03',nombre:'Proceso de lavado y limpieza de prendas',     cat:'ALM',peso:8},
-    {cod:'AM04',nombre:'Refacción y reparación de prendas',           cat:'ALM',peso:8},
-    {cod:'AM05',nombre:'Control de calidad post-proceso',             cat:'ALM',peso:5},
-    {cod:'AM06',nombre:'Cambio de precios en sistema Tuxedo',         cat:'ALM',peso:5},
-    {cod:'AM07',nombre:'Preparación y despacho de ternos a tiendas',  cat:'ALM',peso:5},
-    {cod:'AM08',nombre:'Registro de envíos completados',              cat:'ALM',peso:3},
-    {cod:'AM09',nombre:'Orden y limpieza del almacén',                cat:'IND',peso:5},
-    {cod:'AM10',nombre:'Inventario de prendas en proceso',            cat:'ALM',peso:5},
-  ];
-
-  const defaults = sede === 'AL' ? DEFAULTS_AL : DEFAULTS_TIENDA;
-  const ins = db.prepare(
-    `INSERT OR IGNORE INTO actividades_config (sede,cod,nombre,categoria,peso,aparece_dia,frecuencia_dias,acumula,orden)
-     VALUES (?,?,?,?,?,0,0,1,?)`
-  );
-  const tx = db.transaction(() => {
-    defaults.forEach((a, i) => ins.run(sede, a.cod, a.nombre, a.cat, a.peso, i));
-  });
-  tx();
-  res.json({ ok: true, count: defaults.length });
-});
-
+router.post('/pendiente',auth,function(req,res){try{var db=getDB();var b=req.body;if(!b.actos_no_realizados||!b.actos_no_realizados.length||!b.sede)return res.json({ok:true});var ins=db.prepare('INSERT OR IGNORE INTO actividades_pendientes (act_cod,sede,desde_fecha,desde_turno) VALUES (?,?,?,?)');db.transaction(function(){b.actos_no_realizados.forEach(function(c){ins.run(c,b.sede,b.fecha,b.turno||'');});})();res.json({ok:true});}catch(e){res.status(500).json({error:e.message});}});
+router.post('/resolver',auth,function(req,res){try{var db=getDB();var b=req.body;if(!b.actos_realizados||!b.actos_realizados.length)return res.json({ok:true});var upd=db.prepare('UPDATE actividades_pendientes SET resuelta=1,resuelta_en=? WHERE act_cod=? AND sede=? AND resuelta=0');db.transaction(function(){b.actos_realizados.forEach(function(c){upd.run(b.fecha,c,b.sede);});})();res.json({ok:true});}catch(e){res.status(500).json({error:e.message});}});
+router.get('/pendientes',auth,function(req,res){try{res.json(getDB().prepare('SELECT ap.*,ac.nombre,ac.categoria,ac.peso FROM actividades_pendientes ap LEFT JOIN actividades_config ac ON ap.act_cod=ac.cod AND ap.sede=ac.sede WHERE ap.sede=? AND ap.resuelta=0 ORDER BY ap.desde_fecha').all(req.query.sede||''));}catch(e){res.status(500).json({error:e.message});}});
 module.exports = router;

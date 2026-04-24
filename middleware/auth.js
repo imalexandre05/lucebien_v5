@@ -17,7 +17,7 @@ function verifyToken(req, res, next) {
 
 function requireAdmin(req, res, next) {
   verifyToken(req, res, () => {
-    if (req.user.rol !== 'admin') return res.status(403).json({ error: 'Solo administradores' });
+    if (req.user.rol !== 'admin' && req.user.rol !== 'dueno') return res.status(403).json({ error: 'Solo administradores' });
     next();
   });
 }
