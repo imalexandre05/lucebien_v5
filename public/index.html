@@ -213,6 +213,8 @@
     <div class="nav-item" onclick="abrirIncidenciaRapidaModal()" style="cursor:pointer"><span class="nav-icon">&#128680;</span>Agregar Incidencia</div>
     <div class="nav-item" style="opacity:.4;pointer-events:none;cursor:default"><span class="nav-icon">&#128241;</span>Devoluci&oacute;n Garant&iacute;a <span style="font-size:8px;color:var(--text3);margin-left:4px">Pronto</span></div>
     <div class="nav-item nav-almacen hidden" onclick="goTo('kanban-almacen',this)"><span class="nav-icon">&#128230;</span>Prendas Recibidas</div>
+    <div class="nav-item nav-almacen hidden" onclick="goTo('pipeline-envios-acc',this)"><span class="nav-icon">&#127872;</span>Env&iacute;o de Accesorios</div>
+    <div class="nav-item nav-almacen hidden" onclick="goTo('pipeline-historial',this)"><span class="nav-icon">&#128220;</span>Historial del Pipeline</div>
     <div id="navAdmin" class="hidden">
       <div class="nav-section">Administrador</div>
       <div class="nav-item" onclick="goTo('dashboard',this)"><span class="nav-icon">&#128202;</span>Dashboard</div>
@@ -221,6 +223,7 @@
       <div class="nav-item" onclick="goTo('evaluacion-mensual',this)"><span class="nav-icon">&#128196;</span>Evaluaci&oacute;n Mensual</div>
       <div class="nav-item" onclick="goTo('gestion-actividades',this)"><span class="nav-icon">&#9998;</span>Gestionar Actividades</div>
       <div class="nav-item" onclick="goTo('admin-reportes',this)"><span class="nav-icon">&#128203;</span>Reportes de Actividad</div>
+      <div class="nav-item" onclick="goTo('horarios-admin',this)"><span class="nav-icon">&#128197;</span>Gesti&oacute;n de Horarios</div>
 
       <div class="nav-item" onclick="goTo('audit-log',this)"><span class="nav-icon">&#128270;</span>Auditor&iacute;a</div>
     </div>
@@ -719,7 +722,7 @@
 <div id="page-empleados" class="page">
   <div class="page-header">
     <div><div class="page-title">Gesti&oacute;n de <span>Colaboradores</span></div><div class="page-sub">Perfiles, roles, sedes y accesos del equipo</div></div>
-    <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="abrirConfigAccesos()">&#9881; Accesos</button><button class="btn btn-primary btn-sm" onclick="nuevoEmpleado()">+ Nuevo</button></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="goTo('horarios-admin',document.querySelector('[onclick*=\'horarios-admin\']'))">&#128197; Gestionar horarios</button><button class="btn btn-ghost btn-sm" onclick="abrirConfigAccesos()">&#9881; Accesos</button><button class="btn btn-primary btn-sm" onclick="nuevoEmpleado()">+ Nuevo</button></div>
   </div>
   <div class="card">
     <div class="card-header"><span class="card-title">Equipo</span>
@@ -1502,6 +1505,98 @@
   </div>
 </div>
 
+<div id="page-pipeline-historial" class="page">
+  <div class="page-header">
+    <div><div class="page-title">&#128220; Historial del <span>Pipeline</span></div>
+      <div class="page-sub">Registro completo de prendas, accesorios y env&iacute;os &middot; restringido a administrador y encargado de almac&eacute;n</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Filtros</span></div>
+    <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="field mb-0" style="min-width:130px"><label>Desde</label>
+        <input type="date" id="phDesde" onchange="renderPipelineHistorial()"></div>
+      <div class="field mb-0" style="min-width:130px"><label>Hasta</label>
+        <input type="date" id="phHasta" onchange="renderPipelineHistorial()"></div>
+      <div class="field mb-0" style="min-width:100px"><label>Sede</label>
+        <select id="phSede" onchange="renderPipelineHistorial()">
+          <option value="">Todas</option>
+          <option value="ST">ST</option><option value="LB">LB</option>
+          <option value="AL">AL</option><option value="TR">TR</option>
+        </select></div>
+      <div class="field mb-0" style="min-width:120px"><label>Tipo</label>
+        <select id="phTipo" onchange="renderPipelineHistorial()">
+          <option value="">Todos</option>
+          <option value="prenda">Movimientos de prendas</option>
+          <option value="accesorio">Accesorios procesados</option>
+          <option value="lista">Env&iacute;os desde tienda</option>
+          <option value="envio">Env&iacute;os a tienda (prendas)</option>
+          <option value="envio_acc">Env&iacute;os a tienda (accesorios)</option>
+        </select></div>
+      <div class="field mb-0" style="min-width:150px"><label>Responsable</label>
+        <input type="text" id="phResp" placeholder="Buscar por nombre..." oninput="renderPipelineHistorialDebounced()"></div>
+      <div class="field mb-0" style="min-width:110px"><label>Orden</label>
+        <select id="phSort" onchange="renderPipelineHistorial()">
+          <option value="fecha_desc">Fecha &darr;</option>
+          <option value="fecha_asc">Fecha &uarr;</option>
+        </select></div>
+      <button class="btn btn-ghost btn-sm" onclick="phLimpiarFiltros()">Limpiar</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+      <span class="card-title" id="phResumen">Historial</span>
+      <div id="phStats" style="font-size:11px;color:var(--text3)"></div>
+    </div>
+    <div class="card-body" id="phBody" style="max-height:62vh;overflow-y:auto">
+      <div style="color:var(--text3);font-size:12px;text-align:center;padding:30px">Aplica filtros o espera la carga...</div>
+    </div>
+  </div>
+</div>
+
+<div id="page-pipeline-envios-acc" class="page">
+  <div class="page-header">
+    <div><div class="page-title">&#127872; Env&iacute;o de <span>Accesorios</span></div>
+      <div class="page-sub">Despacha accesorios limpios/terminados a la tienda &middot; cada env&iacute;o queda trazado</div></div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Nuevo env&iacute;o</span></div>
+    <div class="card-body">
+      <div class="grid-2" style="gap:12px">
+        <div class="field mb-0"><label>Sede destino</label>
+          <select id="eaDestino">
+            <option value="">Elegir...</option>
+            <option value="ST">ST &middot; Stand</option>
+            <option value="LB">LB &middot; Tienda</option>
+            <option value="TR">TR &middot; Trece</option>
+          </select></div>
+        <div class="field mb-0"><label>Fecha</label>
+          <input type="date" id="eaFecha"></div>
+      </div>
+      <div class="section-divider">Cantidades por tipo</div>
+      <div class="grid-3" style="gap:10px" id="eaItems">
+        <div class="field mb-0"><label>&#128084; Corbatas</label><input type="number" id="eaCorbatas" min="0" value="0"></div>
+        <div class="field mb-0"><label>&#127872; Michis</label><input type="number" id="eaMichis" min="0" value="0"></div>
+        <div class="field mb-0"><label>&#128084; Corbatones</label><input type="number" id="eaCorbatones" min="0" value="0"></div>
+        <div class="field mb-0"><label>&#128084; Camisas</label><input type="number" id="eaCamisas" min="0" value="0"></div>
+        <div class="field mb-0"><label>&#128094; Zapatos (pares)</label><input type="number" id="eaZapatos" min="0" value="0"></div>
+        <div class="field mb-0"><label>&#128188; Porta ternos</label><input type="number" id="eaPortaTernos" min="0" value="0"></div>
+      </div>
+      <div class="field" style="margin-top:10px"><label>Observaciones</label>
+        <textarea id="eaObs" rows="2" placeholder="Notas opcionales..."></textarea></div>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-primary" onclick="enviarAccesoriosTienda()">&#128228; Registrar env&iacute;o</button>
+        <button class="btn btn-ghost" onclick="limpiarFormEnvioAcc()">Limpiar</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-header"><span class="card-title">Env&iacute;os recientes</span></div>
+    <div class="card-body" id="eaHistorial" style="max-height:50vh;overflow-y:auto">
+      <div style="color:var(--text3);font-size:12px">Cargando...</div>
+    </div>
+  </div>
+</div>
+
 <div id="page-audit-log" class="page">
   <div class="page-header">
     <div><div class="page-title">&#128270; Auditor&iacute;a del <span>Sistema</span></div>
@@ -1588,19 +1683,35 @@
   </div>
 </div>
 
+<!-- ═══ GESTIÓN DE HORARIOS (admin) ═══ -->
+<div id="page-horarios-admin" class="page">
+  <div class="page-header">
+    <div><div class="page-title">&#128197; <span>Gesti&oacute;n de Horarios</span></div>
+      <div class="page-sub">Constructor semanal &mdash; versionado, editable, imprimible</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="abrirImportHorarioV2()" title="Importar desde plantilla Excel (opcional)">&#128228; Importar Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="renderHorariosAdmin()">&#128260; Actualizar</button>
+    </div>
+  </div>
+  <div id="horariosAdminContent"><div class="empty-cell" style="padding:40px;text-align:center;color:var(--text3)">Cargando&hellip;</div></div>
+</div>
+
 </main>
 <div class="toast" id="toast"><span id="toastIcon"></span><span id="toastMsg"></span></div>
 
-<script src="/js/api.js?v=1775834000"></script>
-<script src="/js/data.js?v=1776100000"></script>
-<script src="/js/app.js?v=1776100000"></script>
-<script src="/js/layout-map.js?v=1776100000"></script>
-<script src="/js/admin.js?v=1776100000"></script>
+<script src="/js/api.js?v=1776400000"></script>
+<script src="/js/data.js?v=1776400000"></script>
+<script src="/js/app.js?v=1776400000"></script>
+<script src="/js/layout-map.js?v=1776400000"></script>
+<script src="/js/admin.js?v=1776400000"></script>
 <script src="/js/patches-v3.js?v=1775890000"></script>
 <script src="/js/patches-v4.js?v=1775870000"></script>
-<script src="/js/patches-v5.js?v=1776100000"></script>
-<script src="/js/modulos.js?v=1776100000"></script>
-<script src="/js/pipeline-ui.js?v=1775840000"></script>
+<script src="/js/patches-v5.js?v=1776400000"></script>
+<script src="/js/horarios-v2.js?v=1776400000"></script>
+<script src="/js/reportes-autoenvio.js?v=1776400000"></script>
+<script src="/js/modulos.js?v=1776400000"></script>
+<script src="/js/pipeline-ui.js?v=1776400000"></script>
+<script src="/js/pipeline-historial.js?v=1776400000"></script>
 <!-- SheetJS (xlsx) para importar/exportar Excel de horarios -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>

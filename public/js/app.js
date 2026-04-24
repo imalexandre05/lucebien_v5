@@ -1537,6 +1537,8 @@ var PAGES_CONFIG = {
   'retorno':            {label:'Retorno de Prendas',    icon:'↩️',section:'almacen'},
   'garantias':          {label:'Garantías',             icon:'🛡️',section:'almacen'},
   'config-pipeline':    {label:'Configurar Pipeline',   icon:'⚙️',section:'almacen'},
+  'pipeline-historial': {label:'Historial del Pipeline', icon:'📜',section:'almacen'},
+  'pipeline-envios-acc':{label:'Envío de Accesorios',    icon:'🎀',section:'almacen'},
   // — Gestión (admin) —
   'dashboard':          {label:'Dashboard',             icon:'📊',section:'gestion'},
   'empleados':          {label:'Colaboradores',         icon:'👥',section:'gestion'},
@@ -1544,6 +1546,7 @@ var PAGES_CONFIG = {
   'gestion-actividades':{label:'Gestión Actividades',   icon:'📝',section:'gestion'},
   'admin-reportes':     {label:'Reportes de Actividad', icon:'📈',section:'gestion'},
   'evaluacion-mensual': {label:'Evaluación Mensual',    icon:'🏆',section:'gestion'},
+  'horarios-admin':     {label:'Gestión de Horarios',   icon:'📅',section:'gestion'},
   'audit-log':          {label:'Auditoría',             icon:'🔍',section:'gestion'},
 };
 
@@ -1559,7 +1562,7 @@ var DEFAULT_PERMS = {
   dueno:              Object.keys(PAGES_CONFIG),
   admin:              Object.keys(PAGES_CONFIG),
   encargado_tienda:   ['reporte','evaluacion','lavanderia','solicitudes','prestamos','mi-desempeno','eval-valores','pipeline-envios','retorno','incidencias-admin'],
-  encargado_almacen:  ['reporte','evaluacion','solicitudes','prestamos','mi-desempeno','eval-valores','kanban-almacen','retorno','garantias','incidencias-admin'],
+  encargado_almacen:  ['reporte','evaluacion','solicitudes','prestamos','mi-desempeno','eval-valores','kanban-almacen','retorno','garantias','incidencias-admin','pipeline-historial','pipeline-envios-acc'],
   ventas_junior:      ['reporte','evaluacion','lavanderia','solicitudes','mi-desempeno','eval-valores','pipeline-envios'],
   ventas_junior_2:    ['reporte','evaluacion','lavanderia','solicitudes','mi-desempeno','eval-valores','pipeline-envios'],
   auxiliar:           ['reporte','evaluacion','solicitudes','mi-desempeno','eval-valores','kanban-almacen'],
@@ -1621,12 +1624,15 @@ function goTo(pageId,el){
   if(pageId==='eval-valores')initEvalValores();
   if(pageId==='lavanderia')initLavResponsables();
   if(pageId==='mi-desempeno')renderMiDesempeno();
+  if(pageId==='horarios-admin'&&typeof renderHorariosAdmin==='function')renderHorariosAdmin();
   if(pageId==='evaluacion'&&STATE.fr01.reportId&&STATE.fr01.actividadesRealizadas&&STATE.fr01.actividadesRealizadas.length)prepararEval();
   if(pageId==='prestamos'){renderPrestamos();renderBajas();}
 
   if(pageId==='garantias')renderGarantias();
   if(pageId==='pipeline')renderPipeline();
   if(pageId==='pipeline-envios')renderEnviosRecibidos();
+  if(pageId==='pipeline-historial'&&typeof renderPipelineHistorial==='function')renderPipelineHistorial();
+  if(pageId==='pipeline-envios-acc'&&typeof renderEnvioAccesorios==='function')renderEnvioAccesorios();
   if(pageId==='solicitudes')renderSolicitudes();
   if(pageId==='empleados')applyPermissions();
 }

@@ -91,6 +91,7 @@ app.use('/api/layout', require('./routes/layout'));
 app.use('/api/config', require('./routes/config'));
 app.use('/api/ventas', require('./routes/ventas'));
 try { app.use('/api/asistencias', require('./routes/asistencias')); } catch(e) {}
+try { app.use('/api/horarios', require('./routes/horarios')); } catch(e) { console.error('[horarios route]', e.message); }
 
 // ═══ AUDITORÍA — Admin puede consultar ═══
 app.get('/api/audit', function(req, res) {
@@ -141,6 +142,24 @@ app.get('*', function(r, s) { s.sendFile(path.join(__dirname, 'public', 'index.h
 
 initDB();
 try { const sc = require('./database/seed-config'); if(sc.ensureTables)sc.ensureTables(); if(sc.seedConfig)sc.seedConfig(); if(sc.ensureAsistencias)sc.ensureAsistencias(); } catch(e) { console.log('Config seed:', e.message); }
+
+// ═══ CRON · Auto-envío de reportes al vencer deadline ═══
+// Corre cada 5 min. El helper autoEnviarPendientes() internamente valida que
+// el deadline haya pasado (M≥15:00, T/C≥23:00) antes de hacer nada.
+try {
+  var rep = require('./routes/reportes');
+  var autoFn = rep && rep.autoEnviarPendientes;
+  if (typeof autoFn === 'function') {
+    setInterval(function(){
+      try {
+        var res = autoFn();
+        if (res && res.length) console.log('[cron:auto-envio] procesados='+res.length);
+      } catch(e) { console.warn('[cron:auto-envio]', e.message); }
+    }, 5 * 60 * 1000);
+    console.log('  Auto-envío reportes: ACTIVO (cada 5 min)');
+  }
+} catch(e) { console.warn('[cron:auto-envio] init:', e.message); }
+
 app.listen(PORT, '0.0.0.0', function() {
   var os = require('os'), ip = 'localhost';
   for (var ii of Object.values(os.networkInterfaces())) for (var i of ii) if (i.family === 'IPv4' && !i.internal) { ip = i.address; break; }

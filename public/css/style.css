@@ -780,3 +780,47 @@ td.mono,span.mono{font-family:Inter,system-ui,sans-serif !important}
 .hor-sel{width:100%;padding:5px 4px;border:1.5px solid var(--border-s);border-radius:6px;font-size:10px;background:var(--s1);text-align:center;cursor:pointer;transition:all .15s}
 .hor-sel:focus{border-color:var(--navy)}
 
+
+/* ═══ SIDEBAR COLAPSADO — solo íconos ═══ */
+.sidebar{transition:width .24s cubic-bezier(.22,1,.36,1)}
+.sidebar.collapsed{width:60px}
+.sidebar.collapsed .nav-item{justify-content:center;padding:10px 6px;font-size:0;gap:0;position:relative}
+.sidebar.collapsed .nav-item .nav-icon{font-size:16px;width:auto;margin:0}
+.sidebar.collapsed .nav-item::after{content:attr(data-label);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);background:var(--navy-xd);color:#fff;padding:6px 10px;border-radius:6px;font-size:11px;font-weight:500;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:200;box-shadow:0 4px 12px rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.08)}
+.sidebar.collapsed .nav-item:hover::after{opacity:1}
+.sidebar.collapsed .nav-section{display:none}
+.sidebar.collapsed .sb-brand-text,
+.sidebar.collapsed .sb-user-info,
+.sidebar.collapsed .btn-logout,
+.sidebar.collapsed .sb-user-name,
+.sidebar.collapsed .sb-user-role,
+.sidebar.collapsed .sb-sede-badge-text,
+.sidebar.collapsed .sb-badge{display:none !important}
+.sidebar.collapsed .sb-logo{margin:0 auto}
+.sidebar.collapsed .sb-user{padding:10px 4px;flex-direction:column;align-items:center;gap:6px}
+.sidebar.collapsed .sb-avatar{margin:0 auto}
+.sidebar.collapsed .sb-collapse-btn{width:40px;padding:6px;font-size:0;gap:0}
+.sidebar.collapsed .sb-collapse-btn::before{content:'\25B6';font-size:11px}
+.main.sidebar-collapsed{margin-left:60px}
+
+/* ═══ IN-APP MODAL (prompt/confirm) ═══ */
+.lb-iamodal{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:1400;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;transition:opacity .15s;backdrop-filter:blur(2px)}
+.lb-iamodal.show{opacity:1}
+.lb-iamodal-box{background:#fff;border-radius:14px;width:96%;max-width:440px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.35);transform:scale(.95);transition:transform .15s}
+.lb-iamodal.show .lb-iamodal-box{transform:scale(1)}
+.lb-iamodal-head{padding:18px 20px 8px;display:flex;align-items:flex-start;gap:10px}
+.lb-iamodal-icon{font-size:22px;flex-shrink:0;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--s2)}
+.lb-iamodal-title{font-size:14px;font-weight:700;color:var(--navy);line-height:1.3}
+.lb-iamodal-msg{font-size:12px;color:var(--text2);margin-top:4px;line-height:1.5}
+.lb-iamodal-body{padding:6px 20px 4px}
+.lb-iamodal-body input,.lb-iamodal-body select,.lb-iamodal-body textarea{width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--s1);outline:none;transition:border-color .15s}
+.lb-iamodal-body input:focus,.lb-iamodal-body select:focus,.lb-iamodal-body textarea:focus{border-color:var(--navy)}
+.lb-iamodal-body label{display:block;font-size:11px;font-weight:600;color:var(--text3);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.4px}
+.lb-iamodal-foot{padding:12px 18px 16px;display:flex;gap:8px;justify-content:flex-end}
+.lb-iamodal-foot .btn{padding:8px 14px;font-size:12px}
+
+/* ═══ FR-01 · Lock hasta elegir encargado + alertas ═══ */
+.fr01-guide-banner{background:linear-gradient(135deg,#fef3c7,#fde68a);border:1.5px solid #f59e0b;border-radius:12px;padding:14px 18px;margin:12px 0;font-size:13px;color:#78350f;display:flex;align-items:center;gap:10px;line-height:1.5;box-shadow:0 2px 8px rgba(245,158,11,.15)}
+.fr01-guide-banner strong{color:#92400e}
+.fr01-locked-card{position:relative;pointer-events:none;opacity:.45;filter:grayscale(.4);transition:opacity .2s,filter .2s}
+.fr01-locked-card::before{content:'🔒 Elige al encargado primero';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.6);z-index:5;font-weight:700;color:var(--navy);font-size:13px;border-radius:var(--rl);pointer-events:auto}

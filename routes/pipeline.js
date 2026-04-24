@@ -16,6 +16,55 @@ function recPts(db,cod,nombre,pid,etapa,pts,det){
   db.prepare('INSERT INTO pipeline_puntos (emp_cod,emp_nombre,prenda_id,etapa,puntos,detalle,fecha) VALUES (?,?,?,?,?,?,?)').run(cod,nombre,pid,etapa,pts,det||'',fecha);
 }
 
+// ═══ Migraciones silenciosas para historial + accesorios + envíos de accesorios ═══
+(function migrarPipeline(){
+  try{
+    var db=getDB();
+    // Columnas adicionales en accesorios_log
+    try{ db.exec("ALTER TABLE accesorios_log ADD COLUMN sede_origen TEXT DEFAULT 'AL'"); }catch(e){}
+    try{ db.exec("ALTER TABLE accesorios_log ADD COLUMN enviado INTEGER DEFAULT 0"); }catch(e){}  // marca cuando ya fue despachado
+    try{ db.exec("ALTER TABLE accesorios_log ADD COLUMN envio_id INTEGER"); }catch(e){}
+    try{ db.exec("ALTER TABLE accesorios_log ADD COLUMN sustento TEXT DEFAULT ''"); }catch(e){}
+    try{ db.exec("ALTER TABLE accesorios_log ADD COLUMN origen TEXT DEFAULT 'almacen'"); }catch(e){}
+    // Tabla de envíos de accesorios (almacén → tienda)
+    db.exec(
+      "CREATE TABLE IF NOT EXISTS envios_accesorios (" +
+      "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
+      "  sede_destino TEXT NOT NULL," +
+      "  fecha TEXT NOT NULL," +
+      "  responsable TEXT," +
+      "  responsable_cod TEXT," +
+      "  validado_tienda INTEGER DEFAULT 0," +
+      "  validado_por TEXT," +
+      "  fecha_validado TEXT," +
+      "  obs TEXT," +
+      "  created_at TEXT DEFAULT (datetime('now','localtime'))" +
+      ")"
+    );
+    db.exec(
+      "CREATE TABLE IF NOT EXISTS envio_accesorios_items (" +
+      "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
+      "  envio_id INTEGER NOT NULL," +
+      "  tipo TEXT NOT NULL," +
+      "  cantidad INTEGER DEFAULT 0," +
+      "  obs TEXT," +
+      "  FOREIGN KEY (envio_id) REFERENCES envios_accesorios(id)" +
+      ")"
+    );
+    // Índices para acelerar filtros del historial
+    try{ db.exec("CREATE INDEX IF NOT EXISTS idx_prenda_hist_fecha ON prenda_historial(fecha)"); }catch(e){}
+    try{ db.exec("CREATE INDEX IF NOT EXISTS idx_prenda_hist_resp  ON prenda_historial(responsable)"); }catch(e){}
+    try{ db.exec("CREATE INDEX IF NOT EXISTS idx_acc_log_fecha     ON accesorios_log(fecha)"); }catch(e){}
+  }catch(e){ console.warn('[pipeline] migración:', e.message); }
+})();
+
+// ── helper: es admin/dueño/encargado_almacén? (para endpoints de historial/config) ──
+function esSupervisor(u){
+  if(!u) return false;
+  var rol = (u.rol||'').toLowerCase();
+  return rol==='admin'||rol==='dueno'||rol==='dueño'||rol==='encargado_almacen';
+}
+
 // ═══ GET endpoints (public) ═══
 router.get('/',safe(function(q,r){var db=getDB();var s='SELECT * FROM prendas WHERE 1=1';var p=[];if(q.query.sede_origen){s+=' AND sede_origen=?';p.push(q.query.sede_origen);}if(q.query.etapa){s+=' AND etapa=?';p.push(q.query.etapa);}if(q.query.no_enviado)s+=" AND etapa!='enviado'";s+=' ORDER BY fecha_ingreso DESC,id DESC';if(q.query.limit){s+=' LIMIT ?';p.push(parseInt(q.query.limit)||200);}r.json(db.prepare(s).all(...p));}));
 
@@ -179,22 +228,28 @@ router.put('/envios/:id/calificar',auth,safe(function(q,r){
 }));
 
 // ═══ ACCESORIOS ═══
+// Tipos conocidos: Camisas, Corbatas, Michis, Corbatones, Zapatos, PortaTernos
 router.post('/accesorios',auth,safe(function(q,r){
   var db=getDB();var b=q.body;var items=b.items;
   if(!items&&b.tipo&&b.cantidad)items=[{tipo:b.tipo,cantidad:b.cantidad}];
   if(!items||!items.length)return r.status(400).json({error:'Items requeridos'});
   var fecha=hoyLocal();var pa=getPts(db,'accesorio',null)||0.5;var tp=0;var dinero=0;
   var precioCamisa=1;try{var pc=db.prepare("SELECT valor FROM config WHERE clave='precio_camisa'").get();if(pc)precioCamisa=parseFloat(pc.valor);}catch(e){}
-  db.transaction(function(){var ins=db.prepare('INSERT INTO accesorios_log (tipo,cantidad,responsable,fecha) VALUES (?,?,?,?)');
-    for(var i=0;i<items.length;i++){if(items[i].cantidad>0){ins.run(items[i].tipo,items[i].cantidad,b.responsable||q.user.nombre||'',fecha);
-      if(items[i].tipo==='Camisas'){
-        var d=items[i].cantidad*precioCamisa;dinero+=d;
-        recPts(db,q.user.cod||'',b.responsable||q.user.nombre||'',0,'camisa_incentivo',0,items[i].cantidad+'x Camisas = S/'+d.toFixed(2));
+  var sedeOri = b.sede_origen || (q.user&&q.user.sede) || 'AL';
+  db.transaction(function(){
+    var ins=db.prepare('INSERT INTO accesorios_log (tipo,cantidad,responsable,fecha,sede_origen,origen,sustento) VALUES (?,?,?,?,?,?,?)');
+    for(var i=0;i<items.length;i++){
+      var it = items[i];
+      if(!it || !(it.cantidad>0)) continue;
+      ins.run(it.tipo, it.cantidad, b.responsable||q.user.nombre||'', fecha, sedeOri, b.origen||'almacen', it.sustento||'');
+      if(it.tipo==='Camisas'){
+        var d=it.cantidad*precioCamisa;dinero+=d;
+        recPts(db,q.user.cod||'',b.responsable||q.user.nombre||'',0,'camisa_incentivo',0,it.cantidad+'x Camisas = S/'+d.toFixed(2));
       }else{
-        var p=items[i].cantidad*pa;tp+=p;
-        recPts(db,q.user.cod||'',b.responsable||q.user.nombre||'',0,'acc_'+items[i].tipo,p,items[i].cantidad+'x '+items[i].tipo);
+        var p=it.cantidad*pa;tp+=p;
+        recPts(db,q.user.cod||'',b.responsable||q.user.nombre||'',0,'acc_'+it.tipo,p,it.cantidad+'x '+it.tipo);
       }
-    }}
+    }
   })();
   r.json({ok:true,puntos:tp,dinero:dinero});
 }));
@@ -254,6 +309,224 @@ router.get('/mi-avance',safe(function(q,r){
   var acciones=db.prepare("SELECT COUNT(*) as n FROM pipeline_puntos WHERE emp_cod=? AND fecha=? AND puntos>0").get(cod,fecha)?.n||0;
   var detalle=db.prepare("SELECT etapa,SUM(puntos) as pts,COUNT(*) as n FROM pipeline_puntos WHERE emp_cod=? AND fecha=? AND puntos>0 GROUP BY etapa ORDER BY pts DESC").all(cod,fecha);
   r.json({pts:pts,acciones:acciones,detalle:detalle,fecha:fecha});
+}));
+
+// ═══════════════════════════════════════════════════════════════
+// HISTORIAL UNIFICADO — pipeline + lavandería + accesorios
+// Solo admin / dueño / encargado_almacén. Con filtros y sort.
+// ═══════════════════════════════════════════════════════════════
+router.get('/historial', auth, safe(function(q,r){
+  if (!esSupervisor(q.user)) return r.status(403).json({error:'Acceso restringido al encargado de almacén o administrador'});
+  var db = getDB();
+  var qp = q.query || {};
+  var desde = qp.desde || '';
+  var hasta = qp.hasta || '';
+  var sede  = qp.sede  || '';
+  var resp  = qp.responsable || '';
+  var tipo  = qp.tipo || ''; // 'prenda' | 'accesorio' | 'lista' | 'envio' | 'envio_acc' | ''=todo
+  var sort  = qp.sort || 'fecha_desc'; // fecha_desc | fecha_asc
+  var limit = Math.min(parseInt(qp.limit)||500, 2000);
+  var eventos = [];
+
+  // ── 1) Movimientos de prendas (prenda_historial) ──
+  if (!tipo || tipo==='prenda') {
+    var s = 'SELECT h.fecha as fecha, h.responsable as responsable, h.etapa_anterior as etapa_anterior, ' +
+            '       h.etapa_nueva as etapa_nueva, h.obs as obs, h.prenda_id as ref_id, ' +
+            '       p.codigo as codigo, p.tipo as tipo_prenda, p.color as color, p.talla as talla, ' +
+            '       p.sede_origen as sede, p.lista_lavanderia_id as lista_id ' +
+            'FROM prenda_historial h JOIN prendas p ON p.id=h.prenda_id WHERE 1=1';
+    var p = [];
+    if (desde) { s+=' AND DATE(h.fecha)>=?'; p.push(desde); }
+    if (hasta) { s+=' AND DATE(h.fecha)<=?'; p.push(hasta); }
+    if (sede)  { s+=' AND p.sede_origen=?'; p.push(sede); }
+    if (resp)  { s+=' AND h.responsable LIKE ?'; p.push('%'+resp+'%'); }
+    db.prepare(s).all(...p).forEach(function(row){
+      eventos.push({
+        tipo:'prenda',
+        fecha:row.fecha, sede:row.sede, responsable:row.responsable,
+        accion:(row.etapa_anterior?row.etapa_anterior+'→':'')+row.etapa_nueva,
+        ref_id:row.ref_id,
+        ref:row.codigo+' ('+(row.tipo_prenda||'?')+' '+(row.color||'')+' '+(row.talla||'')+')',
+        obs:row.obs||'',
+        lista_id:row.lista_id||null
+      });
+    });
+  }
+
+  // ── 2) Accesorios procesados (accesorios_log) ──
+  if (!tipo || tipo==='accesorio') {
+    var s2 = 'SELECT id, fecha, responsable, tipo, cantidad, COALESCE(sede_origen,"AL") as sede, COALESCE(origen,"almacen") as origen, COALESCE(sustento,"") as sustento, COALESCE(enviado,0) as enviado FROM accesorios_log WHERE 1=1';
+    var p2 = [];
+    if (desde) { s2+=' AND DATE(fecha)>=?'; p2.push(desde); }
+    if (hasta) { s2+=' AND DATE(fecha)<=?'; p2.push(hasta); }
+    if (sede)  { s2+=' AND sede_origen=?'; p2.push(sede); }
+    if (resp)  { s2+=' AND responsable LIKE ?'; p2.push('%'+resp+'%'); }
+    db.prepare(s2).all(...p2).forEach(function(row){
+      eventos.push({
+        tipo:'accesorio', fecha:row.fecha, sede:row.sede, responsable:row.responsable,
+        accion:'procesado',
+        ref_id:row.id,
+        ref:row.cantidad+'× '+row.tipo,
+        obs:row.sustento||row.origen,
+        enviado:!!row.enviado
+      });
+    });
+  }
+
+  // ── 3) Listas de lavandería (envíos desde tienda) ──
+  if (!tipo || tipo==='lista') {
+    var s3 = "SELECT id, sede, tipo as tipo_lista, estado, fecha, resp_inv, resp_traslado, camisas, corbatas, michis, corbatones, COALESCE(porta_ternos,0) as porta_ternos, COALESCE(zapatos,0) as zapatos, created_at FROM listas_lavanderia WHERE 1=1";
+    var p3 = [];
+    if (desde) { s3+=' AND DATE(fecha)>=?'; p3.push(desde); }
+    if (hasta) { s3+=' AND DATE(fecha)<=?'; p3.push(hasta); }
+    if (sede)  { s3+=' AND sede=?'; p3.push(sede); }
+    if (resp)  { s3+=' AND (resp_inv LIKE ? OR resp_traslado LIKE ?)'; p3.push('%'+resp+'%','%'+resp+'%'); }
+    db.prepare(s3).all(...p3).forEach(function(row){
+      var totalG = (row.camisas||0)+(row.corbatas||0)+(row.michis||0)+(row.corbatones||0)+(row.porta_ternos||0)+(row.zapatos||0);
+      eventos.push({
+        tipo:'lista', fecha:row.created_at||row.fecha, sede:row.sede,
+        responsable:row.resp_traslado||row.resp_inv,
+        accion:'envío a lavandería ('+row.tipo_lista+')',
+        ref_id:row.id, ref:row.id,
+        obs:'Generales: '+totalG+' · Estado: '+row.estado,
+        extra:{ camisas:row.camisas, corbatas:row.corbatas, michis:row.michis, corbatones:row.corbatones, porta_ternos:row.porta_ternos, zapatos:row.zapatos }
+      });
+    });
+  }
+
+  // ── 4) Envíos de prendas almacén → tienda (envios_prendas) ──
+  if (!tipo || tipo==='envio') {
+    var s4 = "SELECT id, sede_destino, fecha, responsable, estado, validado_tienda, created_at FROM envios_prendas WHERE 1=1";
+    var p4 = [];
+    if (desde) { s4+=' AND DATE(fecha)>=?'; p4.push(desde); }
+    if (hasta) { s4+=' AND DATE(fecha)<=?'; p4.push(hasta); }
+    if (sede)  { s4+=' AND sede_destino=?'; p4.push(sede); }
+    if (resp)  { s4+=' AND responsable LIKE ?'; p4.push('%'+resp+'%'); }
+    db.prepare(s4).all(...p4).forEach(function(row){
+      var n = 0; try{ n = db.prepare("SELECT COUNT(*) as n FROM prendas WHERE envio_id=?").get(row.id).n||0; }catch(e){}
+      eventos.push({
+        tipo:'envio', fecha:row.created_at||row.fecha, sede:row.sede_destino,
+        responsable:row.responsable,
+        accion:'envío a tienda (#'+row.id+')',
+        ref_id:row.id, ref:'#'+row.id+' · '+n+' prendas',
+        obs:'Estado: '+row.estado+(row.validado_tienda?' · validado':' · sin validar')
+      });
+    });
+  }
+
+  // ── 5) Envíos de accesorios (nuevo) ──
+  if (!tipo || tipo==='envio_acc') {
+    try{
+      var s5 = "SELECT e.id, e.sede_destino as sede, e.fecha, e.responsable, e.validado_tienda, e.obs, e.created_at FROM envios_accesorios e WHERE 1=1";
+      var p5 = [];
+      if (desde) { s5+=' AND DATE(e.fecha)>=?'; p5.push(desde); }
+      if (hasta) { s5+=' AND DATE(e.fecha)<=?'; p5.push(hasta); }
+      if (sede)  { s5+=' AND e.sede_destino=?'; p5.push(sede); }
+      if (resp)  { s5+=' AND e.responsable LIKE ?'; p5.push('%'+resp+'%'); }
+      db.prepare(s5).all(...p5).forEach(function(row){
+        var items = db.prepare("SELECT tipo, cantidad FROM envio_accesorios_items WHERE envio_id=?").all(row.id);
+        eventos.push({
+          tipo:'envio_acc', fecha:row.created_at||row.fecha, sede:row.sede,
+          responsable:row.responsable,
+          accion:'envío accesorios (#'+row.id+')',
+          ref_id:row.id,
+          ref:items.map(function(it){return it.cantidad+'× '+it.tipo;}).join(', ')||'—',
+          obs:(row.obs||'')+(row.validado_tienda?' · validado':' · sin validar')
+        });
+      });
+    }catch(e){}
+  }
+
+  // Sort
+  eventos.sort(function(a,b){
+    if (sort==='fecha_asc') return (a.fecha||'').localeCompare(b.fecha||'');
+    return (b.fecha||'').localeCompare(a.fecha||'');
+  });
+  eventos = eventos.slice(0, limit);
+
+  // Stats
+  var stats = { total: eventos.length, por_tipo: {} };
+  eventos.forEach(function(e){ stats.por_tipo[e.tipo] = (stats.por_tipo[e.tipo]||0)+1; });
+
+  r.json({ eventos:eventos, stats:stats, filtros:{desde:desde, hasta:hasta, sede:sede, responsable:resp, tipo:tipo, sort:sort, limit:limit} });
+}));
+
+// ═══════════════════════════════════════════════════════════════
+// DETALLE de una lista de lavandería — devuelve las prendas que entraron al pipeline
+// desde esta lista (rastreo lista → prendas).
+// ═══════════════════════════════════════════════════════════════
+router.get('/lista/:id/trazabilidad', auth, safe(function(q,r){
+  var db = getDB();
+  var lista = db.prepare('SELECT * FROM listas_lavanderia WHERE id=?').get(q.params.id);
+  if (!lista) return r.status(404).json({error:'Lista no encontrada'});
+  var items = db.prepare('SELECT * FROM lista_items WHERE lista_id=?').all(q.params.id);
+  var prendas = db.prepare('SELECT * FROM prendas WHERE lista_lavanderia_id=?').all(q.params.id);
+  prendas.forEach(function(p){
+    try{ p.historial = db.prepare('SELECT * FROM prenda_historial WHERE prenda_id=? ORDER BY fecha').all(p.id); }catch(e){ p.historial=[]; }
+  });
+  r.json({ lista:lista, items:items, prendas:prendas });
+}));
+
+// ═══════════════════════════════════════════════════════════════
+// ENVÍO de accesorios almacén → tienda
+// Body: { sede_destino, fecha, items:[{tipo,cantidad,obs}], obs, responsable, responsable_cod }
+// ═══════════════════════════════════════════════════════════════
+router.post('/envios-accesorios', auth, safe(function(q,r){
+  var db = getDB();
+  var b = q.body || {};
+  if (!b.sede_destino) return r.status(400).json({error:'sede_destino requerida'});
+  var items = (b.items||[]).filter(function(it){ return it && it.tipo && parseInt(it.cantidad)>0; });
+  if (!items.length) return r.status(400).json({error:'Agrega al menos un accesorio con cantidad'});
+  var fecha = b.fecha || hoyLocal();
+  var resultado = {};
+  db.transaction(function(){
+    var insE = db.prepare('INSERT INTO envios_accesorios (sede_destino,fecha,responsable,responsable_cod,obs) VALUES (?,?,?,?,?)');
+    var e = insE.run(b.sede_destino, fecha, b.responsable||q.user.nombre||'', b.responsable_cod||q.user.cod||'', b.obs||'');
+    var eid = e.lastInsertRowid;
+    var insI = db.prepare('INSERT INTO envio_accesorios_items (envio_id,tipo,cantidad,obs) VALUES (?,?,?,?)');
+    items.forEach(function(it){ insI.run(eid, it.tipo, parseInt(it.cantidad)||0, it.obs||''); });
+    // Marcar los accesorios_log más recientes como enviados (FIFO por tipo, hasta agotar la cantidad)
+    var upd = db.prepare("UPDATE accesorios_log SET enviado=1, envio_id=? WHERE id=?");
+    items.forEach(function(it){
+      var restante = parseInt(it.cantidad)||0;
+      if (restante<=0) return;
+      var disponibles = db.prepare(
+        "SELECT id, cantidad FROM accesorios_log WHERE tipo=? AND COALESCE(enviado,0)=0 ORDER BY fecha ASC, id ASC"
+      ).all(it.tipo);
+      for (var k=0; k<disponibles.length && restante>0; k++){
+        upd.run(eid, disponibles[k].id);
+        restante -= (disponibles[k].cantidad||0);
+      }
+    });
+    resultado.envio_id = eid;
+  })();
+  r.json(Object.assign({ok:true}, resultado));
+}));
+
+// GET envíos de accesorios (con items) — filtrable por sede_destino
+router.get('/envios-accesorios', auth, safe(function(q,r){
+  var db = getDB();
+  var s = 'SELECT * FROM envios_accesorios WHERE 1=1';
+  var p = [];
+  if (q.query.sede_destino) { s+=' AND sede_destino=?'; p.push(q.query.sede_destino); }
+  if (q.query.desde) { s+=' AND DATE(fecha)>=?'; p.push(q.query.desde); }
+  if (q.query.hasta) { s+=' AND DATE(fecha)<=?'; p.push(q.query.hasta); }
+  s += ' ORDER BY fecha DESC, id DESC LIMIT 200';
+  var envios = db.prepare(s).all(...p);
+  envios.forEach(function(e){
+    e.items = db.prepare('SELECT * FROM envio_accesorios_items WHERE envio_id=?').all(e.id);
+    e.total_unidades = e.items.reduce(function(a,it){ return a+(it.cantidad||0); }, 0);
+  });
+  r.json(envios);
+}));
+
+// PUT validar envío de accesorios desde la tienda
+router.put('/envios-accesorios/:id/validar', auth, safe(function(q,r){
+  var db = getDB();
+  var b = q.body||{};
+  db.prepare("UPDATE envios_accesorios SET validado_tienda=1, validado_por=?, fecha_validado=datetime('now','localtime'), obs=COALESCE(?, obs) WHERE id=?")
+    .run(q.user.nombre||'', b.obs||null, q.params.id);
+  r.json({ok:true});
 }));
 
 module.exports = router;

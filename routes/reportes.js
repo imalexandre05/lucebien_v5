@@ -40,6 +40,42 @@ function fechaDesdeId(id){
   }catch(e){console.warn('[reportes] reparación fecha:', e.message);}
 })();
 
+// ═══ Migración: columnas para auto-envío + tabla de drafts ═══
+// Cada ALTER en try/catch: si la columna ya existe, SQLite lanza error y seguimos.
+(function migrarReportesAutoEnvio(){
+  try{
+    var db=getDB();
+    try{ db.exec('ALTER TABLE reportes ADD COLUMN auto_enviado INTEGER DEFAULT 0'); }catch(e){}
+    try{ db.exec('ALTER TABLE reportes ADD COLUMN auto_enviado_razon TEXT'); }catch(e){}
+    try{ db.exec('ALTER TABLE reportes ADD COLUMN no_evaluable INTEGER DEFAULT 0'); }catch(e){}
+    try{ db.exec('ALTER TABLE reportes ADD COLUMN encargado_id TEXT'); }catch(e){}
+    // Drafts en vivo — lo que el usuario va llenando en FR-01 antes de enviar.
+    // PK compuesta (sede,fecha,turno) → un único borrador por espacio de trabajo.
+    db.exec(
+      'CREATE TABLE IF NOT EXISTS reporte_drafts (' +
+      '  sede TEXT NOT NULL, fecha TEXT NOT NULL, turno TEXT NOT NULL,' +
+      '  encargado_id TEXT, encargado_nombre TEXT,' +
+      '  payload TEXT,' +
+      '  updated_at TEXT DEFAULT (datetime(\'now\',\'localtime\')),' +
+      '  PRIMARY KEY (sede, fecha, turno)' +
+      ')'
+    );
+  }catch(e){ console.warn('[reportes] migración auto-envío:', e.message); }
+})();
+
+// ── Helper hora local (Peru) para decidir deadlines ──────────────
+function horaActualPeru(){
+  var d = new Date();
+  return { h: d.getHours(), m: d.getMinutes(), fecha: hoyLocal() };
+}
+// Deadlines: turno M = 15:00, turno T y C = 23:00
+function deadlinePasado(turno){
+  var t = horaActualPeru();
+  if (turno === 'M') return t.h >= 15;
+  if (turno === 'T' || turno === 'C') return t.h >= 23;
+  return false;
+}
+
 // GET /api/reportes?sede=&fecha=
 router.get('/', auth, function(req,res){
   try{var db=getDB();var sql='SELECT * FROM reportes WHERE 1=1';var p=[];
@@ -81,7 +117,9 @@ router.post('/', auth, function(req,res){
   try{var db=getDB();var b=req.body;
     if(db.prepare('SELECT id FROM reportes WHERE id=?').get(b.id))return res.status(409).json({error:'Reporte ya existe'});
     var fechaReal = fechaDesdeId(b.id) || b.fecha || hoyLocal();
-    db.prepare('INSERT INTO reportes (id,sede,turno,fecha,encargado,puntaje,act_total,act_done,bloqueado) VALUES (?,?,?,?,?,?,?,?,1)').run(b.id,b.sede,b.turno,fechaReal,b.encargado,b.puntaje||0,b.actTotal||0,b.actDone||0);
+    db.prepare('INSERT INTO reportes (id,sede,turno,fecha,encargado,encargado_id,puntaje,act_total,act_done,bloqueado) VALUES (?,?,?,?,?,?,?,?,?,1)').run(b.id,b.sede,b.turno,fechaReal,b.encargado,b.encargado_id||null,b.puntaje||0,b.actTotal||0,b.actDone||0);
+    // Limpiar draft al enviar manualmente
+    try{ db.prepare('DELETE FROM reporte_drafts WHERE sede=? AND fecha=? AND turno=?').run(b.sede, fechaReal, b.turno); }catch(e){}
     var insTrab=db.prepare('INSERT INTO reporte_trabajadores (reporte_id,nombre) VALUES (?,?)');
     (b.trabajadores||[]).forEach(function(n){insTrab.run(b.id,n);});
     var insAct=db.prepare('INSERT INTO reporte_actividades (reporte_id,cod,nombre,cat,peso,realizada,obs) VALUES (?,?,?,?,?,?,?)');
@@ -169,4 +207,163 @@ router.delete('/:id/anular-eval', auth, function(req,res){
   }catch(e){res.status(500).json({error:e.message});}
 });
 
+// ═══════════════════════════════════════════════════════════════
+// DRAFTS EN VIVO — autosave del reporte antes de enviar
+// ═══════════════════════════════════════════════════════════════
+
+// GET /api/reportes/drafts/:sede/:fecha/:turno — leer draft actual
+router.get('/drafts/:sede/:fecha/:turno', auth, function(req,res){
+  try{
+    var db=getDB();
+    var d=db.prepare('SELECT * FROM reporte_drafts WHERE sede=? AND fecha=? AND turno=?')
+      .get(req.params.sede, req.params.fecha, req.params.turno);
+    if (!d) return res.json(null);
+    try{ d.payload = d.payload ? JSON.parse(d.payload) : {}; }catch(e){ d.payload = {}; }
+    res.json(d);
+  }catch(e){ res.status(500).json({error:e.message}); }
+});
+
+// POST /api/reportes/drafts — upsert draft
+// Body: { sede, fecha, turno, encargado_id, encargado_nombre, payload:{ trabajadores, actividades, extras, incidencias, ... } }
+router.post('/drafts', auth, function(req,res){
+  try{
+    var db=getDB();
+    var b=req.body||{};
+    if (!b.sede || !b.fecha || !b.turno) return res.status(400).json({error:'sede/fecha/turno requeridos'});
+    var payload = b.payload ? JSON.stringify(b.payload) : '{}';
+    // No dejar que el autosave pise un encargado ya fijado si no viene en el body
+    var existing = db.prepare('SELECT encargado_id, encargado_nombre FROM reporte_drafts WHERE sede=? AND fecha=? AND turno=?')
+      .get(b.sede, b.fecha, b.turno);
+    var encId   = (b.encargado_id   !== undefined) ? b.encargado_id   : (existing ? existing.encargado_id   : null);
+    var encNom  = (b.encargado_nombre!== undefined)? b.encargado_nombre: (existing ? existing.encargado_nombre: null);
+    db.prepare(
+      'INSERT INTO reporte_drafts (sede,fecha,turno,encargado_id,encargado_nombre,payload,updated_at) ' +
+      "VALUES (?,?,?,?,?,?,datetime('now','localtime')) " +
+      'ON CONFLICT(sede,fecha,turno) DO UPDATE SET ' +
+      '  encargado_id=excluded.encargado_id,' +
+      '  encargado_nombre=excluded.encargado_nombre,' +
+      '  payload=excluded.payload,' +
+      '  updated_at=excluded.updated_at'
+    ).run(b.sede, b.fecha, b.turno, encId, encNom, payload);
+    res.json({ok:true});
+  }catch(e){ res.status(500).json({error:e.message}); }
+});
+
+// DELETE /api/reportes/drafts/:sede/:fecha/:turno — limpiar al enviar o anular
+router.delete('/drafts/:sede/:fecha/:turno', auth, function(req,res){
+  try{
+    getDB().prepare('DELETE FROM reporte_drafts WHERE sede=? AND fecha=? AND turno=?')
+      .run(req.params.sede, req.params.fecha, req.params.turno);
+    res.json({ok:true});
+  }catch(e){ res.status(500).json({error:e.message}); }
+});
+
+// POST /api/reportes/permitir-reenvio — re-habilitar envío de un reporte no_evaluable
+// Body: { sede, fecha, turno }
+router.post('/permitir-reenvio', auth, function(req,res){
+  try{
+    if (req.user.rol!=='admin' && req.user.rol!=='dueno')
+      return res.status(403).json({error:'Solo admin/dueño'});
+    var db=getDB();
+    var b=req.body||{};
+    if (!b.sede || !b.fecha || !b.turno) return res.status(400).json({error:'sede/fecha/turno requeridos'});
+    // Borra reportes no_evaluable de ese sede/fecha/turno → permite reenvío manual
+    var reps = db.prepare('SELECT id FROM reportes WHERE sede=? AND fecha=? AND turno=? AND no_evaluable=1').all(b.sede, b.fecha, b.turno);
+    db.transaction(function(){
+      reps.forEach(function(r){
+        db.prepare('DELETE FROM reporte_trabajadores WHERE reporte_id=?').run(r.id);
+        db.prepare('DELETE FROM reporte_actividades  WHERE reporte_id=?').run(r.id);
+        db.prepare('DELETE FROM reporte_extras       WHERE reporte_id=?').run(r.id);
+        try{ db.prepare('DELETE FROM incidencias WHERE reporte_id=?').run(r.id); }catch(e){}
+        db.prepare('DELETE FROM reportes WHERE id=?').run(r.id);
+      });
+    })();
+    res.json({ok:true, borrados:reps.length});
+  }catch(e){ res.status(500).json({error:e.message}); }
+});
+
+// ═══════════════════════════════════════════════════════════════
+// AUTO-ENVÍO — se invoca desde el cron en server.js
+// Para cada sede + turno cuyo deadline ya pasó y NO hay reporte enviado:
+//   - Si hay draft: se convierte en reporte (auto_enviado=1, atribuido al encargado)
+//   - Si NO hay draft: se crea reporte no_evaluable=1 (placeholder para trazabilidad)
+// ═══════════════════════════════════════════════════════════════
+function autoEnviarPendientes(opts){
+  var db=getDB();
+  var hoy = hoyLocal();
+  var t = horaActualPeru();
+  var SEDES = ['ST','LB','AL','TR'];
+  var TURNOS = ['M','T','C'];
+  var resultados = [];
+  SEDES.forEach(function(sede){
+    TURNOS.forEach(function(turno){
+      if (!deadlinePasado(turno)) return;
+      // ¿Ya hay reporte enviado para este sede/fecha/turno?
+      var existe = db.prepare('SELECT id FROM reportes WHERE sede=? AND fecha=? AND turno=?').get(sede, hoy, turno);
+      if (existe) return;
+      // Generar id formato DD-MM-YY_TURNO-SEDE
+      var parts = hoy.split('-'); // yyyy-mm-dd
+      var idRep = parts[2]+'-'+parts[1]+'-'+parts[0].slice(2)+'_'+turno+'-'+sede;
+      // Verificar que id no exista (por seguridad)
+      if (db.prepare('SELECT id FROM reportes WHERE id=?').get(idRep)) return;
+      var draft = db.prepare('SELECT * FROM reporte_drafts WHERE sede=? AND fecha=? AND turno=?').get(sede, hoy, turno);
+      var payload = {};
+      try{ payload = draft && draft.payload ? JSON.parse(draft.payload) : {}; }catch(e){ payload = {}; }
+      var tieneContenido = !!(draft && (
+        (payload.trabajadores && payload.trabajadores.length) ||
+        (payload.actividades && payload.actividades.length) ||
+        (payload.extras && payload.extras.length) ||
+        (payload.incidencias && payload.incidencias.length)
+      ));
+      var encNom = (draft && draft.encargado_nombre) || null;
+      var encId  = (draft && draft.encargado_id)     || null;
+      var noEvaluable = tieneContenido ? 0 : 1;
+      var razon = tieneContenido ? 'auto-envio-deadline' : 'sin-draft-no-evaluable';
+      try{
+        db.transaction(function(){
+          db.prepare(
+            'INSERT INTO reportes (id,sede,turno,fecha,encargado,encargado_id,puntaje,act_total,act_done,bloqueado,auto_enviado,auto_enviado_razon,no_evaluable) ' +
+            'VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
+          ).run(idRep, sede, turno, hoy, encNom, encId, 0,
+                (payload.actividades||[]).length, (payload.actividades||[]).filter(function(a){return a.realizada;}).length,
+                noEvaluable?0:1, 1, razon, noEvaluable);
+          if (tieneContenido) {
+            var insT = db.prepare('INSERT INTO reporte_trabajadores (reporte_id,nombre) VALUES (?,?)');
+            (payload.trabajadores||[]).forEach(function(n){ insT.run(idRep, n); });
+            var insA = db.prepare('INSERT INTO reporte_actividades (reporte_id,cod,nombre,cat,peso,realizada,obs) VALUES (?,?,?,?,?,?,?)');
+            (payload.actividades||[]).forEach(function(a){ if(a.realizada) insA.run(idRep, a.cod, a.nombre, a.cat, a.peso, 1, a.obs||''); });
+            if (payload.extras && payload.extras.length){
+              var insE = db.prepare('INSERT INTO reporte_extras (reporte_id,tipo,nombre,cantidad,precio_unitario,monto_total,detalle,registrado_por) VALUES (?,?,?,?,?,?,?,?)');
+              payload.extras.forEach(function(e){ insE.run(idRep, e.tipo, e.nombre, e.cantidad||1, e.precio_unitario||0, e.monto_total||0, e.detalle||'', e.registrado_por||''); });
+            }
+            if (payload.incidencias && payload.incidencias.length){
+              var insI = db.prepare('INSERT INTO incidencias (sede,fecha,tipo,descripcion,nivel,responsable,reporte_id,reportado_por,origen,puntos_penalidad) VALUES (?,?,?,?,?,?,?,?,?,?)');
+              payload.incidencias.forEach(function(i){
+                var niv=(i.nivel||'Medio'); if(!/^(Alto|Medio|Bajo)$/.test(niv)) niv='Medio';
+                var pts=(i.puntos_penalidad!=null && i.puntos_penalidad!=='')?parseFloat(i.puntos_penalidad):(niv==='Alto'?5:(niv==='Bajo'?1:2));
+                insI.run(sede, hoy, i.tipo, i.descripcion||'', niv, i.responsable||'—', idRep, encNom||null, 'auto', pts);
+              });
+            }
+          }
+          // Limpiar draft usado
+          db.prepare('DELETE FROM reporte_drafts WHERE sede=? AND fecha=? AND turno=?').run(sede, hoy, turno);
+        })();
+        resultados.push({sede:sede, turno:turno, id:idRep, auto:true, no_evaluable:noEvaluable, razon:razon});
+        console.log('[auto-envio] '+idRep+' ('+(tieneContenido?'con contenido':'no-evaluable')+') encargado='+(encNom||'(ninguno)'));
+      }catch(e){
+        console.warn('[auto-envio] fallo '+idRep+':', e.message);
+      }
+    });
+  });
+  return resultados;
+}
+
+// Admin debug endpoint — forzar corrida del auto-envío (útil para testing sin esperar 15:00)
+router.post('/auto-envio/run', auth, function(req,res){
+  if (req.user.rol!=='admin' && req.user.rol!=='dueno')
+    return res.status(403).json({error:'Solo admin'});
+  res.json({ok:true, resultados: autoEnviarPendientes()});
+});
+
 module.exports = router;
+module.exports.autoEnviarPendientes = autoEnviarPendientes;

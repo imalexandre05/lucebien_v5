@@ -341,10 +341,12 @@ window.checkNeedsPassword = function() {};
 // ═══════════════════════════════════════════════════════
 window.toggleSidebar = function() {
   var sb = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
   if (!sb) return;
   sb.classList.toggle('collapsed');
+  if (main) main.classList.toggle('sidebar-collapsed', sb.classList.contains('collapsed'));
   var btn = sb.querySelector('.sb-collapse-btn');
-  if (btn) btn.innerHTML = sb.classList.contains('collapsed') ? '&#9654;' : '&#9664; Colapsar';
+  if (btn) btn.innerHTML = sb.classList.contains('collapsed') ? '' : '&#9664; Colapsar';
   localStorage.setItem('lb_sidebar_collapsed', sb.classList.contains('collapsed') ? '1' : '');
 };
 
@@ -353,7 +355,9 @@ window.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     if (localStorage.getItem('lb_sidebar_collapsed') === '1') {
       var sb = document.querySelector('.sidebar');
-      if (sb) { sb.classList.add('collapsed'); var btn = sb.querySelector('.sb-collapse-btn'); if (btn) btn.innerHTML = '&#9654;'; }
+      var main = document.querySelector('.main');
+      if (sb) { sb.classList.add('collapsed'); var btn = sb.querySelector('.sb-collapse-btn'); if (btn) btn.innerHTML = ''; }
+      if (main) main.classList.add('sidebar-collapsed');
     }
     document.querySelectorAll('.nav-item').forEach(function(item) {
       var text = item.textContent.trim().replace(/[!]/g, '');

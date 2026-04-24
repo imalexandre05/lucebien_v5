@@ -317,7 +317,8 @@ async function renderEmpleados() {
       '<td><span class="badge '+est.b+'" style="font-size:9px">'+est.i+' '+est.l+'</span></td>'+
       '<td>'+(document.getElementById('empShowCod')?.checked?'<span class="mono" style="font-size:11px;background:var(--s3);padding:2px 8px;border-radius:4px;border:1px solid var(--border)">'+e.cod+'</span>':'<span style="font-size:10px;color:var(--text3)">••••</span>')+'</td>'+
       '<td style="font-size:11px;color:var(--text3)">'+(e.telefono||'—')+'</td>'+
-      '<td><div style="display:flex;gap:3px"><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();editarEmpleado(&quot;'+e.id+'&quot;)">Editar</button>'+
+      '<td><div style="display:flex;gap:3px;flex-wrap:wrap"><button class="btn btn-ghost btn-xs" onclick="event.stopPropagation();editarEmpleado(&quot;'+e.id+'&quot;)">Editar</button>'+
+      '<button class="btn btn-ghost btn-xs" title="Ver horario semanal" onclick="event.stopPropagation();verHorarioEmpleado(&quot;'+e.id+'&quot;)">📅 Horario</button>'+
       (isSusp?'<button class="btn btn-ghost btn-xs" style="color:var(--green)" onclick="event.stopPropagation();toggleEstadoEmp(&quot;'+e.id+'&quot;,&quot;activo&quot;)">Activar</button>':
       '<button class="btn btn-ghost btn-xs" style="color:#ca8a04" onclick="event.stopPropagation();toggleEstadoEmp(&quot;'+e.id+'&quot;,&quot;suspendido&quot;)">Suspender</button>')+
       '</div></td></tr>';
