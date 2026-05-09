@@ -98,4 +98,45 @@ router.put('/layout-tooltips',auth,admin,function(q,r){
   }catch(e){r.status(500).json({error:e.message});}
 });
 
+// ─── Pesos de Evaluación Mensual (eval_pesos) ────────────────────────────
+// JSON: { competencias, valores, operaciones, tardanzas, incidencias }
+// Cada peso es % (0-100). La suma debería ser 100, pero permitimos cualquier
+// valor — el cálculo final normaliza. La nota final será sobre 20 puntos.
+// Las categorías "tardanzas" e "incidencias" son DESCUENTOS (restan).
+var EVAL_PESOS_DEFAULT = {
+  competencias: 25,
+  valores:      15,
+  operaciones:  50,   // incluye puntos del pipeline (pipeline_puntos)
+  tardanzas:     5,   // peso del descuento por tardanzas
+  incidencias:   5    // peso del descuento por incidencias
+};
+router.get('/eval-pesos', function(q, r) {
+  try {
+    var db = getDB();
+    var row = db.prepare("SELECT valor FROM config WHERE clave='eval_pesos'").get();
+    if (row) {
+      try { r.json(Object.assign({}, EVAL_PESOS_DEFAULT, JSON.parse(row.valor))); return; }
+      catch(e) {}
+    }
+    r.json(EVAL_PESOS_DEFAULT);
+  } catch(e) { r.json(EVAL_PESOS_DEFAULT); }
+});
+router.put('/eval-pesos', auth, admin, function(q, r) {
+  try {
+    var b = q.body || {};
+    var clean = {};
+    Object.keys(EVAL_PESOS_DEFAULT).forEach(function(k) {
+      var v = parseFloat(b[k]);
+      if (isNaN(v) || v < 0) v = EVAL_PESOS_DEFAULT[k];
+      if (v > 100) v = 100;
+      clean[k] = Math.round(v * 10) / 10;  // 1 decimal
+    });
+    var total = clean.competencias + clean.valores + clean.operaciones;
+    if (total <= 0) return r.status(400).json({ error: 'La suma de pesos positivos (competencias + valores + operaciones) debe ser > 0' });
+    var db = getDB();
+    db.prepare("INSERT OR REPLACE INTO config (clave,valor) VALUES ('eval_pesos',?)").run(JSON.stringify(clean));
+    r.json({ ok: true, pesos: clean, suma_positiva: total });
+  } catch(e) { r.status(500).json({ error: e.message }); }
+});
+
 module.exports=router;

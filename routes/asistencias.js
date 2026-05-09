@@ -18,6 +18,95 @@ function calcTardanza(horaEntrada, turno) {
 }
 
 // GET /api/asistencias?emp_id=&fecha_desde=&fecha_hasta=
+// ════════════════════════════════════════════════════════════════════════
+// GET /api/asistencias/del-dia?fecha=&sede=
+// Devuelve la asistencia consolidada de un día: para cada empleado activo
+// (filtrable por sede) lista los turnos que tenía en horario y empareja con
+// los registros de asistencia ya existentes (auto-marcados desde reportes
+// o manuales). Útil para la pantalla diaria que el encargado usa para
+// marcar/justificar.
+// ════════════════════════════════════════════════════════════════════════
+router.get('/del-dia', verifyToken, function(req, res) {
+  try {
+    var db = getDB();
+    var fecha = req.query.fecha;
+    if (!fecha) return res.status(400).json({error:'fecha requerida'});
+    var sede = req.query.sede || '';
+    var DIAS = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];
+    var diaSemana = DIAS[new Date(fecha+'T12:00:00').getDay()];
+
+    // Empleados activos (filtrar por sede si llega)
+    var empSql = "SELECT e.id, e.nombre, e.iniciales, e.rol FROM empleados e WHERE e.activo=1";
+    var empParams = [];
+    if (sede) {
+      empSql = "SELECT DISTINCT e.id, e.nombre, e.iniciales, e.rol FROM empleados e " +
+               "JOIN empleado_tiendas et ON et.emp_id=e.id WHERE e.activo=1 AND et.tienda=?";
+      empParams = [sede];
+    }
+    var empleados = db.prepare(empSql).all(...empParams);
+
+    // Asistencias existentes del día
+    var asists = db.prepare("SELECT * FROM asistencias WHERE fecha=?").all(fecha);
+    var asistByKey = {};
+    asists.forEach(function(a){ asistByKey[a.emp_id+'|'+(a.turno||'M')] = a; });
+
+    // Horario esperado (tabla horarios plana, legacy pero la que usa el sistema)
+    var horarios = [];
+    try {
+      var hsql = "SELECT h.* FROM horarios h WHERE h.dia=?";
+      var hp = [diaSemana];
+      if (sede) { hsql += ' AND h.sede=?'; hp.push(sede); }
+      horarios = db.prepare(hsql).all(...hp);
+    } catch(e) {}
+    var horByEmp = {};
+    horarios.forEach(function(h){
+      if (!horByEmp[h.emp_id]) horByEmp[h.emp_id] = [];
+      horByEmp[h.emp_id].push({ turno: h.turno || 'M', sede: h.sede || '' });
+    });
+
+    var rows = [];
+    empleados.forEach(function(emp){
+      var slots = horByEmp[emp.id] || [];
+      // Si no tiene slots para este día pero hay asistencia registrada,
+      // igual la incluimos (caso: relevo sin horario).
+      var registradas = asists.filter(function(a){ return a.emp_id===emp.id; });
+      var keys = {};
+      slots.forEach(function(s){ keys[s.turno] = s; });
+      registradas.forEach(function(a){ keys[a.turno||'M'] = keys[a.turno||'M'] || { turno:a.turno||'M', sede:'' }; });
+
+      Object.keys(keys).forEach(function(t){
+        var slot = keys[t];
+        var asist = asistByKey[emp.id+'|'+t] || null;
+        rows.push({
+          emp_id: emp.id, nombre: emp.nombre, iniciales: emp.iniciales, rol: emp.rol,
+          turno: t, sede_esperada: slot.sede || null,
+          asistencia: asist ? {
+            id: asist.id,
+            hora_entrada: asist.hora_entrada,
+            hora_salida: asist.hora_salida,
+            minutos_tardanza: asist.minutos_tardanza || 0,
+            fuente: asist.fuente,
+            obs: asist.obs
+          } : null
+        });
+      });
+    });
+
+    // Resumen
+    var total = rows.length;
+    var presentes = rows.filter(function(r){ return r.asistencia; }).length;
+    var ausentes = total - presentes;
+    var conTardanza = rows.filter(function(r){ return r.asistencia && (r.asistencia.minutos_tardanza||0) > 0; }).length;
+    var totalMinTardanza = rows.reduce(function(s,r){ return s + ((r.asistencia && r.asistencia.minutos_tardanza)||0); }, 0);
+
+    res.json({
+      fecha: fecha, sede: sede || null, dia_semana: diaSemana,
+      resumen: { total: total, presentes: presentes, ausentes: ausentes, con_tardanza: conTardanza, total_min_tardanza: totalMinTardanza },
+      rows: rows
+    });
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 router.get('/', verifyToken, function(req, res) {
   try {
     var db = getDB();

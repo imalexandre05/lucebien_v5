@@ -138,6 +138,32 @@ router.post('/', auth, function(req,res){
         insInc.run(b.sede,fechaReal,i.tipo,i.descripcion||'',niv,i.responsable||'—',b.id,b.encargado||null,null,'reporte',puntos);
       });
     }
+    // ── Auto-asistencia (provisional, hasta tener huellero) ─────────────
+    // Cada trabajador del reporte queda marcado presente para (fecha,turno).
+    // Sin hora real, la tardanza queda en 0 → notaTardanza = 20/20. El admin
+    // puede editar manualmente si vio una tardanza. Cuando llegue el huellero
+    // los registros con fuente='reporte' serán reemplazados por 'huellero'.
+    try{
+      var insAsist=db.prepare(
+        "INSERT OR IGNORE INTO asistencias (emp_id,fecha,turno,hora_entrada,hora_salida,minutos_tardanza,fuente,obs) "+
+        "VALUES (?,?,?,?,?,?,?,?)"
+      );
+      // Encargado del turno
+      if(b.encargado_id){
+        try{ insAsist.run(b.encargado_id, fechaReal, b.turno||'M', null, null, 0, 'reporte', 'auto: encargado del reporte '+b.id); }catch(e2){}
+      }
+      // Trabajadores adicionales (best-effort: lookup por nombre)
+      (b.trabajadores||[]).forEach(function(n){
+        if(!n) return;
+        try{
+          var emp=db.prepare("SELECT id FROM empleados WHERE nombre=? AND activo=1 LIMIT 1").get(n);
+          if(emp&&emp.id){
+            insAsist.run(emp.id, fechaReal, b.turno||'M', null, null, 0, 'reporte', 'auto: trabajador del reporte '+b.id);
+          }
+        }catch(e2){}
+      });
+    }catch(e){ console.warn('[reportes] auto-asistencia:', e.message); }
+
     res.json({id:b.id,ok:true,fecha:fechaReal});
   }catch(e){res.status(500).json({error:e.message});}
 });
