@@ -1253,6 +1253,11 @@ async function cargarEvalPeriodo() {
   if (document.getElementById('evalTabAsistencias')?.style.display !== 'none') {
     await cargarAsistencias();
   }
+  // Refrescar dashboard por trabajador si la tab está activa
+  var dashEl = document.getElementById('evalTabDashboard');
+  if (dashEl && dashEl.style.display !== 'none' && typeof renderEvalMDashboard === 'function') {
+    renderEvalMDashboard();
+  }
 }
 
 async function cargarEvalMensualForm() {
@@ -3039,3 +3044,207 @@ window.exportAsistDiaCSV = async function(){
     }));
   showToast('Exportadas '+d.rows.length+' filas','success');
 };
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD POR TRABAJADOR (tab "Dashboard" en page-evaluacion-mensual)
+// ═══════════════════════════════════════════════════════
+function _evalMDashFmtMes(rng) {
+  var meses = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var d0 = new Date(rng.desde + 'T12:00:00');
+  var d1 = new Date(rng.hasta + 'T12:00:00');
+  if (d0.getMonth() === d1.getMonth() && d0.getFullYear() === d1.getFullYear()) {
+    return meses[d0.getMonth()] + ' ' + d0.getFullYear();
+  }
+  return rng.desde + ' → ' + rng.hasta;
+}
+function _evalMDashCatDot(c) {
+  return ({IND:'#c0392b', PO:'#2e3e6e', SO:'#b8860b', EXT:'#7c3aed'})[c] || '#888';
+}
+
+async function renderEvalMDashboard() {
+  var empId = document.getElementById('evalMEmpSel')?.value || STATE.evalMensualEmp || '';
+  var desde = document.getElementById('evalMDesde')?.value || STATE.evalMensualDesde || '';
+  var hasta = document.getElementById('evalMHasta')?.value || STATE.evalMensualHasta || '';
+  var empty = document.getElementById('evalMDashEmpty');
+  var content = document.getElementById('evalMDashContent');
+  if (!empId || !desde || !hasta) {
+    if (empty) empty.style.display = '';
+    if (content) content.style.display = 'none';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  if (content) content.style.display = '';
+
+  var qs = new URLSearchParams({ emp_id: empId, desde: desde, hasta: hasta }).toString();
+  var d = await API.get('/dashboard/empleado?' + qs);
+  if (!d) return;
+
+  // ── Hero scorecard
+  var hero = document.getElementById('evalMDashHero');
+  var k = d.kpis || {};
+  var puntaje = k.puntaje_avg || 0;
+  var dlt = k.delta || 0;
+  var deltaTxt = dlt > 0 ? '▲ +' + dlt : dlt < 0 ? '▼ ' + dlt : 'sin cambio';
+  var deltaCol = dlt > 0 ? '#86efac' : dlt < 0 ? '#fca5a5' : '#9ca3af';
+  var ini = (d.empleado.nombre || '').slice(0,2).toUpperCase();
+  var sedeLbl = d.empleado.sedes && d.empleado.sedes[0]
+    ? (SEDES[d.empleado.sedes[0]]?.label || d.empleado.sedes[0])
+    : '—';
+  if (hero) hero.innerHTML =
+    '<div class="lb-hero-left">' +
+      '<div class="lb-hero-avatar">' + ini + '</div>' +
+      '<div>' +
+        '<div class="lb-hero-name">' + d.empleado.nombre + '</div>' +
+        '<div class="lb-hero-meta">' + (d.empleado.rol || '—') + ' · ' + sedeLbl + '</div>' +
+        '<div class="lb-hero-period">' + _evalMDashFmtMes(d.periodo) + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="lb-hero-right">' +
+      '<div class="lb-hero-score-lbl">Puntaje promedio</div>' +
+      '<div class="lb-hero-score-val">' + puntaje + '<small>/100</small></div>' +
+      '<div class="lb-hero-delta" style="color:' + deltaCol + '">' + deltaTxt + ' vs mes anterior</div>' +
+    '</div>';
+
+  // ── KPIs personales
+  var kpis = document.getElementById('evalMDashKpis');
+  if (kpis) kpis.innerHTML =
+    '<div class="lb-kpi lb-kpi--navy"><div class="lb-kpi-lbl">Reportes</div><div class="lb-kpi-val">' + (k.reportes||0) + '</div><div class="lb-kpi-sub">' + (k.evaluados||0) + ' evaluados</div></div>' +
+    '<div class="lb-kpi lb-kpi--gold"><div class="lb-kpi-lbl">Puntaje base</div><div class="lb-kpi-val">' + (k.puntaje_avg||0) + '<span class="lb-kpi-unit">/100</span></div><div class="lb-kpi-sub">prom. del per&iacute;odo</div></div>' +
+    '<div class="lb-kpi lb-kpi--green"><div class="lb-kpi-lbl">Mes anterior</div><div class="lb-kpi-val">' + (k.puntaje_prev||0) + '<span class="lb-kpi-unit">/100</span></div><div class="lb-kpi-sub">' + (k.reportes_prev||0) + ' reportes</div></div>' +
+    '<div class="lb-kpi lb-kpi--purp"><div class="lb-kpi-lbl">Sede principal</div><div class="lb-kpi-val" style="font-size:18px;line-height:1.6">' + sedeLbl + '</div><div class="lb-kpi-sub">' + ((d.empleado.sedes||[]).length) + ' sede(s) asignada(s)</div></div>';
+
+  // ── Cumplimiento por categoría
+  var cat = document.getElementById('evalMDashCat');
+  if (cat) {
+    var rows = (d.cumplimiento_categoria || []).map(function(x){
+      var color = x.pct >= 85 ? 'var(--green)' : x.pct >= 65 ? 'var(--yellow)' : 'var(--red)';
+      return '<div class="lb-cat-row">' +
+        '<div class="lb-cat-head">' +
+          '<span class="lb-cat-name"><span class="lb-cat-dot" style="background:' + _evalMDashCatDot(x.cat) + '"></span>' + x.label + '<small class="lb-cat-peso">' + x.realizadas + '/' + x.esperadas + ' actos</small></span>' +
+          '<span class="lb-cat-pct" style="color:' + color + '">' + x.pct + '%</span>' +
+        '</div>' +
+        '<div class="lb-cat-bar"><div class="lb-cat-fill" style="width:' + Math.max(2, x.pct) + '%;background:' + color + '"></div></div>' +
+      '</div>';
+    }).join('');
+    if (!rows) rows = '<div style="color:var(--text3);font-size:12px;padding:18px 0">Sin actividades configuradas o sin reportes en el per&iacute;odo.</div>';
+    cat.innerHTML = rows;
+  }
+
+  // ── Heatmap del trabajador
+  var hm = document.getElementById('evalMDashHeat');
+  var hbBdg = document.getElementById('evalMDashHeatBadge');
+  if (hbBdg) hbBdg.textContent = _evalMDashFmtMes(d.periodo);
+  if (hm) {
+    var byDate = {};
+    (d.heatmap||[]).forEach(function(h){ byDate[h.fecha] = h; });
+    var d0 = new Date(d.periodo.desde + 'T12:00:00');
+    var d1 = new Date(d.periodo.hasta + 'T12:00:00');
+    var pad = (d0.getDay() + 6) % 7;
+    var totalDays = Math.round((d1 - d0) / 86400000) + 1;
+    var html = '<div class="lb-hm-labels"><span>L</span><span>M</span><span>X</span><span>J</span><span>V</span><span>S</span><span>D</span></div>';
+    html += '<div class="lb-hm-grid">';
+    for (var i=0; i<pad; i++) html += '<div class="lb-hm-cell lb-hm-empty"></div>';
+    for (var i=0; i<totalDays; i++) {
+      var dt = new Date(d0); dt.setDate(d0.getDate()+i);
+      var key = dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+      var h = byDate[key];
+      var p = h ? h.puntaje : null;
+      var cls = p === null || p === undefined ? 'lb-hm-none' : p >= 85 ? 'lb-hm-high' : p >= 65 ? 'lb-hm-mid' : 'lb-hm-low';
+      var tip = p !== null && p !== undefined ? ('Día ' + dt.getDate() + ': ' + p + '%') : ('Día ' + dt.getDate() + ' · sin reporte');
+      html += '<div class="lb-hm-cell ' + cls + '" title="' + tip + '">' + dt.getDate() + '</div>';
+    }
+    html += '</div>';
+    html += '<div class="lb-hm-legend">' +
+      '<span class="lb-hm-cell lb-hm-high"></span><span>≥85</span>' +
+      '<span class="lb-hm-cell lb-hm-mid"></span><span>65–84</span>' +
+      '<span class="lb-hm-cell lb-hm-low"></span><span>&lt;65</span>' +
+      '<span class="lb-hm-cell lb-hm-none"></span><span>sin rep.</span>' +
+    '</div>';
+    hm.innerHTML = html;
+  }
+
+  // ── Christie: Actividades × Días
+  var ch = document.getElementById('evalMDashChristie');
+  var chBdg = document.getElementById('evalMDashChristieBadge');
+  if (chBdg) chBdg.textContent = (d.fechas||[]).length + ' días · ' + (d.christie||[]).length + ' actividades';
+  if (ch) {
+    var fechas = d.fechas || [];
+    var rows = d.christie || [];
+    if (!rows.length) {
+      ch.innerHTML = '<div style="padding:24px;text-align:center;color:var(--text3);font-size:12px">Sin actividades para mostrar.</div>';
+    } else {
+      var byCat = {};
+      rows.forEach(function(r){ if(!byCat[r.categoria]) byCat[r.categoria] = []; byCat[r.categoria].push(r); });
+      var orden = ['IND','PO','SO','EXT'];
+      var html = '<table class="lb-christie">';
+      html += '<thead><tr><th class="ch-act">Actividad</th><th class="ch-peso">Peso</th>';
+      fechas.forEach(function(f){
+        var dd = f.slice(8,10);
+        var dow = new Date(f+'T12:00:00').getDay();
+        var isWk = (dow === 0 || dow === 6);
+        html += '<th class="ch-day' + (isWk?' wk':'') + '">' + dd + '</th>';
+      });
+      html += '<th class="ch-tot">✓</th><th class="ch-tot">✗</th><th class="ch-tot">%</th></tr></thead><tbody>';
+      orden.forEach(function(cat){
+        if (!byCat[cat]) return;
+        var label = ({IND:'INDISPENSABLES',PO:'PRIMER ORDEN',SO:'SEGUNDO ORDEN',EXT:'EXTRAS'})[cat];
+        html += '<tr class="ch-cat-row"><td colspan="' + (fechas.length+5) + '"><span class="lb-cat-dot" style="background:' + _evalMDashCatDot(cat) + '"></span> ' + label + '</td></tr>';
+        byCat[cat].forEach(function(row){
+          html += '<tr>';
+          html += '<td class="ch-act"><span class="ch-cod">' + row.cod + '</span> ' + row.nombre + '</td>';
+          html += '<td class="ch-peso">' + row.peso + '</td>';
+          row.celdas.forEach(function(c){
+            var sym = c.status === 'ok' ? '✓' : c.status === 'no' ? '✗' : '·';
+            html += '<td class="ch-c ch-c-' + c.status + '">' + sym + '</td>';
+          });
+          var pctCls = row.pct >= 85 ? 'ch-pct-high' : row.pct >= 65 ? 'ch-pct-mid' : 'ch-pct-low';
+          html += '<td class="ch-tot ch-tot-ok">' + row.realizadas + '</td>';
+          html += '<td class="ch-tot ch-tot-no">' + row.no_realizadas + '</td>';
+          html += '<td class="ch-tot ' + pctCls + '">' + row.pct + '%</td>';
+          html += '</tr>';
+        });
+      });
+      html += '</tbody></table>';
+      ch.innerHTML = html;
+    }
+  }
+
+  // ── Evolución
+  var ev = document.getElementById('evalMDashEvolucion');
+  if (ev) {
+    var arr = d.evolucion || [];
+    if (!arr.length) ev.innerHTML = '<div style="color:var(--text3);font-size:12px">Sin datos históricos</div>';
+    else {
+      ev.innerHTML = arr.map(function(m){
+        var color = m.puntaje >= 85 ? 'var(--green)' : m.puntaje >= 65 ? 'var(--yellow)' : m.puntaje > 0 ? 'var(--red)' : 'var(--text3)';
+        return '<div class="lb-evo-row">' +
+          '<span class="lb-evo-lbl">' + m.label + '</span>' +
+          '<div class="lb-evo-bar"><div class="lb-evo-fill" style="width:' + m.puntaje + '%;background:' + color + '"></div></div>' +
+          '<span class="lb-evo-val" style="color:' + color + '">' + m.puntaje + '</span>' +
+          '<span class="lb-evo-cnt">' + m.reportes + ' rep.</span>' +
+        '</div>';
+      }).join('');
+    }
+  }
+
+  // ── Incidencias
+  var inc = document.getElementById('evalMDashIncidencias');
+  if (inc) {
+    var arr = d.incidencias || [];
+    if (!arr.length) {
+      inc.innerHTML = '<div style="color:var(--green);font-size:12px;font-weight:600;padding:12px 0">Sin incidencias en el período</div>';
+    } else {
+      var bdgs = { Alto:'badge-red', Medio:'badge-yellow', Bajo:'badge-green' };
+      inc.innerHTML = arr.slice(0,8).map(function(i){
+        return '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-s);font-size:12px">' +
+          '<span class="badge ' + (bdgs[i.nivel]||'badge-gray') + '" style="flex-shrink:0">' + i.nivel + '</span>' +
+          '<div style="flex:1">' +
+            '<div style="font-weight:600;color:var(--text)">' + i.tipo + '</div>' +
+            '<div style="font-size:11px;color:var(--text3);margin-top:2px">' + (i.descripcion||'') + '</div>' +
+          '</div>' +
+          '<span class="mono" style="font-size:10px;color:var(--text3);white-space:nowrap">' + i.fecha + '</span>' +
+        '</div>';
+      }).join('');
+    }
+  }
+}

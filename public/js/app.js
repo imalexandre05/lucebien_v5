@@ -2087,13 +2087,14 @@ async function enviarIncRapModal(){
 
 // ═══ EVAL TABS ═══
 function switchEvalTab(tab, btn) {
-  var ids = ['evaluar','asistencias','pagos','valores','config'];
+  var ids = ['dashboard','evaluar','asistencias','pagos','valores','config'];
   ids.forEach(function(t){
     var el = document.getElementById('evalTab'+t.charAt(0).toUpperCase()+t.slice(1));
     if (el) el.style.display = (tab === t ? '' : 'none');
   });
   document.querySelectorAll('.eval-tab').forEach(function(t) { t.classList.remove('active'); });
   if (btn) btn.classList.add('active');
+  if (tab === 'dashboard' && typeof renderEvalMDashboard === 'function') renderEvalMDashboard();
   if (tab === 'asistencias') initAsistencias();
   if (tab === 'config') renderConfigEval();
   if (tab === 'pagos' && typeof renderEvalPagos === 'function') renderEvalPagos();

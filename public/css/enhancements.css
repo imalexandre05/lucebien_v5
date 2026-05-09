@@ -1078,3 +1078,144 @@ body.sb-collapsed .lb-header { left: 60px; transition: left .18s ease; }
 .dash-cmp-row:last-of-type{ border-bottom:0 }
 .dash-cmp-row-meta{ color:var(--text2); font-family:var(--font-m) }
 .dash-cmp-row-pct{ font-family:var(--font-m); font-weight:800 }
+
+/* ════════════════════════════════════════════════════
+   DASHBOARD POR TRABAJADOR (tab "Dashboard" en page-evaluacion-mensual)
+   Inspirado en LUCEBIEN_Dashboard_Gerencial.html
+   ════════════════════════════════════════════════════ */
+
+/* KPIs grid (4 tiles con borde superior de color) */
+.lb-kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+@media(max-width:1100px){ .lb-kpi-grid{grid-template-columns:repeat(2,1fr);} }
+.lb-kpi {
+  background:var(--s1); border-radius:10px; padding:16px 18px;
+  border:1px solid var(--border); position:relative; overflow:hidden;
+  transition:transform .15s, box-shadow .15s;
+}
+.lb-kpi:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(46,62,110,.09); }
+.lb-kpi::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; background:var(--text3); }
+.lb-kpi--navy::before { background:var(--navy); }
+.lb-kpi--gold::before { background:var(--gold); }
+.lb-kpi--green::before { background:var(--green); }
+.lb-kpi--red::before { background:var(--red); }
+.lb-kpi--purp::before { background:var(--purple); }
+.lb-kpi-lbl { font-size:10px; color:var(--text3); font-weight:700; text-transform:uppercase; letter-spacing:1.2px; }
+.lb-kpi-val { font-size:30px; font-weight:800; color:var(--text); line-height:1.1; margin:6px 0 3px; font-variant-numeric:tabular-nums; }
+.lb-kpi--gold .lb-kpi-val { color:var(--gold-d); }
+.lb-kpi--green .lb-kpi-val { color:var(--green); }
+.lb-kpi--red .lb-kpi-val { color:var(--red); }
+.lb-kpi--purp .lb-kpi-val { color:var(--purple); }
+.lb-kpi-unit { font-size:14px; color:var(--text3); font-weight:600; margin-left:2px; }
+.lb-kpi-sub { font-size:10px; color:var(--text3); margin-top:2px; }
+
+/* Cumplimiento por categoría (barras) */
+.lb-cat-row { margin-bottom:12px; }
+.lb-cat-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+.lb-cat-name { font-size:12px; font-weight:600; color:var(--text); display:flex; align-items:center; gap:6px; }
+.lb-cat-dot { display:inline-block; width:8px; height:8px; border-radius:50%; vertical-align:middle; }
+.lb-cat-peso { font-size:10px; color:var(--text3); font-weight:500; margin-left:6px; }
+.lb-cat-pct { font-family:var(--font-m); font-size:13px; font-weight:700; }
+.lb-cat-bar { height:8px; background:var(--s3); border-radius:4px; overflow:hidden; }
+.lb-cat-fill { height:100%; border-radius:4px; transition:width .6s cubic-bezier(.4,0,.2,1); }
+
+/* Heatmap calendario */
+.lb-hm-labels { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; margin-bottom:4px; }
+.lb-hm-labels span { font-size:9px; text-align:center; color:var(--text3); font-weight:700; letter-spacing:1px; }
+.lb-hm-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:3px; }
+.lb-hm-cell {
+  aspect-ratio:1; border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:9px; font-family:var(--font-m); font-weight:600;
+  color:rgba(0,0,0,.55); cursor:default; transition:transform .12s;
+}
+.lb-hm-cell:not(.lb-hm-empty):hover { transform:scale(1.18); z-index:5; }
+.lb-hm-empty { background:transparent; }
+.lb-hm-none { background:#e5e7eb; color:#9ca3af; }
+.lb-hm-low { background:#fca5a5; color:#7f1d1d; }
+.lb-hm-mid { background:#fde68a; color:#78350f; }
+.lb-hm-high { background:#86efac; color:#14532d; }
+.lb-hm-legend { display:flex; align-items:center; gap:8px; margin-top:12px; font-size:10px; color:var(--text3); }
+.lb-hm-legend .lb-hm-cell { width:11px; height:11px; aspect-ratio:auto; cursor:default; }
+.lb-hm-legend .lb-hm-cell:hover { transform:none; }
+
+/* Hero scorecard */
+.lb-hero-card {
+  background:linear-gradient(135deg, var(--navy-xd) 0%, var(--navy) 100%);
+  color:#fff; border-radius:12px; padding:22px 26px;
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:16px; flex-wrap:wrap; gap:18px;
+  box-shadow:0 4px 16px rgba(46,62,110,.14);
+  position:relative; overflow:hidden;
+}
+.lb-hero-card::after {
+  content:''; position:absolute; right:-40px; top:-40px;
+  width:200px; height:200px; border-radius:50%;
+  background:radial-gradient(circle, rgba(184,165,21,.15) 0%, transparent 70%);
+  pointer-events:none;
+}
+.lb-hero-left { display:flex; align-items:center; gap:16px; position:relative; z-index:1; }
+.lb-hero-avatar {
+  width:56px; height:56px; border-radius:50%;
+  background:var(--gold); color:var(--navy-xd);
+  display:flex; align-items:center; justify-content:center;
+  font-size:18px; font-weight:800; letter-spacing:1px;
+  box-shadow:0 2px 10px rgba(184,165,21,.4);
+}
+.lb-hero-name { font-size:22px; font-weight:700; line-height:1.1; }
+.lb-hero-meta { font-size:12px; color:rgba(255,255,255,.65); margin-top:4px; }
+.lb-hero-period { font-size:10px; color:var(--gold); margin-top:4px; text-transform:uppercase; letter-spacing:1.5px; font-weight:600; }
+.lb-hero-right { text-align:right; position:relative; z-index:1; }
+.lb-hero-score-lbl { font-size:10px; color:rgba(255,255,255,.55); text-transform:uppercase; letter-spacing:1.2px; font-weight:600; }
+.lb-hero-score-val { font-size:42px; font-weight:800; color:var(--gold); line-height:1; margin:4px 0; font-variant-numeric:tabular-nums; }
+.lb-hero-score-val small { font-size:18px; color:rgba(255,255,255,.4); margin-left:2px; }
+.lb-hero-delta { font-size:11px; font-weight:600; }
+
+/* Christie table (Actividades × Días) */
+.lb-christie-wrap { overflow-x:auto; max-height:520px; overflow-y:auto; }
+.lb-christie {
+  border-collapse:collapse; width:100%; font-size:11px;
+  font-family:var(--font-b); table-layout:auto;
+}
+.lb-christie th {
+  background:var(--navy); color:#fff; padding:6px 4px;
+  text-align:center; font-weight:600; font-size:10px;
+  position:sticky; top:0; z-index:6;
+  border:1px solid rgba(255,255,255,.08);
+}
+.lb-christie th.ch-act { text-align:left; padding-left:10px; min-width:240px; position:sticky; left:0; z-index:8; background:var(--navy); }
+.lb-christie th.ch-peso { min-width:42px; background:var(--navy-l); }
+.lb-christie th.ch-day { min-width:26px; padding:5px 2px; font-family:var(--font-m); }
+.lb-christie th.ch-day.wk { background:var(--navy-l); color:var(--gold); }
+.lb-christie th.ch-tot { min-width:48px; background:var(--navy-l); }
+.lb-christie td { padding:4px 3px; text-align:center; border:1px solid var(--border-s); vertical-align:middle; }
+.lb-christie td.ch-act {
+  text-align:left; padding-left:10px; font-weight:500;
+  background:var(--s1); position:sticky; left:0; z-index:4;
+  border-right:2px solid var(--border); max-width:260px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.lb-christie td.ch-peso { font-family:var(--font-m); font-weight:700; font-size:11px; color:var(--navy); background:var(--s2); }
+.lb-christie tr.ch-cat-row td {
+  background:var(--s3); font-weight:800; font-size:10px;
+  letter-spacing:1.5px; text-transform:uppercase; color:var(--navy);
+  padding:6px 10px; text-align:left; position:sticky; left:0;
+}
+.lb-christie td.ch-c { font-family:var(--font-m); font-weight:700; font-size:11px; }
+.lb-christie td.ch-c-ok { background:#bbf7d0; color:#14532d; }
+.lb-christie td.ch-c-no { background:#fecaca; color:#7f1d1d; }
+.lb-christie td.ch-c-na { background:#f3f4f6; color:#9ca3af; font-size:9px; }
+.lb-christie td.ch-tot { font-family:var(--font-m); font-weight:700; font-size:11px; min-width:42px; }
+.lb-christie td.ch-tot-ok { background:#dcfce7; color:#14532d; }
+.lb-christie td.ch-tot-no { background:#fee2e2; color:#7f1d1d; }
+.lb-christie td.ch-pct-high { background:#dcfce7; color:#14532d; }
+.lb-christie td.ch-pct-mid { background:#fef9c3; color:#78350f; }
+.lb-christie td.ch-pct-low { background:#fee2e2; color:#7f1d1d; }
+.lb-christie .ch-cod { font-family:var(--font-m); font-size:9px; color:var(--text3); margin-right:4px; }
+
+/* Evolución últimos meses */
+.lb-evo-row { display:flex; align-items:center; gap:10px; padding:6px 0; }
+.lb-evo-lbl { font-size:11px; color:var(--text2); font-weight:600; min-width:60px; }
+.lb-evo-bar { flex:1; height:8px; background:var(--s3); border-radius:4px; overflow:hidden; }
+.lb-evo-fill { height:100%; border-radius:4px; transition:width .6s; }
+.lb-evo-val { font-family:var(--font-m); font-size:13px; font-weight:700; min-width:30px; text-align:right; }
+.lb-evo-cnt { font-size:10px; color:var(--text3); min-width:50px; text-align:right; }

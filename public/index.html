@@ -962,15 +962,62 @@
 
   <!-- TABS -->
   <div class="eval-tabs" style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)">
-    <button class="eval-tab active" onclick="switchEvalTab('evaluar',this)">Evaluar</button>
+    <button class="eval-tab active" onclick="switchEvalTab('dashboard',this)">Dashboard</button>
+    <button class="eval-tab" onclick="switchEvalTab('evaluar',this)">Evaluar</button>
     <button class="eval-tab" onclick="switchEvalTab('asistencias',this)">Asistencias</button>
     <button class="eval-tab" onclick="switchEvalTab('pagos',this)">Pagos</button>
     <button class="eval-tab" onclick="switchEvalTab('valores',this)">Valores 360&deg;</button>
     <button class="eval-tab" onclick="switchEvalTab('config',this)">Configuraci&oacute;n</button>
   </div>
 
+  <!-- ═══ TAB: DASHBOARD POR TRABAJADOR ═══ -->
+  <div id="evalTabDashboard">
+    <div id="evalMDashEmpty" style="padding:48px 32px;text-align:center;color:var(--text3);font-size:13px">
+      <div style="font-size:36px;margin-bottom:10px;opacity:.5">&#128202;</div>
+      Selecciona un colaborador y un per&iacute;odo para ver su dashboard.
+    </div>
+    <div id="evalMDashContent" style="display:none">
+      <!-- Hero scorecard -->
+      <div class="lb-hero-card" id="evalMDashHero"></div>
+      <!-- KPIs personales -->
+      <div class="lb-kpi-grid" id="evalMDashKpis"></div>
+      <!-- Cumplimiento por categoría + Heatmap -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Cumplimiento por categor&iacute;a</span><span class="badge badge-gold">Per&iacute;odo</span></div>
+          <div class="card-body" id="evalMDashCat"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Mapa de actividad</span><span class="badge badge-blue" id="evalMDashHeatBadge">—</span></div>
+          <div class="card-body" id="evalMDashHeat"></div>
+        </div>
+      </div>
+      <!-- Christie: Actividades × Días -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Cumplimiento diario · Actividades &times; D&iacute;as</span>
+          <span class="badge badge-navy" id="evalMDashChristieBadge">—</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="lb-christie-wrap" id="evalMDashChristie"></div>
+        </div>
+      </div>
+      <!-- Evolución + Incidencias -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Evoluci&oacute;n &uacute;ltimos 6 meses</span></div>
+          <div class="card-body" id="evalMDashEvolucion"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Incidencias del per&iacute;odo</span></div>
+          <div class="card-body" id="evalMDashIncidencias"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ TAB: EVALUAR ═══ -->
-  <div id="evalTabEvaluar">
+  <div id="evalTabEvaluar" style="display:none">
     <div id="evalMForm" class="hidden">
       <div style="margin-bottom:14px;padding:12px 16px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:var(--r);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>

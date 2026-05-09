@@ -256,4 +256,253 @@ router.get('/admin', verifyToken, (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════
+// GET /api/dashboard/empleado?emp_id=...&desde=YYYY-MM-DD&hasta=YYYY-MM-DD
+//   ó
+// GET /api/dashboard/empleado?nombre=...&desde=...&hasta=...
+//
+// Dashboard PERSONAL del trabajador (vive en page-evaluacion-mensual).
+// Devuelve un objeto con:
+//   empleado            — datos del colaborador (cod, nombre, rol, sedes)
+//   periodo             — desde/hasta resueltos (default: mes actual)
+//   fechas              — lista de días del período (para el header Christie)
+//   kpis                — reportes, evaluados, puntaje promedio, delta vs
+//                         mes anterior, sede principal
+//   cumplimiento_categoria — cumplimiento por categoría (IND/PO/SO/EXT)
+//                            ponderado por peso × días con reporte
+//   christie            — matriz [actividad x día] con celdas ok/no/na
+//                         + totales por fila (realizadas/no_realizadas/%)
+//   heatmap             — puntaje promedio por día del período
+//   evolucion           — últimos 6 meses con puntaje + nº reportes
+//   incidencias         — incidencias del trabajador en el período
+//   evaluaciones_mes    — historial de evaluaciones mensuales (últimas 6)
+// ═══════════════════════════════════════════════════════════════════════
+
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+function fmtDate(d) { return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()); }
+function rangeMesActual() {
+  const d = new Date();
+  const f = new Date(d.getFullYear(), d.getMonth(), 1);
+  const l = new Date(d.getFullYear(), d.getMonth()+1, 0);
+  return { desde: fmtDate(f), hasta: fmtDate(l) };
+}
+function shiftMes(rng, deltaMeses) {
+  const d0 = new Date(rng.desde + 'T12:00:00');
+  const d1 = new Date(rng.hasta + 'T12:00:00');
+  d0.setMonth(d0.getMonth() + deltaMeses);
+  d1.setMonth(d1.getMonth() + deltaMeses);
+  return { desde: fmtDate(d0), hasta: fmtDate(d1) };
+}
+function listarFechas(desde, hasta) {
+  const out = [];
+  const d0 = new Date(desde + 'T12:00:00');
+  const d1 = new Date(hasta + 'T12:00:00');
+  for (let d = new Date(d0); d <= d1; d.setDate(d.getDate()+1)) out.push(fmtDate(new Date(d)));
+  return out;
+}
+function catLabel(c) {
+  return ({ IND: 'Indispensables', PO: 'Primer Orden', SO: 'Segundo Orden', EXT: 'Extras' })[c] || c;
+}
+
+router.get('/empleado', verifyToken, (req, res) => {
+  try {
+    if (!esSupervisor(req.user)) return res.status(403).json({ error: 'Solo supervisores' });
+    const db = getDB();
+
+    // ── Resolver empleado por emp_id (cod) o por nombre
+    let nombre = req.query.nombre || '';
+    const empId = req.query.emp_id || '';
+    let emp = null;
+    try {
+      if (empId) emp = db.prepare('SELECT * FROM empleados WHERE cod=? LIMIT 1').get(empId);
+      if (!emp && nombre) emp = db.prepare('SELECT * FROM empleados WHERE nombres=? LIMIT 1').get(nombre);
+    } catch (e) {}
+    if (emp && !nombre) nombre = emp.nombres;
+    if (!nombre) return res.status(404).json({ error: 'Empleado no encontrado' });
+
+    const sedesEmp = (emp && emp.sedes)
+      ? String(emp.sedes).split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+
+    // ── Resolver período
+    const rng = (req.query.desde && req.query.hasta)
+      ? { desde: req.query.desde, hasta: req.query.hasta }
+      : rangeMesActual();
+    const rngPrev = shiftMes(rng, -1);
+
+    // ── Reportes en los que participó el trabajador en el período
+    const reps = safeAll(db,
+      'SELECT r.* FROM reportes r ' +
+      'WHERE r.id IN (SELECT reporte_id FROM reporte_trabajadores WHERE nombre=?) ' +
+      'AND r.fecha BETWEEN ? AND ? ORDER BY r.fecha',
+      [nombre, rng.desde, rng.hasta]
+    );
+    const repsPrev = safeAll(db,
+      'SELECT r.puntaje FROM reportes r ' +
+      'WHERE r.id IN (SELECT reporte_id FROM reporte_trabajadores WHERE nombre=?) ' +
+      'AND r.fecha BETWEEN ? AND ?',
+      [nombre, rngPrev.desde, rngPrev.hasta]
+    );
+
+    const puntajeAvg = reps.length
+      ? Math.round(reps.reduce((s, r) => s + (r.puntaje||0), 0) / reps.length) : 0;
+    const puntajePrev = repsPrev.length
+      ? Math.round(repsPrev.reduce((s, r) => s + (r.puntaje||0), 0) / repsPrev.length) : 0;
+
+    const kpis = {
+      reportes: reps.length,
+      reportes_prev: repsPrev.length,
+      evaluados: reps.filter(r => r.evaluado).length,
+      puntaje_avg: puntajeAvg,
+      puntaje_prev: puntajePrev,
+      delta: puntajeAvg - puntajePrev,
+      sede_principal: sedesEmp[0] || '—'
+    };
+
+    // ── Catálogo de actividades para sus sedes (dedup por cod)
+    let actsConfig = [];
+    if (sedesEmp.length) {
+      const ph = sedesEmp.map(() => '?').join(',');
+      actsConfig = safeAll(db,
+        "SELECT * FROM actividades_config WHERE activa=1 " +
+        "AND (sede IN (" + ph + ") OR sede='GLOBAL') " +
+        "AND (tipo_act='obligatoria' OR tipo_act IS NULL OR tipo_act='') " +
+        "ORDER BY categoria, orden, id",
+        sedesEmp
+      );
+    }
+    const byCod = {};
+    actsConfig.forEach(a => { if (!byCod[a.cod]) byCod[a.cod] = a; });
+    const acts = Object.keys(byCod).map(k => byCod[k]);
+
+    // ── Realizadas (cod, fecha)
+    const realizadasMap = {};
+    if (reps.length) {
+      const ids = reps.map(r => r.id);
+      const ph = ids.map(() => '?').join(',');
+      safeAll(db,
+        'SELECT ra.cod, ra.realizada, r.fecha FROM reporte_actividades ra ' +
+        'JOIN reportes r ON r.id=ra.reporte_id WHERE ra.reporte_id IN (' + ph + ')',
+        ids
+      ).forEach(r => {
+        if (!realizadasMap[r.cod]) realizadasMap[r.cod] = {};
+        if (r.realizada) realizadasMap[r.cod][r.fecha] = 1;
+      });
+    }
+
+    const fechas = listarFechas(rng.desde, rng.hasta);
+    const fechasConRep = {};
+    reps.forEach(r => { fechasConRep[r.fecha] = (fechasConRep[r.fecha]||0) + 1; });
+
+    // ── Matriz Christie
+    const christie = acts.map(a => {
+      const celdas = fechas.map(f => {
+        if (!fechasConRep[f]) return { fecha: f, status: 'na' };
+        if (realizadasMap[a.cod] && realizadasMap[a.cod][f]) return { fecha: f, status: 'ok' };
+        return { fecha: f, status: 'no' };
+      });
+      const diasConRep = celdas.filter(c => c.status !== 'na').length;
+      const realizadas = celdas.filter(c => c.status === 'ok').length;
+      const pct = diasConRep ? Math.round(realizadas * 100 / diasConRep) : 0;
+      return {
+        cod: a.cod,
+        nombre: a.nombre,
+        categoria: (a.categoria || 'PO').toUpperCase(),
+        peso: a.peso || 0,
+        celdas: celdas,
+        realizadas: realizadas,
+        no_realizadas: diasConRep - realizadas,
+        dias_con_reporte: diasConRep,
+        pct: pct
+      };
+    });
+
+    // ── Resumen ponderado por categoría
+    const resumenCat = {};
+    christie.forEach(row => {
+      const c = row.categoria;
+      if (!resumenCat[c]) resumenCat[c] = { realizadas:0, esperadas:0, peso_realizado:0, peso_esperado:0 };
+      resumenCat[c].realizadas += row.realizadas;
+      resumenCat[c].esperadas  += row.dias_con_reporte;
+      resumenCat[c].peso_realizado += row.realizadas * row.peso;
+      resumenCat[c].peso_esperado  += row.dias_con_reporte * row.peso;
+    });
+    const cumpCat = Object.keys(resumenCat).map(c => {
+      const x = resumenCat[c];
+      return {
+        cat: c,
+        label: catLabel(c),
+        realizadas: x.realizadas,
+        esperadas: x.esperadas,
+        peso_realizado: x.peso_realizado,
+        peso_esperado: x.peso_esperado,
+        pct: x.peso_esperado ? Math.round(x.peso_realizado * 100 / x.peso_esperado) : 0
+      };
+    });
+
+    // ── Heatmap diario (puntaje promedio por día)
+    const heatmap = fechas.map(f => {
+      const rs = reps.filter(r => r.fecha === f);
+      if (!rs.length) return { fecha: f, puntaje: null };
+      const p = rs.reduce((s, r) => s + (r.puntaje||0), 0) / rs.length;
+      return { fecha: f, puntaje: Math.round(p) };
+    });
+
+    // ── Evolución últimos 6 meses
+    const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const evolucion = [];
+    for (let m = 5; m >= 0; m--) {
+      const d = new Date(rng.desde + 'T12:00:00');
+      d.setMonth(d.getMonth() - m);
+      const first = new Date(d.getFullYear(), d.getMonth(), 1);
+      const last = new Date(d.getFullYear(), d.getMonth()+1, 0);
+      let row = null;
+      try {
+        row = db.prepare(
+          'SELECT AVG(r.puntaje) AS p, COUNT(*) AS c FROM reportes r ' +
+          'WHERE r.id IN (SELECT reporte_id FROM reporte_trabajadores WHERE nombre=?) ' +
+          'AND r.fecha BETWEEN ? AND ?'
+        ).get(nombre, fmtDate(first), fmtDate(last));
+      } catch (e) {}
+      evolucion.push({
+        label: meses[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2),
+        puntaje: row && row.p ? Math.round(row.p) : 0,
+        reportes: row ? (row.c || 0) : 0
+      });
+    }
+
+    // ── Incidencias del trabajador
+    const incidencias = safeAll(db,
+      'SELECT * FROM incidencias WHERE responsable=? AND fecha BETWEEN ? AND ? ORDER BY fecha DESC LIMIT 10',
+      [nombre, rng.desde, rng.hasta]
+    );
+
+    // ── Evaluaciones mensuales históricas
+    let evalsMes = [];
+    if (emp && emp.cod) {
+      evalsMes = safeAll(db,
+        'SELECT * FROM evaluaciones_mensuales WHERE emp_id=? ORDER BY mes DESC LIMIT 6',
+        [emp.cod]
+      );
+    }
+
+    res.json({
+      empleado: emp
+        ? { cod: emp.cod, nombre: emp.nombres, rol: emp.rol || '—', sedes: sedesEmp }
+        : { nombre: nombre, sedes: sedesEmp },
+      periodo: rng,
+      fechas: fechas,
+      kpis: kpis,
+      cumplimiento_categoria: cumpCat,
+      christie: christie,
+      heatmap: heatmap,
+      evolucion: evolucion,
+      incidencias: incidencias,
+      evaluaciones_mes: evalsMes
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 module.exports = router;
