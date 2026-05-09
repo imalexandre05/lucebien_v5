@@ -43,9 +43,11 @@ const API = {
   req(method, path, body) { return this.request(method, path, body); },
 
   // Atajos específicos — IDs codificados con encodeURIComponent para evitar problemas con / y espacios
-  login(cod, sede)       { return this.post('/auth/login', { cod, sede }); },
+  // Login por usuario + contraseña + sede. cod (4 dígitos) NO es para login, solo operaciones.
+  login(nombre, sede, password) { return this.post('/auth/login', { nombre: nombre, sede: sede, password: password }); },
   empleados(sede)        { return this.get('/empleados/by-sede/' + encodeURIComponent(sede)); },
   todosEmpleados()       { return this.get('/empleados'); },
+  credencialesEmpleados(){ return this.get('/empleados/credentials/all'); },
   desempeno(id)          { return this.get('/empleados/' + encodeURIComponent(id) + '/desempeno'); },
   reportes(params)       { const q = new URLSearchParams(params).toString(); return this.get('/reportes?' + q); },
   alertas(sede)          { return this.get('/reportes/alertas/' + encodeURIComponent(sede)); },
@@ -86,6 +88,9 @@ const API = {
   horarioDelDia(params)            { const q = new URLSearchParams(params||{}).toString(); return this.get('/horarios/del-dia' + (q?'?'+q:'')); },
   encargadoTurno(params)           { const q = new URLSearchParams(params||{}).toString(); return this.get('/horarios/encargado' + (q?'?'+q:'')); },
   horasMensuales(emp_id, mes)      { return this.get('/horarios/horas-mes?emp_id=' + encodeURIComponent(emp_id) + '&mes=' + encodeURIComponent(mes)); },
+  // ── Pesos de Evaluación Mensual ─────────────────────
+  evalPesos()                      { return this.get('/config/eval-pesos'); },
+  guardarEvalPesos(pesos)          { return this.put('/config/eval-pesos', pesos); },
   // ── Constructor v2: CRUD por slot ────────────────────
   crearSlotHorario(periodoId, b)   { return this.post('/horarios/periodos/' + encodeURIComponent(periodoId) + '/slots', b); },
   editarSlotHorario(slotId, b)     { return this.put('/horarios/slots/' + encodeURIComponent(slotId), b); },

@@ -524,14 +524,64 @@ td.mono,span.mono{font-family:Inter,system-ui,sans-serif !important}
 .btn-talla:hover{border-color:var(--navy)}
 .btn-talla.active{border-color:var(--navy);background:var(--navy);color:#fff}
 
-/* ═══ LAV TICKER ═══ */
+/* ═══ LAV TICKER · "Ver lista" con carrusel de códigos ═══ */
 @keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-#lavTickerWrap{border-radius:4px;background:rgba(46,62,110,.04)}
-#lavTicker .ticker-item{display:inline-flex;align-items:center;gap:3px;padding:2px 6px;font-size:9px;font-weight:600;color:var(--navy);background:rgba(46,62,110,.06);border-radius:4px}
-
-/* ═══ TICKER ANIMATION ═══ */
-@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
-#lavTicker .tick-item{padding:2px 6px;background:rgba(46,62,110,.08);border-radius:4px;font-size:9px;font-weight:700;color:var(--navy)}
+.lav-ver-lista{
+  display:flex;align-items:center;gap:10px;cursor:pointer;
+  padding:5px 12px;border-radius:20px;
+  border:1px solid transparent;
+  background:rgba(46,62,110,.04);
+  transition:background .15s,border-color .15s,box-shadow .15s;
+  user-select:none;
+}
+.lav-ver-lista:hover{
+  background:rgba(46,62,110,.08);
+  border-color:rgba(46,62,110,.18);
+  box-shadow:0 2px 10px rgba(46,62,110,.08);
+}
+.lav-ticker-wrap{
+  position:relative;width:280px;max-width:32vw;overflow:hidden;
+  height:22px;border-radius:4px;
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 12px,#000 calc(100% - 12px),transparent 100%);
+  mask-image:linear-gradient(to right,transparent 0,#000 12px,#000 calc(100% - 12px),transparent 100%);
+}
+.lav-ticker{
+  display:flex;gap:6px;
+  position:absolute;top:50%;left:0;
+  transform:translateY(-50%);
+  white-space:nowrap;
+  animation:tickerScroll 18s linear infinite;
+  will-change:transform;
+}
+.lav-ticker:empty + .lav-ticker-empty{display:flex;}
+.lav-ticker-empty{
+  display:none;
+  position:absolute;inset:0;
+  align-items:center;justify-content:center;
+  font-size:10px;font-style:italic;color:var(--text3);
+  letter-spacing:.3px;
+}
+.lav-ticker .tick-item{
+  padding:2px 8px;
+  background:linear-gradient(135deg,rgba(46,62,110,.1) 0%,rgba(184,165,21,.1) 100%);
+  border:1px solid rgba(46,62,110,.18);
+  border-radius:4px;
+  font-size:10px;font-weight:700;color:var(--navy);
+  font-family:var(--font-m);letter-spacing:.3px;
+  animation:popIn .25s ease both;
+}
+.lav-list-badge{font-size:10px;min-width:22px;text-align:center;font-variant-numeric:tabular-nums;}
+.lav-ver-lista-cta{
+  font-size:11px;font-weight:700;color:var(--navy);
+  letter-spacing:.4px;display:inline-flex;align-items:center;gap:3px;
+  font-family:var(--font-m);text-transform:uppercase;
+}
+.lav-ver-lista-cta span{
+  font-family:var(--font-b);font-size:14px;line-height:1;
+  transition:transform .15s;
+}
+.lav-ver-lista:hover .lav-ver-lista-cta span{transform:translateX(3px);}
+@keyframes popIn{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
 /* Tallas full width */
 .btn-talla{min-width:30px;flex:1}
 

@@ -28,18 +28,287 @@ function animateCounters(container) {
 async function renderDashboard() {
   const fs  = document.getElementById('dashFiltroSede')?.value||'';
   const sub = document.getElementById('dashSub');
-  if(sub)sub.textContent=`${fs?SEDES[fs]?.label:'Todas las sedes'}  ·  Este mes`;
+  if(sub)sub.textContent=`${fs?SEDES[fs]?.label:'Todas las sedes'}  ·  ${hoyLocal()}`;
+
+  // 1) Snapshot ejecutivo (único endpoint nuevo)
+  let snap = null;
+  try {
+    snap = await API.get('/dashboard/admin' + (fs?('?sede='+encodeURIComponent(fs)):''));
+  } catch(e) {}
+  if (snap) {
+    renderDashKpisV2(snap.kpis, snap.tendencia_7d||{});
+    renderDashAlertas(snap.alertas_criticas||[]);
+    renderDashPipeline(snap.pipeline_estado||{});
+    renderDashProxEvals(snap.proximas_evaluaciones||[]);
+    renderDashSalud(snap.salud_sistema);
+    renderDashTendencia(snap.tendencia_7d||{});
+    renderDashResumenSedes(snap.resumen_sedes||{});
+    var upd = document.getElementById('dashUpdated');
+    if (upd) upd.textContent = 'actualizado ' + new Date(snap.ts).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  }
+
+  // 2) Las secciones legacy (ranking, desempeño, lavandería) siguen
+  //    leyendo sus endpoints viejos para no romper nada hasta que se
+  //    migren al snapshot.
   const params={}; if(fs)params.sede=fs;
   const [reps,incs]=await Promise.all([API.reportes(params),API.incidencias(params)]);
-  if(!reps)return;
-  renderKpis(reps,incs||[]);
-  renderAlertas(fs);
-  renderRanking(reps);
-  renderDesempenoTiendas(reps);
-  renderIncidenciasDash(incs||[]);
-  renderLavStats();
-  renderPipelineRanking();
-  renderActIncumplidas(reps);
+  if (reps) {
+    renderAlertas(fs);
+    renderRanking(reps);
+    renderDesempenoTiendas(reps);
+    renderIncidenciasDash(incs||[]);
+    renderLavStats();
+    renderPipelineRanking();
+    renderActIncumplidas(reps);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD V2 — secciones nuevas alimentadas por snapshot
+// ═══════════════════════════════════════════════════════
+
+const DASH_KPI_SPECS = [
+  { key:'prendas_en_proceso',     label:'Prendas en almacén',          sub:'lavándose, planchándose, etc.',          accent:'navy',  goto:'kanban-almacen' },
+  { key:'reportes_hoy',           label:'Reportes enviados hoy',       sub:'cuántos turnos ya cerraron',             accent:'gold',  goto:'reporte' },
+  { key:'reportes_sin_evaluar',   label:'Reportes por evaluar',        sub:'el siguiente turno debe calificarlos',   accent:'gold',  goto:'evaluacion' },
+  { key:'solicitudes_pendientes', label:'Solicitudes por aprobar',     sub:'tiendas piden cosas al almacén',         accent:'blue',  goto:'solicitudes' },
+  { key:'envios_sin_validar',     label:'Envíos sin confirmar',        sub:'la tienda no acusó recibo',              accent:'red',   goto:'pipeline-envios' },
+  { key:'prendas_observadas',     label:'Prendas con problema',        sub:'devueltas por calidad',                  accent:'red',   goto:'kanban-almacen' },
+  { key:'incidencias_hoy',        label:'Incidencias del día',         sub:'algo pasó, revisarlo',                   accent:'red',   goto:'incidencias-admin' },
+  { key:'incidencias_mes',        label:'Incidencias del mes',         sub:'total acumulado',                        accent:'gold',  goto:'incidencias-admin' }
+];
+
+function renderDashKpisV2(kpis, tendencia) {
+  var c = document.getElementById('dashKpis');
+  if (!c || !kpis) return;
+  // Las series del backend van en orden cronológico ascendente (6 días atrás → hoy).
+  // Usamos las 2 últimas (ayer y hoy) para el delta.
+  var serieDelta = {
+    reportes_hoy:    (tendencia && tendencia.reportes)    || [],
+    incidencias_hoy: (tendencia && tendencia.incidencias) || []
+  };
+  c.innerHTML = DASH_KPI_SPECS.map(function(s){
+    var v = kpis[s.key]||0;
+    var deltaHtml = '';
+    if (serieDelta[s.key] && serieDelta[s.key].length>=2) {
+      var hoy = serieDelta[s.key][serieDelta[s.key].length-1]||0;
+      var ayer = serieDelta[s.key][serieDelta[s.key].length-2]||0;
+      var d = hoy - ayer;
+      var sign = d>0?'▲':d<0?'▼':'•';
+      var cls = (s.key==='incidencias_hoy')
+                ? (d>0?'down':d<0?'up':'flat')   // más incidencias = malo
+                : (d>0?'up':d<0?'down':'flat');
+      deltaHtml = '<div class="dash-kpi-delta '+cls+'">'+sign+' '+Math.abs(d)+' vs ayer</div>';
+    }
+    return '<div class="dash-kpi accent-'+s.accent+'" onclick="goTo(\''+s.goto+'\')">' +
+           '<div class="dash-kpi-val">'+v+'</div>' +
+           '<div class="dash-kpi-lbl">'+s.label+'</div>' +
+           '<div class="dash-kpi-sub">'+s.sub+'</div>' +
+           deltaHtml +
+           '</div>';
+  }).join('');
+}
+
+function renderDashAlertas(alertas) {
+  var c = document.getElementById('dashAlertasCriticas');
+  if (!c) return;
+  if (!alertas.length) {
+    c.innerHTML = '<div class="dash-no-alertas">✓ Sin alertas críticas en este momento</div>';
+    return;
+  }
+  c.innerHTML = '<div class="dash-alertas-grid">' +
+    alertas.slice(0,6).map(function(a){
+      return '<div class="dash-alerta dash-alerta-'+a.nivel+'" onclick="goTo(\''+a.goto+'\')">' +
+             '<div class="dash-alerta-icon">'+(a.nivel==='alta'?'⚠':a.nivel==='media'?'!':'·')+'</div>' +
+             '<div class="dash-alerta-body">' +
+               '<div class="dash-alerta-t">'+a.titulo+'</div>' +
+               '<div class="dash-alerta-d">'+a.detalle+'</div>' +
+             '</div></div>';
+    }).join('') + '</div>';
+}
+
+const DASH_ETAPAS_ORDER = ['recepcion','lavado','empatado','refaccion','compostura','planchado','control_calidad','listo'];
+const DASH_ETAPAS_LBL = {recepcion:'Recepción',lavado:'Lavado',empatado:'Empatado',refaccion:'Refacción',compostura:'Compostura',planchado:'Planchado',control_calidad:'Calidad',listo:'Listo'};
+const DASH_ETAPAS_COLOR = {recepcion:'#94a3b8',lavado:'#2563a8',empatado:'#b8a515',refaccion:'#c8651a',compostura:'#7c3aed',planchado:'#0e7490',control_calidad:'#1a7a52',listo:'#b8a515'};
+
+function renderDashPipeline(estado) {
+  var c = document.getElementById('dashPipelineEstado');
+  if (!c) return;
+  var total = DASH_ETAPAS_ORDER.reduce(function(s,e){return s+(estado[e]||0)},0);
+  var badge = document.getElementById('dashPipeTotal');
+  if (badge) badge.textContent = total;
+  if (total === 0) {
+    c.innerHTML = '<div style="color:var(--text3);font-size:11px;text-align:center;padding:20px">Sin prendas en proceso</div>';
+    return;
+  }
+  // Donut SVG: radio 38, stroke 12, perímetro 2π·38 ≈ 238.76
+  var R=38, C0=2*Math.PI*R;
+  var offset = 0;
+  var donutSegs = '';
+  DASH_ETAPAS_ORDER.forEach(function(et){
+    var n = estado[et]||0;
+    if (!n) return;
+    var frac = n / total;
+    var len = +(C0*frac).toFixed(2);
+    donutSegs += '<circle cx="50" cy="50" r="'+R+'" fill="none" stroke="'+DASH_ETAPAS_COLOR[et]+'" stroke-width="12" '+
+                 'stroke-dasharray="'+len+' '+(C0-len).toFixed(2)+'" '+
+                 'stroke-dashoffset="'+(-offset)+'" '+
+                 'transform="rotate(-90 50 50)"></circle>';
+    offset += len;
+  });
+  var leyenda = DASH_ETAPAS_ORDER.map(function(et){
+    var n = estado[et]||0;
+    if (!n) return '';
+    var pct = Math.round((n/total)*100);
+    return '<div class="dash-pipe-leg">' +
+           '<span class="dash-pipe-leg-dot" style="background:'+DASH_ETAPAS_COLOR[et]+'"></span>' +
+           '<span class="dash-pipe-leg-lbl">'+DASH_ETAPAS_LBL[et]+'</span>' +
+           '<span class="dash-pipe-leg-num">'+n+'</span>' +
+           '<span class="dash-pipe-leg-pct">'+pct+'%</span>' +
+           '</div>';
+  }).join('');
+  c.innerHTML =
+    '<div class="dash-pipe-wrap">' +
+      '<div class="dash-pipe-donut">' +
+        '<svg viewBox="0 0 100 100" width="120" height="120">' +
+          '<circle cx="50" cy="50" r="'+R+'" fill="none" stroke="var(--s3)" stroke-width="12"></circle>' +
+          donutSegs +
+        '</svg>' +
+        '<div class="dash-pipe-donut-center">' +
+          '<div class="dash-pipe-donut-num">'+total+'</div>' +
+          '<div class="dash-pipe-donut-lbl">en proceso</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="dash-pipe-legends">'+leyenda+'</div>' +
+    '</div>';
+}
+
+function renderDashProxEvals(lista) {
+  var c = document.getElementById('dashProxEvals');
+  if (!c) return;
+  var badge = document.getElementById('dashProxEvalsBadge');
+  if (badge) badge.textContent = lista.length;
+  if (!lista.length) {
+    c.innerHTML = '<div style="color:var(--text3);font-size:11px;text-align:center;padding:20px">Ningún colaborador cierra ciclo en los próximos 7 días</div>';
+    return;
+  }
+  c.innerHTML = '<div class="dash-eval-help">Estos colaboradores terminan su ciclo y necesitan que les calcules su nota y registres el pago.</div>' +
+    lista.slice(0,8).map(function(e){
+    var urg = e.dias_faltan<=1 ? 'urg' : e.dias_faltan<=3 ? 'warn' : '';
+    var diasTxt = e.dias_faltan===0 ? 'hoy cierra' : e.dias_faltan===1 ? 'mañana' : 'en '+e.dias_faltan+' días';
+    return '<div class="dash-eval-row '+urg+'" onclick="iniciarEvalMensual(\''+e.emp_id+'\')" title="Click para evaluar y registrar pago">' +
+           '<div class="dash-eval-name">'+e.nombre+'</div>' +
+           '<div class="dash-eval-meta">'+(SEDES[e.sede]&&SEDES[e.sede].short||e.sede||'—')+' · cierra '+e.cierre+'</div>' +
+           '<div class="dash-eval-dias">'+diasTxt+'</div>' +
+           '</div>';
+  }).join('');
+}
+
+function renderDashSalud(salud) {
+  var c = document.getElementById('dashSalud');
+  var card = document.getElementById('dashSaludCard');
+  if (!c) return;
+  if (!salud) { if (card) card.style.display='none'; return; }
+  if (card) card.style.display='';
+  // Items con lenguaje claro + acción concreta. Cada uno dice qué pasa,
+  // por qué importa y a dónde ir a resolverlo.
+  var items = [
+    {
+      ok: salud.empleados_sin_fecha_ingreso === 0,
+      lbl: salud.empleados_sin_fecha_ingreso > 0
+        ? salud.empleados_sin_fecha_ingreso + ' colaborador(es) sin fecha de ingreso'
+        : 'Todos los colaboradores tienen fecha de ingreso',
+      hint: 'Sin esa fecha no podemos calcular el ciclo personal de pago',
+      cta: salud.empleados_sin_fecha_ingreso > 0 ? { lbl:'Completar', goto:'empleados' } : null
+    },
+    {
+      ok: salud.evaluaciones_mes_pendientes === 0,
+      lbl: salud.evaluaciones_mes_pendientes > 0
+        ? salud.evaluaciones_mes_pendientes + ' evaluación(es) mensual(es) sin cerrar'
+        : 'Evaluaciones del mes al día',
+      hint: 'Cada colaborador necesita su evaluación cerrada para generar pago',
+      cta: salud.evaluaciones_mes_pendientes > 0 ? { lbl:'Evaluar', goto:'evaluacion-mensual' } : null
+    },
+    {
+      ok: salud.audit_log_hoy > 0,
+      lbl: salud.audit_log_hoy > 0
+        ? salud.audit_log_hoy + ' acción(es) registradas hoy'
+        : 'Sin actividad auditada hoy',
+      hint: 'La auditoría guarda quién hizo qué en cada cambio importante',
+      cta: { lbl:'Ver auditoría', goto:'audit-log' }
+    },
+    {
+      ok: salud.backup_dirs >= 3,
+      lbl: salud.backup_dirs + ' copia(s) de seguridad disponibles',
+      hint: salud.backup_dirs < 3
+        ? 'Recomendamos tener 3 o más por si la BD falla'
+        : 'Backups automáticos cada 24h activos'
+    },
+    {
+      ok: salud.horario_slots > 0,
+      lbl: salud.horario_slots > 0
+        ? salud.horario_slots + ' turnos programados en el horario'
+        : 'No hay horarios cargados',
+      hint: 'Los horarios definen cuántos reportes esperar de cada colaborador',
+      cta: salud.horario_slots === 0 ? { lbl:'Configurar', goto:'horarios-admin' } : null
+    }
+  ];
+  c.innerHTML = items.map(function(i){
+    var hint = i.hint ? '<div class="dash-salud-hint">'+i.hint+'</div>' : '';
+    var cta = i.cta ? '<button class="dash-salud-cta" onclick="goTo(\''+i.cta.goto+'\')">'+i.cta.lbl+' →</button>' : '';
+    var icon = i.ok ? '<span class="dash-salud-icon ok">✓</span>' : '<span class="dash-salud-icon bad">!</span>';
+    return '<div class="dash-salud-row2 '+(i.ok?'ok':'bad')+'">' +
+           icon +
+           '<div class="dash-salud-body">' +
+             '<div class="dash-salud-lbl2">'+i.lbl+'</div>' +
+             hint +
+           '</div>' +
+           cta +
+           '</div>';
+  }).join('');
+}
+
+function renderDashTendencia(t) {
+  var c = document.getElementById('dashTendencia');
+  if (!c) return;
+  if (!t.fechas || !t.fechas.length) { c.innerHTML='<div style="color:var(--text3);font-size:11px">Sin datos</div>'; return; }
+  function spark(serie, color, lbl) {
+    var max = Math.max.apply(null, serie.concat([1]));
+    var bars = serie.map(function(v,i){
+      var h = Math.max(2, Math.round((v/max)*42));
+      return '<div class="dash-spark-bar" style="height:'+h+'px;background:'+color+'" title="'+t.fechas[i]+': '+v+'"></div>';
+    }).join('');
+    var total = serie.reduce(function(s,n){return s+n;},0);
+    var hoyV = serie[serie.length-1]||0;
+    var prev = serie[serie.length-2]||0;
+    var delta = hoyV - prev;
+    var deltaSign = delta>0?'▲':delta<0?'▼':'→';
+    var deltaColor = delta>0?'var(--green)':delta<0?'var(--red)':'var(--text3)';
+    return '<div class="dash-spark">' +
+           '<div class="dash-spark-head"><span class="dash-spark-lbl">'+lbl+'</span><span class="dash-spark-tot">'+total+'</span></div>' +
+           '<div class="dash-spark-bars">'+bars+'</div>' +
+           '<div class="dash-spark-foot"><span style="color:'+deltaColor+'">'+deltaSign+' '+Math.abs(delta)+'</span> vs ayer</div>' +
+           '</div>';
+  }
+  c.innerHTML =
+    spark(t.reportes||[],          'var(--navy)', 'Reportes') +
+    spark(t.incidencias||[],       'var(--red)',  'Incidencias') +
+    spark(t.pipeline_acciones||[], 'var(--gold-d)','Acciones pipeline');
+}
+
+function renderDashResumenSedes(rs) {
+  var c = document.getElementById('dashResumenSedes');
+  if (!c) return;
+  var keys = ['LB','ST','TR','AL'];
+  c.innerHTML = '<div class="dash-sedes-grid">' + keys.map(function(s){
+    var d = rs[s] || {reportes_hoy:0, incidencias_hoy:0, empleados_activos:0};
+    return '<div class="dash-sede-card">' +
+           '<div class="dash-sede-lbl">'+(SEDES[s]&&SEDES[s].short||s)+'</div>' +
+           '<div class="dash-sede-row"><span>Reportes</span><strong>'+d.reportes_hoy+'</strong></div>' +
+           '<div class="dash-sede-row"><span>Incidencias</span><strong style="color:'+(d.incidencias_hoy>0?'var(--red)':'inherit')+'">'+d.incidencias_hoy+'</strong></div>' +
+           '<div class="dash-sede-row"><span>Equipo</span><strong>'+d.empleados_activos+'</strong></div>' +
+           '</div>';
+  }).join('') + '</div>';
 }
 
 function renderKpis(reps,incs) {
@@ -57,19 +326,42 @@ function renderKpis(reps,incs) {
 async function renderAlertas(fs) {
   const c=document.getElementById('dashAlertas');if(!c)return;
   const sedes=fs?[fs]:Object.keys(SEDES);
-  let html='';
-  for(const sed of sedes){
-    const data=await API.alertas(sed);if(!data)continue;
-    const {tieneM,tieneT,pendEval}=data;
-    const label=SEDES[sed]?.label;
-    if(tieneM&&tieneT&&!pendEval)html+=`<div class="report-alert report-alert-ok">✅ <strong>${label}</strong> — Ambos turnos y evaluados</div>`;
-    else{
-      if(!tieneM)html+=`<div class="report-alert">⚠️ <strong>${label}</strong> — Falta reporte de Mañana</div>`;
-      if(!tieneT)html+=`<div class="report-alert">⚠️ <strong>${label}</strong> — Falta reporte de Tarde</div>`;
-      if(pendEval)html+=`<div class="report-alert report-alert-warn">📋 <strong>${label}</strong> — Reportes sin evaluar</div>`;
+  // Render grid de cards por sede con estado claro de M/T y evaluación
+  var datas = await Promise.all(sedes.map(function(s){ return API.alertas(s).catch(function(){return null;}); }));
+  var html = '<div class="dash-sedes-status">';
+  sedes.forEach(function(sed, i){
+    var d = datas[i] || {tieneM:false,tieneT:false,pendEval:false};
+    var label = (SEDES[sed]&&SEDES[sed].label)||sed;
+    var short = (SEDES[sed]&&SEDES[sed].short)||sed;
+    var allOk = d.tieneM && d.tieneT && !d.pendEval;
+    var stateCls = allOk ? 'ok' : (d.tieneM||d.tieneT ? 'partial' : 'missing');
+    function dot(estado, lbl) {
+      var cls = estado === 'ok' ? 'on' : estado === 'warn' ? 'warn' : 'off';
+      var icon = estado === 'ok' ? '✓' : estado === 'warn' ? '!' : '·';
+      return '<div class="dash-shift-dot '+cls+'" title="'+lbl+'">'+
+             '<span class="dot-ic">'+icon+'</span><span class="dot-lbl">'+lbl+'</span></div>';
     }
-  }
-  c.innerHTML=html||'<div style="color:var(--text3);font-size:12px;font-family:var(--font-m)">Sin alertas</div>';
+    var dM = d.tieneM ? dot('ok','Mañana enviado') : dot('off','Sin reporte M');
+    var dT = d.tieneT ? dot('ok','Tarde enviado')  : dot('off','Sin reporte T');
+    var dE = d.pendEval ? dot('warn','Sin evaluar') : (d.tieneM||d.tieneT ? dot('ok','Evaluados') : dot('off','—'));
+    html += '<div class="dash-sede-card-status '+stateCls+'">' +
+              '<div class="dash-sede-card-head">' +
+                '<div class="dash-sede-card-title">'+label+'</div>' +
+                '<div class="dash-sede-card-tag">'+short+'</div>' +
+              '</div>' +
+              '<div class="dash-sede-card-body">' +
+                dM + dT + dE +
+              '</div>' +
+              '<div class="dash-sede-card-foot">' +
+                (allOk ? '✓ Día completo'
+                       : d.pendEval ? 'Falta evaluación del siguiente turno'
+                       : (!d.tieneM && !d.tieneT) ? 'Sin actividad reportada hoy'
+                       : 'Falta '+(!d.tieneM?'Mañana':'')+(!d.tieneM&&!d.tieneT?' y ':'')+(!d.tieneT?'Tarde':'')) +
+              '</div>' +
+            '</div>';
+  });
+  html += '</div>';
+  c.innerHTML = html;
 }
 
 function renderRanking(reps) {
@@ -111,24 +403,73 @@ function renderDesempenoTiendas(reps) {
 }
 
 function renderIncidenciasDash(incs) {
-  const c=document.getElementById('dashIncidencias');if(!c)return;
-  const pN={Alto:0,Medio:0,Bajo:0};incs.forEach(i=>{pN[i.nivel]=(pN[i.nivel]||0)+1;});
-  const cols={Alto:'var(--red)',Medio:'var(--yellow)',Bajo:'var(--green)'};
-  const bdgs={Alto:'badge-red',Medio:'badge-yellow',Bajo:'badge-green'};
-  c.innerHTML=`
-    <div style="display:flex;gap:10px;margin-bottom:14px">
-      ${Object.entries(pN).map(([n,cnt])=>`
-        <div style="flex:1;text-align:center;padding:10px;background:var(--s3);border-radius:var(--r)">
-          <div style="font-size:22px;font-weight:700;color:${cols[n]}">${cnt}</div>
-          <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-top:2px">${n}</div>
-        </div>`).join('')}
-    </div>
-    ${incs.slice(-4).reverse().map(inc=>`
-      <div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border-s);font-size:12px">
-        <span class="badge ${bdgs[inc.nivel]||'badge-gray'}" style="flex-shrink:0">${inc.nivel}</span>
-        <span style="flex:1;color:var(--text2)">${inc.tipo}</span>
-        <span class="mono" style="font-size:10px;color:var(--text3)">${SEDES[inc.sede]?.short||inc.sede}</span>
-      </div>`).join('')}`;
+  var c = document.getElementById('dashIncidencias'); if (!c) return;
+  if (!incs || !incs.length) {
+    c.innerHTML = '<div style="text-align:center;padding:30px;color:var(--green);font-size:13px;font-weight:600">✓ Sin incidencias registradas en el periodo</div>';
+    return;
+  }
+  // Stats principales
+  var pN = {Alto:0, Medio:0, Bajo:0};
+  var porSede = {};
+  var porTipo = {};
+  incs.forEach(function(i){
+    pN[i.nivel] = (pN[i.nivel]||0) + 1;
+    if (i.sede) porSede[i.sede] = (porSede[i.sede]||0) + 1;
+    if (i.tipo) porTipo[i.tipo] = (porTipo[i.tipo]||0) + 1;
+  });
+  var puntosTotales = incs.reduce(function(s,i){ return s + (parseFloat(i.puntos_penalidad)||0); }, 0);
+  var sedeMax = Object.entries(porSede).sort(function(a,b){return b[1]-a[1];})[0];
+  var tipoMax = Object.entries(porTipo).sort(function(a,b){return b[1]-a[1];})[0];
+
+  var html = '';
+  // Header con total + sede más afectada + tipo más común
+  html += '<div class="dash-inc-summary">' +
+            '<div class="dash-inc-total">' +
+              '<div class="dash-inc-total-num">'+incs.length+'</div>' +
+              '<div class="dash-inc-total-lbl">incidencias</div>' +
+              '<div class="dash-inc-total-sub">−'+puntosTotales.toFixed(1)+' pts en penalidades</div>' +
+            '</div>' +
+            '<div class="dash-inc-meta">' +
+              (sedeMax ? '<div class="dash-inc-meta-row"><span class="lbl">Sede más afectada</span><span class="val"><strong>'+((SEDES[sedeMax[0]]&&SEDES[sedeMax[0]].short)||sedeMax[0])+'</strong> · '+sedeMax[1]+'</span></div>' : '') +
+              (tipoMax ? '<div class="dash-inc-meta-row"><span class="lbl">Tipo más frecuente</span><span class="val"><strong>'+tipoMax[0]+'</strong> · '+tipoMax[1]+'×</span></div>' : '') +
+            '</div>' +
+          '</div>';
+  // Distribución por nivel (barra apilada)
+  var totalLvl = pN.Alto + pN.Medio + pN.Bajo;
+  var pctA = totalLvl ? (pN.Alto/totalLvl*100) : 0;
+  var pctM = totalLvl ? (pN.Medio/totalLvl*100) : 0;
+  var pctB = totalLvl ? (pN.Bajo/totalLvl*100) : 0;
+  html += '<div class="dash-inc-bar">' +
+            '<div class="dash-inc-seg alto"  style="width:'+pctA.toFixed(2)+'%" title="Alto: '+pN.Alto+'">'+(pctA>=12?pN.Alto:'')+'</div>' +
+            '<div class="dash-inc-seg medio" style="width:'+pctM.toFixed(2)+'%" title="Medio: '+pN.Medio+'">'+(pctM>=12?pN.Medio:'')+'</div>' +
+            '<div class="dash-inc-seg bajo"  style="width:'+pctB.toFixed(2)+'%" title="Bajo: '+pN.Bajo+'">'+(pctB>=12?pN.Bajo:'')+'</div>' +
+          '</div>' +
+          '<div class="dash-inc-bar-leg">' +
+            '<span><span class="ld alto"></span> Alto: <strong>'+pN.Alto+'</strong></span>' +
+            '<span><span class="ld medio"></span> Medio: <strong>'+pN.Medio+'</strong></span>' +
+            '<span><span class="ld bajo"></span> Bajo: <strong>'+pN.Bajo+'</strong></span>' +
+          '</div>';
+  // Últimas 5 con descripción y responsable
+  html += '<div class="dash-inc-list-title">Últimas registradas</div>';
+  var bdgs = {Alto:'badge-red', Medio:'badge-yellow', Bajo:'badge-green'};
+  html += incs.slice(-5).reverse().map(function(inc){
+    var fecha = (inc.fecha||'').slice(5,10);
+    return '<div class="dash-inc-item">' +
+             '<span class="badge '+(bdgs[inc.nivel]||'badge-gray')+'" style="font-size:9px">'+inc.nivel+'</span>' +
+             '<div class="dash-inc-item-body">' +
+               '<div class="dash-inc-item-tit">'+(inc.descripcion||inc.tipo||'—')+'</div>' +
+               '<div class="dash-inc-item-meta">' +
+                 (inc.tipo?'<span>'+inc.tipo+'</span>':'') +
+                 (inc.responsable?'<span>· '+inc.responsable+'</span>':'') +
+                 '<span>· '+((SEDES[inc.sede]&&SEDES[inc.sede].short)||inc.sede||'—')+'</span>' +
+                 (fecha?'<span>· '+fecha+'</span>':'') +
+               '</div>' +
+             '</div>' +
+             (inc.puntos_penalidad?'<span class="dash-inc-item-pts">−'+inc.puntos_penalidad+'</span>':'') +
+           '</div>';
+  }).join('');
+  html += '<button class="dash-inc-btn-all" onclick="goTo(\'incidencias-admin\')">Ver todas las incidencias →</button>';
+  c.innerHTML = html;
 }
 
 async function renderLavStats() {
@@ -161,44 +502,154 @@ async function renderLavStats() {
   }
 }
 
-// ── PIPELINE RANKING (Almacén) ────────────────────────
+// ── PIPELINE RANKING (Almacén) — con filtro de fecha ──
+var _pipeRangoActivo = 'semana'; // 'hoy' | 'semana' | 'mes' | '30d'
+
+window.dashPipeSetRango = function(rango){
+  _pipeRangoActivo = rango;
+  renderPipelineRanking();
+};
+
 async function renderPipelineRanking() {
-  const c=document.getElementById('dashPipelineRank');if(!c)return;
-  const data=await API.get('/pipeline/ranking');
-  if(!data||!data.ranking||!data.ranking.length){c.innerHTML='<div style="color:var(--text3);font-size:12px">Sin datos de almacén esta semana</div>';return;}
-  const rcls=['rank-1','rank-2','rank-3'];
-  c.innerHTML=`<div style="font-size:10px;color:var(--text3);margin-bottom:10px">Semana desde ${data.desde}</div>`+
-    data.ranking.slice(0,6).map((r,i)=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border-s)">
-      <div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;background:${i<3?['#fef3c7','#f1f5f9','#fed7aa'][i]:'var(--s3)'};color:${i<3?['#92400e','#475569','#9a3412'][i]:'var(--text3)'}">${i+1}</div>
-      <div style="flex:1"><div style="font-weight:700;font-size:12px">${r.emp_nombre}</div><div style="font-size:10px;color:var(--text3)">${r.acciones} acciones</div></div>
-      <div style="font-weight:800;font-size:14px;color:var(--green)">${Number(r.total_pts).toFixed(1)} pts</div>
-    </div>`).join('');
+  var c = document.getElementById('dashPipelineRank');
+  if (!c) return;
+  // Calcular el rango según botón activo
+  function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  var hoy = new Date();
+  var desde, hasta = ymd(hoy), titulo = '';
+  if (_pipeRangoActivo === 'hoy') {
+    desde = ymd(hoy); titulo = 'Hoy';
+  } else if (_pipeRangoActivo === 'mes') {
+    desde = ymd(new Date(hoy.getFullYear(), hoy.getMonth(), 1)); titulo = 'Este mes';
+  } else if (_pipeRangoActivo === '30d') {
+    var d30 = new Date(hoy); d30.setDate(d30.getDate()-29); desde = ymd(d30); titulo = 'Últimos 30 días';
+  } else {
+    var dSem = new Date(hoy); dSem.setDate(dSem.getDate() - dSem.getDay()); desde = ymd(dSem); titulo = 'Esta semana';
+  }
+  // Endpoint ranking soporta solo "semana actual" — filtramos del lado cliente leyendo bitacora
+  // si necesitamos un rango distinto.
+  var data = null;
+  if (_pipeRangoActivo === 'semana') {
+    data = await API.get('/pipeline/ranking');
+  } else {
+    var bita = await API.get('/pipeline/bitacora?limit=2000');
+    if (bita) {
+      var acc = {};
+      (bita || []).forEach(function(b){
+        var f = (b.fecha||'').slice(0,10);
+        if (f < desde || f > hasta) return;
+        var pts = parseFloat(b.puntos)||0;
+        if (pts <= 0) return; // ignoramos descuentos para el ranking
+        var k = (b.emp_cod||'') + '|' + (b.emp_nombre||'');
+        if (!acc[k]) acc[k] = { emp_cod: b.emp_cod, emp_nombre: b.emp_nombre, total_pts: 0, acciones: 0 };
+        acc[k].total_pts += pts;
+        acc[k].acciones += 1;
+      });
+      var rk = Object.values(acc).sort(function(a,b){ return b.total_pts - a.total_pts; }).slice(0, 15);
+      data = { ranking: rk, desde: desde };
+    }
+  }
+
+  // Header con tabs de rango
+  var rangos = [['hoy','Hoy'],['semana','Semana'],['mes','Mes'],['30d','30 días']];
+  var headerTabs = '<div class="dash-rank-tabs">' + rangos.map(function(r){
+    var active = _pipeRangoActivo === r[0] ? ' active' : '';
+    return '<button class="dash-rank-tab'+active+'" onclick="dashPipeSetRango(\''+r[0]+'\')">'+r[1]+'</button>';
+  }).join('') + '</div>';
+
+  if (!data || !data.ranking || !data.ranking.length) {
+    c.innerHTML = headerTabs + '<div class="dash-rank-empty">Sin acciones de pipeline en '+titulo.toLowerCase()+'</div>';
+    return;
+  }
+
+  var top = data.ranking.slice(0, 8);
+  var maxPts = top[0].total_pts || 1;
+  var medallas = ['🥇','🥈','🥉'];
+
+  var html = headerTabs + '<div class="dash-rank-head">'+titulo+' · '+(data.desde||desde)+' →</div>';
+  html += '<div class="dash-rank-list">' + top.map(function(r, i){
+    var pct = Math.round((r.total_pts / maxPts) * 100);
+    var ini = r.emp_nombre ? r.emp_nombre.split(' ').slice(0,2).map(function(p){return p[0];}).join('').toUpperCase() : '?';
+    var lugar = i < 3 ? '<span class="dash-rank-medal">'+medallas[i]+'</span>' : '<span class="dash-rank-num">'+(i+1)+'</span>';
+    var topClass = i === 0 ? ' top1' : i === 1 ? ' top2' : i === 2 ? ' top3' : '';
+    return '<div class="dash-rank-row'+topClass+'">' +
+             '<div class="dash-rank-pos">'+lugar+'</div>' +
+             '<div class="dash-rank-avatar">'+ini+'</div>' +
+             '<div class="dash-rank-info">' +
+               '<div class="dash-rank-name">'+(r.emp_nombre||'—')+'</div>' +
+               '<div class="dash-rank-bar"><div class="dash-rank-fill" style="width:'+pct+'%"></div></div>' +
+             '</div>' +
+             '<div class="dash-rank-stats">' +
+               '<div class="dash-rank-pts">'+Number(r.total_pts).toFixed(1)+' pts</div>' +
+               '<div class="dash-rank-acc">'+r.acciones+' acciones</div>' +
+             '</div>' +
+           '</div>';
+  }).join('') + '</div>';
+  c.innerHTML = html;
 }
 
-// ── ACTIVIDADES MÁS INCUMPLIDAS ──────────────────────
+// ── COMPLETITUD DE REPORTES (antes "Actividades más incumplidas") ─────
+// Renombre + claridad: muestra qué turnos cerraron con menor % de
+// actividades hechas. Útil para detectar de un vistazo qué sede está
+// dejando tareas sin cumplir y dónde concentrar la atención.
 function renderActIncumplidas(reps) {
-  const c=document.getElementById('dashActIncumplidas');if(!c)return;
-  if(!reps||!reps.length){c.innerHTML='<div style="color:var(--text3);font-size:12px">Sin datos</div>';return;}
-  // Count how often each activity was NOT done vs available
-  const actStats={};
-  reps.forEach(r=>{
-    // Each report has act_total and act_done
-    // We need per-activity data from the detail, but we only have summary here
-    // Use what we have: group by sede and count reports with low scores
+  var c = document.getElementById('dashActIncumplidas');
+  if (!c) return;
+  if (!reps || !reps.length) {
+    c.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:18px">Sin reportes en el periodo</div>';
+    return;
+  }
+  // Promedio por sede
+  var porSede = {};
+  reps.forEach(function(r){
+    if (!r.act_total) return;
+    if (!porSede[r.sede]) porSede[r.sede] = { suma:0, n:0, pendientes:[] };
+    var ratio = (r.act_done / r.act_total) * 100;
+    porSede[r.sede].suma += ratio;
+    porSede[r.sede].n += 1;
+    if (ratio < 80) porSede[r.sede].pendientes.push({ fecha:r.fecha, turno:r.turno, ratio:Math.round(ratio), done:r.act_done, total:r.act_total });
   });
-  // Better approach: fetch from reportes with actividades
-  // For now, show low-scoring reports as proxy
-  const lowScore=reps.filter(r=>r.puntaje<50).sort((a,b)=>a.puntaje-b.puntaje);
-  const missRatio=reps.map(r=>({sede:r.sede,turno:r.turno,fecha:r.fecha,ratio:r.act_total>0?Math.round((r.act_done/r.act_total)*100):100,done:r.act_done,total:r.act_total})).filter(r=>r.ratio<80).sort((a,b)=>a.ratio-b.ratio);
+  var sedes = Object.entries(porSede).map(function(e){
+    return { sede: e[0], promedio: e[1].n ? Math.round(e[1].suma/e[1].n) : 100, pendientes: e[1].pendientes };
+  }).sort(function(a,b){ return a.promedio - b.promedio; });
 
-  if(!missRatio.length){c.innerHTML='<div style="color:var(--green);font-size:12px;font-weight:600">✅ Todas las tiendas cumplen >80% de actividades</div>';return;}
-  c.innerHTML=missRatio.slice(0,6).map(r=>`
-    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border-s);font-size:12px">
-      <span class="badge badge-navy" style="flex-shrink:0">${SEDES[r.sede]?.short||r.sede}</span>
-      <span style="flex:1;color:var(--text2)">${r.fecha} · ${{M:'Mañana',T:'Tarde',C:'Completo'}[r.turno]||r.turno}</span>
-      <span style="font-weight:700;color:${r.ratio<50?'var(--red)':'var(--yellow)'}">${r.done}/${r.total} (${r.ratio}%)</span>
-    </div>`).join('');
+  if (!sedes.length) {
+    c.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:18px">Sin reportes con actividades en el periodo</div>';
+    return;
+  }
+
+  var html = '<div class="dash-cmp-head">Promedio de cumplimiento por sede en el periodo</div>';
+  html += '<div class="dash-cmp-sedes">' + sedes.map(function(s){
+    var color = s.promedio >= 90 ? 'ok' : s.promedio >= 75 ? 'warn' : 'bad';
+    return '<div class="dash-cmp-sede '+color+'">' +
+             '<div class="dash-cmp-sede-head">' +
+               '<span class="dash-cmp-sede-name">'+((SEDES[s.sede]&&SEDES[s.sede].label)||s.sede)+'</span>' +
+               '<span class="dash-cmp-sede-pct">'+s.promedio+'%</span>' +
+             '</div>' +
+             '<div class="dash-cmp-sede-bar"><div class="dash-cmp-sede-fill" style="width:'+s.promedio+'%"></div></div>' +
+             '<div class="dash-cmp-sede-foot">'+s.pendientes.length+' turno(s) bajo el 80%</div>' +
+           '</div>';
+  }).join('') + '</div>';
+
+  // Detalle de los 4 peores turnos individuales
+  var peores = [];
+  sedes.forEach(function(s){
+    s.pendientes.forEach(function(p){ peores.push(Object.assign({sede:s.sede}, p)); });
+  });
+  peores.sort(function(a,b){ return a.ratio - b.ratio; });
+  if (peores.length) {
+    html += '<div class="dash-cmp-list-title">Turnos con menor cumplimiento</div>';
+    html += peores.slice(0, 5).map(function(r){
+      var ratioColor = r.ratio < 50 ? 'var(--red)' : r.ratio < 75 ? 'var(--yellow)' : 'var(--green)';
+      var turnoLbl = ({M:'Mañana', T:'Tarde', C:'Completo'})[r.turno] || r.turno;
+      return '<div class="dash-cmp-row">' +
+               '<span class="badge badge-navy" style="font-size:9px">'+((SEDES[r.sede]&&SEDES[r.sede].short)||r.sede)+'</span>' +
+               '<span class="dash-cmp-row-meta">'+r.fecha+' · '+turnoLbl+'</span>' +
+               '<span class="dash-cmp-row-pct" style="color:'+ratioColor+'">'+r.done+'/'+r.total+' · '+r.ratio+'%</span>' +
+             '</div>';
+    }).join('');
+  }
+  c.innerHTML = html;
 }
 
 // ── INCIDENCIAS ADMIN ──────────────────────────────────
@@ -311,7 +762,15 @@ async function renderEmpleados() {
     var est=EMP_EST[e.estado||'activo']||EMP_EST.activo;
     var isSusp=e.estado==='suspendido'||e.estado==='deshabilitado';
     var opac=isSusp?'opacity:.5':'';
-    return '<tr style="'+opac+'"><td><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:'+(isSusp?'#94a3b8':'var(--navy-xd)')+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:'+(isSusp?'#fff':'#d4bf1e')+'">'+e.iniciales+'</div><div><div style="font-weight:600;font-size:13px">'+e.nombre+'</div><div class="mono" style="font-size:9px;color:var(--text3)">'+e.id+' · '+(e.dni||'Sin DNI')+'</div></div></div></td>'+
+    // Indicador de datos críticos faltantes (afectan ciclo personal y pago)
+    var faltantes=[];
+    if(!e.fecha_ingreso) faltantes.push('fecha de ingreso');
+    if(!e.salario_base || parseFloat(e.salario_base)===0) faltantes.push('salario base');
+    if(!e.dni) faltantes.push('DNI');
+    var faltBadge=(!isSusp&&faltantes.length)
+      ? '<span class="badge" style="background:rgba(184,134,11,.12);color:var(--yellow);border:1px solid rgba(184,134,11,.3);font-size:8px;font-weight:700;margin-left:6px;padding:1px 5px" title="Faltan: '+faltantes.join(', ')+'">⚠ '+faltantes.length+' dato(s)</span>'
+      : '';
+    return '<tr style="'+opac+'"><td><div style="display:flex;align-items:center;gap:10px"><div style="width:32px;height:32px;border-radius:50%;background:'+(isSusp?'#94a3b8':'var(--navy-xd)')+';display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:'+(isSusp?'#fff':'#d4bf1e')+'">'+e.iniciales+'</div><div><div style="font-weight:600;font-size:13px">'+e.nombre+faltBadge+'</div><div class="mono" style="font-size:9px;color:var(--text3)">'+e.id+' · '+(e.dni||'Sin DNI')+'</div></div></div></td>'+
       '<td style="font-size:11px">'+(e.tiendas||[]).map(function(t){return '<span class="badge badge-navy" style="font-size:8px;padding:1px 5px;margin:1px">'+(SEDES[t]?.short||t)+'</span>'}).join(' ')+'</td>'+
       '<td><span class="badge '+rol.b+'" style="font-size:9px">'+rol.l+'</span></td>'+
       '<td><span class="badge '+est.b+'" style="font-size:9px">'+est.i+' '+est.l+'</span></td>'+
@@ -343,6 +802,10 @@ async function editarEmpleado(empId) {
   document.getElementById('editEmpCE').value=emp.contacto_emergencia||'';
   document.getElementById('editEmpCET').value=emp.tel_emergencia||'';
   document.getElementById('editEmpNotas').value=emp.notas||'';
+  // Tab Contrato
+  var elCt=document.getElementById('editEmpContrato'); if(elCt)elCt.value=emp.tipo_contrato||'';
+  var elVc=document.getElementById('editEmpVencContrato'); if(elVc)elVc.value=emp.vencimiento_contrato||'';
+  var elSal=document.getElementById('editEmpSalario'); if(elSal)elSal.value=emp.salario_base||'';
 
   var tBox=document.getElementById('editEmpTiendas');
   if(tBox)_renderTiendaChips(tBox,emp.tiendas||[]);
@@ -385,6 +848,10 @@ async function guardarEmpleado() {
     contacto_emergencia:document.getElementById('editEmpCE').value.trim(),
     tel_emergencia:document.getElementById('editEmpCET').value.trim(),
     notas:document.getElementById('editEmpNotas').value,
+    // Contrato
+    tipo_contrato:(document.getElementById('editEmpContrato')||{}).value||'',
+    vencimiento_contrato:(document.getElementById('editEmpVencContrato')||{}).value||'',
+    salario_base:parseFloat((document.getElementById('editEmpSalario')||{}).value)||0,
   };
   var pw=document.getElementById('editEmpPass').value.trim();
   if(pw)data.password=pw;
@@ -413,6 +880,10 @@ async function nuevoEmpleado() {
   document.getElementById('editEmpCE').value='';
   document.getElementById('editEmpCET').value='';
   document.getElementById('editEmpNotas').value='';
+  // Tab Contrato — limpiar
+  var elCt2=document.getElementById('editEmpContrato'); if(elCt2)elCt2.value='';
+  var elVc2=document.getElementById('editEmpVencContrato'); if(elVc2)elVc2.value='';
+  var elSal2=document.getElementById('editEmpSalario'); if(elSal2)elSal2.value='';
   _renderTiendaChips(document.getElementById('editEmpTiendas'),[]);
   empTab('general',document.querySelector('.emp-tab'));
   document.getElementById('editEmpSaveBtn').onclick=async function(){
@@ -426,6 +897,9 @@ async function nuevoEmpleado() {
       direccion:document.getElementById('editEmpDir').value.trim(),fecha_nacimiento:document.getElementById('editEmpFnac').value,
       fecha_ingreso:document.getElementById('editEmpFing').value,contacto_emergencia:document.getElementById('editEmpCE').value.trim(),
       tel_emergencia:document.getElementById('editEmpCET').value.trim(),notas:document.getElementById('editEmpNotas').value,
+      tipo_contrato:(document.getElementById('editEmpContrato')||{}).value||'',
+      vencimiento_contrato:(document.getElementById('editEmpVencContrato')||{}).value||'',
+      salario_base:parseFloat((document.getElementById('editEmpSalario')||{}).value)||0,
     };
     var pw=document.getElementById('editEmpPass').value.trim();
     if(pw)data.password=pw;
@@ -541,28 +1015,49 @@ async function renderMiDesempeno() {
   const es=extrasStats||{totalPts:0,count:0};
 
   document.getElementById('miDesempenoCard').innerHTML=`
-    <div class="perfil-card">
-      <div style="display:flex;align-items:center;gap:18px">
-        <div class="perfil-avatar-lg">${u.iniciales}</div>
-        <div style="flex:1">
-          <div style="font-size:20px;font-weight:700;margin-bottom:2px">${emp.nombre}</div>
-          ${emp.nombre_completo?`<div style="font-size:11px;color:rgba(255,255,255,.5)">${emp.nombre_completo}</div>`:''}
-          <div style="font-size:12px;opacity:.6;font-family:var(--font-m)">${(emp.tiendas||[]).map(t=>SEDES[t]?.label||t).join(' · ')}</div>
-          <div style="margin-top:8px"><span class="badge badge-gold">${emp.rol}</span></div>
+    <div class="md-hero md-anim md-anim-1">
+      <div class="md-hero-bg"></div>
+      <div class="md-hero-content">
+        <div class="md-hero-avatar">${u.iniciales}</div>
+        <div class="md-hero-info">
+          <div class="md-hero-name">${emp.nombre}</div>
+          ${emp.nombre_completo?`<div class="md-hero-fullname">${emp.nombre_completo}</div>`:''}
+          <div class="md-hero-meta">${(emp.tiendas||[]).map(t=>SEDES[t]?.label||t).join(' · ')}</div>
+          <div class="md-hero-tags"><span class="badge badge-gold">${emp.rol}</span></div>
         </div>
-        <div style="text-align:center">
-          <div class="score-pill ${cls}" style="font-size:20px;padding:12px 20px">${pct}%</div>
-          <div style="font-size:10px;font-family:var(--font-m);color:rgba(255,255,255,.4);margin-top:4px">Puntaje promedio</div>
+        <div class="md-hero-score">
+          <div class="md-hero-pct" data-target="${pct}">${pct}<span style="font-size:18px">%</span></div>
+          <div class="md-hero-pct-lbl">Puntaje promedio</div>
         </div>
       </div>
     </div>
-    <div class="grid-4" style="margin-bottom:18px">
-      <div class="stat-card accent-navy"><div class="stat-label">Reportes</div><div class="stat-val">${stats.totalReportes}</div><div class="stat-sub">${stats.evaluados} evaluados</div></div>
-      <div class="stat-card accent-gold"><div class="stat-label">Mejor puntaje</div><div class="stat-val" style="color:var(--gold-d)">${reportes.length?Math.max(...reportes.map(r=>r.puntaje||0)):0}%</div></div>
-      <div class="stat-card accent-red"><div class="stat-label">Incidencias</div><div class="stat-val" style="color:var(--red)">${stats.totalIncidencias}</div></div>
-      <div class="stat-card accent-green"><div class="stat-label">Evaluaciones</div><div class="stat-val" style="color:var(--green)">${evals.length}</div></div>
+    <div class="md-stats-grid md-anim md-anim-2">
+      <div class="md-stat md-stat-navy">
+        <div class="md-stat-icon">📋</div>
+        <div class="md-stat-val" data-target="${stats.totalReportes}">${stats.totalReportes}</div>
+        <div class="md-stat-lbl">Reportes enviados</div>
+        <div class="md-stat-sub">${stats.evaluados} ya evaluados</div>
+      </div>
+      <div class="md-stat md-stat-gold">
+        <div class="md-stat-icon">⭐</div>
+        <div class="md-stat-val" data-target="${reportes.length?Math.max(...reportes.map(r=>r.puntaje||0)):0}">${reportes.length?Math.max(...reportes.map(r=>r.puntaje||0)):0}<span style="font-size:14px">%</span></div>
+        <div class="md-stat-lbl">Tu mejor puntaje</div>
+        <div class="md-stat-sub">en un turno</div>
+      </div>
+      <div class="md-stat md-stat-red">
+        <div class="md-stat-icon">⚠</div>
+        <div class="md-stat-val" data-target="${stats.totalIncidencias}">${stats.totalIncidencias}</div>
+        <div class="md-stat-lbl">Incidencias</div>
+        <div class="md-stat-sub">registradas a tu nombre</div>
+      </div>
+      <div class="md-stat md-stat-green">
+        <div class="md-stat-icon">📊</div>
+        <div class="md-stat-val" data-target="${evals.length}">${evals.length}</div>
+        <div class="md-stat-lbl">Evaluaciones</div>
+        <div class="md-stat-sub">recibidas del turno siguiente</div>
+      </div>
     </div>
-    <div class="grid-2" style="margin-bottom:18px">
+    <div class="grid-2 md-anim md-anim-3" style="margin-bottom:18px">
       <div class="card" style="overflow:hidden">
         <div class="card-header"><span class="card-title">📦 Puntos de Almacén (Pipeline)</span><span class="badge badge-purple">${ps.totalPts} pts total</span></div>
         <div class="card-body">
@@ -585,7 +1080,7 @@ async function renderMiDesempeno() {
         </div>
       </div>
     </div>
-    <div class="card">
+    <div class="card md-anim md-anim-4">
       <div class="card-header"><span class="card-title">Últimos Reportes</span></div>
       <div style="overflow-x:auto">
         <table class="data-table">
@@ -671,6 +1166,35 @@ function iniciarEvalMensual(empId) {
   goTo('evaluacion-mensual', document.querySelector('[onclick*="evaluacion-mensual"]'));
   var sel = document.getElementById('evalMEmpSel');
   if (sel) { sel.value = empId; cargarEvalPeriodo(); }
+}
+
+// ── Ciclo personal del colaborador ──
+// Llama al backend para obtener el ciclo aniversario actual y autocompleta
+// los selectores Desde/Hasta. Si el colaborador no tiene fecha_ingreso
+// válida, el backend devuelve fuente='mes_calendario' y se muestra un
+// badge de advertencia.
+async function aplicarCicloPersonal() {
+  var empId = document.getElementById('evalMEmpSel')?.value;
+  if (!empId) { showToast('Selecciona primero un colaborador', 'error'); return; }
+  var data = await API.get('/evaluaciones/ciclo-actual?emp_id=' + encodeURIComponent(empId));
+  if (!data || !data.ciclo) { showToast('No se pudo calcular el ciclo', 'error'); return; }
+  var c = data.ciclo;
+  var d = document.getElementById('evalMDesde');
+  var h = document.getElementById('evalMHasta');
+  if (d) d.value = c.desde;
+  if (h) h.value = c.hasta;
+  // Badge con la fuente
+  var b = document.getElementById('evalMCicloBadge');
+  if (b) {
+    if (c.fuente === 'aniversario') {
+      b.style.display = '';
+      b.innerHTML = '<span class="badge badge-green" style="font-size:10px">⏱ Aniversario · ' + c.desde + ' → ' + c.hasta + '</span>';
+    } else {
+      b.style.display = '';
+      b.innerHTML = '<span class="badge badge-gold" style="font-size:10px">⚠ Sin fecha de ingreso · usando mes calendario</span>';
+    }
+  }
+  cargarEvalPeriodo();
 }
 
 // ═══ CENTRAL LOADER: triggered by employee/month change ═══
@@ -835,6 +1359,25 @@ async function cargarEvalMensualForm() {
         document.getElementById('evalMNotaOp').value=chk.operaciones?.nota20||0;
         document.getElementById('evalMNotaSw').value=chk.software?.nota20||0;
         document.getElementById('evalMNotaLimp').value=chk.limpieza?.nota20||0;
+        // ── Indicador N/A: si una categoría no tuvo ninguna actividad
+        // evaluada en el periodo (típico de almacén con software), mostrar
+        // un aviso visual en el label. La nota queda en 0 pero el admin
+        // sabe que no es un cero ganado, sino una categoría no aplicable.
+        function _markNA(grpKey, lblId, inpId) {
+          var grp = chk[grpKey];
+          var n = (grp && grp.detalle) ? grp.detalle.reduce(function(s,d){return s+(d.veces_hecha||0)},0) : 0;
+          var lbl = document.getElementById(lblId);
+          var inp = document.getElementById(inpId);
+          if (n === 0) {
+            if (lbl) lbl.innerHTML = '<span style="color:var(--text3);font-style:italic">N/A — sin actividades en el periodo</span>';
+            if (inp) { inp.style.background = 'var(--s3)'; inp.style.color = 'var(--text3)'; }
+          } else {
+            if (inp) { inp.style.background = ''; inp.style.color = ''; }
+          }
+        }
+        _markNA('operaciones', 'evalMLblOp', 'evalMNotaOp');
+        _markNA('software',    'evalMLblSw', 'evalMNotaSw');
+        _markNA('limpieza',    'evalMLblLimp','evalMNotaLimp');
         if(chk.incidencias&&chk.incidencias.length>0){
           // Use actual puntos_penalidad from each record, fallback to config
           var hasPuntos=chk.incidencias.some(function(i){return i.puntos_penalidad>0;});
@@ -1080,11 +1623,27 @@ async function guardarEvalMensual() {
     await API.post('/ventas', {emp_id: empId, mes: mes, meta_soles: ventaMeta, vendido_soles: ventaVendido});
   }
 
+  // Snapshot de pesos: persistir los pesos exactos usados al cierre, así
+  // ediciones futuras NO recalculan retroactivamente (regla del usuario).
+  var pesosSnapshot = {
+    peso_competencias:  parseFloat(cfg.peso_competencias)  || 25,
+    peso_valores360:    parseFloat(cfg.peso_valores360)    || 25,
+    peso_operaciones:   parseFloat(cfg.peso_operaciones)   || 10,
+    peso_software:      parseFloat(cfg.peso_software)      || 10,
+    peso_limpieza:      parseFloat(cfg.peso_limpieza)      || 10,
+    peso_conocimientos: parseFloat(cfg.peso_conocimientos) || 15,
+    peso_tardanzas:     parseFloat(cfg.peso_tardanzas)     || 5
+  };
   var r=await API.guardarEvalMensual({
-    emp_id:empId,mes:mes||desde+'_'+hasta,nota_competencias:nota_competencias,nota_valores:nota_valores,
-    nota_operaciones:nota_operaciones,nota_tardanza:nota_tardanza,
-    descuento_incidencias:desc_incidencias,
-    nota_final:nota_final,recomendacion:recomendacion,obs_general:obs,evaluador:STATE.user?.nombre||'Admin'
+    emp_id:empId, mes:mes||desde+'_'+hasta,
+    ciclo_desde: desde, ciclo_hasta: hasta,
+    nota_competencias:nota_competencias, nota_valores:nota_valores,
+    nota_operaciones:nota_operaciones, nota_software:nota_software,
+    nota_limpieza:nota_limpieza, nota_examenes:nota_examenes, nota_tardanza:nota_tardanza,
+    descuento_incidencias:desc_incidencias, bonus_ventas:ventaBonus,
+    nota_final:nota_final, recomendacion:recomendacion, obs_general:obs,
+    evaluador:STATE.user?.nombre||'Admin',
+    pesos_usados: pesosSnapshot
   });
   if(r){showToast('\u2705 Evaluaci\u00f3n guardada \u2014 '+nota_final+'/20','success');await renderEvalMensualHistorial();}
 }
@@ -1688,6 +2247,78 @@ function updatePesoTotal() {
   if(el){el.textContent='Total: '+total+'%';el.style.color=total===100?'var(--green)':'var(--red)';}
 }
 
+// ═══════════════════════════════════════════════════════
+// SEGUIMIENTO VALORES 360° (admin)
+// Matriz de quién evaluó a quién en el mes, promedios, faltantes.
+// ═══════════════════════════════════════════════════════
+async function cargarSeguimientoValores() {
+  var mes = document.getElementById('evalVAdminMes')?.value;
+  if (!mes) return;
+  var box = document.getElementById('evalVAdminBox');
+  if (box) box.innerHTML = '<div style="color:var(--text3);text-align:center;padding:30px">Cargando...</div>';
+  var data = await API.get('/valores/seguimiento/' + encodeURIComponent(mes));
+  if (!data) {
+    if (box) box.innerHTML = '<div style="color:var(--red);text-align:center;padding:30px">No se pudo cargar</div>';
+    return;
+  }
+  // Header global
+  var globalEl = document.getElementById('evalVAdminGlobal');
+  if (globalEl) {
+    var pct = Math.round((data.cumplimiento_global || 0) * 100);
+    var clr = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--gold-d)' : 'var(--red)';
+    globalEl.innerHTML = data.total_evaluaciones + ' / ' + data.esperadas +
+      ' <span style="margin-left:6px;color:' + clr + ';font-weight:800">(' + pct + '%)</span>';
+  }
+  if (!data.filas || !data.filas.length) {
+    if (box) box.innerHTML = '<div class="empty-cell">Sin colaboradores activos.</div>';
+    return;
+  }
+  var html = '';
+  // Resumen visual de cumplimiento
+  var pendCount = data.filas.filter(function(f){ return f.enviadas < f.debe_enviar; }).length;
+  if (pendCount > 0) {
+    html += '<div style="margin-bottom:12px;padding:8px 12px;background:var(--yellow-bg);border:1px solid rgba(184,134,11,.3);border-radius:var(--r);font-size:12px;color:var(--yellow)">' +
+            '⚠ <strong>' + pendCount + '</strong> colaborador(es) aún tienen evaluaciones pendientes este mes.</div>';
+  }
+  // Tabla
+  html += '<div style="overflow-x:auto"><table class="data-table" style="font-size:12px"><thead><tr>' +
+          '<th style="width:140px">Colaborador</th>' +
+          '<th style="width:60px;text-align:center">Sede</th>' +
+          '<th style="width:90px;text-align:center">Enviadas</th>' +
+          '<th style="width:90px;text-align:center">Recibidas</th>' +
+          '<th style="width:90px;text-align:center">Nota /20</th>' +
+          '<th>Promedios por valor (recibidos)</th>' +
+          '<th style="width:200px">Le falta evaluar a</th>' +
+          '</tr></thead><tbody>';
+  var campos = [['integridad','Int.'],['respeto','Resp.'],['honestidad','Hon.'],['amabilidad','Amab.'],['relacion','Rel.'],['actitud','Act.']];
+  data.filas.forEach(function(f) {
+    var pctEnv = Math.round((f.cumplimiento || 0) * 100);
+    var clrEnv = pctEnv >= 80 ? 'var(--green)' : pctEnv >= 50 ? 'var(--gold-d)' : 'var(--red)';
+    var notaCls = f.nota20 == null ? '' : (f.nota20 >= 17 ? 'excellent' : f.nota20 >= 14 ? 'good' : f.nota20 >= 11 ? 'regular' : 'bad');
+    var promPills = campos.map(function(c) {
+      var v = f.promedios[c[0]];
+      if (v == null) return '<span style="padding:1px 6px;border-radius:4px;background:var(--s3);color:var(--text3);font-size:10px">' + c[1] + ' —</span>';
+      var bg = v >= 4 ? 'rgba(26,122,82,.1)' : v >= 3 ? 'rgba(184,134,11,.1)' : 'rgba(192,57,43,.1)';
+      var fg = v >= 4 ? 'var(--green)' : v >= 3 ? 'var(--yellow)' : 'var(--red)';
+      return '<span style="padding:1px 6px;border-radius:4px;background:' + bg + ';color:' + fg + ';font-size:10px;font-weight:600">' + c[1] + ' ' + v + '</span>';
+    }).join(' ');
+    var faltStr = (f.faltantes || []).length === 0
+      ? '<span style="color:var(--green);font-size:11px">✓ completo</span>'
+      : (f.faltantes.slice(0, 4).map(function(p){ return p.iniciales; }).join(', ') + (f.faltantes.length > 4 ? ' +' + (f.faltantes.length - 4) : ''));
+    html += '<tr>' +
+            '<td style="font-weight:600">' + f.nombre + '</td>' +
+            '<td style="text-align:center"><span class="badge" style="font-size:10px">' + (f.sede || '—') + '</span></td>' +
+            '<td style="text-align:center;color:' + clrEnv + ';font-weight:700">' + f.enviadas + '/' + f.debe_enviar + '</td>' +
+            '<td style="text-align:center;font-weight:700">' + f.recibidas + '</td>' +
+            '<td style="text-align:center">' + (f.nota20 == null ? '<span style="color:var(--text3)">—</span>' : '<div class="score-pill ' + notaCls + '" style="display:inline-block">' + f.nota20 + '/20</div>') + '</td>' +
+            '<td>' + promPills + '</td>' +
+            '<td style="font-size:11px;color:var(--text3)" title="' + (f.faltantes || []).map(function(p){return p.nombre;}).join(', ') + '">' + faltStr + '</td>' +
+            '</tr>';
+  });
+  html += '</tbody></table></div>';
+  if (box) box.innerHTML = html;
+}
+
 async function guardarConfigPesos() {
   _evalConfig = null; // invalidate cache
   var body = {};
@@ -2264,3 +2895,147 @@ async function gaLayoutSave() {
   var r = await API.put('/layout/bulk', { sede: sede, zonas: _gaLayoutZonas });
   if (r) showToast('Layout guardado (' + _gaLayoutZonas.length + ' zonas)', 'success');
 }
+
+// ═══════════════════════════════════════════════════════
+// CONFIG EVAL VALORES 360° — admin habilita/programa cuándo
+// ═══════════════════════════════════════════════════════
+window.abrirConfigEvalValores = async function(){
+  var cfg = await API.get('/valores/config');
+  if (!cfg) { showToast('No se pudo cargar configuración','error'); return; }
+  document.querySelectorAll('input[name="evcModo"]').forEach(function(r){
+    r.checked = (r.value === (cfg.modo||'manual'));
+  });
+  document.getElementById('evcHabilitado').checked = !!cfg.habilitado;
+  document.getElementById('evcHabilitadoLbl').textContent = cfg.habilitado ? 'Encendido' : 'Apagado';
+  document.getElementById('evcHabilitado').onchange = function(){
+    document.getElementById('evcHabilitadoLbl').textContent = this.checked ? 'Encendido' : 'Apagado';
+  };
+  var dias = (cfg.dias||[]);
+  var grid = document.getElementById('evcDiasGrid');
+  if (grid) {
+    grid.innerHTML = '';
+    for (var d=1; d<=31; d++){
+      var act = dias.indexOf(d) >= 0;
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'evc-day' + (act?' on':'');
+      btn.dataset.dia = d;
+      btn.textContent = d;
+      btn.onclick = function(){ this.classList.toggle('on'); };
+      grid.appendChild(btn);
+    }
+  }
+  evcUpdateUI();
+  var st = document.getElementById('evcStatusActual');
+  if (st) {
+    st.innerHTML = cfg.activo_hoy
+      ? '✓ <strong>HOY</strong> los colaboradores SÍ pueden evaluarse entre sí'
+      : '✕ <strong>HOY</strong> los colaboradores NO pueden evaluarse';
+  }
+  openModal('evalValConfigModal');
+};
+
+window.evcUpdateUI = function(){
+  var modo = document.querySelector('input[name="evcModo"]:checked');
+  var modoVal = modo ? modo.value : 'manual';
+  document.getElementById('evcManualBox').style.display = (modoVal==='manual') ? '' : 'none';
+  document.getElementById('evcAutoBox').style.display   = (modoVal==='auto')   ? '' : 'none';
+};
+
+window.evcGuardar = async function(){
+  var modo = (document.querySelector('input[name="evcModo"]:checked')||{}).value || 'manual';
+  var habilitado = document.getElementById('evcHabilitado').checked;
+  var dias = Array.from(document.querySelectorAll('#evcDiasGrid .evc-day.on')).map(function(b){ return parseInt(b.dataset.dia); });
+  var body = { modo: modo };
+  if (modo === 'manual') body.habilitado = habilitado;
+  if (modo === 'auto')   body.dias = dias;
+  var r = await API.put('/valores/config', body);
+  if (!r) return;
+  showToast('Configuración guardada · ' + (r.activo_hoy ? 'activo HOY' : 'inactivo HOY'), 'success');
+  closeModal('evalValConfigModal');
+  if (typeof checkEvalValoresHabilitado === 'function') checkEvalValoresHabilitado();
+};
+
+
+// ═══════════════════════════════════════════════════════
+// EXPORT CSV — utilidad genérica para llevar tablas a Excel
+// ═══════════════════════════════════════════════════════
+window.exportCSV = function(filename, headers, rows) {
+  // headers: ['Col1','Col2',...]
+  // rows: [[v1,v2,...],[...]]
+  function esc(v){
+    if (v == null) return '';
+    var s = String(v).replace(/"/g, '""');
+    if (/[",\n;]/.test(s)) return '"' + s + '"';
+    return s;
+  }
+  var sep = ';'; // separador friendly para Excel-ES
+  var bom = '﻿'; // UTF-8 BOM para que Excel detecte acentos
+  var lines = [headers.map(esc).join(sep)];
+  rows.forEach(function(r){ lines.push(r.map(esc).join(sep)); });
+  var blob = new Blob([bom + lines.join('\r\n')], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// Botón "Exportar CSV" para Auditoría
+window.exportAuditCSV = async function(){
+  var params = {};
+  ['auditDesde','auditHasta','auditSede','auditModulo','auditUsuario'].forEach(function(id){
+    var el=document.getElementById(id); if(el && el.value) params[id.replace('audit','').toLowerCase()] = el.value;
+  });
+  var q = new URLSearchParams(params).toString();
+  var logs = await API.get('/audit?'+q);
+  if (!logs || !logs.length) { showToast('Nada que exportar','error'); return; }
+  exportCSV('auditoria_'+hoyLocal()+'.csv',
+    ['Fecha','Hora','Usuario','Cod','Sede','Módulo','Acción','Detalle','IP'],
+    logs.map(function(l){
+      var det = l.detalle || '';
+      try { var p = JSON.parse(det); det = Object.entries(p).map(function(e){return e[0]+':'+e[1]}).join(' | '); } catch(e){}
+      return [l.fecha, l.hora, l.usuario_nombre||'', l.usuario_cod||'', l.sede||'', l.modulo||'', l.accion||'', det, l.ip||''];
+    }));
+  showToast('Exportadas '+logs.length+' filas','success');
+};
+
+// Botón "Exportar CSV" para Pagos
+window.exportPagosCSV = async function(){
+  var sede = document.getElementById('pagoFiltroSede')?.value || '';
+  var estado = document.getElementById('pagoFiltroEstado')?.value || '';
+  var mes = document.getElementById('pagoFiltroMes')?.value || '';
+  var qp = []; if(sede)qp.push('sede='+sede); if(estado)qp.push('estado='+estado); if(mes)qp.push('mes='+mes);
+  var pagos = await API.get('/pagos'+(qp.length?'?'+qp.join('&'):''));
+  if (!pagos || !pagos.length) { showToast('Nada que exportar','error'); return; }
+  exportCSV('pagos_'+(mes||hoyLocal())+'.csv',
+    ['#','Colaborador','Sede','Cargo','Ciclo desde','Ciclo hasta','Mes','Monto base','Bonus','Descuentos','Total','Nota','Método','N° comprob.','Fecha pago','Estado','Anulado','Observaciones','Registrado por'],
+    pagos.map(function(p){
+      return [p.id, p.emp_nombre||'', p.emp_sede||'', (p.emp_rol||'').replace(/_/g,' '),
+        p.ciclo_desde||'', p.ciclo_hasta||'', p.mes||'',
+        p.monto_base||0, p.bonus||0, p.descuentos||0, p.monto||0,
+        p.nota_final!=null?p.nota_final:'', p.metodo||'', p.comprobante_num||'',
+        p.fecha_pago||'', p.estado||'', p.anulado?'SÍ ('+(p.anulado_motivo||'')+')':'NO',
+        p.observaciones||'', p.registrado_por||''];
+    }));
+  showToast('Exportados '+pagos.length+' pagos','success');
+};
+
+// Botón "Exportar CSV" para Asistencia diaria
+window.exportAsistDiaCSV = async function(){
+  var fecha = document.getElementById('asistDiaFecha')?.value || hoyLocal();
+  var sede = document.getElementById('asistDiaSede')?.value || '';
+  var qp = ['fecha='+fecha]; if(sede) qp.push('sede='+sede);
+  var d = await API.get('/asistencias/del-dia?'+qp.join('&'));
+  if (!d || !d.rows || !d.rows.length) { showToast('Nada que exportar','error'); return; }
+  exportCSV('asistencia_'+fecha+(sede?'_'+sede:'')+'.csv',
+    ['Colaborador','Rol','Turno','Sede esperada','Estado','Hora entrada','Min tardanza','Fuente','Observación'],
+    d.rows.map(function(r){
+      var a = r.asistencia;
+      return [r.nombre, (r.rol||'').replace(/_/g,' '), r.turno==='M'?'Mañana':'Tarde',
+        r.sede_esperada||'', a?'Presente':'Ausente',
+        a?(a.hora_entrada||''):'', a?(a.minutos_tardanza||0):'',
+        a?(a.fuente||''):'', a?(a.obs||''):''];
+    }));
+  showToast('Exportadas '+d.rows.length+' filas','success');
+};

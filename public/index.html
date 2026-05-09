@@ -7,7 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/style.css?v=1776100000">
-<link rel="stylesheet" href="/css/enhancements.css?v=1775834000">
+<link rel="stylesheet" href="/css/enhancements.css?v=1780400000">
+<link rel="stylesheet" href="/css/kanban-almacen.css?v=1778900000">
 </head>
 <body>
 
@@ -70,6 +71,7 @@
       <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid var(--border);padding-bottom:6px">
         <button type="button" class="emp-tab active" onclick="empTab('general',this)" style="padding:6px 14px;border-radius:6px 6px 0 0;border:none;background:var(--navy);color:#fff;font-size:11px;font-weight:700;cursor:pointer">General</button>
         <button type="button" class="emp-tab" onclick="empTab('personal',this)" style="padding:6px 14px;border-radius:6px 6px 0 0;border:none;background:var(--s3);color:var(--text3);font-size:11px;font-weight:700;cursor:pointer">Datos Personales</button>
+        <button type="button" class="emp-tab" onclick="empTab('contrato',this)" style="padding:6px 14px;border-radius:6px 6px 0 0;border:none;background:var(--s3);color:var(--text3);font-size:11px;font-weight:700;cursor:pointer">Contrato</button>
         <button type="button" class="emp-tab" onclick="empTab('notas',this)" style="padding:6px 14px;border-radius:6px 6px 0 0;border:none;background:var(--s3);color:var(--text3);font-size:11px;font-weight:700;cursor:pointer">Notas</button>
       </div>
 
@@ -122,6 +124,35 @@
             <div class="field"><label>Nombre</label><input type="text" id="editEmpCE" placeholder="Familiar o conocido"></div>
             <div class="field"><label>Tel&eacute;fono</label><input type="text" id="editEmpCET" placeholder="9XXXXXXXX" maxlength="9" inputmode="tel"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- TAB: Contrato -->
+      <div id="empTabContrato" style="display:none">
+        <div style="background:var(--gold-pale);border:1px solid var(--gold-b);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--gold-d);margin-bottom:12px">
+          <strong>Datos contractuales y de pago.</strong> Esto alimenta la sugerencia automática de monto en el módulo de Pagos al cierre de cada evaluación mensual.
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Tipo de contrato</label>
+            <select id="editEmpContrato">
+              <option value="">— Sin definir —</option>
+              <option value="indefinido">Indefinido</option>
+              <option value="plazo_fijo">A plazo fijo</option>
+              <option value="part_time">Part-time</option>
+              <option value="recibo_honorarios">Recibo por honorarios</option>
+              <option value="practicas">Prácticas pre-profesionales</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div class="field"><label>Vencimiento del contrato</label>
+            <input type="date" id="editEmpVencContrato">
+          </div>
+        </div>
+        <div class="field"><label>Salario base (S/ por ciclo mensual)</label>
+          <input type="number" id="editEmpSalario" min="0" step="0.01" placeholder="0.00" style="font-family:var(--font-m);font-weight:700;font-size:16px">
+        </div>
+        <div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:-4px;margin-bottom:10px">
+          Sugerencia de pago = salario_base × (nota_final/20) + bonus − descuentos
         </div>
       </div>
 
@@ -187,14 +218,19 @@
 <nav class="sidebar">
   <div class="sb-top">
     <div class="sb-logo-row">
-      <div class="sb-logo-icon"><img src="/assets/logo_lion_color.png" alt="LB" style="max-width:28px"></div>
-      <div><div class="sb-brand">LUCEBIEN</div><div class="sb-brand-sub">Control Interno</div></div>
+      <div class="sb-logo-icon"><img src="/assets/logo_lion_color.png" alt="LuceBien" loading="eager" decoding="sync"></div>
+      <div class="sb-brand-text">
+        <div class="sb-brand"><span class="sb-brand-luce">LUCE</span><span class="sb-brand-bien">BIEN</span></div>
+        <div class="sb-brand-sub">Control Interno</div>
+      </div>
     </div>
-    <div class="sb-sede-badge">
-      <div class="sb-sede-dot"></div>
-      <span class="sb-sede-name" id="sbSedeName">&#8212;</span>
-      <span class="sb-sede-change" onclick="volverSedes()">cambiar</span>
-    </div>
+    <button type="button" class="sb-sede-fixed" id="sbSedeFixed" onclick="abrirSelectorSede()" title="Cambiar de sede">
+      <span class="sb-sede-fixed-dot"></span>
+      <span class="sb-sede-fixed-lbl">Sede</span>
+      <span class="sb-sede-fixed-name" id="sbSedeFixedName">—</span>
+      <span class="sb-sede-fixed-caret" aria-hidden="true">▾</span>
+    </button>
+    <div class="sb-sede-pop" id="sbSedePop" style="display:none"></div>
   </div>
   <div class="nav">
     <div class="nav-section">Operaciones</div>
@@ -203,18 +239,14 @@
       <span class="nav-icon">&#11088;</span>Evaluaci&oacute;n de Reporte
       <span class="nav-badge hidden" id="evalBadge">!</span>
     </div>
-    <div class="nav-item" onclick="goTo('mi-desempeno',this)"><span class="nav-icon">&#128200;</span>Mi Desempe&ntilde;o</div>
     <div class="nav-item nav-eval-valores hidden" onclick="goTo('eval-valores',this)"><span class="nav-icon">&#128101;</span>Evaluar Compa&ntilde;eros<span class="eval-v-badge badge badge-red hidden" style="margin-left:6px;font-size:9px">!</span></div>
     <div class="nav-section">Prendas</div>
     <div class="nav-item nav-tienda" onclick="goTo('lavanderia',this)"><span class="nav-icon">&#128084;</span>Env&iacute;o a Lavander&iacute;a</div>
     <div class="nav-item nav-tienda" onclick="goTo('pipeline-envios',this)"><span class="nav-icon">&#128230;</span>Env&iacute;os Recibidos</div>
     <div class="nav-item" onclick="goTo('prestamos',this)"><span class="nav-icon">&#128259;</span>Pr&eacute;stamo de Prendas</div>
     <div class="nav-item" onclick="goTo('solicitudes',this)"><span class="nav-icon">&#128233;</span>Solicitudes</div>
-    <div class="nav-item" onclick="abrirIncidenciaRapidaModal()" style="cursor:pointer"><span class="nav-icon">&#128680;</span>Agregar Incidencia</div>
     <div class="nav-item" style="opacity:.4;pointer-events:none;cursor:default"><span class="nav-icon">&#128241;</span>Devoluci&oacute;n Garant&iacute;a <span style="font-size:8px;color:var(--text3);margin-left:4px">Pronto</span></div>
     <div class="nav-item nav-almacen hidden" onclick="goTo('kanban-almacen',this)"><span class="nav-icon">&#128230;</span>Prendas Recibidas</div>
-    <div class="nav-item nav-almacen hidden" onclick="goTo('pipeline-envios-acc',this)"><span class="nav-icon">&#127872;</span>Env&iacute;o de Accesorios</div>
-    <div class="nav-item nav-almacen hidden" onclick="goTo('pipeline-historial',this)"><span class="nav-icon">&#128220;</span>Historial del Pipeline</div>
     <div id="navAdmin" class="hidden">
       <div class="nav-section">Administrador</div>
       <div class="nav-item" onclick="goTo('dashboard',this)"><span class="nav-icon">&#128202;</span>Dashboard</div>
@@ -223,23 +255,78 @@
       <div class="nav-item" onclick="goTo('evaluacion-mensual',this)"><span class="nav-icon">&#128196;</span>Evaluaci&oacute;n Mensual</div>
       <div class="nav-item" onclick="goTo('gestion-actividades',this)"><span class="nav-icon">&#9998;</span>Gestionar Actividades</div>
       <div class="nav-item" onclick="goTo('admin-reportes',this)"><span class="nav-icon">&#128203;</span>Reportes de Actividad</div>
-      <div class="nav-item" onclick="goTo('horarios-admin',this)"><span class="nav-icon">&#128197;</span>Gesti&oacute;n de Horarios</div>
+      <div class="nav-item" onclick="goTo('horarios-admin',this)"><span class="nav-icon">&#128197;</span>Horarios</div>
 
       <div class="nav-item" onclick="goTo('audit-log',this)"><span class="nav-icon">&#128270;</span>Auditor&iacute;a</div>
     </div>
   </div>
-  <div class="sb-user">
-    <div class="sb-user-info">
-      <div class="sb-avatar" id="sbAvatar">&#8212;</div>
-      <div><div class="sb-user-name" id="sbName">&#8212;</div><div class="sb-user-role" id="sbRole">&#8212;</div></div>
-    </div>
-    <button class="btn-logout" onclick="logout()">&#8617; Cerrar sesi&oacute;n</button>
+  <div class="sb-foot">
     <button class="sb-collapse-btn" onclick="toggleSidebar()" title="Colapsar/Expandir">&#9664; Colapsar</button>
   </div>
 </nav>
 
+<!-- ═══ HEADER GLOBAL FIJO ═══ -->
+<header class="lb-header" id="lbHeader">
+  <div class="lbh-left">
+    <div class="lbh-page-title" id="lbhPageTitle">—</div>
+  </div>
+
+  <div class="lbh-center">
+    <div class="lbh-clock" id="lbhClock">--:--:--</div>
+    <div class="lbh-divider"></div>
+    <div class="lbh-fecha" id="lbhFecha">—</div>
+    <div class="lbh-divider"></div>
+    <div class="lbh-turno" id="lbhTurno" title="Turno actual y deadline">
+      <span class="lbh-turno-lbl">Turno</span>
+      <span class="lbh-turno-val" id="lbhTurnoVal">—</span>
+      <span class="lbh-turno-dl" id="lbhTurnoDeadline"></span>
+    </div>
+    <div class="lbh-divider lbh-only-multi"></div>
+    <div class="lbh-sede lbh-only-multi" id="lbhSedeWrap" style="display:none">
+      <span class="lbh-sede-lbl">Sede</span>
+      <select class="lbh-sede-sel" id="lbhSedeSel" onchange="lbhCambiarSede(this.value)"></select>
+    </div>
+  </div>
+
+  <div class="lbh-right">
+    <div class="lbh-conn" id="lbhConn" title="Estado de conexión">
+      <span class="lbh-conn-dot"></span>
+      <span class="lbh-conn-lbl">conectando…</span>
+    </div>
+    <div class="lbh-quick">
+      <button class="lbh-quick-btn" onclick="goTo('mi-desempeno')" title="Mi desempeño" aria-label="Mi desempeño">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+        <span>Desempeño</span>
+      </button>
+      <button class="lbh-quick-btn lbh-quick-warn" onclick="abrirIncidenciaRapidaModal()" title="Reportar una incidencia rápida" aria-label="Agregar incidencia">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        <span>Incidencia</span>
+      </button>
+    </div>
+    <button class="lbh-bell" id="lbhBell" onclick="lbhToggleBell()" title="Pendientes" aria-label="Notificaciones">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 22a2 2 0 002-2h-4a2 2 0 002 2zm6-6V11a6 6 0 10-12 0v5l-2 2v1h16v-1l-2-2z"/></svg>
+      <span class="lbh-bell-badge" id="lbhBellBadge" style="display:none">0</span>
+    </button>
+    <div class="lbh-bell-pop" id="lbhBellPop" style="display:none"></div>
+    <button class="lbh-user" id="lbhUser" onclick="lbhToggleUser()" title="Mi cuenta" type="button">
+      <span class="lbh-avatar" id="lbhAvatar">?</span>
+      <div class="lbh-user-meta">
+        <div class="lbh-user-name" id="lbhUserName">—</div>
+        <div class="lbh-user-role" id="lbhUserRole">—</div>
+      </div>
+      <span class="lbh-user-caret" aria-hidden="true">▾</span>
+    </button>
+    <div class="lbh-user-pop" id="lbhUserPop" style="display:none">
+      <div class="lbh-user-pop-item" onclick="goTo('mi-desempeno');lbhCloseAll()">Mi desempeño</div>
+      <div class="lbh-user-pop-item" onclick="goTo('eval-valores');lbhCloseAll()">Evaluar valores</div>
+      <div class="lbh-user-pop-sep"></div>
+      <div class="lbh-user-pop-item lbh-logout" onclick="logout();lbhCloseAll()">Cerrar sesión</div>
+    </div>
+  </div>
+</header>
+
 <!-- MAIN -->
-<main class="main">
+<main class="main lb-main-shifted">
 <div id="turnoAlertBox" style="margin-bottom:12px"></div>
 
 <!-- REPORTE -->
@@ -477,6 +564,14 @@
     </div>
   </div>
   <div class="card">
+    <div class="card-header"><span class="card-title">Mi resumen del mes</span>
+      <span style="font-size:10px;color:var(--text3);font-style:italic">Lo que tus compa&ntilde;eros opinaron de ti (an&oacute;nimo)</span>
+    </div>
+    <div class="card-body" id="evalVMiResumen">
+      <div style="color:var(--text3);font-size:12px">Cargando...</div>
+    </div>
+  </div>
+  <div class="card">
     <div class="card-header"><span class="card-title">Compa&ntilde;eros a evaluar</span></div>
     <div class="card-body" id="evalVList">
       <div style="color:var(--text3);font-size:12px;font-family:var(--font-m)">Selecciona el mes para cargar...</div>
@@ -683,16 +778,54 @@
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page">
   <div class="page-header">
-    <div><div class="page-title">Dashboard <span>Administrativo</span></div><div class="page-sub" id="dashSub">Vista general</div></div>
-    <div style="display:flex;gap:8px">
+    <div><div class="page-title">Dashboard <span>Administrativo</span></div><div class="page-sub" id="dashSub">Lo que necesitas atender hoy en una pantalla</div></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="dashUpdated" style="font-size:10px;color:var(--text3);font-family:var(--font-m)"></span>
       <select id="dashFiltroSede" class="inline-select" onchange="renderDashboard()">
         <option value="">Todas las sedes</option>
         <option value="ST">Stan</option><option value="LB">LuceBien</option>
         <option value="AL">Almac&eacute;n</option><option value="TR">Trece</option>
       </select>
+      <button class="btn btn-ghost btn-xs" onclick="renderDashboard()" title="Refrescar">↻</button>
     </div>
   </div>
-  <div class="grid-4" style="margin-bottom:18px" id="dashKpis"></div>
+
+  <!-- ALERTAS CRÍTICAS -->
+  <div id="dashAlertasCriticas" class="dash-alertas-wrap" style="margin-bottom:14px"></div>
+
+  <!-- KPIs ejecutivos -->
+  <div class="dash-kpis-grid" id="dashKpis" style="margin-bottom:18px"></div>
+
+  <!-- Pipeline + Próximas evaluaciones + Salud -->
+  <div class="grid-3" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Pipeline almacén</span><span class="badge badge-navy" id="dashPipeTotal">0</span></div>
+      <div class="card-body" id="dashPipelineEstado"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Próximas evaluaciones y pagos</span><span class="badge badge-gold" id="dashProxEvalsBadge">0</span></div>
+      <div class="card-body" id="dashProxEvals"></div>
+    </div>
+    <div class="card" id="dashSaludCard">
+      <div class="card-header">
+        <span class="card-title">Estado del sistema</span>
+        <span style="font-size:10px;color:var(--text3);font-style:italic">configuración pendiente</span>
+      </div>
+      <div class="card-body" id="dashSalud"></div>
+    </div>
+  </div>
+
+  <!-- Tendencia 7 días + resumen sedes -->
+  <div class="grid-2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Tendencia · últimos 7 días</span></div>
+      <div class="card-body" id="dashTendencia"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Resumen por sede · hoy</span></div>
+      <div class="card-body" id="dashResumenSedes"></div>
+    </div>
+  </div>
   <div class="card"><div class="card-header"><span class="card-title">Estado de Reportes Diarios</span></div><div class="card-body" id="dashAlertas"></div></div>
   <div class="grid-2">
     <div class="card"><div class="card-header"><span class="card-title">&#127942; Ranking del Mes</span></div><div class="card-body" id="dashRanking"></div></div>
@@ -700,10 +833,10 @@
   </div>
   <div class="grid-2">
     <div class="card"><div class="card-header"><span class="card-title">Incidencias</span></div><div class="card-body" id="dashIncidencias"></div></div>
-    <div class="card"><div class="card-header"><span class="card-title">&#128293; Actividades M&aacute;s Incumplidas</span></div><div class="card-body" id="dashActIncumplidas"></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">Cumplimiento de actividades por sede</span></div><div class="card-body" id="dashActIncumplidas"></div></div>
   </div>
   <div class="grid-2">
-    <div class="card"><div class="card-header"><span class="card-title">&#127942; Almac&eacute;n — Ranking Pipeline</span></div><div class="card-body" id="dashPipelineRank"></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">Top operarios del almacén</span><span style="font-size:10px;color:var(--text3);font-style:italic">por puntos del pipeline</span></div><div class="card-body" id="dashPipelineRank"></div></div>
     <div class="card">
       <div class="card-header"><span class="card-title">Lavander&iacute;a por Tienda</span></div>
       <div class="card-body"><div class="grid-4" id="dashLavStats"></div>
@@ -722,7 +855,7 @@
 <div id="page-empleados" class="page">
   <div class="page-header">
     <div><div class="page-title">Gesti&oacute;n de <span>Colaboradores</span></div><div class="page-sub">Perfiles, roles, sedes y accesos del equipo</div></div>
-    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="goTo('horarios-admin',document.querySelector('[onclick*=\'horarios-admin\']'))">&#128197; Gestionar horarios</button><button class="btn btn-ghost btn-sm" onclick="abrirConfigAccesos()">&#9881; Accesos</button><button class="btn btn-primary btn-sm" onclick="nuevoEmpleado()">+ Nuevo</button></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="goTo('horarios-admin',document.querySelector('[onclick*=\'horarios-admin\']'))">&#128197; Gestionar horarios</button><button class="btn btn-ghost btn-sm" onclick="abrirConfigEvalValores()">&#127918; Eval. Valores 360&deg;</button><button class="btn btn-ghost btn-sm" onclick="abrirConfigAccesos()">&#9881; Accesos</button><button class="btn btn-primary btn-sm" onclick="nuevoEmpleado()">+ Nuevo</button></div>
   </div>
   <div class="card">
     <div class="card-header"><span class="card-title">Equipo</span>
@@ -818,7 +951,11 @@
         <div class="field mb-0" style="min-width:130px"><label>Hasta</label>
           <input type="date" id="evalMHasta" onchange="cargarEvalPeriodo()">
         </div>
+        <div class="field mb-0" style="display:flex;align-items:flex-end">
+          <button class="btn btn-ghost btn-sm" id="evalMBtnCiclo" onclick="aplicarCicloPersonal()" title="Auto-llenar fechas con el ciclo aniversario del colaborador">Ciclo personal</button>
+        </div>
         <div id="evalMSelectorInfo" style="font-size:11px;color:var(--text3)"></div>
+        <div id="evalMCicloBadge" style="font-size:10px;display:none"></div>
       </div>
     </div>
   </div>
@@ -827,6 +964,8 @@
   <div class="eval-tabs" style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)">
     <button class="eval-tab active" onclick="switchEvalTab('evaluar',this)">Evaluar</button>
     <button class="eval-tab" onclick="switchEvalTab('asistencias',this)">Asistencias</button>
+    <button class="eval-tab" onclick="switchEvalTab('pagos',this)">Pagos</button>
+    <button class="eval-tab" onclick="switchEvalTab('valores',this)">Valores 360&deg;</button>
     <button class="eval-tab" onclick="switchEvalTab('config',this)">Configuraci&oacute;n</button>
   </div>
 
@@ -940,6 +1079,7 @@
       </div>
       <div class="btn-row" style="border:none;padding:0">
         <button class="btn btn-primary" onclick="guardarEvalMensual()">Guardar Evaluaci&oacute;n</button>
+        <button class="btn btn-gold" onclick="cerrarEvalYRegistrarPago()" title="Guarda la evaluaci&oacute;n y abre el formulario de pago con monto sugerido">Cerrar y registrar pago →</button>
       </div>
     </div>
     <div class="card" style="margin-top:24px">
@@ -1001,6 +1141,37 @@
   </div>
 
   <!-- ═══ TAB: CONFIG ═══ -->
+  <!-- ═══ TAB: VALORES 360° (admin) ═══ -->
+  <div id="evalTabValores" style="display:none">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Seguimiento de Valores 360&deg;</span>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="month" id="evalVAdminMes" style="background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px;font-size:12px;outline:none" onchange="cargarSeguimientoValores()">
+          <span id="evalVAdminGlobal" class="badge badge-navy">&#8212;</span>
+        </div>
+      </div>
+      <div class="card-body" id="evalVAdminBox">
+        <div style="color:var(--text3);font-size:12px;text-align:center;padding:30px">Selecciona un mes para cargar el seguimiento.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: PAGOS DEL COLABORADOR ═══ -->
+  <div id="evalTabPagos" style="display:none">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Pagos registrados</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="evalPagosInfo" style="font-size:11px;color:var(--text3);font-style:italic">Selecciona un colaborador arriba</span>
+          <button class="btn btn-ghost btn-xs" onclick="evalPagoAbrirNuevo()" id="evalPagoBtnNuevo" disabled>+ Registrar pago</button>
+        </div>
+      </div>
+      <div class="card-body" id="evalPagosBody">
+        <div style="color:var(--text3);font-size:12px;text-align:center;padding:30px">Selecciona un colaborador para ver y registrar sus pagos.</div>
+      </div>
+    </div>
+  </div>
+
   <div id="evalTabConfig" style="display:none">
   <div class="card">
     <div class="card-header"><span class="card-title">Pesos de Componentes</span>
@@ -1056,6 +1227,218 @@
     </div>
   </div>
 </div>
+</div>
+
+<!-- ═══ PÁGINA: PAGOS ═══ -->
+<div id="page-pagos" class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Pagos a <span>Colaboradores</span></div>
+      <div class="page-sub">Registro y comprobantes de pago por ciclo · derivados de la evaluación mensual</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <select id="pagoFiltroSede" class="inline-select" onchange="renderPagos()">
+        <option value="">Todas las sedes</option>
+        <option value="ST">Stan</option><option value="LB">LuceBien</option>
+        <option value="AL">Almacén</option><option value="TR">Trece</option>
+      </select>
+      <select id="pagoFiltroEstado" class="inline-select" onchange="renderPagos()">
+        <option value="">Todos los estados</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="pagado">Pagados</option>
+      </select>
+      <input type="month" id="pagoFiltroMes" class="inline-select" onchange="renderPagos()">
+      <button class="btn btn-primary btn-sm" onclick="abrirNuevoPago()">+ Registrar pago</button>
+    </div>
+  </div>
+
+  <div class="grid-4" style="margin-bottom:14px" id="pagosKpis"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Historial de pagos</span>
+      <span style="font-size:11px;color:var(--text3)" id="pagosCount"></span>
+      <button class="btn btn-ghost btn-xs" onclick="exportPagosCSV()" title="Exportar a CSV (Excel)">📥 CSV</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr>
+          <th>#</th><th>Colaborador</th><th>Sede</th><th>Ciclo / Mes</th>
+          <th style="text-align:right">Monto</th><th>Método</th><th>Fecha pago</th>
+          <th>Estado</th><th>Nota</th><th style="width:170px"></th>
+        </tr></thead>
+        <tbody id="pagosBody">
+          <tr><td class="empty-cell" colspan="10">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: CONFIG EVAL VALORES 360° (admin) ═══ -->
+<div class="modal-overlay" id="evalValConfigModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h2>🎲 Habilitar Evaluar Compañeros</h2>
+      <button class="modal-close" onclick="closeModal('evalValConfigModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--gold-pale);border:1px solid var(--gold-b);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--gold-d);margin-bottom:14px;line-height:1.45">
+        Cuando está habilitado, todos los colaboradores ven la opción "Evaluar Compañeros" en su menú lateral y pueden calificar a sus pares. Cuando está apagado, esa opción se oculta.
+      </div>
+
+      <div class="field" style="margin-bottom:12px">
+        <label>Modo</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+          <label class="evc-mode-pill"><input type="radio" name="evcModo" value="manual" checked onchange="evcUpdateUI()"><span>Manual<small>Lo enciendes y apagas tú</small></span></label>
+          <label class="evc-mode-pill"><input type="radio" name="evcModo" value="auto" onchange="evcUpdateUI()"><span>Programado<small>Se enciende solo en los días que elijas</small></span></label>
+        </div>
+      </div>
+
+      <div class="field" id="evcManualBox" style="margin-bottom:12px">
+        <label>Estado actual</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <label class="switch"><input type="checkbox" id="evcHabilitado"><span class="slider"></span></label>
+          <span id="evcHabilitadoLbl" style="font-size:12px;font-weight:700">Apagado</span>
+        </div>
+      </div>
+
+      <div class="field" id="evcAutoBox" style="margin-bottom:12px;display:none">
+        <label>Días del mes en que se habilita automáticamente</label>
+        <div id="evcDiasGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px"></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;font-style:italic">Click en un día para encender/apagar. Por defecto se sugiere del 25 al 28 (cierre de mes).</div>
+      </div>
+
+      <div id="evcStatusActual" style="background:var(--s2);border-left:3px solid var(--navy);padding:8px 12px;border-radius:6px;font-size:11px;font-family:var(--font-m);color:var(--text2)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('evalValConfigModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="evcGuardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PÁGINA: ASISTENCIA DIARIA ═══ -->
+<div id="page-asistencias" class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Asistencia <span>Diaria</span></div>
+      <div class="page-sub">Marca presente, ajusta tardanzas y justifica faltas. Mientras no haya huellero, los reportes enviados auto-marcan presente.</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <input type="date" id="asistDiaFecha" class="inline-select" onchange="renderAsistDia()">
+      <select id="asistDiaSede" class="inline-select" onchange="renderAsistDia()">
+        <option value="">Todas las sedes</option>
+        <option value="ST">Stan</option><option value="LB">LuceBien</option>
+        <option value="AL">Almacén</option><option value="TR">Trece</option>
+      </select>
+      <button class="btn btn-ghost btn-xs" onclick="renderAsistDia()" title="Refrescar">↻</button>
+    </div>
+  </div>
+
+  <div class="dash-kpis-grid" id="asistDiaKpis" style="margin-bottom:14px"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Equipo del día</span>
+      <span style="font-size:11px;color:var(--text3)" id="asistDiaCount"></span>
+      <button class="btn btn-ghost btn-xs" onclick="exportAsistDiaCSV()" title="Exportar a CSV (Excel)">📥 CSV</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr>
+          <th>Colaborador</th><th>Turno</th><th>Sede esperada</th>
+          <th>Estado</th><th>Hora entrada</th><th style="width:90px;text-align:center">Tardanza</th>
+          <th>Fuente</th><th>Observación</th><th style="width:130px"></th>
+        </tr></thead>
+        <tbody id="asistDiaBody">
+          <tr><td class="empty-cell" colspan="9">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: REGISTRAR / EDITAR PAGO ═══ -->
+<div class="modal-overlay" id="pagoModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h2 id="pagoModalTitle">Registrar pago</h2>
+      <button class="modal-close" onclick="closeModal('pagoModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pagoId">
+      <input type="hidden" id="pagoEvalId">
+
+      <div class="grid-2" style="gap:10px;margin-bottom:8px">
+        <div class="field mb-0"><label>Colaborador *</label>
+          <select id="pagoEmpId" onchange="pagoSugerirMonto()"></select>
+        </div>
+        <div class="field mb-0"><label>Mes / ciclo</label>
+          <input type="month" id="pagoMes">
+        </div>
+      </div>
+
+      <div class="grid-2" style="gap:10px;margin-bottom:8px">
+        <div class="field mb-0"><label>Ciclo desde</label>
+          <input type="date" id="pagoCicloDesde" onchange="pagoSugerirMonto()">
+        </div>
+        <div class="field mb-0"><label>Ciclo hasta</label>
+          <input type="date" id="pagoCicloHasta">
+        </div>
+      </div>
+
+      <div id="pagoSugerido" style="background:var(--gold-pale);border:1px solid var(--gold-b);border-radius:8px;padding:10px;font-size:11px;display:none;margin-bottom:10px">
+        <div id="pagoSugeridoTxt" style="color:var(--gold-d);font-family:var(--font-m)"></div>
+        <button type="button" class="btn btn-ghost btn-xs" style="margin-top:6px" onclick="pagoUsarSugerido()">Usar montos sugeridos →</button>
+      </div>
+
+      <div class="grid-3" style="gap:10px;margin-bottom:8px">
+        <div class="field mb-0"><label>Monto base</label>
+          <input type="number" step="0.01" min="0" id="pagoMontoBase" oninput="pagoRecalc()">
+        </div>
+        <div class="field mb-0"><label style="color:var(--green)">Bonus</label>
+          <input type="number" step="0.01" min="0" id="pagoBonus" oninput="pagoRecalc()">
+        </div>
+        <div class="field mb-0"><label style="color:var(--red)">Descuentos</label>
+          <input type="number" step="0.01" min="0" id="pagoDesc" oninput="pagoRecalc()">
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:8px">
+        <label>Total a pagar (S/)</label>
+        <input type="number" step="0.01" min="0" id="pagoMonto" style="font-weight:800;font-size:18px;font-family:var(--font-m)">
+      </div>
+
+      <div class="grid-3" style="gap:10px;margin-bottom:8px">
+        <div class="field mb-0"><label>Método</label>
+          <select id="pagoMetodo">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="yape">Yape / Plin</option>
+            <option value="cheque">Cheque</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="field mb-0"><label>N° comprobante</label>
+          <input type="text" id="pagoComprobNum" placeholder="Op. / boleta">
+        </div>
+        <div class="field mb-0"><label>Fecha pago</label>
+          <input type="date" id="pagoFecha">
+        </div>
+      </div>
+
+      <div class="field mb-0">
+        <label>Observaciones</label>
+        <textarea id="pagoObs" rows="2" placeholder="Notas opcionales..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('pagoModal')">Cancelar</button>
+      <button class="btn btn-ghost" id="pagoBtnPendiente" onclick="guardarPago('pendiente')">Guardar como pendiente</button>
+      <button class="btn btn-primary" onclick="guardarPago('pagado')">Marcar como pagado</button>
+    </div>
+  </div>
 </div>
 
 
@@ -1378,60 +1761,6 @@
   <style>@keyframes undoCountdown{0%{width:100%}100%{width:0%}}</style>
   <div id="almacen-kanban-root" style="min-height:80vh"></div>
 </div>
-
-<!-- PÁGINA: PIPELINE DE PRENDAS (Almacén) -->
-<div id="page-pipeline" class="page">
-  <div class="page-header">
-    <h1 class="page-title">&#9881; Pipeline de Prendas</h1>
-    <p class="page-sub">Seguimiento individual de cada prenda a trav&eacute;s del proceso</p>
-  </div>
-  <div class="card">
-    <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-      <div id="pipeStats"></div>
-      <div style="display:flex;gap:6px">
-        <button id="btnViewKanban" class="btn btn-primary btn-sm" onclick="togglePipelineView('kanban')">Kanban</button>
-        <button id="btnViewTabla" class="btn btn-ghost btn-sm" onclick="togglePipelineView('tabla')">Tabla</button>
-        <button class="btn btn-ghost btn-sm" onclick="abrirIngresoPipeline()">+ Ingresar Prenda</button>
-        <button class="btn btn-primary btn-sm" onclick="prepararEnvio()">&#128230; Enviar a Tienda</button>
-      </div>
-    </div>
-  </div>
-  <div class="card" style="margin-top:12px">
-    <div id="pipelineContent"><div style="padding:40px;text-align:center;color:var(--text3)">Cargando pipeline...</div></div>
-  </div>
-</div>
-
-<!-- Modal: Ingresar prenda al pipeline -->
-<div class="modal-overlay" id="pipeIngresoModal">
-  <div class="modal" style="max-width:440px">
-    <div class="modal-header"><h2>&#128229; Ingresar Prenda</h2><button class="modal-close" onclick="closeModal('pipeIngresoModal')">&#10005;</button></div>
-    <div class="modal-body">
-      <div class="field"><label>C&oacute;digo *</label><input type="text" id="pipeIngCodigo" placeholder="Ej: LB-150"></div>
-      <div class="grid-2">
-        <div class="field"><label>Tipo</label><select id="pipeIngTipo"><option>Terno completo</option><option>Saco</option><option>Pantal&oacute;n</option><option>Chaleco</option><option>Blazer</option></select></div>
-        <div class="field"><label>Color</label><input type="text" id="pipeIngColor" placeholder="Color"></div>
-      </div>
-      <div class="field"><label>Talla</label><select id="pipeIngTalla"><option>26</option><option>XS</option><option>S</option><option selected>M</option><option>L</option><option>XL</option><option>2XL</option></select></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('pipeIngresoModal')">Cancelar</button><button class="btn btn-primary" onclick="ingresarPrendaPipeline()">Ingresar</button></div>
-  </div>
-</div>
-
-<!-- Modal: Enviar a tienda -->
-<div class="modal-overlay" id="envioModal">
-  <div class="modal" style="">
-    <div class="modal-header"><h2>&#128230; Enviar Prendas</h2><button class="modal-close" onclick="closeModal('envioModal')">&#10005;</button></div>
-    <div class="modal-body">
-      <input type="hidden" id="envioIds">
-      <p><strong id="envioCount">0</strong> prendas seleccionadas para env&iacute;o</p>
-      <div class="field"><label>Tienda destino *</label>
-        <select id="envioDestino"><option value="">Elegir...</option><option value="ST">Stan</option><option value="LB">LuceBien</option><option value="TR">Trece</option></select>
-      </div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('envioModal')">Cancelar</button><button class="btn btn-primary" onclick="ejecutarEnvio()">Enviar</button></div>
-  </div>
-</div>
-
 <!-- PÁGINA: ENVÍOS RECIBIDOS (Tienda) -->
 <div id="page-pipeline-envios" class="page">
   <div class="page-header">
@@ -1505,97 +1834,6 @@
   </div>
 </div>
 
-<div id="page-pipeline-historial" class="page">
-  <div class="page-header">
-    <div><div class="page-title">&#128220; Historial del <span>Pipeline</span></div>
-      <div class="page-sub">Registro completo de prendas, accesorios y env&iacute;os &middot; restringido a administrador y encargado de almac&eacute;n</div></div>
-  </div>
-  <div class="card">
-    <div class="card-header"><span class="card-title">Filtros</span></div>
-    <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
-      <div class="field mb-0" style="min-width:130px"><label>Desde</label>
-        <input type="date" id="phDesde" onchange="renderPipelineHistorial()"></div>
-      <div class="field mb-0" style="min-width:130px"><label>Hasta</label>
-        <input type="date" id="phHasta" onchange="renderPipelineHistorial()"></div>
-      <div class="field mb-0" style="min-width:100px"><label>Sede</label>
-        <select id="phSede" onchange="renderPipelineHistorial()">
-          <option value="">Todas</option>
-          <option value="ST">ST</option><option value="LB">LB</option>
-          <option value="AL">AL</option><option value="TR">TR</option>
-        </select></div>
-      <div class="field mb-0" style="min-width:120px"><label>Tipo</label>
-        <select id="phTipo" onchange="renderPipelineHistorial()">
-          <option value="">Todos</option>
-          <option value="prenda">Movimientos de prendas</option>
-          <option value="accesorio">Accesorios procesados</option>
-          <option value="lista">Env&iacute;os desde tienda</option>
-          <option value="envio">Env&iacute;os a tienda (prendas)</option>
-          <option value="envio_acc">Env&iacute;os a tienda (accesorios)</option>
-        </select></div>
-      <div class="field mb-0" style="min-width:150px"><label>Responsable</label>
-        <input type="text" id="phResp" placeholder="Buscar por nombre..." oninput="renderPipelineHistorialDebounced()"></div>
-      <div class="field mb-0" style="min-width:110px"><label>Orden</label>
-        <select id="phSort" onchange="renderPipelineHistorial()">
-          <option value="fecha_desc">Fecha &darr;</option>
-          <option value="fecha_asc">Fecha &uarr;</option>
-        </select></div>
-      <button class="btn btn-ghost btn-sm" onclick="phLimpiarFiltros()">Limpiar</button>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-      <span class="card-title" id="phResumen">Historial</span>
-      <div id="phStats" style="font-size:11px;color:var(--text3)"></div>
-    </div>
-    <div class="card-body" id="phBody" style="max-height:62vh;overflow-y:auto">
-      <div style="color:var(--text3);font-size:12px;text-align:center;padding:30px">Aplica filtros o espera la carga...</div>
-    </div>
-  </div>
-</div>
-
-<div id="page-pipeline-envios-acc" class="page">
-  <div class="page-header">
-    <div><div class="page-title">&#127872; Env&iacute;o de <span>Accesorios</span></div>
-      <div class="page-sub">Despacha accesorios limpios/terminados a la tienda &middot; cada env&iacute;o queda trazado</div></div>
-  </div>
-  <div class="card">
-    <div class="card-header"><span class="card-title">Nuevo env&iacute;o</span></div>
-    <div class="card-body">
-      <div class="grid-2" style="gap:12px">
-        <div class="field mb-0"><label>Sede destino</label>
-          <select id="eaDestino">
-            <option value="">Elegir...</option>
-            <option value="ST">ST &middot; Stand</option>
-            <option value="LB">LB &middot; Tienda</option>
-            <option value="TR">TR &middot; Trece</option>
-          </select></div>
-        <div class="field mb-0"><label>Fecha</label>
-          <input type="date" id="eaFecha"></div>
-      </div>
-      <div class="section-divider">Cantidades por tipo</div>
-      <div class="grid-3" style="gap:10px" id="eaItems">
-        <div class="field mb-0"><label>&#128084; Corbatas</label><input type="number" id="eaCorbatas" min="0" value="0"></div>
-        <div class="field mb-0"><label>&#127872; Michis</label><input type="number" id="eaMichis" min="0" value="0"></div>
-        <div class="field mb-0"><label>&#128084; Corbatones</label><input type="number" id="eaCorbatones" min="0" value="0"></div>
-        <div class="field mb-0"><label>&#128084; Camisas</label><input type="number" id="eaCamisas" min="0" value="0"></div>
-        <div class="field mb-0"><label>&#128094; Zapatos (pares)</label><input type="number" id="eaZapatos" min="0" value="0"></div>
-        <div class="field mb-0"><label>&#128188; Porta ternos</label><input type="number" id="eaPortaTernos" min="0" value="0"></div>
-      </div>
-      <div class="field" style="margin-top:10px"><label>Observaciones</label>
-        <textarea id="eaObs" rows="2" placeholder="Notas opcionales..."></textarea></div>
-      <div style="display:flex;gap:8px;margin-top:10px">
-        <button class="btn btn-primary" onclick="enviarAccesoriosTienda()">&#128228; Registrar env&iacute;o</button>
-        <button class="btn btn-ghost" onclick="limpiarFormEnvioAcc()">Limpiar</button>
-      </div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-header"><span class="card-title">Env&iacute;os recientes</span></div>
-    <div class="card-body" id="eaHistorial" style="max-height:50vh;overflow-y:auto">
-      <div style="color:var(--text3);font-size:12px">Cargando...</div>
-    </div>
-  </div>
-</div>
 
 <div id="page-audit-log" class="page">
   <div class="page-header">
@@ -1628,7 +1866,8 @@
   </div>
   <div class="card" style="margin-top:12px">
     <div class="card-header"><span class="card-title">Registro de Movimientos</span>
-      <span class="badge badge-navy" id="auditCount">0</span></div>
+      <span class="badge badge-navy" id="auditCount">0</span>
+      <button class="btn btn-ghost btn-xs" style="margin-left:8px" onclick="exportAuditCSV()" title="Exportar a CSV (Excel)">📥 CSV</button></div>
     <div style="overflow-x:auto">
       <table class="data-table">
         <thead><tr><th>Fecha</th><th>Hora</th><th>Usuario</th><th>Sede</th><th>M&oacute;dulo</th><th>Acci&oacute;n</th><th>Detalle</th><th>IP</th></tr></thead>
@@ -1701,9 +1940,12 @@
 
 <script src="/js/api.js?v=1776400000"></script>
 <script src="/js/data.js?v=1776400000"></script>
-<script src="/js/app.js?v=1776400000"></script>
+<script src="/js/app.js?v=1780400000"></script>
 <script src="/js/layout-map.js?v=1776400000"></script>
-<script src="/js/admin.js?v=1776400000"></script>
+<script src="/js/admin.js?v=1780400000"></script>
+<script src="/js/pagos.js?v=1780400000"></script>
+<script src="/js/asistencia-dia.js?v=1779800000"></script>
+<script src="/js/header.js?v=1780400000"></script>
 <script src="/js/patches-v3.js?v=1775890000"></script>
 <script src="/js/patches-v4.js?v=1775870000"></script>
 <script src="/js/patches-v5.js?v=1776400000"></script>
@@ -1711,13 +1953,13 @@
 <script src="/js/reportes-autoenvio.js?v=1776400000"></script>
 <script src="/js/modulos.js?v=1776400000"></script>
 <script src="/js/pipeline-ui.js?v=1776400000"></script>
-<script src="/js/pipeline-historial.js?v=1776400000"></script>
+<script src="/js/solicitudes.js?v=1778700000"></script>
 <!-- SheetJS (xlsx) para importar/exportar Excel de horarios -->
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script type="text/babel" src="/js/almacen-kanban.jsx"></script>
+<script type="text/babel" src="/js/almacen-kanban.jsx?v=1778900000"></script>
 <script>
 // Inicializar mes actual en selects
 document.addEventListener('DOMContentLoaded',function(){

@@ -344,10 +344,12 @@ window.toggleSidebar = function() {
   var main = document.querySelector('.main');
   if (!sb) return;
   sb.classList.toggle('collapsed');
-  if (main) main.classList.toggle('sidebar-collapsed', sb.classList.contains('collapsed'));
+  var collapsed = sb.classList.contains('collapsed');
+  if (main) main.classList.toggle('sidebar-collapsed', collapsed);
+  document.body.classList.toggle('sb-collapsed', collapsed); // header lo lee desde aquí
   var btn = sb.querySelector('.sb-collapse-btn');
-  if (btn) btn.innerHTML = sb.classList.contains('collapsed') ? '' : '&#9664; Colapsar';
-  localStorage.setItem('lb_sidebar_collapsed', sb.classList.contains('collapsed') ? '1' : '');
+  if (btn) btn.innerHTML = collapsed ? '' : '&#9664; Colapsar';
+  localStorage.setItem('lb_sidebar_collapsed', collapsed ? '1' : '');
 };
 
 // Restore sidebar state + add tooltip labels
@@ -358,6 +360,7 @@ window.addEventListener('DOMContentLoaded', function() {
       var main = document.querySelector('.main');
       if (sb) { sb.classList.add('collapsed'); var btn = sb.querySelector('.sb-collapse-btn'); if (btn) btn.innerHTML = ''; }
       if (main) main.classList.add('sidebar-collapsed');
+      document.body.classList.add('sb-collapsed');
     }
     document.querySelectorAll('.nav-item').forEach(function(item) {
       var text = item.textContent.trim().replace(/[!]/g, '');
