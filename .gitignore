@@ -27,3 +27,6 @@ database/backups/
 *.bak
 respaldo_pre_*/
 _local_backup_pre_*/
+
+# Metadata local del CLI Claude Code
+.claude/
