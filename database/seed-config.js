@@ -47,10 +47,38 @@ function ensureAsistencias() {
   console.log('✅ Asistencias table ready');
 }
 
-module.exports = { ensureTables, seedConfig, ensureAsistencias };
+// Índices en FKs y columnas filtrables. Idempotente — todos con IF NOT EXISTS.
+// Crear estos al boot evita degradación de queries conforme crece la BD.
+function ensureIndexes() {
+  var db = getDB();
+  var sqls = [
+    'CREATE INDEX IF NOT EXISTS idx_rep_act_repid ON reporte_actividades(reporte_id)',
+    'CREATE INDEX IF NOT EXISTS idx_rep_trab_repid ON reporte_trabajadores(reporte_id)',
+    'CREATE INDEX IF NOT EXISTS idx_rep_extras_repid ON reporte_extras(reporte_id)',
+    'CREATE INDEX IF NOT EXISTS idx_lista_items_lid ON lista_items(lista_id)',
+    'CREATE INDEX IF NOT EXISTS idx_envio_acc_items_eid ON envio_accesorios_items(envio_id)',
+    'CREATE INDEX IF NOT EXISTS idx_solic_items_sid ON solicitud_items(solicitud_id)',
+    'CREATE INDEX IF NOT EXISTS idx_reportes_fecha ON reportes(fecha)',
+    'CREATE INDEX IF NOT EXISTS idx_reportes_sede ON reportes(sede)',
+    'CREATE INDEX IF NOT EXISTS idx_rep_trab_nombre ON reporte_trabajadores(nombre)',
+    'CREATE INDEX IF NOT EXISTS idx_incidencias_fecha ON incidencias(fecha)',
+    'CREATE INDEX IF NOT EXISTS idx_incidencias_resp ON incidencias(responsable)',
+    'CREATE INDEX IF NOT EXISTS idx_asist_emp_fecha ON asistencias(emp_id, fecha)',
+    'CREATE INDEX IF NOT EXISTS idx_asist_fecha ON asistencias(fecha)',
+    'CREATE INDEX IF NOT EXISTS idx_emp_tiendas_emp ON empleado_tiendas(emp_id)',
+    'CREATE INDEX IF NOT EXISTS idx_emp_tiendas_tienda ON empleado_tiendas(tienda)',
+    'CREATE INDEX IF NOT EXISTS idx_prenda_calif_pid ON prenda_calificacion(prenda_id)'
+  ];
+  var n = 0;
+  sqls.forEach(function(s){ try { db.exec(s); n++; } catch(e){} });
+  console.log('✅ Indexes ensured ('+n+'/'+sqls.length+')');
+}
+
+module.exports = { ensureTables, seedConfig, ensureAsistencias, ensureIndexes };
 
 if (require.main === module) {
   ensureTables();
   seedConfig();
   ensureAsistencias();
+  ensureIndexes();
 }

@@ -68,6 +68,31 @@ function horaActualPeru(){
   var d = new Date();
   return { h: d.getHours(), m: d.getMinutes(), fecha: hoyLocal() };
 }
+
+// ── Auto-asistencia: marca presentes a encargado + trabajadores del reporte ─
+// Invocada desde POST manual y desde el cron de auto-envío. Idempotente
+// (INSERT OR IGNORE). Sin hora real → tardanza=0; el admin puede ajustar.
+// reporte: { id, fecha, turno, encargado_id, trabajadores:[nombre,...] }
+function generarAsistenciasDelReporte(db, reporte) {
+  if (!reporte || !reporte.id || !reporte.fecha) return;
+  try {
+    var ins = db.prepare(
+      "INSERT OR IGNORE INTO asistencias (emp_id,fecha,turno,hora_entrada,hora_salida,minutos_tardanza,fuente,obs) "+
+      "VALUES (?,?,?,?,?,?,?,?)"
+    );
+    var turno = reporte.turno || 'M';
+    if (reporte.encargado_id) {
+      try { ins.run(reporte.encargado_id, reporte.fecha, turno, null, null, 0, 'reporte', 'auto: encargado del reporte '+reporte.id); } catch(e){}
+    }
+    (reporte.trabajadores || []).forEach(function(n){
+      if (!n) return;
+      try {
+        var emp = db.prepare("SELECT id FROM empleados WHERE nombre=? AND activo=1 LIMIT 1").get(n);
+        if (emp && emp.id) ins.run(emp.id, reporte.fecha, turno, null, null, 0, 'reporte', 'auto: trabajador del reporte '+reporte.id);
+      } catch(e){}
+    });
+  } catch (e) { console.warn('[reportes] generarAsistenciasDelReporte:', e.message); }
+}
 // Deadlines: turno M = 15:00, turno T y C = 23:00
 function deadlinePasado(turno){
   var t = horaActualPeru();
@@ -139,30 +164,12 @@ router.post('/', auth, function(req,res){
       });
     }
     // ── Auto-asistencia (provisional, hasta tener huellero) ─────────────
-    // Cada trabajador del reporte queda marcado presente para (fecha,turno).
-    // Sin hora real, la tardanza queda en 0 → notaTardanza = 20/20. El admin
-    // puede editar manualmente si vio una tardanza. Cuando llegue el huellero
-    // los registros con fuente='reporte' serán reemplazados por 'huellero'.
-    try{
-      var insAsist=db.prepare(
-        "INSERT OR IGNORE INTO asistencias (emp_id,fecha,turno,hora_entrada,hora_salida,minutos_tardanza,fuente,obs) "+
-        "VALUES (?,?,?,?,?,?,?,?)"
-      );
-      // Encargado del turno
-      if(b.encargado_id){
-        try{ insAsist.run(b.encargado_id, fechaReal, b.turno||'M', null, null, 0, 'reporte', 'auto: encargado del reporte '+b.id); }catch(e2){}
-      }
-      // Trabajadores adicionales (best-effort: lookup por nombre)
-      (b.trabajadores||[]).forEach(function(n){
-        if(!n) return;
-        try{
-          var emp=db.prepare("SELECT id FROM empleados WHERE nombre=? AND activo=1 LIMIT 1").get(n);
-          if(emp&&emp.id){
-            insAsist.run(emp.id, fechaReal, b.turno||'M', null, null, 0, 'reporte', 'auto: trabajador del reporte '+b.id);
-          }
-        }catch(e2){}
-      });
-    }catch(e){ console.warn('[reportes] auto-asistencia:', e.message); }
+    // Misma función se invoca desde el cron auto-envío para mantener
+    // consistencia. Sin hora real → tardanza=0, fuente='reporte'.
+    generarAsistenciasDelReporte(db, {
+      id: b.id, fecha: fechaReal, turno: b.turno,
+      encargado_id: b.encargado_id, trabajadores: b.trabajadores
+    });
 
     res.json({id:b.id,ok:true,fecha:fechaReal});
   }catch(e){res.status(500).json({error:e.message});}
@@ -373,6 +380,13 @@ function autoEnviarPendientes(opts){
           }
           // Limpiar draft usado
           db.prepare('DELETE FROM reporte_drafts WHERE sede=? AND fecha=? AND turno=?').run(sede, hoy, turno);
+          // Auto-asistencia: solo si el draft tenía contenido (encargado o trabajadores)
+          if (tieneContenido) {
+            generarAsistenciasDelReporte(db, {
+              id: idRep, fecha: hoy, turno: turno,
+              encargado_id: encId, trabajadores: payload.trabajadores
+            });
+          }
         })();
         resultados.push({sede:sede, turno:turno, id:idRep, auto:true, no_evaluable:noEvaluable, razon:razon});
         console.log('[auto-envio] '+idRep+' ('+(tieneContenido?'con contenido':'no-evaluable')+') encargado='+(encNom||'(ninguno)'));

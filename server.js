@@ -148,7 +148,7 @@ app.all('/api/*', function(r, s) { s.status(404).json({ error: 'Ruta no encontra
 app.get('*', function(r, s) { s.sendFile(path.join(__dirname, 'public', 'index.html')); });
 
 initDB();
-try { const sc = require('./database/seed-config'); if(sc.ensureTables)sc.ensureTables(); if(sc.seedConfig)sc.seedConfig(); if(sc.ensureAsistencias)sc.ensureAsistencias(); } catch(e) { console.log('Config seed:', e.message); }
+try { const sc = require('./database/seed-config'); if(sc.ensureTables)sc.ensureTables(); if(sc.seedConfig)sc.seedConfig(); if(sc.ensureAsistencias)sc.ensureAsistencias(); if(sc.ensureIndexes)sc.ensureIndexes(); } catch(e) { console.log('Config seed:', e.message); }
 
 // ═══ CRON · Auto-envío de reportes al vencer deadline ═══
 // Corre cada 5 min. El helper autoEnviarPendientes() internamente valida que
