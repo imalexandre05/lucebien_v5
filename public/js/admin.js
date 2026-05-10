@@ -870,7 +870,7 @@ async function nuevoEmpleado() {
   document.getElementById('editEmpNombreCompleto').value='';
   document.getElementById('editEmpCod').value=newCod;
   document.getElementById('editEmpPass').value='';
-  document.getElementById('editEmpRol').value='trabajador';
+  document.getElementById('editEmpRol').value='ventas_junior';
   document.getElementById('editEmpEstado').value='activo';
   document.getElementById('editEmpDni').value='';
   document.getElementById('editEmpTel').value='';
@@ -926,10 +926,11 @@ async function toggleEstadoEmp(empId,estado){
 async function abrirConfigAccesos(){
   var prev=document.getElementById('accesosModal');if(prev)prev.remove();
   await loadPermisos();
-  var roles=['encargado_tienda','encargado_almacen','ventas_junior','ventas_junior_2','auxiliar','confeccionista','trabajador'];
+  // Roles activos en BD (sin 'auxiliar' ni 'trabajador' que no tienen empleados reales).
+  var roles=['encargado_tienda','encargado_almacen','ventas_junior','ventas_junior_2','confeccionista'];
   var pages=PAGES_CONFIG;
   var perms=STATE._permisos||{};
-  var rl={encargado_tienda:'Enc. Tienda',encargado_almacen:'Enc. Almacén',ventas_junior:'Ventas Jr.',ventas_junior_2:'Ventas Jr.2',auxiliar:'Auxiliar',confeccionista:'Confección',trabajador:'Trabajador'};
+  var rl={encargado_tienda:'Enc. Tienda',encargado_almacen:'Enc. Almacén',ventas_junior:'Ventas Jr.',ventas_junior_2:'Ventas Jr.2',confeccionista:'Confección'};
 
   var m=document.createElement('div');m.id='accesosModal';
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1100;display:flex;align-items:center;justify-content:center;padding:16px';

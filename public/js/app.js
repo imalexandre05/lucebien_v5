@@ -527,10 +527,10 @@ async function loadLayoutMap(turno) {
   if (STATE.fr01.bloqueado || STATE.fr01.enviado) return;
   var sede = STATE.sede;
   if (!sede) { console.warn('[Layout] no sede'); card.style.display = 'none'; return; }
-  console.log('[Layout] loading for sede:', sede, 'turno:', turno);
+  // log silenciado — ruido en cada cambio de página
   try {
     var zonas = await API.get('/layout?sede=' + encodeURIComponent(sede));
-    console.log('[Layout] got', (zonas||[]).length, 'zonas');
+    // log silenciado — ruido en cada cambio de página
     if (!zonas || !zonas.length) { card.style.display = 'none'; return; }
     STATE._layoutZonas = zonas;
     STATE._layoutSelected = {};
@@ -1152,7 +1152,7 @@ function prepararEval() {
   }
 
   // Show layout eval map
-  console.log('[Eval] layoutActs:', layoutActs.length, 'layoutZonas:', (STATE._layoutZonas||[]).length);
+  // log silenciado — ruido en cada apertura de evaluación
   var elc = document.getElementById('evalLayoutCard');
   if (elc && STATE._layoutZonas && STATE._layoutZonas.length && layoutActs.length) {
     elc.style.display = '';
@@ -1716,10 +1716,11 @@ var DEFAULT_PERMS = {
   encargado_almacen:  ['reporte','evaluacion','solicitudes','prestamos','mi-desempeno','eval-valores','kanban-almacen','retorno','garantias','incidencias-admin'],
   ventas_junior:      ['reporte','evaluacion','lavanderia','solicitudes','mi-desempeno','eval-valores','pipeline-envios'],
   ventas_junior_2:    ['reporte','evaluacion','lavanderia','solicitudes','mi-desempeno','eval-valores','pipeline-envios'],
-  auxiliar:           ['reporte','evaluacion','solicitudes','mi-desempeno','eval-valores','kanban-almacen'],
   confeccionista:     ['mi-desempeno','solicitudes','eval-valores'],
-  trabajador:         ['reporte','evaluacion','mi-desempeno','solicitudes','eval-valores'],
 };
+// Nota: 'auxiliar' y 'trabajador' se removieron — no había empleados reales
+// con esos roles. Si se necesitan en el futuro, reagregarlos aquí Y crear
+// empleados en BD con el rol correspondiente.
 
 STATE._permisos = null;
 
@@ -1783,6 +1784,10 @@ function goTo(pageId,el){
   if(pageId==='pipeline-envios')renderEnviosRecibidos();
   if(pageId==='solicitudes')renderSolicitudes();
   if(pageId==='empleados')applyPermissions();
+  // Tabs del menú admin que también viven dentro del hub Eval Mensual.
+  // Cuando el admin entra directo desde el sidebar, hay que inicializar.
+  if(pageId==='pagos'&&typeof renderPagos==='function')renderPagos();
+  if(pageId==='asistencias'&&typeof renderAsistDia==='function')renderAsistDia();
 }
 
 // ── Populate responsable selects in lavandería/refacción ──

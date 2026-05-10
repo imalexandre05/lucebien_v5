@@ -105,7 +105,7 @@ router.post('/', admin, function(req,res){
     var hash=bcrypt.hashSync(String(b.cod),10);
     var pwHash=b.password?bcrypt.hashSync(String(b.password),10):'';
     db.prepare('INSERT INTO empleados (id,cod,nombre,iniciales,rol,cod_hash,nombre_completo,password_hash,dni,telefono,direccion,fecha_nacimiento,fecha_ingreso,contacto_emergencia,tel_emergencia,estado,notas,salario_base,tipo_contrato,vencimiento_contrato) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').run(
-      b.id,b.cod,b.nombre,b.iniciales||b.nombre.slice(0,2).toUpperCase(),b.rol||'trabajador',hash,
+      b.id,b.cod,b.nombre,b.iniciales||b.nombre.slice(0,2).toUpperCase(),b.rol||'ventas_junior',hash,
       b.nombre_completo||'',pwHash,
       b.dni||'',b.telefono||'',b.direccion||'',b.fecha_nacimiento||'',b.fecha_ingreso||'',b.contacto_emergencia||'',b.tel_emergencia||'',b.estado||'activo',b.notas||'',
       parseFloat(b.salario_base)||0, b.tipo_contrato||'', b.vencimiento_contrato||''

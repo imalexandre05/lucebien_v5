@@ -48,8 +48,9 @@
 </div>
 
 <!-- MODALES GLOBALES -->
-<div class="modal-overlay" id="confirmModal">
+<div class="modal-overlay" id="confirmModal" onclick="closeModal('confirmModal')">
   <div class="modal" style="" onclick="event.stopPropagation()">
+    <button class="modal-close" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);z-index:2" onclick="closeModal('confirmModal')" aria-label="Cerrar">&#10005;</button>
     <div style="padding:28px 24px 16px;text-align:center">
       <div id="confirmIcon" style="font-size:36px;margin-bottom:10px">&#128203;</div>
       <h2 id="confirmTitle" style="font-size:16px;font-weight:700;margin-bottom:6px">Confirmar</h2>
@@ -89,7 +90,7 @@
           <div class="field"><label>Rol / Puesto</label>
             <select id="editEmpRol">
               <optgroup label="Tienda"><option value="ventas_junior">Ventas Junior</option><option value="ventas_junior_2">Ventas Junior 2</option><option value="encargado_tienda">Encargado de Tienda</option></optgroup>
-              <optgroup label="Almac&eacute;n"><option value="auxiliar">Auxiliar de Almac&eacute;n</option><option value="encargado_almacen">Encargado de Almac&eacute;n</option></optgroup>
+              <optgroup label="Almac&eacute;n"><option value="encargado_almacen">Encargado de Almac&eacute;n</option></optgroup>
               <optgroup label="Producci&oacute;n"><option value="confeccionista">Confeccionista</option></optgroup>
               <optgroup label="Direcci&oacute;n"><option value="admin">Administrador</option><option value="dueno">Due&ntilde;o/a</option></optgroup>
             </select>
@@ -186,7 +187,8 @@
 </div>
 
 <div class="modal-overlay" id="incNuevaModal" onclick="closeModal('incNuevaModal')">
-  <div class="modal" onclick="event.stopPropagation()">
+  <div class="modal" onclick="event.stopPropagation()" style="position:relative">
+    <button class="modal-close" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);z-index:2" onclick="closeModal('incNuevaModal')" aria-label="Cerrar">&#10005;</button>
     <h2>&#9888;&#65039; Nueva Incidencia</h2>
     <div class="grid-2">
       <div class="field"><label>Sede</label>

@@ -187,7 +187,7 @@ router.get('/:id/historial',safe(function(q,r){
   r.json(getDB().prepare('SELECT * FROM prenda_historial WHERE prenda_id=? ORDER BY fecha').all(q.params.id));
 }));
 
-router.get('/envios',safe(function(q,r){var db=getDB();var s='SELECT * FROM envios_prendas WHERE 1=1';var p=[];if(q.query.sede_destino){s+=' AND sede_destino=?';p.push(q.query.sede_destino);}s+=' ORDER BY fecha DESC LIMIT 50';var envios=db.prepare(s).all(...p);envios.forEach(function(e){e.prendas=db.prepare('SELECT * FROM prendas WHERE envio_id=?').all(e.id);e.count=e.prendas.length;});r.json(envios);}));
+router.get('/envios',safe(function(q,r){var db=getDB();var s='SELECT * FROM envios_prendas WHERE COALESCE(cancelado,0)=0';var p=[];if(q.query.sede_destino){s+=' AND sede_destino=?';p.push(q.query.sede_destino);}s+=' ORDER BY fecha DESC LIMIT 50';var envios=db.prepare(s).all(...p);envios.forEach(function(e){e.prendas=db.prepare('SELECT * FROM prendas WHERE envio_id=?').all(e.id);e.count=e.prendas.length;});r.json(envios);}));
 
 router.get('/accesorios',safe(function(q,r){r.json(getDB().prepare('SELECT * FROM accesorios_log ORDER BY fecha DESC,id DESC LIMIT 200').all());}));
 
