@@ -1812,16 +1812,47 @@
 <div id="page-pipeline-envios" class="page">
   <div class="page-header">
     <h1 class="page-title">&#128230; Env&iacute;os Recibidos</h1>
-    <p class="page-sub">Califica las prendas recibidas del almac&eacute;n</p>
+    <p class="page-sub">Calif&iacute;ca las prendas y accesorios recibidos del almac&eacute;n</p>
   </div>
   <div class="card">
-    <div class="card-body"><span id="enviosPendBadge" class="badge badge-gold">Cargando...</span></div>
+    <div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Pendientes:</span>
+      <span id="enviosPendBadge" class="badge badge-gold">Prendas: cargando…</span>
+      <span id="enviosAccPendBadge" class="badge badge-gold">Accesorios: cargando…</span>
+    </div>
   </div>
+
+  <!-- Sección Prendas -->
   <div class="card" style="margin-top:12px">
+    <div class="card-header"><span class="card-title">Env&iacute;os de Prendas</span></div>
     <div style="overflow-x:auto"><table class="data-table">
       <thead><tr><th>Env&iacute;o</th><th>Fecha</th><th>Prendas</th><th>Responsable</th><th>Estado</th><th>Acci&oacute;n</th></tr></thead>
       <tbody id="enviosRecibidosBody"><tr><td class="empty-cell" colspan="6">Cargando...</td></tr></tbody>
     </table></div>
+  </div>
+
+  <!-- Sección Accesorios -->
+  <div class="card" style="margin-top:12px">
+    <div class="card-header"><span class="card-title">Env&iacute;os de Accesorios</span></div>
+    <div style="overflow-x:auto"><table class="data-table">
+      <thead><tr><th>Env&iacute;o</th><th>Fecha</th><th>Items</th><th>Responsable</th><th>Estado</th><th>Acci&oacute;n</th></tr></thead>
+      <tbody id="enviosAccRecibidosBody"><tr><td class="empty-cell" colspan="6">Cargando...</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- Modal: Validar envío de accesorios -->
+<div class="modal-overlay" id="valEnvioAccModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header"><h2>Validar Env&iacute;o de Accesorios</h2><button class="modal-close" onclick="closeModal('valEnvioAccModal')">&#10005;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="valEnvioAccId">
+      <div id="valEnvioAccItems" style="max-height:50vh;overflow-y:auto;margin-bottom:12px"></div>
+      <div class="field"><label>Observaciones (opcional)</label>
+        <textarea id="valEnvioAccObs" placeholder="Si algo lleg&oacute; mal, descr&iacute;belo aqu&iacute;..." style="width:100%;min-height:60px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:12px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('valEnvioAccModal')">Cancelar</button><button class="btn btn-primary" onclick="validarEnvioAcc()">Marcar como recibido</button></div>
   </div>
 </div>
 

@@ -309,20 +309,26 @@ router.get('/empleado', verifyToken, (req, res) => {
     if (!esSupervisor(req.user)) return res.status(403).json({ error: 'Solo supervisores' });
     const db = getDB();
 
-    // ── Resolver empleado por emp_id (cod) o por nombre
+    // ── Resolver empleado: el frontend manda emp_id que es la PK 'id' (E02, E01...)
+    //    Fallbacks: por cod (códigos numéricos), por nombre exacto.
     let nombre = req.query.nombre || '';
     const empId = req.query.emp_id || '';
     let emp = null;
     try {
-      if (empId) emp = db.prepare('SELECT * FROM empleados WHERE cod=? LIMIT 1').get(empId);
-      if (!emp && nombre) emp = db.prepare('SELECT * FROM empleados WHERE nombres=? LIMIT 1').get(nombre);
+      if (empId) emp = db.prepare('SELECT * FROM empleados WHERE id=? LIMIT 1').get(empId);
+      if (!emp && empId) emp = db.prepare('SELECT * FROM empleados WHERE cod=? LIMIT 1').get(empId);
+      if (!emp && nombre) emp = db.prepare('SELECT * FROM empleados WHERE nombre=? LIMIT 1').get(nombre);
     } catch (e) {}
-    if (emp && !nombre) nombre = emp.nombres;
+    if (emp && !nombre) nombre = emp.nombre;
     if (!nombre) return res.status(404).json({ error: 'Empleado no encontrado' });
 
-    const sedesEmp = (emp && emp.sedes)
-      ? String(emp.sedes).split(',').map(s => s.trim()).filter(Boolean)
-      : [];
+    // ── Sedes vienen de empleado_tiendas (relación N:M, columna 'tienda')
+    let sedesEmp = [];
+    if (emp && emp.id) {
+      try {
+        sedesEmp = db.prepare('SELECT tienda FROM empleado_tiendas WHERE emp_id=?').all(emp.id).map(r => r.tienda);
+      } catch (e) {}
+    }
 
     // ── Resolver período
     const rng = (req.query.desde && req.query.hasta)
@@ -477,18 +483,18 @@ router.get('/empleado', verifyToken, (req, res) => {
       [nombre, rng.desde, rng.hasta]
     );
 
-    // ── Evaluaciones mensuales históricas
+    // ── Evaluaciones mensuales históricas (emp_id en esa tabla = empleados.id)
     let evalsMes = [];
-    if (emp && emp.cod) {
+    if (emp && emp.id) {
       evalsMes = safeAll(db,
         'SELECT * FROM evaluaciones_mensuales WHERE emp_id=? ORDER BY mes DESC LIMIT 6',
-        [emp.cod]
+        [emp.id]
       );
     }
 
     res.json({
       empleado: emp
-        ? { cod: emp.cod, nombre: emp.nombres, rol: emp.rol || '—', sedes: sedesEmp }
+        ? { id: emp.id, cod: emp.cod, nombre: emp.nombre, rol: emp.rol || '—', sedes: sedesEmp }
         : { nombre: nombre, sedes: sedesEmp },
       periodo: rng,
       fechas: fechas,

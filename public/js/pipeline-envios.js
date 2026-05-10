@@ -7,16 +7,21 @@
 // ═══════════════════════════════════════════════════════════════
 
 async function renderEnviosRecibidos() {
+  // Cargar prendas + accesorios en paralelo
+  await Promise.all([_renderEnviosPrendas(), _renderEnviosAccesorios()]);
+}
+
+async function _renderEnviosPrendas() {
   const envios = await API.get('/pipeline/envios?sede_destino=' + encodeURIComponent(STATE.sede));
   const body = document.getElementById('enviosRecibidosBody');
   if (!body || !envios) return;
   const pendientes = envios.filter(e => !e.validado_tienda);
   const badge = document.getElementById('enviosPendBadge');
   if (badge) {
-    badge.textContent = pendientes.length ? pendientes.length + ' pendientes' : 'Todo validado';
+    badge.textContent = 'Prendas: ' + (pendientes.length ? pendientes.length + ' pendientes' : 'al día');
     badge.className = 'badge ' + (pendientes.length ? 'badge-gold' : 'badge-green');
   }
-  if (!envios.length) { body.innerHTML = '<tr><td class="empty-cell" colspan="6">Sin envíos</td></tr>'; return; }
+  if (!envios.length) { body.innerHTML = '<tr><td class="empty-cell" colspan="6">Sin envíos de prendas</td></tr>'; return; }
   body.innerHTML = envios.map(e => `
     <tr class="envios-rec-row${e.validado_tienda ? ' calificado' : ''}">
       <td class="mono">#${e.id}</td>
@@ -26,6 +31,71 @@ async function renderEnviosRecibidos() {
       <td><span class="badge ${e.validado_tienda ? 'badge-green' : 'badge-gold'}">${e.validado_tienda ? 'Validado' : 'Pendiente'}</span></td>
       <td>${!e.validado_tienda ? `<button class="btn btn-primary btn-xs" onclick="calificarEnvio(${e.id})">Calificar</button>` : '<span style="font-size:11px;color:var(--text3)">—</span>'}</td>
     </tr>`).join('');
+}
+
+// Caché de envíos de accesorios (para el modal de validación)
+let _enviosAccCache = [];
+
+async function _renderEnviosAccesorios() {
+  const envios = await API.get('/pipeline/envios-accesorios?sede_destino=' + encodeURIComponent(STATE.sede));
+  const body = document.getElementById('enviosAccRecibidosBody');
+  if (!body) return;
+  _enviosAccCache = envios || [];
+  const pendientes = _enviosAccCache.filter(e => !e.validado_tienda);
+  const badge = document.getElementById('enviosAccPendBadge');
+  if (badge) {
+    badge.textContent = 'Accesorios: ' + (pendientes.length ? pendientes.length + ' pendientes' : 'al día');
+    badge.className = 'badge ' + (pendientes.length ? 'badge-gold' : 'badge-green');
+  }
+  if (!_enviosAccCache.length) { body.innerHTML = '<tr><td class="empty-cell" colspan="6">Sin envíos de accesorios</td></tr>'; return; }
+  body.innerHTML = _enviosAccCache.map(e => {
+    const items = e.items || [];
+    const totalItems = items.reduce((s, i) => s + (i.cantidad || 0), 0);
+    const resumen = items.length
+      ? items.slice(0, 3).map(i => `${i.cantidad||0}× ${i.tipo||i.nombre||''}`).join(', ') + (items.length > 3 ? '…' : '')
+      : '—';
+    return `
+    <tr class="envios-rec-row${e.validado_tienda ? ' calificado' : ''}">
+      <td class="mono">#${e.id}</td>
+      <td class="mono" style="font-size:11px">${e.fecha}</td>
+      <td><strong>${totalItems}</strong> <span style="font-size:10px;color:var(--text3)">(${resumen})</span></td>
+      <td>${e.responsable||'—'}</td>
+      <td><span class="badge ${e.validado_tienda ? 'badge-green' : 'badge-gold'}">${e.validado_tienda ? 'Validado' : 'Pendiente'}</span></td>
+      <td>${!e.validado_tienda ? `<button class="btn btn-primary btn-xs" onclick="abrirValidarEnvioAcc(${e.id})">Validar</button>` : '<span style="font-size:11px;color:var(--text3)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirValidarEnvioAcc(envioId) {
+  const envio = _enviosAccCache.find(e => e.id === envioId);
+  if (!envio) { showToast('Envío no encontrado', 'error'); return; }
+  document.getElementById('valEnvioAccId').value = envioId;
+  document.getElementById('valEnvioAccObs').value = envio.obs || '';
+  const cont = document.getElementById('valEnvioAccItems');
+  const items = envio.items || [];
+  if (!items.length) {
+    cont.innerHTML = '<div style="padding:14px;color:var(--text3);font-size:12px;text-align:center">Sin detalle de items</div>';
+  } else {
+    cont.innerHTML = '<table class="data-table" style="font-size:12px">' +
+      '<thead><tr><th>Tipo</th><th style="text-align:right">Cantidad</th><th>Sustento</th></tr></thead><tbody>' +
+      items.map(i => `<tr>
+        <td>${i.tipo||i.nombre||'—'}</td>
+        <td style="text-align:right;font-family:var(--font-m);font-weight:700">${i.cantidad||0}</td>
+        <td style="font-size:11px;color:var(--text3)">${i.obs||i.sustento||i.detalle||'—'}</td>
+      </tr>`).join('') +
+      '</tbody></table>';
+  }
+  openModal('valEnvioAccModal');
+}
+
+async function validarEnvioAcc() {
+  const envioId = document.getElementById('valEnvioAccId').value;
+  const obs = document.getElementById('valEnvioAccObs').value || '';
+  const r = await API.put('/pipeline/envios-accesorios/' + envioId + '/validar', { obs });
+  if (!r) return;
+  closeModal('valEnvioAccModal');
+  showToast('Envío de accesorios validado', 'success');
+  _renderEnviosAccesorios();
 }
 
 // Etapas a las que la tienda puede devolver una prenda observada.
