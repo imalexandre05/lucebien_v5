@@ -33,7 +33,7 @@ Tres tandas commiteadas el 2026-05-10:
 | 🔴 CRÍTICO | 4 | 4 (#01, #02, #03, #04) | 0 |
 | 🟠 MAYOR | 7 | 7 (#05, #06, #07, #08, #09, #10, #11) | 0 |
 | 🟡 MENOR | 9 | 1 (#14) | 8 (#12, #13, #15, #16✓ya, #17, #18) + decisiones |
-| ⚪ COSMÉTICO | 4 | 0 | 4 (#19, #20, #21, #22) |
+| ⚪ COSMÉTICO | 4 | 1 (#21) | 3 (#19✗descartado, #20✓parcial, #22) |
 
 **Top 3 hallazgos críticos — TODOS RESUELTOS:**
 
@@ -67,7 +67,7 @@ Cada hallazgo tiene:
 **Base de datos** — 39 tablas. Datos vivos: 96 reportes, 1.679 reporte_actividades, 93 prendas, 472 prenda_historial, 18 empleados, 49 empleado_tiendas, 21 solicitudes, 12 incidencias, 11 audit_log.
 
 **Tablas con 0 filas (legacy, sin uso o features sin estrenar):**
-- `horarios` — legacy, reemplazada por `horario_periodos` + `horario_slots`
+- ~~`horarios` — legacy~~ **❌ FALSO POSITIVO** (ver #12): tabla en uso activo por 5 endpoints + 5 callers de frontend, vacía sólo porque nadie ha usado los formularios todavía
 - `asistencias` — sospechoso (ver hallazgo #06)
 - `actividades_pendientes` — feature nunca usada
 - `evaluaciones_mensuales`, `evaluaciones_valores`, `pagos`, `ventas_metas`, `devoluciones_garantia`, `reporte_drafts` — features recientes sin uso real
@@ -342,14 +342,22 @@ El usuario solo puede cerrar con los botones de acción (Confirmar / Cancelar). 
 
 ---
 
-### #12 · 🟡 MENOR · Schema · Tabla `horarios` legacy con 0 filas
+### #12 · ❌ FALSO POSITIVO · Tabla `horarios` NO es legacy
 
-**Estado:** ⏳ **PENDIENTE** — sigue ahí. SQLite no tiene `DROP COLUMN` directo y un `DROP TABLE` requiere confirmar antes que ningún código residual la consulte. Bajo impacto, no urgente.
+**Estado:** ❌ **HALLAZGO INCORRECTO** (descubierto el 2026-05-10 al verificar antes de hacer DROP). La tabla está EN USO ACTIVO por el frontend. Tiene 0 filas porque nadie ha guardado un horario por la UI todavía, pero el código está vivo.
 
-**Categoría:** Schema · Deuda técnica
-**Ubicación:** Tabla `horarios` (vacía) + `horario_periodos` (1) + `horario_slots` (46 — usados)
+**Verificación:**
+- `routes/asistencias.js:188-221`: 4 endpoints (GET / PUT / POST bulk + CREATE TABLE idempotente)
+- `routes/empleados.js:296`: SELECT en cálculo de empleado
+- `routes/dashboard.js:215`: COUNT en métrica `salud_sistema`
+- `database/seed-config.js:16`: la crea al boot
+- Frontend (admin.js, patches-v5.js, index.html): 5 callers usan los endpoints (incluido `guardarHorario()` y el botón de la UI)
 
-La tabla `horarios` original fue reemplazada por el sistema nuevo de `horario_periodos` + `horario_slots`. Sigue en BD sin uso.
+Coexiste con el sistema nuevo `horario_periodos` + `horario_slots` (que SÍ tiene 46 slots usados). Aparentemente son dos sistemas para cosas distintas — aclarar con el usuario qué uso tiene cada uno antes de cualquier consolidación.
+
+**Lección:** contar filas en BD no basta para concluir "tabla muerta". Hay que grepear el código primero.
+
+**Categoría:** Schema · ~~Deuda técnica~~ falso positivo de auditoría
 
 **Fix-prompt:** N/A (decisión de cleanup, ver #19)
 
@@ -456,9 +464,9 @@ Algunas son legítimamente nuevas (esperando primer ciclo mensual). Otras sugier
 
 ---
 
-### #19 · ⚪ COSMÉTICO · Cleanup · Tabla `horarios` legacy
+### #19 · ❌ DESCARTADO · ~~Cleanup tabla `horarios`~~
 
-**Estado:** ⏳ **PENDIENTE** — sigue ahí (ver #12). Bajo impacto.
+**Estado:** ❌ **DESCARTADO** — no se hace DROP. La tabla NO es legacy (ver #12 actualizado). En uso activo por código y UI.
 
 ---
 
