@@ -69,19 +69,31 @@ function esAdmin(u) {
 function safe(fn) {
   return function(req, res){ try { fn(req, res); } catch(e){ res.status(500).json({error:e.message}); } };
 }
+// Helper: las sedes del empleado viven en empleado_tiendas (relación N:M),
+// no en una columna empleados.sede (que NO existe). Devuelve "ST,LB,TR".
+function sedesDe(db, empId) {
+  try {
+    return db.prepare('SELECT tienda FROM empleado_tiendas WHERE emp_id=?')
+      .all(empId).map(r => r.tienda).join(',');
+  } catch (e) { return ''; }
+}
 
 // ════════════════════════════════════════════════════════════════════════
 // GET /  — listar pagos
 // ════════════════════════════════════════════════════════════════════════
 router.get('/', verifyToken, safe(function(req, res){
   const db = getDB();
-  let sql = "SELECT p.*, e.nombre as emp_nombre, e.sede as emp_sede, e.rol as emp_rol " +
-            "FROM pagos p LEFT JOIN empleados e ON e.id=p.emp_id WHERE 1=1";
+  // emp_sede se calcula desde empleado_tiendas (subquery con GROUP_CONCAT).
+  // Filtro opcional por sede usa EXISTS contra empleado_tiendas.
+  let sql =
+    "SELECT p.*, e.nombre as emp_nombre, e.rol as emp_rol, " +
+    "  (SELECT GROUP_CONCAT(tienda) FROM empleado_tiendas WHERE emp_id=p.emp_id) as emp_sede " +
+    "FROM pagos p LEFT JOIN empleados e ON e.id=p.emp_id WHERE 1=1";
   const params = [];
   if (req.query.emp_id) { sql += ' AND p.emp_id=?'; params.push(req.query.emp_id); }
   if (req.query.mes)    { sql += ' AND p.mes=?';    params.push(req.query.mes); }
   if (req.query.estado) { sql += ' AND p.estado=?'; params.push(req.query.estado); }
-  if (req.query.sede)   { sql += ' AND e.sede=?';   params.push(req.query.sede); }
+  if (req.query.sede)   { sql += ' AND EXISTS (SELECT 1 FROM empleado_tiendas WHERE emp_id=p.emp_id AND tienda=?)'; params.push(req.query.sede); }
   if (req.query.solo_activos !== '0') sql += ' AND COALESCE(p.anulado,0)=0';
   sql += ' ORDER BY p.created_at DESC LIMIT 500';
   res.json(db.prepare(sql).all(...params));
@@ -99,8 +111,9 @@ router.get('/sugerir', verifyToken, safe(function(req, res){
   const cicloHasta = req.query.ciclo_hasta || null;
   if (!empId) return res.status(400).json({error:'emp_id requerido'});
 
-  const emp = db.prepare("SELECT id, nombre, salario_base, sede, rol FROM empleados WHERE id=?").get(empId);
+  const emp = db.prepare("SELECT id, nombre, salario_base, rol FROM empleados WHERE id=?").get(empId);
   if (!emp) return res.status(404).json({error:'empleado no encontrado'});
+  emp.sede = sedesDe(db, emp.id);
 
   // Buscar evaluación más reciente del periodo
   let evalRow = null;
@@ -144,7 +157,11 @@ router.get('/sugerir', verifyToken, safe(function(req, res){
 // ════════════════════════════════════════════════════════════════════════
 router.get('/:id', verifyToken, safe(function(req, res){
   const db = getDB();
-  const p = db.prepare("SELECT p.*, e.nombre as emp_nombre, e.sede as emp_sede, e.rol as emp_rol, e.dni as emp_dni FROM pagos p LEFT JOIN empleados e ON e.id=p.emp_id WHERE p.id=?").get(req.params.id);
+  const p = db.prepare(
+    "SELECT p.*, e.nombre as emp_nombre, e.rol as emp_rol, e.dni as emp_dni, " +
+    "  (SELECT GROUP_CONCAT(tienda) FROM empleado_tiendas WHERE emp_id=p.emp_id) as emp_sede " +
+    "FROM pagos p LEFT JOIN empleados e ON e.id=p.emp_id WHERE p.id=?"
+  ).get(req.params.id);
   if (!p) return res.status(404).json({error:'pago no encontrado'});
   let evalRow = null;
   if (p.evaluacion_id) evalRow = db.prepare("SELECT * FROM evaluaciones_mensuales WHERE id=?").get(p.evaluacion_id);
@@ -218,7 +235,11 @@ router.delete('/:id', requireAdmin, safe(function(req, res){
 // ════════════════════════════════════════════════════════════════════════
 router.get('/:id/comprobante', verifyToken, safe(function(req, res){
   const db = getDB();
-  const p = db.prepare("SELECT p.*, e.nombre as emp_nombre, e.sede as emp_sede, e.rol as emp_rol, e.dni as emp_dni FROM pagos p LEFT JOIN empleados e ON e.id=p.emp_id WHERE p.id=?").get(req.params.id);
+  const p = db.prepare(
+    "SELECT p.*, e.nombre as emp_nombre, e.rol as emp_rol, e.dni as emp_dni, " +
+    "  (SELECT GROUP_CONCAT(tienda) FROM empleado_tiendas WHERE emp_id=p.emp_id) as emp_sede " +
+    "FROM pagos p LEFT JOIN empleados e ON e.id=p.emp_id WHERE p.id=?"
+  ).get(req.params.id);
   if (!p) return res.status(404).send('<h1>Pago no encontrado</h1>');
 
   const fmt = (n) => 'S/ ' + (parseFloat(n)||0).toFixed(2);

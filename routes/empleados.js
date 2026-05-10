@@ -15,20 +15,53 @@ function ensureEmpCols(db){
   cols.forEach(function(c){try{db.exec('ALTER TABLE empleados ADD COLUMN '+c[0]+' '+c[1]);}catch(e){}});
 }
 
-function getEmpT(db,id){var e=db.prepare('SELECT * FROM empleados WHERE id=?').get(id);if(!e)return null;e.tiendas=db.prepare('SELECT tienda FROM empleado_tiendas WHERE emp_id=?').all(id).map(function(r){return r.tienda});delete e.cod_hash;return e;}
+// Sanitización de empleado:
+//  - SIEMPRE elimina cod_hash, password_hash, cod_plain, pass_plain (nunca se exponen)
+//  - Si el solicitante NO es admin/dueño, también elimina campos sensibles personales
+//    (dni, telefono, direccion, salario_base, fechas, contactos, contrato).
+function sanitizeEmp(e, viewer) {
+  if (!e) return e;
+  delete e.cod_hash;
+  delete e.password_hash;
+  delete e.cod_plain;
+  delete e.pass_plain;
+  var rolViewer = (viewer && viewer.rol || '').toLowerCase();
+  var isAdmin = rolViewer === 'admin' || rolViewer === 'dueno' || rolViewer === 'dueño';
+  if (!isAdmin) {
+    // Lista de campos visibles para roles no-admin (suficiente para selectores
+    // de trabajadores en FR-01, badges, etc.)
+    var publicos = ['id','cod','nombre','iniciales','rol','activo','estado','tiendas','nombre_completo'];
+    Object.keys(e).forEach(function(k){ if (publicos.indexOf(k) < 0) delete e[k]; });
+  }
+  return e;
+}
 
-// GET all employees (includes suspended)
+function getEmpT(db,id,viewer){
+  var e=db.prepare('SELECT * FROM empleados WHERE id=?').get(id);
+  if(!e)return null;
+  e.tiendas=db.prepare('SELECT tienda FROM empleado_tiendas WHERE emp_id=?').all(id).map(function(r){return r.tienda});
+  return sanitizeEmp(e, viewer);
+}
+
+// GET all employees (includes suspended).
+// Para roles no-admin: solo expone {id, cod, nombre, iniciales, rol, activo, estado, tiendas}.
 router.get('/', auth, function(req,res){
   try{var db=getDB();ensureEmpCols(db);
     var all=db.prepare('SELECT * FROM empleados ORDER BY nombre').all();
-    res.json(all.map(function(e){e.tiendas=db.prepare('SELECT tienda FROM empleado_tiendas WHERE emp_id=?').all(e.id).map(function(r){return r.tienda});delete e.cod_hash;return e;}));
+    res.json(all.map(function(e){
+      e.tiendas=db.prepare('SELECT tienda FROM empleado_tiendas WHERE emp_id=?').all(e.id).map(function(r){return r.tienda});
+      return sanitizeEmp(e, req.user);
+    }));
   }catch(e){res.status(500).json({error:e.message});}
 });
 
 // GET by sede (only active)
 router.get('/by-sede/:sede', auth, function(req,res){
   try{var db=getDB();ensureEmpCols(db);var sede=req.params.sede;
-    var all=db.prepare("SELECT * FROM empleados WHERE activo=1 AND (estado IS NULL OR estado='activo')").all().map(function(e){e.tiendas=db.prepare('SELECT tienda FROM empleado_tiendas WHERE emp_id=?').all(e.id).map(function(r){return r.tienda});delete e.cod_hash;return e;});
+    var all=db.prepare("SELECT * FROM empleados WHERE activo=1 AND (estado IS NULL OR estado='activo')").all().map(function(e){
+      e.tiendas=db.prepare('SELECT tienda FROM empleado_tiendas WHERE emp_id=?').all(e.id).map(function(r){return r.tienda});
+      return sanitizeEmp(e, req.user);
+    });
     var propios=all.filter(function(e){return e.tiendas.indexOf(sede)>=0});
     var otros=all.filter(function(e){return e.tiendas.indexOf(sede)<0});
     res.json({propios:propios,otros:otros});
@@ -38,7 +71,7 @@ router.get('/by-sede/:sede', auth, function(req,res){
 // GET desempeño
 router.get('/:id/desempeno', auth, function(req,res){
   try{var db=getDB();ensureEmpCols(db);var id=req.params.id;
-    var emp=getEmpT(db,id);if(!emp)return res.status(404).json({error:'No encontrado'});
+    var emp=getEmpT(db,id,req.user);if(!emp)return res.status(404).json({error:'No encontrado'});
     var reportes=db.prepare('SELECT * FROM reportes ORDER BY fecha DESC LIMIT 100').all();
     reportes.forEach(function(r){r.trabajadores=db.prepare('SELECT nombre FROM reporte_trabajadores WHERE reporte_id=?').all(r.id).map(function(x){return x.nombre});});
     var myR=reportes.filter(function(r){return r.trabajadores.indexOf(emp.nombre)>=0});
@@ -78,7 +111,7 @@ router.post('/', admin, function(req,res){
       parseFloat(b.salario_base)||0, b.tipo_contrato||'', b.vencimiento_contrato||''
     );
     var ins=db.prepare('INSERT OR IGNORE INTO empleado_tiendas (emp_id,tienda) VALUES (?,?)');(b.tiendas||[]).forEach(function(t){ins.run(b.id,t)});
-    res.json(getEmpT(db,b.id));
+    res.json(getEmpT(db,b.id,req.user));
   }catch(e){res.status(500).json({error:e.message});}
 });
 
@@ -111,7 +144,7 @@ router.put('/:id', admin, function(req,res){
     );
     db.prepare('DELETE FROM empleado_tiendas WHERE emp_id=?').run(id);
     var ins=db.prepare('INSERT INTO empleado_tiendas (emp_id,tienda) VALUES (?,?)');(b.tiendas||[]).forEach(function(t){ins.run(id,t)});
-    res.json(getEmpT(db,id));
+    res.json(getEmpT(db,id,req.user));
   }catch(e){res.status(500).json({error:e.message});}
 });
 
@@ -136,7 +169,7 @@ module.exports = router;
 router.get('/:id/checklists', auth, function(req,res){
   try{
     var db=getDB();var id=req.params.id;
-    var emp=getEmpT(db,id);if(!emp)return res.status(404).json({error:'No encontrado'});
+    var emp=getEmpT(db,id,req.user);if(!emp)return res.status(404).json({error:'No encontrado'});
     var desde=req.query.desde||(function(){var d=new Date(Date.now()-30*86400000);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();
     var hasta=req.query.hasta||hoyLocal();
     var reportes=db.prepare('SELECT * FROM reportes WHERE fecha>=? AND fecha<=? ORDER BY fecha DESC').all(desde,hasta);
@@ -162,7 +195,7 @@ router.get('/:id/checklists2', auth, function(req,res){
   try{
     var db=getDB();
     var id=req.params.id;
-    var emp=getEmpT(db,id);
+    var emp=getEmpT(db,id,req.user);
     if(!emp)return res.status(404).json({error:'No encontrado'});
 
     var desde=req.query.desde||(function(){var d=new Date(Date.now()-30*86400000);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');})();

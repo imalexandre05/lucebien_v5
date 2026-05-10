@@ -27,6 +27,16 @@ function esAdmin(u) {
   const r = (u && u.rol || '').toLowerCase();
   return r === 'admin' || r === 'dueno' || r === 'dueño';
 }
+// Encargado_tienda y encargado_almacen son supervisores LIMITADOS:
+// solo ven datos de SUS sedes (las que tiene asignadas en empleado_tiendas
+// o las que el JWT trae en .tiendas/.sede). Admin/dueño ven todo.
+function sedesPermitidas(u) {
+  if (!u) return [];
+  if (esAdmin(u)) return null; // null = sin filtro (ve todas)
+  if (Array.isArray(u.tiendas) && u.tiendas.length) return u.tiendas;
+  if (u.sede) return [u.sede];
+  return [];
+}
 function safeGet(db, sql, params) {
   try { const r = db.prepare(sql).get(...(params||[])); return r ? (r.n||0) : 0; }
   catch (e) { return 0; }
@@ -50,7 +60,15 @@ router.get('/admin', verifyToken, (req, res) => {
   try {
     if (!esSupervisor(req.user)) return res.status(403).json({ error: 'Solo supervisores' });
     const db = getDB();
-    const sedeFiltro = req.query.sede || '';
+    // Encargados solo pueden ver SU sede; admin/dueño pueden filtrar por la que quieran
+    // (o ninguna). Si un encargado intenta ?sede=OTRA, se ignora.
+    const permitidas = sedesPermitidas(req.user);
+    let sedeFiltro = req.query.sede || '';
+    if (permitidas !== null) {
+      // Encargado: forzar a una de sus sedes asignadas
+      if (sedeFiltro && permitidas.indexOf(sedeFiltro) < 0) sedeFiltro = permitidas[0] || '';
+      if (!sedeFiltro) sedeFiltro = permitidas[0] || '';
+    }
     const hoy = hoyLocal();
     const mes = hoy.slice(0, 7);
     const desde7 = fechaMenosDias(6);
@@ -328,6 +346,14 @@ router.get('/empleado', verifyToken, (req, res) => {
       try {
         sedesEmp = db.prepare('SELECT tienda FROM empleado_tiendas WHERE emp_id=?').all(emp.id).map(r => r.tienda);
       } catch (e) {}
+    }
+
+    // ── Filtro de visibilidad: encargado solo ve a quienes comparten al menos
+    //    una sede con él. Admin/dueño ve a todos.
+    const permitidas = sedesPermitidas(req.user);
+    if (permitidas !== null) {
+      const overlap = sedesEmp.some(s => permitidas.indexOf(s) >= 0);
+      if (!overlap) return res.status(403).json({ error: 'Sin acceso a este colaborador (no comparte sede)' });
     }
 
     // ── Resolver período

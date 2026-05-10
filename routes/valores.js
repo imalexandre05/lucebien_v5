@@ -138,7 +138,12 @@ router.get('/seguimiento/:mes', requireAdmin, (req, res) => {
   try {
     const db  = getDB();
     const mes = req.params.mes;
-    const empleados = db.prepare("SELECT id, nombre, iniciales, rol, sede, fecha_ingreso FROM empleados WHERE activo=1 ORDER BY nombre").all();
+    // Sedes vienen de empleado_tiendas (relación N:M); empleados.sede NO existe.
+    const empleados = db.prepare(
+      "SELECT id, nombre, iniciales, rol, fecha_ingreso, " +
+      "  (SELECT GROUP_CONCAT(tienda) FROM empleado_tiendas WHERE emp_id=empleados.id) as sede " +
+      "FROM empleados WHERE activo=1 ORDER BY nombre"
+    ).all();
     const evals     = db.prepare('SELECT * FROM evaluaciones_valores WHERE mes=?').all(mes);
 
     // Mapeo: evaluado_id → array de evaluaciones recibidas
