@@ -47,6 +47,17 @@ function ensureAsistencias() {
   console.log('✅ Asistencias table ready');
 }
 
+// Migraciones de columnas opcionales agregadas en commits posteriores al
+// schema base. Idempotentes — try/catch porque ALTER TABLE ADD COLUMN
+// falla si ya existe.
+function ensureColumnasExtra() {
+  var db = getDB();
+  // envios_prendas.cancelado: marca envíos huérfanos / cancelados sin borrarlos
+  // (auditoria.md #21). routes/pipeline.js GET /envios filtra COALESCE(cancelado,0)=0.
+  try { db.exec("ALTER TABLE envios_prendas ADD COLUMN cancelado INTEGER DEFAULT 0"); } catch(e) {}
+  console.log('✅ Columnas extra ensured');
+}
+
 // Índices en FKs y columnas filtrables. Idempotente — todos con IF NOT EXISTS.
 // Crear estos al boot evita degradación de queries conforme crece la BD.
 function ensureIndexes() {
@@ -74,11 +85,12 @@ function ensureIndexes() {
   console.log('✅ Indexes ensured ('+n+'/'+sqls.length+')');
 }
 
-module.exports = { ensureTables, seedConfig, ensureAsistencias, ensureIndexes };
+module.exports = { ensureTables, seedConfig, ensureAsistencias, ensureColumnasExtra, ensureIndexes };
 
 if (require.main === module) {
   ensureTables();
   seedConfig();
   ensureAsistencias();
+  ensureColumnasExtra();
   ensureIndexes();
 }
