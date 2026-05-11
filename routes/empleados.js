@@ -116,6 +116,35 @@ router.post('/', admin, function(req,res){
 });
 
 // PUT update employee
+// Cascade del rename de empleado: actualiza las 6 tablas que mencionan al
+// empleado por NOMBRE (pseudo-FK textual). Histórico: el schema fue diseñado
+// usando nombres en lugar de emp_id como FK, así que cuando un admin edita
+// el nombre desde "Colaboradores", las menciones operativas quedaban
+// desincronizadas (ej. caso Marylin → Mary, 107 menciones huérfanas).
+//
+// Devuelve un objeto {tabla: filas_actualizadas} para que el frontend pueda
+// reportarlo al admin si quiere.
+function renombrarMencionesEmpleado(db, viejo, nuevo) {
+  if (!viejo || !nuevo || viejo === nuevo) return null;
+  var stmts = [
+    ['reporte_trabajadores',  'UPDATE reporte_trabajadores  SET nombre=?         WHERE nombre=?'],
+    ['reportes',              'UPDATE reportes              SET encargado=?      WHERE encargado=?'],
+    ['incidencias_resp',      'UPDATE incidencias           SET responsable=?    WHERE responsable=?'],
+    ['incidencias_rep',       'UPDATE incidencias           SET reportado_por=?  WHERE reportado_por=?'],
+    ['pipeline_puntos',       'UPDATE pipeline_puntos       SET emp_nombre=?     WHERE emp_nombre=?'],
+    ['prenda_historial',      'UPDATE prenda_historial      SET responsable=?    WHERE responsable=?'],
+    ['reporte_extras',        'UPDATE reporte_extras        SET registrado_por=? WHERE registrado_por=?'],
+  ];
+  var resultado = {};
+  stmts.forEach(function(p){
+    try {
+      var r = db.prepare(p[1]).run(nuevo, viejo);
+      if (r.changes) resultado[p[0]] = r.changes;
+    } catch(e) { /* tabla puede no existir aún en BD muy temprana */ }
+  });
+  return Object.keys(resultado).length ? resultado : null;
+}
+
 router.put('/:id', admin, function(req,res){
   try{var db=getDB();ensureEmpCols(db);var b=req.body;var id=req.params.id;
     var emp=db.prepare('SELECT * FROM empleados WHERE id=?').get(id);if(!emp)return res.status(404).json({error:'No encontrado'});
@@ -128,23 +157,33 @@ router.put('/:id', admin, function(req,res){
     if(b.password&&b.password.trim()){
       db.prepare('UPDATE empleados SET password_hash=? WHERE id=?').run(bcrypt.hashSync(String(b.password),10),id);
     }
-    // Update all other fields
-    db.prepare('UPDATE empleados SET nombre=?,nombre_completo=?,iniciales=?,rol=?,dni=?,telefono=?,direccion=?,fecha_nacimiento=?,fecha_ingreso=?,contacto_emergencia=?,tel_emergencia=?,estado=?,notas=?,salario_base=?,tipo_contrato=?,vencimiento_contrato=? WHERE id=?').run(
-      b.nombre||emp.nombre,b.nombre_completo!==undefined?b.nombre_completo:(emp.nombre_completo||''),
-      b.iniciales||emp.iniciales,b.rol||emp.rol,
-      b.dni!==undefined?b.dni:(emp.dni||''),b.telefono!==undefined?b.telefono:(emp.telefono||''),
-      b.direccion!==undefined?b.direccion:(emp.direccion||''),
-      b.fecha_nacimiento||emp.fecha_nacimiento||'',b.fecha_ingreso||emp.fecha_ingreso||'',
-      b.contacto_emergencia||emp.contacto_emergencia||'',b.tel_emergencia||emp.tel_emergencia||'',
-      b.estado||emp.estado||'activo',b.notas!==undefined?b.notas:(emp.notas||''),
-      b.salario_base!==undefined?(parseFloat(b.salario_base)||0):(emp.salario_base||0),
-      b.tipo_contrato!==undefined?b.tipo_contrato:(emp.tipo_contrato||''),
-      b.vencimiento_contrato!==undefined?b.vencimiento_contrato:(emp.vencimiento_contrato||''),
-      id
-    );
-    db.prepare('DELETE FROM empleado_tiendas WHERE emp_id=?').run(id);
-    var ins=db.prepare('INSERT INTO empleado_tiendas (emp_id,tienda) VALUES (?,?)');(b.tiendas||[]).forEach(function(t){ins.run(id,t)});
-    res.json(getEmpT(db,id,req.user));
+    // ── Cascade del rename + UPDATE en una sola transacción ──
+    // Si el nombre cambia, propagamos a las 6 tablas que mencionan al empleado
+    // por nombre. Si el UPDATE de empleados falla, el cascade tampoco se aplica.
+    var nombreAnterior = emp.nombre;
+    var nombreNuevo = b.nombre || emp.nombre;
+    var cascadeReport = null;
+    db.transaction(function(){
+      db.prepare('UPDATE empleados SET nombre=?,nombre_completo=?,iniciales=?,rol=?,dni=?,telefono=?,direccion=?,fecha_nacimiento=?,fecha_ingreso=?,contacto_emergencia=?,tel_emergencia=?,estado=?,notas=?,salario_base=?,tipo_contrato=?,vencimiento_contrato=? WHERE id=?').run(
+        nombreNuevo,b.nombre_completo!==undefined?b.nombre_completo:(emp.nombre_completo||''),
+        b.iniciales||emp.iniciales,b.rol||emp.rol,
+        b.dni!==undefined?b.dni:(emp.dni||''),b.telefono!==undefined?b.telefono:(emp.telefono||''),
+        b.direccion!==undefined?b.direccion:(emp.direccion||''),
+        b.fecha_nacimiento||emp.fecha_nacimiento||'',b.fecha_ingreso||emp.fecha_ingreso||'',
+        b.contacto_emergencia||emp.contacto_emergencia||'',b.tel_emergencia||emp.tel_emergencia||'',
+        b.estado||emp.estado||'activo',b.notas!==undefined?b.notas:(emp.notas||''),
+        b.salario_base!==undefined?(parseFloat(b.salario_base)||0):(emp.salario_base||0),
+        b.tipo_contrato!==undefined?b.tipo_contrato:(emp.tipo_contrato||''),
+        b.vencimiento_contrato!==undefined?b.vencimiento_contrato:(emp.vencimiento_contrato||''),
+        id
+      );
+      db.prepare('DELETE FROM empleado_tiendas WHERE emp_id=?').run(id);
+      var ins=db.prepare('INSERT INTO empleado_tiendas (emp_id,tienda) VALUES (?,?)');(b.tiendas||[]).forEach(function(t){ins.run(id,t)});
+      cascadeReport = renombrarMencionesEmpleado(db, nombreAnterior, nombreNuevo);
+    })();
+    var out = getEmpT(db,id,req.user);
+    if (cascadeReport) out._cascade_rename = { de: nombreAnterior, a: nombreNuevo, tablas: cascadeReport };
+    res.json(out);
   }catch(e){res.status(500).json({error:e.message});}
 });
 
