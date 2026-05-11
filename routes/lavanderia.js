@@ -71,7 +71,10 @@ router.post('/', auth, function(req, res) {
 
         // Auto-insert al pipeline
         if (it.cod && it.cod.trim()) {
-          var etapa = it.destino === 'compostura' ? 'compostura' : it.destino === 'refaccion' ? 'refaccion' : 'recepcion';
+          var etapa = it.destino === 'compostura' ? 'compostura' :
+                      it.destino === 'refaccion' ? 'refaccion' :
+                      it.destino === 'codificacion' ? 'codificacion' :
+                      'recepcion';
           var r = insPr.run(it.cod.trim(), it.tipo || '', it.color || '', it.talla || '', b.sede, etapa, it.tipo_lavado || 'normal', fecha, id);
           insH.run(r.lastInsertRowid, etapa, b.resp_traslado || req.user.nombre || '', 'Lista ' + id);
           pipelineCount++;

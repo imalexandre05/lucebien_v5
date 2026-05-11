@@ -82,17 +82,18 @@ var LayoutMap={
       var plOv=isPlch?'<div style="position:absolute;inset:0;border-radius:10px;background:repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(255,255,255,.15) 3px,rgba(255,255,255,.15) 6px);pointer-events:none"></div>':'';
       if(isRiel)plOv='<div style="position:absolute;inset:0;border-radius:3px;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(255,255,255,.2) 3px,rgba(255,255,255,.2) 5px);pointer-events:none"></div>';
 
-      // Tooltip with cleaning instructions
+      // Tooltip with cleaning instructions — custom (admin) override + defaults
       var tipInstr={maniqui:'Desempolvar con escobilla para ternos',vitrina:'Limpiar con limpiavidrios y trapo especial para vidrios',espejo:'Limpiar con limpiavidrios y paño seco',mueble:'Limpiar superficie con trapo húmedo y limpiatodo',riel:'Desempolvar ternos colgados y limpiar el tubo/varilla',silla:'Limpiar cojín con trapo si hay suciedad',equipo:'Limpiar mesa de plancha y tanque de agua',area:'Limpiar y ordenar el área',piso:'Barrer y trapear todo el interior',calle:'Barrer y baldear con agua y detergente'};
+      var prefInstr={MC:'Limpiar mesa de máquina de costura con trapo',CB:'Limpiar mueble colgante y todos los objetos que contiene',CT:'Desempolvar rieles colgantes del techo (cada 2 semanas)',PC:'Limpiar computadora y mueble donde está ubicada',CO:'Limpiar corbatero con trapo',ME:'Limpiar estante y reorganizar contenido'};
+      // Admin overrides via window.LB_LAYOUT_TOOLTIPS (cargado desde /config/layout-tooltips)
+      var _cust=window.LB_LAYOUT_TOOLTIPS||{};
+      if(_cust.byTipo)Object.keys(_cust.byTipo).forEach(function(k){tipInstr[k]=_cust.byTipo[k];});
+      if(_cust.byPrefix)Object.keys(_cust.byPrefix).forEach(function(k){prefInstr[k]=_cust.byPrefix[k];});
       var instrTxt=tipInstr[z.tipo]||'Limpiar y ordenar';
-      // Override by cod prefix
+      // Override por prefijo del código (2 letras iniciales)
       var codUp=z.cod.toUpperCase();
-      if(codUp.startsWith('MC'))instrTxt='Limpiar mesa de máquina de costura con trapo';
-      else if(codUp.startsWith('CB'))instrTxt='Limpiar mueble colgante y todos los objetos que contiene';
-      else if(codUp.startsWith('CT'))instrTxt='Desempolvar rieles colgantes del techo (cada 2 semanas)';
-      else if(codUp.startsWith('PC'))instrTxt='Limpiar computadora y mueble donde está ubicada';
-      else if(codUp.startsWith('CO'))instrTxt='Limpiar corbatero con trapo';
-      else if(codUp.startsWith('ME'))instrTxt='Limpiar estante y reorganizar contenido';
+      var pref2=codUp.slice(0,2);
+      if(prefInstr[pref2])instrTxt=prefInstr[pref2];
       var tip='<div class="lz-tip" data-name="'+z.nombre+'" data-instr="'+instrTxt+'"></div>';
 
       var clk=mode==='report'?'onclick="LayoutMap._tz(this,\''+z.cod+'\',event)"':(mode==='eval'?'onclick="LayoutMap._cyc(\''+z.cod+'\',event)"':'');
@@ -174,7 +175,8 @@ var LayoutMap={
     var pending=myT.filter(function(z){return !sel[z.cod]});
     var pct=myT.length?Math.round(done.length/myT.length*100):0;
     var totalP=L.calcPoints(zonas);
-    var maxP=myT.reduce(function(s,z){return s+z.peso},0)+extT.reduce(function(s,z){return s+z.peso},0);
+    // Redondear a 1 decimal para evitar drift IEEE754 (e.g. 43.099999... → 43.1)
+    var maxP=Math.round((myT.reduce(function(s,z){return s+(z.peso||0)},0)+extT.reduce(function(s,z){return s+(z.peso||0)},0))*10)/10;
 
     function row(z,isDone,isExtra){
       var ic=IC[z.tipo]||'📦';
@@ -378,6 +380,11 @@ var LayoutMap={
   },
 
   getSelected:function(){var r=[];Object.keys(LayoutMap._sel||{}).forEach(function(k){if(LayoutMap._sel[k])r.push(k);});return r;},
-  calcPoints:function(zonas){var t=0,s=LayoutMap._sel||{};(zonas||[]).forEach(function(z){if(s[z.cod]&&z.tipo!=='area')t+=(z.peso||0);});return t;},
+  // calcPoints: suma los pesos de zonas seleccionadas. Redondeado a 1 decimal
+  // para evitar float drift (e.g. 0.1+0.2+... acumula en IEEE754 → 43.0999...).
+  calcPoints:function(zonas){var t=0,s=LayoutMap._sel||{};(zonas||[]).forEach(function(z){if(s[z.cod]&&z.tipo!=='area')t+=(z.peso||0);});return Math.round(t*10)/10;},
+  // Helper público para formatear puntajes con drift de float controlado.
+  // Uso: LayoutMap.fmt(43.099999999999994) → "43.1", LayoutMap.fmt(0) → "0".
+  fmt:function(n){if(n===null||n===undefined||isNaN(n))return '0';var r=Math.round(Number(n)*10)/10;return (r%1===0)?String(r):r.toFixed(1);},
   calcEvalPoints:function(zonas){var t=0,s=LayoutMap._sel||{},ec=LayoutMap._ec||{};(zonas||[]).forEach(function(z){if(s[z.cod]&&z.tipo!=='area')t+=(z.peso||0)*(ec[z.cod]!==undefined?ec[z.cod]:1);});return t;}
 };

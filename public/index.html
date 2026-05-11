@@ -6,8 +6,9 @@
 <title>LUCEBIEN &middot; Sistema de Control Interno</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/css/style.css?v=1775834000">
-<link rel="stylesheet" href="/css/enhancements.css?v=1775834000">
+<link rel="stylesheet" href="/css/style.css?v=1776100000">
+<link rel="stylesheet" href="/css/enhancements.css?v=1780400000">
+<link rel="stylesheet" href="/css/kanban-almacen.css?v=1778900000">
 </head>
 <body>
 
@@ -47,8 +48,9 @@
 </div>
 
 <!-- MODALES GLOBALES -->
-<div class="modal-overlay" id="confirmModal">
+<div class="modal-overlay" id="confirmModal" onclick="closeModal('confirmModal')">
   <div class="modal" style="" onclick="event.stopPropagation()">
+    <button class="modal-close" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);z-index:2" onclick="closeModal('confirmModal')" aria-label="Cerrar">&#10005;</button>
     <div style="padding:28px 24px 16px;text-align:center">
       <div id="confirmIcon" style="font-size:36px;margin-bottom:10px">&#128203;</div>
       <h2 id="confirmTitle" style="font-size:16px;font-weight:700;margin-bottom:6px">Confirmar</h2>
@@ -70,6 +72,7 @@
       <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:2px solid var(--border);padding-bottom:6px">
         <button type="button" class="emp-tab active" onclick="empTab('general',this)" style="padding:6px 14px;border-radius:6px 6px 0 0;border:none;background:var(--navy);color:#fff;font-size:11px;font-weight:700;cursor:pointer">General</button>
         <button type="button" class="emp-tab" onclick="empTab('personal',this)" style="padding:6px 14px;border-radius:6px 6px 0 0;border:none;background:var(--s3);color:var(--text3);font-size:11px;font-weight:700;cursor:pointer">Datos Personales</button>
+        <button type="button" class="emp-tab" onclick="empTab('contrato',this)" style="padding:6px 14px;border-radius:6px 6px 0 0;border:none;background:var(--s3);color:var(--text3);font-size:11px;font-weight:700;cursor:pointer">Contrato</button>
         <button type="button" class="emp-tab" onclick="empTab('notas',this)" style="padding:6px 14px;border-radius:6px 6px 0 0;border:none;background:var(--s3);color:var(--text3);font-size:11px;font-weight:700;cursor:pointer">Notas</button>
       </div>
 
@@ -87,7 +90,7 @@
           <div class="field"><label>Rol / Puesto</label>
             <select id="editEmpRol">
               <optgroup label="Tienda"><option value="ventas_junior">Ventas Junior</option><option value="ventas_junior_2">Ventas Junior 2</option><option value="encargado_tienda">Encargado de Tienda</option></optgroup>
-              <optgroup label="Almac&eacute;n"><option value="auxiliar">Auxiliar de Almac&eacute;n</option><option value="encargado_almacen">Encargado de Almac&eacute;n</option></optgroup>
+              <optgroup label="Almac&eacute;n"><option value="encargado_almacen">Encargado de Almac&eacute;n</option></optgroup>
               <optgroup label="Producci&oacute;n"><option value="confeccionista">Confeccionista</option></optgroup>
               <optgroup label="Direcci&oacute;n"><option value="admin">Administrador</option><option value="dueno">Due&ntilde;o/a</option></optgroup>
             </select>
@@ -125,6 +128,35 @@
         </div>
       </div>
 
+      <!-- TAB: Contrato -->
+      <div id="empTabContrato" style="display:none">
+        <div style="background:var(--gold-pale);border:1px solid var(--gold-b);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--gold-d);margin-bottom:12px">
+          <strong>Datos contractuales y de pago.</strong> Esto alimenta la sugerencia automática de monto en el módulo de Pagos al cierre de cada evaluación mensual.
+        </div>
+        <div class="grid-2">
+          <div class="field"><label>Tipo de contrato</label>
+            <select id="editEmpContrato">
+              <option value="">— Sin definir —</option>
+              <option value="indefinido">Indefinido</option>
+              <option value="plazo_fijo">A plazo fijo</option>
+              <option value="part_time">Part-time</option>
+              <option value="recibo_honorarios">Recibo por honorarios</option>
+              <option value="practicas">Prácticas pre-profesionales</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div class="field"><label>Vencimiento del contrato</label>
+            <input type="date" id="editEmpVencContrato">
+          </div>
+        </div>
+        <div class="field"><label>Salario base (S/ por ciclo mensual)</label>
+          <input type="number" id="editEmpSalario" min="0" step="0.01" placeholder="0.00" style="font-family:var(--font-m);font-weight:700;font-size:16px">
+        </div>
+        <div style="font-size:10px;color:var(--text3);font-style:italic;margin-top:-4px;margin-bottom:10px">
+          Sugerencia de pago = salario_base × (nota_final/20) + bonus − descuentos
+        </div>
+      </div>
+
       <!-- TAB: Notas -->
       <div id="empTabNotas" style="display:none">
         <div class="field"><label>Notas internas (solo visible para admins)</label>
@@ -155,7 +187,8 @@
 </div>
 
 <div class="modal-overlay" id="incNuevaModal" onclick="closeModal('incNuevaModal')">
-  <div class="modal" onclick="event.stopPropagation()">
+  <div class="modal" onclick="event.stopPropagation()" style="position:relative">
+    <button class="modal-close" style="position:absolute;top:10px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3);z-index:2" onclick="closeModal('incNuevaModal')" aria-label="Cerrar">&#10005;</button>
     <h2>&#9888;&#65039; Nueva Incidencia</h2>
     <div class="grid-2">
       <div class="field"><label>Sede</label>
@@ -187,14 +220,19 @@
 <nav class="sidebar">
   <div class="sb-top">
     <div class="sb-logo-row">
-      <div class="sb-logo-icon"><img src="/assets/logo_lion_color.png" alt="LB" style="max-width:28px"></div>
-      <div><div class="sb-brand">LUCEBIEN</div><div class="sb-brand-sub">Control Interno</div></div>
+      <div class="sb-logo-icon"><img src="/assets/logo_lion_color.png" alt="LuceBien" loading="eager" decoding="sync"></div>
+      <div class="sb-brand-text">
+        <div class="sb-brand"><span class="sb-brand-luce">LUCE</span><span class="sb-brand-bien">BIEN</span></div>
+        <div class="sb-brand-sub">Control Interno</div>
+      </div>
     </div>
-    <div class="sb-sede-badge">
-      <div class="sb-sede-dot"></div>
-      <span class="sb-sede-name" id="sbSedeName">&#8212;</span>
-      <span class="sb-sede-change" onclick="volverSedes()">cambiar</span>
-    </div>
+    <button type="button" class="sb-sede-fixed" id="sbSedeFixed" onclick="abrirSelectorSede()" title="Cambiar de sede">
+      <span class="sb-sede-fixed-dot"></span>
+      <span class="sb-sede-fixed-lbl">Sede</span>
+      <span class="sb-sede-fixed-name" id="sbSedeFixedName">—</span>
+      <span class="sb-sede-fixed-caret" aria-hidden="true">▾</span>
+    </button>
+    <div class="sb-sede-pop" id="sbSedePop" style="display:none"></div>
   </div>
   <div class="nav">
     <div class="nav-section">Operaciones</div>
@@ -203,14 +241,12 @@
       <span class="nav-icon">&#11088;</span>Evaluaci&oacute;n de Reporte
       <span class="nav-badge hidden" id="evalBadge">!</span>
     </div>
-    <div class="nav-item" onclick="goTo('mi-desempeno',this)"><span class="nav-icon">&#128200;</span>Mi Desempe&ntilde;o</div>
     <div class="nav-item nav-eval-valores hidden" onclick="goTo('eval-valores',this)"><span class="nav-icon">&#128101;</span>Evaluar Compa&ntilde;eros<span class="eval-v-badge badge badge-red hidden" style="margin-left:6px;font-size:9px">!</span></div>
     <div class="nav-section">Prendas</div>
     <div class="nav-item nav-tienda" onclick="goTo('lavanderia',this)"><span class="nav-icon">&#128084;</span>Env&iacute;o a Lavander&iacute;a</div>
     <div class="nav-item nav-tienda" onclick="goTo('pipeline-envios',this)"><span class="nav-icon">&#128230;</span>Env&iacute;os Recibidos</div>
     <div class="nav-item" onclick="goTo('prestamos',this)"><span class="nav-icon">&#128259;</span>Pr&eacute;stamo de Prendas</div>
     <div class="nav-item" onclick="goTo('solicitudes',this)"><span class="nav-icon">&#128233;</span>Solicitudes</div>
-    <div class="nav-item" onclick="abrirIncidenciaRapidaModal()" style="cursor:pointer"><span class="nav-icon">&#128680;</span>Agregar Incidencia</div>
     <div class="nav-item" style="opacity:.4;pointer-events:none;cursor:default"><span class="nav-icon">&#128241;</span>Devoluci&oacute;n Garant&iacute;a <span style="font-size:8px;color:var(--text3);margin-left:4px">Pronto</span></div>
     <div class="nav-item nav-almacen hidden" onclick="goTo('kanban-almacen',this)"><span class="nav-icon">&#128230;</span>Prendas Recibidas</div>
     <div id="navAdmin" class="hidden">
@@ -221,22 +257,78 @@
       <div class="nav-item" onclick="goTo('evaluacion-mensual',this)"><span class="nav-icon">&#128196;</span>Evaluaci&oacute;n Mensual</div>
       <div class="nav-item" onclick="goTo('gestion-actividades',this)"><span class="nav-icon">&#9998;</span>Gestionar Actividades</div>
       <div class="nav-item" onclick="goTo('admin-reportes',this)"><span class="nav-icon">&#128203;</span>Reportes de Actividad</div>
+      <div class="nav-item" onclick="goTo('horarios-admin',this)"><span class="nav-icon">&#128197;</span>Horarios</div>
 
       <div class="nav-item" onclick="goTo('audit-log',this)"><span class="nav-icon">&#128270;</span>Auditor&iacute;a</div>
     </div>
   </div>
-  <div class="sb-user">
-    <div class="sb-user-info">
-      <div class="sb-avatar" id="sbAvatar">&#8212;</div>
-      <div><div class="sb-user-name" id="sbName">&#8212;</div><div class="sb-user-role" id="sbRole">&#8212;</div></div>
-    </div>
-    <button class="btn-logout" onclick="logout()">&#8617; Cerrar sesi&oacute;n</button>
+  <div class="sb-foot">
     <button class="sb-collapse-btn" onclick="toggleSidebar()" title="Colapsar/Expandir">&#9664; Colapsar</button>
   </div>
 </nav>
 
+<!-- ═══ HEADER GLOBAL FIJO ═══ -->
+<header class="lb-header" id="lbHeader">
+  <div class="lbh-left">
+    <div class="lbh-page-title" id="lbhPageTitle">—</div>
+  </div>
+
+  <div class="lbh-center">
+    <div class="lbh-clock" id="lbhClock">--:--:--</div>
+    <div class="lbh-divider"></div>
+    <div class="lbh-fecha" id="lbhFecha">—</div>
+    <div class="lbh-divider"></div>
+    <div class="lbh-turno" id="lbhTurno" title="Turno actual y deadline">
+      <span class="lbh-turno-lbl">Turno</span>
+      <span class="lbh-turno-val" id="lbhTurnoVal">—</span>
+      <span class="lbh-turno-dl" id="lbhTurnoDeadline"></span>
+    </div>
+    <div class="lbh-divider lbh-only-multi"></div>
+    <div class="lbh-sede lbh-only-multi" id="lbhSedeWrap" style="display:none">
+      <span class="lbh-sede-lbl">Sede</span>
+      <select class="lbh-sede-sel" id="lbhSedeSel" onchange="lbhCambiarSede(this.value)"></select>
+    </div>
+  </div>
+
+  <div class="lbh-right">
+    <div class="lbh-conn" id="lbhConn" title="Estado de conexión">
+      <span class="lbh-conn-dot"></span>
+      <span class="lbh-conn-lbl">conectando…</span>
+    </div>
+    <div class="lbh-quick">
+      <button class="lbh-quick-btn" onclick="goTo('mi-desempeno')" title="Mi desempeño" aria-label="Mi desempeño">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/></svg>
+        <span>Desempeño</span>
+      </button>
+      <button class="lbh-quick-btn lbh-quick-warn" onclick="abrirIncidenciaRapidaModal()" title="Reportar una incidencia rápida" aria-label="Agregar incidencia">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+        <span>Incidencia</span>
+      </button>
+    </div>
+    <button class="lbh-bell" id="lbhBell" onclick="lbhToggleBell()" title="Pendientes" aria-label="Notificaciones">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 22a2 2 0 002-2h-4a2 2 0 002 2zm6-6V11a6 6 0 10-12 0v5l-2 2v1h16v-1l-2-2z"/></svg>
+      <span class="lbh-bell-badge" id="lbhBellBadge" style="display:none">0</span>
+    </button>
+    <div class="lbh-bell-pop" id="lbhBellPop" style="display:none"></div>
+    <button class="lbh-user" id="lbhUser" onclick="lbhToggleUser()" title="Mi cuenta" type="button">
+      <span class="lbh-avatar" id="lbhAvatar">?</span>
+      <div class="lbh-user-meta">
+        <div class="lbh-user-name" id="lbhUserName">—</div>
+        <div class="lbh-user-role" id="lbhUserRole">—</div>
+      </div>
+      <span class="lbh-user-caret" aria-hidden="true">▾</span>
+    </button>
+    <div class="lbh-user-pop" id="lbhUserPop" style="display:none">
+      <div class="lbh-user-pop-item" onclick="goTo('mi-desempeno');lbhCloseAll()">Mi desempeño</div>
+      <div class="lbh-user-pop-item" onclick="goTo('eval-valores');lbhCloseAll()">Evaluar valores</div>
+      <div class="lbh-user-pop-sep"></div>
+      <div class="lbh-user-pop-item lbh-logout" onclick="logout();lbhCloseAll()">Cerrar sesión</div>
+    </div>
+  </div>
+</header>
+
 <!-- MAIN -->
-<main class="main">
+<main class="main lb-main-shifted">
 <div id="turnoAlertBox" style="margin-bottom:12px"></div>
 
 <!-- REPORTE -->
@@ -474,6 +566,14 @@
     </div>
   </div>
   <div class="card">
+    <div class="card-header"><span class="card-title">Mi resumen del mes</span>
+      <span style="font-size:10px;color:var(--text3);font-style:italic">Lo que tus compa&ntilde;eros opinaron de ti (an&oacute;nimo)</span>
+    </div>
+    <div class="card-body" id="evalVMiResumen">
+      <div style="color:var(--text3);font-size:12px">Cargando...</div>
+    </div>
+  </div>
+  <div class="card">
     <div class="card-header"><span class="card-title">Compa&ntilde;eros a evaluar</span></div>
     <div class="card-body" id="evalVList">
       <div style="color:var(--text3);font-size:12px;font-family:var(--font-m)">Selecciona el mes para cargar...</div>
@@ -680,16 +780,54 @@
 <!-- DASHBOARD -->
 <div id="page-dashboard" class="page">
   <div class="page-header">
-    <div><div class="page-title">Dashboard <span>Administrativo</span></div><div class="page-sub" id="dashSub">Vista general</div></div>
-    <div style="display:flex;gap:8px">
+    <div><div class="page-title">Dashboard <span>Administrativo</span></div><div class="page-sub" id="dashSub">Lo que necesitas atender hoy en una pantalla</div></div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <span id="dashUpdated" style="font-size:10px;color:var(--text3);font-family:var(--font-m)"></span>
       <select id="dashFiltroSede" class="inline-select" onchange="renderDashboard()">
         <option value="">Todas las sedes</option>
         <option value="ST">Stan</option><option value="LB">LuceBien</option>
         <option value="AL">Almac&eacute;n</option><option value="TR">Trece</option>
       </select>
+      <button class="btn btn-ghost btn-xs" onclick="renderDashboard()" title="Refrescar">↻</button>
     </div>
   </div>
-  <div class="grid-4" style="margin-bottom:18px" id="dashKpis"></div>
+
+  <!-- ALERTAS CRÍTICAS -->
+  <div id="dashAlertasCriticas" class="dash-alertas-wrap" style="margin-bottom:14px"></div>
+
+  <!-- KPIs ejecutivos -->
+  <div class="dash-kpis-grid" id="dashKpis" style="margin-bottom:18px"></div>
+
+  <!-- Pipeline + Próximas evaluaciones + Salud -->
+  <div class="grid-3" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Pipeline almacén</span><span class="badge badge-navy" id="dashPipeTotal">0</span></div>
+      <div class="card-body" id="dashPipelineEstado"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Próximas evaluaciones y pagos</span><span class="badge badge-gold" id="dashProxEvalsBadge">0</span></div>
+      <div class="card-body" id="dashProxEvals"></div>
+    </div>
+    <div class="card" id="dashSaludCard">
+      <div class="card-header">
+        <span class="card-title">Estado del sistema</span>
+        <span style="font-size:10px;color:var(--text3);font-style:italic">configuración pendiente</span>
+      </div>
+      <div class="card-body" id="dashSalud"></div>
+    </div>
+  </div>
+
+  <!-- Tendencia 7 días + resumen sedes -->
+  <div class="grid-2" style="margin-bottom:14px">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Tendencia · últimos 7 días</span></div>
+      <div class="card-body" id="dashTendencia"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">Resumen por sede · hoy</span></div>
+      <div class="card-body" id="dashResumenSedes"></div>
+    </div>
+  </div>
   <div class="card"><div class="card-header"><span class="card-title">Estado de Reportes Diarios</span></div><div class="card-body" id="dashAlertas"></div></div>
   <div class="grid-2">
     <div class="card"><div class="card-header"><span class="card-title">&#127942; Ranking del Mes</span></div><div class="card-body" id="dashRanking"></div></div>
@@ -697,10 +835,10 @@
   </div>
   <div class="grid-2">
     <div class="card"><div class="card-header"><span class="card-title">Incidencias</span></div><div class="card-body" id="dashIncidencias"></div></div>
-    <div class="card"><div class="card-header"><span class="card-title">&#128293; Actividades M&aacute;s Incumplidas</span></div><div class="card-body" id="dashActIncumplidas"></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">Cumplimiento de actividades por sede</span></div><div class="card-body" id="dashActIncumplidas"></div></div>
   </div>
   <div class="grid-2">
-    <div class="card"><div class="card-header"><span class="card-title">&#127942; Almac&eacute;n — Ranking Pipeline</span></div><div class="card-body" id="dashPipelineRank"></div></div>
+    <div class="card"><div class="card-header"><span class="card-title">Top operarios del almacén</span><span style="font-size:10px;color:var(--text3);font-style:italic">por puntos del pipeline</span></div><div class="card-body" id="dashPipelineRank"></div></div>
     <div class="card">
       <div class="card-header"><span class="card-title">Lavander&iacute;a por Tienda</span></div>
       <div class="card-body"><div class="grid-4" id="dashLavStats"></div>
@@ -719,25 +857,28 @@
 <div id="page-empleados" class="page">
   <div class="page-header">
     <div><div class="page-title">Gesti&oacute;n de <span>Colaboradores</span></div><div class="page-sub">Perfiles, roles, sedes y accesos del equipo</div></div>
-    <div style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm" onclick="abrirConfigAccesos()">&#9881; Accesos</button><button class="btn btn-primary btn-sm" onclick="nuevoEmpleado()">+ Nuevo</button></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" onclick="goTo('horarios-admin',document.querySelector('[onclick*=\'horarios-admin\']'))">&#128197; Gestionar horarios</button><button class="btn btn-ghost btn-sm" onclick="abrirConfigEvalValores()">&#127918; Eval. Valores 360&deg;</button><button class="btn btn-ghost btn-sm" onclick="abrirConfigAccesos()">&#9881; Accesos</button><button class="btn btn-primary btn-sm" onclick="nuevoEmpleado()">+ Nuevo</button></div>
   </div>
   <div class="card">
     <div class="card-header"><span class="card-title">Equipo</span>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-        <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text3);cursor:pointer"><input type="checkbox" id="empShowCod" onchange="renderEmpleados()" style="accent-color:var(--navy)"> Códigos</label>
-        <select id="empSort" onchange="renderEmpleados()" style="background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px;font-size:11px;outline:none;color:var(--text)">
+      <div class="filter-bar">
+        <label class="filter-toggle"><input type="checkbox" id="empShowCod" onchange="renderEmpleados()"> Códigos</label>
+        <span class="filter-sep"></span>
+        <span class="filter-label">Ordenar</span>
+        <select id="empSort" class="filter-ctrl" onchange="renderEmpleados()">
           <option value="nombre">A-Z Nombre</option>
           <option value="rol">Por cargo</option>
           <option value="sede">Por sede</option>
           <option value="estado">Por estado</option>
         </select>
-        <select id="empFilterEstado" onchange="renderEmpleados()" style="background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px;font-size:11px;outline:none;color:var(--text)">
+        <span class="filter-label">Estado</span>
+        <select id="empFilterEstado" class="filter-ctrl" onchange="renderEmpleados()">
           <option value="todos">Todos</option>
           <option value="activo" selected>Activos</option>
           <option value="suspendido">Suspendidos</option>
           <option value="deshabilitado">Deshabilitados</option>
         </select>
-        <input type="text" id="empSearch" placeholder="Buscar..." style="background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:5px 10px;font-size:11px;outline:none;color:var(--text);width:160px" oninput="renderEmpleados()">
+        <input type="search" id="empSearch" class="filter-ctrl filter-search" placeholder="🔍 Buscar…" oninput="renderEmpleados()">
       </div>
     </div>
     <div style="overflow-x:auto">
@@ -752,32 +893,39 @@
 <!-- INCIDENCIAS ADMIN -->
 <div id="page-incidencias-admin" class="page">
   <div class="page-header">
-    <div><div class="page-title">Gesti&oacute;n de <span>Incidencias</span></div><div class="page-sub">Historial de incidencias por sede y nivel</div></div>
-    <button class="btn btn-primary btn-sm" onclick="openModal('incNuevaModal');document.getElementById('incNuevaFecha').value=new Date().toISOString().slice(0,10);populateIncResp()">+ Registrar</button>
+    <div><div class="page-title">Gesti&oacute;n de <span>Incidencias</span></div><div class="page-sub">Historial de incidencias por sede, nivel y responsable</div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-ghost btn-sm" onclick="abrirEditorTiposIncidencia()">&#9881;&#65039; Tipificaciones</button>
+    </div>
   </div>
   <div class="grid-4" style="margin-bottom:18px" id="incAdminStats"></div>
   <div class="card">
     <div class="card-header"><span class="card-title">Filtros</span>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <select id="incFiltroSede" class="inline-select" onchange="renderIncidenciasAdmin()">
-          <option value="">Todas las sedes</option>
+      <div class="filter-bar">
+        <span class="filter-label">Sede</span>
+        <select id="incFiltroSede" class="filter-ctrl" onchange="renderIncidenciasAdmin()">
+          <option value="">Todas</option>
           <option value="ST">Stan</option><option value="LB">LuceBien</option>
           <option value="AL">Almac&eacute;n</option><option value="TR">Trece</option>
         </select>
-        <select id="incFiltroNivel" class="inline-select" onchange="renderIncidenciasAdmin()">
-          <option value="">Todos los niveles</option>
+        <span class="filter-label">Nivel</span>
+        <select id="incFiltroNivel" class="filter-ctrl" onchange="renderIncidenciasAdmin()">
+          <option value="">Todos</option>
           <option>Alto</option><option>Medio</option><option>Bajo</option>
         </select>
-        <select id="incFiltroTrab" class="inline-select" onchange="renderIncidenciasAdmin()">
+        <select id="incFiltroTrab" class="filter-ctrl" onchange="renderIncidenciasAdmin()">
           <option value="">Todos los trabajadores</option>
         </select>
-        <input type="date" id="incFiltroDesde" class="inline-select" onchange="renderIncidenciasAdmin()" title="Desde" style="font-size:11px">
-        <input type="date" id="incFiltroHasta" class="inline-select" onchange="renderIncidenciasAdmin()" title="Hasta" style="font-size:11px">
+        <span class="filter-sep"></span>
+        <span class="filter-label">Desde</span>
+        <input type="date" id="incFiltroDesde" class="filter-ctrl" onchange="renderIncidenciasAdmin()">
+        <span class="filter-label">Hasta</span>
+        <input type="date" id="incFiltroHasta" class="filter-ctrl" onchange="renderIncidenciasAdmin()">
       </div>
     </div>
     <div style="overflow-x:auto">
       <table class="data-table">
-        <thead><tr><th>Fecha</th><th>Sede</th><th>Tipo</th><th>Descripci&oacute;n</th><th>Nivel</th><th>Responsable</th><th></th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Sede</th><th>Tipo</th><th>Descripci&oacute;n</th><th>Nivel</th><th>Pts</th><th>Responsable</th><th>Env&iacute;a</th><th>Origen</th><th></th></tr></thead>
         <tbody id="incAdminBody"></tbody>
       </table>
     </div>
@@ -805,20 +953,73 @@
         <div class="field mb-0" style="min-width:130px"><label>Hasta</label>
           <input type="date" id="evalMHasta" onchange="cargarEvalPeriodo()">
         </div>
+        <div class="field mb-0" style="display:flex;align-items:flex-end">
+          <button class="btn btn-ghost btn-sm" id="evalMBtnCiclo" onclick="aplicarCicloPersonal()" title="Auto-llenar fechas con el ciclo aniversario del colaborador">Ciclo personal</button>
+        </div>
         <div id="evalMSelectorInfo" style="font-size:11px;color:var(--text3)"></div>
+        <div id="evalMCicloBadge" style="font-size:10px;display:none"></div>
       </div>
     </div>
   </div>
 
   <!-- TABS -->
   <div class="eval-tabs" style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)">
-    <button class="eval-tab active" onclick="switchEvalTab('evaluar',this)">Evaluar</button>
+    <button class="eval-tab active" onclick="switchEvalTab('dashboard',this)">Dashboard</button>
+    <button class="eval-tab" onclick="switchEvalTab('evaluar',this)">Evaluar</button>
     <button class="eval-tab" onclick="switchEvalTab('asistencias',this)">Asistencias</button>
+    <button class="eval-tab" onclick="switchEvalTab('pagos',this)">Pagos</button>
+    <button class="eval-tab" onclick="switchEvalTab('valores',this)">Valores 360&deg;</button>
     <button class="eval-tab" onclick="switchEvalTab('config',this)">Configuraci&oacute;n</button>
   </div>
 
+  <!-- ═══ TAB: DASHBOARD POR TRABAJADOR ═══ -->
+  <div id="evalTabDashboard">
+    <div id="evalMDashEmpty" style="padding:48px 32px;text-align:center;color:var(--text3);font-size:13px">
+      <div style="font-size:36px;margin-bottom:10px;opacity:.5">&#128202;</div>
+      Selecciona un colaborador y un per&iacute;odo para ver su dashboard.
+    </div>
+    <div id="evalMDashContent" style="display:none">
+      <!-- Hero scorecard -->
+      <div class="lb-hero-card" id="evalMDashHero"></div>
+      <!-- KPIs personales -->
+      <div class="lb-kpi-grid" id="evalMDashKpis"></div>
+      <!-- Cumplimiento por categoría + Heatmap -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Cumplimiento por categor&iacute;a</span><span class="badge badge-gold">Per&iacute;odo</span></div>
+          <div class="card-body" id="evalMDashCat"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Mapa de actividad</span><span class="badge badge-blue" id="evalMDashHeatBadge">—</span></div>
+          <div class="card-body" id="evalMDashHeat"></div>
+        </div>
+      </div>
+      <!-- Christie: Actividades × Días -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Cumplimiento diario · Actividades &times; D&iacute;as</span>
+          <span class="badge badge-navy" id="evalMDashChristieBadge">—</span>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div class="lb-christie-wrap" id="evalMDashChristie"></div>
+        </div>
+      </div>
+      <!-- Evolución + Incidencias -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Evoluci&oacute;n &uacute;ltimos 6 meses</span></div>
+          <div class="card-body" id="evalMDashEvolucion"></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Incidencias del per&iacute;odo</span></div>
+          <div class="card-body" id="evalMDashIncidencias"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ═══ TAB: EVALUAR ═══ -->
-  <div id="evalTabEvaluar">
+  <div id="evalTabEvaluar" style="display:none">
     <div id="evalMForm" class="hidden">
       <div style="margin-bottom:14px;padding:12px 16px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);border-radius:var(--r);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <div>
@@ -927,6 +1128,7 @@
       </div>
       <div class="btn-row" style="border:none;padding:0">
         <button class="btn btn-primary" onclick="guardarEvalMensual()">Guardar Evaluaci&oacute;n</button>
+        <button class="btn btn-gold" onclick="cerrarEvalYRegistrarPago()" title="Guarda la evaluaci&oacute;n y abre el formulario de pago con monto sugerido">Cerrar y registrar pago →</button>
       </div>
     </div>
     <div class="card" style="margin-top:24px">
@@ -944,7 +1146,12 @@
   <div id="evalTabAsistencias" style="display:none">
     <div class="card" id="cardHorario" style="display:none">
       <div class="card-header"><span class="card-title">Horario Semanal</span>
-        <button class="btn btn-primary btn-xs" onclick="guardarHorario()">Guardar</button></div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn btn-ghost btn-xs" onclick="descargarPlantillaHorarios()" title="Descargar Excel plantilla">📥 Plantilla</button>
+          <button class="btn btn-ghost btn-xs" onclick="abrirImportHorariosExcel()" title="Importar horarios de múltiples colaboradores desde Excel">📎 Importar Excel</button>
+          <button class="btn btn-primary btn-xs" onclick="guardarHorario()">Guardar</button>
+        </div>
+      </div>
       <div class="card-body" style="padding:8px;overflow-x:auto">
         <table class="data-table" style="font-size:11px" id="horarioTable">
           <thead><tr><th style="width:70px"></th><th>Lun</th><th>Mar</th><th>Mi&eacute;</th><th>Jue</th><th>Vie</th><th>S&aacute;b</th><th>Dom</th></tr></thead>
@@ -983,6 +1190,37 @@
   </div>
 
   <!-- ═══ TAB: CONFIG ═══ -->
+  <!-- ═══ TAB: VALORES 360° (admin) ═══ -->
+  <div id="evalTabValores" style="display:none">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Seguimiento de Valores 360&deg;</span>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="month" id="evalVAdminMes" style="background:var(--s3);border:1px solid var(--border);border-radius:var(--r);padding:5px 8px;font-size:12px;outline:none" onchange="cargarSeguimientoValores()">
+          <span id="evalVAdminGlobal" class="badge badge-navy">&#8212;</span>
+        </div>
+      </div>
+      <div class="card-body" id="evalVAdminBox">
+        <div style="color:var(--text3);font-size:12px;text-align:center;padding:30px">Selecciona un mes para cargar el seguimiento.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ TAB: PAGOS DEL COLABORADOR ═══ -->
+  <div id="evalTabPagos" style="display:none">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">Pagos registrados</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span id="evalPagosInfo" style="font-size:11px;color:var(--text3);font-style:italic">Selecciona un colaborador arriba</span>
+          <button class="btn btn-ghost btn-xs" onclick="evalPagoAbrirNuevo()" id="evalPagoBtnNuevo" disabled>+ Registrar pago</button>
+        </div>
+      </div>
+      <div class="card-body" id="evalPagosBody">
+        <div style="color:var(--text3);font-size:12px;text-align:center;padding:30px">Selecciona un colaborador para ver y registrar sus pagos.</div>
+      </div>
+    </div>
+  </div>
+
   <div id="evalTabConfig" style="display:none">
   <div class="card">
     <div class="card-header"><span class="card-title">Pesos de Componentes</span>
@@ -1038,6 +1276,218 @@
     </div>
   </div>
 </div>
+</div>
+
+<!-- ═══ PÁGINA: PAGOS ═══ -->
+<div id="page-pagos" class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Pagos a <span>Colaboradores</span></div>
+      <div class="page-sub">Registro y comprobantes de pago por ciclo · derivados de la evaluación mensual</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <select id="pagoFiltroSede" class="inline-select" onchange="renderPagos()">
+        <option value="">Todas las sedes</option>
+        <option value="ST">Stan</option><option value="LB">LuceBien</option>
+        <option value="AL">Almacén</option><option value="TR">Trece</option>
+      </select>
+      <select id="pagoFiltroEstado" class="inline-select" onchange="renderPagos()">
+        <option value="">Todos los estados</option>
+        <option value="pendiente">Pendientes</option>
+        <option value="pagado">Pagados</option>
+      </select>
+      <input type="month" id="pagoFiltroMes" class="inline-select" onchange="renderPagos()">
+      <button class="btn btn-primary btn-sm" onclick="abrirNuevoPago()">+ Registrar pago</button>
+    </div>
+  </div>
+
+  <div class="grid-4" style="margin-bottom:14px" id="pagosKpis"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Historial de pagos</span>
+      <span style="font-size:11px;color:var(--text3)" id="pagosCount"></span>
+      <button class="btn btn-ghost btn-xs" onclick="exportPagosCSV()" title="Exportar a CSV (Excel)">📥 CSV</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr>
+          <th>#</th><th>Colaborador</th><th>Sede</th><th>Ciclo / Mes</th>
+          <th style="text-align:right">Monto</th><th>Método</th><th>Fecha pago</th>
+          <th>Estado</th><th>Nota</th><th style="width:170px"></th>
+        </tr></thead>
+        <tbody id="pagosBody">
+          <tr><td class="empty-cell" colspan="10">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: CONFIG EVAL VALORES 360° (admin) ═══ -->
+<div class="modal-overlay" id="evalValConfigModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h2>🎲 Habilitar Evaluar Compañeros</h2>
+      <button class="modal-close" onclick="closeModal('evalValConfigModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--gold-pale);border:1px solid var(--gold-b);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--gold-d);margin-bottom:14px;line-height:1.45">
+        Cuando está habilitado, todos los colaboradores ven la opción "Evaluar Compañeros" en su menú lateral y pueden calificar a sus pares. Cuando está apagado, esa opción se oculta.
+      </div>
+
+      <div class="field" style="margin-bottom:12px">
+        <label>Modo</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+          <label class="evc-mode-pill"><input type="radio" name="evcModo" value="manual" checked onchange="evcUpdateUI()"><span>Manual<small>Lo enciendes y apagas tú</small></span></label>
+          <label class="evc-mode-pill"><input type="radio" name="evcModo" value="auto" onchange="evcUpdateUI()"><span>Programado<small>Se enciende solo en los días que elijas</small></span></label>
+        </div>
+      </div>
+
+      <div class="field" id="evcManualBox" style="margin-bottom:12px">
+        <label>Estado actual</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+          <label class="switch"><input type="checkbox" id="evcHabilitado"><span class="slider"></span></label>
+          <span id="evcHabilitadoLbl" style="font-size:12px;font-weight:700">Apagado</span>
+        </div>
+      </div>
+
+      <div class="field" id="evcAutoBox" style="margin-bottom:12px;display:none">
+        <label>Días del mes en que se habilita automáticamente</label>
+        <div id="evcDiasGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-top:6px"></div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px;font-style:italic">Click en un día para encender/apagar. Por defecto se sugiere del 25 al 28 (cierre de mes).</div>
+      </div>
+
+      <div id="evcStatusActual" style="background:var(--s2);border-left:3px solid var(--navy);padding:8px 12px;border-radius:6px;font-size:11px;font-family:var(--font-m);color:var(--text2)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('evalValConfigModal')">Cancelar</button>
+      <button class="btn btn-primary" onclick="evcGuardar()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ PÁGINA: ASISTENCIA DIARIA ═══ -->
+<div id="page-asistencias" class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Asistencia <span>Diaria</span></div>
+      <div class="page-sub">Marca presente, ajusta tardanzas y justifica faltas. Mientras no haya huellero, los reportes enviados auto-marcan presente.</div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <input type="date" id="asistDiaFecha" class="inline-select" onchange="renderAsistDia()">
+      <select id="asistDiaSede" class="inline-select" onchange="renderAsistDia()">
+        <option value="">Todas las sedes</option>
+        <option value="ST">Stan</option><option value="LB">LuceBien</option>
+        <option value="AL">Almacén</option><option value="TR">Trece</option>
+      </select>
+      <button class="btn btn-ghost btn-xs" onclick="renderAsistDia()" title="Refrescar">↻</button>
+    </div>
+  </div>
+
+  <div class="dash-kpis-grid" id="asistDiaKpis" style="margin-bottom:14px"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Equipo del día</span>
+      <span style="font-size:11px;color:var(--text3)" id="asistDiaCount"></span>
+      <button class="btn btn-ghost btn-xs" onclick="exportAsistDiaCSV()" title="Exportar a CSV (Excel)">📥 CSV</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead><tr>
+          <th>Colaborador</th><th>Turno</th><th>Sede esperada</th>
+          <th>Estado</th><th>Hora entrada</th><th style="width:90px;text-align:center">Tardanza</th>
+          <th>Fuente</th><th>Observación</th><th style="width:130px"></th>
+        </tr></thead>
+        <tbody id="asistDiaBody">
+          <tr><td class="empty-cell" colspan="9">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL: REGISTRAR / EDITAR PAGO ═══ -->
+<div class="modal-overlay" id="pagoModal">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <h2 id="pagoModalTitle">Registrar pago</h2>
+      <button class="modal-close" onclick="closeModal('pagoModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="pagoId">
+      <input type="hidden" id="pagoEvalId">
+
+      <div class="grid-2" style="gap:10px;margin-bottom:8px">
+        <div class="field mb-0"><label>Colaborador *</label>
+          <select id="pagoEmpId" onchange="pagoSugerirMonto()"></select>
+        </div>
+        <div class="field mb-0"><label>Mes / ciclo</label>
+          <input type="month" id="pagoMes">
+        </div>
+      </div>
+
+      <div class="grid-2" style="gap:10px;margin-bottom:8px">
+        <div class="field mb-0"><label>Ciclo desde</label>
+          <input type="date" id="pagoCicloDesde" onchange="pagoSugerirMonto()">
+        </div>
+        <div class="field mb-0"><label>Ciclo hasta</label>
+          <input type="date" id="pagoCicloHasta">
+        </div>
+      </div>
+
+      <div id="pagoSugerido" style="background:var(--gold-pale);border:1px solid var(--gold-b);border-radius:8px;padding:10px;font-size:11px;display:none;margin-bottom:10px">
+        <div id="pagoSugeridoTxt" style="color:var(--gold-d);font-family:var(--font-m)"></div>
+        <button type="button" class="btn btn-ghost btn-xs" style="margin-top:6px" onclick="pagoUsarSugerido()">Usar montos sugeridos →</button>
+      </div>
+
+      <div class="grid-3" style="gap:10px;margin-bottom:8px">
+        <div class="field mb-0"><label>Monto base</label>
+          <input type="number" step="0.01" min="0" id="pagoMontoBase" oninput="pagoRecalc()">
+        </div>
+        <div class="field mb-0"><label style="color:var(--green)">Bonus</label>
+          <input type="number" step="0.01" min="0" id="pagoBonus" oninput="pagoRecalc()">
+        </div>
+        <div class="field mb-0"><label style="color:var(--red)">Descuentos</label>
+          <input type="number" step="0.01" min="0" id="pagoDesc" oninput="pagoRecalc()">
+        </div>
+      </div>
+
+      <div class="field" style="margin-bottom:8px">
+        <label>Total a pagar (S/)</label>
+        <input type="number" step="0.01" min="0" id="pagoMonto" style="font-weight:800;font-size:18px;font-family:var(--font-m)">
+      </div>
+
+      <div class="grid-3" style="gap:10px;margin-bottom:8px">
+        <div class="field mb-0"><label>Método</label>
+          <select id="pagoMetodo">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="yape">Yape / Plin</option>
+            <option value="cheque">Cheque</option>
+            <option value="otro">Otro</option>
+          </select>
+        </div>
+        <div class="field mb-0"><label>N° comprobante</label>
+          <input type="text" id="pagoComprobNum" placeholder="Op. / boleta">
+        </div>
+        <div class="field mb-0"><label>Fecha pago</label>
+          <input type="date" id="pagoFecha">
+        </div>
+      </div>
+
+      <div class="field mb-0">
+        <label>Observaciones</label>
+        <textarea id="pagoObs" rows="2" placeholder="Notas opcionales..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('pagoModal')">Cancelar</button>
+      <button class="btn btn-ghost" id="pagoBtnPendiente" onclick="guardarPago('pendiente')">Guardar como pendiente</button>
+      <button class="btn btn-primary" onclick="guardarPago('pagado')">Marcar como pagado</button>
+    </div>
+  </div>
 </div>
 
 
@@ -1218,10 +1668,16 @@
         </div>
       </div>
       <!-- Acumula -->
-      <div id="gaAcumulaBox" style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s3);border:1.5px solid transparent;border-radius:6px;cursor:pointer;transition:all .15s" onclick="gaToggleAcumula()">
-        <div id="gaAcumulaDot" style="width:16px;height:16px;border-radius:50%;background:#94a3b8;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s"><span style="color:#fff;font-size:9px;font-weight:800">&#10003;</span></div>
-        <div><div style="font-size:11px;font-weight:600;color:var(--text)">Acumula si no se realiza</div>
-          <div style="font-size:9px;color:var(--text3)">Reaparece como pendiente en el siguiente turno</div></div>
+      <div id="gaAcumulaBox" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--s3);border:1.5px solid transparent;border-radius:8px;cursor:pointer;transition:all .15s" onclick="gaToggleAcumula()" title="Al activarlo, cuando el turno en que deb&iacute;a realizarse la actividad pasa sin marcarla como realizada, la actividad se arrastra como PENDIENTE al siguiente turno en que aplique, hasta que alguien la marque como hecha.">
+        <div id="gaAcumulaDot" style="width:18px;height:18px;border-radius:50%;background:#94a3b8;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;margin-top:1px"><span style="color:#fff;font-size:10px;font-weight:800">&#10003;</span></div>
+        <div style="flex:1">
+          <div style="font-size:11.5px;font-weight:700;color:var(--text)">Acumula si no se realiza <span style="font-weight:400;color:var(--text3);font-size:10px">(arrastre de pendientes)</span></div>
+          <div style="font-size:10px;color:var(--text2);line-height:1.4;margin-top:3px">
+            Cuando termina el turno y la actividad <b>no fue marcada como realizada</b>, reaparece autom&aacute;ticamente en el <b>pr&oacute;ximo turno</b> en que aplique, resaltada como pendiente acumulada.
+            <br><span style="color:var(--text3)">&bull; <b>Activo:</b> ideal para tareas cr&iacute;ticas que no se pueden saltar (p.ej. conteo de caja, cierre diario).</span>
+            <br><span style="color:var(--text3)">&bull; <b>Inactivo:</b> para tareas rutinarias que simplemente no se hicieron ese d&iacute;a y no se arrastran.</span>
+          </div>
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -1354,74 +1810,51 @@
   <style>@keyframes undoCountdown{0%{width:100%}100%{width:0%}}</style>
   <div id="almacen-kanban-root" style="min-height:80vh"></div>
 </div>
-
-<!-- PÁGINA: PIPELINE DE PRENDAS (Almacén) -->
-<div id="page-pipeline" class="page">
-  <div class="page-header">
-    <h1 class="page-title">&#9881; Pipeline de Prendas</h1>
-    <p class="page-sub">Seguimiento individual de cada prenda a trav&eacute;s del proceso</p>
-  </div>
-  <div class="card">
-    <div class="card-body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-      <div id="pipeStats"></div>
-      <div style="display:flex;gap:6px">
-        <button id="btnViewKanban" class="btn btn-primary btn-sm" onclick="togglePipelineView('kanban')">Kanban</button>
-        <button id="btnViewTabla" class="btn btn-ghost btn-sm" onclick="togglePipelineView('tabla')">Tabla</button>
-        <button class="btn btn-ghost btn-sm" onclick="abrirIngresoPipeline()">+ Ingresar Prenda</button>
-        <button class="btn btn-primary btn-sm" onclick="prepararEnvio()">&#128230; Enviar a Tienda</button>
-      </div>
-    </div>
-  </div>
-  <div class="card" style="margin-top:12px">
-    <div id="pipelineContent"><div style="padding:40px;text-align:center;color:var(--text3)">Cargando pipeline...</div></div>
-  </div>
-</div>
-
-<!-- Modal: Ingresar prenda al pipeline -->
-<div class="modal-overlay" id="pipeIngresoModal">
-  <div class="modal" style="max-width:440px">
-    <div class="modal-header"><h2>&#128229; Ingresar Prenda</h2><button class="modal-close" onclick="closeModal('pipeIngresoModal')">&#10005;</button></div>
-    <div class="modal-body">
-      <div class="field"><label>C&oacute;digo *</label><input type="text" id="pipeIngCodigo" placeholder="Ej: LB-150"></div>
-      <div class="grid-2">
-        <div class="field"><label>Tipo</label><select id="pipeIngTipo"><option>Terno completo</option><option>Saco</option><option>Pantal&oacute;n</option><option>Chaleco</option><option>Blazer</option></select></div>
-        <div class="field"><label>Color</label><input type="text" id="pipeIngColor" placeholder="Color"></div>
-      </div>
-      <div class="field"><label>Talla</label><select id="pipeIngTalla"><option>26</option><option>XS</option><option>S</option><option selected>M</option><option>L</option><option>XL</option><option>2XL</option></select></div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('pipeIngresoModal')">Cancelar</button><button class="btn btn-primary" onclick="ingresarPrendaPipeline()">Ingresar</button></div>
-  </div>
-</div>
-
-<!-- Modal: Enviar a tienda -->
-<div class="modal-overlay" id="envioModal">
-  <div class="modal" style="">
-    <div class="modal-header"><h2>&#128230; Enviar Prendas</h2><button class="modal-close" onclick="closeModal('envioModal')">&#10005;</button></div>
-    <div class="modal-body">
-      <input type="hidden" id="envioIds">
-      <p><strong id="envioCount">0</strong> prendas seleccionadas para env&iacute;o</p>
-      <div class="field"><label>Tienda destino *</label>
-        <select id="envioDestino"><option value="">Elegir...</option><option value="ST">Stan</option><option value="LB">LuceBien</option><option value="TR">Trece</option></select>
-      </div>
-    </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('envioModal')">Cancelar</button><button class="btn btn-primary" onclick="ejecutarEnvio()">Enviar</button></div>
-  </div>
-</div>
-
 <!-- PÁGINA: ENVÍOS RECIBIDOS (Tienda) -->
 <div id="page-pipeline-envios" class="page">
   <div class="page-header">
     <h1 class="page-title">&#128230; Env&iacute;os Recibidos</h1>
-    <p class="page-sub">Califica las prendas recibidas del almac&eacute;n</p>
+    <p class="page-sub">Calif&iacute;ca las prendas y accesorios recibidos del almac&eacute;n</p>
   </div>
   <div class="card">
-    <div class="card-body"><span id="enviosPendBadge" class="badge badge-gold">Cargando...</span></div>
+    <div class="card-body" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <span style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Pendientes:</span>
+      <span id="enviosPendBadge" class="badge badge-gold">Prendas: cargando…</span>
+      <span id="enviosAccPendBadge" class="badge badge-gold">Accesorios: cargando…</span>
+    </div>
   </div>
+
+  <!-- Sección Prendas -->
   <div class="card" style="margin-top:12px">
+    <div class="card-header"><span class="card-title">Env&iacute;os de Prendas</span></div>
     <div style="overflow-x:auto"><table class="data-table">
       <thead><tr><th>Env&iacute;o</th><th>Fecha</th><th>Prendas</th><th>Responsable</th><th>Estado</th><th>Acci&oacute;n</th></tr></thead>
       <tbody id="enviosRecibidosBody"><tr><td class="empty-cell" colspan="6">Cargando...</td></tr></tbody>
     </table></div>
+  </div>
+
+  <!-- Sección Accesorios -->
+  <div class="card" style="margin-top:12px">
+    <div class="card-header"><span class="card-title">Env&iacute;os de Accesorios</span></div>
+    <div style="overflow-x:auto"><table class="data-table">
+      <thead><tr><th>Env&iacute;o</th><th>Fecha</th><th>Items</th><th>Responsable</th><th>Estado</th><th>Acci&oacute;n</th></tr></thead>
+      <tbody id="enviosAccRecibidosBody"><tr><td class="empty-cell" colspan="6">Cargando...</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- Modal: Validar envío de accesorios -->
+<div class="modal-overlay" id="valEnvioAccModal">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header"><h2>Validar Env&iacute;o de Accesorios</h2><button class="modal-close" onclick="closeModal('valEnvioAccModal')">&#10005;</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="valEnvioAccId">
+      <div id="valEnvioAccItems" style="max-height:50vh;overflow-y:auto;margin-bottom:12px"></div>
+      <div class="field"><label>Observaciones (opcional)</label>
+        <textarea id="valEnvioAccObs" placeholder="Si algo lleg&oacute; mal, descr&iacute;belo aqu&iacute;..." style="width:100%;min-height:60px;padding:8px;border:1px solid var(--border);border-radius:6px;font-size:12px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('valEnvioAccModal')">Cancelar</button><button class="btn btn-primary" onclick="validarEnvioAcc()">Marcar como recibido</button></div>
   </div>
 </div>
 
@@ -1442,16 +1875,20 @@
   <div class="page-header"><div><div class="page-title">Reportes de <span>Actividad</span></div><div class="page-sub">Historial completo de todos los reportes enviados y evaluados</div></div></div>
   <div class="card">
     <div class="card-header"><span class="card-title">Filtros</span></div>
-    <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-      <select id="arFiltroSede" onchange="renderAdminReportes()" style="padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:12px">
-        <option value="">Todas las sedes</option>
-        <option value="ST">Stan 101-102</option>
-        <option value="LB">LuceBien</option>
-        <option value="TR">Trece</option>
-        <option value="AL">Almac&eacute;n</option>
-      </select>
-      <input type="date" id="arFiltroFecha" onchange="renderAdminReportes()" style="padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:12px">
-      <button class="btn btn-ghost btn-sm" onclick="document.getElementById('arFiltroFecha').value='';document.getElementById('arFiltroSede').value='';renderAdminReportes()">Limpiar filtros</button>
+    <div class="card-body">
+      <div class="filter-bar filter-bar-lg">
+        <span class="filter-label">Sede</span>
+        <select id="arFiltroSede" class="filter-ctrl filter-ctrl-lg" onchange="renderAdminReportes()">
+          <option value="">Todas</option>
+          <option value="ST">Stan 101-102</option>
+          <option value="LB">LuceBien</option>
+          <option value="TR">Trece</option>
+          <option value="AL">Almac&eacute;n</option>
+        </select>
+        <span class="filter-label">Fecha</span>
+        <input type="date" id="arFiltroFecha" class="filter-ctrl filter-ctrl-lg" onchange="renderAdminReportes()">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('arFiltroFecha').value='';document.getElementById('arFiltroSede').value='';renderAdminReportes()">↺ Limpiar</button>
+      </div>
     </div>
   </div>
   <div class="card" style="margin-top:12px">
@@ -1476,6 +1913,7 @@
     </div>
   </div>
 </div>
+
 
 <div id="page-audit-log" class="page">
   <div class="page-header">
@@ -1508,7 +1946,8 @@
   </div>
   <div class="card" style="margin-top:12px">
     <div class="card-header"><span class="card-title">Registro de Movimientos</span>
-      <span class="badge badge-navy" id="auditCount">0</span></div>
+      <span class="badge badge-navy" id="auditCount">0</span>
+      <button class="btn btn-ghost btn-xs" style="margin-left:8px" onclick="exportAuditCSV()" title="Exportar a CSV (Excel)">📥 CSV</button></div>
     <div style="overflow-x:auto">
       <table class="data-table">
         <thead><tr><th>Fecha</th><th>Hora</th><th>Usuario</th><th>Sede</th><th>M&oacute;dulo</th><th>Acci&oacute;n</th><th>Detalle</th><th>IP</th></tr></thead>
@@ -1535,8 +1974,9 @@
   <div id="soliBulkBar" style="display:none;align-items:center;gap:10px;padding:8px 14px;margin-bottom:8px;background:rgba(184,165,21,.06);border:1.5px solid rgba(184,165,21,.2);border-radius:8px"></div>
   <div class="card">
     <div class="card-header"><span class="card-title">Solicitudes</span>
-      <div style="display:flex;gap:8px;align-items:center">
-        <select id="soliFiltroEstado" class="inline-select" onchange="renderSolicitudes()" style="font-size:11px">
+      <div class="filter-bar">
+        <span class="filter-label">Estado</span>
+        <select id="soliFiltroEstado" class="filter-ctrl" onchange="renderSolicitudes()">
           <option value="">Activas</option>
           <option value="pendiente">&#9203; Pendientes</option>
           <option value="aprobada">&#9989; Aprobadas</option>
@@ -1545,7 +1985,8 @@
           <option value="rechazada">&#10060; Rechazadas</option>
           <option value="_all">&#128196; Ver absolutamente todas</option>
         </select>
-        <select id="soliFiltroSede" class="inline-select" onchange="renderSolicitudes()" style="font-size:11px">
+        <span class="filter-label">Sede</span>
+        <select id="soliFiltroSede" class="filter-ctrl" onchange="renderSolicitudes()">
           <option value="">Todas</option>
           <option value="ST">Stan</option><option value="LB">LuceBien</option>
           <option value="TR">Trece</option><option value="AL">Almac&eacute;n</option>
@@ -1561,23 +2002,44 @@
   </div>
 </div>
 
+<!-- ═══ GESTIÓN DE HORARIOS (admin) ═══ -->
+<div id="page-horarios-admin" class="page">
+  <div class="page-header">
+    <div><div class="page-title">&#128197; <span>Gesti&oacute;n de Horarios</span></div>
+      <div class="page-sub">Constructor semanal &mdash; versionado, editable, imprimible</div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="abrirImportHorarioV2()" title="Importar desde plantilla Excel (opcional)">&#128228; Importar Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="renderHorariosAdmin()">&#128260; Actualizar</button>
+    </div>
+  </div>
+  <div id="horariosAdminContent"><div class="empty-cell" style="padding:40px;text-align:center;color:var(--text3)">Cargando&hellip;</div></div>
+</div>
+
 </main>
 <div class="toast" id="toast"><span id="toastIcon"></span><span id="toastMsg"></span></div>
 
-<script src="/js/api.js?v=1775834000"></script>
-<script src="/js/data.js?v=1775920000"></script>
-<script src="/js/app.js?v=1775920000"></script>
-<script src="/js/layout-map.js?v=1775860000"></script>
-<script src="/js/admin.js?v=1775920000"></script>
+<script src="/js/api.js?v=1776400000"></script>
+<script src="/js/data.js?v=1776400000"></script>
+<script src="/js/app.js?v=1780400000"></script>
+<script src="/js/layout-map.js?v=1776400000"></script>
+<script src="/js/admin.js?v=1780400000"></script>
+<script src="/js/pagos.js?v=1780400000"></script>
+<script src="/js/asistencia-dia.js?v=1779800000"></script>
+<script src="/js/header.js?v=1780400000"></script>
 <script src="/js/patches-v3.js?v=1775890000"></script>
 <script src="/js/patches-v4.js?v=1775870000"></script>
-<script src="/js/patches-v5.js?v=1775920000"></script>
-<script src="/js/modulos.js?v=1775920000"></script>
-<script src="/js/pipeline-ui.js?v=1775840000"></script>
+<script src="/js/patches-v5.js?v=1776400000"></script>
+<script src="/js/horarios-v2.js?v=1776400000"></script>
+<script src="/js/reportes-autoenvio.js?v=1776400000"></script>
+<script src="/js/modulos.js?v=1776400000"></script>
+<script src="/js/pipeline-envios.js?v=1780500000"></script>
+<script src="/js/solicitudes.js?v=1778700000"></script>
+<!-- SheetJS (xlsx) para importar/exportar Excel de horarios -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script type="text/babel" src="/js/almacen-kanban.jsx"></script>
+<script type="text/babel" src="/js/almacen-kanban.jsx?v=1778900000"></script>
 <script>
 // Inicializar mes actual en selects
 document.addEventListener('DOMContentLoaded',function(){

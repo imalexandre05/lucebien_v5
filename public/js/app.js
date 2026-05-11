@@ -54,6 +54,82 @@ function volverSedes() {
   renderSedeScreen();
 }
 
+// ── SELECTOR DE SEDE EN SIDEBAR ─────────────────────────────────────
+// Popup elegante que aparece al hacer click en el bloque de sede del
+// sidebar. Muestra solo las sedes que el usuario tiene asignadas
+// (admin/dueño ve las 4). Cambiar de sede recarga la app.
+function abrirSelectorSede() {
+  var pop = document.getElementById('sbSedePop');
+  if (!pop) return;
+  // Toggle: si ya está abierto, lo cerramos (segundo click cierra)
+  if (pop.style.display === 'block') { pop.style.display = 'none'; return; }
+  var u = STATE.user; if (!u) return;
+  var sedes = (u.tiendas && u.tiendas.length) ? u.tiendas.slice() : (u.sede ? [u.sede] : []);
+  if (u.rol === 'admin' || u.rol === 'dueno' || u.rol === 'dueño') {
+    ['LB','ST','TR','AL'].forEach(function(s){ if (sedes.indexOf(s) < 0) sedes.push(s); });
+  }
+  if (sedes.length <= 1) {
+    showToast('Solo tienes una sede asignada', 'info');
+    return;
+  }
+  var actual = STATE.sede;
+  pop.innerHTML = '<div class="sb-sede-pop-title">Cambiar a</div>' +
+    sedes.map(function(s){
+      var lbl = (SEDES[s] && SEDES[s].label) || s;
+      var ico = (SEDES[s] && SEDES[s].icon) || '🏢';
+      var sel = s === actual ? ' selected' : '';
+      return '<button class="sb-sede-pop-item'+sel+'" onclick="cambiarSede(\''+s+'\')">' +
+               '<span class="sb-sede-pop-icon">'+ico+'</span>' +
+               '<span class="sb-sede-pop-lbl">'+lbl+'</span>' +
+               (s === actual ? '<span class="sb-sede-pop-check">✓</span>' : '') +
+             '</button>';
+    }).join('') +
+    '<div class="sb-sede-pop-sep"></div>' +
+    '<button class="sb-sede-pop-item sb-sede-pop-back" onclick="volverSedes()">' +
+      '<span class="sb-sede-pop-icon">↩</span>' +
+      '<span class="sb-sede-pop-lbl">Salir y elegir desde inicio</span>' +
+    '</button>';
+  pop.style.display = 'block';
+  // Cerrar al click fuera
+  setTimeout(function(){
+    document.addEventListener('click', _cerrarSbSede, { once:true });
+  }, 50);
+}
+function _cerrarSbSede(e){
+  if (e.target.closest('#sbSedeFixed, #sbSedePop')) {
+    document.addEventListener('click', _cerrarSbSede, { once:true });
+    return;
+  }
+  var pop = document.getElementById('sbSedePop');
+  if (pop) pop.style.display = 'none';
+}
+async function cambiarSede(nuevaSede) {
+  if (!STATE.user || nuevaSede === STATE.sede) {
+    var pop = document.getElementById('sbSedePop'); if (pop) pop.style.display = 'none';
+    return;
+  }
+  // Re-login con la nueva sede usando el cod del usuario actual
+  try {
+    var r = await fetch('/api/auth/login-code', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ cod: STATE.user.cod, sede: nuevaSede })
+    });
+    var d = await r.json();
+    if (d && d.token) {
+      API.setToken(d.token);
+      API.setUser(d.user);
+      try { localStorage.setItem('lb_sede', nuevaSede); } catch(e){}
+      location.reload();
+    } else {
+      showToast(d.error || 'No se pudo cambiar de sede', 'error');
+    }
+  } catch (e) {
+    showToast('Error al cambiar de sede', 'error');
+  }
+}
+window.abrirSelectorSede = abrirSelectorSede;
+window.cambiarSede = cambiarSede;
+
 // ── LOGIN ─────────────────────────────────────────────
 async function doLogin() {
   var nombre=document.getElementById('loginNombre')?.value?.trim()||'';
@@ -79,10 +155,14 @@ async function mostrarApp() {
   document.getElementById('sedeScreen').style.display = 'none';
   document.querySelector('.sidebar').classList.add('visible');
   document.querySelector('.main').classList.add('visible');
-  document.getElementById('sbSedeName').textContent = SEDES[sede]?.label || sede;
-  document.getElementById('sbAvatar').textContent   = u.iniciales;
-  document.getElementById('sbName').textContent     = u.nombre;
-  document.getElementById('sbRole').textContent     = (EMP_ROLES_LABEL||{})[u.rol] || u.rol;
+  // sb-sede-badge y sb-user fueron movidos al header global; estos
+  // ids ya no existen. Mantengo el código defensivo (si existieran lo
+  // pintaría, si no, los chequeos no lanzan).
+  var elSede = document.getElementById('sbSedeName'); if (elSede) elSede.textContent = SEDES[sede]?.label || sede;
+  var elSedeFix = document.getElementById('sbSedeFixedName'); if (elSedeFix) elSedeFix.textContent = SEDES[sede]?.short || sede;
+  var elAv   = document.getElementById('sbAvatar');   if (elAv)   elAv.textContent   = u.iniciales;
+  var elNm   = document.getElementById('sbName');     if (elNm)   elNm.textContent   = u.nombre;
+  var elRl   = document.getElementById('sbRole');     if (elRl)   elRl.textContent   = (EMP_ROLES_LABEL||{})[u.rol] || u.rol;
   const isAL = sede === 'AL';
   document.querySelectorAll('.nav-tienda').forEach(el=>el.classList.toggle('hidden',isAL));
   document.querySelectorAll('.nav-almacen').forEach(el=>el.classList.toggle('hidden',!isAL));
@@ -447,10 +527,10 @@ async function loadLayoutMap(turno) {
   if (STATE.fr01.bloqueado || STATE.fr01.enviado) return;
   var sede = STATE.sede;
   if (!sede) { console.warn('[Layout] no sede'); card.style.display = 'none'; return; }
-  console.log('[Layout] loading for sede:', sede, 'turno:', turno);
+  // log silenciado — ruido en cada cambio de página
   try {
     var zonas = await API.get('/layout?sede=' + encodeURIComponent(sede));
-    console.log('[Layout] got', (zonas||[]).length, 'zonas');
+    // log silenciado — ruido en cada cambio de página
     if (!zonas || !zonas.length) { card.style.display = 'none'; return; }
     STATE._layoutZonas = zonas;
     STATE._layoutSelected = {};
@@ -1072,7 +1152,7 @@ function prepararEval() {
   }
 
   // Show layout eval map
-  console.log('[Eval] layoutActs:', layoutActs.length, 'layoutZonas:', (STATE._layoutZonas||[]).length);
+  // log silenciado — ruido en cada apertura de evaluación
   var elc = document.getElementById('evalLayoutCard');
   if (elc && STATE._layoutZonas && STATE._layoutZonas.length && layoutActs.length) {
     elc.style.display = '';
@@ -1411,17 +1491,36 @@ async function avanzarAlmEstado(nuevoEstado) {
 // ── EVALUACIÓN VALORES 360 (todos) ────────────────────
 async function checkEvalValoresHabilitado() {
   try {
-    const cfg = await API.get('/config');
-    const habilitado = cfg && (cfg.eval_valores_habilitado === 1 || cfg.eval_valores_habilitado === '1' || cfg.eval_valores_habilitado === true);
+    // Usar el endpoint nuevo que respeta modo manual/auto + días programados
+    const cfg = await API.get('/valores/config');
+    const habilitado = cfg && cfg.activo_hoy === true;
     const navEl = document.querySelector('.nav-eval-valores');
     const badge = document.querySelector('.eval-v-badge');
     if (navEl) navEl.classList.toggle('hidden', !habilitado);
-    if (badge && habilitado) badge.classList.remove('hidden');
+    if (!habilitado) { if (badge) badge.classList.add('hidden'); return; }
+    // Si está habilitado, contar pendientes del mes actual y mostrar badge
+    try {
+      const mes = mesLocal();
+      const compañeros = await API.misValores(mes);
+      if (compañeros && Array.isArray(compañeros)) {
+        const pend = compañeros.filter(e => !e.evaluado).length;
+        if (badge) {
+          if (pend > 0) {
+            badge.textContent = pend;
+            badge.classList.remove('hidden');
+          } else {
+            badge.classList.add('hidden');
+          }
+        }
+      }
+    } catch (e2) { /* fail-safe: deja el badge oculto */ }
   } catch(e) {}
 }
 
 async function initEvalValores() {
   const mes=document.getElementById('evalVMes')?.value||mesLocal();
+  // Cargar mi resumen primero (paralelo a los compañeros para ahorrar tiempo)
+  cargarMiResumenValores(mes);
   const compañeros=await API.misValores(mes);
   if(!compañeros)return;
   const box=document.getElementById('evalVList');if(!box)return;
@@ -1439,11 +1538,58 @@ async function initEvalValores() {
     </div>`).join('');
 }
 
+// ── Mi resumen del mes ─────────────────────────────────
+// Muestra al colaborador el promedio que sus compañeros le dieron en
+// cada valor + nota /20. Privacidad: no muestra QUIÉN lo evaluó.
+async function cargarMiResumenValores(mes) {
+  const box = document.getElementById('evalVMiResumen');
+  if (!box) return;
+  box.innerHTML = '<div style="color:var(--text3);font-size:12px">Cargando...</div>';
+  try {
+    const r = await API.get('/valores/mi-resumen/' + encodeURIComponent(mes));
+    if (!r || !r.recibidas) {
+      box.innerHTML = '<div style="color:var(--text3);font-size:12px;text-align:center;padding:14px">A&uacute;n no recibiste evaluaciones este mes.</div>';
+      return;
+    }
+    const p = r.promedios || {};
+    const nota = r.nota20;
+    const cls = nota >= 17 ? 'excellent' : nota >= 14 ? 'good' : nota >= 11 ? 'regular' : 'bad';
+    let html = '<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">' +
+               '<div class="score-pill ' + cls + '" style="font-size:18px;padding:8px 16px">' + nota + '/20</div>' +
+               '<div style="font-size:11px;color:var(--text3)">Basado en <strong>' + r.recibidas + '</strong> evaluaci&oacute;n(es) de tus compa&ntilde;eros</div>' +
+               '</div>';
+    html += '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+    VALORES_NOMBRES.forEach((v, i) => {
+      const k = VALORES_KEYS[i];
+      const val = p[k];
+      if (val == null) {
+        html += '<span style="padding:4px 10px;border-radius:6px;background:var(--s3);color:var(--text3);font-size:11px">' + v + ': —</span>';
+      } else {
+        const bg = val >= 4 ? 'rgba(26,122,82,.1)' : val >= 3 ? 'rgba(184,134,11,.1)' : 'rgba(192,57,43,.1)';
+        const fg = val >= 4 ? 'var(--green)' : val >= 3 ? 'var(--yellow)' : 'var(--red)';
+        html += '<span style="padding:4px 10px;border-radius:6px;background:' + bg + ';color:' + fg + ';font-size:11px;font-weight:600">' + v + ': <strong>' + val + '</strong></span>';
+      }
+    });
+    html += '</div>';
+    box.innerHTML = html;
+  } catch (e) {
+    box.innerHTML = '<div style="color:var(--text3);font-size:12px">Sin datos a&uacute;n.</div>';
+  }
+}
+
 function abrirEvalValores(empId, nombre, iniciales) {
   document.getElementById('evalVEmpNombre').textContent=nombre;
   document.getElementById('evalVEmpId').value=empId;
   const form=document.getElementById('evalVForm');
-  form.innerHTML=VALORES_NOMBRES.map((v,i)=>`
+  // Atajos rápidos: aplicar mismo valor a todos los 6 likert
+  let html = '<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;align-items:center">' +
+             '<span style="font-size:11px;color:var(--text3);font-weight:600">Atajos:</span>';
+  [1,2,3,4,5].forEach(n => {
+    const lbl = LIKERT_LABELS[n-1];
+    html += '<button class="btn btn-ghost btn-xs" type="button" onclick="setLikertAll(' + n + ')" title="' + lbl + '" style="font-size:10px">Todos a ' + n + '</button>';
+  });
+  html += '</div>';
+  html += VALORES_NOMBRES.map((v,i)=>`
     <div style="margin-bottom:16px;padding:12px;background:var(--s3);border-radius:var(--r)">
       <div style="font-size:12.5px;font-weight:600;margin-bottom:8px">${v}</div>
       <div class="likert-stars" id="stars-${i}">
@@ -1454,9 +1600,14 @@ function abrirEvalValores(empId, nombre, iniciales) {
         <span id="lk-label-${i}">A veces (3)</span>
       </div>
     </div>`).join('');
+  form.innerHTML = html;
   // Inicializar con 3
   VALORES_NOMBRES.forEach((_,i)=>setLikert(i,3));
   openModal('evalVModal');
+}
+
+function setLikertAll(val) {
+  VALORES_NOMBRES.forEach((_, i) => setLikert(i, val));
 }
 
 function setLikert(idx, val) {
@@ -1511,34 +1662,65 @@ function showPrompt(title,placeholder,callback,icon){
 
 // ═══ ROLE-BASED ACCESS CONTROL ═══
 var EMP_ROLES_LABEL = {admin:'👑 Administrador',dueno:'👑 Dueña',encargado_tienda:'🏪 Encargado',encargado_almacen:'📦 Enc. Almacén',ventas_junior:'🛍 Ventas Jr.',ventas_junior_2:'🛍 Ventas Jr. 2',auxiliar:'📦 Auxiliar',confeccionista:'✂️ Confeccionista',trabajador:'👤 Colaborador'};
+// ──────────────────────────────────────────────────────────────────────────
+// PAGES_CONFIG — Inventario REAL de módulos.
+// Cada id debe coincidir con el argumento de goTo('...') en el nav del HTML.
+// `section` agrupa visualmente en el modal de Configurar Accesos.
+// Sectores:
+//   turno     → operación diaria del turno (reporte, eval, lavandería, solicitudes)
+//   personal  → vistas propias del colaborador
+//   almacen   → flujos de almacén/pipeline (kanban, envíos, retornos, garantías)
+//   gestion   → panel admin (colaboradores, incidencias, auditoría)
+// ──────────────────────────────────────────────────────────────────────────
 var PAGES_CONFIG = {
-  'reporte':           {label:'Reporte de Actividades',icon:'📋',section:'operaciones'},
-  'evaluacion':        {label:'Evaluación de Reporte',icon:'⭐',section:'operaciones'},
-  'lavanderia-envio':  {label:'Envío a Lavandería',icon:'👔',section:'operaciones'},
-  'prendas-recibidas': {label:'Prendas Recibidas',icon:'📦',section:'operaciones'},
-  'mi-desempeno':      {label:'Mi Desempeño',icon:'📊',section:'personal'},
-  'solicitudes':       {label:'Solicitudes',icon:'📩',section:'operaciones'},
-  'pipeline':          {label:'Pipeline',icon:'🔄',section:'gestion'},
-  'empleados':         {label:'Colaboradores',icon:'👥',section:'gestion'},
-  'incidencias-admin': {label:'Incidencias',icon:'⚡',section:'gestion'},
-  'gestion-actividades':{label:'Gestión Actividades',icon:'📝',section:'gestion'},
-  'reportes-admin':    {label:'Reportes',icon:'📈',section:'gestion'},
-  'valores':           {label:'Valores',icon:'💎',section:'gestion'},
-  'evaluaciones':      {label:'Evaluaciones',icon:'🏆',section:'gestion'},
-  'horarios':          {label:'Horarios',icon:'🕐',section:'gestion'},
+  // — Turno —
+  'reporte':            {label:'Reporte de Actividades',icon:'📋',section:'turno'},
+  'evaluacion':         {label:'Evaluación de Reporte', icon:'⭐',section:'turno'},
+  'lavanderia':         {label:'Envío a Lavandería',    icon:'👔',section:'turno'},
+  'solicitudes':        {label:'Solicitudes',           icon:'📩',section:'turno'},
+  'prestamos':          {label:'Préstamo de Prendas',   icon:'🔄',section:'turno'},
+  // — Personal —
+  'mi-desempeno':       {label:'Mi Desempeño',          icon:'📊',section:'personal'},
+  'eval-valores':       {label:'Evaluar Compañeros',    icon:'💎',section:'personal'},
+  // — Almacén / Pipeline —
+  'kanban-almacen':     {label:'Prendas Recibidas (Almacén)',icon:'📦',section:'almacen'},
+  'pipeline-envios':    {label:'Envíos Recibidos (Tienda)',  icon:'📬',section:'almacen'},
+  'retorno':            {label:'Retorno de Prendas',    icon:'↩️',section:'almacen'},
+  'garantias':          {label:'Garantías',             icon:'🛡️',section:'almacen'},
+  'config-pipeline':    {label:'Configurar Pipeline',   icon:'⚙️',section:'almacen'},
+  // — Gestión (admin) —
+  'dashboard':          {label:'Dashboard',             icon:'📊',section:'gestion'},
+  'empleados':          {label:'Colaboradores',         icon:'👥',section:'gestion'},
+  'incidencias-admin':  {label:'Incidencias',           icon:'⚡',section:'gestion'},
+  'gestion-actividades':{label:'Gestión Actividades',   icon:'📝',section:'gestion'},
+  'admin-reportes':     {label:'Reportes de Actividad', icon:'📈',section:'gestion'},
+  'evaluacion-mensual': {label:'Evaluación Mensual',    icon:'🏆',section:'gestion'},
+  'pagos':              {label:'Pagos',                 icon:'💵',section:'gestion'},
+  'asistencias':        {label:'Asistencia diaria',     icon:'📅',section:'gestion'},
+  'horarios-admin':     {label:'Horarios',              icon:'📅',section:'gestion'},
+  'audit-log':          {label:'Auditoría',             icon:'🔍',section:'gestion'},
+};
+
+// Etiqueta legible + color por sector para la UI de configuración.
+var SECTION_META = {
+  turno:    {label:'Operación de Turno', icon:'📋', color:'#1e3a5f', bg:'#eff6ff'},
+  personal: {label:'Vista Personal',     icon:'🙋', color:'#7c3aed', bg:'#faf5ff'},
+  almacen:  {label:'Almacén y Pipeline', icon:'📦', color:'#0d6939', bg:'#f0fdf4'},
+  gestion:  {label:'Gestión (Admin)',    icon:'👑', color:'#b45309', bg:'#fffbeb'},
 };
 
 var DEFAULT_PERMS = {
   dueno:              Object.keys(PAGES_CONFIG),
   admin:              Object.keys(PAGES_CONFIG),
-  encargado_tienda:   ['reporte','evaluacion','lavanderia-envio','prendas-recibidas','mi-desempeno','solicitudes','incidencias-admin'],
-  encargado_almacen:  ['reporte','evaluacion','prendas-recibidas','mi-desempeno','solicitudes','pipeline'],
-  ventas_junior:      ['reporte','evaluacion','mi-desempeno','solicitudes'],
-  ventas_junior_2:    ['reporte','evaluacion','mi-desempeno','solicitudes'],
-  auxiliar:           ['reporte','evaluacion','mi-desempeno','solicitudes','prendas-recibidas'],
-  confeccionista:     ['mi-desempeno','solicitudes'],
-  trabajador:         ['reporte','evaluacion','mi-desempeno','solicitudes'],
+  encargado_tienda:   ['reporte','evaluacion','lavanderia','solicitudes','prestamos','mi-desempeno','eval-valores','pipeline-envios','retorno','incidencias-admin'],
+  encargado_almacen:  ['reporte','evaluacion','solicitudes','prestamos','mi-desempeno','eval-valores','kanban-almacen','retorno','garantias','incidencias-admin'],
+  ventas_junior:      ['reporte','evaluacion','lavanderia','solicitudes','mi-desempeno','eval-valores','pipeline-envios'],
+  ventas_junior_2:    ['reporte','evaluacion','lavanderia','solicitudes','mi-desempeno','eval-valores','pipeline-envios'],
+  confeccionista:     ['mi-desempeno','solicitudes','eval-valores'],
 };
+// Nota: 'auxiliar' y 'trabajador' se removieron — no había empleados reales
+// con esos roles. Si se necesitan en el futuro, reagregarlos aquí Y crear
+// empleados en BD con el rol correspondiente.
 
 STATE._permisos = null;
 
@@ -1594,14 +1776,18 @@ function goTo(pageId,el){
   if(pageId==='eval-valores')initEvalValores();
   if(pageId==='lavanderia')initLavResponsables();
   if(pageId==='mi-desempeno')renderMiDesempeno();
+  if(pageId==='horarios-admin'&&typeof renderHorariosAdmin==='function')renderHorariosAdmin();
   if(pageId==='evaluacion'&&STATE.fr01.reportId&&STATE.fr01.actividadesRealizadas&&STATE.fr01.actividadesRealizadas.length)prepararEval();
   if(pageId==='prestamos'){renderPrestamos();renderBajas();}
 
   if(pageId==='garantias')renderGarantias();
-  if(pageId==='pipeline')renderPipeline();
   if(pageId==='pipeline-envios')renderEnviosRecibidos();
   if(pageId==='solicitudes')renderSolicitudes();
   if(pageId==='empleados')applyPermissions();
+  // Tabs del menú admin que también viven dentro del hub Eval Mensual.
+  // Cuando el admin entra directo desde el sidebar, hay que inicializar.
+  if(pageId==='pagos'&&typeof renderPagos==='function')renderPagos();
+  if(pageId==='asistencias'&&typeof renderAsistDia==='function')renderAsistDia();
 }
 
 // ── Populate responsable selects in lavandería/refacción ──
@@ -1906,13 +2092,22 @@ async function enviarIncRapModal(){
 
 // ═══ EVAL TABS ═══
 function switchEvalTab(tab, btn) {
-  document.getElementById('evalTabEvaluar').style.display = tab === 'evaluar' ? '' : 'none';
-  document.getElementById('evalTabAsistencias').style.display = tab === 'asistencias' ? '' : 'none';
-  document.getElementById('evalTabConfig').style.display = tab === 'config' ? '' : 'none';
+  var ids = ['dashboard','evaluar','asistencias','pagos','valores','config'];
+  ids.forEach(function(t){
+    var el = document.getElementById('evalTab'+t.charAt(0).toUpperCase()+t.slice(1));
+    if (el) el.style.display = (tab === t ? '' : 'none');
+  });
   document.querySelectorAll('.eval-tab').forEach(function(t) { t.classList.remove('active'); });
   if (btn) btn.classList.add('active');
+  if (tab === 'dashboard' && typeof renderEvalMDashboard === 'function') renderEvalMDashboard();
   if (tab === 'asistencias') initAsistencias();
   if (tab === 'config') renderConfigEval();
+  if (tab === 'pagos' && typeof renderEvalPagos === 'function') renderEvalPagos();
+  if (tab === 'valores' && typeof cargarSeguimientoValores === 'function') {
+    var inp = document.getElementById('evalVAdminMes');
+    if (inp && !inp.value) inp.value = mesLocal();
+    cargarSeguimientoValores();
+  }
 }
 
 // ═══════════════════════════════════════════════════════

@@ -159,27 +159,50 @@ window.addIncidencia = function() {
   body.appendChild(div);
 };
 
-// Override incidencia rápida modal — prevent self-report
+// Override incidencia rápida modal — prevent self-report + cargar tipos dinámicos
 var _origAbrirIncRap = window.abrirIncidenciaRapidaModal;
-window.abrirIncidenciaRapidaModal = function() {
+window.abrirIncidenciaRapidaModal = async function() {
   _origAbrirIncRap();
+  // No permitir auto-reportarse
   setTimeout(function() {
     var sel = document.getElementById('irTrab');
     if (sel && STATE.user) {
-      // Remove self from options
       for (var i = sel.options.length - 1; i >= 0; i--) {
         if (sel.options[i].value === STATE.user.nombre) sel.remove(i);
       }
     }
-    // Replace tipo select with complete list
-    var tipoSel = document.getElementById('irTipo');
-    if (tipoSel) {
-      tipoSel.innerHTML = TIPOS_INCIDENCIA_COMPLETOS.map(function(t) {
-        if (t.startsWith('—')) return '<optgroup label="' + t.replace(/—/g, '').trim() + '">';
-        return '<option>' + t + '</option>';
-      }).join('');
-    }
   }, 50);
+  // Cargar tipos desde catálogo y auto-ajustar puntos/nivel según tipificación
+  try {
+    var tipos = await API.get('/incidencias/tipos/list');
+    if (tipos && tipos.length) {
+      setTimeout(function(){
+        var tipoSel = document.getElementById('irTipo');
+        if (!tipoSel) return;
+        // Agrupar por categoría
+        var porCat = {};
+        tipos.forEach(function(t){ var c=t.categoria||'Otros'; (porCat[c]=porCat[c]||[]).push(t); });
+        var html = '';
+        Object.keys(porCat).forEach(function(c){
+          html += '<optgroup label="'+c+'">';
+          porCat[c].forEach(function(t){
+            html += '<option value="'+t.tipo.replace(/"/g,'&quot;')+'" data-pts="'+t.puntos_default+'" data-niv="'+t.nivel_default+'">'+t.tipo+'</option>';
+          });
+          html += '</optgroup>';
+        });
+        tipoSel.innerHTML = html;
+        // Sincronizar puntos + nivel cuando cambia tipo
+        tipoSel.addEventListener('change', function(){
+          var opt = tipoSel.options[tipoSel.selectedIndex]; if(!opt) return;
+          var pts = opt.getAttribute('data-pts'); var niv = opt.getAttribute('data-niv');
+          if (niv) { var nivSel=document.getElementById('irNivel'); if (nivSel) nivSel.value = niv; }
+          if (pts != null) { var p=document.getElementById('irPuntos'); if (p) p.value = pts; }
+        });
+        // Disparar primera sincronización
+        tipoSel.dispatchEvent(new Event('change'));
+      }, 60);
+    }
+  } catch(e) { console.warn('[tipos] fallback a lista estática'); }
 };
 
 // ═══════════════════════════════════════════════════════
@@ -318,11 +341,15 @@ window.checkNeedsPassword = function() {};
 // ═══════════════════════════════════════════════════════
 window.toggleSidebar = function() {
   var sb = document.querySelector('.sidebar');
+  var main = document.querySelector('.main');
   if (!sb) return;
   sb.classList.toggle('collapsed');
+  var collapsed = sb.classList.contains('collapsed');
+  if (main) main.classList.toggle('sidebar-collapsed', collapsed);
+  document.body.classList.toggle('sb-collapsed', collapsed); // header lo lee desde aquí
   var btn = sb.querySelector('.sb-collapse-btn');
-  if (btn) btn.innerHTML = sb.classList.contains('collapsed') ? '&#9654;' : '&#9664; Colapsar';
-  localStorage.setItem('lb_sidebar_collapsed', sb.classList.contains('collapsed') ? '1' : '');
+  if (btn) btn.innerHTML = collapsed ? '' : '&#9664; Colapsar';
+  localStorage.setItem('lb_sidebar_collapsed', collapsed ? '1' : '');
 };
 
 // Restore sidebar state + add tooltip labels
@@ -330,7 +357,10 @@ window.addEventListener('DOMContentLoaded', function() {
   setTimeout(function() {
     if (localStorage.getItem('lb_sidebar_collapsed') === '1') {
       var sb = document.querySelector('.sidebar');
-      if (sb) { sb.classList.add('collapsed'); var btn = sb.querySelector('.sb-collapse-btn'); if (btn) btn.innerHTML = '&#9654;'; }
+      var main = document.querySelector('.main');
+      if (sb) { sb.classList.add('collapsed'); var btn = sb.querySelector('.sb-collapse-btn'); if (btn) btn.innerHTML = ''; }
+      if (main) main.classList.add('sidebar-collapsed');
+      document.body.classList.add('sb-collapsed');
     }
     document.querySelectorAll('.nav-item').forEach(function(item) {
       var text = item.textContent.trim().replace(/[!]/g, '');
@@ -473,9 +503,6 @@ window._gaDoCloneLayout = async function(desde) {
       { l: '📋 Duplicar', fn: function() { var nz = Object.assign({}, z); nz.cod = _gzAutoCode(z.tipo); nz.pos_x += 30; nz.pos_y += 20; nz.nombre += ' (copia)'; _gaLayoutZonas.push(nz); _glmR(); } },
       { l: '🔄 Rotar (swap ancho/alto)', fn: function() { gaRotarZona(idx); } },
       0,
-      { l: '⬆ Traer al frente', fn: function() { gaMoverZonaAlFrente(idx); } },
-      { l: '⬇ Enviar al fondo', fn: function() { gaMoverZonaAlFondo(idx); } },
-      0,
       { l: (nv === 'piso' ? '● ' : '') + 'Piso', fn: function() { z.nivel = 'piso'; z.sobre_cod = ''; _glmR(); } },
       { l: (nv === 'sobre' ? '● ' : '') + 'Sobre mueble…', fn: function() { z.nivel = 'sobre'; gaLayoutEditZonaIdx(idx); setTimeout(function() { _gzSelNivel(document.querySelector('.gz-n-btn[data-val="sobre"]')); }, 100); } },
       { l: (nv === 'techo' ? '● ' : '') + 'Techo', fn: function() { z.nivel = 'techo'; z.pos_y = 30; z.sobre_cod = ''; _glmR(); } },
@@ -520,9 +547,6 @@ window._gaDoCloneLayout = async function(desde) {
         '<button class="btn btn-ghost btn-xs" onclick="gaRecodificarLayout()" title="Reasignar códigos correctos a cada zona según su tipo" style="font-size:9px;padding:2px 6px">🔢 Recodificar</button>' +
         '<button class="btn btn-ghost btn-xs" onclick="gaSnapToGrid()" title="Alinear todas las zonas a una grilla de 10px" style="font-size:9px;padding:2px 6px">⊞ Alinear grilla</button>' +
         '<button class="btn btn-ghost btn-xs" onclick="gaClonarLayout()" title="Copiar layout completo de otra sede" style="font-size:9px;padding:2px 6px">📥 Clonar de sede</button>' +
-        '<span style="width:1px;height:12px;background:var(--border);margin:0 2px"></span>' +
-        '<button class="btn btn-ghost btn-xs" onclick="_gaSelectAll()" title="Seleccionar todas las zonas" style="font-size:9px;padding:2px 6px">☑ Sel. todo</button>' +
-        '<button class="btn btn-ghost btn-xs" onclick="_gaDeselectAll()" title="Quitar selección" style="font-size:9px;padding:2px 6px">☐ Des. todo</button>' +
         '<span style="flex:1"></span>' +
         '<span id="glmStats" style="font-size:8px;color:var(--text3)"></span>';
       headerParent.after(toolsRow);
@@ -748,6 +772,874 @@ window._gaDeselectAll = function() {
       showToast(msg, 'success');
     });
   };
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CONFIGURAR ACCESOS — rebuild completo (v5.4.1)
+// Reemplaza el modal de abrirConfigAccesos con:
+//   · Matriz de accesos agrupada por sector
+//   · Puestos = rol hardcoded + puestos_custom (del config DB)
+//   · Grupos de rangos (bulk apply) con editor propio
+//   · Gestión CRUD de puestos personalizados
+// Mantiene compatibilidad con el endpoint /config/permisos existente.
+// ═══════════════════════════════════════════════════════════════════════════
+(function(){
+  // Puestos builtin — orden y estilo estable.
+  var BUILTIN_PUESTOS = [
+    {cod:'dueno',            label:'Dueña',         icon:'👑', sector:'gestion',  builtin:true, admin:true},
+    {cod:'admin',            label:'Administrador', icon:'👑', sector:'gestion',  builtin:true, admin:true},
+    {cod:'encargado_tienda', label:'Enc. Tienda',   icon:'🏪', sector:'turno',    builtin:true},
+    {cod:'encargado_almacen',label:'Enc. Almacén',  icon:'📦', sector:'almacen',  builtin:true},
+    {cod:'ventas_junior',    label:'Ventas Jr.',    icon:'🛍', sector:'turno',    builtin:true},
+    {cod:'ventas_junior_2',  label:'Ventas Jr. 2',  icon:'🛍', sector:'turno',    builtin:true},
+    {cod:'auxiliar',         label:'Auxiliar',      icon:'📦', sector:'almacen',  builtin:true},
+    {cod:'confeccionista',   label:'Confección',    icon:'✂️', sector:'personal', builtin:true},
+    {cod:'trabajador',       label:'Colaborador',   icon:'👤', sector:'turno',    builtin:true},
+  ];
+
+  var _cfgCache = { puestos:[], grupos:[], perms:{} };
+
+  async function _cargarConfig(){
+    try{ _cfgCache.perms   = (await API.get('/config/permisos'))||{}; }catch(e){ _cfgCache.perms={}; }
+    try{ _cfgCache.puestos = (await API.get('/config/puestos'))||[]; }catch(e){ _cfgCache.puestos=[]; }
+    try{ _cfgCache.grupos  = (await API.get('/config/grupos-rangos'))||[]; }catch(e){ _cfgCache.grupos=[]; }
+    if(!Array.isArray(_cfgCache.puestos)) _cfgCache.puestos=[];
+    if(!Array.isArray(_cfgCache.grupos))  _cfgCache.grupos=[];
+  }
+
+  function _todosPuestos(){
+    // builtin primero, luego custom (evitando colisiones de cod)
+    var out = BUILTIN_PUESTOS.slice();
+    var builtCods = {}; out.forEach(function(p){ builtCods[p.cod]=1; });
+    (_cfgCache.puestos||[]).forEach(function(p){
+      if(p && p.cod && !builtCods[p.cod]) out.push({
+        cod:p.cod, label:p.label||p.cod, icon:p.icon||'👤',
+        sector:p.sector||'turno', builtin:false
+      });
+    });
+    return out;
+  }
+
+  function _permsPara(rol){
+    if(_cfgCache.perms && _cfgCache.perms[rol]) return _cfgCache.perms[rol].slice();
+    if(window.DEFAULT_PERMS && DEFAULT_PERMS[rol]) return DEFAULT_PERMS[rol].slice();
+    return [];
+  }
+
+  // ───────────────────── Modal principal ─────────────────────
+  window.abrirConfigAccesos = async function(){
+    var prev = document.getElementById('accesosModal'); if(prev) prev.remove();
+    await _cargarConfig();
+    // refresca también la cache de app.js para applyPermissions()
+    if(window.STATE) STATE._permisos = Object.keys(_cfgCache.perms).length ? _cfgCache.perms : null;
+
+    var puestos = _todosPuestos();
+    var pages   = window.PAGES_CONFIG || {};
+    var sections= window.SECTION_META || {
+      turno:{label:'Turno',color:'#1e3a5f',bg:'#eff6ff',icon:'📋'},
+      personal:{label:'Personal',color:'#7c3aed',bg:'#faf5ff',icon:'🙋'},
+      almacen:{label:'Almacén',color:'#0d6939',bg:'#f0fdf4',icon:'📦'},
+      gestion:{label:'Gestión',color:'#b45309',bg:'#fffbeb',icon:'👑'},
+    };
+
+    var m = document.createElement('div'); m.id='accesosModal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1100;display:flex;align-items:center;justify-content:center;padding:14px';
+    m.onclick=function(e){ if(e.target===m) m.remove(); };
+
+    var inner = document.createElement('div');
+    inner.style.cssText='background:#fff;border-radius:16px;width:98%;max-width:1100px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 70px rgba(0,0,0,.35)';
+    inner.onclick=function(e){e.stopPropagation();};
+
+    // — Header —
+    var hdr = document.createElement('div');
+    hdr.style.cssText='padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff';
+    hdr.innerHTML =
+      '<div>'+
+        '<div style="font-size:15px;font-weight:800">⚙ Configurar Accesos</div>'+
+        '<div style="font-size:10px;color:#cbd5e1;margin-top:2px">Matriz de permisos · puestos + grupos de rangos</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:6px;align-items:center">'+
+        '<button id="btnGestPuestos" class="btn btn-ghost btn-xs" style="color:#fff;border:1px solid rgba(255,255,255,.25);font-size:10px">👥 Gestionar Puestos</button>'+
+        '<button id="btnGestGrupos"  class="btn btn-ghost btn-xs" style="color:#fff;border:1px solid rgba(255,255,255,.25);font-size:10px">🗂 Gestionar Grupos</button>'+
+        '<button id="btnCerrarAcc"   class="btn btn-ghost btn-xs" style="color:#fff;font-size:14px">✕</button>'+
+      '</div>';
+    inner.appendChild(hdr);
+
+    // — Toolbar: grupo shortcut —
+    var bar = document.createElement('div');
+    bar.style.cssText='padding:10px 20px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;background:#f8fafc;flex-wrap:wrap;font-size:11px';
+    var gruposHtml = '<option value="">— Aplicar a grupo —</option>' +
+      _cfgCache.grupos.map(function(g){ return '<option value="'+g.id+'">'+g.nombre+' ('+(g.puestos||[]).length+')</option>'; }).join('');
+    bar.innerHTML =
+      '<span style="font-weight:700;color:var(--text2)">Atajos:</span>'+
+      '<select id="accGrupoSel" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;font-size:11px">'+gruposHtml+'</select>'+
+      '<button id="accGrupoAllOn"  class="btn btn-ghost btn-xs" style="font-size:10px">✅ Todo</button>'+
+      '<button id="accGrupoAllOff" class="btn btn-ghost btn-xs" style="font-size:10px">☐ Nada</button>'+
+      '<span style="margin-left:auto;color:var(--text3);font-size:10px">Total módulos: <strong>'+Object.keys(pages).length+'</strong> · Puestos: <strong>'+puestos.length+'</strong></span>';
+    inner.appendChild(bar);
+
+    // — Body: matriz agrupada por sector —
+    var body = document.createElement('div');
+    body.style.cssText='flex:1;overflow:auto;padding:14px 20px;background:#fff';
+
+    // Header columnas (sticky)
+    var colHdr = '<thead><tr style="position:sticky;top:0;z-index:2;background:#fff;box-shadow:0 2px 0 #e2e8f0">'+
+      '<th style="text-align:left;padding:8px 10px;font-size:9px;color:var(--text3);min-width:230px;border-right:2px solid #e2e8f0;background:#fff">MÓDULO</th>';
+    puestos.forEach(function(p){
+      var adminFlag = p.admin ? ' style="opacity:.55"' : '';
+      colHdr += '<th'+adminFlag+' style="text-align:center;padding:6px 3px;font-size:8px;color:var(--text2);min-width:66px;background:#fff;font-weight:700">'+
+        '<div style="font-size:12px;margin-bottom:2px">'+p.icon+'</div>'+
+        '<div style="font-size:8px">'+p.label+'</div>'+
+        (p.builtin?'':'<div style="font-size:6px;color:#7c3aed;margin-top:1px">CUSTOM</div>')+
+      '</th>';
+    });
+    colHdr += '</tr></thead>';
+
+    // Filas agrupadas por sector
+    var secOrder = ['turno','personal','almacen','gestion'];
+    var pagesBySec = {};
+    Object.entries(pages).forEach(function(e){
+      var sec = (e[1].section)||'turno';
+      (pagesBySec[sec]=pagesBySec[sec]||[]).push([e[0], e[1]]);
+    });
+
+    var tbody = '<tbody>';
+    secOrder.forEach(function(sec){
+      var list = pagesBySec[sec]; if(!list||!list.length) return;
+      var meta = sections[sec] || {label:sec,color:'#64748b',bg:'#f1f5f9',icon:'📁'};
+      // Sector header row
+      tbody += '<tr style="background:'+meta.bg+'"><td colspan="'+(puestos.length+1)+'" style="padding:8px 12px;font-weight:800;font-size:11px;color:'+meta.color+';border-top:2px solid '+meta.color+'33">'+
+        meta.icon+' '+meta.label+
+        ' <span style="font-weight:500;color:var(--text3);font-size:9px">· '+list.length+' módulo(s)</span>'+
+        ' <button class="accSecAll" data-sec="'+sec+'" data-val="1" style="float:right;margin-left:4px;font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid '+meta.color+'55;background:#fff;color:'+meta.color+';cursor:pointer;font-weight:700">✅ Todo</button>'+
+        ' <button class="accSecAll" data-sec="'+sec+'" data-val="0" style="float:right;font-size:9px;padding:2px 7px;border-radius:4px;border:1px solid '+meta.color+'55;background:#fff;color:'+meta.color+';cursor:pointer;font-weight:700">☐ Nada</button>'+
+      '</td></tr>';
+      // Module rows
+      list.forEach(function(pair){
+        var pid=pair[0], pg=pair[1];
+        tbody += '<tr class="accRow" data-sec="'+sec+'" style="border-bottom:1px solid #f1f5f9">';
+        tbody += '<td style="padding:7px 10px;font-weight:600;font-size:11px;border-right:1px solid #f1f5f9"><span style="font-size:13px;margin-right:4px">'+pg.icon+'</span>'+pg.label+'<div style="font-size:8px;color:var(--text3);font-family:var(--font-m)">'+pid+'</div></td>';
+        puestos.forEach(function(p){
+          var allowed = p.admin ? true : (_permsPara(p.cod).indexOf(pid)>=0);
+          var disabled = p.admin?'disabled':'';
+          var cls = p.admin?'accCbAdmin':'acc-cb';
+          tbody += '<td style="text-align:center;padding:3px"><input type="checkbox" class="'+cls+'" data-role="'+p.cod+'" data-page="'+pid+'" '+(allowed?'checked':'')+' '+disabled+' style="width:15px;height:15px;accent-color:'+meta.color+';cursor:'+(p.admin?'not-allowed':'pointer')+'"></td>';
+        });
+        tbody += '</tr>';
+      });
+    });
+    tbody += '</tbody>';
+
+    body.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:11px">'+colHdr+tbody+'</table>';
+    inner.appendChild(body);
+
+    // — Footer —
+    var ftr = document.createElement('div');
+    ftr.style.cssText='padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;background:#f8fafc';
+    ftr.innerHTML =
+      '<div style="font-size:10px;color:var(--text3)">👑 Admin y Dueña tienen acceso total y no son editables.</div>'+
+      '<div style="display:flex;gap:8px">'+
+        '<button id="accReset" class="btn btn-ghost btn-sm">↺ Restaurar defaults</button>'+
+        '<button id="accSave"  class="btn btn-primary btn-sm">💾 Guardar Accesos</button>'+
+      '</div>';
+    inner.appendChild(ftr);
+
+    m.appendChild(inner);
+    document.body.appendChild(m);
+
+    // — Handlers —
+    document.getElementById('btnCerrarAcc').onclick = function(){ m.remove(); };
+    document.getElementById('btnGestPuestos').onclick = function(){ abrirGestionPuestos(); };
+    document.getElementById('btnGestGrupos').onclick  = function(){ abrirGestionGrupos(); };
+
+    // "Todo / Nada" por sector
+    body.querySelectorAll('.accSecAll').forEach(function(b){
+      b.onclick = function(){
+        var sec=b.dataset.sec, val=b.dataset.val==='1';
+        body.querySelectorAll('tr.accRow[data-sec="'+sec+'"] .acc-cb').forEach(function(cb){ cb.checked=val; });
+      };
+    });
+
+    // Shortcut por grupo
+    document.getElementById('accGrupoAllOn').onclick  = function(){ _accAplicarGrupo(body, true);  };
+    document.getElementById('accGrupoAllOff').onclick = function(){ _accAplicarGrupo(body, false); };
+
+    document.getElementById('accReset').onclick = function(){
+      body.querySelectorAll('.acc-cb').forEach(function(cb){
+        var r=cb.dataset.role, p=cb.dataset.page;
+        cb.checked = ((window.DEFAULT_PERMS||{})[r]||[]).indexOf(p)>=0;
+      });
+      showToast('Defaults restaurados — guarda para aplicar','info');
+    };
+
+    document.getElementById('accSave').onclick = _accGuardar;
+  };
+
+  function _accAplicarGrupo(body, valor){
+    var sel = document.getElementById('accGrupoSel');
+    var gid = sel ? sel.value : '';
+    if(!gid){ showToast('Selecciona un grupo primero','warn'); return; }
+    var g = _cfgCache.grupos.find(function(x){ return x.id===gid; });
+    if(!g){ return; }
+    (g.puestos||[]).forEach(function(cod){
+      body.querySelectorAll('.acc-cb[data-role="'+cod+'"]').forEach(function(cb){ cb.checked=valor; });
+    });
+    showToast((valor?'✅ Todo':'☐ Nada')+' aplicado a '+g.nombre,'success');
+  }
+
+  async function _accGuardar(){
+    var perms = {};
+    document.querySelectorAll('#accesosModal .acc-cb').forEach(function(cb){
+      var r=cb.dataset.role, p=cb.dataset.page;
+      (perms[r]=perms[r]||[]);
+      if(cb.checked) perms[r].push(p);
+    });
+    var r = await API.put('/config/permisos', perms);
+    if(r && r.ok){
+      _cfgCache.perms = perms;
+      if(window.STATE) STATE._permisos = perms;
+      document.getElementById('accesosModal')?.remove();
+      if(typeof applyPermissions==='function') applyPermissions();
+      showToast('✅ Accesos actualizados','success');
+    } else {
+      showToast('Error al guardar accesos','error');
+    }
+  }
+
+  // ═══════════════════ Gestión de Puestos ════════════════════
+  window.abrirGestionPuestos = async function(){
+    var prev = document.getElementById('puestosModal'); if(prev) prev.remove();
+    if(!_cfgCache.puestos.length && !_cfgCache.grupos.length) await _cargarConfig();
+
+    var m = document.createElement('div'); m.id='puestosModal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px';
+    m.onclick=function(e){ if(e.target===m) m.remove(); };
+
+    var inner=document.createElement('div');
+    inner.style.cssText='background:#fff;border-radius:16px;width:95%;max-width:640px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column';
+    inner.onclick=function(e){e.stopPropagation();};
+
+    var hdr=document.createElement('div');
+    hdr.style.cssText='padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#1e3a5f;color:#fff';
+    hdr.innerHTML='<div><div style="font-size:14px;font-weight:800">👥 Gestión de Puestos</div><div style="font-size:10px;color:#cbd5e1;margin-top:2px">Agrega o elimina puestos personalizados</div></div>'+
+      '<button id="pClose" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer">✕</button>';
+    inner.appendChild(hdr);
+
+    var body=document.createElement('div'); body.id='puestosBody';
+    body.style.cssText='flex:1;overflow:auto;padding:14px 18px;background:#fff;font-size:12px';
+    inner.appendChild(body);
+
+    var ftr=document.createElement('div');
+    ftr.style.cssText='padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;background:#f8fafc';
+    ftr.innerHTML='<button id="pAdd" class="btn btn-primary btn-sm">➕ Agregar Puesto</button>'+
+      '<button id="pSave" class="btn btn-primary btn-sm" style="background:#16a34a">💾 Guardar Cambios</button>';
+    inner.appendChild(ftr);
+
+    m.appendChild(inner); document.body.appendChild(m);
+
+    document.getElementById('pClose').onclick=function(){ m.remove(); };
+
+    var listaTmp = _cfgCache.puestos.slice();  // solo editables (custom)
+    function renderList(){
+      var h='<div style="margin-bottom:10px;padding:8px 10px;background:#eff6ff;border-left:3px solid #1e3a5f;border-radius:4px;font-size:10px;color:#1e3a5f">'+
+        '<strong>Puestos del sistema</strong> (no editables): '+BUILTIN_PUESTOS.filter(function(p){return !p.admin}).map(function(p){return p.icon+' '+p.label;}).join(' · ')+'</div>';
+      if(!listaTmp.length){
+        h += '<div style="text-align:center;padding:30px 20px;color:var(--text3);font-size:11px">Sin puestos personalizados. Usa <strong>Agregar Puesto</strong> para crear uno.</div>';
+      } else {
+        h += '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:#f8fafc"><th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">ICON</th><th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">NOMBRE</th><th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">CÓDIGO</th><th style="padding:6px 8px;text-align:left;font-size:9px;color:var(--text3)">SECTOR</th><th style="width:30px"></th></tr></thead><tbody>';
+        listaTmp.forEach(function(p,i){
+          h+='<tr style="border-bottom:1px solid #f1f5f9">'+
+            '<td style="padding:4px 6px"><input data-i="'+i+'" data-k="icon" value="'+(p.icon||'👤')+'" style="width:40px;text-align:center;padding:4px;border:1px solid var(--border);border-radius:4px;font-size:14px"></td>'+
+            '<td style="padding:4px 6px"><input data-i="'+i+'" data-k="label" value="'+(p.label||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:11px"></td>'+
+            '<td style="padding:4px 6px"><input data-i="'+i+'" data-k="cod" value="'+(p.cod||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:10px;font-family:monospace"></td>'+
+            '<td style="padding:4px 6px"><select data-i="'+i+'" data-k="sector" style="width:100%;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:10px">'+
+              ['turno','personal','almacen','gestion'].map(function(s){return '<option value="'+s+'" '+(p.sector===s?'selected':'')+'>'+s+'</option>';}).join('')+
+            '</select></td>'+
+            '<td style="text-align:center"><button data-del="'+i+'" style="background:none;border:none;cursor:pointer;color:#dc2626;font-size:14px">✕</button></td>'+
+          '</tr>';
+        });
+        h += '</tbody></table>';
+      }
+      body.innerHTML=h;
+      body.querySelectorAll('input,select').forEach(function(el){
+        el.oninput = el.onchange = function(){
+          var i=+el.dataset.i, k=el.dataset.k;
+          if(!listaTmp[i]) return;
+          listaTmp[i][k] = el.value;
+        };
+      });
+      body.querySelectorAll('button[data-del]').forEach(function(b){
+        b.onclick=function(){
+          var i=+b.dataset.del; listaTmp.splice(i,1); renderList();
+        };
+      });
+    }
+    renderList();
+
+    document.getElementById('pAdd').onclick=function(){
+      listaTmp.push({cod:'nuevo_'+Date.now().toString(36).slice(-4), label:'Nuevo Puesto', icon:'👤', sector:'turno'});
+      renderList();
+    };
+    document.getElementById('pSave').onclick=async function(){
+      // Validar: cod único, label no vacío
+      var seen={}, err=null;
+      listaTmp.forEach(function(p){
+        if(!p.cod||!p.label){ err='Código y nombre son obligatorios'; return; }
+        p.cod = String(p.cod).toLowerCase().replace(/[^a-z0-9_]/g,'_');
+        if(seen[p.cod]){ err='Código duplicado: '+p.cod; return; }
+        seen[p.cod]=1;
+      });
+      if(err){ showToast(err,'error'); return; }
+      var r = await API.put('/config/puestos', listaTmp);
+      if(r && r.ok){
+        _cfgCache.puestos = r.puestos||listaTmp;
+        showToast('✅ Puestos actualizados','success');
+        m.remove();
+        // refrescar modal de accesos si sigue abierto
+        if(document.getElementById('accesosModal')) abrirConfigAccesos();
+      } else showToast('Error al guardar puestos','error');
+    };
+  };
+
+  // ═══════════════════ Gestión de Grupos ═════════════════════
+  window.abrirGestionGrupos = async function(){
+    var prev=document.getElementById('gruposModal'); if(prev) prev.remove();
+    if(!_cfgCache.puestos.length) await _cargarConfig();
+
+    var m=document.createElement('div'); m.id='gruposModal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px';
+    m.onclick=function(e){ if(e.target===m) m.remove(); };
+
+    var inner=document.createElement('div');
+    inner.style.cssText='background:#fff;border-radius:16px;width:95%;max-width:700px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column';
+    inner.onclick=function(e){e.stopPropagation();};
+
+    var hdr=document.createElement('div');
+    hdr.style.cssText='padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#7c3aed;color:#fff';
+    hdr.innerHTML='<div><div style="font-size:14px;font-weight:800">🗂 Gestión de Grupos de Rangos</div><div style="font-size:10px;color:#e9d5ff;margin-top:2px">Agrupa puestos para aplicar permisos en lote</div></div>'+
+      '<button id="gClose" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer">✕</button>';
+    inner.appendChild(hdr);
+
+    var body=document.createElement('div'); body.id='gruposBody';
+    body.style.cssText='flex:1;overflow:auto;padding:14px 18px;background:#fff;font-size:12px';
+    inner.appendChild(body);
+
+    var ftr=document.createElement('div');
+    ftr.style.cssText='padding:12px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;background:#f8fafc';
+    ftr.innerHTML='<button id="gAdd" class="btn btn-primary btn-sm" style="background:#7c3aed">➕ Agregar Grupo</button>'+
+      '<button id="gSave" class="btn btn-primary btn-sm" style="background:#16a34a">💾 Guardar Cambios</button>';
+    inner.appendChild(ftr);
+
+    m.appendChild(inner); document.body.appendChild(m);
+    document.getElementById('gClose').onclick=function(){ m.remove(); };
+
+    var listaTmp = _cfgCache.grupos.slice();
+    var puestosAll = _todosPuestos().filter(function(p){ return !p.admin; });
+
+    function renderList(){
+      if(!listaTmp.length){
+        body.innerHTML='<div style="text-align:center;padding:30px 20px;color:var(--text3);font-size:11px">Sin grupos. Usa <strong>Agregar Grupo</strong> para crear uno.<br><br>Ejemplo: crea un grupo <em>"Ventas"</em> con todos los puestos de ventas para aplicar permisos en lote.</div>';
+        return;
+      }
+      var h=listaTmp.map(function(g,i){
+        var chips = puestosAll.map(function(p){
+          var on = (g.puestos||[]).indexOf(p.cod)>=0;
+          return '<label style="display:inline-flex;align-items:center;gap:3px;padding:3px 7px;margin:2px;border-radius:14px;background:'+(on?'#ede9fe':'#f1f5f9')+';border:1px solid '+(on?'#7c3aed':'#e2e8f0')+';font-size:10px;cursor:pointer;font-weight:'+(on?'700':'400')+';color:'+(on?'#7c3aed':'var(--text2)')+'">'+
+            '<input type="checkbox" data-gi="'+i+'" data-cod="'+p.cod+'" '+(on?'checked':'')+' style="margin:0;width:11px;height:11px;accent-color:#7c3aed">'+
+            p.icon+' '+p.label+'</label>';
+        }).join('');
+        return '<div style="margin-bottom:14px;border:1px solid var(--border);border-radius:10px;padding:10px;background:#fafbfc">'+
+          '<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">'+
+            '<input data-gi="'+i+'" data-k="nombre" value="'+(g.nombre||'').replace(/"/g,'&quot;')+'" placeholder="Nombre del grupo" style="flex:1;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:700">'+
+            '<input type="color" data-gi="'+i+'" data-k="color" value="'+(g.color||'#7c3aed')+'" style="width:36px;height:32px;padding:2px;border:1px solid var(--border);border-radius:6px;cursor:pointer">'+
+            '<button data-gdel="'+i+'" style="background:#fee2e2;border:1px solid #fecaca;color:#dc2626;border-radius:6px;padding:4px 9px;cursor:pointer;font-size:11px">Eliminar</button>'+
+          '</div>'+
+          '<div style="font-size:9px;color:var(--text3);margin-bottom:4px;font-weight:700">PUESTOS DEL GRUPO</div>'+
+          '<div>'+chips+'</div>'+
+        '</div>';
+      }).join('');
+      body.innerHTML=h;
+
+      body.querySelectorAll('input[data-k]').forEach(function(el){
+        el.oninput=el.onchange=function(){
+          var i=+el.dataset.gi, k=el.dataset.k;
+          if(!listaTmp[i]) return;
+          listaTmp[i][k]=el.value;
+        };
+      });
+      body.querySelectorAll('input[type=checkbox][data-cod]').forEach(function(cb){
+        cb.onchange=function(){
+          var i=+cb.dataset.gi, cod=cb.dataset.cod;
+          if(!listaTmp[i]) return;
+          listaTmp[i].puestos = listaTmp[i].puestos||[];
+          var idx = listaTmp[i].puestos.indexOf(cod);
+          if(cb.checked && idx<0) listaTmp[i].puestos.push(cod);
+          else if(!cb.checked && idx>=0) listaTmp[i].puestos.splice(idx,1);
+          renderList(); // re-render para refrescar chip styles
+        };
+      });
+      body.querySelectorAll('button[data-gdel]').forEach(function(b){
+        b.onclick=function(){ listaTmp.splice(+b.dataset.gdel,1); renderList(); };
+      });
+    }
+    renderList();
+
+    document.getElementById('gAdd').onclick=function(){
+      listaTmp.push({id:'grupo_'+Date.now().toString(36).slice(-4), nombre:'Nuevo Grupo', color:'#7c3aed', puestos:[]});
+      renderList();
+    };
+    document.getElementById('gSave').onclick=async function(){
+      var r=await API.put('/config/grupos-rangos', listaTmp);
+      if(r && r.ok){
+        _cfgCache.grupos = r.grupos||listaTmp;
+        showToast('✅ Grupos actualizados','success');
+        m.remove();
+        if(document.getElementById('accesosModal')) abrirConfigAccesos();
+      } else showToast('Error al guardar grupos','error');
+    };
+  };
+
+  console.log('[LuceBien] Configurar Accesos v2 — cargado (sectores + puestos + grupos)');
+})();
+
+// ═══════════════════════════════════════════════════════════════════════════
+// IMPORT/EXPORT EXCEL DE HORARIOS (v5.4.1)
+// Requisito: SheetJS (XLSX) cargado globalmente vía CDN en index.html.
+// Formato esperado del Excel:
+//   Col A: Nombre del colaborador (match case-insensitive contra empleados.nombre)
+//   Cols B-O: sede code por slot, orden fijo:
+//     lunes_M, lunes_T, martes_M, martes_T, ..., domingo_M, domingo_T
+//   Valores válidos por celda: ST, LB, AL, TR, o vacío (= libre)
+//   Primera fila = encabezados (se ignora).
+// ═══════════════════════════════════════════════════════════════════════════
+(function(){
+  var DIAS = ['lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+  var SEDES_VALIDAS = ['ST','LB','AL','TR'];
+
+  function _colHeaders(){
+    var out = ['Nombre'];
+    DIAS.forEach(function(d){
+      out.push(d+'_M');
+      out.push(d+'_T');
+    });
+    return out;
+  }
+
+  window.descargarPlantillaHorarios = async function(){
+    if (typeof XLSX === 'undefined') { showToast('Librería Excel no cargó (sin conexión?)','error'); return; }
+    // Construir plantilla con empleados actuales (si los hay) y slots vacíos
+    var empleados = [];
+    try { empleados = await API.get('/empleados')||[]; } catch(e){}
+    if (!Array.isArray(empleados)) empleados = [];
+    var headers = _colHeaders();
+    var rows = [headers];
+    empleados
+      .filter(function(e){ return (e.estado||'activo')==='activo'; })
+      .sort(function(a,b){ return String(a.nombre||'').localeCompare(String(b.nombre||'')); })
+      .forEach(function(e){
+        var row = [e.nombre||''];
+        for (var i=0; i<14; i++) row.push('');
+        rows.push(row);
+      });
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    // Ancho de columnas
+    ws['!cols'] = [{wch:28}].concat(headers.slice(1).map(function(){return{wch:10};}));
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Horarios');
+    // Hoja de referencia
+    var refRows = [
+      ['Valores permitidos por celda:'],
+      ['ST = Stan'],
+      ['LB = LuceBien'],
+      ['AL = Almacén'],
+      ['TR = Trece'],
+      ['(vacío) = Libre / no trabaja'],
+      [''],
+      ['Formato de columnas:'],
+      ['<día>_M = turno Mañana'],
+      ['<día>_T = turno Tarde'],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(refRows), 'Instrucciones');
+    XLSX.writeFile(wb, 'plantilla_horarios_lucebien.xlsx');
+    showToast('📥 Plantilla descargada','success');
+  };
+
+  window.abrirImportHorariosExcel = function(){
+    if (typeof XLSX === 'undefined') {
+      showToast('Librería Excel no cargó — revisa conexión a Internet','error');
+      return;
+    }
+    var prev = document.getElementById('impHorModal'); if (prev) prev.remove();
+
+    var m = document.createElement('div'); m.id='impHorModal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1200;display:flex;align-items:center;justify-content:center;padding:14px';
+    m.onclick=function(e){ if(e.target===m) m.remove(); };
+
+    var inner = document.createElement('div');
+    inner.style.cssText='background:#fff;border-radius:16px;width:96%;max-width:880px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column';
+    inner.onclick=function(e){e.stopPropagation();};
+
+    inner.innerHTML =
+      '<div style="padding:14px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;background:#1e3a5f;color:#fff">'+
+        '<div><div style="font-size:15px;font-weight:800">📎 Importar Horarios desde Excel</div><div style="font-size:10px;color:#cbd5e1">Sobrescribe horarios de los empleados que aparezcan en el archivo</div></div>'+
+        '<button id="ihClose" style="background:none;border:none;color:#fff;font-size:16px;cursor:pointer">✕</button>'+
+      '</div>'+
+      '<div style="padding:16px 20px;flex:1;overflow:auto;background:#fafbfc">'+
+        '<div style="padding:10px 14px;border:1px dashed #94a3b8;border-radius:10px;background:#fff;margin-bottom:12px">'+
+          '<div style="font-size:11px;color:var(--text2);margin-bottom:8px"><strong>Paso 1:</strong> Descarga la plantilla, complétala y sube el archivo aquí.</div>'+
+          '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'+
+            '<button id="ihPlantilla" class="btn btn-ghost btn-sm">📥 Descargar plantilla</button>'+
+            '<input id="ihFile" type="file" accept=".xlsx,.xls,.csv" style="font-size:11px">'+
+          '</div>'+
+        '</div>'+
+        '<div id="ihPreview"></div>'+
+      '</div>'+
+      '<div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:space-between;align-items:center;background:#f8fafc">'+
+        '<div id="ihStats" style="font-size:11px;color:var(--text3)"></div>'+
+        '<div style="display:flex;gap:8px">'+
+          '<button id="ihCancel" class="btn btn-ghost btn-sm">Cancelar</button>'+
+          '<button id="ihApply"  class="btn btn-primary btn-sm" disabled style="background:#16a34a;opacity:.5">Aplicar Horarios</button>'+
+        '</div>'+
+      '</div>';
+
+    m.appendChild(inner);
+    document.body.appendChild(m);
+
+    document.getElementById('ihClose').onclick=function(){ m.remove(); };
+    document.getElementById('ihCancel').onclick=function(){ m.remove(); };
+    document.getElementById('ihPlantilla').onclick=descargarPlantillaHorarios;
+
+    var _parsed = null; // [{emp_id, nombre, slots:[...], matched:bool, reason}]
+
+    document.getElementById('ihFile').onchange = async function(ev){
+      var file = ev.target.files[0]; if (!file) return;
+      var buf  = await file.arrayBuffer();
+      var wb;
+      try { wb = XLSX.read(buf, {type:'array'}); }
+      catch(err){ showToast('No se pudo leer el archivo: '+err.message,'error'); return; }
+
+      var sheet = wb.Sheets[wb.SheetNames[0]];
+      var rows  = XLSX.utils.sheet_to_json(sheet, {header:1, raw:false, defval:''});
+      if (!rows || rows.length<2) { showToast('Archivo vacío o sin filas de datos','error'); return; }
+
+      // Validar encabezado (flexible: ignora mayúsculas/acentos)
+      var expected = _colHeaders();
+      var header = (rows[0]||[]).map(function(c){return String(c||'').trim().toLowerCase();});
+      var expectedLower = expected.map(function(c){return c.toLowerCase();});
+      var headerOk = expectedLower.every(function(h,i){ return (header[i]||'').indexOf(h)===0 || h==='nombre' && /nombre|colab/.test(header[0]||''); });
+
+      // Cargar empleados
+      var empleados = [];
+      try { empleados = await API.get('/empleados')||[]; } catch(e){ empleados = []; }
+      var byNombre = {};
+      empleados.forEach(function(e){
+        if (e && e.nombre) byNombre[String(e.nombre).trim().toLowerCase()] = e;
+      });
+
+      _parsed = [];
+      for (var i=1; i<rows.length; i++){
+        var r = rows[i]; if (!r || !r[0]) continue;
+        var nombre = String(r[0]).trim(); if (!nombre) continue;
+        var emp = byNombre[nombre.toLowerCase()];
+        var slots = [];
+        var warns = [];
+        for (var j=0; j<DIAS.length; j++){
+          ['M','T'].forEach(function(turno, kk){
+            var idx = 1 + j*2 + kk;
+            var val = String(r[idx]||'').trim().toUpperCase();
+            if (!val) return;
+            if (SEDES_VALIDAS.indexOf(val) < 0){
+              warns.push(DIAS[j]+' '+turno+'="'+val+'" inválido');
+              return;
+            }
+            slots.push({dia:DIAS[j], turno:turno, sede:val});
+          });
+        }
+        _parsed.push({
+          nombre:nombre,
+          emp_id: emp ? emp.id : null,
+          matched: !!emp,
+          slots: slots,
+          warns: warns,
+        });
+      }
+
+      // Render preview
+      var preview = document.getElementById('ihPreview');
+      var matched = _parsed.filter(function(x){return x.matched;}).length;
+      var unmatched = _parsed.length - matched;
+      var totalSlots = _parsed.reduce(function(s,x){return s+x.slots.length;}, 0);
+      var headerHtml = '<div style="margin-bottom:8px;display:flex;gap:12px;font-size:11px">'+
+        '<div style="padding:6px 10px;border-radius:6px;background:#dcfce7;color:#166534;font-weight:700">✓ '+matched+' reconocidos</div>'+
+        (unmatched ? '<div style="padding:6px 10px;border-radius:6px;background:#fee2e2;color:#991b1b;font-weight:700">✗ '+unmatched+' no encontrados</div>' : '')+
+        '<div style="padding:6px 10px;border-radius:6px;background:#e0e7ff;color:#3730a3;font-weight:700">∑ '+totalSlots+' slots</div>'+
+        (!headerOk ? '<div style="padding:6px 10px;border-radius:6px;background:#fef3c7;color:#92400e;font-weight:700">⚠ Encabezado no estándar</div>' : '')+
+      '</div>';
+
+      var rowsHtml = '<table style="width:100%;border-collapse:collapse;font-size:10px">'+
+        '<thead><tr style="background:#f1f5f9"><th style="text-align:left;padding:5px 8px">Colaborador</th><th style="text-align:center">Estado</th><th style="text-align:center">Slots</th><th style="text-align:left">Observaciones</th></tr></thead><tbody>';
+      _parsed.forEach(function(x){
+        var statusBg = x.matched ? '#dcfce7' : '#fee2e2';
+        var statusFg = x.matched ? '#166534' : '#991b1b';
+        var status   = x.matched ? '✓ OK' : '✗ No encontrado';
+        rowsHtml += '<tr style="border-bottom:1px solid #f1f5f9">'+
+          '<td style="padding:5px 8px;font-weight:600">'+x.nombre+'</td>'+
+          '<td style="padding:5px 8px;text-align:center"><span style="padding:2px 7px;border-radius:5px;font-weight:700;background:'+statusBg+';color:'+statusFg+'">'+status+'</span></td>'+
+          '<td style="padding:5px 8px;text-align:center">'+x.slots.length+'</td>'+
+          '<td style="padding:5px 8px;color:#92400e">'+(x.warns.length?x.warns.join(' · '):'—')+'</td>'+
+        '</tr>';
+      });
+      rowsHtml += '</tbody></table>';
+
+      preview.innerHTML = headerHtml + rowsHtml;
+      document.getElementById('ihStats').textContent = matched+' de '+_parsed.length+' empleados aplicables · '+totalSlots+' slots';
+
+      var applyBtn = document.getElementById('ihApply');
+      applyBtn.disabled = !matched;
+      applyBtn.style.opacity = matched ? '1' : '.5';
+    };
+
+    document.getElementById('ihApply').onclick = async function(){
+      if (!_parsed) return;
+      var aplicables = _parsed.filter(function(x){return x.matched;});
+      if (!aplicables.length){ showToast('Nada para aplicar','warn'); return; }
+      if (!confirm('Se sobrescribirán los horarios de '+aplicables.length+' colaborador(es). ¿Continuar?')) return;
+      var payload = { empleados: aplicables.map(function(x){ return {emp_id:x.emp_id, slots:x.slots}; }) };
+      var btn = document.getElementById('ihApply'); btn.disabled=true; btn.textContent='Aplicando…';
+      try {
+        var r = await API.post('/asistencias/horarios/bulk', payload);
+        if (r && r.ok){
+          showToast('✅ '+r.empleados+' horarios actualizados ('+r.slots+' slots)','success');
+          m.remove();
+          // Si el editor de horario está visible para algún empleado, recargar
+          if (typeof cargarAsistencias === 'function') {
+            try { cargarAsistencias(); } catch(e){}
+          }
+        } else {
+          showToast((r&&r.error)||'Error al aplicar horarios','error');
+          btn.disabled=false; btn.textContent='Aplicar Horarios';
+        }
+      } catch(err){
+        showToast('Error: '+err.message,'error');
+        btn.disabled=false; btn.textContent='Aplicar Horarios';
+      }
+    };
+  };
+
+  console.log('[LuceBien] Import Excel Horarios — cargado');
+})();
+
+// ═══════════════════════════════════════════════════════
+// EDITOR DE TIPIFICACIONES DE INCIDENCIAS (admin)
+// ═══════════════════════════════════════════════════════
+// Cada tipificación define: tipo (descripción corta), categoría, nivel por
+// defecto y puntos que descuenta. Si una incidencia creada no coincide con
+// ninguna tipificación, en la evaluación mensual se calificará manualmente.
+(function(){
+  window.abrirEditorTiposIncidencia = async function() {
+    var prev = document.getElementById('tipInModal'); if (prev) prev.remove();
+    var tipos = await API.get('/incidencias/tipos/list?all=1');
+    if (!tipos) return;
+    var h = '<div id="tipInModal" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1050;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">' +
+      '<div style="background:#fff;border-radius:14px;width:96%;max-width:940px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column" onclick="event.stopPropagation()">' +
+      '<div class="modal-header"><h2>⚙️ Tipificaciones de Incidencias</h2><button class="modal-close" onclick="document.getElementById(\'tipInModal\').remove()">✕</button></div>' +
+      '<div style="padding:10px 14px 0;font-size:11px;color:var(--text3);line-height:1.45">' +
+      'Cada tipificación define los puntos que descuenta en la evaluación mensual. ' +
+      'Si una incidencia creada <b>no está tipificada</b>, deberá calificarse manualmente al evaluar al colaborador.' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;padding:12px 14px">' +
+      '<div class="filter-bar" style="margin-bottom:8px">' +
+      '<button class="btn btn-primary btn-xs" id="tipInAdd">＋ Nueva tipificación</button>' +
+      '<span class="filter-sep"></span>' +
+      '<span class="filter-label">Categoría</span>' +
+      '<select id="tipInCatFilt" class="filter-ctrl"><option value="">Todas</option></select>' +
+      '<span class="filter-label">Estado</span>' +
+      '<select id="tipInEstFilt" class="filter-ctrl"><option value="">Todos</option><option value="1">Activos</option><option value="0">Inactivos</option></select>' +
+      '</div>' +
+      '<div style="overflow-x:auto"><table class="data-table"><thead><tr>' +
+      '<th style="width:30%">Tipo</th><th>Categoría</th><th>Nivel</th><th>Puntos</th><th>Activa</th><th></th>' +
+      '</tr></thead><tbody id="tipInBody"></tbody></table></div>' +
+      '</div>' +
+      '<div class="modal-footer">' +
+      '<button class="btn btn-ghost" onclick="document.getElementById(\'tipInModal\').remove()">Cancelar</button>' +
+      '<button class="btn btn-primary" id="tipInSave">💾 Guardar todo</button>' +
+      '</div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', h);
+
+    var body = document.getElementById('tipInBody');
+    function rowHtml(t, idx) {
+      return '<tr data-idx="'+idx+'">' +
+        '<td><input type="text" class="t-tipo" value="'+ (t.tipo||'').replace(/"/g,'&quot;') +'" style="width:100%;font-size:12px;padding:5px 7px;border:1px solid var(--border);border-radius:6px"></td>' +
+        '<td><input type="text" class="t-cat" value="'+ (t.categoria||'').replace(/"/g,'&quot;') +'" style="width:130px;font-size:12px;padding:5px 7px;border:1px solid var(--border);border-radius:6px"></td>' +
+        '<td><select class="t-niv" style="font-size:12px;padding:5px 6px;border:1px solid var(--border);border-radius:6px">' +
+          ['Alto','Medio','Bajo'].map(function(n){return '<option'+(t.nivel_default===n?' selected':'')+'>'+n+'</option>';}).join('') +
+        '</select></td>' +
+        '<td><input type="number" class="t-pts" min="0" max="20" step="0.5" value="'+ (t.puntos_default!=null?t.puntos_default:2) +'" style="width:70px;font-size:12px;padding:5px 7px;border:1px solid var(--border);border-radius:6px;font-weight:700;color:var(--red);text-align:center"></td>' +
+        '<td style="text-align:center"><input type="checkbox" class="t-act"'+ (t.activo!==0?' checked':'') +'></td>' +
+        '<td><button class="btn btn-danger btn-xs" onclick="this.closest(\'tr\').remove()">✕</button></td>' +
+      '</tr>';
+    }
+    function render(list) {
+      body.innerHTML = list.length ? list.map(rowHtml).join('') : '<tr><td class="empty-cell" colspan="6">Sin tipificaciones</td></tr>';
+    }
+    render(tipos);
+
+    // Filtro de categoría
+    var cats = {};
+    tipos.forEach(function(t){ if(t.categoria) cats[t.categoria]=1; });
+    var catSel = document.getElementById('tipInCatFilt');
+    Object.keys(cats).sort().forEach(function(c){ catSel.insertAdjacentHTML('beforeend','<option>'+c+'</option>'); });
+    function applyFilter() {
+      var cat = catSel.value;
+      var est = document.getElementById('tipInEstFilt').value;
+      var list = tipos.filter(function(t){
+        if (cat && t.categoria !== cat) return false;
+        if (est === '1' && t.activo === 0) return false;
+        if (est === '0' && t.activo !== 0) return false;
+        return true;
+      });
+      render(list);
+    }
+    catSel.onchange = applyFilter;
+    document.getElementById('tipInEstFilt').onchange = applyFilter;
+
+    document.getElementById('tipInAdd').onclick = function() {
+      var nuevo = {tipo:'Nueva incidencia', categoria:'Otros', nivel_default:'Medio', puntos_default:2, activo:1};
+      tipos.push(nuevo);
+      applyFilter();
+    };
+
+    document.getElementById('tipInSave').onclick = async function() {
+      // Tomar el DOM actual (respetando ediciones en vista filtrada)
+      var rows = Array.from(body.querySelectorAll('tr[data-idx]'));
+      var acumulado = [];
+      rows.forEach(function(tr){
+        var tipo = tr.querySelector('.t-tipo').value.trim();
+        if (!tipo) return;
+        acumulado.push({
+          tipo: tipo,
+          categoria: tr.querySelector('.t-cat').value.trim() || 'Otros',
+          nivel_default: tr.querySelector('.t-niv').value,
+          puntos_default: parseFloat(tr.querySelector('.t-pts').value)||0,
+          activo: tr.querySelector('.t-act').checked ? 1 : 0
+        });
+      });
+      // Dedupe por tipo (case-insensitive): se queda con la última ocurrencia
+      var seen={};var limpio=[];
+      for (var i=acumulado.length-1;i>=0;i--){var k=acumulado[i].tipo.toLowerCase();if(seen[k])continue;seen[k]=1;limpio.unshift(acumulado[i]);}
+      var btn = this; btn.disabled=true; btn.textContent='Guardando…';
+      var r = await API.put('/incidencias/tipos/list', { tipos: limpio });
+      btn.disabled=false; btn.textContent='💾 Guardar todo';
+      if (r && r.ok) {
+        showToast('✅ '+r.count+' tipificaciones guardadas','success');
+        document.getElementById('tipInModal').remove();
+      }
+    };
+  };
+  console.log('[LuceBien] Editor de Tipificaciones de Incidencias — cargado');
+})();
+
+// ═══════════════════════════════════════════════════════
+// LAYOUT TOOLTIPS — carga al boot + editor en Config del Layout
+// ═══════════════════════════════════════════════════════
+(function(){
+  // Cargar tooltips custom al iniciar (no requiere auth para GET)
+  window.LB_LAYOUT_TOOLTIPS = window.LB_LAYOUT_TOOLTIPS || {byTipo:{},byPrefix:{}};
+  async function _loadTips(){
+    try{
+      var t = await API.get('/config/layout-tooltips');
+      if (t && (t.byTipo||t.byPrefix)) window.LB_LAYOUT_TOOLTIPS = t;
+    }catch(e){}
+  }
+  document.addEventListener('DOMContentLoaded', function(){ setTimeout(_loadTips, 600); });
+
+  // Editor de tooltips del layout (solo admin)
+  window.abrirEditorTooltipsLayout = async function(){
+    var t = await API.get('/config/layout-tooltips') || {byTipo:{},byPrefix:{}};
+    var tipos = [
+      ['maniqui','Maniquí','Desempolvar con escobilla para ternos'],
+      ['vitrina','Vitrina','Limpiar con limpiavidrios y trapo especial para vidrios'],
+      ['espejo','Espejo','Limpiar con limpiavidrios y paño seco'],
+      ['mueble','Mueble','Limpiar superficie con trapo húmedo y limpiatodo'],
+      ['riel','Riel','Desempolvar ternos colgados y limpiar el tubo/varilla'],
+      ['silla','Silla','Limpiar cojín con trapo si hay suciedad'],
+      ['equipo','Equipo','Limpiar mesa de plancha y tanque de agua'],
+      ['area','Área','Limpiar y ordenar el área'],
+      ['piso','Piso','Barrer y trapear todo el interior'],
+      ['calle','Calle','Barrer y baldear con agua y detergente']
+    ];
+    var prefs = [
+      ['MC','Máquinas de costura','Limpiar mesa de máquina de costura con trapo'],
+      ['CB','Cajones/cubetas','Limpiar mueble colgante y todos los objetos que contiene'],
+      ['CT','Cortineros/techo','Desempolvar rieles colgantes del techo (cada 2 semanas)'],
+      ['PC','Computadora','Limpiar computadora y mueble donde está ubicada'],
+      ['CO','Corbateros','Limpiar corbatero con trapo'],
+      ['ME','Estantes','Limpiar estante y reorganizar contenido']
+    ];
+    var esc=function(s){return (s||'').replace(/"/g,'&quot;');};
+    var rowsTipo = tipos.map(function(r){
+      var val = (t.byTipo&&t.byTipo[r[0]]) || '';
+      return '<tr><td style="font-weight:700;font-size:11px;padding:5px 6px">'+r[1]+'</td>'+
+        '<td style="font-size:10px;color:var(--text3);padding:5px 6px;width:34%">'+r[2]+'</td>'+
+        '<td style="padding:3px 4px"><input type="text" data-tipo="'+r[0]+'" placeholder="(usar por defecto)" value="'+esc(val)+'" style="width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:5px;font-size:11px"></td></tr>';
+    }).join('');
+    var rowsPref = prefs.map(function(r){
+      var val = (t.byPrefix&&t.byPrefix[r[0]]) || '';
+      return '<tr><td style="font-weight:700;font-family:var(--font-m);font-size:11px;padding:5px 6px">'+r[0]+'</td>'+
+        '<td style="font-size:11px;padding:5px 6px">'+r[1]+'</td>'+
+        '<td style="font-size:10px;color:var(--text3);padding:5px 6px;width:30%">'+r[2]+'</td>'+
+        '<td style="padding:3px 4px"><input type="text" data-pref="'+r[0]+'" placeholder="(usar por defecto)" value="'+esc(val)+'" style="width:100%;padding:5px 7px;border:1px solid var(--border);border-radius:5px;font-size:11px"></td></tr>';
+    }).join('');
+    var h = '<div id="tipLayModal" style="position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1250;display:flex;align-items:center;justify-content:center;padding:16px" onclick="if(event.target===this)this.remove()">' +
+      '<div style="background:#fff;border-radius:14px;width:96%;max-width:820px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column" onclick="event.stopPropagation()">' +
+      '<div class="modal-header"><h2>💬 Mensajes de tooltip del Layout</h2><button class="modal-close" onclick="document.getElementById(\'tipLayModal\').remove()">✕</button></div>' +
+      '<div style="padding:10px 14px 0;font-size:11px;color:var(--text3);line-height:1.45">Edita lo que aparece cuando el usuario pasa el mouse sobre un elemento del layout. Dejar vacío = usar el texto por defecto.</div>' +
+      '<div style="flex:1;overflow-y:auto;padding:12px 14px">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">POR TIPO DE ELEMENTO</div>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px"><thead><tr style="background:var(--s2)"><th style="padding:5px 6px;text-align:left">Tipo</th><th style="padding:5px 6px;text-align:left">Default</th><th style="padding:5px 6px;text-align:left">Mensaje custom</th></tr></thead><tbody>'+rowsTipo+'</tbody></table>' +
+      '<div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:6px">POR PREFIJO DE CÓDIGO <span style="font-weight:400;color:var(--text3);font-size:10px">(las 2 primeras letras del código)</span></div>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr style="background:var(--s2)"><th style="padding:5px 6px;text-align:left">Prefijo</th><th style="padding:5px 6px;text-align:left">Familia</th><th style="padding:5px 6px;text-align:left">Default</th><th style="padding:5px 6px;text-align:left">Mensaje custom</th></tr></thead><tbody>'+rowsPref+'</tbody></table>' +
+      '</div>' +
+      '<div class="modal-footer"><button class="btn btn-ghost" onclick="document.getElementById(\'tipLayModal\').remove()">Cancelar</button><button class="btn btn-primary" id="tipLaySave">💾 Guardar</button></div>' +
+      '</div></div>';
+    document.body.insertAdjacentHTML('beforeend', h);
+    document.getElementById('tipLaySave').onclick = async function(){
+      var payload = {byTipo:{},byPrefix:{}};
+      document.querySelectorAll('#tipLayModal input[data-tipo]').forEach(function(i){
+        var v=i.value.trim(); if(v) payload.byTipo[i.dataset.tipo]=v;
+      });
+      document.querySelectorAll('#tipLayModal input[data-pref]').forEach(function(i){
+        var v=i.value.trim(); if(v) payload.byPrefix[i.dataset.pref]=v;
+      });
+      this.disabled=true; this.textContent='Guardando…';
+      var r = await API.put('/config/layout-tooltips', payload);
+      if (r && r.ok){
+        window.LB_LAYOUT_TOOLTIPS = payload;
+        showToast('✅ Tooltips actualizados','success');
+        document.getElementById('tipLayModal').remove();
+        if (typeof _glmR==='function') try{_glmR();}catch(e){}
+      } else {
+        this.disabled=false; this.textContent='💾 Guardar';
+      }
+    };
+  };
+
+  // Inyectar botón "Mensajes tooltip" en el modal de Configuración del Layout
+  document.addEventListener('click', function(e){
+    if (e.target && e.target.closest && e.target.closest('[onclick*="_gaLayoutConfig"]')) {
+      setTimeout(function(){
+        var mc = document.getElementById('gaConfigModal'); if (!mc) return;
+        if (mc.querySelector('#tipLayInjectBtn')) return;
+        var body = mc.querySelector('.modal-footer')?.previousElementSibling || mc.querySelector('div[style*="overflow-y:auto"]');
+        if (!body) return;
+        var sec = document.createElement('div');
+        sec.innerHTML = '<div style="margin-top:16px;padding:10px 12px;background:var(--s3);border-radius:8px;border-left:3px solid var(--navy)"><div style="font-size:11px;font-weight:700;color:var(--navy);margin-bottom:4px">💬 MENSAJES DE TOOLTIP</div><div style="font-size:10px;color:var(--text3);margin-bottom:8px;line-height:1.4">Edita el texto que aparece al pasar el mouse sobre cada elemento del layout (por tipo y por prefijo de código).</div><button id="tipLayInjectBtn" class="btn btn-primary btn-xs" onclick="abrirEditorTooltipsLayout()">Abrir editor de tooltips</button></div>';
+        body.appendChild(sec);
+      }, 80);
+    }
+  });
+
+  console.log('[LuceBien] Layout tooltips editor — cargado');
 })();
 
 console.log('[LuceBien] patches-v5.js — Global system changes + Layout tools loaded');
