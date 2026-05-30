@@ -1,0 +1,50 @@
+name: Reporte Semanal LuceBien
+
+on:
+  schedule:
+    # Viernes 21:00 UTC = Viernes 16:00 hora Perú (UTC-5)
+    - cron: '0 21 * * 5'
+  workflow_dispatch: # permite disparar manualmente desde la UI de GitHub
+
+jobs:
+  generate-and-send:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # para commitear el reporte generado a /reports
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # historia completa para git log
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install nodemailer
+
+      # Genera el DRAFT y lo envía SOLO al autor para revisión humana.
+      # El envío al cliente final es manual (reenvío desde Gmail por el autor).
+      - name: Generate weekly report draft (review-only)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          REPORT_REVIEWER: ${{ secrets.REPORT_REVIEWER }}
+        run: node tools/weekly-report/generate-report.mjs
+
+      - name: Commit reporte al repo
+        run: |
+          git config user.name "lucebien-bot"
+          git config user.email "bot@lucebien.local"
+          git add reports/
+          if git diff --cached --quiet; then
+            echo "Sin cambios en reports/ — nada que commitear."
+          else
+            git commit -m "docs(report): reporte semanal $(date +%Y-%m-%d)"
+            git push
+          fi
