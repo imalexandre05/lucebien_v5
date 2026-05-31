@@ -30,3 +30,7 @@ _local_backup_pre_*/
 
 # Metadata local del CLI Claude Code
 .claude/
+
+# Tooling local (no compartir con cliente — vive solo en mi PC)
+tools/local/
+.publisher-state.json
