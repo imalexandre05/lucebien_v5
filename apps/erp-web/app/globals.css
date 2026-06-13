@@ -1,0 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --navy: #2e3e6e;
+  --gold: #b8a515;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--navy);
+}
