@@ -3,3 +3,4 @@
 export * from './pipeline.js';
 export * from './permisos.js';
 export * from './puntos.js';
+export * from './empleados.js';
