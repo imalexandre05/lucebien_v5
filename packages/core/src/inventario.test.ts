@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { formatCodigo, parseCodigo, precioPorUso, type ReglaPrecioUso } from './inventario.js';
+import { formatCodigo, parseCodigo, precioPorUso, type ReglaPrecioUso } from './inventario';
 
 describe('codificación TN-042', () => {
   it('formatea con padding y normaliza a mayúsculas', () => {
