@@ -1,0 +1,18 @@
+{
+  "name": "@scilb/adapter-lucebien",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@scilb/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}
