@@ -6,3 +6,4 @@ export * from './permisos';
 export * from './puntos';
 export * from './empleados';
 export * from './inventario';
+export * from './clientes';
