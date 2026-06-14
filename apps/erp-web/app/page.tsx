@@ -35,16 +35,20 @@ export default async function Dashboard() {
       <PageHeader title="Dashboard" subtitle="Resumen operativo · demo Fase 1" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((k) => {
+        {kpis.map((k, i) => {
           const Icon = k.icon;
           return (
-            <Card key={k.label}>
+            <Card
+              key={k.label}
+              className="animate-rise transition-[transform,box-shadow] duration-200 ease-out-expo hover:-translate-y-0.5 hover:shadow-lift"
+              style={{ animationDelay: `${i * 60}ms` }}
+            >
               <CardContent className="pt-5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium uppercase tracking-wide text-muted">{k.label}</span>
                   <Icon className="h-4 w-4 text-gold" strokeWidth={1.75} />
                 </div>
-                <div className="mt-3 font-mono text-3xl font-semibold text-navy">{k.value}</div>
+                <div className="mt-3 font-mono text-3xl font-semibold tabular-nums text-navy">{k.value}</div>
                 <div className="mt-1 text-xs text-muted">{k.hint}</div>
               </CardContent>
             </Card>
@@ -56,7 +60,10 @@ export default async function Dashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Inventario reciente</CardTitle>
-            <Link href="/inventario" className="text-xs font-medium text-navy hover:text-gold">
+            <Link
+              href="/inventario"
+              className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold"
+            >
               Ver todo →
             </Link>
           </CardHeader>
@@ -73,14 +80,14 @@ export default async function Dashboard() {
               </THead>
               <TBody>
                 {activos.slice(0, 5).map((a) => (
-                  <TR key={a.id}>
+                  <TR key={a.id} className="transition-colors duration-150">
                     <TD className="pl-5 font-mono font-medium text-navy">{a.codigo}</TD>
                     <TD>{a.tipo}</TD>
                     <TD>{a.sedeCod}</TD>
                     <TD>
                       <Badge tone={TONE[a.estado]}>{a.estado.replace('_', ' ')}</Badge>
                     </TD>
-                    <TD className="pr-5 text-right font-mono">S/ {a.precioAlquiler.toFixed(2)}</TD>
+                    <TD className="pr-5 text-right font-mono tabular-nums">S/ {a.precioAlquiler.toFixed(2)}</TD>
                   </TR>
                 ))}
               </TBody>
@@ -96,13 +103,13 @@ export default async function Dashboard() {
             {ETAPAS_PIPELINE.map((e, i) => (
               <div key={e} className="flex items-center gap-3">
                 <span className="w-28 shrink-0 text-xs capitalize text-muted">{e.replace('_', ' ')}</span>
-                <div className="h-2 flex-1 rounded-full bg-paper">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-paper">
                   <div
-                    className="h-2 rounded-full bg-navy"
+                    className="h-full rounded-full bg-navy transition-[width] duration-500 ease-out-expo"
                     style={{ width: `${Math.min(100, PIPELINE_SAMPLE[i] * 14)}%` }}
                   />
                 </div>
-                <span className="w-4 text-right font-mono text-xs text-navy">{PIPELINE_SAMPLE[i]}</span>
+                <span className="w-4 text-right font-mono text-xs tabular-nums text-navy">{PIPELINE_SAMPLE[i]}</span>
               </div>
             ))}
             <p className="pt-1 text-[11px] text-muted">Datos de muestra — pipeline real en integración.</p>

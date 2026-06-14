@@ -15,12 +15,14 @@
 @layer base {
   body {
     @apply bg-paper text-ink font-body antialiased;
+    text-rendering: optimizeLegibility;
   }
   h1,
   h2,
   h3,
   h4 {
     @apply font-display;
+    letter-spacing: -0.01em;
   }
 }
 
@@ -29,5 +31,16 @@
   .gold-rule {
     height: 2px;
     background: linear-gradient(90deg, var(--gold) 0, var(--gold) 2.5rem, var(--line) 2.5rem, var(--line) 100%);
+  }
+}
+
+/* Motion accesible: reduce movimiento, conserva legibilidad (Emil + a11y). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

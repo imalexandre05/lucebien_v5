@@ -31,8 +31,8 @@ export function Sidebar() {
   return (
     <aside className="sticky top-0 flex h-screen w-60 flex-col bg-navy-deep text-paper/80">
       <div className="border-b border-white/10 px-6 py-6">
-        <div className="font-display text-2xl font-semibold text-paper">LuceBien</div>
-        <div className="mt-1 font-mono text-[10px] tracking-brand text-gold">SCI · LB</div>
+        <div className="font-display text-2xl font-semibold leading-none text-paper">LuceBien</div>
+        <div className="mt-1.5 font-mono text-[10px] tracking-brand text-gold">SCI · LB</div>
       </div>
 
       <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
@@ -49,17 +49,23 @@ export function Sidebar() {
                   <li key={it.href}>
                     <Link
                       href={it.href}
+                      aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'group flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+                        'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-[background-color,color] duration-150 ease-out-expo',
                         active ? 'bg-white/10 text-paper' : 'text-paper/60 hover:bg-white/5 hover:text-paper',
                       )}
                     >
+                      {active && (
+                        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-gold" />
+                      )}
                       <Icon
-                        className={cn('h-4 w-4', active ? 'text-gold' : 'text-paper/50 group-hover:text-paper/70')}
+                        className={cn(
+                          'h-4 w-4 transition-colors duration-150',
+                          active ? 'text-gold' : 'text-paper/50 group-hover:text-paper/70',
+                        )}
                         strokeWidth={1.75}
                       />
                       {it.label}
-                      {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-gold" />}
                     </Link>
                   </li>
                 );

@@ -21,8 +21,22 @@ const config: Config = {
       },
       boxShadow: {
         card: '0 1px 2px rgba(27,36,64,0.05), 0 12px 28px -16px rgba(27,36,64,0.18)',
+        lift: '0 2px 4px rgba(27,36,64,0.06), 0 20px 40px -20px rgba(27,36,64,0.30)',
       },
       letterSpacing: { brand: '0.28em' },
+      transitionTimingFunction: {
+        // Curva ease-out fuerte (Emil): arranca rápido, se siente responsiva.
+        'out-expo': 'cubic-bezier(0.23, 1, 0.32, 1)',
+      },
+      keyframes: {
+        rise: {
+          '0%': { opacity: '0', transform: 'translateY(8px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+      },
+      animation: {
+        rise: 'rise 360ms cubic-bezier(0.23, 1, 0.32, 1) both',
+      },
     },
   },
   plugins: [],
