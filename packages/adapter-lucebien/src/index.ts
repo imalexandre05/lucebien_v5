@@ -2,3 +2,4 @@
 // Importa del core; nunca al revés.
 export * from './theme';
 export * from './features';
+export * from './permisos-config';
