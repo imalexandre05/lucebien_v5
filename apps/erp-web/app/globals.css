@@ -5,10 +5,29 @@
 
 :root {
   --navy: #2e3e6e;
+  --navy-deep: #1b2440;
   --gold: #b8a515;
+  --paper: #f6f4ef;
+  --ink: #20283f;
+  --line: #e6e0d4;
 }
 
-body {
-  font-family: 'Inter', sans-serif;
-  color: var(--navy);
+@layer base {
+  body {
+    @apply bg-paper text-ink font-body antialiased;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-display;
+  }
+}
+
+@layer components {
+  /* Hairline dorada: el divisor-firma del "atelier". */
+  .gold-rule {
+    height: 2px;
+    background: linear-gradient(90deg, var(--gold) 0, var(--gold) 2.5rem, var(--line) 2.5rem, var(--line) 100%);
+  }
 }
