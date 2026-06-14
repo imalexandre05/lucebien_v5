@@ -13,7 +13,10 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "@scilb/core": "workspace:*",
-    "@scilb/adapter-lucebien": "workspace:*"
+    "@scilb/adapter-lucebien": "workspace:*",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.5.4",
+    "lucide-react": "^0.454.0"
   },
   "devDependencies": {
     "typescript": "^5.5.0",

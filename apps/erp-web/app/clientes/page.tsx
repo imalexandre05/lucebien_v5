@@ -1,48 +1,61 @@
 import Link from 'next/link';
+import { Plus } from 'lucide-react';
 import { clientesRepo } from '../../lib/clientes-repo';
 import { eliminarCliente } from './actions';
+import { PageHeader } from '../../components/shell/page-header';
+import { Card, CardContent } from '../../components/ui/card';
+import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
+import { buttonVariants } from '../../components/ui/button';
 
 export default async function ClientesPage() {
   const clientes = await clientesRepo.listar();
   return (
     <div>
-      <div className="mb-4 flex items-center justify-between">
-        <h1 className="font-display text-3xl font-semibold text-navy">Clientes</h1>
-        <Link href="/clientes/nuevo" className="rounded bg-navy px-4 py-2 text-white hover:bg-gold">
-          + Nuevo cliente
-        </Link>
-      </div>
-      <table className="w-full border-collapse font-body text-sm">
-        <thead>
-          <tr className="border-b-2 border-navy text-left text-navy">
-            <th className="py-2">Nombre</th>
-            <th className="font-mono">DNI</th>
-            <th>Teléfono</th>
-            <th>Sede</th>
-            <th>Talla</th>
-            <th>Alta</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {clientes.map((c) => (
-            <tr key={c.id} className="border-b border-navy/10">
-              <td className="py-2 font-medium text-navy">{c.nombre}</td>
-              <td className="font-mono">{c.dni || '—'}</td>
-              <td>{c.telefono || '—'}</td>
-              <td>{c.sedeCod}</td>
-              <td>{c.medidas.talla || '—'}</td>
-              <td className="font-mono text-navy/60">{c.createdAt}</td>
-              <td className="text-right">
-                <form action={eliminarCliente}>
-                  <input type="hidden" name="id" value={c.id} />
-                  <button className="text-xs text-navy/50 hover:text-gold">Eliminar</button>
-                </form>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <PageHeader
+        title="Clientes"
+        subtitle="Datos personales y medidas"
+        action={
+          <Link href="/clientes/nuevo" className={buttonVariants({ variant: 'primary' })}>
+            <Plus className="h-4 w-4" strokeWidth={2} />
+            Nuevo cliente
+          </Link>
+        }
+      />
+      <Card>
+        <CardContent className="px-0 pb-0">
+          <Table>
+            <THead>
+              <TR>
+                <TH className="pl-5">Nombre</TH>
+                <TH>DNI</TH>
+                <TH>Teléfono</TH>
+                <TH>Sede</TH>
+                <TH>Talla</TH>
+                <TH>Alta</TH>
+                <TH className="pr-5" />
+              </TR>
+            </THead>
+            <TBody>
+              {clientes.map((c) => (
+                <TR key={c.id}>
+                  <TD className="pl-5 font-medium text-navy">{c.nombre}</TD>
+                  <TD className="font-mono">{c.dni || '—'}</TD>
+                  <TD className="font-mono">{c.telefono || '—'}</TD>
+                  <TD>{c.sedeCod}</TD>
+                  <TD>{c.medidas.talla || '—'}</TD>
+                  <TD className="font-mono text-muted">{c.createdAt}</TD>
+                  <TD className="pr-5 text-right">
+                    <form action={eliminarCliente}>
+                      <input type="hidden" name="id" value={c.id} />
+                      <button className="text-xs text-muted hover:text-gold">Eliminar</button>
+                    </form>
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
