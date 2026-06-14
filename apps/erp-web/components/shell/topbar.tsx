@@ -1,4 +1,5 @@
-import { Building2 } from 'lucide-react';
+import { Building2, LogOut } from 'lucide-react';
+import { cerrarSesion } from '../../app/login/actions';
 
 // Topbar de demo: contexto de empresa + sede + usuario (mock; real con Supabase Auth en W7).
 export function Topbar() {
@@ -15,6 +16,14 @@ export function Topbar() {
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-navy text-xs font-semibold text-paper">
           AF
         </div>
+        <form action={cerrarSesion}>
+          <button
+            title="Cerrar sesión"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy"
+          >
+            <LogOut className="h-4 w-4" strokeWidth={1.75} />
+          </button>
+        </form>
       </div>
     </header>
   );
