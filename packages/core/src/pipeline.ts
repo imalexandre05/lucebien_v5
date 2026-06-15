@@ -17,3 +17,16 @@ export function siguienteEtapa(e: EtapaPipeline): EtapaPipeline | null {
   const i = ETAPAS_PIPELINE.indexOf(e);
   return i >= 0 && i < ETAPAS_PIPELINE.length - 1 ? ETAPAS_PIPELINE[i + 1] : null;
 }
+
+// Una PASADA = una vuelta de una prenda por el pipeline (E5). Liga al activo de inventario;
+// si activoId es null, es prenda de un cliente que entró por un servicio suelto.
+export interface PrendaPasada {
+  id: string;
+  activoId?: string | null;
+  pedidoId?: string | null;
+  codigo: string;
+  tipo: string;
+  etapa: EtapaPipeline;
+  sedeOrigenCod: string;
+  fechaIngreso: string;
+}
