@@ -2034,11 +2034,14 @@
 <script src="/js/modulos.js?v=1776400000"></script>
 <script src="/js/pipeline-envios.js?v=1780500000"></script>
 <script src="/js/solicitudes.js?v=1778700000"></script>
-<!-- SheetJS (xlsx) para importar/exportar Excel de horarios -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<!-- Vendor AUTO-ALOJADO (servido desde esta PC, sin CDN externo) + versiones FIJADAS.
+     Antes se cargaba React/ReactDOM/Babel/xlsx desde unpkg/jsdelivr; si la PC perdía
+     internet o la CDN fallaba, "Prendas Recibidas" (único módulo JSX-en-navegador)
+     quedaba en blanco. Ahora se sirven local → no depende de internet. -->
+<script src="/vendor/xlsx.full.min.js?v=0.18.5"></script>
+<script src="/vendor/react.production.min.js?v=18.3.1"></script>
+<script src="/vendor/react-dom.production.min.js?v=18.3.1"></script>
+<script src="/vendor/babel.min.js?v=7.24.7"></script>
 <script type="text/babel" src="/js/almacen-kanban.jsx?v=1778900000"></script>
 <script>
 // Inicializar mes actual en selects
