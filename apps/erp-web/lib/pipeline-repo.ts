@@ -1,5 +1,5 @@
 import type { PrendaPasada } from '@scilb/core';
-import { getSupabase } from './supabase';
+import { getServerClient } from './supabase/server';
 
 type Row = {
   id: string;
@@ -23,18 +23,12 @@ const fromRow = (r: Row): PrendaPasada => ({
   fechaIngreso: (r.fecha_ingreso ?? '').slice(0, 10),
 });
 
-// Fallback en memoria (compartido: un servicio en pedidos-repo empuja una pasada acá).
-export const pasadasMemoria: PrendaPasada[] = [
-  { id: 'p1', codigo: 'TN-014', tipo: 'TN', etapa: 'recepcion', sedeOrigenCod: 'LB', fechaIngreso: '2026-06-12' },
-  { id: 'p2', codigo: 'SC-005', tipo: 'SC', etapa: 'refaccion', sedeOrigenCod: 'TR', fechaIngreso: '2026-06-11' },
-  { id: 'p3', codigo: 'TN-002', tipo: 'TN', etapa: 'planchado', sedeOrigenCod: 'ST', fechaIngreso: '2026-06-10' },
-  { id: 'p4', codigo: 'CM-008', tipo: 'CM', etapa: 'control_calidad', sedeOrigenCod: 'LB', fechaIngreso: '2026-06-09' },
-];
-
 export async function listarPasadas(): Promise<PrendaPasada[]> {
-  const sb = getSupabase();
-  if (!sb) return [...pasadasMemoria];
-  const { data, error } = await sb.from('prenda_pasada').select('*').order('fecha_ingreso', { ascending: false });
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('prenda_pasada')
+    .select('*')
+    .order('fecha_ingreso', { ascending: false });
   if (error) throw new Error(error.message);
   return (data as Row[]).map(fromRow);
 }
@@ -46,21 +40,15 @@ export async function crearPasadaDesdePedido(p: {
   sedeOrigenCod: string;
   pedidoId: string;
 }): Promise<void> {
-  const sb = getSupabase();
-  if (!sb) {
-    pasadasMemoria.unshift({
-      id: `p${Date.now()}`,
-      codigo: p.codigo,
-      tipo: p.tipo,
-      etapa: 'recepcion',
-      sedeOrigenCod: p.sedeOrigenCod,
-      fechaIngreso: new Date().toISOString().slice(0, 10),
-      pedidoId: p.pedidoId,
-    });
-    return;
-  }
+  const sb = getServerClient();
   const { error } = await sb
     .from('prenda_pasada')
-    .insert({ codigo: p.codigo, tipo: p.tipo, sede_origen_cod: p.sedeOrigenCod, pedido_id: p.pedidoId, etapa: 'recepcion' });
+    .insert({
+      codigo: p.codigo,
+      tipo: p.tipo,
+      sede_origen_cod: p.sedeOrigenCod,
+      pedido_id: p.pedidoId,
+      etapa: 'recepcion',
+    });
   if (error) throw new Error(error.message);
 }

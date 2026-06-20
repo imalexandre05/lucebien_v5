@@ -1,5 +1,5 @@
 import type { Cliente, ClienteInput, ClientesRepo } from '@scilb/core';
-import { getSupabase } from './supabase';
+import { getServerClient } from './supabase/server';
 
 type Row = {
   id: string;
@@ -29,45 +29,25 @@ const toRow = (c: ClienteInput) => ({
   medidas: c.medidas,
 });
 
-const supabaseRepo: ClientesRepo = {
+// Repo por-request con el cliente `server` (RLS): cada empleado ve/escribe solo los
+// clientes de su sede; admin/dueño ven todo. Reemplaza el singleton service_role que
+// bypaseaba la RLS (hallazgo H1).
+export const clientesRepo: ClientesRepo = {
   async listar() {
-    const sb = getSupabase()!;
+    const sb = getServerClient();
     const { data, error } = await sb.from('clientes').select('*').order('nombre');
     if (error) throw new Error(error.message);
     return (data as Row[]).map(fromRow);
   },
   async crear(input) {
-    const sb = getSupabase()!;
+    const sb = getServerClient();
     const { data, error } = await sb.from('clientes').insert(toRow(input)).select().single();
     if (error) throw new Error(error.message);
     return fromRow(data as Row);
   },
   async eliminar(id) {
-    const sb = getSupabase()!;
+    const sb = getServerClient();
     const { error } = await sb.from('clientes').delete().eq('id', id);
     if (error) throw new Error(error.message);
   },
 };
-
-// Fallback en memoria (demo sin Supabase configurado).
-const datos: Cliente[] = [
-  { id: '1', nombre: 'Juan Pérez', dni: '45678912', telefono: '987654321', sedeCod: 'LB', medidas: { talla: '40' }, createdAt: '2026-01-15' },
-  { id: '2', nombre: 'María Quispe', dni: '70112233', telefono: '912345678', sedeCod: 'ST', medidas: { talla: 'M' }, createdAt: '2026-02-03' },
-];
-let seq = datos.length;
-const memoriaRepo: ClientesRepo = {
-  async listar() {
-    return [...datos].sort((a, b) => a.nombre.localeCompare(b.nombre));
-  },
-  async crear(input) {
-    const cliente: Cliente = { id: String(++seq), createdAt: new Date().toISOString().slice(0, 10), ...input };
-    datos.push(cliente);
-    return cliente;
-  },
-  async eliminar(id) {
-    const i = datos.findIndex((c) => c.id === id);
-    if (i >= 0) datos.splice(i, 1);
-  },
-};
-
-export const clientesRepo: ClientesRepo = getSupabase() ? supabaseRepo : memoriaRepo;
