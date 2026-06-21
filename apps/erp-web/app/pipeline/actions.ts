@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { avanzarPasada, enviarPasada } from '../../lib/pipeline-repo';
+import { avanzarPasada, enviarPasada, rechazarPasada } from '../../lib/pipeline-repo';
 
 // Avanza una prenda a la etapa destino (formulario del tablero). La RLS decide si el usuario
 // puede tocar esa prenda; los puntos van al actor (auth.uid()) dentro de avanzarPasada.
@@ -19,5 +19,14 @@ export async function enviarPrenda(formData: FormData) {
   const sede = String(formData.get('sede') || '');
   if (!id || !sede) return;
   await enviarPasada(id, sede);
+  revalidatePath('/pipeline');
+}
+
+// Rechaza una prenda a una etapa anterior y descuenta los puntos a quien la hizo.
+export async function rechazarPrenda(formData: FormData) {
+  const id = String(formData.get('id') || '');
+  const destino = String(formData.get('destino') || '');
+  if (!id || !destino) return;
+  await rechazarPasada(id, destino);
   revalidatePath('/pipeline');
 }

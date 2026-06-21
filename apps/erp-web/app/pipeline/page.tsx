@@ -1,6 +1,6 @@
 import { TRANSICIONES } from '@scilb/core';
 import { listarPasadas } from '../../lib/pipeline-repo';
-import { avanzarPrenda, enviarPrenda } from './actions';
+import { avanzarPrenda, enviarPrenda, rechazarPrenda } from './actions';
 import { RealtimeRefresh } from './realtime';
 import { PageHeader } from '../../components/shell/page-header';
 
@@ -112,6 +112,26 @@ export default async function PipelinePage() {
                           </select>
                           <button className="rounded bg-gold/20 px-1.5 py-0.5 text-[9px] font-medium text-[#7a6e0e] hover:bg-gold/30">
                             Enviar →
+                          </button>
+                        </form>
+                      )}
+                      {p.etapa === 'control_calidad' && (
+                        <form action={rechazarPrenda} className="mt-1 flex items-center gap-1">
+                          <input type="hidden" name="id" value={p.id} />
+                          <select
+                            name="destino"
+                            defaultValue="planchado"
+                            className="rounded border border-line bg-white px-1 py-0.5 text-[9px] text-navy"
+                          >
+                            <option value="recepcion">Recepción</option>
+                            <option value="lavado">Lavado</option>
+                            <option value="empatado">Empatado</option>
+                            <option value="refaccion">Refacción</option>
+                            <option value="compostura">Compostura</option>
+                            <option value="planchado">Planchado</option>
+                          </select>
+                          <button className="rounded bg-red-50 px-1.5 py-0.5 text-[9px] font-medium text-red-700 hover:bg-red-100">
+                            Rechazar
                           </button>
                         </form>
                       )}

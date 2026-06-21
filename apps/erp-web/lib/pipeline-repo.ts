@@ -198,3 +198,67 @@ export async function enviarPasada(id: string, sedeDestino: string): Promise<voi
   });
   if (hist.error) throw new Error(hist.error.message);
 }
+
+// Rechaza una prenda a una etapa anterior (control de calidad la devuelve a la etapa que
+// falló): aprobada=false y descuenta los puntos de esa etapa a QUIEN LA HIZO — regla
+// confirmada por el responsable. "Quien la hizo" = el último que COMPLETÓ esa etapa (salió
+// de ella) según el historial. El descuento es el mismo monto que ganó (½ si era pieza).
+export async function rechazarPasada(id: string, destino: string, obs?: string): Promise<void> {
+  const sb = getServerClient();
+  const { data: userData } = await sb.auth.getUser();
+  const actor = userData.user?.id;
+  if (!actor) throw new Error('No autenticado');
+
+  const { data, error } = await sb.from('prenda_pasada').select('*').eq('id', id).maybeSingle();
+  if (error) throw new Error(error.message);
+  const pr = data as Row | null;
+  if (!pr) throw new Error('Prenda no encontrada');
+
+  // Quién hizo la etapa rechazada = último que salió de ella (etapa_anterior = destino).
+  const { data: last } = await sb
+    .from('prenda_historial')
+    .select('empleado_id')
+    .eq('pasada_id', id)
+    .eq('etapa_anterior', destino)
+    .not('empleado_id', 'is', null)
+    .order('fecha', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const culpable = (last as { empleado_id: string } | null)?.empleado_id ?? null;
+
+  const upd = await sb
+    .from('prenda_pasada')
+    .update({ etapa: destino, aprobada: false, fecha_actualizado: new Date().toISOString() })
+    .eq('id', id);
+  if (upd.error) throw new Error(upd.error.message);
+
+  const hist = await sb.from('prenda_historial').insert({
+    pasada_id: id,
+    etapa_anterior: pr.etapa,
+    etapa_nueva: destino,
+    empleado_id: actor,
+    obs: obs || `Rechazado → ${destino}`,
+  });
+  if (hist.error) throw new Error(hist.error.message);
+
+  if (culpable) {
+    const { data: cfg } = await sb
+      .from('config')
+      .select('valor')
+      .eq('clave', clavePuntos(destino as EtapaPipeline, pr.tipo_lavado))
+      .maybeSingle();
+    const peso = cfg ? parseFloat((cfg as { valor: string }).valor) : 1;
+    const descuento = puntosAvance(peso, pr.tipo); // mismo monto que ganó al completar la etapa
+    if (descuento > 0) {
+      const pun = await sb.from('pipeline_puntos').insert({
+        empleado_id: culpable,
+        pasada_id: id,
+        etapa: `${destino}_rechazo`,
+        puntos: -descuento,
+        detalle: `Rechazo: ${pr.codigo} de ${pr.etapa} → ${destino}`,
+        fecha: new Date().toISOString(),
+      });
+      if (pun.error) throw new Error(pun.error.message);
+    }
+  }
+}
