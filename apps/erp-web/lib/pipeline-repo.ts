@@ -150,3 +150,51 @@ export async function avanzarPasada(id: string, destino: string, obs?: string): 
     if (pun.error) throw new Error(pun.error.message);
   }
 }
+
+// Envía una prenda "listo" a una tienda: crea el envío, marca la prenda como enviada y lo
+// registra en el historial. El envío no otorga puntos. Portado de routes/pipeline.js
+// (POST /enviar), versión por-prenda (el viejo permite lote).
+export async function enviarPasada(id: string, sedeDestino: string): Promise<void> {
+  const sb = getServerClient();
+  const { data: userData } = await sb.auth.getUser();
+  const actor = userData.user?.id;
+  if (!actor) throw new Error('No autenticado');
+
+  const { data, error } = await sb
+    .from('prenda_pasada')
+    .select('id, etapa, codigo')
+    .eq('id', id)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const pr = data as { id: string; etapa: string; codigo: string } | null;
+  if (!pr) throw new Error('Prenda no encontrada');
+  if (pr.etapa !== 'listo') throw new Error('Solo se envían prendas en estado "listo"');
+
+  const env = await sb
+    .from('envios_prendas')
+    .insert({
+      sede_destino_cod: sedeDestino,
+      fecha: new Date().toISOString(),
+      responsable_id: actor,
+      estado: 'enviado',
+    })
+    .select('id')
+    .single();
+  if (env.error) throw new Error(env.error.message);
+  const envioId = (env.data as { id: string }).id;
+
+  const upd = await sb
+    .from('prenda_pasada')
+    .update({ etapa: 'enviado', envio_id: envioId, fecha_actualizado: new Date().toISOString() })
+    .eq('id', id);
+  if (upd.error) throw new Error(upd.error.message);
+
+  const hist = await sb.from('prenda_historial').insert({
+    pasada_id: id,
+    etapa_anterior: 'listo',
+    etapa_nueva: 'enviado',
+    empleado_id: actor,
+    obs: `Envío ${envioId.slice(0, 8)} → ${sedeDestino}`,
+  });
+  if (hist.error) throw new Error(hist.error.message);
+}

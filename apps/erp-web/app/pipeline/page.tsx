@@ -1,6 +1,6 @@
 import { TRANSICIONES } from '@scilb/core';
 import { listarPasadas } from '../../lib/pipeline-repo';
-import { avanzarPrenda } from './actions';
+import { avanzarPrenda, enviarPrenda } from './actions';
 import { PageHeader } from '../../components/shell/page-header';
 
 // Columnas del tablero: las 8 etapas de trabajo (como el kanban del sistema viejo, sin
@@ -95,6 +95,23 @@ export default async function PipelinePage() {
                             </form>
                           ))}
                         </div>
+                      )}
+                      {p.etapa === 'listo' && (
+                        <form action={enviarPrenda} className="mt-1.5 flex items-center gap-1">
+                          <input type="hidden" name="id" value={p.id} />
+                          <select
+                            name="sede"
+                            defaultValue={['LB', 'ST', 'TR'].includes(p.sedeOrigenCod) ? p.sedeOrigenCod : 'LB'}
+                            className="rounded border border-line bg-white px-1 py-0.5 font-mono text-[9px] text-navy"
+                          >
+                            <option value="LB">LB</option>
+                            <option value="ST">ST</option>
+                            <option value="TR">TR</option>
+                          </select>
+                          <button className="rounded bg-gold/20 px-1.5 py-0.5 text-[9px] font-medium text-[#7a6e0e] hover:bg-gold/30">
+                            Enviar →
+                          </button>
+                        </form>
                       )}
                     </div>
                   );
