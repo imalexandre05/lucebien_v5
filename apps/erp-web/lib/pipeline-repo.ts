@@ -7,9 +7,25 @@ type Row = {
   pedido_id: string | null;
   codigo: string;
   tipo: string | null;
+  color: string | null;
+  talla: string | null;
   etapa: PrendaPasada['etapa'];
+  tipo_lavado: string | null;
   sede_origen_cod: string | null;
+  lavador_id: string | null;
+  planchador_id: string | null;
+  necesita_compostura: boolean | null;
+  obs_refaccion: string | null;
+  obs_compostura: string | null;
+  obs_calidad: string | null;
+  obs_general: string | null;
+  aprobada: boolean | null;
+  envio_id: string | null;
+  lista_lavanderia_id: string | null;
+  dividida: boolean | null;
+  dividida_en: string | null;
   fecha_ingreso: string;
+  fecha_actualizado: string | null;
 };
 
 const fromRow = (r: Row): PrendaPasada => ({
@@ -18,9 +34,25 @@ const fromRow = (r: Row): PrendaPasada => ({
   pedidoId: r.pedido_id,
   codigo: r.codigo,
   tipo: r.tipo ?? '',
+  color: r.color,
+  talla: r.talla,
   etapa: r.etapa,
+  tipoLavado: r.tipo_lavado,
   sedeOrigenCod: r.sede_origen_cod ?? '',
+  lavadorId: r.lavador_id,
+  planchadorId: r.planchador_id,
+  necesitaCompostura: Boolean(r.necesita_compostura),
+  obsRefaccion: r.obs_refaccion,
+  obsCompostura: r.obs_compostura,
+  obsCalidad: r.obs_calidad,
+  obsGeneral: r.obs_general,
+  aprobada: Boolean(r.aprobada),
+  envioId: r.envio_id,
+  listaLavanderiaId: r.lista_lavanderia_id,
+  dividida: Boolean(r.dividida),
+  divididaEn: r.dividida_en,
   fechaIngreso: (r.fecha_ingreso ?? '').slice(0, 10),
+  fechaActualizado: r.fecha_actualizado,
 });
 
 export async function listarPasadas(): Promise<PrendaPasada[]> {
