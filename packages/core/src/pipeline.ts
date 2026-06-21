@@ -18,6 +18,40 @@ export function siguienteEtapa(e: EtapaPipeline): EtapaPipeline | null {
   return i >= 0 && i < ETAPAS_PIPELINE.length - 1 ? ETAPAS_PIPELINE[i + 1] : null;
 }
 
+// Transiciones permitidas en el tablero (portadas del kanban viejo). 'listo' = aprobado en
+// control de calidad; el envío a tienda y el rechazo son flujos aparte.
+export const TRANSICIONES: Record<EtapaPipeline, EtapaPipeline[]> = {
+  recepcion: ['lavado', 'refaccion'],
+  lavado: ['empatado'],
+  empatado: ['refaccion'],
+  vacio: [],
+  refaccion: ['compostura', 'planchado'],
+  compostura: ['planchado'],
+  planchado: ['control_calidad'],
+  control_calidad: ['listo'],
+  listo: [],
+};
+
+// Clave de config (peso de puntos) de la etapa que se COMPLETA al avanzar. El lavado
+// distingue por tipo de lavado (normal/seco/especializado). Si no hay config → peso 1.
+export function clavePuntos(etapa: EtapaPipeline, tipoLavado?: string | null): string {
+  if (etapa === 'lavado') return `pts_lavado_${tipoLavado || 'normal'}`;
+  return `pts_${etapa}`;
+}
+
+// Regla del ½ punto (E1): piezas sueltas (saco, pantalón, falda, chaleco, blazer) valen la
+// mitad; un terno completo vale el peso entero. Portada de routes/pipeline.js.
+export function esMediaPrenda(tipo?: string | null): boolean {
+  const t = (tipo || '').toLowerCase();
+  if (!t || t === 'terno completo' || t === 'terno') return false;
+  return ['saco', 'pantal', 'falda', 'chaleco', 'blazer'].some((k) => t.includes(k));
+}
+
+// Puntos que gana el actor por completar `etapa`, dado el peso de config y el tipo de prenda.
+export function puntosAvance(peso: number, tipo?: string | null): number {
+  return esMediaPrenda(tipo) ? Math.round((peso / 2) * 10) / 10 : peso;
+}
+
 // 'enviado' no es etapa del pipeline: es el estado terminal de una prenda ya despachada
 // a tienda (sale del tablero hacia el flujo de envíos). Se modela aparte de EtapaPipeline.
 export type EstadoPasada = EtapaPipeline | 'enviado';

@@ -1,4 +1,6 @@
+import { TRANSICIONES } from '@scilb/core';
 import { listarPasadas } from '../../lib/pipeline-repo';
+import { avanzarPrenda } from './actions';
 import { PageHeader } from '../../components/shell/page-header';
 
 // Columnas del tablero: las 8 etapas de trabajo (como el kanban del sistema viejo, sin
@@ -57,30 +59,46 @@ export default async function PipelinePage() {
                 </span>
               </div>
               <div className="space-y-2">
-                {items.map((p) => (
-                  <div key={p.id} className="rounded-md border border-line bg-white px-3 py-2 shadow-card">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-medium text-navy">{p.codigo}</span>
-                      {Boolean(p.tipo) && <span className="text-[10px] text-muted">{p.tipo}</span>}
-                    </div>
-                    {Boolean(p.color || p.talla) && (
-                      <div className="mt-0.5 text-[10px] text-muted">
-                        {[p.color, p.talla].filter(Boolean).join(' · ')}
+                {items.map((p) => {
+                  const dests = (TRANSICIONES as Record<string, readonly string[]>)[p.etapa] ?? [];
+                  return (
+                    <div key={p.id} className="rounded-md border border-line bg-white px-3 py-2 shadow-card">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-mono text-xs font-medium text-navy">{p.codigo}</span>
+                        {Boolean(p.tipo) && <span className="text-[10px] text-muted">{p.tipo}</span>}
                       </div>
-                    )}
-                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      <span className="rounded bg-navy/5 px-1.5 py-0.5 font-mono text-[9px] text-navy">
-                        {p.sedeOrigenCod}
-                      </span>
-                      {Boolean(p.necesitaCompostura) && (
-                        <span className="text-[9px] font-medium text-amber-700">compostura</span>
+                      {Boolean(p.color || p.talla) && (
+                        <div className="mt-0.5 text-[10px] text-muted">
+                          {[p.color, p.talla].filter(Boolean).join(' · ')}
+                        </div>
                       )}
-                      {Boolean(p.aprobada) && (
-                        <span className="text-[9px] font-medium text-emerald-700">aprobada</span>
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                        <span className="rounded bg-navy/5 px-1.5 py-0.5 font-mono text-[9px] text-navy">
+                          {p.sedeOrigenCod}
+                        </span>
+                        {Boolean(p.necesitaCompostura) && (
+                          <span className="text-[9px] font-medium text-amber-700">compostura</span>
+                        )}
+                        {Boolean(p.aprobada) && (
+                          <span className="text-[9px] font-medium text-emerald-700">aprobada</span>
+                        )}
+                      </div>
+                      {dests.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {dests.map((d) => (
+                            <form key={d} action={avanzarPrenda}>
+                              <input type="hidden" name="id" value={p.id} />
+                              <input type="hidden" name="destino" value={d} />
+                              <button className="rounded bg-navy/5 px-1.5 py-0.5 text-[9px] font-medium text-navy transition-colors hover:bg-gold/20 hover:text-[#7a6e0e]">
+                                → {NOMBRE[d] ?? d}
+                              </button>
+                            </form>
+                          ))}
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {items.length === 0 && (
                   <div className="rounded-md border border-dashed border-line px-3 py-2 text-center text-[11px] text-muted">
                     vacío
