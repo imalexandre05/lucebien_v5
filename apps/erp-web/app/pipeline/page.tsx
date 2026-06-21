@@ -1,6 +1,7 @@
 import { TRANSICIONES } from '@scilb/core';
 import { listarPasadas } from '../../lib/pipeline-repo';
 import { avanzarPrenda, enviarPrenda } from './actions';
+import { RealtimeRefresh } from './realtime';
 import { PageHeader } from '../../components/shell/page-header';
 
 // Columnas del tablero: las 8 etapas de trabajo (como el kanban del sistema viejo, sin
@@ -36,6 +37,7 @@ export default async function PipelinePage() {
   return (
     <div>
       <PageHeader title="Pipeline de lavandería" subtitle={`${total} prendas · Almacén Central`} />
+      <RealtimeRefresh />
 
       <div className="mb-5 inline-flex items-center gap-2 rounded-md bg-emerald-600/10 px-3 py-1.5 text-xs text-emerald-700">
         <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
