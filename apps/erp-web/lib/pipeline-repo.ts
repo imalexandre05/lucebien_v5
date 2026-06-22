@@ -133,3 +133,10 @@ export async function rankingHoy(): Promise<RankingItem[]> {
     acciones: Number(r.acciones),
   }));
 }
+
+// Divide un terno en piezas hijas (saco + pantalón); el original sale del tablero.
+export async function dividirPasada(id: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_dividir', { p_id: id });
+  if (error) throw new Error(error.message);
+}

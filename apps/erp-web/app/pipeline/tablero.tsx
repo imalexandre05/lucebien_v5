@@ -15,12 +15,20 @@ import {
   Send,
   Undo2,
   Search,
+  Split,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
 import type { PrendaPasada } from '@scilb/core';
 import { TRANSICIONES } from '@scilb/core';
-import { avanzarPrenda, enviarPrenda, rechazarPrenda, deshacerPrenda, avanzarTandaPrendas } from './actions';
+import {
+  avanzarPrenda,
+  enviarPrenda,
+  rechazarPrenda,
+  deshacerPrenda,
+  avanzarTandaPrendas,
+  dividirPrenda,
+} from './actions';
 
 // Color real de la prenda → punto de color en la tarjeta (del sistema viejo).
 const COL_MAP: Record<string, string> = {
@@ -73,6 +81,7 @@ type Handlers = {
   avanzarTanda: (ids: string[], destino: string) => void;
   enviar: (id: string, sede: string) => void;
   rechazar: (id: string, destino: string) => void;
+  dividir: (id: string) => void;
 };
 type Toast = { msg: string; tono: 'ok' | 'gold' | 'warn'; undo?: () => void };
 
@@ -130,6 +139,11 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
         const pts = await avanzarTandaPrendas(ids, destino);
         if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
         setToast({ msg: `${ids.length} prendas → ${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`, tono: 'ok' });
+      }),
+    dividir: (id) =>
+      startTransition(async () => {
+        await dividirPrenda(id);
+        setToast({ msg: 'Terno dividido en saco + pantalón', tono: 'gold' });
       }),
   };
 
@@ -233,6 +247,7 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
 function Tarjeta({ p, h }: { p: PrendaPasada; h: Handlers }) {
   const dests = (TRANSICIONES as Record<string, readonly string[]>)[p.etapa] ?? [];
   const meta = [p.tipo, p.color, p.talla ? `T.${p.talla}` : ''].filter(Boolean).join(' · ');
+  const esTerno = (p.tipo ?? '').toLowerCase().includes('terno');
   return (
     <div className="rounded-lg border border-line bg-white p-2.5 shadow-sm transition hover:shadow-md">
       <div className="flex items-center gap-2">
@@ -272,6 +287,14 @@ function Tarjeta({ p, h }: { p: PrendaPasada; h: Handlers }) {
 
       {p.etapa === 'listo' && <Enviar p={p} h={h} />}
       {p.etapa === 'control_calidad' && <Rechazar p={p} h={h} />}
+      {esTerno && (
+        <button
+          onClick={() => h.dividir(p.id)}
+          className="mt-1.5 inline-flex w-full items-center justify-center gap-1 text-[10px] font-medium text-slate-400 transition hover:text-navy"
+        >
+          <Split className="h-3 w-3" strokeWidth={2.5} /> Dividir en saco + pantalón
+        </button>
+      )}
     </div>
   );
 }

@@ -52,9 +52,9 @@ export function puntosAvance(peso: number, tipo?: string | null): number {
   return esMediaPrenda(tipo) ? Math.round((peso / 2) * 10) / 10 : peso;
 }
 
-// 'enviado' no es etapa del pipeline: es el estado terminal de una prenda ya despachada
-// a tienda (sale del tablero hacia el flujo de envíos). Se modela aparte de EtapaPipeline.
-export type EstadoPasada = EtapaPipeline | 'enviado';
+// Estados fuera del pipeline activo: 'enviado' (despachada a tienda) y 'dividido' (terno
+// partido en piezas hijas). Ambos salen del tablero. Se modelan aparte de EtapaPipeline.
+export type EstadoPasada = EtapaPipeline | 'enviado' | 'dividido';
 
 // Una PASADA = una vuelta de una prenda por el pipeline (E5). Liga al activo de inventario;
 // si activoId es null, es prenda de un cliente que entró por un servicio suelto.
