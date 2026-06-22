@@ -14,12 +14,13 @@ import {
   ArrowRight,
   Send,
   Undo2,
+  Search,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
 import type { PrendaPasada } from '@scilb/core';
 import { TRANSICIONES } from '@scilb/core';
-import { avanzarPrenda, enviarPrenda, rechazarPrenda } from './actions';
+import { avanzarPrenda, enviarPrenda, rechazarPrenda, deshacerPrenda } from './actions';
 
 // Color real de la prenda → punto de color en la tarjeta (del sistema viejo).
 const COL_MAP: Record<string, string> = {
@@ -57,11 +58,11 @@ const COLUMNAS: Col[] = [
 const NOMBRE: Record<string, string> = Object.fromEntries(COLUMNAS.map((c) => [c.k, c.n]));
 
 type Handlers = {
-  avanzar: (id: string, destino: string) => void;
+  avanzar: (id: string, destino: string, etapaActual: string) => void;
   enviar: (id: string, sede: string) => void;
   rechazar: (id: string, destino: string) => void;
 };
-type Toast = { msg: string; tono: 'ok' | 'gold' | 'warn' };
+type Toast = { msg: string; tono: 'ok' | 'gold' | 'warn'; undo?: () => void };
 
 export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
   const [, startTransition] = useTransition();
@@ -71,20 +72,33 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
   );
   const [sesionPts, setSesionPts] = useState(0);
   const [toast, setToast] = useState<Toast | null>(null);
+  const [q, setQ] = useState('');
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2200);
+    const t = setTimeout(() => setToast(null), toast.undo ? 5000 : 2200);
     return () => clearTimeout(t);
   }, [toast]);
 
+  const deshacer = (id: string, etapaAnterior: string, pts: number) =>
+    startTransition(async () => {
+      aplicar({ id, etapa: etapaAnterior });
+      if (pts) setSesionPts((s) => Math.round((s - pts) * 10) / 10);
+      setToast(null);
+      await deshacerPrenda(id, etapaAnterior);
+    });
+
   const h: Handlers = {
-    avanzar: (id, destino) =>
+    avanzar: (id, destino, etapaActual) =>
       startTransition(async () => {
         aplicar({ id, etapa: destino });
         const pts = await avanzarPrenda(id, destino);
         if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
-        setToast({ msg: `${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`, tono: 'ok' });
+        setToast({
+          msg: `${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`,
+          tono: 'ok',
+          undo: () => deshacer(id, etapaActual, pts ?? 0),
+        });
       }),
     enviar: (id, sede) =>
       startTransition(async () => {
@@ -100,6 +114,11 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
       }),
   };
 
+  const ql = q.trim().toLowerCase();
+  const visibles = ql
+    ? optimistas.filter((p) => `${p.codigo} ${p.tipo ?? ''} ${p.color ?? ''}`.toLowerCase().includes(ql))
+    : optimistas;
+
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -110,11 +129,21 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
           <Zap className="h-3.5 w-3.5" strokeWidth={2.5} /> Tu sesión:{' '}
           <span className="font-mono font-bold tabular-nums">{sesionPts}</span> pts
         </span>
+        <div className="relative ml-auto">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar prenda…"
+            className="w-52 rounded-md border border-line bg-white py-1.5 pl-8 pr-3 text-sm text-navy placeholder:text-slate-400 focus:border-navy focus:outline-none"
+          />
+        </div>
       </div>
 
       <div className="flex gap-3 overflow-x-auto pb-3">
         {COLUMNAS.map((col) => {
-          const items = optimistas.filter((p) => p.etapa === col.k);
+          const items = visibles.filter((p) => p.etapa === col.k);
           const Icon = col.icon;
           return (
             <div key={col.k} className="w-56 shrink-0">
@@ -136,7 +165,7 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
                 ))}
                 {items.length === 0 && (
                   <div className="rounded-lg border border-dashed border-line py-5 text-center text-xs text-slate-400">
-                    — vacío —
+                    {ql ? 'sin coincidencias' : '— vacío —'}
                   </div>
                 )}
               </div>
@@ -147,7 +176,7 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
 
       {toast && (
         <div
-          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-lg ${
+          className={`fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-lg ${
             toast.tono === 'gold'
               ? 'bg-gold text-navy'
               : toast.tono === 'warn'
@@ -156,8 +185,18 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
           }`}
           role="status"
         >
-          {toast.tono === 'warn' ? '↩ ' : '✓ '}
-          {toast.msg}
+          <span>
+            {toast.tono === 'warn' ? '↩ ' : '✓ '}
+            {toast.msg}
+          </span>
+          {toast.undo && (
+            <button
+              onClick={toast.undo}
+              className="inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-xs font-medium transition hover:bg-white/30"
+            >
+              <Undo2 className="h-3 w-3" strokeWidth={2.5} /> Deshacer
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -195,7 +234,7 @@ function Tarjeta({ p, h }: { p: PrendaPasada; h: Handlers }) {
           {dests.map((d) => (
             <button
               key={d}
-              onClick={() => h.avanzar(p.id, d)}
+              onClick={() => h.avanzar(p.id, d, p.etapa)}
               className="inline-flex items-center justify-center gap-1.5 rounded-md bg-navy px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-[#26345c] active:scale-[.98]"
             >
               {NOMBRE[d] ?? d} <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />

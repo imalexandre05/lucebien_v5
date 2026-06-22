@@ -104,3 +104,10 @@ export async function rechazarPasada(id: string, destino: string): Promise<void>
   const { error } = await sb.rpc('pipeline_rechazar', { p_id: id, p_destino: destino });
   if (error) throw new Error(error.message);
 }
+
+// Deshacer: revierte la prenda a la etapa anterior y quita los puntos recién ganados.
+export async function deshacerPasada(id: string, etapaAnterior: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_deshacer', { p_id: id, p_etapa_anterior: etapaAnterior });
+  if (error) throw new Error(error.message);
+}
