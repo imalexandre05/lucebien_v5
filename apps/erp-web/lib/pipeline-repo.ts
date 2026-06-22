@@ -140,3 +140,15 @@ export async function dividirPasada(id: string): Promise<void> {
   const { error } = await sb.rpc('pipeline_dividir', { p_id: id });
   if (error) throw new Error(error.message);
 }
+
+// Calificar en tienda: aceptar (→ recibido) u observar (→ etapa destino, vuelve al trabajo).
+export async function calificarPasada(id: string, aceptada: boolean, destino = '', obs = ''): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_calificar', {
+    p_id: id,
+    p_aceptada: aceptada,
+    p_destino: destino,
+    p_obs: obs,
+  });
+  if (error) throw new Error(error.message);
+}

@@ -16,6 +16,7 @@ import {
   Undo2,
   Search,
   Split,
+  Check,
   Zap,
   type LucideIcon,
 } from 'lucide-react';
@@ -28,6 +29,7 @@ import {
   deshacerPrenda,
   avanzarTandaPrendas,
   dividirPrenda,
+  calificarPrenda,
 } from './actions';
 
 // Color real de la prenda → punto de color en la tarjeta (del sistema viejo).
@@ -82,6 +84,7 @@ type Handlers = {
   enviar: (id: string, sede: string) => void;
   rechazar: (id: string, destino: string) => void;
   dividir: (id: string) => void;
+  calificar: (id: string, aceptada: boolean, destino: string) => void;
 };
 type Toast = { msg: string; tono: 'ok' | 'gold' | 'warn'; undo?: () => void };
 
@@ -144,6 +147,15 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
       startTransition(async () => {
         await dividirPrenda(id);
         setToast({ msg: 'Terno dividido en saco + pantalón', tono: 'gold' });
+      }),
+    calificar: (id, aceptada, destino) =>
+      startTransition(async () => {
+        aplicar({ id, etapa: aceptada ? 'recibido' : destino });
+        await calificarPrenda(id, aceptada, destino);
+        setToast({
+          msg: aceptada ? 'Prenda recibida' : `Observada → ${NOMBRE[destino] ?? destino}`,
+          tono: aceptada ? 'gold' : 'warn',
+        });
       }),
   };
 
@@ -287,6 +299,7 @@ function Tarjeta({ p, h }: { p: PrendaPasada; h: Handlers }) {
 
       {p.etapa === 'listo' && <Enviar p={p} h={h} />}
       {p.etapa === 'control_calidad' && <Rechazar p={p} h={h} />}
+      {p.etapa === 'enviado' && <Calificar p={p} h={h} />}
       {esTerno && (
         <button
           onClick={() => h.dividir(p.id)}
@@ -346,6 +359,38 @@ function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
       >
         <Undo2 className="h-3.5 w-3.5" strokeWidth={2.5} /> Rechazar
       </button>
+    </div>
+  );
+}
+
+function Calificar({ p, h }: { p: PrendaPasada; h: Handlers }) {
+  const [destino, setDestino] = useState('recepcion');
+  return (
+    <div className="mt-2 space-y-1.5">
+      <button
+        onClick={() => h.calificar(p.id, true, '')}
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 active:scale-[.98]"
+      >
+        <Check className="h-3.5 w-3.5" strokeWidth={3} /> Aceptar
+      </button>
+      <div className="flex items-center gap-1.5">
+        <select
+          value={destino}
+          onChange={(e) => setDestino(e.target.value)}
+          className="rounded-md border border-line bg-white px-1.5 py-1 text-xs text-navy"
+          aria-label="Observar: devolver a la etapa"
+        >
+          <option value="recepcion">Recepción</option>
+          <option value="planchado">Planchado</option>
+          <option value="control_calidad">Control calidad</option>
+        </select>
+        <button
+          onClick={() => h.calificar(p.id, false, destino)}
+          className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-100 active:scale-[.98]"
+        >
+          <Undo2 className="h-3.5 w-3.5" strokeWidth={2.5} /> Observar
+        </button>
+      </div>
     </div>
   );
 }

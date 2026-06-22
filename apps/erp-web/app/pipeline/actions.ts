@@ -8,6 +8,7 @@ import {
   deshacerPasada,
   avanzarTanda,
   dividirPasada,
+  calificarPasada,
 } from '../../lib/pipeline-repo';
 
 // Acciones del tablero. Reciben argumentos simples (no FormData) para poder llamarlas desde
@@ -48,5 +49,11 @@ export async function avanzarTandaPrendas(ids: string[], destino: string): Promi
 export async function dividirPrenda(id: string) {
   if (!id) return;
   await dividirPasada(id);
+  revalidatePath('/pipeline');
+}
+
+export async function calificarPrenda(id: string, aceptada: boolean, destino = '') {
+  if (!id) return;
+  await calificarPasada(id, aceptada, destino);
   revalidatePath('/pipeline');
 }
