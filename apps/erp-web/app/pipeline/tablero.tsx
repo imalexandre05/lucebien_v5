@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useOptimistic, useTransition } from 'react';
+import { useEffect, useState, useOptimistic, useTransition } from 'react';
 import {
   Inbox,
   Droplets,
@@ -14,13 +14,14 @@ import {
   ArrowRight,
   Send,
   Undo2,
+  Zap,
   type LucideIcon,
 } from 'lucide-react';
 import type { PrendaPasada } from '@scilb/core';
 import { TRANSICIONES } from '@scilb/core';
 import { avanzarPrenda, enviarPrenda, rechazarPrenda } from './actions';
 
-// Color real de la prenda → punto de color en la tarjeta (tomado del sistema viejo).
+// Color real de la prenda → punto de color en la tarjeta (del sistema viejo).
 const COL_MAP: Record<string, string> = {
   Negro: '#1a1a1a',
   'Azul noche': '#1e2a4a',
@@ -41,7 +42,6 @@ const COL_MAP: Record<string, string> = {
   Otros: '#aaaaaa',
 };
 
-// Cada etapa con su ícono y color, para que el personal la reconozca de un vistazo.
 type Col = { k: string; n: string; icon: LucideIcon; tint: string };
 const COLUMNAS: Col[] = [
   { k: 'recepcion', n: 'Recepción', icon: Inbox, tint: '#64748b' },
@@ -56,7 +56,12 @@ const COLUMNAS: Col[] = [
 ];
 const NOMBRE: Record<string, string> = Object.fromEntries(COLUMNAS.map((c) => [c.k, c.n]));
 
-type AccionFn = (id: string, etapa: string, run: () => Promise<void>) => void;
+type Handlers = {
+  avanzar: (id: string, destino: string) => void;
+  enviar: (id: string, sede: string) => void;
+  rechazar: (id: string, destino: string) => void;
+};
+type Toast = { msg: string; tono: 'ok' | 'gold' | 'warn' };
 
 export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
   const [, startTransition] = useTransition();
@@ -64,50 +69,102 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
   const [optimistas, aplicar] = useOptimistic(pasadas, (state: PrendaPasada[], m: { id: string; etapa: string }) =>
     state.map((p) => (p.id === m.id ? { ...p, etapa: m.etapa as PrendaPasada['etapa'] } : p)),
   );
+  const [sesionPts, setSesionPts] = useState(0);
+  const [toast, setToast] = useState<Toast | null>(null);
 
-  const accion: AccionFn = (id, etapa, run) =>
-    startTransition(async () => {
-      aplicar({ id, etapa });
-      await run();
-    });
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 2200);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  const h: Handlers = {
+    avanzar: (id, destino) =>
+      startTransition(async () => {
+        aplicar({ id, etapa: destino });
+        const pts = await avanzarPrenda(id, destino);
+        if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
+        setToast({ msg: `${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`, tono: 'ok' });
+      }),
+    enviar: (id, sede) =>
+      startTransition(async () => {
+        aplicar({ id, etapa: 'enviado' });
+        await enviarPrenda(id, sede);
+        setToast({ msg: `Enviado a ${sede}`, tono: 'gold' });
+      }),
+    rechazar: (id, destino) =>
+      startTransition(async () => {
+        aplicar({ id, etapa: destino });
+        await rechazarPrenda(id, destino);
+        setToast({ msg: `Devuelto a ${NOMBRE[destino] ?? destino}`, tono: 'warn' });
+      }),
+  };
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-3">
-      {COLUMNAS.map((col) => {
-        const items = optimistas.filter((p) => p.etapa === col.k);
-        const Icon = col.icon;
-        return (
-          <div key={col.k} className="w-56 shrink-0">
-            <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: `${col.tint}14` }}>
-              <Icon className="h-4 w-4 shrink-0" style={{ color: col.tint }} strokeWidth={2} />
-              <span className="text-sm font-medium" style={{ color: col.tint }}>
-                {col.n}
-              </span>
-              <span
-                className="ml-auto rounded-full bg-white px-2 py-0.5 font-mono text-xs font-semibold"
-                style={{ color: col.tint }}
-              >
-                {items.length}
-              </span>
+    <div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-600/10 px-3 py-1 text-xs font-medium text-emerald-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" /> En vivo
+        </span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-gold/15 px-3 py-1 text-xs font-medium text-[#7a6e0e]">
+          <Zap className="h-3.5 w-3.5" strokeWidth={2.5} /> Tu sesión:{' '}
+          <span className="font-mono font-bold tabular-nums">{sesionPts}</span> pts
+        </span>
+      </div>
+
+      <div className="flex gap-3 overflow-x-auto pb-3">
+        {COLUMNAS.map((col) => {
+          const items = optimistas.filter((p) => p.etapa === col.k);
+          const Icon = col.icon;
+          return (
+            <div key={col.k} className="w-56 shrink-0">
+              <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: `${col.tint}14` }}>
+                <Icon className="h-4 w-4 shrink-0" style={{ color: col.tint }} strokeWidth={2} />
+                <span className="text-sm font-medium" style={{ color: col.tint }}>
+                  {col.n}
+                </span>
+                <span
+                  className="ml-auto rounded-full bg-white px-2 py-0.5 font-mono text-xs font-semibold tabular-nums"
+                  style={{ color: col.tint }}
+                >
+                  {items.length}
+                </span>
+              </div>
+              <div className="space-y-2">
+                {items.map((p) => (
+                  <Tarjeta key={p.id} p={p} h={h} />
+                ))}
+                {items.length === 0 && (
+                  <div className="rounded-lg border border-dashed border-line py-5 text-center text-xs text-slate-400">
+                    — vacío —
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="space-y-2">
-              {items.map((p) => (
-                <Tarjeta key={p.id} p={p} accion={accion} />
-              ))}
-              {items.length === 0 && (
-                <div className="rounded-lg border border-dashed border-line py-5 text-center text-xs text-slate-400">
-                  — vacío —
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
+
+      {toast && (
+        <div
+          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-lg ${
+            toast.tono === 'gold'
+              ? 'bg-gold text-navy'
+              : toast.tono === 'warn'
+                ? 'bg-amber-600 text-white'
+                : 'bg-navy text-white'
+          }`}
+          role="status"
+        >
+          {toast.tono === 'warn' ? '↩ ' : '✓ '}
+          {toast.msg}
+        </div>
+      )}
     </div>
   );
 }
 
-function Tarjeta({ p, accion }: { p: PrendaPasada; accion: AccionFn }) {
+function Tarjeta({ p, h }: { p: PrendaPasada; h: Handlers }) {
   const dests = (TRANSICIONES as Record<string, readonly string[]>)[p.etapa] ?? [];
   const meta = [p.tipo, p.color, p.talla ? `T.${p.talla}` : ''].filter(Boolean).join(' · ');
   return (
@@ -138,7 +195,7 @@ function Tarjeta({ p, accion }: { p: PrendaPasada; accion: AccionFn }) {
           {dests.map((d) => (
             <button
               key={d}
-              onClick={() => accion(p.id, d, () => avanzarPrenda(p.id, d))}
+              onClick={() => h.avanzar(p.id, d)}
               className="inline-flex items-center justify-center gap-1.5 rounded-md bg-navy px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-[#26345c] active:scale-[.98]"
             >
               {NOMBRE[d] ?? d} <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
@@ -147,13 +204,13 @@ function Tarjeta({ p, accion }: { p: PrendaPasada; accion: AccionFn }) {
         </div>
       )}
 
-      {p.etapa === 'listo' && <Enviar p={p} accion={accion} />}
-      {p.etapa === 'control_calidad' && <Rechazar p={p} accion={accion} />}
+      {p.etapa === 'listo' && <Enviar p={p} h={h} />}
+      {p.etapa === 'control_calidad' && <Rechazar p={p} h={h} />}
     </div>
   );
 }
 
-function Enviar({ p, accion }: { p: PrendaPasada; accion: AccionFn }) {
+function Enviar({ p, h }: { p: PrendaPasada; h: Handlers }) {
   const [sede, setSede] = useState(['LB', 'ST', 'TR'].includes(p.sedeOrigenCod) ? p.sedeOrigenCod : 'LB');
   return (
     <div className="mt-2 flex items-center gap-1.5">
@@ -168,7 +225,7 @@ function Enviar({ p, accion }: { p: PrendaPasada; accion: AccionFn }) {
         <option value="TR">TR</option>
       </select>
       <button
-        onClick={() => accion(p.id, 'enviado', () => enviarPrenda(p.id, sede))}
+        onClick={() => h.enviar(p.id, sede)}
         className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-gold px-2.5 py-1.5 text-xs font-semibold text-navy transition hover:brightness-95 active:scale-[.98]"
       >
         <Send className="h-3.5 w-3.5" strokeWidth={2.5} /> Enviar
@@ -177,7 +234,7 @@ function Enviar({ p, accion }: { p: PrendaPasada; accion: AccionFn }) {
   );
 }
 
-function Rechazar({ p, accion }: { p: PrendaPasada; accion: AccionFn }) {
+function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
   const [destino, setDestino] = useState('planchado');
   return (
     <div className="mt-1.5 flex items-center gap-1.5">
@@ -195,7 +252,7 @@ function Rechazar({ p, accion }: { p: PrendaPasada; accion: AccionFn }) {
         <option value="planchado">Planchado</option>
       </select>
       <button
-        onClick={() => accion(p.id, destino, () => rechazarPrenda(p.id, destino))}
+        onClick={() => h.rechazar(p.id, destino)}
         className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 active:scale-[.98]"
       >
         <Undo2 className="h-3.5 w-3.5" strokeWidth={2.5} /> Rechazar
