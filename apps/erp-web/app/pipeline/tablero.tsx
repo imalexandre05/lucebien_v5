@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import type { PrendaPasada } from '@scilb/core';
 import { TRANSICIONES } from '@scilb/core';
-import { avanzarPrenda, enviarPrenda, rechazarPrenda, deshacerPrenda } from './actions';
+import { avanzarPrenda, enviarPrenda, rechazarPrenda, deshacerPrenda, avanzarTandaPrendas } from './actions';
 
 // Color real de la prenda → punto de color en la tarjeta (del sistema viejo).
 const COL_MAP: Record<string, string> = {
@@ -57,8 +57,20 @@ const COLUMNAS: Col[] = [
 ];
 const NOMBRE: Record<string, string> = Object.fromEntries(COLUMNAS.map((c) => [c.k, c.n]));
 
+// Destino primario al avanzar en tanda (toda la columna), portado del mapa NEXT del viejo.
+const NEXT_TANDA: Record<string, string> = {
+  recepcion: 'lavado',
+  lavado: 'empatado',
+  empatado: 'refaccion',
+  refaccion: 'planchado',
+  compostura: 'planchado',
+  planchado: 'control_calidad',
+  control_calidad: 'listo',
+};
+
 type Handlers = {
   avanzar: (id: string, destino: string, etapaActual: string) => void;
+  avanzarTanda: (ids: string[], destino: string) => void;
   enviar: (id: string, sede: string) => void;
   rechazar: (id: string, destino: string) => void;
 };
@@ -112,6 +124,13 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
         await rechazarPrenda(id, destino);
         setToast({ msg: `Devuelto a ${NOMBRE[destino] ?? destino}`, tono: 'warn' });
       }),
+    avanzarTanda: (ids, destino) =>
+      startTransition(async () => {
+        ids.forEach((id) => aplicar({ id, etapa: destino }));
+        const pts = await avanzarTandaPrendas(ids, destino);
+        if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
+        setToast({ msg: `${ids.length} prendas → ${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`, tono: 'ok' });
+      }),
   };
 
   const ql = q.trim().toLowerCase();
@@ -159,6 +178,14 @@ export function TableroPipeline({ pasadas }: { pasadas: PrendaPasada[] }) {
                   {items.length}
                 </span>
               </div>
+              {items.length >= 2 && NEXT_TANDA[col.k] && (
+                <button
+                  onClick={() => h.avanzarTanda(items.map((i) => i.id), NEXT_TANDA[col.k])}
+                  className="mb-2 inline-flex w-full items-center justify-center gap-1 rounded-md border border-navy/15 bg-navy/5 px-2 py-1 text-[11px] font-medium text-navy transition hover:bg-navy/10"
+                >
+                  Avanzar todas → {NOMBRE[NEXT_TANDA[col.k]] ?? NEXT_TANDA[col.k]}
+                </button>
+              )}
               <div className="space-y-2">
                 {items.map((p) => (
                   <Tarjeta key={p.id} p={p} h={h} />

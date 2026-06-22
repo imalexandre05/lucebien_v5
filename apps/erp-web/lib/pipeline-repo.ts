@@ -111,3 +111,25 @@ export async function deshacerPasada(id: string, etapaAnterior: string): Promise
   const { error } = await sb.rpc('pipeline_deshacer', { p_id: id, p_etapa_anterior: etapaAnterior });
   if (error) throw new Error(error.message);
 }
+
+// Tanda: avanza varias prendas de una etapa de un solo golpe. Devuelve los puntos totales.
+export async function avanzarTanda(ids: string[], destino: string): Promise<number> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_avanzar_tanda', { p_ids: ids, p_destino: destino });
+  if (error) throw new Error(error.message);
+  return Number(data) || 0;
+}
+
+export type RankingItem = { nombre: string; total: number; acciones: number };
+
+// Ranking de puntos del día (todos los operarios; security definer en 0011).
+export async function rankingHoy(): Promise<RankingItem[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_ranking_hoy');
+  if (error) throw new Error(error.message);
+  return (data as RankingItem[]).map((r) => ({
+    nombre: r.nombre,
+    total: Number(r.total),
+    acciones: Number(r.acciones),
+  }));
+}
