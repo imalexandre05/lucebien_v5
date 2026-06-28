@@ -26,7 +26,8 @@ export async function iniciarTurno(
   return { actividades, draft: draft?.payload ?? null };
 }
 
-export type CrearReporteInput = {
+// Tipo local (no exportado): un archivo 'use server' solo puede EXPORTAR funciones async.
+type CrearReporteInput = {
   id: string;
   sede: string;
   turno: string;

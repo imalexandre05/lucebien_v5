@@ -70,6 +70,10 @@ export function NuevoReporteForm({
       setTrabajadores(d.trabajadores ?? []);
       setExtras(d.extras ?? []);
       setCargando(false);
+    }).catch((e) => {
+      if (!vivo) return;
+      setError(e instanceof Error ? e.message : 'No se pudo cargar el turno');
+      setCargando(false);
     });
     return () => {
       vivo = false;
@@ -174,7 +178,7 @@ export function NuevoReporteForm({
       </Card>
 
       {!turno && (
-        <p className="text-sm text-muted">Elegí un turno para cargar las actividades del día.</p>
+        <p className="text-sm text-muted">Selecciona un turno para cargar las actividades del día.</p>
       )}
       {cargando && <p className="text-sm text-muted">Cargando actividades…</p>}
 
@@ -308,7 +312,7 @@ export function NuevoReporteForm({
             >
               {pending ? 'Enviando…' : 'Enviar reporte'}
             </button>
-            <span className="text-xs text-muted">Se guarda solo mientras lo llenás.</span>
+            <span className="text-xs text-muted">Se guarda automáticamente mientras lo completas.</span>
           </div>
         </>
       )}
