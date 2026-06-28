@@ -19,7 +19,13 @@ export default async function NuevoReportePage() {
   return (
     <div>
       <PageHeader title="Nuevo reporte FR-01" subtitle={`${sede || 'sin sede'} · ${fecha}`} />
-      <NuevoReporteForm sede={sede} fecha={fecha} encargadoId={sesion.usuario.id} empleados={empleados} />
+      <NuevoReporteForm
+        sede={sede}
+        fecha={fecha}
+        encargadoId={sesion.usuario.id}
+        encargadoNombre={sesion.nombre}
+        empleados={empleados}
+      />
     </div>
   );
 }
