@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, AlertTriangle, type LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
 type Item = { label: string; href: string; icon: LucideIcon };
@@ -14,6 +14,7 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Dashboard', href: '/', icon: LayoutDashboard },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt },
       { label: 'Reportes', href: '/reportes', icon: ClipboardList },
+      { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle },
       { label: 'Empleados', href: '/empleados', icon: Users },
     ],
   },
