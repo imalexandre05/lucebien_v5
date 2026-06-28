@@ -111,6 +111,12 @@ for (const e of empSql) {
   const n = norm(e.nombre);
   if (n) nombreToUuid[n] = nombreToUuid[n] && nombreToUuid[n] !== uuid ? 'AMBIG' : uuid; // homónimos → no resolver por nombre
 }
+// Alias de nombres mal escritos en el origen (confirmados con el responsable) → nombre canónico.
+// 'Marylin' es la misma persona que 'Mary' (E06): el origen guarda ambas grafías.
+const ALIASES = { marylin: 'mary' };
+for (const [alias, canon] of Object.entries(ALIASES)) {
+  if (nombreToUuid[canon] && nombreToUuid[canon] !== 'AMBIG') nombreToUuid[alias] = nombreToUuid[canon];
+}
 const orphans = new Map();
 function resolveEmp(cod, nombre) {
   if (cod != null && codToUuid[String(cod)]) return codToUuid[String(cod)];
