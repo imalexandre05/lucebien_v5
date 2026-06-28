@@ -7,10 +7,12 @@ import {
   type EstadoReporte,
 } from '@scilb/core';
 import { obtenerReporte } from '../../../lib/reportes-repo';
+import { getSesion } from '../../../lib/auth';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge, type Tone } from '../../../components/ui/badge';
+import { EvaluarPanel, AccionesAdmin } from './acciones';
 
 const ESTADO_TONE: Record<EstadoReporte, Tone> = {
   evaluado: 'green',
@@ -31,6 +33,9 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
   const r = await obtenerReporte(params.id);
   if (!r) notFound();
   const estado = estadoReporte(r);
+  const sesion = await getSesion();
+  const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
+  const puedeEvaluar = !r.evaluado && !r.noEvaluable;
 
   return (
     <div className="max-w-3xl">
@@ -142,6 +147,20 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
           </Card>
         </>
       )}
+
+      {puedeEvaluar && (
+        <EvaluarPanel
+          id={r.id}
+          actividades={r.actividades.map((a) => ({
+            cod: a.cod,
+            nombre: a.nombre,
+            peso: a.peso,
+            calificacion: a.calificacion,
+          }))}
+        />
+      )}
+
+      {esAdmin && <AccionesAdmin id={r.id} evaluado={r.evaluado} />}
 
       <Link
         href="/reportes"

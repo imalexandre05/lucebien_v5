@@ -7,6 +7,9 @@ import {
   getDraft,
   saveDraft,
   crearReporte,
+  evaluarReporte,
+  anularReporte,
+  anularEval,
   type ActividadDelTurno,
 } from '../../lib/reportes-repo';
 
@@ -58,5 +61,40 @@ export async function accionGuardarDraft(p: {
     await saveDraft(p);
   } catch {
     // silencioso: el autosave no debe interrumpir al usuario
+  }
+}
+
+export async function accionEvaluar(
+  id: string,
+  calificaciones: { cod: string; cal: number; obs: string }[],
+): Promise<{ ok: boolean; puntaje?: number; error?: string }> {
+  try {
+    const puntaje = await evaluarReporte(id, calificaciones);
+    revalidatePath(`/reportes/${id}`);
+    revalidatePath('/reportes');
+    return { ok: true, puntaje };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al evaluar' };
+  }
+}
+
+export async function accionAnular(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await anularReporte(id);
+    revalidatePath('/reportes');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al anular' };
+  }
+}
+
+export async function accionAnularEval(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await anularEval(id);
+    revalidatePath(`/reportes/${id}`);
+    revalidatePath('/reportes');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al anular la evaluación' };
   }
 }
