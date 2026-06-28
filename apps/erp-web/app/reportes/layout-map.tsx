@@ -3,8 +3,8 @@
 import { useMemo } from 'react';
 import { Check } from 'lucide-react';
 import type { TurnoReporte } from '@scilb/core';
-import type { LayoutZona } from '../../../lib/reportes-repo';
-import { cn } from '../../../lib/cn';
+import type { LayoutZona } from '../../lib/reportes-repo';
+import { cn } from '../../lib/cn';
 
 const W = 800;
 const H = 580;
@@ -25,11 +25,13 @@ export function LayoutMap({
   turno,
   selected,
   onChange,
+  readOnly = false,
 }: {
   zonas: LayoutZona[];
   turno: TurnoReporte;
   selected: string[];
-  onChange: (cods: string[]) => void;
+  onChange?: (cods: string[]) => void;
+  readOnly?: boolean;
 }) {
   const sel = useMemo(() => new Set(selected), [selected]);
 
@@ -37,48 +39,50 @@ export function LayoutMap({
   const especiales = useMemo(() => mostradas.filter((z) => z.forma === 'special'), [mostradas]);
   const enMapa = useMemo(() => mostradas.filter((z) => z.forma !== 'special'), [mostradas]);
 
-  const totalPts = useMemo(
-    () => mostradas.filter(puntuable).reduce((s, z) => s + z.peso, 0),
-    [mostradas],
-  );
+  const totalPts = useMemo(() => mostradas.filter(puntuable).reduce((s, z) => s + z.peso, 0), [mostradas]);
   const ganados = useMemo(
     () => mostradas.filter((z) => puntuable(z) && sel.has(z.cod)).reduce((s, z) => s + z.peso, 0),
     [mostradas, sel],
   );
 
-  function toggle(cod: string) {
-    onChange(sel.has(cod) ? selected.filter((c) => c !== cod) : [...selected, cod]);
-  }
-  function marcar(cods: string[]) {
-    onChange(cods);
-  }
-  const codsPuntuablesTurno = () => mostradas.filter(puntuable).map((z) => z.cod);
-  const codsPuntuablesTodas = () => zonas.filter(puntuable).map((z) => z.cod);
+  const emit = (cods: string[]) => onChange?.(cods);
+  const toggle = (cod: string) => {
+    if (readOnly) return;
+    emit(sel.has(cod) ? selected.filter((c) => c !== cod) : [...selected, cod]);
+  };
+
+  // En solo-lectura mostramos únicamente las zonas marcadas (las limpiadas).
+  const especialesVisibles = readOnly ? especiales.filter((z) => sel.has(z.cod)) : especiales;
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={() => marcar(codsPuntuablesTurno())} className="rounded-md border border-line px-2 py-1 text-xs text-navy hover:border-gold">
-          ✓ Turno
-        </button>
-        <button type="button" onClick={() => marcar(codsPuntuablesTodas())} className="rounded-md border border-line px-2 py-1 text-xs text-navy hover:border-gold">
-          ✓ Todas
-        </button>
-        <button type="button" onClick={() => marcar([])} className="rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-gold">
-          Limpiar
-        </button>
-        {/* Zonas especiales (piso / calle): no caben en el mapa, van como chips */}
-        {especiales.map((z) => {
+        {!readOnly && (
+          <>
+            <button type="button" onClick={() => emit(mostradas.filter(puntuable).map((z) => z.cod))} className="rounded-md border border-line px-2 py-1 text-xs text-navy hover:border-gold">
+              ✓ Turno
+            </button>
+            <button type="button" onClick={() => emit(zonas.filter(puntuable).map((z) => z.cod))} className="rounded-md border border-line px-2 py-1 text-xs text-navy hover:border-gold">
+              ✓ Todas
+            </button>
+            <button type="button" onClick={() => emit([])} className="rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-gold">
+              Limpiar
+            </button>
+          </>
+        )}
+        {especialesVisibles.map((z) => {
           const on = sel.has(z.cod);
           return (
             <button
               key={z.cod}
               type="button"
+              disabled={readOnly}
               onClick={() => toggle(z.cod)}
               title={z.nombre}
               className={cn(
                 'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors',
                 on ? 'border-emerald-600 bg-emerald-600/10 text-emerald-700' : 'border-line bg-white text-muted hover:border-gold',
+                readOnly && 'cursor-default',
               )}
             >
               {on && <Check className="h-3 w-3" strokeWidth={2.5} />}
@@ -116,19 +120,20 @@ export function LayoutMap({
               </div>
             );
           }
+          // En solo-lectura las no marcadas se ven tenues (referencia); la marcada resalta en verde.
+          const fondo = on ? '#16a34a' : readOnly ? `${z.color}55` : z.color;
           return (
             <button
               key={z.cod}
               type="button"
+              disabled={readOnly}
               onClick={() => toggle(z.cod)}
               title={`${z.nombre} · ${z.peso} pts`}
-              style={{
-                ...style,
-                background: on ? '#16a34a' : z.color,
-                outline: on ? '2px solid #15803d' : 'none',
-                outlineOffset: -1,
-              }}
-              className="flex items-center justify-center overflow-hidden text-white transition-[background-color] duration-100 hover:brightness-110"
+              style={{ ...style, background: fondo, outline: on ? '2px solid #15803d' : 'none', outlineOffset: -1 }}
+              className={cn(
+                'flex items-center justify-center overflow-hidden text-white transition-[background-color] duration-100',
+                readOnly ? 'cursor-default' : 'hover:brightness-110',
+              )}
             >
               {on ? (
                 <Check className="h-3 w-3" strokeWidth={3} />

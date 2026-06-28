@@ -6,12 +6,13 @@ import {
   ESTADO_REPORTE_LABEL,
   type EstadoReporte,
 } from '@scilb/core';
-import { obtenerReporte } from '../../../lib/reportes-repo';
+import { obtenerReporte, listarLayoutZonas } from '../../../lib/reportes-repo';
 import { getSesion } from '../../../lib/auth';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge, type Tone } from '../../../components/ui/badge';
+import { LayoutMap } from '../layout-map';
 import { EvaluarPanel, AccionesAdmin } from './acciones';
 
 const ESTADO_TONE: Record<EstadoReporte, Tone> = {
@@ -19,6 +20,8 @@ const ESTADO_TONE: Record<EstadoReporte, Tone> = {
   pendiente: 'amber',
   no_evaluable: 'gray',
 };
+
+const esLimpieza = (cod: string) => cod.startsWith('OL_');
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -36,6 +39,11 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
   const puedeEvaluar = !r.evaluado && !r.noEvaluable;
+
+  // Separa actividades regulares de las de limpieza (OL_), que se muestran en el mapa.
+  const regulares = r.actividades.filter((a) => !esLimpieza(a.cod));
+  const limpiezaCods = r.actividades.filter((a) => esLimpieza(a.cod)).map((a) => a.cod.slice(3));
+  const zonas = limpiezaCods.length ? await listarLayoutZonas(r.sedeCod) : [];
 
   return (
     <div className="max-w-3xl">
@@ -81,6 +89,17 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
         </CardContent>
       </Card>
 
+      {zonas.length > 0 && (
+        <>
+          <h2 className="mb-2 mt-6 text-sm font-semibold text-navy">Limpieza</h2>
+          <Card>
+            <CardContent>
+              <LayoutMap zonas={zonas} turno={r.turno} selected={limpiezaCods} readOnly />
+            </CardContent>
+          </Card>
+        </>
+      )}
+
       <h2 className="mb-2 mt-6 text-sm font-semibold text-navy">Actividades</h2>
       <Card>
         <CardContent className="px-0 pb-0">
@@ -95,7 +114,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
               </TR>
             </THead>
             <TBody>
-              {r.actividades.map((a) => (
+              {regulares.map((a) => (
                 <TR key={a.id}>
                   <TD className="pl-5 font-mono text-xs">{a.cod}</TD>
                   <TD>{a.nombre}</TD>
@@ -106,7 +125,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
                   <TD className="pr-5 text-xs text-muted">{a.obsEval || a.obs || '—'}</TD>
                 </TR>
               ))}
-              {r.actividades.length === 0 && (
+              {regulares.length === 0 && (
                 <TR>
                   <TD className="px-5 py-6 text-center text-muted" colSpan={5}>
                     Sin actividades registradas.
@@ -157,6 +176,9 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
             peso: a.peso,
             calificacion: a.calificacion,
           }))}
+          zonas={zonas}
+          limpiezaCods={limpiezaCods}
+          turno={r.turno}
         />
       )}
 

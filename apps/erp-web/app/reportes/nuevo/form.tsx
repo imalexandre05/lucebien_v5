@@ -6,7 +6,7 @@ import { Sun, Moon, Clock, Check, Square, Plus, Trash2 } from 'lucide-react';
 import { idReporte, type TurnoReporte } from '@scilb/core';
 import { iniciarTurno, accionCrearReporte, accionGuardarDraft } from '../actions';
 import type { ActividadDelTurno, LayoutZona } from '../../../lib/reportes-repo';
-import { LayoutMap } from './layout-map';
+import { LayoutMap } from '../layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';

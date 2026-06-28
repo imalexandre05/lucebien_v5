@@ -2,8 +2,10 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { calcularPuntajeEval } from '@scilb/core';
+import { calcularPuntajeEval, type TurnoReporte } from '@scilb/core';
 import { accionEvaluar, accionAnular, accionAnularEval } from '../actions';
+import type { LayoutZona } from '../../../lib/reportes-repo';
+import { LayoutMap } from '../layout-map';
 import { Card, CardContent } from '../../../components/ui/card';
 import { buttonVariants } from '../../../components/ui/button';
 import { cn } from '../../../lib/cn';
@@ -21,7 +23,19 @@ const OPCIONES = [
 const fieldCls =
   'rounded-md border border-line bg-white px-2 py-1 text-xs text-navy outline-none transition-colors focus:border-gold';
 
-export function EvaluarPanel({ id, actividades }: { id: string; actividades: ActEval[] }) {
+export function EvaluarPanel({
+  id,
+  actividades,
+  zonas = [],
+  limpiezaCods = [],
+  turno,
+}: {
+  id: string;
+  actividades: ActEval[];
+  zonas?: LayoutZona[];
+  limpiezaCods?: string[];
+  turno: TurnoReporte;
+}) {
   const router = useRouter();
   const [cal, setCal] = useState<Record<string, number>>(() =>
     Object.fromEntries(actividades.map((a) => [a.cod, a.calificacion ?? 1])),
@@ -56,6 +70,14 @@ export function EvaluarPanel({ id, actividades }: { id: string; actividades: Act
         <h2 className="text-sm font-semibold text-navy">Evaluar reporte</h2>
         <span className="font-mono text-sm font-bold tabular-nums text-[#7a6e0e]">{puntaje}%</span>
       </div>
+      {zonas.length > 0 && (
+        <Card className="mb-3">
+          <CardContent>
+            <div className="mb-2 text-xs uppercase tracking-wide text-muted">Limpieza (zonas marcadas)</div>
+            <LayoutMap zonas={zonas} turno={turno} selected={limpiezaCods} readOnly />
+          </CardContent>
+        </Card>
+      )}
       <Card>
         <CardContent className="divide-y divide-line/60 px-0 py-0">
           {actividades.map((a) => (
