@@ -1,0 +1,37 @@
+insert into incidencia_tipos (tipo,categoria,nivel_default,puntos_default,activo) values
+('No contar con el uniforme completo','Uniforme','Bajo',1.0,true),
+('No colocar candados en su lugar al abrir','Seguridad','Medio',3.0,true),
+('Cerrar mal puertas','Seguridad','Medio',2.0,true),
+('No cerrar llaves del agua','Seguridad','Medio',2.0,true),
+('No bajar cuchillas de luz','Seguridad','Medio',2.0,true),
+('Dejar prendida la PC','Equipos','Bajo',1.0,true),
+('Dejar prendidas las luces','Equipos','Bajo',1.0,true),
+('Dejar prendida la plancha','Equipos','Alto',4.0,true),
+('No desconectar plancha','Equipos','Medio',2.0,true),
+('Dejar desordenada la tienda','Orden','Bajo',1.0,true),
+('No actualizar cuadernillos físicos','Documentación','Medio',2.0,true),
+('No subir lista de actividades diarias','Documentación','Medio',2.0,true),
+('No evaluó al turno anterior','Documentación','Medio',2.0,true),
+('Hurto o robo de prenda','Graves','Alto',10.0,true),
+('Prenda entregada en mal estado','Graves','Alto',5.0,true),
+('Accidente dentro del local','Graves','Alto',5.0,true),
+('Conflicto grave con cliente','Graves','Alto',5.0,true),
+('Faltante de caja significativo','Graves','Alto',6.0,true),
+('Pérdida o extravío de documento','Graves','Alto',5.0,true),
+('Daño en infraestructura','Graves','Alto',5.0,true),
+('Otro (especificar)','Otros','Medio',2.0,true)
+on conflict (tipo) do nothing;
+
+insert into incidencias (sede_cod,fecha,tipo,descripcion,nivel,responsable_id,reporte_id,reportado_por_id,puntos_penalidad,origen) values
+('LB','2026-04-07','Dejar prendida la plancha','se encontró encendido la plancha','Alto','30ad906c-dacd-4df4-93db-9ef669ce1c78','07-04-26_M-LB',null,0.0,'manual'),
+('LB','2026-04-07','Conflicto grave con cliente','no se encontraba listo el terno de confeccion - b-2056 - el taller se demoró (remy)','Alto','30ad906c-dacd-4df4-93db-9ef669ce1c78','07-04-26_M-LB',null,0.0,'manual'),
+('LB','2026-04-07','No contar con el uniforme completo','la plancha empezó a botar agua . cable roto de la pc','Alto','39207bf2-68fe-4410-90ad-f67b3f4bdae7',null,'30ad906c-dacd-4df4-93db-9ef669ce1c78',0.0,'manual'),
+('TR','2026-04-07','Dejar desordenada la tienda','ternos colgados en el corbatero','Medio','5d719514-e105-4972-9037-06b194158e13','07-04-26_T-TR',null,0.0,'manual'),
+('LB','2026-04-15','Cerrar mal puertas','DEJARON UN CANDADO MAL CERRADO','Alto','1ad4bfa5-c4f2-4635-b93a-71643bb6d29e','15-04-26_T-LB',null,0.0,'manual'),
+('LB','2026-04-15','No hacer seguimiento a cliente','NO ESTABA LISTO LA PRENDA DE LA BOLETA 5252','Alto','39207bf2-68fe-4410-90ad-f67b3f4bdae7','15-04-26_T-LB',null,0.0,'manual'),
+('LB','2026-04-15','No desconectar plancha','DEJARON PLANCHA PRENDIDA','Alto','1ad4bfa5-c4f2-4635-b93a-71643bb6d29e','15-04-26_T-LB',null,0.0,'manual'),
+('AL','2026-04-16','No contar con el uniforme completo','no cerro a kopito','Alto','5d719514-e105-4972-9037-06b194158e13',null,'39207bf2-68fe-4410-90ad-f67b3f4bdae7',5.0,'manual'),
+('LB','2026-04-16','Uniforme sucio o en mal estado','plancha rota','Alto','555a634e-fe35-4ed0-b209-27a4a0f32dcc',null,'120785d4-cc60-4664-a7bf-dd3ccba6935d',5.0,'manual'),
+('AL','2026-04-20','Otro (especificar)','rompio luna del baño de almacen','Alto','120785d4-cc60-4664-a7bf-dd3ccba6935d',null,'084cf499-0346-4dcc-9d71-76a016322fbc',5.0,'manual'),
+('LB','2026-04-23','Otro (especificar)','se queda en un turno conversando donde no le toca','Bajo','5d719514-e105-4972-9037-06b194158e13',null,'120785d4-cc60-4664-a7bf-dd3ccba6935d',1.0,'manual'),
+('LB','2026-04-25','Dejar desordenada la tienda','ternos sucios y empolvados. todos los muebles estaban sucios','Medio','39207bf2-68fe-4410-90ad-f67b3f4bdae7',null,'5d719514-e105-4972-9037-06b194158e13',2.0,'manual');
