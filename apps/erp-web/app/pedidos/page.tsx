@@ -59,7 +59,7 @@ export default async function PedidosPage() {
               {pedidos.length === 0 && (
                 <TR>
                   <TD className="px-5 py-8 text-center text-muted" colSpan={7}>
-                    Sin pedidos todavía. Creá el primero.
+                    Sin pedidos todavía. Crea el primero.
                   </TD>
                 </TR>
               )}

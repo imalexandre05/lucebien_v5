@@ -29,7 +29,7 @@ export default async function NuevoPedidoPage({ searchParams }: { searchParams: 
               <Label htmlFor="clienteId">Cliente</Label>
               <Select id="clienteId" name="clienteId" required defaultValue="">
                 <option value="" disabled>
-                  Elegí un cliente…
+                  Selecciona un cliente…
                 </option>
                 {clientes.map((c) => (
                   <option key={c.id} value={c.id}>
