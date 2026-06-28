@@ -54,16 +54,19 @@ export function NuevoReporteForm({
       setCat(actividades);
       const d = (draft ?? {}) as {
         trabajadores?: string[];
-        done?: Record<string, boolean>;
-        obs?: Record<string, string>;
+        actividades?: { cod: string; realizada?: boolean; obs?: string }[];
         extras?: Extra[];
       };
+      const prev = new Map((d.actividades ?? []).map((x) => [x.cod, x]));
       const initDone: Record<string, boolean> = {};
+      const initObs: Record<string, string> = {};
       actividades.forEach((a) => {
-        initDone[a.cod] = d.done ? Boolean(d.done[a.cod]) : true;
+        const p = prev.get(a.cod);
+        initDone[a.cod] = p ? Boolean(p.realizada) : true;
+        if (p?.obs) initObs[a.cod] = p.obs;
       });
       setDone(initDone);
-      setObs(d.obs ?? {});
+      setObs(initObs);
       setTrabajadores(d.trabajadores ?? []);
       setExtras(d.extras ?? []);
       setCargando(false);
@@ -89,11 +92,22 @@ export function NuevoReporteForm({
         fecha,
         turno,
         encargadoId,
-        payload: { trabajadores, done, obs, extras },
+        payload: {
+          trabajadores,
+          actividades: cat.map((a) => ({
+            cod: a.cod,
+            nombre: a.nombre,
+            cat: a.categoria,
+            peso: a.peso,
+            realizada: Boolean(done[a.cod]),
+            obs: obs[a.cod] ?? '',
+          })),
+          extras,
+        },
       });
     }, 1200);
     return () => clearTimeout(t);
-  }, [turno, cargando, sede, fecha, encargadoId, trabajadores, done, obs, extras]);
+  }, [turno, cargando, sede, fecha, encargadoId, trabajadores, done, obs, extras, cat]);
 
   function toggleTrab(id: string) {
     setTrabajadores((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
