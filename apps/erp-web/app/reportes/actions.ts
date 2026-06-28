@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import type { TurnoReporte } from '@scilb/core';
 import {
   listarActividadesConfig,
+  listarLayoutZonas,
   getDraft,
   saveDraft,
   crearReporte,
@@ -11,19 +12,21 @@ import {
   anularReporte,
   anularEval,
   type ActividadDelTurno,
+  type LayoutZona,
 } from '../../lib/reportes-repo';
 
-// Inicia el espacio de trabajo de un turno: catálogo de actividades + draft existente (si hay).
+// Inicia el espacio de trabajo de un turno: catálogo de actividades + zonas de limpieza + draft.
 export async function iniciarTurno(
   sede: string,
   fecha: string,
   turno: TurnoReporte,
-): Promise<{ actividades: ActividadDelTurno[]; draft: Record<string, unknown> | null }> {
-  const [actividades, draft] = await Promise.all([
+): Promise<{ actividades: ActividadDelTurno[]; zonas: LayoutZona[]; draft: Record<string, unknown> | null }> {
+  const [actividades, zonas, draft] = await Promise.all([
     listarActividadesConfig(sede, fecha, turno),
+    listarLayoutZonas(sede),
     getDraft(sede, fecha, turno),
   ]);
-  return { actividades, draft: draft?.payload ?? null };
+  return { actividades, zonas, draft: draft?.payload ?? null };
 }
 
 // Tipo local (no exportado): un archivo 'use server' solo puede EXPORTAR funciones async.

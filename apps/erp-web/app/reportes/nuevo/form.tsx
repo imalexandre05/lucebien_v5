@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Sun, Moon, Clock, Check, Square, Plus, Trash2 } from 'lucide-react';
 import { idReporte, type TurnoReporte } from '@scilb/core';
 import { iniciarTurno, accionCrearReporte, accionGuardarDraft } from '../actions';
-import type { ActividadDelTurno } from '../../../lib/reportes-repo';
+import type { ActividadDelTurno, LayoutZona } from '../../../lib/reportes-repo';
+import { LayoutMap } from './layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
@@ -45,6 +46,8 @@ export function NuevoReporteForm({
   const [obs, setObs] = useState<Record<string, string>>({});
   const [trabajadores, setTrabajadores] = useState<string[]>([]);
   const [extras, setExtras] = useState<Extra[]>([]);
+  const [zonas, setZonas] = useState<LayoutZona[]>([]);
+  const [limpieza, setLimpieza] = useState<string[]>([]);
   const [buscarTrab, setBuscarTrab] = useState('');
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
@@ -58,13 +61,15 @@ export function NuevoReporteForm({
     setCargando(true);
     setError('');
     iniciarTurno(sede, fecha, turno)
-      .then(({ actividades, draft }) => {
+      .then(({ actividades, zonas, draft }) => {
         if (!vivo) return;
         setCat(actividades);
+        setZonas(zonas);
         const d = (draft ?? {}) as {
           trabajadores?: string[];
           actividades?: { cod: string; realizada?: boolean; obs?: string }[];
           extras?: Extra[];
+          limpieza?: string[];
         };
         const prev = new Map((d.actividades ?? []).map((x) => [x.cod, x]));
         const initDone: Record<string, boolean> = {};
@@ -78,6 +83,7 @@ export function NuevoReporteForm({
         setObs(initObs);
         setTrabajadores(d.trabajadores ?? []);
         setExtras(d.extras ?? []);
+        setLimpieza(d.limpieza ?? []);
         setCargando(false);
       })
       .catch((e) => {
@@ -122,11 +128,12 @@ export function NuevoReporteForm({
             obs: obs[a.cod] ?? '',
           })),
           extras,
+          limpieza,
         },
       });
     }, 1200);
     return () => clearTimeout(t);
-  }, [turno, cargando, sede, fecha, encargadoId, trabajadores, done, obs, extras, cat]);
+  }, [turno, cargando, sede, fecha, encargadoId, trabajadores, done, obs, extras, cat, limpieza]);
 
   function toggleTrab(id: string) {
     setTrabajadores((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -142,6 +149,10 @@ export function NuevoReporteForm({
     const actividades = cat
       .filter((a) => done[a.cod])
       .map((a) => ({ cod: a.cod, nombre: a.nombre, cat: a.categoria, peso: a.peso, obs: obs[a.cod] ?? '' }));
+    // Zonas de limpieza marcadas → actividades OL_ (categoría IND), como en el sistema viejo.
+    const limpiezaActs = zonas
+      .filter((z) => z.tipo !== 'area' && limpieza.includes(z.cod))
+      .map((z) => ({ cod: `OL_${z.cod}`, nombre: `Limpieza: ${z.nombre}`, cat: 'IND', peso: z.peso, obs: '' }));
     setError('');
     startTransition(async () => {
       const r = await accionCrearReporte({
@@ -151,7 +162,7 @@ export function NuevoReporteForm({
         actTotal: cat.length,
         actDone: actividades.length,
         trabajadores,
-        actividades,
+        actividades: [...actividades, ...limpiezaActs],
         extras: extras
           .filter((e) => e.nombre.trim())
           .map((e) => ({
@@ -247,6 +258,19 @@ export function NuevoReporteForm({
 
       {turno && !cargando && (
         <>
+          {/* ── Limpieza (mapa de zonas) ── */}
+          {zonas.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Limpieza</CardTitle>
+                <span className="text-xs text-muted">Marca en el mapa las zonas que limpiaste</span>
+              </CardHeader>
+              <CardContent>
+                <LayoutMap zonas={zonas} turno={turno} selected={limpieza} onChange={setLimpieza} />
+              </CardContent>
+            </Card>
+          )}
+
           {/* ── Actividades del Turno ── */}
           <Card>
             <CardHeader>

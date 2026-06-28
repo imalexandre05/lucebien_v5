@@ -338,3 +338,48 @@ export async function deleteDraft(sede: string, fecha: string, turno: string): P
     .eq('turno', turno);
   if (error) throw new Error(error.message);
 }
+
+// ── Layout de limpieza (mapa de zonas por sede) ──────────────────────────────
+
+export type LayoutZona = {
+  id: number;
+  cod: string;
+  nombre: string;
+  turno: string; // 'mañana' | 'tarde' | 'ambos'
+  tipo: string; // 'area' no puntúa; el resto sí
+  peso: number;
+  posX: number;
+  posY: number;
+  ancho: number;
+  alto: number;
+  color: string;
+  forma: string; // 'rect' | 'circle' | 'tri' | 'special'
+  nivel: string;
+  sobreCod: string;
+};
+
+export async function listarLayoutZonas(sede: string): Promise<LayoutZona[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('layout_zonas')
+    .select('*')
+    .eq('sede_cod', sede)
+    .order('orden', { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data as Record<string, unknown>[]) ?? []).map((r) => ({
+    id: Number(r.id),
+    cod: String(r.cod),
+    nombre: String(r.nombre),
+    turno: String(r.turno ?? 'ambos'),
+    tipo: String(r.tipo ?? 'mueble'),
+    peso: Number(r.peso ?? 0),
+    posX: Number(r.pos_x ?? 0),
+    posY: Number(r.pos_y ?? 0),
+    ancho: Number(r.ancho ?? 0),
+    alto: Number(r.alto ?? 0),
+    color: String(r.color ?? '#3b82f6'),
+    forma: String(r.forma ?? 'rect'),
+    nivel: String(r.nivel ?? 'piso'),
+    sobreCod: String(r.sobre_cod ?? ''),
+  }));
+}
