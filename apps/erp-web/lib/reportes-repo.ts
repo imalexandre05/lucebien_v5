@@ -1,4 +1,12 @@
-import type { Reporte, ReporteActividad, ReporteDetalle, ReporteExtra, TurnoReporte } from '@scilb/core';
+import {
+  actAplicaHoy,
+  type ActividadConfig,
+  type Reporte,
+  type ReporteActividad,
+  type ReporteDetalle,
+  type ReporteExtra,
+  type TurnoReporte,
+} from '@scilb/core';
 import { getServerClient } from './supabase/server';
 
 type RepRow = {
@@ -133,4 +141,200 @@ export async function obtenerReporte(id: string): Promise<ReporteDetalle | null>
   }));
 
   return { ...baseReporte(r, nombre, trabajadores), actividades, extras };
+}
+
+// ── Catálogo de actividades del turno ────────────────────────────────────────
+
+export type ActividadDelTurno = ActividadConfig & { pendienteAcumulado: boolean };
+
+type ActCfgRow = {
+  id: string;
+  cod: string;
+  nombre: string;
+  categoria: string | null;
+  tipo_act: string | null;
+  peso: number | null;
+  activa: boolean;
+  turno: string | null;
+  frecuencia_dias: number | null;
+  dia_semana: string | null;
+  aparece_dia: number | null;
+  acumula: boolean | null;
+  precio_unitario: number | null;
+  unidad: string | null;
+  orden: number | null;
+};
+
+const fromCfg = (r: ActCfgRow): ActividadConfig => ({
+  id: r.id,
+  cod: r.cod,
+  nombre: r.nombre,
+  categoria: r.categoria,
+  tipoAct: r.tipo_act ?? 'obligatoria',
+  peso: Number(r.peso ?? 0),
+  activa: Boolean(r.activa),
+  turno: r.turno ?? 'ambos',
+  frecuenciaDias: Number(r.frecuencia_dias ?? 0),
+  diaSemana: r.dia_semana,
+  apareceDia: Number(r.aparece_dia ?? 0),
+  acumula: Boolean(r.acumula),
+  precioUnitario: Number(r.precio_unitario ?? 0),
+  unidad: r.unidad,
+  orden: Number(r.orden ?? 0),
+});
+
+// Actividades obligatorias que aplican en la sede/fecha/turno (filtra con actAplicaHoy del core),
+// más las pendientes acumuladas de turnos previos. Espeja routes/actividades.js GET /.
+export async function listarActividadesConfig(
+  sede: string,
+  fecha: string,
+  turno: TurnoReporte,
+): Promise<ActividadDelTurno[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('actividades_config')
+    .select('*')
+    .eq('sede_cod', sede)
+    .eq('activa', true)
+    .order('orden', { ascending: true })
+    .order('cod', { ascending: true });
+  if (error) throw new Error(error.message);
+
+  const all = ((data as ActCfgRow[]) ?? []).map(fromCfg);
+  const obligatorias = all.filter((a) => a.tipoAct === 'obligatoria' || (!a.tipoAct && a.categoria !== 'EXT'));
+
+  // Pendientes acumuladas (no resueltas) de la sede.
+  const { data: pend } = await sb
+    .from('actividades_pendientes')
+    .select('act_cod')
+    .eq('sede_cod', sede)
+    .eq('resuelta', false);
+  const pendientes = new Set(((pend as { act_cod: string }[]) ?? []).map((p) => p.act_cod));
+
+  const aplican = obligatorias
+    .filter((a) => actAplicaHoy(a, fecha, turno))
+    .map((a) => ({ ...a, pendienteAcumulado: pendientes.has(a.cod) }));
+
+  // Agrega actividades acumulables que están pendientes pero hoy no aplicaban.
+  const codsHoy = new Set(aplican.map((a) => a.cod));
+  for (const a of obligatorias) {
+    if (a.acumula && pendientes.has(a.cod) && !codsHoy.has(a.cod)) {
+      aplican.push({ ...a, pendienteAcumulado: true });
+    }
+  }
+  return aplican;
+}
+
+// Empleados (id+nombre) para elegir trabajadores del turno. OJO RLS: un no-admin solo se ve a sí
+// mismo (policy emp_select); el directorio completo es la decisión diferida (ver memoria).
+export async function listarEmpleados(): Promise<{ id: string; nombre: string }[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb.from('empleados').select('id, nombre').order('nombre');
+  if (error) throw new Error(error.message);
+  return (data as { id: string; nombre: string }[]) ?? [];
+}
+
+// ── Mutaciones vía RPC (atómicas, security invoker → RLS real; ver 0020) ─────
+
+export async function crearReporte(p: {
+  id: string;
+  sede: string;
+  turno: string;
+  actTotal: number;
+  actDone: number;
+  trabajadores: string[];
+  actividades: { cod: string; nombre: string; cat: string | null; peso: number; obs: string }[];
+  extras: { tipo: string; nombre: string; cantidad: number; precio_unitario: number; monto_total: number; detalle: string }[];
+}): Promise<string> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('reportes_crear', {
+    p_id: p.id,
+    p_sede: p.sede,
+    p_turno: p.turno,
+    p_act_total: p.actTotal,
+    p_act_done: p.actDone,
+    p_trabajadores: p.trabajadores,
+    p_actividades: p.actividades,
+    p_extras: p.extras,
+  });
+  if (error) throw new Error(error.message);
+  return String(data);
+}
+
+export async function evaluarReporte(
+  id: string,
+  calificaciones: { cod: string; cal: number; obs: string }[],
+): Promise<number> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('reportes_evaluar', { p_id: id, p_calificaciones: calificaciones });
+  if (error) throw new Error(error.message);
+  return Number(data) || 0;
+}
+
+export async function anularReporte(id: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('reportes_anular', { p_id: id });
+  if (error) throw new Error(error.message);
+}
+
+export async function anularEval(id: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('reportes_anular_eval', { p_id: id });
+  if (error) throw new Error(error.message);
+}
+
+// ── Drafts (autosave del formulario) ─────────────────────────────────────────
+
+export type DraftReporte = {
+  encargadoId: string | null;
+  payload: Record<string, unknown>;
+  updatedAt: string;
+};
+
+export async function getDraft(sede: string, fecha: string, turno: string): Promise<DraftReporte | null> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('reporte_drafts')
+    .select('encargado_id, payload, updated_at')
+    .eq('sede_cod', sede)
+    .eq('fecha', fecha)
+    .eq('turno', turno)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const d = data as { encargado_id: string | null; payload: Record<string, unknown>; updated_at: string };
+  return { encargadoId: d.encargado_id, payload: d.payload ?? {}, updatedAt: d.updated_at };
+}
+
+export async function saveDraft(p: {
+  sede: string;
+  fecha: string;
+  turno: string;
+  encargadoId: string | null;
+  payload: Record<string, unknown>;
+}): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.from('reporte_drafts').upsert(
+    {
+      sede_cod: p.sede,
+      fecha: p.fecha,
+      turno: p.turno,
+      encargado_id: p.encargadoId,
+      payload: p.payload,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'sede_cod,fecha,turno' },
+  );
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteDraft(sede: string, fecha: string, turno: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb
+    .from('reporte_drafts')
+    .delete()
+    .eq('sede_cod', sede)
+    .eq('fecha', fecha)
+    .eq('turno', turno);
+  if (error) throw new Error(error.message);
 }
