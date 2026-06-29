@@ -283,6 +283,13 @@ export async function anularEval(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+// Auto-asistencia: marca presentes al encargado + trabajadores del reporte (fuente='reporte').
+export async function marcarAsistenciaReporte(reporteId: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('reportes_marcar_asistencia', { p_reporte_id: reporteId });
+  if (error) throw new Error(error.message);
+}
+
 // ── Drafts (autosave del formulario) ─────────────────────────────────────────
 
 export type DraftReporte = {

@@ -11,6 +11,7 @@ import {
   evaluarReporte,
   anularReporte,
   anularEval,
+  marcarAsistenciaReporte,
   type ActividadDelTurno,
   type LayoutZona,
 } from '../../lib/reportes-repo';
@@ -69,8 +70,15 @@ export async function accionCrearReporte(
         items: input.incidencias,
       });
     }
+    // Auto-asistencia (best-effort): no debe romper la creación del reporte si falla.
+    try {
+      await marcarAsistenciaReporte(id);
+    } catch {
+      /* ignore */
+    }
     revalidatePath('/reportes');
     revalidatePath('/incidencias');
+    revalidatePath('/asistencias');
     return { ok: true, id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error al crear el reporte' };
