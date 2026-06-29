@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, AlertTriangle, CalendarCheck, Award, Wallet, Settings, type LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
-type Item = { label: string; href: string; icon: LucideIcon };
+type Item = { label: string; href: string; icon: LucideIcon; admin?: boolean };
 
 const NAV: { section: string; items: Item[] }[] = [
   {
@@ -19,7 +19,7 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Evaluaciones', href: '/evaluaciones', icon: Award },
       { label: 'Pagos', href: '/pagos', icon: Wallet },
       { label: 'Empleados', href: '/empleados', icon: Users },
-      { label: 'Configuración', href: '/configuracion', icon: Settings },
+      { label: 'Configuración', href: '/configuracion', icon: Settings, admin: true },
     ],
   },
   {
@@ -32,7 +32,7 @@ const NAV: { section: string; items: Item[] }[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
   const path = usePathname();
   return (
     <aside className="sticky top-0 flex h-screen w-60 flex-col bg-navy-deep text-paper/80 print:hidden">
@@ -48,7 +48,9 @@ export function Sidebar() {
               {group.section}
             </div>
             <ul className="space-y-0.5">
-              {group.items.map((it) => {
+              {group.items
+                .filter((it) => !it.admin || esAdmin)
+                .map((it) => {
                 const active = it.href === '/' ? path === '/' : path.startsWith(it.href);
                 const Icon = it.icon;
                 return (
