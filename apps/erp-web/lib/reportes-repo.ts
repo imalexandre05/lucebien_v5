@@ -8,6 +8,7 @@ import {
   type TurnoReporte,
 } from '@scilb/core';
 import { getServerClient } from './supabase/server';
+import { directorio, mapaNombres } from './directorio';
 
 type RepRow = {
   id: string;
@@ -30,12 +31,8 @@ type RepRow = {
 // Mapa id→nombre de empleados. OJO RLS: un no-admin solo se ve a sí mismo (policy emp_select
 // de 0002), así que para él los nombres de terceros saldrán null hasta que exista una policy
 // de "directorio" en empleados. Para admin/dueño resuelve todos.
-async function nombresEmpleados(
-  sb: ReturnType<typeof getServerClient>,
-): Promise<(id: string | null) => string | null> {
-  const { data, error } = await sb.from('empleados').select('id, nombre');
-  if (error) throw new Error(error.message);
-  const map = new Map((data as { id: string; nombre: string }[]).map((e) => [e.id, e.nombre]));
+async function nombresEmpleados(): Promise<(id: string | null) => string | null> {
+  const map = await mapaNombres();
   return (id) => (id ? map.get(id) ?? null : null);
 }
 
@@ -73,7 +70,7 @@ export async function listarReportes(): Promise<Reporte[]> {
     .limit(100);
   if (error) throw new Error(error.message);
   const rows = (data as RepRow[]) ?? [];
-  const nombre = await nombresEmpleados(sb);
+  const nombre = await nombresEmpleados();
 
   const trabByRep = new Map<string, string[]>();
   if (rows.length) {
@@ -101,7 +98,7 @@ export async function obtenerReporte(id: string): Promise<ReporteDetalle | null>
   if (error) throw new Error(error.message);
   if (!data) return null;
   const r = data as RepRow;
-  const nombre = await nombresEmpleados(sb);
+  const nombre = await nombresEmpleados();
 
   const [trabRes, actRes, extRes] = await Promise.all([
     sb.from('reporte_trabajadores').select('empleado_id').eq('reporte_id', id),
@@ -228,10 +225,10 @@ export async function listarActividadesConfig(
 // Empleados (id+nombre) para elegir trabajadores del turno. OJO RLS: un no-admin solo se ve a sí
 // mismo (policy emp_select); el directorio completo es la decisión diferida (ver memoria).
 export async function listarEmpleados(): Promise<{ id: string; nombre: string }[]> {
-  const sb = getServerClient();
-  const { data, error } = await sb.from('empleados').select('id, nombre').order('nombre');
-  if (error) throw new Error(error.message);
-  return (data as { id: string; nombre: string }[]) ?? [];
+  const items = await directorio();
+  return items
+    .map((d) => ({ id: d.id, nombre: d.nombre }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
 // ── Mutaciones vía RPC (atómicas, security invoker → RLS real; ver 0020) ─────

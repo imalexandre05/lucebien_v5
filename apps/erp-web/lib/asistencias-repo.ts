@@ -1,4 +1,5 @@
 import { getServerClient } from './supabase/server';
+import { mapaNombres } from './directorio';
 
 export type Asistencia = {
   id: string;
@@ -35,8 +36,7 @@ export async function listarAsistencias(): Promise<Asistencia[]> {
   if (error) throw new Error(error.message);
   const rows = (data as Row[]) ?? [];
 
-  const { data: emps } = await sb.from('empleados').select('id, nombre');
-  const nombre = new Map(((emps as { id: string; nombre: string }[]) ?? []).map((e) => [e.id, e.nombre]));
+  const nombre = await mapaNombres();
 
   return rows.map((r) => ({
     id: r.id,

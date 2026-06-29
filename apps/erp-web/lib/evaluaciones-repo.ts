@@ -1,6 +1,7 @@
 import type { PesosEval } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import { leerConfigMap } from './config-repo';
+import { mapaNombres } from './directorio';
 
 export type Evaluacion = {
   id: string;
@@ -41,8 +42,7 @@ export async function listarEvaluaciones(): Promise<Evaluacion[]> {
   if (error) throw new Error(error.message);
   const rows = (data as Record<string, unknown>[]) ?? [];
 
-  const { data: emps } = await sb.from('empleados').select('id, nombre');
-  const nombre = new Map(((emps as { id: string; nombre: string }[]) ?? []).map((e) => [e.id, e.nombre]));
+  const nombre = await mapaNombres();
 
   return rows.map((r) => ({
     id: String(r.id),

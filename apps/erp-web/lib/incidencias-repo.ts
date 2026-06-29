@@ -1,4 +1,5 @@
 import { getServerClient } from './supabase/server';
+import { mapaNombres } from './directorio';
 
 export type Incidencia = {
   id: string;
@@ -51,8 +52,7 @@ export async function listarIncidencias(): Promise<Incidencia[]> {
   if (error) throw new Error(error.message);
   const rows = (data as Row[]) ?? [];
 
-  const { data: emps } = await sb.from('empleados').select('id, nombre');
-  const nombre = new Map(((emps as { id: string; nombre: string }[]) ?? []).map((e) => [e.id, e.nombre]));
+  const nombre = await mapaNombres();
   const n = (id: string | null) => (id ? nombre.get(id) ?? null : null);
 
   return rows.map((r) => ({
