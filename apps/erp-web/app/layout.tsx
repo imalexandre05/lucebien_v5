@@ -19,7 +19,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Sidebar esAdmin={esAdmin} />
           <div className="flex min-w-0 flex-1 flex-col">
             <Topbar />
-            <main className="flex-1 px-7 py-8">{children}</main>
+            <main className="flex-1 px-5 py-5">{children}</main>
           </div>
         </div>
       </body>

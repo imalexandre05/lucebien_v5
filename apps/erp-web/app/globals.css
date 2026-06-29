@@ -13,6 +13,11 @@
 }
 
 @layer base {
+  /* Densidad operativa (como el SCI viejo, ~13.5px): baja la escala global rem para que
+     fuentes y espaciados de Tailwind queden más compactos → más info por pantalla, más rápido. */
+  html {
+    font-size: 14.5px;
+  }
   body {
     @apply bg-paper text-ink font-body antialiased;
     text-rendering: optimizeLegibility;
