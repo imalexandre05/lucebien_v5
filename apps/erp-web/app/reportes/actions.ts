@@ -14,6 +14,8 @@ import {
   type ActividadDelTurno,
   type LayoutZona,
 } from '../../lib/reportes-repo';
+import { getSesion } from '../../lib/auth';
+import { crearIncidenciasDeReporte } from '../../lib/incidencias-repo';
 
 // Inicia el espacio de trabajo de un turno: catálogo de actividades + zonas de limpieza + draft.
 export async function iniciarTurno(
@@ -29,16 +31,26 @@ export async function iniciarTurno(
   return { actividades, zonas, draft: draft?.payload ?? null };
 }
 
-// Tipo local (no exportado): un archivo 'use server' solo puede EXPORTAR funciones async.
+// Tipos locales (no exportados): un archivo 'use server' solo puede EXPORTAR funciones async.
+type IncidenciaReporte = {
+  tipo: string;
+  nivel: string;
+  descripcion: string;
+  responsableId: string | null;
+  puntosPenalidad: number;
+};
+
 type CrearReporteInput = {
   id: string;
   sede: string;
+  fecha: string;
   turno: string;
   actTotal: number;
   actDone: number;
   trabajadores: string[];
   actividades: { cod: string; nombre: string; cat: string | null; peso: number; obs: string }[];
   extras: { tipo: string; nombre: string; cantidad: number; precio_unitario: number; monto_total: number; detalle: string }[];
+  incidencias: IncidenciaReporte[];
 };
 
 export async function accionCrearReporte(
@@ -46,7 +58,19 @@ export async function accionCrearReporte(
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   try {
     const id = await crearReporte(input);
+    // Incidencias del turno → registradas ligadas al reporte (origen='reporte').
+    if (input.incidencias.length) {
+      const sesion = await getSesion();
+      await crearIncidenciasDeReporte({
+        sede: input.sede,
+        fecha: input.fecha,
+        reporteId: id,
+        reportadoPorId: sesion?.usuario.id ?? null,
+        items: input.incidencias,
+      });
+    }
     revalidatePath('/reportes');
+    revalidatePath('/incidencias');
     return { ok: true, id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error al crear el reporte' };

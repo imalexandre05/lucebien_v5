@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSesion } from '../../../lib/auth';
 import { listarEmpleados } from '../../../lib/reportes-repo';
+import { listarTiposIncidencia } from '../../../lib/incidencias-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { NuevoReporteForm } from './form';
 
@@ -14,7 +15,7 @@ export default async function NuevoReportePage() {
   if (!sesion) redirect('/login');
   const sede = sesion.usuario.sede;
   const fecha = fechaPeru();
-  const empleados = await listarEmpleados();
+  const [empleados, tiposIncidencia] = await Promise.all([listarEmpleados(), listarTiposIncidencia()]);
 
   return (
     <div>
@@ -25,6 +26,7 @@ export default async function NuevoReportePage() {
         encargadoId={sesion.usuario.id}
         encargadoNombre={sesion.nombre}
         empleados={empleados}
+        tiposIncidencia={tiposIncidencia}
       />
     </div>
   );

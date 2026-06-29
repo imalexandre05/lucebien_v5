@@ -6,6 +6,7 @@ import { Sun, Moon, Clock, Check, Square, Plus, Trash2 } from 'lucide-react';
 import { idReporte, type TurnoReporte } from '@scilb/core';
 import { iniciarTurno, accionCrearReporte, accionGuardarDraft } from '../actions';
 import type { ActividadDelTurno, LayoutZona } from '../../../lib/reportes-repo';
+import type { TipoIncidencia } from '../../../lib/incidencias-repo';
 import { LayoutMap } from '../layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
@@ -15,6 +16,8 @@ import { cn } from '../../../lib/cn';
 
 type Emp = { id: string; nombre: string };
 type Extra = { tipo: string; nombre: string; cantidad: number; monto: number };
+type IncRep = { tipo: string; nivel: string; descripcion: string; responsableId: string; puntosPenalidad: number };
+const NIVELES_INC = ['Alto', 'Medio', 'Bajo'];
 
 const TURNOS: { v: TurnoReporte; label: string; icon: typeof Sun }[] = [
   { v: 'M', label: 'Mañana', icon: Sun },
@@ -31,12 +34,14 @@ export function NuevoReporteForm({
   encargadoId,
   encargadoNombre,
   empleados,
+  tiposIncidencia,
 }: {
   sede: string;
   fecha: string;
   encargadoId: string | null;
   encargadoNombre: string;
   empleados: Emp[];
+  tiposIncidencia: TipoIncidencia[];
 }) {
   const router = useRouter();
   const [turno, setTurno] = useState<TurnoReporte | ''>('');
@@ -48,6 +53,7 @@ export function NuevoReporteForm({
   const [extras, setExtras] = useState<Extra[]>([]);
   const [zonas, setZonas] = useState<LayoutZona[]>([]);
   const [limpieza, setLimpieza] = useState<string[]>([]);
+  const [incidencias, setIncidencias] = useState<IncRep[]>([]);
   const [buscarTrab, setBuscarTrab] = useState('');
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
@@ -158,6 +164,7 @@ export function NuevoReporteForm({
       const r = await accionCrearReporte({
         id,
         sede,
+        fecha,
         turno,
         actTotal: cat.length,
         actDone: actividades.length,
@@ -172,6 +179,15 @@ export function NuevoReporteForm({
             precio_unitario: 0,
             monto_total: e.monto || 0,
             detalle: '',
+          })),
+        incidencias: incidencias
+          .filter((i) => i.tipo)
+          .map((i) => ({
+            tipo: i.tipo,
+            nivel: i.nivel,
+            descripcion: i.descripcion,
+            responsableId: i.responsableId || null,
+            puntosPenalidad: i.puntosPenalidad,
           })),
       });
       if (!r.ok) {
@@ -346,6 +362,101 @@ export function NuevoReporteForm({
                   )}
                 </TBody>
               </Table>
+            </CardContent>
+          </Card>
+
+          {/* ── Incidencias del turno ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Incidencias del turno</CardTitle>
+              <button
+                type="button"
+                onClick={() => setIncidencias((p) => [...p, { tipo: '', nivel: 'Medio', descripcion: '', responsableId: '', puntosPenalidad: 2 }])}
+                className="inline-flex items-center gap-1 text-xs text-navy hover:text-gold"
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
+              </button>
+            </CardHeader>
+            <CardContent>
+              {incidencias.length === 0 ? (
+                <p className="text-xs text-muted">Sin incidencias registradas.</p>
+              ) : (
+                <div className="space-y-3">
+                  {incidencias.map((inc, i) => (
+                    <div key={i} className="grid grid-cols-1 gap-2 border-b border-line/60 pb-3 sm:grid-cols-2">
+                      <select
+                        value={inc.tipo}
+                        onChange={(e) => {
+                          const t = tiposIncidencia.find((x) => x.tipo === e.target.value);
+                          setIncidencias((p) =>
+                            p.map((x, j) =>
+                              j === i
+                                ? { ...x, tipo: e.target.value, nivel: t?.nivelDefault ?? x.nivel, puntosPenalidad: t?.puntosDefault ?? x.puntosPenalidad }
+                                : x,
+                            ),
+                          );
+                        }}
+                        className={cn(fieldCls, 'w-full')}
+                      >
+                        <option value="">Tipo de incidencia…</option>
+                        {tiposIncidencia.map((t) => (
+                          <option key={t.id} value={t.tipo}>
+                            {t.tipo}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={inc.responsableId}
+                        onChange={(e) => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, responsableId: e.target.value } : x)))}
+                        className={cn(fieldCls, 'w-full')}
+                      >
+                        <option value="">Responsable…</option>
+                        {empleados.map((e) => (
+                          <option key={e.id} value={e.id}>
+                            {e.nombre}
+                          </option>
+                        ))}
+                      </select>
+                      <input
+                        value={inc.descripcion}
+                        onChange={(e) => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, descripcion: e.target.value } : x)))}
+                        placeholder="Descripción"
+                        className={cn(fieldCls, 'w-full sm:col-span-2')}
+                      />
+                      <div className="flex items-center gap-2 sm:col-span-2">
+                        <select
+                          value={inc.nivel}
+                          onChange={(e) => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, nivel: e.target.value } : x)))}
+                          className={cn(fieldCls, 'w-28')}
+                          aria-label="Nivel"
+                        >
+                          {NIVELES_INC.map((n) => (
+                            <option key={n} value={n}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={inc.puntosPenalidad}
+                          onChange={(e) => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, puntosPenalidad: Number(e.target.value) } : x)))}
+                          className={cn(fieldCls, 'w-20')}
+                          aria-label="Puntos"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setIncidencias((p) => p.filter((_, j) => j !== i))}
+                          className="ml-auto text-muted hover:text-red-600"
+                          aria-label="Quitar"
+                        >
+                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 

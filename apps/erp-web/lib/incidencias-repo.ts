@@ -121,3 +121,32 @@ export async function eliminarIncidencia(id: string): Promise<void> {
   const { error } = await sb.from('incidencias').delete().eq('id', id);
   if (error) throw new Error(error.message);
 }
+
+// Incidencias registradas DESDE un reporte (side-effect del FR-01, origen='reporte').
+export async function crearIncidenciasDeReporte(p: {
+  sede: string;
+  fecha: string;
+  reporteId: string;
+  reportadoPorId: string | null;
+  items: { tipo: string; nivel: string; descripcion: string; responsableId: string | null; puntosPenalidad: number }[];
+}): Promise<void> {
+  if (!p.items.length) return;
+  const sb = getServerClient();
+  const filas = p.items
+    .filter((i) => i.tipo)
+    .map((i) => ({
+      sede_cod: p.sede,
+      fecha: p.fecha,
+      tipo: i.tipo,
+      descripcion: i.descripcion,
+      nivel: i.nivel,
+      responsable_id: i.responsableId,
+      reportado_por_id: p.reportadoPorId,
+      reporte_id: p.reporteId,
+      puntos_penalidad: i.puntosPenalidad,
+      origen: 'reporte',
+    }));
+  if (!filas.length) return;
+  const { error } = await sb.from('incidencias').insert(filas);
+  if (error) throw new Error(error.message);
+}
