@@ -12,6 +12,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
 import { buttonVariants } from '../../../components/ui/button';
+import { PersonaPicker } from '../../../components/ui/persona-picker';
 import { cn } from '../../../lib/cn';
 
 type Emp = { id: string; nombre: string };
@@ -54,7 +55,6 @@ export function NuevoReporteForm({
   const [zonas, setZonas] = useState<LayoutZona[]>([]);
   const [limpieza, setLimpieza] = useState<string[]>([]);
   const [incidencias, setIncidencias] = useState<IncRep[]>([]);
-  const [buscarTrab, setBuscarTrab] = useState('');
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
@@ -103,11 +103,6 @@ export function NuevoReporteForm({
   }, [turno, sede, fecha]);
 
   const actDone = useMemo(() => cat.filter((a) => done[a.cod]).length, [cat, done]);
-  const trabSel = useMemo(() => new Set(trabajadores), [trabajadores]);
-  const empleadosFiltrados = useMemo(() => {
-    const q = buscarTrab.trim().toLowerCase();
-    return q ? empleados.filter((e) => e.nombre.toLowerCase().includes(q)) : empleados;
-  }, [empleados, buscarTrab]);
 
   // Autosave (debounce 1.2s).
   const primeraVez = useRef(true);
@@ -140,10 +135,6 @@ export function NuevoReporteForm({
     }, 1200);
     return () => clearTimeout(t);
   }, [turno, cargando, sede, fecha, encargadoId, trabajadores, done, obs, extras, cat, limpieza]);
-
-  function toggleTrab(id: string) {
-    setTrabajadores((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
-  }
 
   function marcarTodas(valor: boolean) {
     setDone(Object.fromEntries(cat.map((a) => [a.cod, valor])));
@@ -237,33 +228,12 @@ export function NuevoReporteForm({
                 Encargado: <span className="font-medium">{encargadoNombre}</span>
                 <span className="ml-1 text-xs text-muted">(quien firma el reporte)</span>
               </p>
-              <input
-                value={buscarTrab}
-                onChange={(e) => setBuscarTrab(e.target.value)}
+              <PersonaPicker
+                empleados={empleados}
+                selected={trabajadores}
+                onChange={setTrabajadores}
                 placeholder="Buscar colaborador…"
-                className={cn(fieldCls, 'mb-2 w-full')}
               />
-              <div className="flex flex-wrap gap-1.5">
-                {empleadosFiltrados.map((e) => {
-                  const on = trabSel.has(e.id);
-                  return (
-                    <button
-                      key={e.id}
-                      type="button"
-                      onClick={() => toggleTrab(e.id)}
-                      className={cn(
-                        'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors',
-                        on ? 'border-navy bg-navy/10 text-navy' : 'border-line bg-white text-muted hover:border-gold',
-                      )}
-                    >
-                      {on && <Check className="h-3 w-3" strokeWidth={2.5} />}
-                      {e.nombre}
-                    </button>
-                  );
-                })}
-                {empleadosFiltrados.length === 0 && <span className="text-xs text-muted">Sin coincidencias.</span>}
-              </div>
-              <p className="mt-1.5 text-xs text-muted">{trabajadores.length} colaborador(es) seleccionado(s)</p>
             </div>
           )}
         </CardContent>
