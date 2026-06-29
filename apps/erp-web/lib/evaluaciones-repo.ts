@@ -56,6 +56,23 @@ export async function listarEvaluaciones(): Promise<Evaluacion[]> {
   }));
 }
 
+// Componentes auto-calculados desde la data (reportes evaluados como encargado, asistencias,
+// incidencias) para un rango. Devuelve { operaciones, software, limpieza, tardanza, descuento }.
+export async function componentesEvaluacion(
+  empleadoId: string,
+  desde: string,
+  hasta: string,
+): Promise<Record<string, number>> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('evaluacion_componentes', {
+    p_empleado: empleadoId,
+    p_desde: desde,
+    p_hasta: hasta,
+  });
+  if (error) throw new Error(error.message);
+  return (data as Record<string, number>) ?? {};
+}
+
 export async function crearEvaluacion(p: {
   empleadoId: string;
   mes: string;

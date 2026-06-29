@@ -12,7 +12,7 @@ import {
   type PesosEval,
   type TramoEval,
 } from '@scilb/core';
-import { accionCrearEvaluacion } from './actions';
+import { accionCrearEvaluacion, accionComponentesEval } from './actions';
 import type { Evaluacion } from '../../lib/evaluaciones-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
@@ -71,6 +71,26 @@ export function EvaluacionesCliente({
 
   const set = (k: keyof ComponentesEval, v: number) => setComp((p) => ({ ...p, [k]: v }));
 
+  function calcularDesdeData() {
+    setError('');
+    startTransition(async () => {
+      const r = await accionComponentesEval(empleadoId, mes);
+      if (!r.ok || !r.comp) {
+        setError(r.error ?? 'Error al calcular');
+        return;
+      }
+      const c = r.comp;
+      setComp((p) => ({
+        ...p,
+        operaciones: c.operaciones ?? 0,
+        software: c.software ?? 0,
+        limpieza: c.limpieza ?? 0,
+        tardanza: c.tardanza ?? p.tardanza,
+        descuentoIncidencias: c.descuento ?? 0,
+      }));
+    });
+  }
+
   function guardar() {
     setError('');
     startTransition(async () => {
@@ -128,6 +148,20 @@ export function EvaluacionesCliente({
                 <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Mes</label>
                 <input value={mes} onChange={(e) => setMes(e.target.value)} placeholder="2026-06" className={cn(fieldCls, 'w-full')} />
               </div>
+            </div>
+
+            <div className="flex items-center gap-3 border-t border-line/60 pt-3">
+              <button
+                type="button"
+                onClick={calcularDesdeData}
+                disabled={pending || !empleadoId}
+                className={cn(buttonVariants({ variant: 'outline' }), 'text-xs', pending && 'opacity-60')}
+              >
+                Calcular desde la data
+              </button>
+              <span className="text-xs text-muted">
+                Llena operaciones/software/limpieza (reportes evaluados como encargado), tardanza y descuento.
+              </span>
             </div>
 
             <div className="text-xs uppercase tracking-wide text-muted">Componentes (escala /20)</div>
