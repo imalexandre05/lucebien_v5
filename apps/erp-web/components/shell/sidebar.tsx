@@ -35,7 +35,7 @@ const NAV: { section: string; items: Item[] }[] = [
 export function Sidebar() {
   const path = usePathname();
   return (
-    <aside className="sticky top-0 flex h-screen w-60 flex-col bg-navy-deep text-paper/80">
+    <aside className="sticky top-0 flex h-screen w-60 flex-col bg-navy-deep text-paper/80 print:hidden">
       <div className="border-b border-white/10 px-6 py-6">
         <div className="font-display text-2xl font-semibold leading-none text-paper">LuceBien</div>
         <div className="mt-1.5 font-mono text-[10px] tracking-brand text-gold">SCI · LB</div>

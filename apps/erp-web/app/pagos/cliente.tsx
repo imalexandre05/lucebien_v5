@@ -2,7 +2,8 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2 } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Trash2, FileText } from 'lucide-react';
 import { accionCrearPago, accionEliminarPago } from './actions';
 import type { Pago, EmpleadoPago } from '../../lib/pagos-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -179,7 +180,7 @@ export function PagosCliente({
                 <TH>Método</TH>
                 <TH>Estado</TH>
                 <TH className="pr-5 text-right">Monto</TH>
-                {esAdmin && <TH className="pr-5" />}
+                <TH className="pr-5" />
               </TR>
             </THead>
             <TBody>
@@ -192,18 +193,23 @@ export function PagosCliente({
                     <Badge tone={ESTADO_TONE[p.anulado ? 'anulado' : p.estado] ?? 'gray'}>{p.anulado ? 'anulado' : p.estado}</Badge>
                   </TD>
                   <TD className="pr-5 text-right font-mono tabular-nums">S/ {p.monto.toFixed(2)}</TD>
-                  {esAdmin && (
-                    <TD className="pr-5 text-right">
-                      <button type="button" onClick={() => eliminar(p.id)} className="text-muted hover:text-red-600" aria-label="Eliminar">
-                        <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-                      </button>
-                    </TD>
-                  )}
+                  <TD className="pr-5">
+                    <div className="flex items-center justify-end gap-2">
+                      <Link href={`/pagos/${p.id}/comprobante`} className="text-muted hover:text-navy" aria-label="Comprobante" title="Comprobante">
+                        <FileText className="h-4 w-4" strokeWidth={1.75} />
+                      </Link>
+                      {esAdmin && (
+                        <button type="button" onClick={() => eliminar(p.id)} className="text-muted hover:text-red-600" aria-label="Eliminar">
+                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                        </button>
+                      )}
+                    </div>
+                  </TD>
                 </TR>
               ))}
               {pagos.length === 0 && (
                 <TR>
-                  <TD className="px-5 py-8 text-center text-muted" colSpan={esAdmin ? 6 : 5}>
+                  <TD className="px-5 py-8 text-center text-muted" colSpan={6}>
                     Sin pagos registrados.
                   </TD>
                 </TR>

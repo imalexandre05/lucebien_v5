@@ -4,7 +4,7 @@ import { cerrarSesion } from '../../app/login/actions';
 // Topbar de demo: contexto de empresa + sede + usuario (mock; real con Supabase Auth en W7).
 export function Topbar() {
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-line bg-paper/85 px-7 backdrop-blur">
+    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-line bg-paper/85 px-7 backdrop-blur print:hidden">
       <div className="flex items-center gap-2 text-sm text-muted">
         <Building2 className="h-4 w-4 text-gold" strokeWidth={1.75} />
         <span>Confecciones Aliaga · Huancayo</span>

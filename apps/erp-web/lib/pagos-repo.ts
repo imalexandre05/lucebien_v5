@@ -94,6 +94,37 @@ export async function crearPago(p: {
   if (error) throw new Error(error.message);
 }
 
+export type PagoDetalle = Pago & { empleadoDni: string | null; empleadoRol: string | null };
+
+export async function obtenerPago(id: string): Promise<PagoDetalle | null> {
+  const sb = getServerClient();
+  const { data, error } = await sb.from('pagos').select('*').eq('id', id).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const r = data as Record<string, unknown>;
+  const { data: emp } = await sb
+    .from('empleados')
+    .select('nombre, dni, rol')
+    .eq('id', String(r.empleado_id))
+    .maybeSingle();
+  const e = emp as { nombre: string; dni: string | null; rol: string } | null;
+  return {
+    id: String(r.id),
+    empleadoId: String(r.empleado_id),
+    empleadoNombre: e?.nombre ?? null,
+    monto: Number(r.monto ?? 0),
+    bonus: Number(r.bonus ?? 0),
+    descuentos: Number(r.descuentos ?? 0),
+    estado: String(r.estado ?? 'pendiente'),
+    metodo: String(r.metodo ?? 'efectivo'),
+    fechaPago: (r.fecha_pago as string | null) ?? null,
+    anulado: Boolean(r.anulado),
+    createdAt: String(r.created_at ?? ''),
+    empleadoDni: e?.dni ?? null,
+    empleadoRol: e?.rol ?? null,
+  };
+}
+
 export async function eliminarPago(id: string): Promise<void> {
   const sb = getServerClient();
   const { error } = await sb.from('pagos').delete().eq('id', id);
