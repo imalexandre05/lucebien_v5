@@ -18,10 +18,10 @@ export const TR = ({ className, ...p }: HTMLAttributes<HTMLTableRowElement>) => 
 );
 export const TH = ({ className, ...p }: ThHTMLAttributes<HTMLTableCellElement>) => (
   <th
-    className={cn('px-3 py-1.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted', className)}
+    className={cn('px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted', className)}
     {...p}
   />
 );
 export const TD = ({ className, ...p }: TdHTMLAttributes<HTMLTableCellElement>) => (
-  <td className={cn('px-3 py-1.5 align-middle', className)} {...p} />
+  <td className={cn('px-3 py-2.5 align-middle', className)} {...p} />
 );
