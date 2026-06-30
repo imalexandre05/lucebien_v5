@@ -42,11 +42,12 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
 
   // Separa actividades regulares de las de limpieza (OL_), que se muestran en el mapa.
   const regulares = r.actividades.filter((a) => !esLimpieza(a.cod));
-  const limpiezaCods = r.actividades.filter((a) => esLimpieza(a.cod)).map((a) => a.cod.slice(3));
+  const limpiezaActs = r.actividades.filter((a) => esLimpieza(a.cod));
+  const limpiezaCods = limpiezaActs.map((a) => a.cod.slice(3));
   const zonas = limpiezaCods.length ? await listarLayoutZonas(r.sedeCod) : [];
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       <PageHeader
         title={`Reporte · ${TURNO_LABEL[r.turno] ?? r.turno}`}
         subtitle={`${r.sedeCod} · ${r.fecha}`}
@@ -89,53 +90,67 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
         </CardContent>
       </Card>
 
-      {zonas.length > 0 && (
+      {/* Pendiente de evaluación → panel de evaluar (mapa + actividades en 3 estados). */}
+      {puedeEvaluar ? (
+        <EvaluarPanel
+          id={r.id}
+          actividades={regulares.map((a) => ({ cod: a.cod, nombre: a.nombre, cat: a.cat, peso: a.peso, calificacion: a.calificacion }))}
+          limpieza={limpiezaActs.map((a) => ({ zoneCod: a.cod.slice(3), peso: a.peso, calificacion: a.calificacion }))}
+          zonas={zonas}
+          turno={r.turno}
+          trabajadores={r.trabajadores}
+        />
+      ) : (
         <>
-          <h2 className="mb-2 mt-6 text-sm font-semibold text-navy">Limpieza</h2>
+          {zonas.length > 0 && (
+            <>
+              <h2 className="mb-2 mt-6 text-sm font-semibold text-navy">Limpieza</h2>
+              <Card>
+                <CardContent>
+                  <LayoutMap zonas={zonas} turno={r.turno} selected={limpiezaCods} readOnly />
+                </CardContent>
+              </Card>
+            </>
+          )}
+
+          <h2 className="mb-2 mt-6 text-sm font-semibold text-navy">Actividades</h2>
           <Card>
-            <CardContent>
-              <LayoutMap zonas={zonas} turno={r.turno} selected={limpiezaCods} readOnly />
+            <CardContent className="px-0 pb-0">
+              <Table>
+                <THead>
+                  <TR>
+                    <TH className="pl-5">Código</TH>
+                    <TH>Actividad</TH>
+                    <TH>Categoría</TH>
+                    <TH className="text-right">Calificación</TH>
+                    <TH className="pr-5">Observación</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {regulares.map((a) => (
+                    <TR key={a.id}>
+                      <TD className="pl-5 font-mono text-xs">{a.cod}</TD>
+                      <TD>{a.nombre}</TD>
+                      <TD className="font-mono text-xs text-muted">{a.cat ?? '—'}</TD>
+                      <TD className="text-right font-mono tabular-nums">
+                        {a.calificacion == null ? '—' : a.calificacion}
+                      </TD>
+                      <TD className="pr-5 text-xs text-muted">{a.obsEval || a.obs || '—'}</TD>
+                    </TR>
+                  ))}
+                  {regulares.length === 0 && (
+                    <TR>
+                      <TD className="px-5 py-6 text-center text-muted" colSpan={5}>
+                        Sin actividades registradas.
+                      </TD>
+                    </TR>
+                  )}
+                </TBody>
+              </Table>
             </CardContent>
           </Card>
         </>
       )}
-
-      <h2 className="mb-2 mt-6 text-sm font-semibold text-navy">Actividades</h2>
-      <Card>
-        <CardContent className="px-0 pb-0">
-          <Table>
-            <THead>
-              <TR>
-                <TH className="pl-5">Código</TH>
-                <TH>Actividad</TH>
-                <TH>Categoría</TH>
-                <TH className="text-right">Calificación</TH>
-                <TH className="pr-5">Observación</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {regulares.map((a) => (
-                <TR key={a.id}>
-                  <TD className="pl-5 font-mono text-xs">{a.cod}</TD>
-                  <TD>{a.nombre}</TD>
-                  <TD className="font-mono text-xs text-muted">{a.cat ?? '—'}</TD>
-                  <TD className="text-right font-mono tabular-nums">
-                    {a.calificacion == null ? '—' : a.calificacion}
-                  </TD>
-                  <TD className="pr-5 text-xs text-muted">{a.obsEval || a.obs || '—'}</TD>
-                </TR>
-              ))}
-              {regulares.length === 0 && (
-                <TR>
-                  <TD className="px-5 py-6 text-center text-muted" colSpan={5}>
-                    Sin actividades registradas.
-                  </TD>
-                </TR>
-              )}
-            </TBody>
-          </Table>
-        </CardContent>
-      </Card>
 
       {r.extras.length > 0 && (
         <>
@@ -165,21 +180,6 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
             </CardContent>
           </Card>
         </>
-      )}
-
-      {puedeEvaluar && (
-        <EvaluarPanel
-          id={r.id}
-          actividades={r.actividades.map((a) => ({
-            cod: a.cod,
-            nombre: a.nombre,
-            peso: a.peso,
-            calificacion: a.calificacion,
-          }))}
-          zonas={zonas}
-          limpiezaCods={limpiezaCods}
-          turno={r.turno}
-        />
       )}
 
       {esAdmin && <AccionesAdmin id={r.id} evaluado={r.evaluado} />}

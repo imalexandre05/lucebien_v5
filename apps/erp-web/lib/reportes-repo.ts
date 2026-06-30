@@ -233,6 +233,21 @@ export async function listarEmpleados(): Promise<EmpPicker[]> {
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
+// ¿Ya existe un reporte para esta sede/fecha/turno? Devuelve su id (para enrutar a evaluación,
+// como el viejo: si el turno ya se envió, la pantalla pasa a Evaluación).
+export async function buscarReporteId(sede: string, fecha: string, turno: string): Promise<string | null> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('reportes')
+    .select('id')
+    .eq('sede_cod', sede)
+    .eq('fecha', fecha)
+    .eq('turno', turno)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as { id: string } | null)?.id ?? null;
+}
+
 // ── Mutaciones vía RPC (atómicas, security invoker → RLS real; ver 0020) ─────
 
 export async function crearReporte(p: {

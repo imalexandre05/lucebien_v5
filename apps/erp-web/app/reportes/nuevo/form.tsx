@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sun, Moon, Clock, Check, Square, Plus, Trash2, Send, Users, PenLine } from 'lucide-react';
+import Link from 'next/link';
+import { Sun, Moon, Clock, Check, Square, Plus, Trash2, Send, Users, PenLine, ClipboardCheck, ArrowRight } from 'lucide-react';
 import { idReporte, type TurnoReporte } from '@scilb/core';
 import { iniciarTurno, accionCrearReporte, accionGuardarDraft } from '../actions';
 import type { ActividadDelTurno, LayoutZona } from '../../../lib/reportes-repo';
@@ -83,6 +84,7 @@ export function NuevoReporteForm({
   const [zonas, setZonas] = useState<LayoutZona[]>([]);
   const [limpieza, setLimpieza] = useState<string[]>([]);
   const [incidencias, setIncidencias] = useState<IncRep[]>([]);
+  const [yaEnviado, setYaEnviado] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
@@ -105,9 +107,11 @@ export function NuevoReporteForm({
     let vivo = true;
     setCargando(true);
     setError('');
+    setYaEnviado(null);
     iniciarTurno(sede, fecha, turno)
-      .then(({ actividades, zonas, draft }) => {
+      .then(({ actividades, zonas, draft, yaEnviado }) => {
         if (!vivo) return;
+        setYaEnviado(yaEnviado);
         setCat(actividades);
         setZonas(zonas);
         const d = (draft ?? {}) as {
@@ -168,7 +172,7 @@ export function NuevoReporteForm({
   // Autosave (debounce 1.2s).
   const primeraVez = useRef(true);
   useEffect(() => {
-    if (!turno || cargando) return;
+    if (!turno || cargando || yaEnviado) return;
     if (primeraVez.current) {
       primeraVez.current = false;
       return;
@@ -196,7 +200,7 @@ export function NuevoReporteForm({
       });
     }, 1200);
     return () => clearTimeout(t);
-  }, [turno, cargando, sede, fecha, encargadoId, trabajadores, encargadoSel, done, obs, extras, cat, limpieza]);
+  }, [turno, cargando, yaEnviado, sede, fecha, encargadoId, trabajadores, encargadoSel, done, obs, extras, cat, limpieza]);
 
   function marcarTodas(valor: boolean) {
     setDone(Object.fromEntries(cat.map((a) => [a.cod, valor])));
@@ -295,7 +299,7 @@ export function NuevoReporteForm({
             </p>
           </div>
 
-          {turno && (
+          {turno && !yaEnviado && (
             <div className="grid gap-5 border-t border-line/60 pt-5 lg:grid-cols-2">
               <div>
                 <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
@@ -336,7 +340,24 @@ export function NuevoReporteForm({
       )}
       {cargando && <p className="text-sm text-muted">Cargando actividades…</p>}
 
-      {turno && !cargando && (
+      {turno && !cargando && yaEnviado && (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <ClipboardCheck className="h-10 w-10 text-emerald-600" strokeWidth={1.5} />
+            <div>
+              <p className="font-display text-lg font-semibold text-navy">Este turno ya se envió</p>
+              <p className="mt-1 text-sm text-muted">
+                El reporte <span className="font-mono">{yaEnviado}</span> ya está registrado. Ahora corresponde evaluarlo.
+              </p>
+            </div>
+            <Link href={`/reportes/${yaEnviado}`} className={cn(buttonVariants({ variant: 'primary' }), 'px-5')}>
+              Evaluar reporte <ArrowRight className="h-4 w-4" strokeWidth={2} />
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {turno && !cargando && !yaEnviado && (
         <>
           {/* ── Limpieza (mapa de zonas) ── */}
           {zonas.length > 0 && (

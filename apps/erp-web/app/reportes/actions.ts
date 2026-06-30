@@ -12,6 +12,7 @@ import {
   anularReporte,
   anularEval,
   marcarAsistenciaReporte,
+  buscarReporteId,
   type ActividadDelTurno,
   type LayoutZona,
 } from '../../lib/reportes-repo';
@@ -19,17 +20,24 @@ import { getSesion } from '../../lib/auth';
 import { crearIncidenciasDeReporte } from '../../lib/incidencias-repo';
 
 // Inicia el espacio de trabajo de un turno: catálogo de actividades + zonas de limpieza + draft.
+// `yaEnviado` = id del reporte si el turno ya se envió (para pasar a Evaluación, como el viejo).
 export async function iniciarTurno(
   sede: string,
   fecha: string,
   turno: TurnoReporte,
-): Promise<{ actividades: ActividadDelTurno[]; zonas: LayoutZona[]; draft: Record<string, unknown> | null }> {
-  const [actividades, zonas, draft] = await Promise.all([
+): Promise<{
+  actividades: ActividadDelTurno[];
+  zonas: LayoutZona[];
+  draft: Record<string, unknown> | null;
+  yaEnviado: string | null;
+}> {
+  const [actividades, zonas, draft, yaEnviado] = await Promise.all([
     listarActividadesConfig(sede, fecha, turno),
     listarLayoutZonas(sede),
     getDraft(sede, fecha, turno),
+    buscarReporteId(sede, fecha, turno),
   ]);
-  return { actividades, zonas, draft: draft?.payload ?? null };
+  return { actividades, zonas, draft: draft?.payload ?? null, yaEnviado };
 }
 
 // Tipos locales (no exportados): un archivo 'use server' solo puede EXPORTAR funciones async.
