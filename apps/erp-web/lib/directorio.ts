@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { getServerClient } from './supabase/server';
 
 export type DirItem = { id: string; nombre: string; rol: string; sedeCod: string | null };
@@ -5,7 +6,9 @@ export type DirItem = { id: string; nombre: string; rol: string; sedeCod: string
 // Directorio de empleados (nombres/roles) visible para todos los autenticados, vía la función
 // SECURITY DEFINER app_directorio (no expone salario/dni). Reemplaza los `from('empleados')`
 // que un no-admin no podía leer (RLS lo limita a sí mismo).
-export async function directorio(): Promise<DirItem[]> {
+// cache(): se llama varias veces por render (varios repos resuelven nombres) → dedupe del RPC
+// dentro del mismo request.
+export const directorio = cache(async (): Promise<DirItem[]> => {
   const sb = getServerClient();
   const { data, error } = await sb.rpc('app_directorio');
   if (error) throw new Error(error.message);
@@ -15,7 +18,7 @@ export async function directorio(): Promise<DirItem[]> {
     rol: d.rol,
     sedeCod: d.sede_cod ?? null,
   }));
-}
+});
 
 export async function mapaNombres(): Promise<Map<string, string>> {
   const items = await directorio();
