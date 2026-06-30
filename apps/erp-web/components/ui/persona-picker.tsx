@@ -1,33 +1,48 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Check } from 'lucide-react';
+import { Check, Search, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
-type Persona = { id: string; nombre: string };
+type Persona = { id: string; nombre: string; rol?: string; sedeCod?: string | null };
 
 function iniciales(n: string): string {
   const p = n.trim().split(/\s+/).filter(Boolean);
   return (p.map((w) => w[0]).slice(0, 2).join('') || '·').toUpperCase();
 }
 
-// Selector de personas compacto e inline (buscar → lista con avatar+check), espejando el
-// `persona-wrap` del SCI viejo. Multi-select por defecto; `single` para uno solo (encargado).
+// Rol legible y corto para el tag de la fila (espeja las "tiendas/rol" del SCI viejo).
+const ROL_LABEL: Record<string, string> = {
+  admin: 'Admin',
+  dueno: 'Dueño/a',
+  encargado_tienda: 'Enc. Tienda',
+  encargado_almacen: 'Enc. Almacén',
+  confeccionista: 'Confección',
+  ventas_junior: 'Ventas Jr.',
+  ventas_junior_2: 'Ventas Jr. 2',
+};
+
+// Selector de personas GRANDE (buscar → filas con avatar + rol/sede + check), espejando el
+// `persona-wrap` del SCI viejo: filas amplias, verde al marcar y chips abajo. Multi-select por
+// defecto; `single` para uno solo (encargado del turno).
 export function PersonaPicker({
   empleados,
   selected,
   onChange,
   placeholder = 'Buscar…',
   single = false,
+  emptyHint,
 }: {
   empleados: Persona[];
   selected: string[];
   onChange: (ids: string[]) => void;
   placeholder?: string;
   single?: boolean;
+  emptyHint?: string;
 }) {
   const [q, setQ] = useState('');
   const sel = useMemo(() => new Set(selected), [selected]);
+  const byId = useMemo(() => new Map(empleados.map((e) => [e.id, e])), [empleados]);
   const filtrados = useMemo(() => {
     const n = q.trim().toLowerCase();
     return n ? empleados.filter((e) => e.nombre.toLowerCase().includes(n)) : empleados;
@@ -42,45 +57,85 @@ export function PersonaPicker({
   }
 
   return (
-    <div className="overflow-hidden rounded-md border border-line bg-white">
-      <input
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder={placeholder}
-        className="w-full border-b border-line px-2.5 py-1.5 text-xs text-navy outline-none placeholder:text-muted"
-      />
-      <div className="max-h-44 overflow-y-auto p-1">
+    <div className="flex flex-col rounded-xl border border-line bg-white shadow-sm">
+      <div className="relative border-b border-line">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
+          strokeWidth={1.75}
+        />
+        <input
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={placeholder}
+          className="w-full rounded-t-xl bg-white py-2.5 pl-9 pr-3 text-sm text-navy outline-none placeholder:text-muted"
+        />
+      </div>
+
+      <div className="max-h-72 overflow-y-auto p-1.5">
         {filtrados.map((e) => {
           const on = sel.has(e.id);
+          const rolLbl = e.rol ? ROL_LABEL[e.rol] ?? e.rol : null;
+          const tag = [rolLbl, e.sedeCod].filter(Boolean).join(' · ');
           return (
             <button
               key={e.id}
               type="button"
               onClick={() => toggle(e.id)}
               className={cn(
-                'flex w-full items-center gap-2 rounded px-1.5 py-1 text-left text-xs transition-colors',
+                'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-150',
                 on ? 'bg-navy/5' : 'hover:bg-paper',
               )}
             >
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy-deep text-[9px] font-bold text-gold">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy-deep text-xs font-bold text-gold">
                 {iniciales(e.nombre)}
               </span>
-              <span className="flex-1 truncate text-navy">{e.nombre}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-medium text-navy">{e.nombre}</span>
+                {tag && <span className="block truncate font-mono text-[11px] text-muted">{tag}</span>}
+              </span>
               <span
                 className={cn(
-                  'flex h-4 w-4 shrink-0 items-center justify-center rounded border',
+                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-150',
                   on ? 'border-navy bg-navy text-paper' : 'border-line',
                 )}
               >
-                {on && <Check className="h-3 w-3" strokeWidth={3} />}
+                {on && <Check className="h-4 w-4" strokeWidth={3} />}
               </span>
             </button>
           );
         })}
-        {filtrados.length === 0 && <p className="px-2 py-2 text-xs text-muted">Sin coincidencias.</p>}
+        {filtrados.length === 0 && (
+          <p className="px-3 py-6 text-center text-sm text-muted">Sin coincidencias.</p>
+        )}
       </div>
-      <div className="border-t border-line px-2.5 py-1 text-[10px] text-muted">
-        {single ? (selected.length ? '1 seleccionado' : 'ninguno') : `${selected.length} seleccionado(s)`}
+
+      <div className="flex flex-wrap items-center gap-1.5 border-t border-line px-2.5 py-2">
+        {selected.length === 0 ? (
+          <span className="text-xs text-muted">{emptyHint ?? (single ? 'Elige al encargado' : 'Ningún colaborador')}</span>
+        ) : (
+          selected.map((id) => {
+            const e = byId.get(id);
+            return (
+              <span
+                key={id}
+                className="inline-flex items-center gap-1 rounded-full bg-navy px-2.5 py-1 text-xs font-medium text-paper"
+              >
+                {e?.nombre ?? '—'}
+                <button
+                  type="button"
+                  onClick={() => toggle(id)}
+                  className="text-paper/70 transition-colors hover:text-paper"
+                  aria-label="Quitar"
+                >
+                  <X className="h-3 w-3" strokeWidth={2.5} />
+                </button>
+              </span>
+            );
+          })
+        )}
+        <span className="ml-auto font-mono text-[11px] tabular-nums text-muted">
+          {single ? `${selected.length}/1` : `${selected.length} sel.`}
+        </span>
       </div>
     </div>
   );

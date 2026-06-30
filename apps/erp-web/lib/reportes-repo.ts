@@ -222,12 +222,14 @@ export async function listarActividadesConfig(
   return aplican;
 }
 
-// Empleados (id+nombre) para elegir trabajadores del turno. OJO RLS: un no-admin solo se ve a sí
-// mismo (policy emp_select); el directorio completo es la decisión diferida (ver memoria).
-export async function listarEmpleados(): Promise<{ id: string; nombre: string }[]> {
+// Empleados (id+nombre+rol+sede) para elegir trabajadores/encargado del turno. El rol/sede
+// se muestran como tag en el picker (espeja las "tiendas" del SCI viejo). OJO RLS: un no-admin
+// solo se ve a sí mismo (policy emp_select); el directorio completo es decisión diferida.
+export type EmpPicker = { id: string; nombre: string; rol: string; sedeCod: string | null };
+export async function listarEmpleados(): Promise<EmpPicker[]> {
   const items = await directorio();
   return items
-    .map((d) => ({ id: d.id, nombre: d.nombre }))
+    .map((d) => ({ id: d.id, nombre: d.nombre, rol: d.rol, sedeCod: d.sedeCod }))
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
@@ -237,6 +239,7 @@ export async function crearReporte(p: {
   id: string;
   sede: string;
   turno: string;
+  encargado?: string | null;
   actTotal: number;
   actDone: number;
   trabajadores: string[];
@@ -253,6 +256,7 @@ export async function crearReporte(p: {
     p_trabajadores: p.trabajadores,
     p_actividades: p.actividades,
     p_extras: p.extras,
+    p_encargado: p.encargado ?? null,
   });
   if (error) throw new Error(error.message);
   return String(data);

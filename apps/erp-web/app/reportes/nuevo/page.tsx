@@ -24,7 +24,6 @@ export default async function NuevoReportePage() {
         sede={sede}
         fecha={fecha}
         encargadoId={sesion.usuario.id}
-        encargadoNombre={sesion.nombre}
         empleados={empleados}
         tiposIncidencia={tiposIncidencia}
       />

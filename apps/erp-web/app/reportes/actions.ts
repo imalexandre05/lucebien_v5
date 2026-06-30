@@ -46,6 +46,7 @@ type CrearReporteInput = {
   sede: string;
   fecha: string;
   turno: string;
+  encargado: string | null;
   actTotal: number;
   actDone: number;
   trabajadores: string[];
