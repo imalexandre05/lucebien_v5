@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
+import { Plus, Filter } from 'lucide-react';
 import {
   COMPONENTES,
   calcularNotaMensual,
@@ -28,11 +28,21 @@ const TRAMO_TONE: Record<TramoEval, Tone> = {
   mejorar: 'amber',
   bajo: 'gray',
 };
+const TRAMOS: TramoEval[] = ['excelente', 'bueno', 'mejorar', 'bajo'];
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
 
 function mesPeru(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date()).slice(0, 7);
+}
+
+function StatBox({ label, valor, tone }: { label: string; valor: number | string; tone: string }) {
+  return (
+    <div className={cn('rounded-xl border p-4 text-center', tone)}>
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</div>
+      <div className="font-mono text-2xl font-bold tabular-nums">{valor}</div>
+    </div>
+  );
 }
 
 const CERO: ComponentesEval = {
@@ -66,8 +76,36 @@ export function EvaluacionesCliente({
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
+  // Filtros.
+  const [q, setQ] = useState('');
+  const [fMes, setFMes] = useState('');
+  const [fTramo, setFTramo] = useState('');
+
   const nota = useMemo(() => calcularNotaMensual(comp, pesos), [comp, pesos]);
   const tramo = tramoEval(nota);
+
+  const meses = useMemo(() => [...new Set(evaluaciones.map((e) => e.mes))].sort().reverse(), [evaluaciones]);
+
+  const filtradas = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return evaluaciones.filter((e) => {
+      if (fMes && e.mes !== fMes) return false;
+      if (fTramo && tramoEval(e.notaFinal) !== fTramo) return false;
+      if (needle && !(e.empleadoNombre ?? '').toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }, [evaluaciones, q, fMes, fTramo]);
+
+  const resumen = useMemo(() => {
+    const total = filtradas.length;
+    const prom = total ? filtradas.reduce((s, e) => s + e.notaFinal, 0) / total : 0;
+    return {
+      total,
+      promedio: prom.toFixed(2),
+      excelente: filtradas.filter((e) => tramoEval(e.notaFinal) === 'excelente').length,
+      bajo: filtradas.filter((e) => tramoEval(e.notaFinal) === 'bajo').length,
+    };
+  }, [filtradas]);
 
   const set = (k: keyof ComponentesEval, v: number) => setComp((p) => ({ ...p, [k]: v }));
 
@@ -114,14 +152,54 @@ export function EvaluacionesCliente({
 
   return (
     <div className="space-y-4">
-      {esAdmin && (
-        <div className="flex justify-end">
-          <button type="button" onClick={() => setAbierto((v) => !v)} className={buttonVariants({ variant: abierto ? 'outline' : 'primary' })}>
-            <Plus className="h-4 w-4" strokeWidth={2} />
-            {abierto ? 'Cerrar' : 'Nueva evaluación'}
-          </button>
-        </div>
-      )}
+      {/* Resumen */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatBox label="Evaluaciones" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox label="Promedio" valor={resumen.promedio} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox label="Excelente" valor={resumen.excelente} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
+        <StatBox label="Bajo" valor={resumen.bajo} tone="border-line bg-white text-muted" />
+      </div>
+
+      {/* Filtros + acción */}
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-2 py-4">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+            <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
+          </span>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar empleado…"
+            className={`${fieldCls} min-w-[12rem] flex-1`}
+          />
+          <select value={fMes} onChange={(e) => setFMes(e.target.value)} className={fieldCls} aria-label="Mes">
+            <option value="">Todos los meses</option>
+            {meses.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <select value={fTramo} onChange={(e) => setFTramo(e.target.value)} className={fieldCls} aria-label="Tramo">
+            <option value="">Todos los tramos</option>
+            {TRAMOS.map((t) => (
+              <option key={t} value={t}>
+                {TRAMO_LABEL[t]}
+              </option>
+            ))}
+          </select>
+          {esAdmin && (
+            <button
+              type="button"
+              onClick={() => setAbierto((v) => !v)}
+              className={cn(buttonVariants({ variant: abierto ? 'outline' : 'primary' }), 'ml-auto')}
+            >
+              <Plus className="h-4 w-4" strokeWidth={2} />
+              {abierto ? 'Cerrar' : 'Nueva evaluación'}
+            </button>
+          )}
+        </CardContent>
+      </Card>
 
       {esAdmin && abierto && (
         <Card>
@@ -208,7 +286,7 @@ export function EvaluacionesCliente({
       )}
 
       <Card>
-        <CardContent className="px-0 pb-0">
+        <CardContent className="overflow-x-auto px-0 pb-0">
           <Table>
             <THead>
               <TR>
@@ -219,23 +297,23 @@ export function EvaluacionesCliente({
               </TR>
             </THead>
             <TBody>
-              {evaluaciones.map((e) => {
+              {filtradas.map((e) => {
                 const t = tramoEval(e.notaFinal);
                 return (
                   <TR key={e.id}>
-                    <TD className="pl-5 font-mono text-xs">{e.mes}</TD>
-                    <TD>{e.empleadoNombre ?? '—'}</TD>
-                    <TD className="text-right font-mono tabular-nums">{e.notaFinal.toFixed(2)}</TD>
+                    <TD className="pl-5 font-mono text-xs text-muted">{e.mes}</TD>
+                    <TD className="font-medium text-navy">{e.empleadoNombre ?? '—'}</TD>
+                    <TD className="text-right font-mono text-base font-bold tabular-nums text-navy">{e.notaFinal.toFixed(2)}</TD>
                     <TD className="pr-5">
                       <Badge tone={TRAMO_TONE[t]}>{TRAMO_LABEL[t]}</Badge>
                     </TD>
                   </TR>
                 );
               })}
-              {evaluaciones.length === 0 && (
+              {filtradas.length === 0 && (
                 <TR>
                   <TD className="px-5 py-8 text-center text-muted" colSpan={4}>
-                    Sin evaluaciones registradas.
+                    {evaluaciones.length === 0 ? 'Sin evaluaciones registradas.' : 'Ninguna coincide con el filtro.'}
                   </TD>
                 </TR>
               )}
