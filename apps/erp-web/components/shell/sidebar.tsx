@@ -18,7 +18,7 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck },
       { label: 'Evaluaciones', href: '/evaluaciones', icon: Award },
       { label: 'Pagos', href: '/pagos', icon: Wallet },
-      { label: 'Empleados', href: '/empleados', icon: Users },
+      { label: 'Empleados', href: '/empleados', icon: Users, admin: true },
       { label: 'Configuración', href: '/configuracion', icon: Settings, admin: true },
     ],
   },
