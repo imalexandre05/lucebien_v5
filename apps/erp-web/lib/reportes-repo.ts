@@ -1,0 +1,408 @@
+import {
+  actAplicaHoy,
+  type ActividadConfig,
+  type Reporte,
+  type ReporteActividad,
+  type ReporteDetalle,
+  type ReporteExtra,
+  type TurnoReporte,
+} from '@scilb/core';
+import { getServerClient } from './supabase/server';
+import { directorio, mapaNombres } from './directorio';
+
+type RepRow = {
+  id: string;
+  sede_cod: string;
+  turno: string;
+  fecha: string;
+  encargado_id: string | null;
+  evaluador_id: string | null;
+  puntaje: number | null;
+  puntaje_eval: number | null;
+  act_total: number | null;
+  act_done: number | null;
+  evaluado: boolean;
+  bloqueado: boolean;
+  no_evaluable: boolean | null;
+  auto_enviado: boolean | null;
+  created_at: string;
+};
+
+// Mapa id→nombre de empleados. OJO RLS: un no-admin solo se ve a sí mismo (policy emp_select
+// de 0002), así que para él los nombres de terceros saldrán null hasta que exista una policy
+// de "directorio" en empleados. Para admin/dueño resuelve todos.
+async function nombresEmpleados(): Promise<(id: string | null) => string | null> {
+  const map = await mapaNombres();
+  return (id) => (id ? map.get(id) ?? null : null);
+}
+
+function baseReporte(r: RepRow, nombre: (id: string | null) => string | null, trabajadores: string[]): Reporte {
+  return {
+    id: r.id,
+    sedeCod: r.sede_cod,
+    turno: (r.turno as TurnoReporte) ?? 'M',
+    fecha: (r.fecha ?? '').slice(0, 10),
+    encargadoId: r.encargado_id,
+    encargadoNombre: nombre(r.encargado_id),
+    evaluadorId: r.evaluador_id,
+    evaluadorNombre: nombre(r.evaluador_id),
+    puntaje: Number(r.puntaje ?? 0),
+    puntajeEval: r.puntaje_eval == null ? null : Number(r.puntaje_eval),
+    actTotal: Number(r.act_total ?? 0),
+    actDone: Number(r.act_done ?? 0),
+    evaluado: Boolean(r.evaluado),
+    bloqueado: Boolean(r.bloqueado),
+    noEvaluable: Boolean(r.no_evaluable),
+    autoEnviado: Boolean(r.auto_enviado),
+    trabajadores,
+    createdAt: r.created_at,
+  };
+}
+
+// Lista los reportes (más recientes primero), con sus trabajadores resueltos. Tope 100 como el viejo.
+export async function listarReportes(): Promise<Reporte[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('reportes')
+    .select('*')
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw new Error(error.message);
+  const rows = (data as RepRow[]) ?? [];
+  const nombre = await nombresEmpleados();
+
+  const trabByRep = new Map<string, string[]>();
+  if (rows.length) {
+    const { data: tr, error: e2 } = await sb
+      .from('reporte_trabajadores')
+      .select('reporte_id, empleado_id')
+      .in('reporte_id', rows.map((r) => r.id));
+    if (e2) throw new Error(e2.message);
+    for (const t of (tr as { reporte_id: string; empleado_id: string | null }[]) ?? []) {
+      const n = nombre(t.empleado_id);
+      if (!n) continue;
+      const arr = trabByRep.get(t.reporte_id) ?? [];
+      arr.push(n);
+      trabByRep.set(t.reporte_id, arr);
+    }
+  }
+
+  return rows.map((r) => baseReporte(r, nombre, trabByRep.get(r.id) ?? []));
+}
+
+// Detalle completo: reporte + actividades + extras + trabajadores.
+export async function obtenerReporte(id: string): Promise<ReporteDetalle | null> {
+  const sb = getServerClient();
+  const { data, error } = await sb.from('reportes').select('*').eq('id', id).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const r = data as RepRow;
+  const nombre = await nombresEmpleados();
+
+  const [trabRes, actRes, extRes] = await Promise.all([
+    sb.from('reporte_trabajadores').select('empleado_id').eq('reporte_id', id),
+    sb.from('reporte_actividades').select('*').eq('reporte_id', id).order('cod', { ascending: true }),
+    sb.from('reporte_extras').select('*').eq('reporte_id', id),
+  ]);
+  for (const res of [trabRes, actRes, extRes]) {
+    if (res.error) throw new Error(res.error.message);
+  }
+
+  const trabajadores = ((trabRes.data as { empleado_id: string | null }[]) ?? [])
+    .map((t) => nombre(t.empleado_id))
+    .filter((x): x is string => Boolean(x));
+
+  const actividades: ReporteActividad[] = ((actRes.data as Record<string, unknown>[]) ?? []).map((a) => ({
+    id: String(a.id),
+    cod: String(a.cod),
+    nombre: String(a.nombre),
+    cat: (a.cat as string | null) ?? null,
+    peso: Number(a.peso ?? 0),
+    realizada: Boolean(a.realizada),
+    calificacion: a.calificacion == null ? null : Number(a.calificacion),
+    obs: (a.obs as string | null) ?? null,
+    obsEval: (a.obs_eval as string | null) ?? null,
+  }));
+
+  const extras: ReporteExtra[] = ((extRes.data as Record<string, unknown>[]) ?? []).map((e) => ({
+    id: String(e.id),
+    tipo: String(e.tipo),
+    nombre: String(e.nombre),
+    cantidad: Number(e.cantidad ?? 1),
+    montoTotal: Number(e.monto_total ?? 0),
+    precioUnitario: Number(e.precio_unitario ?? 0),
+    detalle: (e.detalle as string | null) ?? null,
+    registradoPorId: (e.registrado_por_id as string | null) ?? null,
+    registradoPorNombre: nombre((e.registrado_por_id as string | null) ?? null),
+  }));
+
+  return { ...baseReporte(r, nombre, trabajadores), actividades, extras };
+}
+
+// ── Catálogo de actividades del turno ────────────────────────────────────────
+
+export type ActividadDelTurno = ActividadConfig & { pendienteAcumulado: boolean };
+
+type ActCfgRow = {
+  id: string;
+  cod: string;
+  nombre: string;
+  categoria: string | null;
+  tipo_act: string | null;
+  peso: number | null;
+  activa: boolean;
+  turno: string | null;
+  frecuencia_dias: number | null;
+  dia_semana: string | null;
+  aparece_dia: number | null;
+  acumula: boolean | null;
+  precio_unitario: number | null;
+  unidad: string | null;
+  orden: number | null;
+};
+
+const fromCfg = (r: ActCfgRow): ActividadConfig => ({
+  id: r.id,
+  cod: r.cod,
+  nombre: r.nombre,
+  categoria: r.categoria,
+  tipoAct: r.tipo_act ?? 'obligatoria',
+  peso: Number(r.peso ?? 0),
+  activa: Boolean(r.activa),
+  turno: r.turno ?? 'ambos',
+  frecuenciaDias: Number(r.frecuencia_dias ?? 0),
+  diaSemana: r.dia_semana,
+  apareceDia: Number(r.aparece_dia ?? 0),
+  acumula: Boolean(r.acumula),
+  precioUnitario: Number(r.precio_unitario ?? 0),
+  unidad: r.unidad,
+  orden: Number(r.orden ?? 0),
+});
+
+// Actividades obligatorias que aplican en la sede/fecha/turno (filtra con actAplicaHoy del core),
+// más las pendientes acumuladas de turnos previos. Espeja routes/actividades.js GET /.
+export async function listarActividadesConfig(
+  sede: string,
+  fecha: string,
+  turno: TurnoReporte,
+): Promise<ActividadDelTurno[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('actividades_config')
+    .select('*')
+    .eq('sede_cod', sede)
+    .eq('activa', true)
+    .order('orden', { ascending: true })
+    .order('cod', { ascending: true });
+  if (error) throw new Error(error.message);
+
+  const all = ((data as ActCfgRow[]) ?? []).map(fromCfg);
+  const obligatorias = all.filter((a) => a.tipoAct === 'obligatoria' || (!a.tipoAct && a.categoria !== 'EXT'));
+
+  // Pendientes acumuladas (no resueltas) de la sede.
+  const { data: pend } = await sb
+    .from('actividades_pendientes')
+    .select('act_cod')
+    .eq('sede_cod', sede)
+    .eq('resuelta', false);
+  const pendientes = new Set(((pend as { act_cod: string }[]) ?? []).map((p) => p.act_cod));
+
+  const aplican = obligatorias
+    .filter((a) => actAplicaHoy(a, fecha, turno))
+    .map((a) => ({ ...a, pendienteAcumulado: pendientes.has(a.cod) }));
+
+  // Agrega actividades acumulables que están pendientes pero hoy no aplicaban.
+  const codsHoy = new Set(aplican.map((a) => a.cod));
+  for (const a of obligatorias) {
+    if (a.acumula && pendientes.has(a.cod) && !codsHoy.has(a.cod)) {
+      aplican.push({ ...a, pendienteAcumulado: true });
+    }
+  }
+  return aplican;
+}
+
+// Empleados (id+nombre+rol+sede) para elegir trabajadores/encargado del turno. El rol/sede
+// se muestran como tag en el picker (espeja las "tiendas" del SCI viejo). OJO RLS: un no-admin
+// solo se ve a sí mismo (policy emp_select); el directorio completo es decisión diferida.
+export type EmpPicker = { id: string; nombre: string; rol: string; sedeCod: string | null };
+export async function listarEmpleados(): Promise<EmpPicker[]> {
+  const items = await directorio();
+  return items
+    .map((d) => ({ id: d.id, nombre: d.nombre, rol: d.rol, sedeCod: d.sedeCod }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+}
+
+// ¿Ya existe un reporte para esta sede/fecha/turno? Devuelve su id (para enrutar a evaluación,
+// como el viejo: si el turno ya se envió, la pantalla pasa a Evaluación).
+export async function buscarReporteId(sede: string, fecha: string, turno: string): Promise<string | null> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('reportes')
+    .select('id')
+    .eq('sede_cod', sede)
+    .eq('fecha', fecha)
+    .eq('turno', turno)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return (data as { id: string } | null)?.id ?? null;
+}
+
+// ── Mutaciones vía RPC (atómicas, security invoker → RLS real; ver 0020) ─────
+
+export async function crearReporte(p: {
+  id: string;
+  sede: string;
+  turno: string;
+  encargado?: string | null;
+  actTotal: number;
+  actDone: number;
+  trabajadores: string[];
+  actividades: { cod: string; nombre: string; cat: string | null; peso: number; obs: string }[];
+  extras: { tipo: string; nombre: string; cantidad: number; precio_unitario: number; monto_total: number; detalle: string }[];
+}): Promise<string> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('reportes_crear', {
+    p_id: p.id,
+    p_sede: p.sede,
+    p_turno: p.turno,
+    p_act_total: p.actTotal,
+    p_act_done: p.actDone,
+    p_trabajadores: p.trabajadores,
+    p_actividades: p.actividades,
+    p_extras: p.extras,
+    p_encargado: p.encargado ?? null,
+  });
+  if (error) throw new Error(error.message);
+  return String(data);
+}
+
+export async function evaluarReporte(
+  id: string,
+  calificaciones: { cod: string; cal: number; obs: string }[],
+): Promise<number> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('reportes_evaluar', { p_id: id, p_calificaciones: calificaciones });
+  if (error) throw new Error(error.message);
+  return Number(data) || 0;
+}
+
+export async function anularReporte(id: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('reportes_anular', { p_id: id });
+  if (error) throw new Error(error.message);
+}
+
+export async function anularEval(id: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('reportes_anular_eval', { p_id: id });
+  if (error) throw new Error(error.message);
+}
+
+// Auto-asistencia: marca presentes al encargado + trabajadores del reporte (fuente='reporte').
+export async function marcarAsistenciaReporte(reporteId: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('reportes_marcar_asistencia', { p_reporte_id: reporteId });
+  if (error) throw new Error(error.message);
+}
+
+// ── Drafts (autosave del formulario) ─────────────────────────────────────────
+
+export type DraftReporte = {
+  encargadoId: string | null;
+  payload: Record<string, unknown>;
+  updatedAt: string;
+};
+
+export async function getDraft(sede: string, fecha: string, turno: string): Promise<DraftReporte | null> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('reporte_drafts')
+    .select('encargado_id, payload, updated_at')
+    .eq('sede_cod', sede)
+    .eq('fecha', fecha)
+    .eq('turno', turno)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return null;
+  const d = data as { encargado_id: string | null; payload: Record<string, unknown>; updated_at: string };
+  return { encargadoId: d.encargado_id, payload: d.payload ?? {}, updatedAt: d.updated_at };
+}
+
+export async function saveDraft(p: {
+  sede: string;
+  fecha: string;
+  turno: string;
+  encargadoId: string | null;
+  payload: Record<string, unknown>;
+}): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.from('reporte_drafts').upsert(
+    {
+      sede_cod: p.sede,
+      fecha: p.fecha,
+      turno: p.turno,
+      encargado_id: p.encargadoId,
+      payload: p.payload,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'sede_cod,fecha,turno' },
+  );
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteDraft(sede: string, fecha: string, turno: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb
+    .from('reporte_drafts')
+    .delete()
+    .eq('sede_cod', sede)
+    .eq('fecha', fecha)
+    .eq('turno', turno);
+  if (error) throw new Error(error.message);
+}
+
+// ── Layout de limpieza (mapa de zonas por sede) ──────────────────────────────
+
+export type LayoutZona = {
+  id: number;
+  cod: string;
+  nombre: string;
+  turno: string; // 'mañana' | 'tarde' | 'ambos'
+  tipo: string; // 'area' no puntúa; el resto sí
+  peso: number;
+  posX: number;
+  posY: number;
+  ancho: number;
+  alto: number;
+  color: string;
+  forma: string; // 'rect' | 'circle' | 'tri' | 'special'
+  nivel: string;
+  sobreCod: string;
+};
+
+export async function listarLayoutZonas(sede: string): Promise<LayoutZona[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('layout_zonas')
+    .select('*')
+    .eq('sede_cod', sede)
+    .order('orden', { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data as Record<string, unknown>[]) ?? []).map((r) => ({
+    id: Number(r.id),
+    cod: String(r.cod),
+    nombre: String(r.nombre),
+    turno: String(r.turno ?? 'ambos'),
+    tipo: String(r.tipo ?? 'mueble'),
+    peso: Number(r.peso ?? 0),
+    posX: Number(r.pos_x ?? 0),
+    posY: Number(r.pos_y ?? 0),
+    ancho: Number(r.ancho ?? 0),
+    alto: Number(r.alto ?? 0),
+    color: String(r.color ?? '#3b82f6'),
+    forma: String(r.forma ?? 'rect'),
+    nivel: String(r.nivel ?? 'piso'),
+    sobreCod: String(r.sobre_cod ?? ''),
+  }));
+}

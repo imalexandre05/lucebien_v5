@@ -22,7 +22,9 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
           <CardContent className="pt-6">
             {searchParams.error && (
               <p className="mb-4 rounded-md bg-amber-500/15 px-3 py-2 text-xs text-amber-700">
-                Datos inválidos. Revisá sede, código (4 dígitos) y contraseña.
+                {searchParams.error === 'credenciales'
+                  ? 'Código o sede incorrectos.'
+                  : 'Datos inválidos. Revisá la sede y el código (4 dígitos).'}
               </p>
             )}
             <form action={iniciarSesion} className="space-y-4">
@@ -45,11 +47,8 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
                   placeholder="4 dígitos"
                   className="font-mono tracking-[0.3em]"
                   required
+                  autoFocus
                 />
-              </div>
-              <div>
-                <Label>Contraseña</Label>
-                <Input name="password" type="password" placeholder="••••••" required />
               </div>
               <Button type="submit" className="w-full">
                 Ingresar
@@ -57,9 +56,7 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
             </form>
           </CardContent>
         </Card>
-        <p className="mt-4 text-center text-[11px] text-muted">
-          Demo Fase 1 · auth mock (Supabase Auth en el cutover)
-        </p>
+        <p className="mt-4 text-center text-[11px] text-muted">Ingresá con tu código y sede</p>
       </div>
     </div>
   );

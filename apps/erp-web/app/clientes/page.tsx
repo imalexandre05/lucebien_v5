@@ -38,7 +38,11 @@ export default async function ClientesPage() {
             <TBody>
               {clientes.map((c) => (
                 <TR key={c.id}>
-                  <TD className="pl-5 font-medium text-navy">{c.nombre}</TD>
+                  <TD className="pl-5">
+                    <Link href={`/clientes/${c.id}`} className="font-medium text-navy transition-colors duration-150 hover:text-gold">
+                      {c.nombre}
+                    </Link>
+                  </TD>
                   <TD className="font-mono">{c.dni || '—'}</TD>
                   <TD className="font-mono">{c.telefono || '—'}</TD>
                   <TD>{c.sedeCod}</TD>
@@ -47,7 +51,9 @@ export default async function ClientesPage() {
                   <TD className="pr-5 text-right">
                     <form action={eliminarCliente}>
                       <input type="hidden" name="id" value={c.id} />
-                      <button className="text-xs text-muted hover:text-gold">Eliminar</button>
+                      <button className="cursor-pointer text-xs text-muted transition-colors duration-150 hover:text-gold">
+                        Eliminar
+                      </button>
                     </form>
                   </TD>
                 </TR>

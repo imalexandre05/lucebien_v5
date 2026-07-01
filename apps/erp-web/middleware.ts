@@ -1,20 +1,45 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { features } from '@scilb/adapter-lucebien';
 
-// Gate de autenticación. Solo se activa con la feature AUTH_V2 (OFF en Fase 1 → demo abierta).
-// Cuando se prenda: sin sesión → redirige a /login.
-export function middleware(req: NextRequest) {
-  if (!features.AUTH_V2) return NextResponse.next();
+// Refresca la sesión de Supabase en cada request (patrón @supabase/ssr) y, si AUTH_V2
+// está ON, exige sesión: sin usuario → /login; con usuario en /login → /.
+export async function middleware(req: NextRequest) {
+  let res = NextResponse.next({ request: req });
 
-  const tieneSesion = Boolean(req.cookies.get('sci_sesion'));
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value));
+          res = NextResponse.next({ request: req });
+          cookiesToSet.forEach(({ name, value, options }) => res.cookies.set(name, value, options));
+        },
+      },
+    },
+  );
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   const enLogin = req.nextUrl.pathname.startsWith('/login');
 
-  if (!tieneSesion && !enLogin) {
+  if (features.AUTH_V2 && !user && !enLogin) {
     const url = req.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
-  return NextResponse.next();
+  if (features.AUTH_V2 && user && enLogin) {
+    const url = req.nextUrl.clone();
+    url.pathname = '/';
+    return NextResponse.redirect(url);
+  }
+  return res;
 }
 
 export const config = {

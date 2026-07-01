@@ -33,9 +33,30 @@ const config: Config = {
           '0%': { opacity: '0', transform: 'translateY(8px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        fade: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.96)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        shimmer: {
+          '100%': { transform: 'translateX(100%)' },
+        },
+        pulseSoft: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.55' },
+        },
       },
       animation: {
         rise: 'rise 360ms cubic-bezier(0.23, 1, 0.32, 1) both',
+        // `backwards` (no forwards): no deja transform tras terminar → no rompe sticky/fixed hijos.
+        'page-enter': 'rise 380ms cubic-bezier(0.23, 1, 0.32, 1) backwards',
+        fade: 'fade 300ms ease-out both',
+        'scale-in': 'scaleIn 240ms cubic-bezier(0.23, 1, 0.32, 1) both',
+        shimmer: 'shimmer 1.4s infinite',
+        'pulse-soft': 'pulseSoft 1.6s ease-in-out infinite',
       },
     },
   },

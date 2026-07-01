@@ -5,7 +5,8 @@ import type { Rol, Usuario } from './permisos';
 export const loginSchema = z.object({
   sede: z.string().min(1, 'Sede requerida'),
   cod: z.string().regex(/^\d{4}$/, 'Código de 4 dígitos'),
-  password: z.string().min(1, 'Contraseña requerida'),
+  // El código ES la credencial (login híbrido cod+sede); no se pide contraseña aparte.
+  password: z.string().optional(),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 

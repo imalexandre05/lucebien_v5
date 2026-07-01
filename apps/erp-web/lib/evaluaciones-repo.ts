@@ -1,0 +1,96 @@
+import type { PesosEval } from '@scilb/core';
+import { getServerClient } from './supabase/server';
+import { leerConfigMap } from './config-repo';
+import { mapaNombres } from './directorio';
+
+export type Evaluacion = {
+  id: string;
+  empleadoId: string;
+  empleadoNombre: string | null;
+  mes: string;
+  notaFinal: number;
+  cicloDesde: string | null;
+  cicloHasta: string | null;
+  createdAt: string;
+};
+
+// Pesos de evaluación desde config (editables). Defaults si falta alguna clave.
+export async function leerPesosEval(): Promise<PesosEval> {
+  const m = await leerConfigMap();
+  const num = (k: string, d: number) => {
+    const v = Number(m[k]);
+    return Number.isFinite(v) ? v : d;
+  };
+  return {
+    competencias: num('peso_competencias', 0.25),
+    valores: num('peso_valores', 0.25),
+    operaciones: num('peso_operaciones', 0.1),
+    software: num('peso_software', 0.1),
+    limpieza: num('peso_limpieza', 0.1),
+    examenes: num('peso_examenes', 0.15),
+    tardanza: num('peso_tardanza', 0.05),
+  };
+}
+
+export async function listarEvaluaciones(): Promise<Evaluacion[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('evaluaciones_mensuales')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) throw new Error(error.message);
+  const rows = (data as Record<string, unknown>[]) ?? [];
+
+  const nombre = await mapaNombres();
+
+  return rows.map((r) => ({
+    id: String(r.id),
+    empleadoId: String(r.empleado_id),
+    empleadoNombre: nombre.get(String(r.empleado_id)) ?? null,
+    mes: String(r.mes ?? ''),
+    notaFinal: Number(r.nota_final ?? 0),
+    cicloDesde: (r.ciclo_desde as string | null) ?? null,
+    cicloHasta: (r.ciclo_hasta as string | null) ?? null,
+    createdAt: String(r.created_at ?? ''),
+  }));
+}
+
+// Componentes auto-calculados desde la data (reportes evaluados como encargado, asistencias,
+// incidencias) para un rango. Devuelve { operaciones, software, limpieza, tardanza, descuento }.
+export async function componentesEvaluacion(
+  empleadoId: string,
+  desde: string,
+  hasta: string,
+): Promise<Record<string, number>> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('evaluacion_componentes', {
+    p_empleado: empleadoId,
+    p_desde: desde,
+    p_hasta: hasta,
+  });
+  if (error) throw new Error(error.message);
+  return (data as Record<string, number>) ?? {};
+}
+
+export async function crearEvaluacion(p: {
+  empleadoId: string;
+  mes: string;
+  notaFinal: number;
+  componentes: Record<string, number>;
+  pesos: PesosEval;
+  cicloDesde: string | null;
+  cicloHasta: string | null;
+}): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.from('evaluaciones_mensuales').insert({
+    empleado_id: p.empleadoId,
+    mes: p.mes,
+    nota_final: p.notaFinal,
+    componentes: p.componentes,
+    pesos_usados: p.pesos,
+    ciclo_desde: p.cicloDesde,
+    ciclo_hasta: p.cicloHasta,
+  });
+  if (error) throw new Error(error.message);
+}

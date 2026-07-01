@@ -1,8 +1,9 @@
 import Link from 'next/link';
-import { Package, Contact, Shirt, TrendingUp } from 'lucide-react';
+import { Package, Shirt, ClipboardList, AlertTriangle } from 'lucide-react';
 import { ETAPAS_PIPELINE, type EstadoActivo } from '@scilb/core';
 import { inventarioRepo } from '../lib/inventario-repo';
-import { clientesRepo } from '../lib/clientes-repo';
+import { listarPasadas } from '../lib/pipeline-repo';
+import { getServerClient } from '../lib/supabase/server';
 import { PageHeader } from '../components/shell/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge, type Tone } from '../components/ui/badge';
@@ -15,43 +16,59 @@ const TONE: Record<EstadoActivo, Tone> = {
   baja: 'gray',
 };
 
-// Conteos de muestra del pipeline (se conecta al pipeline real en integración).
-const PIPELINE_SAMPLE = [6, 4, 3, 2, 1, 2, 3, 1, 2];
+async function contar(tabla: string): Promise<number> {
+  const sb = getServerClient();
+  const { count } = await sb.from(tabla).select('*', { count: 'exact', head: true });
+  return count ?? 0;
+}
 
 export default async function Dashboard() {
-  const [activos, clientes] = await Promise.all([inventarioRepo.listar(), clientesRepo.listar()]);
+  const [activos, pasadas, reportesCount, incidenciasCount] = await Promise.all([
+    inventarioRepo.listar(),
+    listarPasadas(),
+    contar('reportes'),
+    contar('incidencias'),
+  ]);
+
   const disponibles = activos.filter((a) => a.estado === 'disponible').length;
-  const alquilados = activos.filter((a) => a.estado === 'alquilado').length;
+
+  // Distribución real del pipeline por etapa.
+  const porEtapa = new Map<string, number>();
+  for (const p of pasadas) porEtapa.set(p.etapa, (porEtapa.get(p.etapa) ?? 0) + 1);
+  const maxEtapa = Math.max(1, ...ETAPAS_PIPELINE.map((e) => porEtapa.get(e) ?? 0));
 
   const kpis = [
-    { label: 'Activos en inventario', value: activos.length, icon: Package, hint: `${disponibles} disponibles` },
-    { label: 'En alquiler', value: alquilados, icon: TrendingUp, hint: 'fuera de tienda' },
-    { label: 'Clientes', value: clientes.length, icon: Contact, hint: 'registrados' },
-    { label: 'Etapas de pipeline', value: ETAPAS_PIPELINE.length, icon: Shirt, hint: 'lavandería' },
+    { label: 'Prendas en pipeline', value: pasadas.length, icon: Shirt, hint: 'lavandería', href: '/pipeline' },
+    { label: 'Reportes FR-01', value: reportesCount, icon: ClipboardList, hint: 'registrados', href: '/reportes' },
+    { label: 'Incidencias', value: incidenciasCount, icon: AlertTriangle, hint: 'registradas', href: '/incidencias' },
+    { label: 'Activos en inventario', value: activos.length, icon: Package, hint: `${disponibles} disponibles`, href: '/inventario' },
   ];
 
   return (
     <div>
-      <PageHeader title="Dashboard" subtitle="Resumen operativo · demo Fase 1" />
+      <PageHeader title="Dashboard" subtitle="Resumen operativo" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k, i) => {
           const Icon = k.icon;
           return (
-            <Card
+            <Link
               key={k.label}
-              className="animate-rise transition-[transform,box-shadow] duration-200 ease-out-expo hover:-translate-y-0.5 hover:shadow-lift"
+              href={k.href}
+              className="animate-rise transition-[transform,box-shadow] duration-200 ease-out-expo hover:-translate-y-0.5"
               style={{ animationDelay: `${i * 60}ms` }}
             >
-              <CardContent className="pt-5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium uppercase tracking-wide text-muted">{k.label}</span>
-                  <Icon className="h-4 w-4 text-gold" strokeWidth={1.75} />
-                </div>
-                <div className="mt-3 font-mono text-3xl font-semibold tabular-nums text-navy">{k.value}</div>
-                <div className="mt-1 text-xs text-muted">{k.hint}</div>
-              </CardContent>
-            </Card>
+              <Card className="hover:shadow-lift">
+                <CardContent className="pt-5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-medium uppercase tracking-wide text-muted">{k.label}</span>
+                    <Icon className="h-4 w-4 text-gold" strokeWidth={1.75} />
+                  </div>
+                  <div className="mt-3 font-mono text-3xl font-semibold tabular-nums text-navy">{k.value}</div>
+                  <div className="mt-1 text-xs text-muted">{k.hint}</div>
+                </CardContent>
+              </Card>
+            </Link>
           );
         })}
       </div>
@@ -60,10 +77,7 @@ export default async function Dashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Inventario reciente</CardTitle>
-            <Link
-              href="/inventario"
-              className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold"
-            >
+            <Link href="/inventario" className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold">
               Ver todo →
             </Link>
           </CardHeader>
@@ -90,6 +104,13 @@ export default async function Dashboard() {
                     <TD className="pr-5 text-right font-mono tabular-nums">S/ {a.precioAlquiler.toFixed(2)}</TD>
                   </TR>
                 ))}
+                {activos.length === 0 && (
+                  <TR>
+                    <TD className="px-5 py-6 text-center text-muted" colSpan={5}>
+                      Sin activos cargados.
+                    </TD>
+                  </TR>
+                )}
               </TBody>
             </Table>
           </CardContent>
@@ -98,21 +119,26 @@ export default async function Dashboard() {
         <Card>
           <CardHeader>
             <CardTitle>Pipeline de lavandería</CardTitle>
+            <Link href="/pipeline" className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold">
+              Ver →
+            </Link>
           </CardHeader>
           <CardContent className="space-y-2.5">
-            {ETAPAS_PIPELINE.map((e, i) => (
-              <div key={e} className="flex items-center gap-3">
-                <span className="w-28 shrink-0 text-xs capitalize text-muted">{e.replace('_', ' ')}</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-paper">
-                  <div
-                    className="h-full rounded-full bg-navy transition-[width] duration-500 ease-out-expo"
-                    style={{ width: `${Math.min(100, PIPELINE_SAMPLE[i] * 14)}%` }}
-                  />
+            {ETAPAS_PIPELINE.map((e) => {
+              const n = porEtapa.get(e) ?? 0;
+              return (
+                <div key={e} className="flex items-center gap-3">
+                  <span className="w-28 shrink-0 text-xs capitalize text-muted">{e.replace('_', ' ')}</span>
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-paper">
+                    <div
+                      className="h-full rounded-full bg-navy transition-[width] duration-500 ease-out-expo"
+                      style={{ width: `${(n / maxEtapa) * 100}%` }}
+                    />
+                  </div>
+                  <span className="w-4 text-right font-mono text-xs tabular-nums text-navy">{n}</span>
                 </div>
-                <span className="w-4 text-right font-mono text-xs tabular-nums text-navy">{PIPELINE_SAMPLE[i]}</span>
-              </div>
-            ))}
-            <p className="pt-1 text-[11px] text-muted">Datos de muestra — pipeline real en integración.</p>
+              );
+            })}
           </CardContent>
         </Card>
       </div>

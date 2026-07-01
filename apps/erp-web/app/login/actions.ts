@@ -8,12 +8,12 @@ export async function iniciarSesion(formData: FormData) {
   const parsed = loginSchema.safeParse({
     sede: formData.get('sede'),
     cod: formData.get('cod'),
-    password: formData.get('password'),
   });
-  if (!parsed.success) {
-    redirect('/login?error=1');
-  }
-  await login(parsed.data.cod, parsed.data.sede);
+  if (!parsed.success) redirect('/login?error=datos');
+
+  const res = await login(parsed.data.cod, parsed.data.sede);
+  if (!res.ok) redirect('/login?error=credenciales');
+
   redirect('/');
 }
 

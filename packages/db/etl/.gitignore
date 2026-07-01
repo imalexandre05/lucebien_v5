@@ -1,0 +1,5 @@
+_idmap.json
+_pipeline_idmap.json
+_reportes_idmap.json
+etl_huerfanos.log
+*.db

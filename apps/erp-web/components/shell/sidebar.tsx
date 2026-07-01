@@ -2,10 +2,10 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, AlertTriangle, CalendarCheck, Award, Wallet, Settings, type LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
-type Item = { label: string; href: string; icon: LucideIcon };
+type Item = { label: string; href: string; icon: LucideIcon; admin?: boolean };
 
 const NAV: { section: string; items: Item[] }[] = [
   {
@@ -13,7 +13,13 @@ const NAV: { section: string; items: Item[] }[] = [
     items: [
       { label: 'Dashboard', href: '/', icon: LayoutDashboard },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt },
-      { label: 'Empleados', href: '/empleados', icon: Users },
+      { label: 'Reportes', href: '/reportes', icon: ClipboardList },
+      { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle },
+      { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck },
+      { label: 'Evaluaciones', href: '/evaluaciones', icon: Award },
+      { label: 'Pagos', href: '/pagos', icon: Wallet },
+      { label: 'Empleados', href: '/empleados', icon: Users, admin: true },
+      { label: 'Configuración', href: '/configuracion', icon: Settings, admin: true },
     ],
   },
   {
@@ -26,10 +32,10 @@ const NAV: { section: string; items: Item[] }[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
   const path = usePathname();
   return (
-    <aside className="sticky top-0 flex h-screen w-60 flex-col bg-navy-deep text-paper/80">
+    <aside className="sticky top-0 flex h-screen w-60 flex-col bg-navy-deep text-paper/80 print:hidden">
       <div className="border-b border-white/10 px-6 py-6">
         <div className="font-display text-2xl font-semibold leading-none text-paper">LuceBien</div>
         <div className="mt-1.5 font-mono text-[10px] tracking-brand text-gold">SCI · LB</div>
@@ -42,7 +48,9 @@ export function Sidebar() {
               {group.section}
             </div>
             <ul className="space-y-0.5">
-              {group.items.map((it) => {
+              {group.items
+                .filter((it) => !it.admin || esAdmin)
+                .map((it) => {
                 const active = it.href === '/' ? path === '/' : path.startsWith(it.href);
                 const Icon = it.icon;
                 return (
@@ -51,7 +59,7 @@ export function Sidebar() {
                       href={it.href}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-[background-color,color] duration-150 ease-out-expo',
+                        'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-[background-color,color,transform] duration-150 ease-out-expo hover:translate-x-0.5',
                         active ? 'bg-white/10 text-paper' : 'text-paper/60 hover:bg-white/5 hover:text-paper',
                       )}
                     >
