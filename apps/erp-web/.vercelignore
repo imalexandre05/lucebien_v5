@@ -1,0 +1,6 @@
+# Defensa en profundidad: nunca subir variables locales al deploy.
+# (El deploy real es por integración con GitHub, que ya ignora estos por .gitignore;
+#  esto cubre además el caso de un deploy por CLI de Vercel.)
+.env
+.env.local
+.env*.local
