@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, FileText } from 'lucide-react';
+import { Plus, Trash2, FileText, Filter } from 'lucide-react';
 import { accionCrearPago, accionEliminarPago } from './actions';
 import type { Pago, EmpleadoPago } from '../../lib/pagos-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -22,6 +22,16 @@ function hoyPeru(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
 }
 const r2 = (n: number) => Math.round(n * 100) / 100;
+const soles = (n: number) => `S/ ${n.toFixed(2)}`;
+
+function StatBox({ label, valor, tone }: { label: string; valor: string; tone: string }) {
+  return (
+    <div className={cn('rounded-xl border p-4 text-center', tone)}>
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</div>
+      <div className="font-mono text-xl font-bold tabular-nums">{valor}</div>
+    </div>
+  );
+}
 
 export function PagosCliente({
   pagos,
@@ -43,6 +53,31 @@ export function PagosCliente({
   const [fecha, setFecha] = useState(hoyPeru());
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
+
+  // Filtros.
+  const [q, setQ] = useState('');
+  const [fMetodo, setFMetodo] = useState('');
+  const [fEstado, setFEstado] = useState('');
+
+  const filtrados = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return pagos.filter((p) => {
+      if (fMetodo && p.metodo !== fMetodo) return false;
+      if (fEstado) {
+        if (fEstado === 'anulado' && !p.anulado) return false;
+        if (fEstado !== 'anulado' && (p.anulado || p.estado !== fEstado)) return false;
+      }
+      if (needle && !(p.empleadoNombre ?? '').toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }, [pagos, q, fMetodo, fEstado]);
+
+  const resumen = useMemo(() => {
+    const pagado = filtrados.filter((p) => !p.anulado && p.estado === 'pagado').reduce((s, p) => s + p.monto, 0);
+    const pendiente = filtrados.filter((p) => !p.anulado && p.estado === 'pendiente').reduce((s, p) => s + p.monto, 0);
+    const anulados = filtrados.filter((p) => p.anulado).length;
+    return { total: filtrados.length, pagado, pendiente, anulados };
+  }, [filtrados]);
 
   const emp = empleados.find((e) => e.id === empleadoId);
   const sugerido = emp && emp.ultimaNota != null ? r2(emp.salarioBase * (emp.ultimaNota / 20) + bonus - descuentos) : null;
@@ -81,14 +116,52 @@ export function PagosCliente({
 
   return (
     <div className="space-y-4">
-      {esAdmin && (
-        <div className="flex justify-end">
-          <button type="button" onClick={() => setAbierto((v) => !v)} className={buttonVariants({ variant: abierto ? 'outline' : 'primary' })}>
-            <Plus className="h-4 w-4" strokeWidth={2} />
-            {abierto ? 'Cerrar' : 'Registrar pago'}
-          </button>
-        </div>
-      )}
+      {/* Resumen */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <StatBox label="Registros" valor={String(resumen.total)} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox label="Pagado" valor={soles(resumen.pagado)} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
+        <StatBox label="Pendiente" valor={soles(resumen.pendiente)} tone="border-amber-200 bg-amber-50 text-amber-700" />
+        <StatBox label="Anulados" valor={String(resumen.anulados)} tone="border-line bg-white text-muted" />
+      </div>
+
+      {/* Filtros + acción */}
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-2 py-4">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+            <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
+          </span>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar empleado…"
+            className={`${fieldCls} min-w-[12rem] flex-1`}
+          />
+          <select value={fMetodo} onChange={(e) => setFMetodo(e.target.value)} className={fieldCls} aria-label="Método">
+            <option value="">Todo método</option>
+            {METODOS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+          <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} className={fieldCls} aria-label="Estado">
+            <option value="">Todo estado</option>
+            <option value="pagado">Pagado</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="anulado">Anulado</option>
+          </select>
+          {esAdmin && (
+            <button
+              type="button"
+              onClick={() => setAbierto((v) => !v)}
+              className={cn(buttonVariants({ variant: abierto ? 'outline' : 'primary' }), 'ml-auto')}
+            >
+              <Plus className="h-4 w-4" strokeWidth={2} />
+              {abierto ? 'Cerrar' : 'Registrar pago'}
+            </button>
+          )}
+        </CardContent>
+      </Card>
 
       {esAdmin && abierto && (
         <Card>
@@ -109,8 +182,8 @@ export function PagosCliente({
                 </select>
                 {emp && (
                   <p className="mt-1 text-xs text-muted">
-                    Salario base S/ {emp.salarioBase.toFixed(2)} · última nota {emp.ultimaNota != null ? emp.ultimaNota.toFixed(2) : '—'}
-                    {sugerido != null && <> · sugerido <span className="font-medium text-navy">S/ {sugerido.toFixed(2)}</span></>}
+                    Salario base {soles(emp.salarioBase)} · última nota {emp.ultimaNota != null ? emp.ultimaNota.toFixed(2) : '—'}
+                    {sugerido != null && <> · sugerido <span className="font-medium text-navy">{soles(sugerido)}</span></>}
                   </p>
                 )}
               </div>
@@ -164,14 +237,14 @@ export function PagosCliente({
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
             <button type="button" onClick={registrar} disabled={pending || !empleadoId} className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}>
-              {pending ? 'Registrando…' : `Registrar · S/ ${monto.toFixed(2)}`}
+              {pending ? 'Registrando…' : `Registrar · ${soles(monto)}`}
             </button>
           </CardContent>
         </Card>
       )}
 
       <Card>
-        <CardContent className="px-0 pb-0">
+        <CardContent className="overflow-x-auto px-0 pb-0">
           <Table>
             <THead>
               <TR>
@@ -179,27 +252,27 @@ export function PagosCliente({
                 <TH>Empleado</TH>
                 <TH>Método</TH>
                 <TH>Estado</TH>
-                <TH className="pr-5 text-right">Monto</TH>
+                <TH className="text-right">Monto</TH>
                 <TH className="pr-5" />
               </TR>
             </THead>
             <TBody>
-              {pagos.map((p) => (
+              {filtrados.map((p) => (
                 <TR key={p.id}>
-                  <TD className="pl-5 font-mono text-xs">{p.fechaPago ?? p.createdAt.slice(0, 10)}</TD>
-                  <TD>{p.empleadoNombre ?? '—'}</TD>
+                  <TD className="pl-5 font-mono text-xs text-muted">{p.fechaPago ?? p.createdAt.slice(0, 10)}</TD>
+                  <TD className="font-medium text-navy">{p.empleadoNombre ?? '—'}</TD>
                   <TD className="capitalize">{p.metodo}</TD>
                   <TD>
                     <Badge tone={ESTADO_TONE[p.anulado ? 'anulado' : p.estado] ?? 'gray'}>{p.anulado ? 'anulado' : p.estado}</Badge>
                   </TD>
-                  <TD className="pr-5 text-right font-mono tabular-nums">S/ {p.monto.toFixed(2)}</TD>
+                  <TD className="text-right font-mono font-semibold tabular-nums">{soles(p.monto)}</TD>
                   <TD className="pr-5">
                     <div className="flex items-center justify-end gap-2">
-                      <Link href={`/pagos/${p.id}/comprobante`} className="text-muted hover:text-navy" aria-label="Comprobante" title="Comprobante">
+                      <Link href={`/pagos/${p.id}/comprobante`} className="text-muted transition-colors hover:text-navy" aria-label="Comprobante" title="Comprobante">
                         <FileText className="h-4 w-4" strokeWidth={1.75} />
                       </Link>
                       {esAdmin && (
-                        <button type="button" onClick={() => eliminar(p.id)} className="text-muted hover:text-red-600" aria-label="Eliminar">
+                        <button type="button" onClick={() => eliminar(p.id)} className="text-muted transition-colors hover:text-red-600" aria-label="Eliminar">
                           <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                         </button>
                       )}
@@ -207,10 +280,10 @@ export function PagosCliente({
                   </TD>
                 </TR>
               ))}
-              {pagos.length === 0 && (
+              {filtrados.length === 0 && (
                 <TR>
                   <TD className="px-5 py-8 text-center text-muted" colSpan={6}>
-                    Sin pagos registrados.
+                    {pagos.length === 0 ? 'Sin pagos registrados.' : 'Ninguno coincide con el filtro.'}
                   </TD>
                 </TR>
               )}
