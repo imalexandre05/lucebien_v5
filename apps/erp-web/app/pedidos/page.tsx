@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, CalendarClock } from 'lucide-react';
 import type { TipoPedido } from '@scilb/core';
 import { pedidosRepo } from '../../lib/pedidos-repo';
 import { PageHeader } from '../../components/shell/page-header';
@@ -18,10 +18,16 @@ export default async function PedidosPage() {
         title="Pedidos"
         subtitle="Alquiler · venta · servicios"
         action={
-          <Link href="/pedidos/nuevo" className={buttonVariants({ variant: 'primary' })}>
-            <Plus className="h-4 w-4" strokeWidth={2} />
-            Nuevo pedido
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/pedidos/devoluciones" className={buttonVariants({ variant: 'outline' })}>
+              <CalendarClock className="h-4 w-4" strokeWidth={2} />
+              Devoluciones
+            </Link>
+            <Link href="/pedidos/nuevo" className={buttonVariants({ variant: 'primary' })}>
+              <Plus className="h-4 w-4" strokeWidth={2} />
+              Nuevo pedido
+            </Link>
+          </div>
         }
       />
       <Card>

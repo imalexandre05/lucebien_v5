@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, Settings, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, Settings, type LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
 type Item = { label: string; href: string; icon: LucideIcon; admin?: boolean };
@@ -30,6 +30,7 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Clientes', href: '/clientes', icon: Contact },
       { label: 'Pedidos', href: '/pedidos', icon: ShoppingBag },
       { label: 'Caja', href: '/caja', icon: Banknote },
+      { label: 'Finanzas', href: '/finanzas', icon: LineChart },
     ],
   },
 ];
