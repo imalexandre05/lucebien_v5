@@ -89,26 +89,26 @@ export function LayoutMap({
       <div className="flex flex-wrap items-center gap-2">
         {!readOnly && !esEval && (
           <>
-            <button type="button" onClick={() => emit(mostradas.filter(puntuable).map((z) => z.cod))} className="rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors hover:border-gold">
-              ✓ Turno
+            <button type="button" onClick={() => emit(mostradas.filter(puntuable).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
+              <Check className="h-3 w-3" strokeWidth={2.5} /> Turno
             </button>
-            <button type="button" onClick={() => emit(zonas.filter(puntuable).map((z) => z.cod))} className="rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors hover:border-gold">
-              ✓ Todas
+            <button type="button" onClick={() => emit(zonas.filter(puntuable).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
+              <Check className="h-3 w-3" strokeWidth={2.5} /> Todas
             </button>
-            <button type="button" onClick={() => emit([])} className="rounded-md border border-line px-2 py-1 text-xs text-muted transition-colors hover:border-gold">
+            <button type="button" onClick={() => emit([])} className="rounded-md border border-line px-2 py-1 text-xs text-muted transition-colors duration-150 hover:border-gold active:scale-[0.97]">
               Limpiar
             </button>
           </>
         )}
         {!readOnly && esEval && onMass && (
           <>
-            <button type="button" onClick={() => onMass(1)} className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100">
+            <button type="button" onClick={() => onMass(1)} className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition-colors duration-150 hover:bg-emerald-100 active:scale-[0.97]">
               <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> Aprobar
             </button>
-            <button type="button" onClick={() => onMass(0.5)} className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 transition hover:bg-amber-100">
+            <button type="button" onClick={() => onMass(0.5)} className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-100 active:scale-[0.97]">
               <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Observar
             </button>
-            <button type="button" onClick={() => onMass(0)} className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 transition hover:bg-red-100">
+            <button type="button" onClick={() => onMass(0)} className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 transition-colors duration-150 hover:bg-red-100 active:scale-[0.97]">
               <X className="h-3.5 w-3.5" strokeWidth={2.5} /> Rechazar
             </button>
           </>
@@ -201,7 +201,7 @@ export function LayoutMap({
           <span className="inline-flex items-center gap-1"><Check className="h-3 w-3 text-emerald-600" strokeWidth={3} /> Aprobado ×1</span>
           <span className="inline-flex items-center gap-1"><Eye className="h-3 w-3 text-amber-600" strokeWidth={3} /> Observado ×0.5</span>
           <span className="inline-flex items-center gap-1"><X className="h-3 w-3 text-red-600" strokeWidth={3} /> Rechazado ×0</span>
-          <span className="ml-auto font-mono">Clic: ✓ → 👁 → ✗</span>
+          <span className="ml-auto text-muted/80">Clic en cada zona para ciclar el estado</span>
         </div>
       )}
     </div>
