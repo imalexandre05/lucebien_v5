@@ -14,7 +14,13 @@ export const THead = ({ className, ...p }: HTMLAttributes<HTMLTableSectionElemen
 );
 export const TBody = (p: HTMLAttributes<HTMLTableSectionElement>) => <tbody {...p} />;
 export const TR = ({ className, ...p }: HTMLAttributes<HTMLTableRowElement>) => (
-  <tr className={cn('border-b border-line/60 last:border-0 hover:bg-paper/60', className)} {...p} />
+  <tr
+    className={cn(
+      'border-b border-line/60 transition-colors duration-150 last:border-0 hover:bg-paper/60',
+      className,
+    )}
+    {...p}
+  />
 );
 export const TH = ({ className, ...p }: ThHTMLAttributes<HTMLTableCellElement>) => (
   <th
