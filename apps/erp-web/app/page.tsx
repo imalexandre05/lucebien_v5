@@ -57,6 +57,7 @@ export default async function Dashboard() {
     <div>
       <PageHeader title="Dashboard" subtitle="Resumen operativo" />
 
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Interno</div>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {kpis.map((k, i) => {
           const Icon = k.icon;
