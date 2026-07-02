@@ -3,12 +3,20 @@ import { notFound } from 'next/navigation';
 import type { TipoPedido } from '@scilb/core';
 import { clientesRepo } from '../../../lib/clientes-repo';
 import { pedidosRepo } from '../../../lib/pedidos-repo';
+import { metricasCRM, type SegmentoCliente } from '../../../lib/crm-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge, type Tone } from '../../../components/ui/badge';
+import { cn } from '../../../lib/cn';
 
 const TIPO_TONE: Record<TipoPedido, Tone> = { alquiler: 'navy', venta: 'gold', servicio: 'green' };
+const SEG_LABEL: Record<SegmentoCliente, string> = { vip: 'VIP', recurrente: 'Recurrente', nuevo: 'Nuevo' };
+const SEG_CLS: Record<SegmentoCliente, string> = {
+  vip: 'bg-gold/20 text-[#7a6e0e]',
+  recurrente: 'bg-navy/10 text-navy',
+  nuevo: 'bg-ink/10 text-muted',
+};
 
 export default async function ClienteDetalle({ params }: { params: { id: string } }) {
   const [clientes, pedidos] = await Promise.all([
@@ -18,7 +26,8 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
   const cliente = clientes.find((c) => c.id === params.id);
   if (!cliente) notFound();
 
-  const totalGastado = pedidos.reduce((s, p) => s + p.total, 0);
+  const m = metricasCRM(pedidos);
+  const totalGastado = m.totalGastado;
   const kpis = [
     { label: 'Pedidos', value: String(pedidos.length) },
     { label: 'Total gastado', value: `S/ ${totalGastado.toFixed(2)}` },
@@ -54,11 +63,25 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
               <span className="text-muted">Teléfono</span>
               <span className="font-mono text-navy">{cliente.telefono || '—'}</span>
             </div>
-            <div className="flex justify-between py-1.5">
+            <div className="flex justify-between border-b border-line/60 py-1.5">
               <span className="text-muted">Talla</span>
               <span className="text-navy">{cliente.medidas.talla || '—'}</span>
             </div>
-            <p className="pt-2 text-[11px] text-muted">Programa de fidelización: pendiente de definir regla.</p>
+            <div className="flex items-center justify-between border-b border-line/60 py-1.5">
+              <span className="text-muted">Segmento</span>
+              <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', SEG_CLS[m.segmento])}>
+                {SEG_LABEL[m.segmento]}
+              </span>
+            </div>
+            <div className="flex justify-between py-1.5">
+              <span className="text-muted">Última compra</span>
+              <span className="text-navy">{m.diasSinComprar == null ? '—' : `hace ${m.diasSinComprar} d`}</span>
+            </div>
+            {m.seguir && (
+              <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-700">
+                Cliente inactivo — conviene reactivar.
+              </p>
+            )}
           </CardContent>
         </Card>
 
