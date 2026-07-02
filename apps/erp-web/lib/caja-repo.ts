@@ -1,3 +1,4 @@
+import { resumenCaja } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import { getSesion } from './auth';
 import { mapaNombres } from './directorio';
@@ -251,23 +252,12 @@ export async function totalGarantias(): Promise<number> {
   return Math.round(t * 100) / 100;
 }
 
-// Arqueo/resumen de una sesión: ingresos/egresos totales y por método + efectivo esperado.
+// Arqueo/resumen de una sesión — delega en el cálculo puro de @scilb/core (testeado).
 export function resumenMovimientos(sesion: CajaSesion, movs: CajaMovimiento[]) {
-  const ingresos = movs.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0);
-  const egresos = movs.filter((m) => m.tipo === 'egreso').reduce((s, m) => s + m.monto, 0);
-  const efIn = movs.filter((m) => m.tipo === 'ingreso' && m.metodo === 'efectivo').reduce((s, m) => s + m.monto, 0);
-  const efOut = movs.filter((m) => m.tipo === 'egreso' && m.metodo === 'efectivo').reduce((s, m) => s + m.monto, 0);
-  const porMetodo = (metodo: string) =>
-    movs.filter((m) => m.tipo === 'ingreso' && m.metodo === metodo).reduce((s, m) => s + m.monto, 0);
-  return {
-    ingresos: Math.round(ingresos * 100) / 100,
-    egresos: Math.round(egresos * 100) / 100,
-    neto: Math.round((ingresos - egresos) * 100) / 100,
-    efectivoEsperado: Math.round((sesion.montoApertura + efIn - efOut) * 100) / 100,
-    efectivo: porMetodo('efectivo'),
-    yape: porMetodo('yape'),
-    transferencia: porMetodo('transferencia'),
-  };
+  return resumenCaja(
+    sesion.montoApertura,
+    movs.map((m) => ({ tipo: m.tipo, monto: m.monto, metodo: m.metodo })),
+  );
 }
 
 // Historial de cajas (sesiones + arqueo): apertura, ingresos/egresos, esperado y diferencia.
