@@ -21,7 +21,7 @@ export default async function NuevoPedidoPage({ searchParams }: { searchParams: 
         <CardContent className="pt-5">
           {searchParams.error && (
             <p className="mb-4 rounded-md bg-amber-500/15 px-3 py-2 text-xs text-amber-700">
-              Revisá los campos obligatorios (cliente, tipo, sede, fecha).
+              Revisa los campos obligatorios (cliente, tipo, sede, fecha).
             </p>
           )}
           <form action={crearPedido} className="grid grid-cols-1 gap-4 sm:grid-cols-2">

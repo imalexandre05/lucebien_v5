@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { nivelDevolucion } from '@scilb/core';
 import { pedidosRepo } from '../../../lib/pedidos-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent } from '../../../components/ui/card';
@@ -35,15 +36,20 @@ export default async function DevolucionesPage() {
     .map((p) => ({ ...p, dias: diasEntre(hoy, p.fechaDevolucion as string) }))
     .sort((a, b) => ((a.fechaDevolucion ?? '') < (b.fechaDevolucion ?? '') ? -1 : 1));
 
-  const vencidos = items.filter((i) => i.dias < 0).length;
-  const deHoy = items.filter((i) => i.dias === 0).length;
-  const proximos = items.filter((i) => i.dias > 0 && i.dias <= 3).length;
+  const vencidos = items.filter((i) => nivelDevolucion(i.dias) === 'vencido').length;
+  const deHoy = items.filter((i) => nivelDevolucion(i.dias) === 'hoy').length;
+  const proximos = items.filter((i) => nivelDevolucion(i.dias) === 'proximo').length;
 
+  const NIVEL_CLS = {
+    vencido: 'bg-red-50 text-red-700',
+    hoy: 'bg-amber-50 text-amber-700',
+    proximo: 'bg-gold/20 text-[#7a6e0e]',
+    futuro: 'bg-ink/10 text-muted',
+  } as const;
   const alerta = (dias: number) => {
-    if (dias < 0) return { label: `Vencido ${-dias}d`, cls: 'bg-red-50 text-red-700' };
-    if (dias === 0) return { label: 'Hoy', cls: 'bg-amber-50 text-amber-700' };
-    if (dias <= 3) return { label: `En ${dias}d`, cls: 'bg-gold/20 text-[#7a6e0e]' };
-    return { label: `En ${dias}d`, cls: 'bg-ink/10 text-muted' };
+    const nivel = nivelDevolucion(dias);
+    const label = nivel === 'vencido' ? `Vencido ${-dias}d` : nivel === 'hoy' ? 'Hoy' : `En ${dias}d`;
+    return { label, cls: NIVEL_CLS[nivel] };
   };
 
   return (

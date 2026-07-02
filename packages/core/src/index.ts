@@ -11,3 +11,5 @@ export * from './auth';
 export * from './pedidos';
 export * from './reportes';
 export * from './evaluaciones';
+export * from './crm';
+export * from './caja';

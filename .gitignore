@@ -34,3 +34,8 @@ _local_backup_pre_*/
 # Tooling local (no compartir con cliente — vive solo en mi PC)
 tools/local/
 .publisher-state.json
+
+# Playwright (artefactos de test E2E, no versionar)
+test-results/
+playwright-report/
+.next-build/
