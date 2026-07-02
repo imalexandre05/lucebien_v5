@@ -179,6 +179,29 @@ export async function registrarEgreso(p: {
   if (error) throw new Error(error.message);
 }
 
+// Registrar una GARANTÍA (depósito reembolsable del alquiler): ingreso; exige caja abierta.
+export async function registrarGarantia(p: {
+  sede: string;
+  monto: number;
+  metodo: string;
+  descripcion?: string;
+}): Promise<void> {
+  const sb = getServerClient();
+  const ses = await sesionAbierta(p.sede);
+  if (!ses) throw new Error(`Abre la caja de ${p.sede} antes de registrar garantías.`);
+  const { error } = await sb.from('caja_movimientos').insert({
+    sesion_id: ses.id,
+    sede_cod: p.sede,
+    tipo: 'ingreso',
+    categoria: 'garantia',
+    monto: p.monto,
+    metodo: p.metodo,
+    descripcion: p.descripcion ?? null,
+    registrado_por_id: await usuarioId(),
+  });
+  if (error) throw new Error(error.message);
+}
+
 // Cobros pendientes: pedidos con saldo (total − cobrado) > 0.
 export async function cobrosPendientes(): Promise<CobroPendiente[]> {
   const sb = getServerClient();

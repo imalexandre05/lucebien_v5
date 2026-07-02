@@ -2,9 +2,9 @@
 
 import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, ArrowDownCircle, ArrowUpCircle, Lock, Wallet } from 'lucide-react';
+import { X, ArrowDownCircle, ArrowUpCircle, Lock, Wallet, Shield } from 'lucide-react';
 import type { CajaSesion, CajaMovimiento, CobroPendiente } from '../../lib/caja-repo';
-import { accionAbrirCaja, accionCerrarCaja, accionRegistrarCobro, accionRegistrarEgreso } from './actions';
+import { accionAbrirCaja, accionCerrarCaja, accionRegistrarCobro, accionRegistrarEgreso, accionRegistrarGarantia } from './actions';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
@@ -68,7 +68,7 @@ export function CajaCliente({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState('');
-  const [modal, setModal] = useState<null | 'cobro' | 'egreso' | 'cerrar'>(null);
+  const [modal, setModal] = useState<null | 'cobro' | 'egreso' | 'cerrar' | 'garantia'>(null);
 
   // Apertura.
   const [montoApertura, setMontoApertura] = useState(0);
@@ -82,6 +82,10 @@ export function CajaCliente({
   const [eMetodo, setEMetodo] = useState('efectivo');
   const [eCat, setECat] = useState<'gasto' | 'devolucion_garantia' | 'otro'>('gasto');
   const [eDesc, setEDesc] = useState('');
+  // Garantía.
+  const [gMonto, setGMonto] = useState(0);
+  const [gMetodo, setGMetodo] = useState('efectivo');
+  const [gDesc, setGDesc] = useState('');
   // Cierre.
   const [montoCierre, setMontoCierre] = useState(0);
 
@@ -146,6 +150,9 @@ export function CajaCliente({
           </button>
           <button onClick={() => setModal('egreso')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/20">
             <ArrowUpCircle className="h-4 w-4" strokeWidth={2} /> Egreso
+          </button>
+          <button onClick={() => setModal('garantia')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/20">
+            <Shield className="h-4 w-4" strokeWidth={2} /> Garantía
           </button>
           <button onClick={() => { setMontoCierre(resumen?.efectivoEsperado ?? 0); setModal('cerrar'); }} className="inline-flex items-center gap-1.5 rounded-md border border-white/25 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/10">
             <Lock className="h-4 w-4" strokeWidth={2} /> Cerrar caja
@@ -353,6 +360,45 @@ export function CajaCliente({
           <div>
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción</label>
             <input value={eDesc} onChange={(e) => setEDesc(e.target.value)} placeholder="En qué se usó…" className={fieldCls} />
+          </div>
+          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        </Modal>
+      )}
+
+      {modal === 'garantia' && (
+        <Modal
+          title="Registrar garantía"
+          onClose={() => setModal(null)}
+          footer={
+            <>
+              <button type="button" onClick={() => setModal(null)} className={buttonVariants({ variant: 'outline' })}>Cancelar</button>
+              <button
+                type="button"
+                disabled={pending || gMonto <= 0}
+                onClick={() => run(() => accionRegistrarGarantia({ sede: sesion.sedeCod, monto: gMonto, metodo: gMetodo, descripcion: gDesc }))}
+                className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
+              >
+                {pending ? 'Registrando…' : `Garantía ${soles(gMonto)}`}
+              </button>
+            </>
+          }
+        >
+          <p className="text-xs text-muted">Depósito reembolsable del alquiler. Su devolución se registra luego como egreso.</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Monto</label>
+              <input type="number" step="0.5" value={gMonto} onChange={(e) => setGMonto(Number(e.target.value))} className={fieldCls} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
+              <select value={gMetodo} onChange={(e) => setGMetodo(e.target.value)} className={fieldCls}>
+                {METODOS.map((x) => <option key={x} value={x}>{x}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción (cliente / prenda)</label>
+            <input value={gDesc} onChange={(e) => setGDesc(e.target.value)} placeholder="Ej. Juan Pérez · terno negro" className={fieldCls} />
           </div>
           {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
         </Modal>
