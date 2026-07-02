@@ -1,6 +1,7 @@
-import { Building2, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { cerrarSesion } from '../../app/login/actions';
 import { getSesion } from '../../lib/auth';
+import { LogoMark } from '../brand/logo';
 
 function iniciales(nombre: string): string {
   const parts = nombre.trim().split(/\s+/).filter(Boolean);
@@ -15,8 +16,8 @@ export async function Topbar() {
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-line bg-paper/85 px-7 backdrop-blur print:hidden">
-      <div className="flex items-center gap-2 text-sm text-muted">
-        <Building2 className="h-4 w-4 text-gold" strokeWidth={1.75} />
+      <div className="flex items-center gap-2.5 text-sm text-muted">
+        <LogoMark size="sm" />
         <span>Confecciones Aliaga · Huancayo</span>
       </div>
       <div className="flex items-center gap-3">

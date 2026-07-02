@@ -2,6 +2,7 @@ import { iniciarSesion } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input, Select, Label } from '../../components/ui/form';
 import { Button } from '../../components/ui/button';
+import { LogoMark } from '../../components/brand/logo';
 
 const SEDES = [
   { cod: 'LB', nombre: 'Lucebien' },
@@ -14,9 +15,14 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper px-4">
       <div className="w-full max-w-sm">
-        <div className="mb-7 text-center">
-          <div className="font-display text-4xl font-semibold text-navy">LuceBien</div>
-          <div className="mt-1.5 font-mono text-[10px] tracking-brand text-gold">SCI · LB</div>
+        <div className="mb-8 flex flex-col items-center">
+          <LogoMark size="xl" className="animate-scale-in" />
+          <div className="mt-4 animate-rise font-display text-4xl font-semibold leading-none text-navy [animation-delay:90ms]">
+            LuceBien
+          </div>
+          <div className="mt-2 animate-rise font-mono text-[10px] tracking-brand text-gold [animation-delay:150ms]">
+            SCI · LB
+          </div>
         </div>
         <Card>
           <CardContent className="pt-6">
