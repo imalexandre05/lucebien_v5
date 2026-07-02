@@ -334,3 +334,56 @@ export async function historialCaja(limit = 50): Promise<SesionResumen[]> {
     };
   });
 }
+
+// Resumen financiero (S14): ingresos/egresos de caja por método y categoría en un periodo.
+export type ResumenFinanciero = {
+  ingresos: number;
+  egresos: number;
+  neto: number;
+  efectivo: number;
+  yape: number;
+  transferencia: number;
+  ingresosCat: Record<string, number>;
+  egresosCat: Record<string, number>;
+};
+
+export async function resumenFinanciero(desde?: string, hasta?: string): Promise<ResumenFinanciero> {
+  const sb = getServerClient();
+  let q = sb.from('caja_movimientos').select('tipo, categoria, monto, metodo');
+  if (desde) q = q.gte('fecha', desde);
+  if (hasta) q = q.lte('fecha', hasta);
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+
+  let ingresos = 0;
+  let egresos = 0;
+  let efectivo = 0;
+  let yape = 0;
+  let transferencia = 0;
+  const ingresosCat: Record<string, number> = {};
+  const egresosCat: Record<string, number> = {};
+  for (const m of (data as { tipo: string; categoria: string; monto: number; metodo: string | null }[]) ?? []) {
+    const monto = Number(m.monto);
+    if (m.tipo === 'ingreso') {
+      ingresos += monto;
+      ingresosCat[m.categoria] = (ingresosCat[m.categoria] ?? 0) + monto;
+      if (m.metodo === 'efectivo') efectivo += monto;
+      else if (m.metodo === 'yape') yape += monto;
+      else if (m.metodo === 'transferencia') transferencia += monto;
+    } else {
+      egresos += monto;
+      egresosCat[m.categoria] = (egresosCat[m.categoria] ?? 0) + monto;
+    }
+  }
+  const r2 = (n: number) => Math.round(n * 100) / 100;
+  return {
+    ingresos: r2(ingresos),
+    egresos: r2(egresos),
+    neto: r2(ingresos - egresos),
+    efectivo: r2(efectivo),
+    yape: r2(yape),
+    transferencia: r2(transferencia),
+    ingresosCat,
+    egresosCat,
+  };
+}
