@@ -2,7 +2,7 @@
 
 import { useState, useTransition, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, ArrowDownCircle, ArrowUpCircle, Lock, Wallet, Shield } from 'lucide-react';
+import { ArrowDownCircle, ArrowUpCircle, Lock, Wallet, Shield } from 'lucide-react';
 import type { CajaSesion, CajaMovimiento, CobroPendiente } from '../../lib/caja-repo';
 import { accionAbrirCaja, accionCerrarCaja, accionRegistrarCobro, accionRegistrarEgreso, accionRegistrarGarantia } from './actions';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -10,6 +10,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { buttonVariants } from '../../components/ui/button';
 import { StatBox } from '../../components/ui/stat-box';
+import { Modal as SharedModal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { cn } from '../../lib/cn';
 
 type Resumen = {
@@ -27,20 +28,14 @@ const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 const fieldCls =
   'w-full rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
 
+// Adapter sobre el Modal compartido: conserva la API local (title/children/footer) y hereda
+// Escape, bloqueo de scroll, foco al abrir, blur y a11y — sin tocar los 4 modales que lo usan.
 function Modal({ title, onClose, children, footer }: { title: string; onClose: () => void; children: ReactNode; footer: ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-deep/40 p-4" onClick={onClose}>
-      <div className="w-full max-w-md animate-scale-in rounded-2xl border border-line bg-white shadow-lift" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <h3 className="font-display text-lg font-semibold text-navy">{title}</h3>
-          <button type="button" onClick={onClose} className="text-muted transition hover:text-navy" aria-label="Cerrar">
-            <X className="h-5 w-5" strokeWidth={2} />
-          </button>
-        </div>
-        <div className="space-y-3 px-5 py-4">{children}</div>
-        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-4">{footer}</div>
-      </div>
-    </div>
+    <SharedModal open onClose={onClose} title={title}>
+      <ModalBody className="space-y-3">{children}</ModalBody>
+      <ModalFooter>{footer}</ModalFooter>
+    </SharedModal>
   );
 }
 
