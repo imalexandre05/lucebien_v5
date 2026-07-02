@@ -7,6 +7,7 @@ import { cn } from '../../lib/cn';
 export function StatBox({
   label,
   valor,
+  sub,
   tone,
   size = 'lg',
   index = 0,
@@ -14,6 +15,7 @@ export function StatBox({
 }: {
   label: ReactNode;
   valor: ReactNode;
+  sub?: ReactNode;
   tone?: string;
   size?: 'md' | 'lg';
   index?: number;
@@ -28,6 +30,7 @@ export function StatBox({
       <div className={cn('font-mono font-bold tabular-nums', size === 'lg' ? 'text-2xl' : 'text-xl')}>
         {valor}
       </div>
+      {sub != null && <div className="text-[10px] text-muted">{sub}</div>}
     </div>
   );
 }
