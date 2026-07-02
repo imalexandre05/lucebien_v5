@@ -458,7 +458,7 @@ function Tarjeta({
   return (
     <div
       className={cn(
-        'rounded-lg border bg-white p-2.5 shadow-sm transition hover:shadow-md',
+        'rounded-lg border bg-white p-2.5 shadow-card transition hover:shadow-lift',
         seleccionado ? 'border-navy ring-2 ring-navy/30' : 'border-line',
       )}
     >
