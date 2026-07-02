@@ -246,3 +246,68 @@ export function resumenMovimientos(sesion: CajaSesion, movs: CajaMovimiento[]) {
     transferencia: porMetodo('transferencia'),
   };
 }
+
+// Historial de cajas (sesiones + arqueo): apertura, ingresos/egresos, esperado y diferencia.
+export type SesionResumen = {
+  id: string;
+  sedeCod: string;
+  fecha: string;
+  estado: 'abierta' | 'cerrada';
+  montoApertura: number;
+  montoCierre: number | null;
+  ingresos: number;
+  egresos: number;
+  efectivoEsperado: number;
+  diferencia: number | null;
+};
+
+export async function historialCaja(limit = 50): Promise<SesionResumen[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('caja_sesiones')
+    .select(SES)
+    .order('fecha', { ascending: false })
+    .order('apertura_at', { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  const sesiones = ((data as Record<string, unknown>[]) ?? []).map(sesFromRow);
+  if (!sesiones.length) return [];
+
+  const { data: movData, error: e2 } = await sb
+    .from('caja_movimientos')
+    .select('sesion_id, tipo, monto, metodo')
+    .in('sesion_id', sesiones.map((s) => s.id));
+  if (e2) throw new Error(e2.message);
+
+  const agg = new Map<string, { ingresos: number; egresos: number; efIn: number; efOut: number }>();
+  for (const m of (movData as { sesion_id: string | null; tipo: string; monto: number; metodo: string | null }[]) ?? []) {
+    if (!m.sesion_id) continue;
+    const cur = agg.get(m.sesion_id) ?? { ingresos: 0, egresos: 0, efIn: 0, efOut: 0 };
+    const monto = Number(m.monto);
+    if (m.tipo === 'ingreso') {
+      cur.ingresos += monto;
+      if (m.metodo === 'efectivo') cur.efIn += monto;
+    } else {
+      cur.egresos += monto;
+      if (m.metodo === 'efectivo') cur.efOut += monto;
+    }
+    agg.set(m.sesion_id, cur);
+  }
+
+  return sesiones.map((s) => {
+    const t = agg.get(s.id) ?? { ingresos: 0, egresos: 0, efIn: 0, efOut: 0 };
+    const esperado = Math.round((s.montoApertura + t.efIn - t.efOut) * 100) / 100;
+    return {
+      id: s.id,
+      sedeCod: s.sedeCod,
+      fecha: s.fecha,
+      estado: s.estado,
+      montoApertura: s.montoApertura,
+      montoCierre: s.montoCierre,
+      ingresos: Math.round(t.ingresos * 100) / 100,
+      egresos: Math.round(t.egresos * 100) / 100,
+      efectivoEsperado: esperado,
+      diferencia: s.montoCierre == null ? null : Math.round((s.montoCierre - esperado) * 100) / 100,
+    };
+  });
+}
