@@ -18,6 +18,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/ca
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { buttonVariants } from '../../components/ui/button';
+import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 
 type Emp = { id: string; nombre: string };
@@ -34,15 +35,6 @@ const fieldCls =
 
 function mesPeru(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date()).slice(0, 7);
-}
-
-function StatBox({ label, valor, tone }: { label: string; valor: number | string; tone: string }) {
-  return (
-    <div className={cn('rounded-xl border p-4 text-center', tone)}>
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</div>
-      <div className="font-mono text-2xl font-bold tabular-nums">{valor}</div>
-    </div>
-  );
 }
 
 const CERO: ComponentesEval = {
@@ -154,10 +146,10 @@ export function EvaluacionesCliente({
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox label="Evaluaciones" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox label="Promedio" valor={resumen.promedio} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-        <StatBox label="Excelente" valor={resumen.excelente} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox label="Bajo" valor={resumen.bajo} tone="border-line bg-white text-muted" />
+        <StatBox index={0} label="Evaluaciones" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox index={1} label="Promedio" valor={resumen.promedio} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox index={2} label="Excelente" valor={resumen.excelente} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
+        <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="border-line bg-white text-muted" />
       </div>
 
       {/* Filtros + acción */}

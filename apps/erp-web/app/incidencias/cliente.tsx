@@ -9,6 +9,7 @@ import type { Incidencia, TipoIncidencia } from '../../lib/incidencias-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { buttonVariants } from '../../components/ui/button';
+import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 
 type Emp = { id: string; nombre: string };
@@ -25,15 +26,6 @@ function NivelPill({ nivel }: { nivel: string }) {
         ? 'bg-amber-50 text-amber-700'
         : 'bg-slate-100 text-slate-600';
   return <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', cls)}>{nivel}</span>;
-}
-
-function StatBox({ label, valor, tone }: { label: string; valor: number; tone: string }) {
-  return (
-    <div className={cn('rounded-xl border p-4 text-center', tone)}>
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</div>
-      <div className="font-mono text-2xl font-bold tabular-nums">{valor}</div>
-    </div>
-  );
 }
 
 export function IncidenciasCliente({
@@ -141,11 +133,11 @@ export function IncidenciasCliente({
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-        <StatBox label="Incidencias" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox label="Alto" valor={resumen.alto} tone="border-red-200 bg-red-50 text-red-700" />
-        <StatBox label="Medio" valor={resumen.medio} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox label="Bajo" valor={resumen.bajo} tone="border-line bg-white text-muted" />
-        <StatBox label="Puntos" valor={resumen.puntos} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox index={0} label="Incidencias" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox index={1} label="Alto" valor={resumen.alto} tone="border-red-200 bg-red-50 text-red-700" />
+        <StatBox index={2} label="Medio" valor={resumen.medio} tone="border-amber-200 bg-amber-50 text-amber-700" />
+        <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="border-line bg-white text-muted" />
+        <StatBox index={4} label="Puntos" valor={resumen.puntos} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
       </div>
 
       {/* Filtros + acción */}

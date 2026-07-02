@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/ca
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { buttonVariants } from '../../components/ui/button';
+import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 
 type Emp = { id: string; nombre: string };
@@ -20,15 +21,6 @@ const fieldCls =
 
 function hoyPeru(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
-}
-
-function StatBox({ label, valor, tone }: { label: string; valor: number | string; tone: string }) {
-  return (
-    <div className={cn('rounded-xl border p-4 text-center', tone)}>
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</div>
-      <div className="font-mono text-2xl font-bold tabular-nums">{valor}</div>
-    </div>
-  );
 }
 
 export function AsistenciasCliente({
@@ -118,10 +110,10 @@ export function AsistenciasCliente({
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox label="Registros" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox label="A tiempo" valor={resumen.aTiempo} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox label="Con tardanza" valor={resumen.conTardanza} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox label="Min. tardanza" valor={resumen.minutos} tone="border-line bg-white text-muted" />
+        <StatBox index={0} label="Registros" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox index={1} label="A tiempo" valor={resumen.aTiempo} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
+        <StatBox index={2} label="Con tardanza" valor={resumen.conTardanza} tone="border-amber-200 bg-amber-50 text-amber-700" />
+        <StatBox index={3} label="Min. tardanza" valor={resumen.minutos} tone="border-line bg-white text-muted" />
       </div>
 
       {/* Filtros + acción */}

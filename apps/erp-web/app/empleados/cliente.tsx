@@ -9,6 +9,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
+import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 
 const ROL: Record<string, { label: string; cls: string }> = {
@@ -29,15 +30,6 @@ function iniciales(e: EmpleadoAdmin): string {
   if (e.iniciales) return e.iniciales.slice(0, 2).toUpperCase();
   const p = e.nombre.trim().split(/\s+/).filter(Boolean);
   return (p.map((w) => w[0]).slice(0, 2).join('') || '·').toUpperCase();
-}
-
-function StatBox({ label, valor, tone }: { label: string; valor: number; tone: string }) {
-  return (
-    <div className={cn('rounded-xl border p-4 text-center', tone)}>
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</div>
-      <div className="font-mono text-2xl font-bold tabular-nums">{valor}</div>
-    </div>
-  );
 }
 
 export function EmpleadosCliente({ empleados }: { empleados: EmpleadoAdmin[] }) {
@@ -88,10 +80,10 @@ export function EmpleadosCliente({ empleados }: { empleados: EmpleadoAdmin[] }) 
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox label="Colaboradores" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox label="Activos" valor={resumen.activos} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox label="Suspendidos" valor={resumen.suspendidos} tone="border-line bg-white text-muted" />
-        <StatBox label="Encargados" valor={resumen.encargados} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox index={0} label="Colaboradores" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox index={1} label="Activos" valor={resumen.activos} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
+        <StatBox index={2} label="Suspendidos" valor={resumen.suspendidos} tone="border-line bg-white text-muted" />
+        <StatBox index={3} label="Encargados" valor={resumen.encargados} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
       </div>
 
       {/* Filtros */}
