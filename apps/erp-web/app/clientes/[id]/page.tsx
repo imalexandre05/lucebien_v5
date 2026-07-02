@@ -39,8 +39,8 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
       <PageHeader title={cliente.nombre} subtitle="Ficha 360 · historial del cliente" />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {kpis.map((k) => (
-          <Card key={k.label}>
+        {kpis.map((k, i) => (
+          <Card key={k.label} className="animate-rise" style={{ animationDelay: `${i * 60}ms` }}>
             <CardContent className="pt-5">
               <div className="text-xs font-medium uppercase tracking-wide text-muted">{k.label}</div>
               <div className="mt-2 font-mono text-2xl font-semibold tabular-nums text-navy">{k.value}</div>
