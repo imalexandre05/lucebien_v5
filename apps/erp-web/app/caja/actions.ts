@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { abrirCaja, cerrarCaja, registrarCobro, registrarEgreso } from '../../lib/caja-repo';
+import { abrirCaja, cerrarCaja, registrarCobro, registrarEgreso, registrarGarantia } from '../../lib/caja-repo';
 
 export async function accionAbrirCaja(sede: string, montoApertura: number): Promise<{ ok: boolean; error?: string }> {
   try {
@@ -52,5 +52,20 @@ export async function accionRegistrarEgreso(p: {
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error al registrar egreso' };
+  }
+}
+
+export async function accionRegistrarGarantia(p: {
+  sede: string;
+  monto: number;
+  metodo: string;
+  descripcion?: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await registrarGarantia(p);
+    revalidatePath('/caja');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al registrar garantía' };
   }
 }
