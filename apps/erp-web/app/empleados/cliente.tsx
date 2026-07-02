@@ -2,12 +2,13 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Filter, Pencil, UserX, UserCheck, X } from 'lucide-react';
+import { Filter, Pencil, UserX, UserCheck } from 'lucide-react';
 import type { EmpleadoAdmin } from '../../lib/empleados-repo';
 import { accionEstadoEmpleado, accionEditarContacto } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { buttonVariants } from '../../components/ui/button';
+import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { cn } from '../../lib/cn';
 
 const ROL: Record<string, { label: string; cls: string }> = {
@@ -272,65 +273,57 @@ function EditarModal({ emp, onClose, onSaved }: { emp: EmpleadoAdmin; onClose: (
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy-deep/40 p-4" onClick={onClose}>
-      <div
-        className="w-full max-w-md animate-scale-in rounded-2xl border border-line bg-white shadow-lift"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-deep text-[11px] font-bold text-gold">
-              {iniciales(emp)}
-            </span>
-            <div>
-              <div className="font-display text-lg font-semibold text-navy">{emp.nombre}</div>
-              <div className="text-xs text-muted">{rolInfo(emp.rol).label}</div>
-            </div>
-          </div>
-          <button type="button" onClick={onClose} className="text-muted transition hover:text-navy" aria-label="Cerrar">
-            <X className="h-5 w-5" strokeWidth={2} />
-          </button>
+    <Modal
+      open
+      onClose={onClose}
+      size="md"
+      title={emp.nombre}
+      subtitle={rolInfo(emp.rol).label}
+      icon={
+        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-deep text-[11px] font-bold text-gold">
+          {iniciales(emp)}
+        </span>
+      }
+    >
+      <ModalBody className="space-y-3">
+        <p className="text-xs text-muted">Datos de contacto. El nombre, código y rol se gestionan aparte (afectan credenciales e historial).</p>
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Teléfono</label>
+          <input value={telefono} onChange={(e) => setTelefono(e.target.value)} className={cn(fieldCls, 'w-full')} />
         </div>
-        <div className="space-y-3 px-5 py-4">
-          <p className="text-xs text-muted">Datos de contacto. El nombre, código y rol se gestionan aparte (afectan credenciales e historial).</p>
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Teléfono</label>
-            <input value={telefono} onChange={(e) => setTelefono(e.target.value)} className={cn(fieldCls, 'w-full')} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">DNI</label>
-            <input value={dni} onChange={(e) => setDni(e.target.value)} className={cn(fieldCls, 'w-full')} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección</label>
-            <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className={cn(fieldCls, 'w-full')} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Salario base (S/)</label>
-            <input
-              type="number"
-              step="0.5"
-              value={salario}
-              onChange={(e) => setSalario(Number(e.target.value))}
-              className={cn(fieldCls, 'w-full')}
-            />
-          </div>
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">DNI</label>
+          <input value={dni} onChange={(e) => setDni(e.target.value)} className={cn(fieldCls, 'w-full')} />
         </div>
-        <div className="flex items-center justify-end gap-2 border-t border-line px-5 py-4">
-          <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={guardar}
-            disabled={pending}
-            className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-          >
-            {pending ? 'Guardando…' : 'Guardar cambios'}
-          </button>
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección</label>
+          <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className={cn(fieldCls, 'w-full')} />
         </div>
-      </div>
-    </div>
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Salario base (S/)</label>
+          <input
+            type="number"
+            step="0.5"
+            value={salario}
+            onChange={(e) => setSalario(Number(e.target.value))}
+            className={cn(fieldCls, 'w-full')}
+          />
+        </div>
+        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={guardar}
+          disabled={pending}
+          className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
+        >
+          {pending ? 'Guardando…' : 'Guardar cambios'}
+        </button>
+      </ModalFooter>
+    </Modal>
   );
 }
