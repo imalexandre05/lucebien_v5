@@ -4,6 +4,7 @@ import { pedidosRepo } from '../../../lib/pedidos-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
+import { StatBox } from '../../../components/ui/stat-box';
 import { cn } from '../../../lib/cn';
 
 // Alertas de devolución (contrato S12): alquileres con fecha de devolución, marcados por
@@ -15,15 +16,6 @@ function diasEntre(desde: string, hasta: string): number {
   const a = new Date(`${desde}T00:00:00`).getTime();
   const b = new Date(`${hasta}T00:00:00`).getTime();
   return Math.round((b - a) / 86_400_000);
-}
-
-function StatBox({ label, valor, tone }: { label: string; valor: number; tone: string }) {
-  return (
-    <div className={cn('rounded-xl border p-4 text-center', tone)}>
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</div>
-      <div className="font-mono text-2xl font-bold tabular-nums">{valor}</div>
-    </div>
-  );
 }
 
 const CERRADOS = ['cerrado', 'devuelto', 'anulado'];
@@ -65,9 +57,9 @@ export default async function DevolucionesPage() {
       />
 
       <div className="mb-4 grid grid-cols-3 gap-3">
-        <StatBox label="Vencidos" valor={vencidos} tone="border-red-200 bg-red-50 text-red-700" />
-        <StatBox label="Hoy" valor={deHoy} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox label="Próximos (3d)" valor={proximos} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox index={0} label="Vencidos" valor={vencidos} tone="border-red-200 bg-red-50 text-red-700" />
+        <StatBox index={1} label="Hoy" valor={deHoy} tone="border-amber-200 bg-amber-50 text-amber-700" />
+        <StatBox index={2} label="Próximos (3d)" valor={proximos} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
       </div>
 
       <Card>
