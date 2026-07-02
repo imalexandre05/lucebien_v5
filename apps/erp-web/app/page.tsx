@@ -1,8 +1,10 @@
 import Link from 'next/link';
-import { Package, Shirt, ClipboardList, AlertTriangle } from 'lucide-react';
+import { Package, Shirt, ClipboardList, AlertTriangle, ShoppingBag, Banknote, Coins, TrendingUp } from 'lucide-react';
 import { ETAPAS_PIPELINE, type EstadoActivo } from '@scilb/core';
 import { inventarioRepo } from '../lib/inventario-repo';
 import { listarPasadas } from '../lib/pipeline-repo';
+import { pedidosRepo } from '../lib/pedidos-repo';
+import { cobrosPendientes, totalGarantias } from '../lib/caja-repo';
 import { getServerClient } from '../lib/supabase/server';
 import { PageHeader } from '../components/shell/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -23,14 +25,21 @@ async function contar(tabla: string): Promise<number> {
 }
 
 export default async function Dashboard() {
-  const [activos, pasadas, reportesCount, incidenciasCount] = await Promise.all([
+  const [activos, pasadas, reportesCount, incidenciasCount, pedidos, pendientes, garantias] = await Promise.all([
     inventarioRepo.listar(),
     listarPasadas(),
     contar('reportes'),
     contar('incidencias'),
+    pedidosRepo.listar(),
+    cobrosPendientes(),
+    totalGarantias(),
   ]);
 
   const disponibles = activos.filter((a) => a.estado === 'disponible').length;
+  const soles = (n: number) => `S/ ${n.toFixed(2)}`;
+  const totalVentas = pedidos.filter((p) => p.tipo === 'venta').reduce((s, p) => s + p.total, 0);
+  const totalAlquiler = pedidos.filter((p) => p.tipo === 'alquiler').reduce((s, p) => s + p.total, 0);
+  const saldoPendiente = pendientes.reduce((s, p) => s + p.saldo, 0);
 
   // Distribución real del pipeline por etapa.
   const porEtapa = new Map<string, number>();
@@ -71,6 +80,39 @@ export default async function Dashboard() {
             </Link>
           );
         })}
+      </div>
+
+      <div className="mt-6">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Comercial</div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {[
+            { label: 'Total ventas', value: soles(totalVentas), icon: ShoppingBag, href: '/pedidos', hint: 'pedidos de venta' },
+            { label: 'Total alquiler', value: soles(totalAlquiler), icon: TrendingUp, href: '/pedidos', hint: 'pedidos de alquiler' },
+            { label: 'Cobros pendientes', value: soles(saldoPendiente), icon: Banknote, href: '/caja', hint: `${pendientes.length} pedido(s)` },
+            { label: 'Garantías', value: soles(garantias), icon: Coins, href: '/caja', hint: 'depósitos vigentes' },
+          ].map((k, i) => {
+            const Icon = k.icon;
+            return (
+              <Link
+                key={k.label}
+                href={k.href}
+                className="animate-rise transition-[transform,box-shadow] duration-200 ease-out-expo hover:-translate-y-0.5"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <Card className="hover:shadow-lift">
+                  <CardContent className="pt-5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium uppercase tracking-wide text-muted">{k.label}</span>
+                      <Icon className="h-4 w-4 text-gold" strokeWidth={1.75} />
+                    </div>
+                    <div className="mt-3 font-mono text-2xl font-semibold tabular-nums text-navy">{k.value}</div>
+                    <div className="mt-1 text-xs text-muted">{k.hint}</div>
+                  </CardContent>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">

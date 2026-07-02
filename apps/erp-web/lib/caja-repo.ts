@@ -213,6 +213,21 @@ export async function cobrosPendientes(): Promise<CobroPendiente[]> {
   return out;
 }
 
+// Total de garantías vigentes: ingresos por garantía − devoluciones de garantía.
+export async function totalGarantias(): Promise<number> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('caja_movimientos')
+    .select('categoria, monto')
+    .in('categoria', ['garantia', 'devolucion_garantia']);
+  if (error) throw new Error(error.message);
+  let t = 0;
+  for (const m of (data as { categoria: string; monto: number }[]) ?? []) {
+    t += m.categoria === 'garantia' ? Number(m.monto) : -Number(m.monto);
+  }
+  return Math.round(t * 100) / 100;
+}
+
 // Arqueo/resumen de una sesión: ingresos/egresos totales y por método + efectivo esperado.
 export function resumenMovimientos(sesion: CajaSesion, movs: CajaMovimiento[]) {
   const ingresos = movs.filter((m) => m.tipo === 'ingreso').reduce((s, m) => s + m.monto, 0);
