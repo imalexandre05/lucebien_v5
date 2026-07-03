@@ -1,9 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { features } from '@scilb/adapter-lucebien';
+import { features, isOn } from '@scilb/adapter-lucebien';
 
-// Refresca la sesión de Supabase en cada request (patrón @supabase/ssr) y, si AUTH_V2
-// está ON, exige sesión: sin usuario → /login; con usuario en /login → /.
+const DEVICE_COOKIE = 'sci_device';
+const UN_ANIO = 60 * 60 * 24 * 365;
+
+// Refresca la sesión de Supabase en cada request (patrón @supabase/ssr). Con AUTH_V2 exige
+// sesión (sin usuario → /login). Con DEVICE_GATE, además, solo deja pasar EQUIPOS AUTORIZADOS:
+// un token de dispositivo (cookie httpOnly `sci_device`) debe estar 'aprobado'. El token se
+// asigna SIEMPRE (barato, sin BD) para poder pre-aprobar equipos antes de activar el flag; la
+// verificación contra la BD solo corre con el flag ON y es FAIL-OPEN (un fallo nunca brickea).
 export async function middleware(req: NextRequest) {
   let res = NextResponse.next({ request: req });
 
@@ -27,19 +33,51 @@ export async function middleware(req: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const enLogin = req.nextUrl.pathname.startsWith('/login');
+  const path = req.nextUrl.pathname;
+  const enLogin = path.startsWith('/login');
 
-  if (features.AUTH_V2 && !user && !enLogin) {
-    const url = req.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+  // Token de dispositivo estable (siempre, independiente del flag).
+  let deviceId = req.cookies.get(DEVICE_COOKIE)?.value ?? '';
+  let nuevoToken = false;
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    nuevoToken = true;
   }
-  if (features.AUTH_V2 && user && enLogin) {
+  const conToken = (r: NextResponse) => {
+    if (nuevoToken) {
+      r.cookies.set(DEVICE_COOKIE, deviceId, {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: UN_ANIO,
+        secure: process.env.NODE_ENV === 'production',
+      });
+    }
+    return r;
+  };
+
+  const redir = (pathname: string) => {
     const url = req.nextUrl.clone();
-    url.pathname = '/';
-    return NextResponse.redirect(url);
+    url.pathname = pathname;
+    return conToken(NextResponse.redirect(url));
+  };
+
+  if (features.AUTH_V2 && !user && !enLogin) return redir('/login');
+  if (features.AUTH_V2 && user && enLogin) return redir('/');
+
+  // Device-gate: solo para usuarios autenticados, fuera de /login y /dispositivo, y no en assets.
+  const enDispositivo = path === '/dispositivo';
+  const esAsset = /\.[a-z0-9]+$/i.test(path);
+  if (isOn('DEVICE_GATE') && user && !enLogin && !enDispositivo && !esAsset) {
+    try {
+      const { data: estado } = await supabase.rpc('dispositivo_estado', { p_device_id: deviceId });
+      if (estado !== 'aprobado' && estado !== 'setup') return redir('/dispositivo');
+    } catch {
+      // Fail-open: nunca brickear el arranque por un fallo de red/BD.
+    }
   }
-  return res;
+
+  return conToken(res);
 }
 
 export const config = {
