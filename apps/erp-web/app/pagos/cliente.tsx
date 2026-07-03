@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/ca
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { buttonVariants } from '../../components/ui/button';
+import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 
 const ESTADO_TONE: Record<string, Tone> = { pagado: 'green', pendiente: 'amber', anulado: 'gray' };
@@ -23,15 +24,6 @@ function hoyPeru(): string {
 }
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const soles = (n: number) => `S/ ${n.toFixed(2)}`;
-
-function StatBox({ label, valor, tone }: { label: string; valor: string; tone: string }) {
-  return (
-    <div className={cn('rounded-xl border p-4 text-center', tone)}>
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</div>
-      <div className="font-mono text-xl font-bold tabular-nums">{valor}</div>
-    </div>
-  );
-}
 
 export function PagosCliente({
   pagos,
@@ -118,10 +110,10 @@ export function PagosCliente({
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox label="Registros" valor={String(resumen.total)} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox label="Pagado" valor={soles(resumen.pagado)} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox label="Pendiente" valor={soles(resumen.pendiente)} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox label="Anulados" valor={String(resumen.anulados)} tone="border-line bg-white text-muted" />
+        <StatBox size="md" index={0} label="Registros" valor={String(resumen.total)} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox size="md" index={1} label="Pagado" valor={soles(resumen.pagado)} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
+        <StatBox size="md" index={2} label="Pendiente" valor={soles(resumen.pendiente)} tone="border-amber-200 bg-amber-50 text-amber-700" />
+        <StatBox size="md" index={3} label="Anulados" valor={String(resumen.anulados)} tone="border-line bg-white text-muted" />
       </div>
 
       {/* Filtros + acción */}

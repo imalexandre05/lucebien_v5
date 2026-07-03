@@ -20,6 +20,7 @@ import {
   Zap,
   Trophy,
   X,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react';
 import type { PrendaPasada } from '@scilb/core';
@@ -393,7 +394,8 @@ export function TableroPipeline({
 
       {toast && (
         <div
-          className={`fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-lg ${
+          key={toast.msg}
+          className={`fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 animate-fade items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-semibold shadow-lift ${
             toast.tono === 'gold'
               ? 'bg-gold text-navy'
               : toast.tono === 'warn'
@@ -402,8 +404,12 @@ export function TableroPipeline({
           }`}
           role="status"
         >
-          <span>
-            {toast.tono === 'warn' ? '↩ ' : '✓ '}
+          <span className="inline-flex items-center gap-1.5">
+            {toast.tono === 'warn' ? (
+              <Undo2 className="h-3.5 w-3.5" strokeWidth={2.5} />
+            ) : (
+              <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+            )}
             {toast.msg}
           </span>
           {toast.undo && (
@@ -452,7 +458,7 @@ function Tarjeta({
   return (
     <div
       className={cn(
-        'rounded-lg border bg-white p-2.5 shadow-sm transition hover:shadow-md',
+        'rounded-lg border bg-white p-2.5 shadow-card transition hover:shadow-lift',
         seleccionado ? 'border-navy ring-2 ring-navy/30' : 'border-line',
       )}
     >
@@ -486,11 +492,15 @@ function Tarjeta({
           <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">compostura</span>
         )}
         {Boolean(p.aprobada) && (
-          <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">✓ aprobada</span>
+          <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+            <Check className="h-2.5 w-2.5" strokeWidth={3} /> aprobada
+          </span>
         )}
       </div>
       {Boolean(p.obsCalidad) && (
-        <div className="mt-1 rounded bg-red-50 px-2 py-1 text-[11px] text-red-700">⚠ {p.obsCalidad}</div>
+        <div className="mt-1 flex items-start gap-1 rounded bg-red-50 px-2 py-1 text-[11px] text-red-700">
+          <AlertTriangle className="mt-px h-3 w-3 shrink-0" strokeWidth={2.5} /> {p.obsCalidad}
+        </div>
       )}
 
       {dests.length > 0 && (

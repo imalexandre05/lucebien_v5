@@ -1,8 +1,20 @@
 import type { HTMLAttributes } from 'react';
 import { cn } from '../../lib/cn';
 
-export const Card = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => (
-  <div className={cn('rounded-lg border border-line bg-white shadow-card', className)} {...p} />
+export const Card = ({
+  className,
+  interactive,
+  ...p
+}: HTMLAttributes<HTMLDivElement> & { interactive?: boolean }) => (
+  <div
+    className={cn(
+      'rounded-lg border border-line bg-white shadow-card',
+      interactive &&
+        'cursor-pointer transition-[transform,box-shadow] duration-200 ease-out-expo hover:-translate-y-0.5 hover:shadow-lift',
+      className,
+    )}
+    {...p}
+  />
 );
 export const CardHeader = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => (
   <div className={cn('flex items-center justify-between px-5 pt-4 pb-3', className)} {...p} />

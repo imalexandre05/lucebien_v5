@@ -164,13 +164,13 @@ export function EvaluarPanel({
         <CardHeader>
           <CardTitle>Calificación por actividad</CardTitle>
           <div className="flex items-center gap-1.5">
-            <button type="button" onClick={() => masivoActs(1)} className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition hover:bg-emerald-100">
+            <button type="button" onClick={() => masivoActs(1)} className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors duration-150 hover:bg-emerald-100 active:scale-[0.97]">
               <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
-            <button type="button" onClick={() => masivoActs(0.5)} className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition hover:bg-amber-100">
+            <button type="button" onClick={() => masivoActs(0.5)} className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-100 active:scale-[0.97]">
               <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
-            <button type="button" onClick={() => masivoActs(0)} className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100">
+            <button type="button" onClick={() => masivoActs(0)} className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 transition-colors duration-150 hover:bg-red-100 active:scale-[0.97]">
               <X className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
           </div>

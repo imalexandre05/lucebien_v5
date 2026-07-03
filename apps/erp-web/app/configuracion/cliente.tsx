@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { Check, AlertCircle } from 'lucide-react';
 import { accionGuardarConfig } from './actions';
 import type { ConfigItem } from '../../lib/config-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -72,8 +73,16 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
         </Card>
       ))}
 
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      {ok && <p className="text-sm text-emerald-700">Cambios guardados.</p>}
+      {error && (
+        <p className="flex animate-fade items-center gap-1.5 text-sm text-red-600">
+          <AlertCircle className="h-4 w-4" strokeWidth={2} /> {error}
+        </p>
+      )}
+      {ok && (
+        <p className="flex animate-fade items-center gap-1.5 text-sm text-emerald-700">
+          <Check className="h-4 w-4" strokeWidth={2.5} /> Cambios guardados.
+        </p>
+      )}
 
       <button
         type="button"

@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, Settings, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, Settings, Laptop, type LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
+import { Logo } from '../brand/logo';
 
 type Item = { label: string; href: string; icon: LucideIcon; admin?: boolean };
 
@@ -21,6 +22,7 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Pagos', href: '/pagos', icon: Wallet },
       { label: 'Empleados', href: '/empleados', icon: Users, admin: true },
       { label: 'Configuración', href: '/configuracion', icon: Settings, admin: true },
+      { label: 'Dispositivos', href: '/dispositivos', icon: Laptop, admin: true },
     ],
   },
   {
@@ -39,10 +41,13 @@ export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
   const path = usePathname();
   return (
     <aside className="sticky top-0 flex h-screen w-60 flex-col bg-navy-deep text-paper/80 print:hidden">
-      <div className="border-b border-white/10 px-6 py-6">
-        <div className="font-display text-2xl font-semibold leading-none text-paper">LuceBien</div>
-        <div className="mt-1.5 font-mono text-[10px] tracking-brand text-gold">SCI · LB</div>
-      </div>
+      <Link
+        href="/"
+        aria-label="Ir al inicio"
+        className="flex items-center border-b border-white/10 px-5 py-6 transition-transform duration-150 ease-out-expo hover:translate-x-0.5 active:scale-[0.98]"
+      >
+        <Logo tone="onDark" size="md" />
+      </Link>
 
       <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
         {NAV.map((group) => (

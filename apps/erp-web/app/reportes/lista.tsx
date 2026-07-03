@@ -77,7 +77,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
           <button
             type="button"
             onClick={() => setEstado('pendiente')}
-            className="ml-auto rounded-md border border-amber-300 px-2.5 py-1 text-xs font-medium text-amber-800 transition hover:bg-amber-100"
+            className="ml-auto rounded-md border border-amber-300 px-2.5 py-1 text-xs font-medium text-amber-800 transition-colors duration-150 hover:bg-amber-100 active:scale-[0.97]"
           >
             Ver pendientes
           </button>

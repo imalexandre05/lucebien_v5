@@ -13,6 +13,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { buttonVariants } from '../../../components/ui/button';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
+import { StatBox } from '../../../components/ui/stat-box';
 import { cn } from '../../../lib/cn';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
@@ -383,14 +384,14 @@ export function NuevoReporteForm({
                 <button
                   type="button"
                   onClick={() => marcarTodas(true)}
-                  className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold"
+                  className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
                 >
                   <Check className="h-3.5 w-3.5" strokeWidth={2} /> Todas
                 </button>
                 <button
                   type="button"
                   onClick={() => marcarTodas(false)}
-                  className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold"
+                  className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold active:scale-[0.97]"
                 >
                   <Square className="h-3.5 w-3.5" strokeWidth={2} /> Ninguna
                 </button>
@@ -439,7 +440,7 @@ export function NuevoReporteForm({
               <button
                 type="button"
                 onClick={() => setIncidencias((p) => [...p, { tipo: '', nivel: 'Medio', descripcion: '', responsableId: '', puntosPenalidad: 2 }])}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold"
+                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
               </button>
@@ -534,7 +535,7 @@ export function NuevoReporteForm({
               <button
                 type="button"
                 onClick={() => setExtras((p) => [...p, { tipo: '', nombre: '', cantidad: 1, monto: 0 }])}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold"
+                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
               </button>
@@ -588,28 +589,10 @@ export function NuevoReporteForm({
             </CardHeader>
             <CardContent className="space-y-5">
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <div className="rounded-xl border border-emerald-600/20 bg-emerald-50/60 p-4 text-center">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">Limpieza</div>
-                  <div className="font-mono text-2xl font-bold tabular-nums text-emerald-700">{limpiezaPts.got}</div>
-                  <div className="text-[10px] text-muted">de {limpiezaPts.tot} pts</div>
-                </div>
-                <div className="rounded-xl border border-navy/15 bg-navy/5 p-4 text-center">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">Actividades</div>
-                  <div className="font-mono text-2xl font-bold tabular-nums text-navy">
-                    {actDone}/{cat.length}
-                  </div>
-                  <div className="text-[10px] text-muted">completadas</div>
-                </div>
-                <div className="rounded-xl border border-gold/30 bg-gold/10 p-4 text-center">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">Equipo</div>
-                  <div className="font-mono text-2xl font-bold tabular-nums text-[#7a6e0e]">{trabajadores.length}</div>
-                  <div className="text-[10px] text-muted">colaboradores</div>
-                </div>
-                <div className="rounded-xl border border-navy/15 bg-navy/5 p-4 text-center">
-                  <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">Total puntos</div>
-                  <div className="font-mono text-2xl font-bold tabular-nums text-navy">{totalPts}</div>
-                  <div className="text-[10px] text-muted">+{extras.filter((e) => e.nombre.trim()).length} extras</div>
-                </div>
+                <StatBox index={0} label="Limpieza" valor={limpiezaPts.got} sub={`de ${limpiezaPts.tot} pts`} tone="border-emerald-600/20 bg-emerald-50/60 text-emerald-700" />
+                <StatBox index={1} label="Actividades" valor={`${actDone}/${cat.length}`} sub="completadas" tone="border-navy/15 bg-navy/5 text-navy" />
+                <StatBox index={2} label="Equipo" valor={trabajadores.length} sub="colaboradores" tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+                <StatBox index={3} label="Total puntos" valor={totalPts} sub={`+${extras.filter((e) => e.nombre.trim()).length} extras`} tone="border-navy/15 bg-navy/5 text-navy" />
               </div>
 
               {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

@@ -70,11 +70,20 @@ export default async function InventarioPage() {
                   <TD className="pr-5 text-right">
                     <form action={eliminarActivo}>
                       <input type="hidden" name="id" value={a.id} />
-                      <button className="text-xs text-muted hover:text-gold">Baja</button>
+                      <button className="cursor-pointer rounded px-1.5 py-0.5 text-xs text-muted transition-colors hover:text-red-600 active:scale-[0.97]">
+                        Baja
+                      </button>
                     </form>
                   </TD>
                 </TR>
               ))}
+              {activos.length === 0 && (
+                <TR>
+                  <TD colSpan={10} className="px-5 py-10 text-center text-muted">
+                    Sin activos en el inventario todavía.
+                  </TD>
+                </TR>
+              )}
             </TBody>
           </Table>
         </CardContent>

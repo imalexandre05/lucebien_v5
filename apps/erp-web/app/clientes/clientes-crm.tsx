@@ -7,6 +7,7 @@ import type { ClienteCRM, SegmentoCliente } from '../../lib/crm-repo';
 import { eliminarCliente } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
+import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 
 const SEG: Record<SegmentoCliente, { label: string; cls: string }> = {
@@ -14,15 +15,6 @@ const SEG: Record<SegmentoCliente, { label: string; cls: string }> = {
   recurrente: { label: 'Recurrente', cls: 'bg-navy/10 text-navy' },
   nuevo: { label: 'Nuevo', cls: 'bg-ink/10 text-muted' },
 };
-
-function StatBox({ label, valor, tone }: { label: string; valor: number | string; tone: string }) {
-  return (
-    <div className={cn('rounded-xl border p-4 text-center', tone)}>
-      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{label}</div>
-      <div className="font-mono text-2xl font-bold tabular-nums">{valor}</div>
-    </div>
-  );
-}
 
 export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
   const [q, setQ] = useState('');
@@ -50,10 +42,10 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox label="Clientes" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox label="VIP" valor={resumen.vip} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-        <StatBox label="Recurrentes" valor={resumen.recurrentes} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox label="A reactivar" valor={resumen.seguir} tone="border-amber-200 bg-amber-50 text-amber-700" />
+        <StatBox index={0} label="Clientes" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox index={1} label="VIP" valor={resumen.vip} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox index={2} label="Recurrentes" valor={resumen.recurrentes} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox index={3} label="A reactivar" valor={resumen.seguir} tone="border-amber-200 bg-amber-50 text-amber-700" />
       </div>
 
       <Card>
