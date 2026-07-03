@@ -3,7 +3,7 @@ export const features = {
   INVENTARIO_V2: false,
   CLIENTES_V2: false,
   AUTH_V2: true, // W13: login real Supabase Auth (cod+sede) activado
-  DEVICE_GATE: false, // W13: acceso solo desde equipos autorizados (aprobados por admin). OFF hasta aprobar equipos.
+  DEVICE_GATE: true, // W13: acceso solo desde equipos autorizados (aprobados por admin). Con 0 aprobados = modo instalación (abierto).
 
   CRM_V2: false,
   PEDIDOS_ALQUILER_V2: false,
