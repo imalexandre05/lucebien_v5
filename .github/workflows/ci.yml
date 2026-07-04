@@ -31,8 +31,12 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
+      # El repo antiguo tiene node_modules versionado (deps del Express); se limpia para que
+      # pnpm arme su estructura desde cero y no choque con el node_modules commiteado.
       - name: Instalar dependencias
-        run: pnpm install --frozen-lockfile
+        run: |
+          rm -rf node_modules apps/*/node_modules packages/*/node_modules
+          pnpm install --frozen-lockfile
 
       - name: Typecheck (erp-web + core/adapter por imports)
         run: pnpm --filter erp-web exec tsc --noEmit
