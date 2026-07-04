@@ -9,6 +9,9 @@ export type Evaluacion = {
   empleadoNombre: string | null;
   mes: string;
   notaFinal: number;
+  // Snapshot guardado al evaluar (jsonb): desglose /20 por componente y pesos usados.
+  componentes: Record<string, number> | null;
+  pesosUsados: Record<string, number> | null;
   cicloDesde: string | null;
   cicloHasta: string | null;
   createdAt: string;
@@ -50,6 +53,8 @@ export async function listarEvaluaciones(): Promise<Evaluacion[]> {
     empleadoNombre: nombre.get(String(r.empleado_id)) ?? null,
     mes: String(r.mes ?? ''),
     notaFinal: Number(r.nota_final ?? 0),
+    componentes: (r.componentes as Record<string, number> | null) ?? null,
+    pesosUsados: (r.pesos_usados as Record<string, number> | null) ?? null,
     cicloDesde: (r.ciclo_desde as string | null) ?? null,
     cicloHasta: (r.ciclo_hasta as string | null) ?? null,
     createdAt: String(r.created_at ?? ''),
