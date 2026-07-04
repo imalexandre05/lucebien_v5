@@ -53,6 +53,11 @@ const config: Config = {
           '0%': { transform: 'translateX(-100%)' },
           '100%': { transform: 'translateX(0)' },
         },
+        // "Hilo" que se enhebra de izquierda a derecha (usar con `origin-left`). Solo transform.
+        drawX: {
+          '0%': { transform: 'scaleX(0)' },
+          '100%': { transform: 'scaleX(1)' },
+        },
         pulseSoft: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.55' },
@@ -68,6 +73,7 @@ const config: Config = {
         'pulse-soft': 'pulseSoft 1.6s ease-in-out infinite',
         'grow-y': 'growY 480ms cubic-bezier(0.23, 1, 0.32, 1) both',
         'drawer-in': 'slideInLeft 240ms cubic-bezier(0.23, 1, 0.32, 1) both',
+        'draw-x': 'drawX 700ms cubic-bezier(0.23, 1, 0.32, 1) 150ms both',
       },
     },
   },

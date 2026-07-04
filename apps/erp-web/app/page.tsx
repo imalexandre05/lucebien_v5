@@ -250,45 +250,58 @@ export default async function Dashboard() {
             </EmptyState>
           ) : (
             <div className="overflow-x-auto">
-              <div className="flex min-w-[680px] items-stretch">
-                {ETAPAS_PIPELINE.map((e, i) => {
-                  const n = porEtapa.get(e) ?? 0;
-                  const esListo = e === 'listo';
-                  const alto = n === 0 ? 0 : Math.max(10, Math.round((n / maxEtapa) * 72));
-                  return (
-                    <Link
-                      key={e}
-                      href="/pipeline"
-                      title={`${n} prenda(s) en ${ETAPA_LABEL[e]}`}
-                      aria-label={`${ETAPA_LABEL[e]}: ${n} prenda(s)`}
-                      className="group flex-1 rounded-lg px-1 pt-2 text-center outline-none transition-colors duration-150 hover:bg-navy/[0.04] focus-visible:ring-2 focus-visible:ring-gold/70"
-                    >
-                      <div
-                        className={cn(
-                          'animate-rise font-mono text-lg font-semibold tabular-nums',
-                          n === 0 ? 'text-muted/60' : esListo ? 'text-[#7a6e0e]' : 'text-navy',
-                        )}
-                        style={{ animationDelay: `${i * 45}ms` }}
+              <div className="min-w-[680px]">
+                <div className="flex items-stretch">
+                  {ETAPAS_PIPELINE.map((e, i) => {
+                    const n = porEtapa.get(e) ?? 0;
+                    const esListo = e === 'listo';
+                    const alto = n === 0 ? 0 : Math.max(10, Math.round((n / maxEtapa) * 72));
+                    return (
+                      <Link
+                        key={e}
+                        href="/pipeline"
+                        title={`${n} prenda(s) en ${ETAPA_LABEL[e]}`}
+                        aria-label={`${ETAPA_LABEL[e]}: ${n} prenda(s)`}
+                        className="group flex-1 rounded-t-lg px-1 pt-2 text-center outline-none transition-colors duration-150 hover:bg-navy/[0.04] focus-visible:ring-2 focus-visible:ring-gold/70"
                       >
-                        {n}
-                      </div>
-                      <div className="mt-1.5 flex h-[72px] items-end justify-center border-b border-line">
-                        {n > 0 && (
-                          <div
-                            className={cn(
-                              'w-6 origin-bottom animate-grow-y rounded-t-[4px]',
-                              esListo ? 'bg-gold' : 'bg-navy',
-                            )}
-                            style={{ height: alto, animationDelay: `${i * 45}ms` }}
-                          />
-                        )}
-                      </div>
-                      <div className="px-0.5 pb-2 pt-2 text-[10px] font-medium uppercase leading-tight tracking-wide text-muted">
-                        {ETAPA_LABEL[e]}
-                      </div>
-                    </Link>
-                  );
-                })}
+                        <div
+                          className={cn(
+                            'animate-rise font-mono text-lg font-semibold tabular-nums',
+                            n === 0 ? 'text-muted/60' : esListo ? 'text-[#7a6e0e]' : 'text-navy',
+                          )}
+                          style={{ animationDelay: `${i * 45}ms` }}
+                        >
+                          {n}
+                        </div>
+                        <div className="mt-1.5 flex h-[72px] items-end justify-center">
+                          {n > 0 && (
+                            <div
+                              className={cn(
+                                'w-6 origin-bottom animate-grow-y rounded-t-[4px]',
+                                esListo ? 'bg-gold' : 'bg-navy',
+                              )}
+                              style={{ height: alto, animationDelay: `${i * 45}ms` }}
+                            />
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+                {/* El hilo del atelier: riel que se enhebra bajo el flujo al montar. */}
+                <div className="h-0.5 overflow-hidden rounded-full bg-line/70">
+                  <div className="h-full origin-left animate-draw-x bg-gradient-to-r from-gold via-gold/80 to-gold/40" />
+                </div>
+                <div className="flex" aria-hidden="true">
+                  {ETAPAS_PIPELINE.map((e) => (
+                    <div
+                      key={e}
+                      className="flex-1 px-0.5 pb-1 pt-2 text-center text-[10px] font-medium uppercase leading-tight tracking-wide text-muted"
+                    >
+                      {ETAPA_LABEL[e]}
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}
