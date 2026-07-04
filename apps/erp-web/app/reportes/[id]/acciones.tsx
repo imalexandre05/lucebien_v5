@@ -166,6 +166,7 @@ export function EvaluarPanel({
               estados={estLimp}
               onCycle={ciclarZona}
               onMass={masivoLimp}
+              panelEval
             />
           </CardContent>
         </Card>
