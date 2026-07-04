@@ -44,6 +44,11 @@ const config: Config = {
         shimmer: {
           '100%': { transform: 'translateX(100%)' },
         },
+        // Barras de datos que crecen desde la base (usar con `origin-bottom`). Solo transform.
+        growY: {
+          '0%': { transform: 'scaleY(0)' },
+          '100%': { transform: 'scaleY(1)' },
+        },
         pulseSoft: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.55' },
@@ -57,6 +62,7 @@ const config: Config = {
         'scale-in': 'scaleIn 240ms cubic-bezier(0.23, 1, 0.32, 1) both',
         shimmer: 'shimmer 1.4s infinite',
         'pulse-soft': 'pulseSoft 1.6s ease-in-out infinite',
+        'grow-y': 'growY 480ms cubic-bezier(0.23, 1, 0.32, 1) both',
       },
     },
   },
