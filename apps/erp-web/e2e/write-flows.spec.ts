@@ -49,11 +49,13 @@ test.describe('flujos de escritura', () => {
       }
     }
 
-    // Limpieza: anular como admin → vuelve a /reportes. El diálogo nativo se acepta.
-    page.once('dialog', (d) => d.accept());
+    // Limpieza: anular como admin → confirmar en el Modal compartido → vuelve a /reportes.
     const anular = page.getByTestId('anular-reporte');
     await expect(anular).toBeVisible({ timeout: 15000 });
     await anular.click();
+    const confirmarAnular = page.getByTestId('confirmar-anular');
+    await expect(confirmarAnular).toBeVisible();
+    await confirmarAnular.click();
     await page.waitForURL(/\/reportes(\?.*)?$/, { timeout: 20000 });
   });
 
@@ -97,5 +99,8 @@ async function login(page: Page) {
   await page.selectOption('select[name="sede"]', SEDE);
   await page.fill('input[name="cod"]', COD);
   await page.getByRole('button', { name: 'Ingresar' }).click();
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible({ timeout: 15000 });
+  // El dashboard ahora recibe con el hero de saludo (no un heading "Dashboard").
+  await expect(page.getByRole('heading', { name: /Buen[oa]s (días|tardes|noches)/ })).toBeVisible({
+    timeout: 15000,
+  });
 }
