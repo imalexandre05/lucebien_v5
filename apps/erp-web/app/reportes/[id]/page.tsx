@@ -12,6 +12,8 @@ import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge, type Tone } from '../../../components/ui/badge';
+import { LogoMark } from '../../../components/brand/logo';
+import { PrintButton } from '../../../components/print-button';
 import { LayoutMap } from '../layout-map';
 import { EvaluarPanel, AccionesAdmin } from './acciones';
 
@@ -48,11 +50,45 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
 
   return (
     <div className="max-w-5xl">
-      <PageHeader
-        title={`Reporte · ${TURNO_LABEL[r.turno] ?? r.turno}`}
-        subtitle={`${r.sedeCod} · ${r.fecha}`}
-        action={<Badge tone={ESTADO_TONE[estado]}>{ESTADO_REPORTE_LABEL[estado]}</Badge>}
-      />
+      {/* Encabezado de documento — solo impresión (§4F): crest + folio mono + filete gold. */}
+      <header className="mb-6 hidden print:block">
+        <div className="flex items-start justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <LogoMark size="md" />
+            <div>
+              <div className="font-display text-2xl font-semibold leading-none text-navy">
+                Reporte diario FR-01
+              </div>
+              <div className="mt-1 text-xs text-muted">
+                LuceBien · Confecciones Aliaga E.I.R.L. · Huancayo
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="font-mono text-sm font-semibold text-navy">{r.id}</div>
+            <div className="mt-1 font-mono text-[11px] text-muted">
+              {r.sedeCod} · {TURNO_LABEL[r.turno] ?? r.turno} · {r.fecha}
+            </div>
+            <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted">
+              {ESTADO_REPORTE_LABEL[estado]}
+            </div>
+          </div>
+        </div>
+        <div className="gold-rule mt-4" />
+      </header>
+
+      <div className="print:hidden">
+        <PageHeader
+          title={`Reporte · ${TURNO_LABEL[r.turno] ?? r.turno}`}
+          subtitle={`${r.sedeCod} · ${r.fecha}`}
+          action={
+            <div className="flex items-center gap-3">
+              <Badge tone={ESTADO_TONE[estado]}>{ESTADO_REPORTE_LABEL[estado]}</Badge>
+              <PrintButton />
+            </div>
+          }
+        />
+      </div>
 
       <Card>
         <CardContent className="pt-2">
@@ -90,16 +126,19 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
         </CardContent>
       </Card>
 
-      {/* Pendiente de evaluación → panel de evaluar (mapa + actividades en 3 estados). */}
+      {/* Pendiente de evaluación → panel de evaluar (mapa + actividades en 3 estados).
+          En impresión el panel interactivo se omite: el documento queda como constancia. */}
       {puedeEvaluar ? (
-        <EvaluarPanel
-          id={r.id}
-          actividades={regulares.map((a) => ({ cod: a.cod, nombre: a.nombre, cat: a.cat, peso: a.peso, calificacion: a.calificacion }))}
-          limpieza={limpiezaActs.map((a) => ({ zoneCod: a.cod.slice(3), peso: a.peso, calificacion: a.calificacion }))}
-          zonas={zonas}
-          turno={r.turno}
-          trabajadores={r.trabajadores}
-        />
+        <div className="print:hidden">
+          <EvaluarPanel
+            id={r.id}
+            actividades={regulares.map((a) => ({ cod: a.cod, nombre: a.nombre, cat: a.cat, peso: a.peso, calificacion: a.calificacion }))}
+            limpieza={limpiezaActs.map((a) => ({ zoneCod: a.cod.slice(3), peso: a.peso, calificacion: a.calificacion }))}
+            zonas={zonas}
+            turno={r.turno}
+            trabajadores={r.trabajadores}
+          />
+        </div>
       ) : (
         <>
           {zonas.length > 0 && (
@@ -182,14 +221,26 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
         </>
       )}
 
-      {esAdmin && <AccionesAdmin id={r.id} evaluado={r.evaluado} />}
+      {esAdmin && (
+        <div className="print:hidden">
+          <AccionesAdmin id={r.id} evaluado={r.evaluado} />
+        </div>
+      )}
 
       <Link
         href="/reportes"
-        className="mt-4 inline-block text-sm text-muted transition-colors duration-150 hover:text-navy"
+        className="mt-4 inline-block text-sm text-muted transition-colors duration-150 hover:text-navy print:hidden"
       >
         ← Volver a reportes
       </Link>
+
+      {/* Pie de documento — solo impresión. */}
+      <footer className="mt-8 hidden items-center justify-between border-t border-line pt-3 font-mono text-[10px] text-muted print:flex">
+        <span>SCI-LB · Sistema de Control Interno</span>
+        <span>
+          {r.id} · impreso {new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeZone: 'America/Lima' }).format(new Date())}
+        </span>
+      </footer>
     </div>
   );
 }

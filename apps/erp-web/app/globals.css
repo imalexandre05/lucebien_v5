@@ -44,3 +44,18 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Impresión (§4F FR-01): papel limpio, sin sombras, colores fieles para el crest navy. */
+@page {
+  margin: 14mm;
+}
+@media print {
+  body {
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  * {
+    box-shadow: none !important;
+  }
+}
