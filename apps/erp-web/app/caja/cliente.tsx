@@ -102,11 +102,12 @@ export function CajaCliente({
           </div>
           <div className="mx-auto max-w-xs text-left">
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Monto de apertura (efectivo inicial)</label>
-            <input type="number" step="0.5" value={montoApertura} onChange={(e) => setMontoApertura(Number(e.target.value))} className={fieldCls} />
+            <input type="number" step="0.5" data-testid="monto-apertura" value={montoApertura} onChange={(e) => setMontoApertura(Number(e.target.value))} className={fieldCls} />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button
             type="button"
+            data-testid="abrir-caja"
             disabled={pending || !sede}
             onClick={() => run(() => accionAbrirCaja(sede, montoApertura))}
             className={cn(buttonVariants({ variant: 'primary' }), 'px-6', pending && 'opacity-60')}
@@ -132,7 +133,7 @@ export function CajaCliente({
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => setModal('cobro')} className="inline-flex items-center gap-1.5 rounded-md bg-gold px-3 py-2 text-sm font-semibold text-navy transition hover:brightness-95">
+          <button data-testid="abrir-cobro" onClick={() => setModal('cobro')} className="inline-flex items-center gap-1.5 rounded-md bg-gold px-3 py-2 text-sm font-semibold text-navy transition hover:brightness-95">
             <ArrowDownCircle className="h-4 w-4" strokeWidth={2} /> Cobro
           </button>
           <button onClick={() => setModal('egreso')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/20">
@@ -141,7 +142,7 @@ export function CajaCliente({
           <button onClick={() => setModal('garantia')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/20">
             <Shield className="h-4 w-4" strokeWidth={2} /> Garantía
           </button>
-          <button onClick={() => { setMontoCierre(resumen?.efectivoEsperado ?? 0); setModal('cerrar'); }} className="inline-flex items-center gap-1.5 rounded-md border border-white/25 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/10">
+          <button data-testid="abrir-cerrar" onClick={() => { setMontoCierre(resumen?.efectivoEsperado ?? 0); setModal('cerrar'); }} className="inline-flex items-center gap-1.5 rounded-md border border-white/25 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/10">
             <Lock className="h-4 w-4" strokeWidth={2} /> Cerrar caja
           </button>
         </div>
@@ -262,6 +263,7 @@ export function CajaCliente({
               <button type="button" onClick={() => setModal(null)} className={buttonVariants({ variant: 'outline' })}>Cancelar</button>
               <button
                 type="button"
+                data-testid="confirmar-cobro"
                 disabled={pending || !cPedido || cMonto <= 0}
                 onClick={() => run(() => accionRegistrarCobro({ pedidoId: cPedido, monto: cMonto, metodo: cMetodo, cobroTipo: cTipo }))}
                 className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
@@ -273,7 +275,7 @@ export function CajaCliente({
         >
           <div>
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Pedido</label>
-            <select value={cPedido} onChange={(e) => { setCPedido(e.target.value); const p = pendientes.find((x) => x.pedidoId === e.target.value); if (p) setCMonto(p.saldo); }} className={fieldCls}>
+            <select data-testid="cobro-pedido" value={cPedido} onChange={(e) => { setCPedido(e.target.value); const p = pendientes.find((x) => x.pedidoId === e.target.value); if (p) setCMonto(p.saldo); }} className={fieldCls}>
               <option value="">Elige un pedido con saldo…</option>
               {pendientes.map((p) => (
                 <option key={p.pedidoId} value={p.pedidoId}>
@@ -400,6 +402,7 @@ export function CajaCliente({
               <button type="button" onClick={() => setModal(null)} className={buttonVariants({ variant: 'outline' })}>Cancelar</button>
               <button
                 type="button"
+                data-testid="confirmar-cerrar"
                 disabled={pending}
                 onClick={() => run(() => accionCerrarCaja(sesion.id, montoCierre))}
                 className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
@@ -415,7 +418,7 @@ export function CajaCliente({
           </div>
           <div>
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Efectivo contado (arqueo)</label>
-            <input type="number" step="0.5" value={montoCierre} onChange={(e) => setMontoCierre(Number(e.target.value))} className={fieldCls} />
+            <input type="number" step="0.5" data-testid="monto-cierre" value={montoCierre} onChange={(e) => setMontoCierre(Number(e.target.value))} className={fieldCls} />
           </div>
           <div className={cn('flex justify-between rounded-md px-3 py-2 text-sm', Math.abs(montoCierre - resumen.efectivoEsperado) < 0.01 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
             <span>Diferencia</span>

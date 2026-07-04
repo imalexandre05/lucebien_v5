@@ -279,6 +279,7 @@ export function NuevoReporteForm({
                   <button
                     key={v}
                     type="button"
+                    data-testid={`turno-${v}`}
                     onClick={() => setTurno(v)}
                     className={cn(
                       'flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-5 transition-[transform,background-color,border-color] duration-150 ease-out-expo active:scale-[0.98]',
@@ -311,6 +312,7 @@ export function NuevoReporteForm({
                   selected={trabajadores}
                   onChange={setTrabajadores}
                   placeholder="Buscar colaborador…"
+                  testId="picker-trabajadores"
                 />
               </div>
               <div>
@@ -324,6 +326,7 @@ export function NuevoReporteForm({
                   onChange={setEncargadoSel}
                   placeholder="Buscar encargado…"
                   single
+                  testId="picker-encargado"
                 />
               </div>
             </div>
@@ -600,6 +603,7 @@ export function NuevoReporteForm({
               <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
                 <button
                   type="button"
+                  data-testid="enviar-reporte"
                   onClick={submit}
                   disabled={!puedeEnviar}
                   className={cn(buttonVariants({ variant: 'primary' }), 'flex-1 justify-center py-3 text-base', !puedeEnviar && 'opacity-50')}

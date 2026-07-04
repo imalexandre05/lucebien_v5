@@ -32,6 +32,7 @@ export function PersonaPicker({
   placeholder = 'Buscar…',
   single = false,
   emptyHint,
+  testId,
 }: {
   empleados: Persona[];
   selected: string[];
@@ -39,6 +40,7 @@ export function PersonaPicker({
   placeholder?: string;
   single?: boolean;
   emptyHint?: string;
+  testId?: string;
 }) {
   const [q, setQ] = useState('');
   const sel = useMemo(() => new Set(selected), [selected]);
@@ -57,7 +59,7 @@ export function PersonaPicker({
   }
 
   return (
-    <div className="flex flex-col rounded-xl border border-line bg-white shadow-card">
+    <div className="flex flex-col rounded-xl border border-line bg-white shadow-card" data-testid={testId}>
       <div className="relative border-b border-line">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
@@ -80,6 +82,7 @@ export function PersonaPicker({
             <button
               key={e.id}
               type="button"
+              data-testid="persona-row"
               onClick={() => toggle(e.id)}
               className={cn(
                 'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-150',
