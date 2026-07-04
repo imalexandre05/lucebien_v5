@@ -2,19 +2,15 @@ import { iniciarSesion } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input, Select, Label } from '../../components/ui/form';
 import { LogoMark } from '../../components/brand/logo';
+import { listarSedesPublico } from '../../lib/sedes-repo';
 import { BotonIngresar } from './boton';
-
-const SEDES = [
-  { cod: 'LB', nombre: 'Lucebien' },
-  { cod: 'ST', nombre: 'Stand' },
-  { cod: 'TR', nombre: 'Trece' },
-  { cod: 'AL', nombre: 'Almacén Central' },
-];
 
 // Primera impresión (§4B): entrada escalonada crest → wordmark → tarjeta → pie,
 // código estilo "cerradura" (mono, centrado, tracking ancho). La lógica de auth
-// (cod + sede, 4 dígitos) no cambia.
-export default function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
+// (cod + sede, 4 dígitos) no cambia. Las sedes salen de la BD: crear una sede
+// nueva en Configuración la habilita aquí sin tocar código.
+export default async function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
+  const SEDES = await listarSedesPublico();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper px-4">
       <div className="w-full max-w-sm">

@@ -20,6 +20,7 @@ import { listarIncidencias } from '../lib/incidencias-repo';
 import { resumenFinanciero, cobrosPendientes, totalGarantias } from '../lib/caja-repo';
 import { pedidosRepo } from '../lib/pedidos-repo';
 import { getSesion } from '../lib/auth';
+import { listarSedes } from '../lib/sedes-repo';
 import { hoyPeru, fechaLargaPeru, etiquetaDia, saludoPeru, tiempoRelativo } from '../lib/fechas';
 import { LogoMark } from '../components/brand/logo';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -27,13 +28,6 @@ import { StatBox } from '../components/ui/stat-box';
 import { CountUp } from '../components/ui/count-up';
 import { EmptyState } from '../components/ui/empty-state';
 import { cn } from '../lib/cn';
-
-const SEDE_NOMBRE: Record<string, string> = {
-  LB: 'Lucebien',
-  ST: 'Stand',
-  TR: 'Trece',
-  AL: 'Almacén Central',
-};
 
 const ETAPA_LABEL: Record<string, string> = {
   recepcion: 'Recepción',
@@ -55,7 +49,7 @@ const KPI_TONE = 'border-line bg-white text-navy shadow-card';
 type Evento = { ts: string; icon: LucideIcon; titulo: ReactNode; detalle: string | null; href: string };
 
 export default async function Dashboard() {
-  const [sesion, pasadas, reportes, incidencias, ranking, finHoy, pedidos, pendientes, garantias] =
+  const [sesion, pasadas, reportes, incidencias, ranking, finHoy, pedidos, pendientes, garantias, sedes] =
     await Promise.all([
       getSesion(),
       listarPasadas(),
@@ -66,7 +60,9 @@ export default async function Dashboard() {
       pedidosRepo.listar(),
       cobrosPendientes(),
       totalGarantias(),
+      listarSedes().catch(() => []),
     ]);
+  const SEDE_NOMBRE = Object.fromEntries(sedes.map((s) => [s.cod, s.nombre]));
 
   const hoy = hoyPeru();
   const ahora = new Date();
