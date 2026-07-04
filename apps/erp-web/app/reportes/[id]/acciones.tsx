@@ -205,6 +205,7 @@ export function EvaluarPanel({
 
       <button
         type="button"
+        data-testid="enviar-evaluacion"
         onClick={enviar}
         disabled={pending || (actividades.length === 0 && limpieza.length === 0)}
         className={cn(buttonVariants({ variant: 'primary' }), 'w-full justify-center py-3 text-base', pending && 'opacity-60')}
@@ -247,6 +248,7 @@ export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean 
       )}
       <button
         type="button"
+        data-testid="anular-reporte"
         onClick={anular}
         disabled={pending}
         className={cn(buttonVariants({ variant: 'outline' }), 'border-red-300 text-red-600 hover:bg-red-50')}
