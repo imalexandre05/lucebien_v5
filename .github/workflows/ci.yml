@@ -1,0 +1,41 @@
+name: CI
+
+# Verificación en cada push a main y en cada PR: typecheck del ERP nuevo + los tests
+# unitarios de la lógica de negocio (@scilb/core). Sin secretos (no corre build ni E2E,
+# que necesitan las claves de Supabase / un preview) → siempre reproducible.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    name: Typecheck + tests unitarios
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (erp-web + core/adapter por imports)
+        run: pnpm --filter erp-web exec tsc --noEmit
+
+      - name: Tests unitarios (@scilb/core)
+        run: pnpm --filter @scilb/core test
