@@ -37,28 +37,20 @@ const NAV: { section: string; items: Item[] }[] = [
   },
 ];
 
-export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
+// Listado de navegación (compartido entre la sidebar de escritorio y el drawer móvil).
+export function SidebarNav({ esAdmin }: { esAdmin: boolean }) {
   const path = usePathname();
   return (
-    <aside className="sticky top-0 flex h-screen w-60 flex-col bg-navy-deep text-paper/80 print:hidden">
-      <Link
-        href="/"
-        aria-label="Ir al inicio"
-        className="flex items-center border-b border-white/10 px-5 py-6 transition-transform duration-150 ease-out-expo hover:translate-x-0.5 active:scale-[0.98]"
-      >
-        <Logo tone="onDark" size="md" />
-      </Link>
-
-      <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
-        {NAV.map((group) => (
-          <div key={group.section}>
-            <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-paper/40">
-              {group.section}
-            </div>
-            <ul className="space-y-0.5">
-              {group.items
-                .filter((it) => !it.admin || esAdmin)
-                .map((it) => {
+    <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
+      {NAV.map((group) => (
+        <div key={group.section}>
+          <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-paper/40">
+            {group.section}
+          </div>
+          <ul className="space-y-0.5">
+            {group.items
+              .filter((it) => !it.admin || esAdmin)
+              .map((it) => {
                 const active = it.href === '/' ? path === '/' : path.startsWith(it.href);
                 const Icon = it.icon;
                 return (
@@ -86,16 +78,36 @@ export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
                   </li>
                 );
               })}
-            </ul>
-          </div>
-        ))}
-      </nav>
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+}
 
-      <div className="border-t border-white/10 px-6 py-4 text-[11px] leading-relaxed text-paper/40">
-        Fase 1 · demo
-        <br />
-        Confecciones Aliaga E.I.R.L.
-      </div>
+export function SidebarFooter() {
+  return (
+    <div className="border-t border-white/10 px-6 py-4 text-[11px] leading-relaxed text-paper/40">
+      Fase 1 · demo
+      <br />
+      Confecciones Aliaga E.I.R.L.
+    </div>
+  );
+}
+
+// Sidebar fija de escritorio; en anchos menores la navegación vive en el drawer (MobileNav).
+export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
+  return (
+    <aside className="sticky top-0 hidden h-screen w-60 flex-col bg-navy-deep text-paper/80 lg:flex print:hidden">
+      <Link
+        href="/"
+        aria-label="Ir al inicio"
+        className="flex items-center border-b border-white/10 px-5 py-6 transition-transform duration-150 ease-out-expo hover:translate-x-0.5 active:scale-[0.98]"
+      >
+        <Logo tone="onDark" size="md" />
+      </Link>
+      <SidebarNav esAdmin={esAdmin} />
+      <SidebarFooter />
     </aside>
   );
 }

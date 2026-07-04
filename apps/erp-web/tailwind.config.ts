@@ -49,6 +49,10 @@ const config: Config = {
           '0%': { transform: 'scaleY(0)' },
           '100%': { transform: 'scaleY(1)' },
         },
+        slideInLeft: {
+          '0%': { transform: 'translateX(-100%)' },
+          '100%': { transform: 'translateX(0)' },
+        },
         pulseSoft: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.55' },
@@ -63,6 +67,7 @@ const config: Config = {
         shimmer: 'shimmer 1.4s infinite',
         'pulse-soft': 'pulseSoft 1.6s ease-in-out infinite',
         'grow-y': 'growY 480ms cubic-bezier(0.23, 1, 0.32, 1) both',
+        'drawer-in': 'slideInLeft 240ms cubic-bezier(0.23, 1, 0.32, 1) both',
       },
     },
   },
