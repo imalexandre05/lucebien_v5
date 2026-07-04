@@ -1,8 +1,8 @@
 import { iniciarSesion } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input, Select, Label } from '../../components/ui/form';
-import { Button } from '../../components/ui/button';
 import { LogoMark } from '../../components/brand/logo';
+import { BotonIngresar } from './boton';
 
 const SEDES = [
   { cod: 'LB', nombre: 'Lucebien' },
@@ -11,6 +11,9 @@ const SEDES = [
   { cod: 'AL', nombre: 'Almacén Central' },
 ];
 
+// Primera impresión (§4B): entrada escalonada crest → wordmark → tarjeta → pie,
+// código estilo "cerradura" (mono, centrado, tracking ancho). La lógica de auth
+// (cod + sede, 4 dígitos) no cambia.
 export default function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper px-4">
@@ -24,10 +27,12 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
             SCI · LB
           </div>
         </div>
-        <Card>
+        <Card className="animate-rise overflow-hidden [animation-delay:210ms]">
+          {/* Filete de sastre: hairline dorada que firma la tarjeta. */}
+          <div aria-hidden className="h-0.5 bg-gradient-to-r from-gold via-gold/50 to-line" />
           <CardContent className="pt-6">
             {searchParams.error && (
-              <p className="mb-4 rounded-md bg-amber-500/15 px-3 py-2 text-xs text-amber-700">
+              <p role="alert" className="mb-4 animate-rise rounded-md bg-amber-500/15 px-3 py-2 text-xs text-amber-700">
                 {searchParams.error === 'credenciales'
                   ? 'Código o sede incorrectos.'
                   : 'Datos inválidos. Revisa la sede y el código (4 dígitos).'}
@@ -35,8 +40,8 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
             )}
             <form action={iniciarSesion} className="space-y-4">
               <div>
-                <Label>Sede</Label>
-                <Select name="sede" defaultValue="LB">
+                <Label htmlFor="login-sede">Sede</Label>
+                <Select id="login-sede" name="sede" defaultValue="LB">
                   {SEDES.map((s) => (
                     <option key={s.cod} value={s.cod}>
                       {s.nombre}
@@ -45,24 +50,31 @@ export default function LoginPage({ searchParams }: { searchParams: { error?: st
                 </Select>
               </div>
               <div>
-                <Label>Código</Label>
+                <Label htmlFor="login-cod">Código</Label>
                 <Input
+                  id="login-cod"
                   name="cod"
                   inputMode="numeric"
+                  pattern="[0-9]{4}"
                   maxLength={4}
-                  placeholder="4 dígitos"
-                  className="font-mono tracking-[0.3em]"
+                  placeholder="····"
+                  autoComplete="off"
+                  className="py-2.5 text-center font-mono text-lg tracking-[0.5em] placeholder:tracking-[0.3em]"
+                  aria-describedby="login-ayuda"
                   required
                   autoFocus
                 />
               </div>
-              <Button type="submit" className="w-full">
-                Ingresar
-              </Button>
+              <BotonIngresar />
             </form>
           </CardContent>
         </Card>
-        <p className="mt-4 text-center text-[11px] text-muted">Ingresa con tu código y sede</p>
+        <p
+          id="login-ayuda"
+          className="mt-4 animate-rise text-center text-[11px] text-muted [animation-delay:270ms]"
+        >
+          Ingresa con tu código de 4 dígitos y tu sede
+        </p>
       </div>
     </div>
   );
