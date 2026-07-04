@@ -25,6 +25,7 @@ import { LogoMark } from '../components/brand/logo';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { StatBox } from '../components/ui/stat-box';
 import { CountUp } from '../components/ui/count-up';
+import { EmptyState } from '../components/ui/empty-state';
 import { cn } from '../lib/cn';
 
 const SEDE_NOMBRE: Record<string, string> = {
@@ -244,13 +245,9 @@ export default async function Dashboard() {
         </CardHeader>
         <CardContent className="pt-1">
           {totalFlujo === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center">
-              <Shirt className="h-9 w-9 text-line" strokeWidth={1.25} />
-              <p className="text-sm text-muted">Sin prendas en el pipeline.</p>
-              <p className="text-xs text-muted">
-                Cuando el taller registre prendas verás aquí el flujo en vivo, etapa por etapa.
-              </p>
-            </div>
+            <EmptyState icon={Shirt} titulo="Sin prendas en el pipeline" compacto>
+              Cuando el taller registre prendas verás aquí el flujo en vivo, etapa por etapa.
+            </EmptyState>
           ) : (
             <div className="overflow-x-auto">
               <div className="flex min-w-[680px] items-stretch">
@@ -309,11 +306,9 @@ export default async function Dashboard() {
           </CardHeader>
           <CardContent className="px-0 pb-1">
             {eventos.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 px-5 py-10 text-center">
-                <Activity className="h-9 w-9 text-line" strokeWidth={1.25} />
-                <p className="text-sm text-muted">Aún no hay movimientos registrados.</p>
-                <p className="text-xs text-muted">Los reportes, incidencias y avances de prendas aparecerán aquí.</p>
-              </div>
+              <EmptyState icon={Activity} titulo="Aún no hay movimientos registrados" compacto>
+                Los reportes, incidencias y avances de prendas aparecerán aquí.
+              </EmptyState>
             ) : (
               <ul className="divide-y divide-line/70">
                 {eventos.map((ev, i) => {
@@ -358,11 +353,9 @@ export default async function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-3.5">
             {ranking.length === 0 ? (
-              <div className="flex flex-col items-center gap-2 py-8 text-center">
-                <Trophy className="h-9 w-9 text-line" strokeWidth={1.25} />
-                <p className="text-sm text-muted">Aún no hay puntos hoy.</p>
-                <p className="text-xs text-muted">Cada avance de prenda suma puntos al operario.</p>
-              </div>
+              <EmptyState icon={Trophy} titulo="Aún no hay puntos hoy" compacto>
+                Cada avance de prenda suma puntos al operario.
+              </EmptyState>
             ) : (
               ranking.slice(0, 6).map((r, i) => {
                 const maxPts = Math.max(1, ranking[0]?.total ?? 1);
