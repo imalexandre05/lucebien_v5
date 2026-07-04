@@ -21,6 +21,7 @@ import { buttonVariants } from '../../components/ui/button';
 import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
+import { mesPeru } from '../../lib/fechas';
 
 // Perfil por componente (§4C): barras sobrias /20 con el peso usado al lado.
 // Los valores van siempre en texto (la barra es refuerzo, nunca el único canal).
@@ -80,10 +81,6 @@ const TRAMO_TONE: Record<TramoEval, Tone> = {
 const TRAMOS: TramoEval[] = ['excelente', 'bueno', 'mejorar', 'bajo'];
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
-
-function mesPeru(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date()).slice(0, 7);
-}
 
 const CERO: ComponentesEval = {
   competencias: 0,

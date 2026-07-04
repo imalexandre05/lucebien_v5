@@ -8,6 +8,11 @@ export function hoyPeru(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
 }
 
+/** 'YYYY-MM' del mes actual en Lima. */
+export function mesPeru(): string {
+  return hoyPeru().slice(0, 7);
+}
+
 /** Fecha completa en español, capitalizada: "Viernes, 4 de julio de 2026". */
 export function fechaLargaPeru(d: Date = new Date()): string {
   const s = new Intl.DateTimeFormat('es-PE', { dateStyle: 'full', timeZone: TZ }).format(d);

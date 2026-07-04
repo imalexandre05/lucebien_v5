@@ -12,16 +12,13 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { buttonVariants } from '../../components/ui/button';
 import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
+import { hoyPeru } from '../../lib/fechas';
 
 const ESTADO_TONE: Record<string, Tone> = { pagado: 'green', pendiente: 'amber', anulado: 'gray' };
 const METODOS = ['efectivo', 'yape', 'transferencia'];
 const ESTADOS = ['pagado', 'pendiente'];
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
-
-function hoyPeru(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
-}
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 

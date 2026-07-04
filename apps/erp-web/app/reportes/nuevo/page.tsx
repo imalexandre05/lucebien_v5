@@ -4,17 +4,13 @@ import { listarEmpleados } from '../../../lib/reportes-repo';
 import { listarTiposIncidencia } from '../../../lib/incidencias-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { NuevoReporteForm } from './form';
-
-// Fecha de hoy en hora de Perú (America/Lima), independiente de la TZ del server.
-function fechaPeru(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
-}
+import { hoyPeru } from '../../../lib/fechas';
 
 export default async function NuevoReportePage() {
   const sesion = await getSesion();
   if (!sesion) redirect('/login');
   const sede = sesion.usuario.sede;
-  const fecha = fechaPeru();
+  const fecha = hoyPeru();
   const [empleados, tiposIncidencia] = await Promise.all([listarEmpleados(), listarTiposIncidencia()]);
 
   return (
