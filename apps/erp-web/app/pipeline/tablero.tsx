@@ -114,10 +114,12 @@ export function TableroPipeline({
   pasadas,
   ranking = [],
   operario = '',
+  tiendas = ['LB', 'ST', 'TR'],
 }: {
   pasadas: PrendaPasada[];
   ranking?: RankingItem[];
   operario?: string;
+  tiendas?: string[];
 }) {
   const [, startTransition] = useTransition();
   // Actualización optimista: la prenda se mueve al instante; el servidor confirma después.
@@ -350,14 +352,14 @@ export function TableroPipeline({
         </div>
       )}
 
-      {/* ── Tablero ── */}
+      {/* ── Tablero: columnas a una pantalla, scroll interno (no una página kilométrica) ── */}
       <div className="flex gap-3 overflow-x-auto pb-3">
         {COLUMNAS.map((col) => {
           const items = visibles.filter((p) => p.etapa === col.k);
           const Icon = col.icon;
           return (
-            <div key={col.k} className="w-56 shrink-0">
-              <div className="mb-2 flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: `${col.tint}14` }}>
+            <div key={col.k} className="flex max-h-[calc(100vh-300px)] min-h-[300px] w-56 shrink-0 flex-col">
+              <div className="mb-2 flex shrink-0 items-center gap-2 rounded-lg px-3 py-2" style={{ background: `${col.tint}14` }}>
                 <Icon className="h-4 w-4 shrink-0" style={{ color: col.tint }} strokeWidth={2} />
                 <span className="text-sm font-medium" style={{ color: col.tint }}>
                   {col.n}
@@ -372,14 +374,14 @@ export function TableroPipeline({
               {items.length >= 2 && NEXT_TANDA[col.k] && (
                 <button
                   onClick={() => h.avanzarTanda(items.map((i) => i.id), NEXT_TANDA[col.k])}
-                  className="mb-2 inline-flex w-full items-center justify-center gap-1 rounded-md border border-navy/15 bg-navy/5 px-2 py-1 text-[11px] font-medium text-navy transition hover:bg-navy/10"
+                  className="mb-2 inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-md border border-navy/15 bg-navy/5 px-2 py-1 text-[11px] font-medium text-navy transition hover:bg-navy/10"
                 >
                   Avanzar todas → {NOMBRE[NEXT_TANDA[col.k]] ?? NEXT_TANDA[col.k]}
                 </button>
               )}
-              <div className="space-y-2">
+              <div className="-mr-1 min-h-0 flex-1 space-y-2 overflow-y-auto pb-1 pr-1">
                 {items.map((p) => (
-                  <Tarjeta key={p.id} p={p} h={h} seleccionado={sel.has(p.id)} onSel={() => toggleSel(p.id, p.etapa)} />
+                  <Tarjeta key={p.id} p={p} h={h} tiendas={tiendas} seleccionado={sel.has(p.id)} onSel={() => toggleSel(p.id, p.etapa)} />
                 ))}
                 {items.length === 0 && (
                   <div className="rounded-lg border border-dashed border-line py-5 text-center text-xs text-slate-400">
@@ -444,11 +446,13 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 function Tarjeta({
   p,
   h,
+  tiendas,
   seleccionado,
   onSel,
 }: {
   p: PrendaPasada;
   h: Handlers;
+  tiendas: string[];
   seleccionado: boolean;
   onSel: () => void;
 }) {
@@ -458,45 +462,61 @@ function Tarjeta({
   return (
     <div
       className={cn(
-        'rounded-lg border bg-white p-2.5 shadow-card transition hover:shadow-lift',
+        'rounded-lg border bg-white p-2 shadow-card transition hover:shadow-lift',
         seleccionado ? 'border-navy ring-2 ring-navy/30' : 'border-line',
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5">
         <span
           className="h-3 w-3 shrink-0 rounded-full border border-black/10"
           style={{ background: COL_MAP[p.color ?? ''] ?? '#cbd5e1' }}
+          title={p.color ?? ''}
         />
-        <span className="font-mono text-sm font-semibold text-navy">{p.codigo}</span>
+        <span className="truncate font-mono text-sm font-semibold text-navy">{p.codigo}</span>
+        {esTerno && (
+          <button
+            type="button"
+            onClick={() => h.dividir(p.id)}
+            aria-label="Dividir en saco + pantalón"
+            title="Dividir en saco + pantalón"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-300 transition-colors hover:bg-navy/5 hover:text-navy"
+          >
+            <Split className="h-3 w-3" strokeWidth={2.5} />
+          </button>
+        )}
         <button
           type="button"
           onClick={onSel}
           aria-label="Seleccionar"
           className={cn(
-            'ml-auto flex h-5 w-5 items-center justify-center rounded border transition-colors',
+            'ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors',
             seleccionado ? 'border-navy bg-navy text-white' : 'border-line text-transparent hover:border-navy',
           )}
         >
           <Check className="h-3 w-3" strokeWidth={3} />
         </button>
       </div>
-      {Boolean(meta) && <div className="mt-1 text-xs text-slate-500">{meta}</div>}
-      <div className="mt-1.5 flex flex-wrap items-center gap-1">
+      <div className="mt-1 flex flex-wrap items-center gap-1">
         <span className="rounded bg-navy/5 px-1.5 py-0.5 font-mono text-[10px] text-navy">{p.sedeOrigenCod}</span>
-        {Boolean(p.tipoLavado) && (
-          <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', tipoLavadoCls(p.tipoLavado ?? ''))}>
-            {p.tipoLavado}
-          </span>
-        )}
-        {Boolean(p.necesitaCompostura) && (
-          <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">compostura</span>
-        )}
-        {Boolean(p.aprobada) && (
-          <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-            <Check className="h-2.5 w-2.5" strokeWidth={3} /> aprobada
-          </span>
-        )}
+        {Boolean(meta) && <span className="truncate text-[11px] leading-tight text-slate-500">{meta}</span>}
       </div>
+      {(Boolean(p.tipoLavado) || Boolean(p.necesitaCompostura) || Boolean(p.aprobada)) && (
+        <div className="mt-1 flex flex-wrap items-center gap-1">
+          {Boolean(p.tipoLavado) && (
+            <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', tipoLavadoCls(p.tipoLavado ?? ''))}>
+              {p.tipoLavado}
+            </span>
+          )}
+          {Boolean(p.necesitaCompostura) && (
+            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">compostura</span>
+          )}
+          {Boolean(p.aprobada) && (
+            <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+              <Check className="h-2.5 w-2.5" strokeWidth={3} /> ok
+            </span>
+          )}
+        </div>
+      )}
       {Boolean(p.obsCalidad) && (
         <div className="mt-1 flex items-start gap-1 rounded bg-red-50 px-2 py-1 text-[11px] text-red-700">
           <AlertTriangle className="mt-px h-3 w-3 shrink-0" strokeWidth={2.5} /> {p.obsCalidad}
@@ -504,36 +524,30 @@ function Tarjeta({
       )}
 
       {dests.length > 0 && (
-        <div className="mt-2 flex flex-col gap-1.5">
+        <div className="mt-1.5 flex gap-1">
           {dests.map((d) => (
             <button
               key={d}
               onClick={() => h.avanzar(p.id, d, p.etapa)}
-              className="inline-flex items-center justify-center gap-1.5 rounded-md bg-navy px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-[#26345c] active:scale-[.98]"
+              title={`Avanzar a ${NOMBRE[d] ?? d}`}
+              className="inline-flex flex-1 items-center justify-center gap-1 truncate rounded-md bg-navy px-1.5 py-1 text-[11px] font-medium text-white transition hover:bg-[#26345c] active:scale-[.98]"
             >
-              {NOMBRE[d] ?? d} <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} />
+              <span className="truncate">{NOMBRE[d] ?? d}</span>
+              <ArrowRight className="h-3 w-3 shrink-0" strokeWidth={2.5} />
             </button>
           ))}
         </div>
       )}
 
-      {p.etapa === 'listo' && <Enviar p={p} h={h} />}
+      {p.etapa === 'listo' && <Enviar p={p} h={h} tiendas={tiendas} />}
       {p.etapa === 'control_calidad' && <Rechazar p={p} h={h} />}
       {p.etapa === 'enviado' && <Calificar p={p} h={h} />}
-      {esTerno && (
-        <button
-          onClick={() => h.dividir(p.id)}
-          className="mt-1.5 inline-flex w-full items-center justify-center gap-1 text-[10px] font-medium text-slate-400 transition hover:text-navy"
-        >
-          <Split className="h-3 w-3" strokeWidth={2.5} /> Dividir en saco + pantalón
-        </button>
-      )}
     </div>
   );
 }
 
-function Enviar({ p, h }: { p: PrendaPasada; h: Handlers }) {
-  const [sede, setSede] = useState(['LB', 'ST', 'TR'].includes(p.sedeOrigenCod) ? p.sedeOrigenCod : 'LB');
+function Enviar({ p, h, tiendas }: { p: PrendaPasada; h: Handlers; tiendas: string[] }) {
+  const [sede, setSede] = useState(tiendas.includes(p.sedeOrigenCod) ? p.sedeOrigenCod : tiendas[0] ?? 'LB');
   return (
     <div className="mt-2 flex items-center gap-1.5">
       <select
@@ -542,9 +556,11 @@ function Enviar({ p, h }: { p: PrendaPasada; h: Handlers }) {
         className="rounded-md border border-line bg-white px-1.5 py-1 text-xs text-navy"
         aria-label="Sede destino"
       >
-        <option value="LB">LB</option>
-        <option value="ST">ST</option>
-        <option value="TR">TR</option>
+        {tiendas.map((t) => (
+          <option key={t} value={t}>
+            {t}
+          </option>
+        ))}
       </select>
       <button
         onClick={() => h.enviar(p.id, sede)}
