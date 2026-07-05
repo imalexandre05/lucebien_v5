@@ -13,7 +13,6 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { buttonVariants } from '../../../components/ui/button';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
-import { StatBox } from '../../../components/ui/stat-box';
 import { cn } from '../../../lib/cn';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
@@ -363,80 +362,86 @@ export function NuevoReporteForm({
 
       {turno && !cargando && !yaEnviado && (
         <>
-          {/* ── Limpieza (mapa de zonas) ── */}
-          {zonas.length > 0 && (
-            <Card>
+          {/* ── Limpieza + Actividades lado a lado en xl (una pantalla, no un pergamino) ── */}
+          <div className={cn('grid grid-cols-1 gap-4', zonas.length > 0 && 'xl:grid-cols-5')}>
+            {zonas.length > 0 && (
+              <Card className="xl:col-span-3">
+                <CardHeader>
+                  <CardTitle>Limpieza</CardTitle>
+                  <span className="text-xs text-muted">Marca en el mapa las zonas que limpiaste</span>
+                </CardHeader>
+                <CardContent>
+                  <LayoutMap zonas={zonas} turno={turno} selected={limpieza} onChange={setLimpieza} />
+                </CardContent>
+              </Card>
+            )}
+
+            {/* ── Actividades del Turno (lista compacta con scroll propio) ── */}
+            <Card className={cn(zonas.length > 0 && 'xl:col-span-2')}>
               <CardHeader>
-                <CardTitle>Limpieza</CardTitle>
-                <span className="text-xs text-muted">Marca en el mapa las zonas que limpiaste</span>
+                <CardTitle>Actividades del turno</CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-xs text-muted tabular-nums">
+                    {actDone}/{cat.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => marcarTodas(true)}
+                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
+                  >
+                    <Check className="h-3.5 w-3.5" strokeWidth={2} /> Todas
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => marcarTodas(false)}
+                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold active:scale-[0.97]"
+                  >
+                    <Square className="h-3.5 w-3.5" strokeWidth={2} /> Ninguna
+                  </button>
+                </div>
               </CardHeader>
-              <CardContent>
-                <LayoutMap zonas={zonas} turno={turno} selected={limpieza} onChange={setLimpieza} />
+              <CardContent className={cn('space-y-1.5', zonas.length > 0 && 'max-h-[640px] overflow-y-auto')}>
+                {cat.length === 0 && (
+                  <p className="py-6 text-center text-sm text-muted">No hay actividades configuradas para este turno.</p>
+                )}
+                {cat.map((a) => {
+                  const on = Boolean(done[a.cod]);
+                  return (
+                    <div
+                      key={a.cod}
+                      className={cn(
+                        'flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border px-2.5 py-1.5 transition-colors duration-150',
+                        on ? 'border-navy/15 bg-navy/[0.03]' : 'border-line bg-white',
+                      )}
+                    >
+                      <span className="w-10 shrink-0 font-mono text-[11px] text-muted">{a.cod}</span>
+                      <div className="min-w-0 flex-1">
+                        <span className="text-[13px] font-medium leading-snug text-navy">{a.nombre}</span>
+                        {a.peso > 0 && <span className="ml-1.5 font-mono text-[10px] text-muted">{a.peso}pts</span>}
+                        {a.pendienteAcumulado && (
+                          <Badge tone="amber" className="ml-1.5">
+                            pendiente
+                          </Badge>
+                        )}
+                      </div>
+                      {a.categoria && <Badge tone={catTone(a.categoria)}>{a.categoria}</Badge>}
+                      <input
+                        value={obs[a.cod] ?? ''}
+                        onChange={(e) => setObs((p) => ({ ...p, [a.cod]: e.target.value }))}
+                        placeholder="Obs."
+                        aria-label={`Observación de ${a.nombre}`}
+                        className={cn(fieldCls, 'w-24 px-2 py-1 text-xs')}
+                      />
+                      <Toggle on={on} onClick={() => setDone((p) => ({ ...p, [a.cod]: !p[a.cod] }))} />
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
-          )}
+          </div>
 
-          {/* ── Actividades del Turno ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Actividades del turno</CardTitle>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-xs text-muted tabular-nums">
-                  {actDone}/{cat.length}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => marcarTodas(true)}
-                  className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
-                >
-                  <Check className="h-3.5 w-3.5" strokeWidth={2} /> Todas
-                </button>
-                <button
-                  type="button"
-                  onClick={() => marcarTodas(false)}
-                  className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold active:scale-[0.97]"
-                >
-                  <Square className="h-3.5 w-3.5" strokeWidth={2} /> Ninguna
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {cat.length === 0 && (
-                <p className="py-6 text-center text-sm text-muted">No hay actividades configuradas para este turno.</p>
-              )}
-              {cat.map((a) => {
-                const on = Boolean(done[a.cod]);
-                return (
-                  <div
-                    key={a.cod}
-                    className={cn(
-                      'flex flex-wrap items-center gap-3 rounded-xl border px-3 py-2.5 transition-colors duration-150',
-                      on ? 'border-navy/15 bg-navy/[0.03]' : 'border-line bg-white',
-                    )}
-                  >
-                    <span className="w-12 shrink-0 font-mono text-xs text-muted">{a.cod}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-navy">{a.nombre}</span>
-                        {a.peso > 0 && <span className="font-mono text-[11px] text-muted">{a.peso}pts</span>}
-                        {a.pendienteAcumulado && <Badge tone="amber">pendiente</Badge>}
-                      </div>
-                    </div>
-                    {a.categoria && <Badge tone={catTone(a.categoria)}>{a.categoria}</Badge>}
-                    <input
-                      value={obs[a.cod] ?? ''}
-                      onChange={(e) => setObs((p) => ({ ...p, [a.cod]: e.target.value }))}
-                      placeholder="Obs."
-                      className={cn(fieldCls, 'w-40 text-xs')}
-                    />
-                    <Toggle on={on} onClick={() => setDone((p) => ({ ...p, [a.cod]: !p[a.cod] }))} />
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-
-          {/* ── Incidencias del turno ── */}
+          {/* ── Incidencias + Extras lado a lado en xl ── */}
+          <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Incidencias del turno</CardTitle>
@@ -584,41 +589,60 @@ export function NuevoReporteForm({
               )}
             </CardContent>
           </Card>
+          </div>
 
-          {/* ── Resumen + Envío ── */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Resumen del reporte</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <StatBox index={0} label="Limpieza" valor={limpiezaPts.got} sub={`de ${limpiezaPts.tot} pts`} tone="border-emerald-600/20 bg-emerald-50/60 text-emerald-700" />
-                <StatBox index={1} label="Actividades" valor={`${actDone}/${cat.length}`} sub="completadas" tone="border-navy/15 bg-navy/5 text-navy" />
-                <StatBox index={2} label="Equipo" valor={trabajadores.length} sub="colaboradores" tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-                <StatBox index={3} label="Total puntos" valor={totalPts} sub={`+${extras.filter((e) => e.nombre.trim()).length} extras`} tone="border-navy/15 bg-navy/5 text-navy" />
-              </div>
-
-              {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-
-              <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+          {/* ── Resumen + Envío: barra fija abajo, siempre a la vista ── */}
+          <div className="sticky bottom-0 z-20 rounded-t-xl border border-line bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
+            {error && <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+              <span className="text-xs text-muted">
+                Limpieza{' '}
+                <span className="font-mono text-sm font-bold tabular-nums text-emerald-700">
+                  {limpiezaPts.got}
+                </span>
+                <span className="font-mono text-[11px] text-muted">/{limpiezaPts.tot}</span>
+              </span>
+              <span className="text-xs text-muted">
+                Actividades{' '}
+                <span className="font-mono text-sm font-bold tabular-nums text-navy">
+                  {actDone}/{cat.length}
+                </span>
+              </span>
+              <span className="text-xs text-muted">
+                Equipo <span className="font-mono text-sm font-bold tabular-nums text-navy">{trabajadores.length}</span>
+              </span>
+              {extras.filter((e) => e.nombre.trim()).length > 0 && (
+                <span className="text-xs text-muted">
+                  Extras{' '}
+                  <span className="font-mono text-sm font-bold tabular-nums text-navy">
+                    {extras.filter((e) => e.nombre.trim()).length}
+                  </span>
+                </span>
+              )}
+              <span className="rounded-full bg-gold/15 px-3 py-1 text-xs text-muted">
+                Total{' '}
+                <span className="font-mono text-base font-bold tabular-nums text-[#7a6e0e]">{totalPts}</span>{' '}
+                pts
+              </span>
+              <div className="ml-auto flex items-center gap-3">
+                <span className="hidden text-xs text-muted sm:inline">
+                  {encargadoSel.length === 1
+                    ? 'Se guarda automáticamente mientras lo completas.'
+                    : 'Selecciona al encargado del turno para poder enviar.'}
+                </span>
                 <button
                   type="button"
                   data-testid="enviar-reporte"
                   onClick={submit}
                   disabled={!puedeEnviar}
-                  className={cn(buttonVariants({ variant: 'primary' }), 'flex-1 justify-center py-3 text-base', !puedeEnviar && 'opacity-50')}
+                  className={cn(buttonVariants({ variant: 'primary' }), 'px-6 py-2.5', !puedeEnviar && 'opacity-50')}
                 >
                   <Send className="h-4 w-4" strokeWidth={2} />
                   {pending ? 'Enviando…' : 'Enviar reporte'}
                 </button>
-                <span className="text-xs text-muted">
-                  {encargadoSel.length === 1
-                    ? 'Se guarda automáticamente mientras lo completas.'
-                    : 'Selecciona al encargado del turno para poder enviar.'}
-                </span>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </>
       )}
     </div>
