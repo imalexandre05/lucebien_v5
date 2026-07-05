@@ -83,12 +83,12 @@ const NEXT_TANDA: Record<string, string> = {
   control_calidad: 'listo',
 };
 
-// Pestañas del módulo (como el viejo). Solo Kanban está activo; el resto va por etapas.
-const TABS: { k: string; label: string; pronto?: boolean }[] = [
-  { k: 'kanban', label: 'Kanban' },
+// Pestañas del módulo (como el viejo). Kanban y Envíos están activos; el resto va por etapas.
+const TABS: { k: string; label: string; href?: string; pronto?: boolean }[] = [
+  { k: 'kanban', label: 'Kanban', href: '/pipeline' },
+  { k: 'envios', label: 'Envíos a tienda', href: '/pipeline/envios' },
   { k: 'registrar', label: 'Registrar', pronto: true },
   { k: 'accesorios', label: 'Accesorios', pronto: true },
-  { k: 'envios', label: 'Envíos a tienda', pronto: true },
   { k: 'metricas', label: 'Métricas', pronto: true },
 ];
 
@@ -264,24 +264,24 @@ export function TableroPipeline({
 
       {/* ── Pestañas ── */}
       <div className="mb-3 flex flex-wrap items-center gap-1 border-b border-line">
-        {TABS.map((t) => (
-          <button
-            key={t.k}
-            type="button"
-            disabled={t.pronto}
-            className={cn(
-              'relative -mb-px border-b-2 px-3 py-2 text-sm transition-colors',
-              t.k === 'kanban'
-                ? 'border-navy font-semibold text-navy'
-                : 'border-transparent text-muted/70',
-              t.pronto && 'cursor-not-allowed',
-            )}
-            title={t.pronto ? 'Próximamente' : undefined}
-          >
-            {t.label}
-            {t.pronto && <span className="ml-1 rounded bg-line/70 px-1 text-[9px] uppercase text-muted">pronto</span>}
-          </button>
-        ))}
+        {TABS.map((t) =>
+          t.href ? (
+            <NavLink key={t.k} href={t.href} activo={t.k === 'kanban'}>
+              {t.label}
+            </NavLink>
+          ) : (
+            <button
+              key={t.k}
+              type="button"
+              disabled
+              className="relative -mb-px cursor-not-allowed border-b-2 border-transparent px-3 py-2 text-sm text-muted/70"
+              title="Próximamente"
+            >
+              {t.label}
+              <span className="ml-1 rounded bg-line/70 px-1 text-[9px] uppercase text-muted">pronto</span>
+            </button>
+          ),
+        )}
         <div className="ml-auto flex items-center gap-2 pb-1.5">
           <span className="rounded-full bg-navy/5 px-2.5 py-1 text-xs font-medium text-navy">{enProceso} en proceso</span>
           <span className="rounded-full bg-emerald-600/10 px-2.5 py-1 text-xs font-medium text-emerald-700">{enviados} enviados</span>
@@ -425,6 +425,21 @@ export function TableroPipeline({
         </div>
       )}
     </div>
+  );
+}
+
+function NavLink({ href, activo, children }: { href: string; activo: boolean; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      aria-current={activo ? 'page' : undefined}
+      className={cn(
+        'relative -mb-px border-b-2 px-3 py-2 text-sm transition-colors',
+        activo ? 'border-navy font-semibold text-navy' : 'border-transparent text-muted/70 hover:text-navy',
+      )}
+    >
+      {children}
+    </a>
   );
 }
 
