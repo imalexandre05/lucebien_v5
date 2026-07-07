@@ -83,6 +83,32 @@ export async function crearPasadaDesdePedido(p: {
   if (error) throw new Error(error.message);
 }
 
+// Alta manual desde la pestaña Registrar: prendas que llegan al almacén sin pedido asociado.
+export async function registrarPasada(p: {
+  codigo: string;
+  tipo: string;
+  color: string | null;
+  talla: string | null;
+  sedeOrigenCod: string;
+  tipoLavado: string | null;
+  necesitaCompostura: boolean;
+  obsGeneral: string | null;
+}): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.from('prenda_pasada').insert({
+    codigo: p.codigo,
+    tipo: p.tipo,
+    color: p.color,
+    talla: p.talla,
+    sede_origen_cod: p.sedeOrigenCod,
+    tipo_lavado: p.tipoLavado,
+    necesita_compostura: p.necesitaCompostura,
+    obs_general: p.obsGeneral,
+    etapa: 'recepcion',
+  });
+  if (error) throw new Error(error.message);
+}
+
 // ── Mutaciones del tablero vía RPC (una sola llamada atómica, ~200ms; ver 0009). ──
 
 // Avanza la prenda y devuelve los puntos ganados por el actor (para feedback en la UI).

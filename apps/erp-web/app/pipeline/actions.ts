@@ -9,6 +9,7 @@ import {
   avanzarTanda,
   dividirPasada,
   calificarPasada,
+  registrarPasada,
 } from '../../lib/pipeline-repo';
 
 // Acciones del tablero. Reciben argumentos simples (no FormData) para poder llamarlas desde
@@ -56,4 +57,33 @@ export async function calificarPrenda(id: string, aceptada: boolean, destino = '
   if (!id) return;
   await calificarPasada(id, aceptada, destino);
   revalidatePath('/pipeline');
+}
+
+export async function registrarPrenda(p: {
+  codigo: string;
+  tipo: string;
+  color: string;
+  talla: string;
+  sedeOrigenCod: string;
+  tipoLavado: string;
+  necesitaCompostura: boolean;
+  obs: string;
+}): Promise<string | null> {
+  if (!p.codigo.trim() || !p.tipo.trim() || !p.sedeOrigenCod) return 'Código, tipo y sede son obligatorios.';
+  try {
+    await registrarPasada({
+      codigo: p.codigo.trim().toUpperCase(),
+      tipo: p.tipo.trim(),
+      color: p.color.trim() || null,
+      talla: p.talla.trim() || null,
+      sedeOrigenCod: p.sedeOrigenCod,
+      tipoLavado: p.tipoLavado || null,
+      necesitaCompostura: p.necesitaCompostura,
+      obsGeneral: p.obs.trim() || null,
+    });
+  } catch (e) {
+    return e instanceof Error ? e.message : 'No se pudo registrar la prenda.';
+  }
+  revalidatePath('/pipeline');
+  return null;
 }
