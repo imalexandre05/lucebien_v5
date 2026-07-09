@@ -82,13 +82,13 @@ const NEXT_TANDA: Record<string, string> = {
   control_calidad: 'listo',
 };
 
-// Pestañas del módulo (como el viejo). Accesorios y Métricas van por etapas.
+// Pestañas del módulo (como el viejo), todas activas.
 const TABS: { k: string; label: string; href?: string; pronto?: boolean }[] = [
   { k: 'kanban', label: 'Kanban', href: '/pipeline' },
   { k: 'registrar', label: 'Registrar', href: '/pipeline/registrar' },
   { k: 'envios', label: 'Envíos a tienda', href: '/pipeline/envios' },
-  { k: 'accesorios', label: 'Accesorios', pronto: true },
-  { k: 'metricas', label: 'Métricas', pronto: true },
+  { k: 'accesorios', label: 'Accesorios', href: '/pipeline/accesorios' },
+  { k: 'metricas', label: 'Métricas', href: '/pipeline/metricas' },
 ];
 
 // Tono del pill de tipo de lavado.

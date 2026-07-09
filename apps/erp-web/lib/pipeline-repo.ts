@@ -160,6 +160,24 @@ export async function rankingHoy(): Promise<RankingItem[]> {
   }));
 }
 
+// Movimientos del historial de los últimos N días (para la pestaña Métricas).
+export type Movimiento = { fecha: string; etapaNueva: string };
+export async function movimientosRecientes(dias = 7): Promise<Movimiento[]> {
+  const sb = getServerClient();
+  const desde = new Date(Date.now() - dias * 86400000).toISOString();
+  const { data, error } = await sb
+    .from('prenda_historial')
+    .select('fecha, etapa_nueva')
+    .gte('fecha', desde)
+    .order('fecha', { ascending: false })
+    .limit(2000);
+  if (error) throw new Error(error.message);
+  return ((data as { fecha: string; etapa_nueva: string }[]) ?? []).map((r) => ({
+    fecha: (r.fecha ?? '').slice(0, 10),
+    etapaNueva: r.etapa_nueva,
+  }));
+}
+
 // Divide un terno en piezas hijas (saco + pantalón); el original sale del tablero.
 export async function dividirPasada(id: string): Promise<void> {
   const sb = getServerClient();
