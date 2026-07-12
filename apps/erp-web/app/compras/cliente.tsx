@@ -1,0 +1,123 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { Ban, Check, PackageCheck } from 'lucide-react';
+import type { Compra } from '../../lib/compras-repo';
+import { recibirCompraAction, anularCompraAction } from './actions';
+import { Card, CardContent } from '../../components/ui/card';
+import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
+import { Badge } from '../../components/ui/badge';
+import { cn } from '../../lib/cn';
+
+const soles = (n: number) => `S/ ${new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
+
+const ESTADO: Record<Compra['estado'], { label: string; tone: 'amber' | 'green' | 'gray' }> = {
+  pendiente: { label: 'Por recibir', tone: 'amber' },
+  recibida: { label: 'Recibida', tone: 'green' },
+  anulada: { label: 'Anulada', tone: 'gray' },
+};
+
+export function ComprasCliente({ compras }: { compras: Compra[] }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function recibir(c: Compra) {
+    if (!confirm(`¿Recibir la compra de ${c.proveedorNombre ?? 'proveedor'}? Subirá el stock de ${c.items.length} material(es).`)) return;
+    startTransition(async () => {
+      const err = await recibirCompraAction(c.id);
+      setError(err);
+      if (!err) router.refresh();
+    });
+  }
+
+  function anular(c: Compra) {
+    const aviso = c.estado === 'recibida' ? ' Se revertirá el stock ya ingresado.' : '';
+    if (!confirm(`¿Anular esta compra?${aviso}`)) return;
+    startTransition(async () => {
+      const err = await anularCompraAction(c.id);
+      setError(err);
+      if (!err) router.refresh();
+    });
+  }
+
+  return (
+    <div className="space-y-4">
+      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      <Card>
+        <CardContent className="overflow-x-auto px-0 pb-0">
+          <Table>
+            <THead>
+              <TR>
+                <TH className="pl-5">Fecha</TH>
+                <TH>Proveedor</TH>
+                <TH>Sede</TH>
+                <TH>Contenido</TH>
+                <TH className="text-right">Total</TH>
+                <TH>Estado</TH>
+                <TH className="pr-5 text-right">Acciones</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {compras.map((c) => {
+                const est = ESTADO[c.estado];
+                return (
+                  <TR key={c.id} className={cn(c.estado === 'anulada' && 'opacity-60')}>
+                    <TD className="pl-5 font-mono text-xs text-muted">{c.fecha}</TD>
+                    <TD className="text-sm font-medium text-navy">{c.proveedorNombre ?? '—'}</TD>
+                    <TD className="font-mono text-xs text-navy">{c.sedeCod}</TD>
+                    <TD className="max-w-[22rem] text-sm text-ink">
+                      {c.items.map((i) => `${i.cantidad}× ${i.materialNombre ?? 'material'}`).join(' · ') || '—'}
+                      {Boolean(c.obs) && <span className="block text-xs text-muted">{c.obs}</span>}
+                    </TD>
+                    <TD className="text-right font-mono text-sm tabular-nums text-navy">{soles(c.total)}</TD>
+                    <TD>
+                      <Badge tone={est.tone}>{est.label}</Badge>
+                    </TD>
+                    <TD className="pr-5">
+                      <div className="flex items-center justify-end gap-2">
+                        {c.estado === 'pendiente' && (
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={() => recibir(c)}
+                            className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 active:scale-[.97]"
+                          >
+                            <PackageCheck className="h-3.5 w-3.5" strokeWidth={2.5} /> Recibir
+                          </button>
+                        )}
+                        {c.estado !== 'anulada' && (
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={() => anular(c)}
+                            className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 transition hover:bg-red-50"
+                          >
+                            <Ban className="h-3.5 w-3.5" strokeWidth={2} /> Anular
+                          </button>
+                        )}
+                        {c.estado === 'recibida' && (
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                            <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> en stock
+                          </span>
+                        )}
+                      </div>
+                    </TD>
+                  </TR>
+                );
+              })}
+              {compras.length === 0 && (
+                <TR>
+                  <TD className="px-5 py-8 text-center text-muted" colSpan={7}>
+                    Aún no hay compras registradas.
+                  </TD>
+                </TR>
+              )}
+            </TBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

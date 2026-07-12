@@ -35,7 +35,7 @@ export async function listarCompras(limit = 100): Promise<Compra[]> {
     .order('created_at', { ascending: false })
     .limit(limit);
   if (error) throw new Error(error.message);
-  const rows = (data as Record<string, unknown>[]) ?? [];
+  const rows = (data as unknown as Record<string, unknown>[]) ?? [];
   const nombre = await mapaNombres();
   return rows.map((r) => ({
     id: String(r.id),
