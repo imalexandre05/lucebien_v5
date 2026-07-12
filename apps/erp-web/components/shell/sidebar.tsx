@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, Settings, Laptop, Truck, Boxes, ShoppingCart, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, type LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
 
@@ -33,6 +33,7 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Pedidos', href: '/pedidos', icon: ShoppingBag },
       { label: 'Caja', href: '/caja', icon: Banknote },
       { label: 'Finanzas', href: '/finanzas', icon: LineChart },
+      { label: 'Estadísticas', href: '/estadisticas', icon: BarChart3 },
     ],
   },
   {
