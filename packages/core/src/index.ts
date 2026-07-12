@@ -14,3 +14,4 @@ export * from './evaluaciones';
 export * from './crm';
 export * from './caja';
 export * from './compras';
+export * from './estadisticas';
