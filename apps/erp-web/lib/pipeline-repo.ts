@@ -83,6 +83,32 @@ export async function crearPasadaDesdePedido(p: {
   if (error) throw new Error(error.message);
 }
 
+// Alta manual desde la pestaña Registrar: prendas que llegan al almacén sin pedido asociado.
+export async function registrarPasada(p: {
+  codigo: string;
+  tipo: string;
+  color: string | null;
+  talla: string | null;
+  sedeOrigenCod: string;
+  tipoLavado: string | null;
+  necesitaCompostura: boolean;
+  obsGeneral: string | null;
+}): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.from('prenda_pasada').insert({
+    codigo: p.codigo,
+    tipo: p.tipo,
+    color: p.color,
+    talla: p.talla,
+    sede_origen_cod: p.sedeOrigenCod,
+    tipo_lavado: p.tipoLavado,
+    necesita_compostura: p.necesitaCompostura,
+    obs_general: p.obsGeneral,
+    etapa: 'recepcion',
+  });
+  if (error) throw new Error(error.message);
+}
+
 // ── Mutaciones del tablero vía RPC (una sola llamada atómica, ~200ms; ver 0009). ──
 
 // Avanza la prenda y devuelve los puntos ganados por el actor (para feedback en la UI).
@@ -131,6 +157,24 @@ export async function rankingHoy(): Promise<RankingItem[]> {
     nombre: r.nombre,
     total: Number(r.total),
     acciones: Number(r.acciones),
+  }));
+}
+
+// Movimientos del historial de los últimos N días (para la pestaña Métricas).
+export type Movimiento = { fecha: string; etapaNueva: string };
+export async function movimientosRecientes(dias = 7): Promise<Movimiento[]> {
+  const sb = getServerClient();
+  const desde = new Date(Date.now() - dias * 86400000).toISOString();
+  const { data, error } = await sb
+    .from('prenda_historial')
+    .select('fecha, etapa_nueva')
+    .gte('fecha', desde)
+    .order('fecha', { ascending: false })
+    .limit(2000);
+  if (error) throw new Error(error.message);
+  return ((data as { fecha: string; etapa_nueva: string }[]) ?? []).map((r) => ({
+    fecha: (r.fecha ?? '').slice(0, 10),
+    etapaNueva: r.etapa_nueva,
   }));
 }
 

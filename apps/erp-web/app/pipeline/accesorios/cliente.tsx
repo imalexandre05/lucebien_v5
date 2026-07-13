@@ -1,0 +1,242 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, Check, Package, Plus, Send, Trash2 } from 'lucide-react';
+import type { EnvioAccesorios } from '../../../lib/accesorios-repo';
+import { crearRemesaAccesorios, confirmarRemesaAccesorios } from './actions';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
+import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
+import { Badge } from '../../../components/ui/badge';
+import { buttonVariants } from '../../../components/ui/button';
+import { cn } from '../../../lib/cn';
+
+const fieldCls =
+  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-slate-400 focus:border-navy focus:outline-none';
+
+const fecha = (iso: string | null) => (iso ? iso.slice(0, 10) : '—');
+
+type Fila = { tipo: string; cantidad: number };
+
+export function AccesoriosCliente({
+  envios,
+  tipos,
+  tiendas,
+  miSede,
+}: {
+  envios: EnvioAccesorios[];
+  tipos: string[];
+  tiendas: string[];
+  miSede: string;
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [sede, setSede] = useState(tiendas[0] ?? 'LB');
+  const [obs, setObs] = useState('');
+  const [filas, setFilas] = useState<Fila[]>([{ tipo: '', cantidad: 1 }]);
+  const [error, setError] = useState<string | null>(null);
+
+  function enviar() {
+    startTransition(async () => {
+      const err = await crearRemesaAccesorios({ sedeDestinoCod: sede, obs, items: filas });
+      setError(err);
+      if (!err) {
+        setFilas([{ tipo: '', cantidad: 1 }]);
+        setObs('');
+        router.refresh();
+      }
+    });
+  }
+
+  function confirmar(id: string) {
+    startTransition(async () => {
+      await confirmarRemesaAccesorios(id);
+      router.refresh();
+    });
+  }
+
+  const pendientes = envios.filter((e) => !e.validadoTienda);
+  const validados = envios.filter((e) => e.validadoTienda).slice(0, 20);
+
+  return (
+    <div className="space-y-5">
+      <Link
+        href="/pipeline"
+        className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors duration-150 hover:text-navy"
+      >
+        <ArrowLeft className="h-4 w-4" strokeWidth={2} /> Volver al kanban
+      </Link>
+
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-5">
+        {/* ── Nueva remesa ── */}
+        <Card className="xl:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2.5">
+              <Package className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
+              Nueva remesa
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <label className="flex items-center gap-2 text-sm text-navy">
+              <span className="w-24 shrink-0 text-xs font-medium text-muted">Sede destino</span>
+              <select value={sede} onChange={(e) => setSede(e.target.value)} className={cn(fieldCls, 'flex-1')}>
+                {tiendas.map((t) => (
+                  <option key={t}>{t}</option>
+                ))}
+              </select>
+            </label>
+
+            <datalist id="tipos-accesorio">
+              {tipos.map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+
+            <div className="space-y-2">
+              {filas.map((f, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    value={f.tipo}
+                    onChange={(e) => setFilas((p) => p.map((x, j) => (j === i ? { ...x, tipo: e.target.value } : x)))}
+                    placeholder="Accesorio (ej. Corbata)"
+                    list="tipos-accesorio"
+                    className={cn(fieldCls, 'flex-1')}
+                  />
+                  <input
+                    type="number"
+                    min={1}
+                    value={f.cantidad}
+                    onChange={(e) =>
+                      setFilas((p) => p.map((x, j) => (j === i ? { ...x, cantidad: Number(e.target.value) } : x)))
+                    }
+                    className={cn(fieldCls, 'w-20')}
+                    aria-label="Cantidad"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setFilas((p) => (p.length > 1 ? p.filter((_, j) => j !== i) : p))}
+                    className="text-muted transition-colors hover:text-red-600"
+                    aria-label="Quitar fila"
+                  >
+                    <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => setFilas((p) => [...p, { tipo: '', cantidad: 1 }])}
+                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold"
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar accesorio
+              </button>
+            </div>
+
+            <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Observación (opcional)" className={cn(fieldCls, 'w-full')} />
+
+            {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+            <button
+              type="button"
+              onClick={enviar}
+              disabled={pending}
+              className={cn(buttonVariants({ variant: 'primary' }), 'w-full justify-center py-2.5', pending && 'opacity-50')}
+            >
+              <Send className="h-4 w-4" strokeWidth={2} />
+              {pending ? 'Enviando…' : 'Registrar envío'}
+            </button>
+          </CardContent>
+        </Card>
+
+        {/* ── Remesas ── */}
+        <div className="space-y-4 xl:col-span-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                Por validar en tienda{' '}
+                <span className="ml-1 rounded-full bg-navy/5 px-2 py-0.5 font-mono text-xs tabular-nums text-navy">
+                  {pendientes.length}
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="overflow-x-auto px-0 pb-0">
+              {pendientes.length === 0 ? (
+                <p className="px-5 pb-5 text-sm text-muted">No hay remesas pendientes.</p>
+              ) : (
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH className="pl-5">Fecha</TH>
+                      <TH>Destino</TH>
+                      <TH>Contenido</TH>
+                      <TH className="pr-5 text-right">Validación</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {pendientes.map((e) => (
+                      <TR key={e.id}>
+                        <TD className="pl-5 font-mono text-xs text-muted">{fecha(e.fecha)}</TD>
+                        <TD>
+                          <span className="font-mono text-sm font-semibold text-navy">{e.sedeDestinoCod}</span>
+                          {e.sedeDestinoCod === miSede && (
+                            <Badge tone="gold" className="ml-1.5">
+                              tu sede
+                            </Badge>
+                          )}
+                        </TD>
+                        <TD className="text-sm text-ink">
+                          {e.items.map((i) => `${i.cantidad}× ${i.tipo}`).join(' · ') || '—'}
+                          {Boolean(e.obs) && <span className="block text-xs text-muted">{e.obs}</span>}
+                        </TD>
+                        <TD className="pr-5 text-right">
+                          <button
+                            type="button"
+                            disabled={pending}
+                            onClick={() => confirmar(e.id)}
+                            className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 active:scale-[.97]"
+                          >
+                            <Check className="h-3.5 w-3.5" strokeWidth={3} /> Confirmar recibido
+                          </button>
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+
+          {validados.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Validadas recientemente</CardTitle>
+              </CardHeader>
+              <CardContent className="overflow-x-auto px-0 pb-0">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH className="pl-5">Enviada</TH>
+                      <TH>Destino</TH>
+                      <TH>Contenido</TH>
+                      <TH className="pr-5">Validada</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {validados.map((e) => (
+                      <TR key={e.id}>
+                        <TD className="pl-5 font-mono text-xs text-muted">{fecha(e.fecha)}</TD>
+                        <TD className="font-mono text-sm text-navy">{e.sedeDestinoCod}</TD>
+                        <TD className="text-sm text-ink">{e.items.map((i) => `${i.cantidad}× ${i.tipo}`).join(' · ')}</TD>
+                        <TD className="pr-5 font-mono text-xs text-emerald-700">{fecha(e.fechaValidado)}</TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

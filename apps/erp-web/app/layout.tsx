@@ -20,7 +20,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Sidebar esAdmin={esAdmin} />
           <div className="flex min-w-0 flex-1 flex-col">
             <Topbar />
-            <main className="flex-1 px-7 py-8">
+            <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8">
               <PageTransition>{children}</PageTransition>
             </main>
           </div>

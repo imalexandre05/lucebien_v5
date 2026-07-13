@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { Fragment, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Filter } from 'lucide-react';
+import { Plus, Filter, ChevronRight, Award } from 'lucide-react';
 import {
   COMPONENTES,
   calcularNotaMensual,
@@ -19,7 +19,56 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { buttonVariants } from '../../components/ui/button';
 import { StatBox } from '../../components/ui/stat-box';
+import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
+import { mesPeru } from '../../lib/fechas';
+
+// Perfil por componente (§4C): barras sobrias /20 con el peso usado al lado.
+// Los valores van siempre en texto (la barra es refuerzo, nunca el único canal).
+// Los snapshots antiguos guardaron pesos en % (25) y los nuevos en fracción (0.25):
+// se normaliza solo la presentación.
+const fmtPeso = (p: number | undefined | null) =>
+  p == null ? '—' : p > 1 ? `${p}%` : `${Math.round(p * 100)}%`;
+
+function PerfilComponentes({
+  componentes,
+  pesos,
+}: {
+  componentes: Record<string, number>;
+  pesos: Record<string, number>;
+}) {
+  const descuento = Number(componentes.descuentoIncidencias ?? 0);
+  const bonus = Number(componentes.bonusVentas ?? 0);
+  return (
+    <div className="animate-fade">
+      <div className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
+        {COMPONENTES.map(({ key, label }) => {
+          const v = Number(componentes[key] ?? 0);
+          const pct = Math.max(0, Math.min(100, (v / 20) * 100));
+          return (
+            <div key={key}>
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-xs text-ink">
+                  {label}
+                  <span className="ml-1.5 font-mono text-[10px] text-muted">{fmtPeso(pesos[key])}</span>
+                </span>
+                <span className="font-mono text-xs font-semibold tabular-nums text-navy">{v.toFixed(1)}</span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line/60">
+                <div className="h-full rounded-full bg-navy" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {(descuento !== 0 || bonus !== 0) && (
+        <p className="mt-3 border-t border-line/60 pt-2 text-[11px] text-muted">
+          Ajustes: −{descuento.toFixed(1)} por incidencias · +{bonus.toFixed(1)} bonus por ventas
+        </p>
+      )}
+    </div>
+  );
+}
 
 type Emp = { id: string; nombre: string };
 
@@ -32,10 +81,6 @@ const TRAMO_TONE: Record<TramoEval, Tone> = {
 const TRAMOS: TramoEval[] = ['excelente', 'bueno', 'mejorar', 'bajo'];
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
-
-function mesPeru(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date()).slice(0, 7);
-}
 
 const CERO: ComponentesEval = {
   competencias: 0,
@@ -72,6 +117,7 @@ export function EvaluacionesCliente({
   const [q, setQ] = useState('');
   const [fMes, setFMes] = useState('');
   const [fTramo, setFTramo] = useState('');
+  const [expandida, setExpandida] = useState<string | null>(null);
 
   const nota = useMemo(() => calcularNotaMensual(comp, pesos), [comp, pesos]);
   const tramo = tramoEval(nota);
@@ -282,7 +328,10 @@ export function EvaluacionesCliente({
           <Table>
             <THead>
               <TR>
-                <TH className="pl-5">Mes</TH>
+                <TH className="w-10 pl-5">
+                  <span className="sr-only">Desglose</span>
+                </TH>
+                <TH>Mes</TH>
                 <TH>Empleado</TH>
                 <TH className="text-right">Nota</TH>
                 <TH className="pr-5">Tramo</TH>
@@ -291,21 +340,59 @@ export function EvaluacionesCliente({
             <TBody>
               {filtradas.map((e) => {
                 const t = tramoEval(e.notaFinal);
+                const abierta = expandida === e.id;
                 return (
-                  <TR key={e.id}>
-                    <TD className="pl-5 font-mono text-xs text-muted">{e.mes}</TD>
-                    <TD className="font-medium text-navy">{e.empleadoNombre ?? '—'}</TD>
-                    <TD className="text-right font-mono text-base font-bold tabular-nums text-navy">{e.notaFinal.toFixed(2)}</TD>
-                    <TD className="pr-5">
-                      <Badge tone={TRAMO_TONE[t]}>{TRAMO_LABEL[t]}</Badge>
-                    </TD>
-                  </TR>
+                  <Fragment key={e.id}>
+                    <TR
+                      onClick={() => setExpandida(abierta ? null : e.id)}
+                      className="cursor-pointer"
+                    >
+                      <TD className="pl-5">
+                        <button
+                          type="button"
+                          aria-expanded={abierta}
+                          aria-label={`Ver desglose de ${e.empleadoNombre ?? 'evaluación'} ${e.mes}`}
+                          onClick={(ev) => {
+                            ev.stopPropagation();
+                            setExpandida(abierta ? null : e.id);
+                          }}
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/70"
+                        >
+                          <ChevronRight
+                            className={cn('h-4 w-4 transition-transform duration-200 ease-out-expo', abierta && 'rotate-90')}
+                            strokeWidth={2}
+                          />
+                        </button>
+                      </TD>
+                      <TD className="font-mono text-xs text-muted">{e.mes}</TD>
+                      <TD className="font-medium text-navy">{e.empleadoNombre ?? '—'}</TD>
+                      <TD className="text-right font-mono text-base font-bold tabular-nums text-navy">{e.notaFinal.toFixed(2)}</TD>
+                      <TD className="pr-5">
+                        <Badge tone={TRAMO_TONE[t]}>{TRAMO_LABEL[t]}</Badge>
+                      </TD>
+                    </TR>
+                    {abierta && (
+                      <TR className="hover:bg-transparent">
+                        <TD colSpan={5} className="bg-paper/50 px-6 py-4">
+                          {e.componentes ? (
+                            <PerfilComponentes componentes={e.componentes} pesos={e.pesosUsados ?? (pesos as unknown as Record<string, number>)} />
+                          ) : (
+                            <p className="text-xs text-muted">Esta evaluación no guardó desglose por componente.</p>
+                          )}
+                        </TD>
+                      </TR>
+                    )}
+                  </Fragment>
                 );
               })}
               {filtradas.length === 0 && (
                 <TR>
-                  <TD className="px-5 py-8 text-center text-muted" colSpan={4}>
-                    {evaluaciones.length === 0 ? 'Sin evaluaciones registradas.' : 'Ninguna coincide con el filtro.'}
+                  <TD colSpan={5}>
+                    <EmptyState icon={Award} titulo={evaluaciones.length === 0 ? 'Sin evaluaciones registradas' : 'Ninguna coincide con el filtro'} compacto>
+                      {evaluaciones.length === 0
+                        ? 'Crea la primera evaluación del mes con "Nueva evaluación".'
+                        : 'Prueba con otro mes, tramo o nombre.'}
+                    </EmptyState>
                   </TD>
                 </TR>
               )}

@@ -3,3 +3,4 @@
 export * from './theme';
 export * from './features';
 export * from './permisos-config';
+export * from './catalogos';

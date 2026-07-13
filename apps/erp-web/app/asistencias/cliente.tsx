@@ -11,6 +11,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { buttonVariants } from '../../components/ui/button';
 import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
+import { hoyPeru } from '../../lib/fechas';
 
 type Emp = { id: string; nombre: string };
 
@@ -18,10 +19,6 @@ const FUENTE_TONE: Record<string, Tone> = { manual: 'gray', reporte: 'navy', hue
 const TURNOS = ['M', 'T', 'C'];
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
-
-function hoyPeru(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
-}
 
 export function AsistenciasCliente({
   asistencias,

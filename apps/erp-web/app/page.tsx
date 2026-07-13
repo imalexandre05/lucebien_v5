@@ -1,190 +1,453 @@
 import Link from 'next/link';
-import { Package, Shirt, ClipboardList, AlertTriangle, ShoppingBag, Banknote, Coins, TrendingUp } from 'lucide-react';
-import { ETAPAS_PIPELINE, type EstadoActivo } from '@scilb/core';
-import { inventarioRepo } from '../lib/inventario-repo';
-import { listarPasadas } from '../lib/pipeline-repo';
+import type { ReactNode } from 'react';
+import {
+  Shirt,
+  ClipboardCheck,
+  ClipboardList,
+  AlertTriangle,
+  Banknote,
+  ShoppingBag,
+  TrendingUp,
+  Coins,
+  Trophy,
+  Activity,
+  type LucideIcon,
+} from 'lucide-react';
+import { ETAPAS_PIPELINE, estadoReporte, TURNO_LABEL } from '@scilb/core';
+import { listarPasadas, rankingHoy } from '../lib/pipeline-repo';
+import { listarReportes } from '../lib/reportes-repo';
+import { listarIncidencias } from '../lib/incidencias-repo';
+import { resumenFinanciero, cobrosPendientes, totalGarantias } from '../lib/caja-repo';
 import { pedidosRepo } from '../lib/pedidos-repo';
-import { cobrosPendientes, totalGarantias } from '../lib/caja-repo';
-import { getServerClient } from '../lib/supabase/server';
-import { PageHeader } from '../components/shell/page-header';
+import { getSesion } from '../lib/auth';
+import { listarSedes } from '../lib/sedes-repo';
+import { hoyPeru, fechaLargaPeru, etiquetaDia, saludoPeru, tiempoRelativo } from '../lib/fechas';
+import { LogoMark } from '../components/brand/logo';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Badge, type Tone } from '../components/ui/badge';
-import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table';
+import { StatBox } from '../components/ui/stat-box';
+import { CountUp } from '../components/ui/count-up';
+import { EmptyState } from '../components/ui/empty-state';
+import { cn } from '../lib/cn';
 
-const TONE: Record<EstadoActivo, Tone> = {
-  disponible: 'green',
-  alquilado: 'amber',
-  en_lavanderia: 'navy',
-  baja: 'gray',
+const ETAPA_LABEL: Record<string, string> = {
+  recepcion: 'Recepción',
+  lavado: 'Lavado',
+  empatado: 'Empatado',
+  vacio: 'Vacío',
+  refaccion: 'Refacción',
+  compostura: 'Compostura',
+  planchado: 'Planchado',
+  control_calidad: 'Calidad',
+  listo: 'Listo',
+  enviado: 'Enviada',
+  recibido: 'Recibida',
+  dividido: 'Dividida',
 };
 
-async function contar(tabla: string): Promise<number> {
-  const sb = getServerClient();
-  const { count } = await sb.from(tabla).select('*', { count: 'exact', head: true });
-  return count ?? 0;
-}
+const KPI_TONE = 'border-line bg-white text-navy shadow-card';
+
+type Evento = { ts: string; icon: LucideIcon; titulo: ReactNode; detalle: string | null; href: string };
 
 export default async function Dashboard() {
-  const [activos, pasadas, reportesCount, incidenciasCount, pedidos, pendientes, garantias] = await Promise.all([
-    inventarioRepo.listar(),
-    listarPasadas(),
-    contar('reportes'),
-    contar('incidencias'),
-    pedidosRepo.listar(),
-    cobrosPendientes(),
-    totalGarantias(),
-  ]);
+  const [sesion, pasadas, reportes, incidencias, ranking, finHoy, pedidos, pendientes, garantias, sedes] =
+    await Promise.all([
+      getSesion(),
+      listarPasadas(),
+      listarReportes(),
+      listarIncidencias(),
+      rankingHoy(),
+      resumenFinanciero(hoyPeru(), hoyPeru()),
+      pedidosRepo.listar(),
+      cobrosPendientes(),
+      totalGarantias(),
+      listarSedes().catch(() => []),
+    ]);
+  const SEDE_NOMBRE = Object.fromEntries(sedes.map((s) => [s.cod, s.nombre]));
 
-  const disponibles = activos.filter((a) => a.estado === 'disponible').length;
+  const hoy = hoyPeru();
+  const ahora = new Date();
+  const primerNombre = sesion?.nombre.trim().split(/\s+/)[0] ?? '';
+  const sede = sesion?.usuario.sede ?? '';
+  const dia = etiquetaDia(ahora);
+
+  // KPIs del día (§4A del brief): pipeline, evaluación, caja, incidencias.
+  const etapas = ETAPAS_PIPELINE as readonly string[];
+  const enPipeline = pasadas.filter((p) => etapas.includes(p.etapa)).length;
+  const ingresaronHoy = pasadas.filter((p) => p.fechaIngreso === hoy).length;
+  const porEvaluar = reportes.filter((r) => estadoReporte(r) === 'pendiente').length;
+  const enviadosHoy = reportes.filter((r) => r.fecha === hoy).length;
+  const incidenciasHoy = incidencias.filter((i) => i.fecha === hoy).length;
+  const incidenciasMes = incidencias.filter((i) => i.fecha.startsWith(hoy.slice(0, 7))).length;
+
   const soles = (n: number) => `S/ ${n.toFixed(2)}`;
   const totalVentas = pedidos.filter((p) => p.tipo === 'venta').reduce((s, p) => s + p.total, 0);
   const totalAlquiler = pedidos.filter((p) => p.tipo === 'alquiler').reduce((s, p) => s + p.total, 0);
   const saldoPendiente = pendientes.reduce((s, p) => s + p.saldo, 0);
 
-  // Distribución real del pipeline por etapa.
+  // Distribución del pipeline por etapa (flujo de 9 pasos).
   const porEtapa = new Map<string, number>();
   for (const p of pasadas) porEtapa.set(p.etapa, (porEtapa.get(p.etapa) ?? 0) + 1);
   const maxEtapa = Math.max(1, ...ETAPAS_PIPELINE.map((e) => porEtapa.get(e) ?? 0));
+  const totalFlujo = ETAPAS_PIPELINE.reduce((s, e) => s + (porEtapa.get(e) ?? 0), 0);
 
-  const kpis = [
-    { label: 'Prendas en pipeline', value: pasadas.length, icon: Shirt, hint: 'lavandería', href: '/pipeline' },
-    { label: 'Reportes FR-01', value: reportesCount, icon: ClipboardList, hint: 'registrados', href: '/reportes' },
-    { label: 'Incidencias', value: incidenciasCount, icon: AlertTriangle, hint: 'registradas', href: '/incidencias' },
-    { label: 'Activos en inventario', value: activos.length, icon: Package, hint: `${disponibles} disponibles`, href: '/inventario' },
-  ];
+  // Actividad reciente: reportes + incidencias + movimientos de prendas, mezclados por fecha.
+  const eventos: Evento[] = [
+    ...reportes.slice(0, 12).map((r) => ({
+      ts: r.createdAt,
+      icon: ClipboardList,
+      titulo: (
+        <>
+          Reporte FR-01 · {r.sedeCod} · {TURNO_LABEL[r.turno] ?? r.turno}
+        </>
+      ),
+      detalle: r.encargadoNombre ? `Encargado: ${r.encargadoNombre}` : null,
+      href: `/reportes/${r.id}`,
+    })),
+    ...incidencias.slice(0, 12).map((i) => ({
+      ts: i.createdAt,
+      icon: AlertTriangle,
+      titulo: (
+        <>
+          {i.tipo} · {i.sedeCod}
+        </>
+      ),
+      detalle: i.responsableNombre ?? i.descripcion,
+      href: '/incidencias',
+    })),
+    ...pasadas
+      .filter((p) => p.fechaActualizado)
+      .slice(0, 12)
+      .map((p) => ({
+        ts: p.fechaActualizado as string,
+        icon: Shirt,
+        titulo: (
+          <>
+            <span className="font-mono">{p.codigo}</span> → {ETAPA_LABEL[p.etapa] ?? p.etapa}
+          </>
+        ),
+        detalle: p.tipo || null,
+        href: '/pipeline',
+      })),
+  ]
+    .filter((e) => e.ts)
+    .sort((a, b) => b.ts.localeCompare(a.ts))
+    .slice(0, 8);
 
   return (
     <div>
-      <PageHeader title="Dashboard" subtitle="Resumen operativo" />
-
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Interno</div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {kpis.map((k, i) => {
-          const Icon = k.icon;
-          return (
-            <Link
-              key={k.label}
-              href={k.href}
-              className="animate-rise transition-[transform,box-shadow] duration-200 ease-out-expo hover:-translate-y-0.5"
-              style={{ animationDelay: `${i * 60}ms` }}
-            >
-              <Card className="hover:shadow-lift">
-                <CardContent className="pt-5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium uppercase tracking-wide text-muted">{k.label}</span>
-                    <Icon className="h-4 w-4 text-gold" strokeWidth={1.75} />
-                  </div>
-                  <div className="mt-3 font-mono text-3xl font-semibold tabular-nums text-navy">{k.value}</div>
-                  <div className="mt-1 text-xs text-muted">{k.hint}</div>
-                </CardContent>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
-
-      <div className="mt-6">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Comercial</div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { label: 'Total ventas', value: soles(totalVentas), icon: ShoppingBag, href: '/pedidos', hint: 'pedidos de venta' },
-            { label: 'Total alquiler', value: soles(totalAlquiler), icon: TrendingUp, href: '/pedidos', hint: 'pedidos de alquiler' },
-            { label: 'Cobros pendientes', value: soles(saldoPendiente), icon: Banknote, href: '/caja', hint: `${pendientes.length} pedido(s)` },
-            { label: 'Garantías', value: soles(garantias), icon: Coins, href: '/caja', hint: 'depósitos vigentes' },
-          ].map((k, i) => {
-            const Icon = k.icon;
-            return (
-              <Link
-                key={k.label}
-                href={k.href}
-                className="animate-rise transition-[transform,box-shadow] duration-200 ease-out-expo hover:-translate-y-0.5"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                <Card className="hover:shadow-lift">
-                  <CardContent className="pt-5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium uppercase tracking-wide text-muted">{k.label}</span>
-                      <Icon className="h-4 w-4 text-gold" strokeWidth={1.75} />
-                    </div>
-                    <div className="mt-3 font-mono text-2xl font-semibold tabular-nums text-navy">{k.value}</div>
-                    <div className="mt-1 text-xs text-muted">{k.hint}</div>
-                  </CardContent>
-                </Card>
-              </Link>
-            );
-          })}
+      {/* ── Hero: crest + saludo + fecha + sede ── */}
+      <header className="mb-7">
+        <div className="flex items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <LogoMark size="lg" className="animate-scale-in" />
+            <div>
+              <h1 className="animate-rise font-display text-3xl font-semibold leading-none text-navy sm:text-4xl">
+                {saludoPeru(ahora)}
+                {primerNombre ? `, ${primerNombre}` : ''}
+              </h1>
+              <p className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 animate-rise text-sm text-muted [animation-delay:60ms]">
+                {fechaLargaPeru(ahora)}
+                {sede && (
+                  <span className="rounded-full border border-line bg-white px-2.5 py-0.5 text-xs font-medium text-navy">
+                    Sede · {SEDE_NOMBRE[sede] ?? sede}
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+          {/* Etiqueta del día: espejo en blanco del crest (recuadro + filete gold). */}
+          <div
+            aria-hidden="true"
+            className="relative hidden h-20 w-20 shrink-0 animate-scale-in rounded-2xl border border-line bg-white shadow-card sm:block"
+          >
+            <div className="pointer-events-none absolute inset-[5px] rounded-[9px] border border-gold/45" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className="font-display text-3xl font-semibold leading-none text-navy">{dia.dia}</span>
+              <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
+                {dia.mes} {dia.anio}
+              </span>
+            </div>
+          </div>
         </div>
-      </div>
+        <div className="gold-rule mt-5" />
+      </header>
 
+      {/* ── KPIs del día ── */}
+      <section aria-label="Indicadores del día">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Interno</div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatBox
+            index={0}
+            size="xl"
+            align="left"
+            icon={Shirt}
+            href="/pipeline"
+            tone={KPI_TONE}
+            label="Prendas en pipeline"
+            valor={<CountUp value={enPipeline} />}
+            sub={ingresaronHoy > 0 ? `+${ingresaronHoy} ingresaron hoy` : 'en las 9 etapas del taller'}
+          />
+          <StatBox
+            index={1}
+            size="xl"
+            align="left"
+            icon={ClipboardCheck}
+            href="/evaluar-reportes"
+            tone={KPI_TONE}
+            label="Reportes por evaluar"
+            valor={<CountUp value={porEvaluar} delayMs={60} />}
+            sub={`${enviadosHoy} enviado(s) hoy`}
+          />
+          <StatBox
+            index={2}
+            size="xl"
+            align="left"
+            icon={Banknote}
+            href="/caja"
+            tone={KPI_TONE}
+            label="Caja del día"
+            valor={<CountUp value={finHoy.ingresos} prefix="S/ " delayMs={120} />}
+            sub={`neto ${soles(finHoy.neto)} · ${soles(finHoy.egresos)} egresos`}
+          />
+          <StatBox
+            index={3}
+            size="xl"
+            align="left"
+            icon={AlertTriangle}
+            href="/incidencias"
+            tone={KPI_TONE}
+            label="Incidencias hoy"
+            valor={<CountUp value={incidenciasHoy} delayMs={180} />}
+            sub={`${incidenciasMes} en el mes`}
+          />
+        </div>
+      </section>
+
+      {/* ── Pipeline vivo: flujo de las 9 etapas ── */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2.5">
+            Pipeline de lavandería
+            <span className="rounded-full bg-navy/5 px-2.5 py-0.5 font-mono text-xs font-semibold tabular-nums text-navy">
+              {totalFlujo} en proceso
+            </span>
+          </CardTitle>
+          <Link
+            href="/pipeline"
+            className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold"
+          >
+            Abrir tablero →
+          </Link>
+        </CardHeader>
+        <CardContent className="pt-1">
+          {totalFlujo === 0 ? (
+            <EmptyState icon={Shirt} titulo="Sin prendas en el pipeline" compacto>
+              Cuando el taller registre prendas verás aquí el flujo en vivo, etapa por etapa.
+            </EmptyState>
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="min-w-[680px]">
+                <div className="flex items-stretch">
+                  {ETAPAS_PIPELINE.map((e, i) => {
+                    const n = porEtapa.get(e) ?? 0;
+                    const esListo = e === 'listo';
+                    const alto = n === 0 ? 0 : Math.max(10, Math.round((n / maxEtapa) * 72));
+                    return (
+                      <Link
+                        key={e}
+                        href="/pipeline"
+                        title={`${n} prenda(s) en ${ETAPA_LABEL[e]}`}
+                        aria-label={`${ETAPA_LABEL[e]}: ${n} prenda(s)`}
+                        className="group flex-1 rounded-t-lg px-1 pt-2 text-center outline-none transition-colors duration-150 hover:bg-navy/[0.04] focus-visible:ring-2 focus-visible:ring-gold/70"
+                      >
+                        <div
+                          className={cn(
+                            'animate-rise font-mono text-lg font-semibold tabular-nums',
+                            n === 0 ? 'text-muted/60' : esListo ? 'text-[#7a6e0e]' : 'text-navy',
+                          )}
+                          style={{ animationDelay: `${i * 45}ms` }}
+                        >
+                          {n}
+                        </div>
+                        <div className="mt-1.5 flex h-[72px] items-end justify-center">
+                          {n > 0 && (
+                            <div
+                              className={cn(
+                                'w-6 origin-bottom animate-grow-y rounded-t-[4px]',
+                                esListo ? 'bg-gold' : 'bg-navy',
+                              )}
+                              style={{ height: alto, animationDelay: `${i * 45}ms` }}
+                            />
+                          )}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+                {/* El hilo del atelier: riel que se enhebra bajo el flujo al montar. */}
+                <div className="h-0.5 overflow-hidden rounded-full bg-line/70">
+                  <div className="h-full origin-left animate-draw-x bg-gradient-to-r from-gold via-gold/80 to-gold/40" />
+                </div>
+                <div className="flex" aria-hidden="true">
+                  {ETAPAS_PIPELINE.map((e) => (
+                    <div
+                      key={e}
+                      className="flex-1 px-0.5 pb-1 pt-2 text-center text-[10px] font-medium uppercase leading-tight tracking-wide text-muted"
+                    >
+                      {ETAPA_LABEL[e]}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Actividad reciente + ranking del día ── */}
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Inventario reciente</CardTitle>
-            <Link href="/inventario" className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold">
-              Ver todo →
-            </Link>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
+              Actividad reciente
+            </CardTitle>
           </CardHeader>
           <CardContent className="px-0 pb-1">
-            <Table>
-              <THead>
-                <TR>
-                  <TH className="pl-5">Código</TH>
-                  <TH>Tipo</TH>
-                  <TH>Sede</TH>
-                  <TH>Estado</TH>
-                  <TH className="pr-5 text-right">Alquiler</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {activos.slice(0, 5).map((a) => (
-                  <TR key={a.id} className="transition-colors duration-150">
-                    <TD className="pl-5 font-mono font-medium text-navy">{a.codigo}</TD>
-                    <TD>{a.tipo}</TD>
-                    <TD>{a.sedeCod}</TD>
-                    <TD>
-                      <Badge tone={TONE[a.estado]}>{a.estado.replace('_', ' ')}</Badge>
-                    </TD>
-                    <TD className="pr-5 text-right font-mono tabular-nums">S/ {a.precioAlquiler.toFixed(2)}</TD>
-                  </TR>
-                ))}
-                {activos.length === 0 && (
-                  <TR>
-                    <TD className="px-5 py-6 text-center text-muted" colSpan={5}>
-                      Sin activos cargados.
-                    </TD>
-                  </TR>
-                )}
-              </TBody>
-            </Table>
+            {eventos.length === 0 ? (
+              <EmptyState icon={Activity} titulo="Aún no hay movimientos registrados" compacto>
+                Los reportes, incidencias y avances de prendas aparecerán aquí.
+              </EmptyState>
+            ) : (
+              <ul className="divide-y divide-line/70">
+                {eventos.map((ev, i) => {
+                  const Icon = ev.icon;
+                  return (
+                    <li key={i} className="animate-rise" style={{ animationDelay: `${i * 40}ms` }}>
+                      <Link
+                        href={ev.href}
+                        className="group flex items-center gap-3 px-5 py-3 outline-none transition-colors duration-150 hover:bg-navy/[0.03] focus-visible:bg-navy/[0.05]"
+                      >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy/5 text-navy">
+                          <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm text-ink">{ev.titulo}</span>
+                          {ev.detalle && <span className="block truncate text-xs text-muted">{ev.detalle}</span>}
+                        </span>
+                        <span className="shrink-0 font-mono text-[11px] text-muted">
+                          {tiempoRelativo(ev.ts, ahora)}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Pipeline de lavandería</CardTitle>
-            <Link href="/pipeline" className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold">
-              Ver →
+            <CardTitle className="flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
+              Top operarios hoy
+            </CardTitle>
+            <Link
+              href="/pipeline"
+              className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold"
+            >
+              Tablero →
             </Link>
           </CardHeader>
-          <CardContent className="space-y-2.5">
-            {ETAPAS_PIPELINE.map((e) => {
-              const n = porEtapa.get(e) ?? 0;
-              return (
-                <div key={e} className="flex items-center gap-3">
-                  <span className="w-28 shrink-0 text-xs capitalize text-muted">{e.replace('_', ' ')}</span>
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-paper">
-                    <div
-                      className="h-full rounded-full bg-navy transition-[width] duration-500 ease-out-expo"
-                      style={{ width: `${(n / maxEtapa) * 100}%` }}
-                    />
+          <CardContent className="space-y-3.5">
+            {ranking.length === 0 ? (
+              <EmptyState icon={Trophy} titulo="Aún no hay puntos hoy" compacto>
+                Cada avance de prenda suma puntos al operario.
+              </EmptyState>
+            ) : (
+              ranking.slice(0, 6).map((r, i) => {
+                const maxPts = Math.max(1, ranking[0]?.total ?? 1);
+                return (
+                  <div key={r.nombre} className="animate-rise" style={{ animationDelay: `${i * 50}ms` }}>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="flex min-w-0 items-baseline gap-2">
+                        <span className="w-6 shrink-0 font-mono text-[11px] text-muted">#{i + 1}</span>
+                        <span className="truncate text-sm text-ink">{r.nombre}</span>
+                      </span>
+                      <span
+                        className={cn(
+                          'font-mono text-sm font-bold tabular-nums',
+                          i === 0 ? 'text-[#7a6e0e]' : 'text-navy',
+                        )}
+                      >
+                        {r.total}
+                      </span>
+                    </div>
+                    <div className="ml-8 mt-1.5 h-1.5 overflow-hidden rounded-full bg-paper">
+                      <div
+                        className={cn('h-full rounded-full', i === 0 ? 'bg-gold' : 'bg-navy')}
+                        style={{ width: `${Math.round((r.total / maxPts) * 100)}%` }}
+                      />
+                    </div>
                   </div>
-                  <span className="w-4 text-right font-mono text-xs tabular-nums text-navy">{n}</span>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Comercial ── */}
+      <section className="mt-6" aria-label="Indicadores comerciales">
+        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Comercial</div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatBox
+            index={0}
+            size="md"
+            align="left"
+            icon={ShoppingBag}
+            href="/pedidos"
+            tone={KPI_TONE}
+            label="Total ventas"
+            valor={<CountUp value={totalVentas} prefix="S/ " decimals={2} />}
+            sub="pedidos de venta"
+          />
+          <StatBox
+            index={1}
+            size="md"
+            align="left"
+            icon={TrendingUp}
+            href="/pedidos"
+            tone={KPI_TONE}
+            label="Total alquiler"
+            valor={<CountUp value={totalAlquiler} prefix="S/ " decimals={2} delayMs={60} />}
+            sub="pedidos de alquiler"
+          />
+          <StatBox
+            index={2}
+            size="md"
+            align="left"
+            icon={Banknote}
+            href="/caja"
+            tone={KPI_TONE}
+            label="Cobros pendientes"
+            valor={<CountUp value={saldoPendiente} prefix="S/ " decimals={2} delayMs={120} />}
+            sub={`${pendientes.length} pedido(s)`}
+          />
+          <StatBox
+            index={3}
+            size="md"
+            align="left"
+            icon={Coins}
+            href="/caja"
+            tone={KPI_TONE}
+            label="Garantías"
+            valor={<CountUp value={garantias} prefix="S/ " decimals={2} delayMs={180} />}
+            sub="depósitos vigentes"
+          />
+        </div>
+      </section>
     </div>
   );
 }

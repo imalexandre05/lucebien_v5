@@ -10,6 +10,7 @@ import { LayoutMap } from '../layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { buttonVariants } from '../../../components/ui/button';
+import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { cn } from '../../../lib/cn';
 
 type ActEval = { cod: string; nombre: string; cat: string | null; peso: number; calificacion: number | null };
@@ -23,11 +24,19 @@ function catTone(cat: string | null): Tone {
 }
 
 // Control de 3 estados: ✓ aprobar (×1) · 👁 observar (×0.5) · ✗ rechazar (×0). Espeja el viejo.
-function Estado3({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const opts: { v: number; Icon: typeof Check; on: string }[] = [
-    { v: 1, Icon: Check, on: 'bg-emerald-600 text-white' },
-    { v: 0.5, Icon: Eye, on: 'bg-amber-500 text-white' },
-    { v: 0, Icon: X, on: 'bg-red-600 text-white' },
+function Estado3({
+  value,
+  onChange,
+  nombre,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  nombre?: string;
+}) {
+  const opts: { v: number; Icon: typeof Check; on: string; label: string }[] = [
+    { v: 1, Icon: Check, on: 'bg-emerald-600 text-white', label: 'Aprobar' },
+    { v: 0.5, Icon: Eye, on: 'bg-amber-500 text-white', label: 'Observar' },
+    { v: 0, Icon: X, on: 'bg-red-600 text-white', label: 'Rechazar' },
   ];
   return (
     <div className="inline-flex shrink-0 overflow-hidden rounded-lg border border-line">
@@ -40,8 +49,10 @@ function Estado3({ value, onChange }: { value: number; onChange: (v: number) => 
             type="button"
             onClick={() => onChange(o.v)}
             aria-pressed={active}
+            aria-label={nombre ? `${o.label} — ${nombre}` : o.label}
+            title={o.label}
             className={cn(
-              'flex h-9 w-11 items-center justify-center border-l border-line first:border-l-0 transition-colors duration-150',
+              'flex h-10 w-11 items-center justify-center border-l border-line outline-none transition-colors duration-150 first:border-l-0 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/70',
               active ? o.on : 'bg-white text-muted hover:bg-paper',
             )}
           >
@@ -155,6 +166,7 @@ export function EvaluarPanel({
               estados={estLimp}
               onCycle={ciclarZona}
               onMass={masivoLimp}
+              panelEval
             />
           </CardContent>
         </Card>
@@ -164,13 +176,13 @@ export function EvaluarPanel({
         <CardHeader>
           <CardTitle>Calificación por actividad</CardTitle>
           <div className="flex items-center gap-1.5">
-            <button type="button" onClick={() => masivoActs(1)} className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors duration-150 hover:bg-emerald-100 active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(1)} aria-label="Aprobar todo" className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors duration-150 hover:bg-emerald-100 active:scale-[0.97]">
               <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
-            <button type="button" onClick={() => masivoActs(0.5)} className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-100 active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(0.5)} aria-label="Observar todo" className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-100 active:scale-[0.97]">
               <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
-            <button type="button" onClick={() => masivoActs(0)} className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 transition-colors duration-150 hover:bg-red-100 active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(0)} aria-label="Rechazar todo" className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 transition-colors duration-150 hover:bg-red-100 active:scale-[0.97]">
               <X className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
           </div>
@@ -190,9 +202,10 @@ export function EvaluarPanel({
                 value={obs[a.cod] ?? ''}
                 onChange={(e) => setObs((p) => ({ ...p, [a.cod]: e.target.value }))}
                 placeholder="Obs."
+                aria-label={`Observación de ${a.nombre}`}
                 className="w-40 rounded-md border border-line bg-white px-2.5 py-2 text-xs text-navy outline-none transition-colors focus:border-gold"
               />
-              <Estado3 value={cal[a.cod] ?? 1} onChange={(v) => setCal((p) => ({ ...p, [a.cod]: v }))} />
+              <Estado3 value={cal[a.cod] ?? 1} onChange={(v) => setCal((p) => ({ ...p, [a.cod]: v }))} nombre={a.nombre} />
             </div>
           ))}
           {actividades.length === 0 && (
@@ -218,43 +231,86 @@ export function EvaluarPanel({
 
 export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean }) {
   const router = useRouter();
+  const [confirmar, setConfirmar] = useState<'reporte' | 'eval' | null>(null);
+  const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
-  function anular() {
-    if (!confirm('¿Anular este reporte? Se borran sus actividades, trabajadores y extras.')) return;
+  // Confirmación con el Modal compartido (§4G): mismo overlay/curva que Caja,
+  // en lugar del confirm()/alert() nativo.
+  function ejecutar() {
+    const accion = confirmar;
+    if (!accion) return;
+    setError('');
     startTransition(async () => {
-      const r = await accionAnular(id);
-      if (r.ok) router.push('/reportes');
-      else alert(r.error);
+      const r = accion === 'reporte' ? await accionAnular(id) : await accionAnularEval(id);
+      if (!r.ok) {
+        setError(r.error ?? 'Error al anular');
+        return;
+      }
+      setConfirmar(null);
+      if (accion === 'reporte') router.push('/reportes');
+      else router.refresh();
     });
   }
 
-  function anularEval() {
-    if (!confirm('¿Anular la evaluación? El reporte vuelve a quedar pendiente.')) return;
-    startTransition(async () => {
-      const r = await accionAnularEval(id);
-      if (r.ok) router.refresh();
-      else alert(r.error);
-    });
+  function cerrar() {
+    if (pending) return;
+    setConfirmar(null);
+    setError('');
   }
 
   return (
     <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-line/60 pt-4">
       <span className="text-xs uppercase tracking-wide text-muted">Admin</span>
       {evaluado && (
-        <button type="button" onClick={anularEval} disabled={pending} className={buttonVariants({ variant: 'outline' })}>
+        <button type="button" onClick={() => setConfirmar('eval')} disabled={pending} className={buttonVariants({ variant: 'outline' })}>
           Anular evaluación
         </button>
       )}
       <button
         type="button"
         data-testid="anular-reporte"
-        onClick={anular}
+        onClick={() => setConfirmar('reporte')}
         disabled={pending}
         className={cn(buttonVariants({ variant: 'outline' }), 'border-red-300 text-red-600 hover:bg-red-50')}
       >
         Anular reporte
       </button>
+
+      <Modal
+        open={confirmar !== null}
+        onClose={cerrar}
+        size="sm"
+        title={confirmar === 'eval' ? '¿Anular la evaluación?' : '¿Anular este reporte?'}
+        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" strokeWidth={2} aria-hidden />}
+      >
+        <ModalBody>
+          <p className="text-sm leading-relaxed text-muted">
+            {confirmar === 'eval'
+              ? 'El reporte vuelve a quedar pendiente de evaluación.'
+              : 'Se borran sus actividades, trabajadores y extras. Esta acción no se puede deshacer.'}
+          </p>
+          {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+        </ModalBody>
+        <ModalFooter>
+          <button type="button" onClick={cerrar} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
+            Cancelar
+          </button>
+          <button
+            type="button"
+            data-testid="confirmar-anular"
+            onClick={ejecutar}
+            disabled={pending}
+            className={cn(
+              buttonVariants({ variant: 'primary' }),
+              'bg-red-600 hover:bg-red-700',
+              pending && 'opacity-60',
+            )}
+          >
+            {pending ? 'Anulando…' : 'Sí, anular'}
+          </button>
+        </ModalFooter>
+      </Modal>
     </div>
   );
 }

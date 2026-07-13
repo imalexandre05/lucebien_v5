@@ -47,31 +47,34 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
   }
 
   return (
-    <div className="max-w-2xl space-y-4">
-      {grupos.map((g) => (
-        <Card key={g}>
-          <CardHeader>
-            <CardTitle>{g}</CardTitle>
-          </CardHeader>
-          <CardContent className="divide-y divide-line/60 py-0">
-            {items
-              .filter((i) => grupo(i.clave) === g)
-              .map((i) => (
-                <div key={i.clave} className="flex items-center gap-3 py-2.5">
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm capitalize text-navy">{etiqueta(i.clave)}</div>
-                    <div className="font-mono text-[10px] text-muted">{i.clave}</div>
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+        {grupos.map((g) => (
+          <Card key={g}>
+            <CardHeader>
+              <CardTitle>{g}</CardTitle>
+            </CardHeader>
+            <CardContent className="divide-y divide-line/60 py-0">
+              {items
+                .filter((i) => grupo(i.clave) === g)
+                .map((i) => (
+                  <div key={i.clave} className="flex items-center gap-3 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm capitalize text-navy">{etiqueta(i.clave)}</div>
+                      <div className="font-mono text-[10px] text-muted">{i.clave}</div>
+                    </div>
+                    <input
+                      aria-label={etiqueta(i.clave)}
+                      value={vals[i.clave] ?? ''}
+                      onChange={(e) => setVals((p) => ({ ...p, [i.clave]: e.target.value }))}
+                      className={cn(fieldCls, 'w-32 text-right')}
+                    />
                   </div>
-                  <input
-                    value={vals[i.clave] ?? ''}
-                    onChange={(e) => setVals((p) => ({ ...p, [i.clave]: e.target.value }))}
-                    className={cn(fieldCls, 'w-32 text-right')}
-                  />
-                </div>
-              ))}
-          </CardContent>
-        </Card>
-      ))}
+                ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
 
       {error && (
         <p className="flex animate-fade items-center gap-1.5 text-sm text-red-600">

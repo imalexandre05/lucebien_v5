@@ -1,0 +1,246 @@
+'use client';
+
+import { useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import { Filter, Pencil, Plus, Truck } from 'lucide-react';
+import type { Proveedor, ProveedorInput } from '../../lib/proveedores-repo';
+import { guardarProveedor } from './actions';
+import { Card, CardContent } from '../../components/ui/card';
+import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
+import { Badge } from '../../components/ui/badge';
+import { buttonVariants } from '../../components/ui/button';
+import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
+import { cn } from '../../lib/cn';
+
+const fieldCls =
+  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+
+const vacio = (): ProveedorInput => ({
+  nombre: '',
+  ruc: '',
+  contacto: '',
+  telefono: '',
+  direccion: '',
+  categoria: '',
+  activo: true,
+  obs: '',
+});
+
+export function ProveedoresCliente({ proveedores, categorias }: { proveedores: Proveedor[]; categorias: string[] }) {
+  const router = useRouter();
+  const [q, setQ] = useState('');
+  const [fCat, setFCat] = useState('');
+  const [editar, setEditar] = useState<Proveedor | 'nuevo' | null>(null);
+
+  const cats = useMemo(
+    () => [...new Set([...categorias, ...proveedores.map((p) => p.categoria).filter(Boolean) as string[]])],
+    [categorias, proveedores],
+  );
+
+  const filtrados = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return proveedores.filter((p) => {
+      if (fCat && p.categoria !== fCat) return false;
+      if (needle && !`${p.nombre} ${p.ruc ?? ''} ${p.contacto ?? ''}`.toLowerCase().includes(needle)) return false;
+      return true;
+    });
+  }, [proveedores, q, fCat]);
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-2 py-4">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+            <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
+          </span>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por nombre, RUC o contacto…"
+            className={`${fieldCls} min-w-[14rem] flex-1`}
+          />
+          <select value={fCat} onChange={(e) => setFCat(e.target.value)} className={fieldCls} aria-label="Categoría">
+            <option value="">Todas las categorías</option>
+            {cats.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => setEditar('nuevo')}
+            className={cn(buttonVariants({ variant: 'primary' }), 'ml-auto')}
+          >
+            <Plus className="h-4 w-4" strokeWidth={2} /> Nuevo proveedor
+          </button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="overflow-x-auto px-0 pb-0">
+          <Table>
+            <THead>
+              <TR>
+                <TH className="pl-5">Proveedor</TH>
+                <TH>Categoría</TH>
+                <TH>Contacto</TH>
+                <TH>Teléfono</TH>
+                <TH>Estado</TH>
+                <TH className="pr-5 text-right">Acciones</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {filtrados.map((p) => (
+                <TR key={p.id} className={cn(!p.activo && 'opacity-60')}>
+                  <TD className="pl-5">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy/5 text-navy">
+                        <Truck className="h-4 w-4" strokeWidth={1.75} />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-navy">{p.nombre}</div>
+                        {Boolean(p.ruc) && <div className="font-mono text-[10px] text-muted">RUC {p.ruc}</div>}
+                      </div>
+                    </div>
+                  </TD>
+                  <TD className="text-sm text-ink">{p.categoria || '—'}</TD>
+                  <TD className="text-sm text-ink">{p.contacto || '—'}</TD>
+                  <TD className="font-mono text-xs">{p.telefono || '—'}</TD>
+                  <TD>
+                    {p.activo ? (
+                      <Badge tone="green">Activo</Badge>
+                    ) : (
+                      <span className="text-xs text-muted">Inactivo</span>
+                    )}
+                  </TD>
+                  <TD className="pr-5 text-right">
+                    <button
+                      type="button"
+                      onClick={() => setEditar(p)}
+                      className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition hover:border-gold"
+                    >
+                      <Pencil className="h-3.5 w-3.5" strokeWidth={2} /> Editar
+                    </button>
+                  </TD>
+                </TR>
+              ))}
+              {filtrados.length === 0 && (
+                <TR>
+                  <TD className="px-5 py-8 text-center text-muted" colSpan={6}>
+                    No hay proveedores que coincidan.
+                  </TD>
+                </TR>
+              )}
+            </TBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {editar && (
+        <ProveedorModal
+          proveedor={editar === 'nuevo' ? null : editar}
+          categorias={cats}
+          onClose={() => setEditar(null)}
+          onSaved={() => {
+            setEditar(null);
+            router.refresh();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProveedorModal({
+  proveedor,
+  categorias,
+  onClose,
+  onSaved,
+}: {
+  proveedor: Proveedor | null;
+  categorias: string[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState<ProveedorInput>(proveedor ? { ...proveedor } : vacio());
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const set = <K extends keyof ProveedorInput>(k: K, v: ProveedorInput[K]) => setForm((f) => ({ ...f, [k]: v }));
+
+  function guardar() {
+    setError(null);
+    startTransition(async () => {
+      const err = await guardarProveedor(proveedor?.id ?? null, form);
+      if (err) setError(err);
+      else onSaved();
+    });
+  }
+
+  return (
+    <Modal open onClose={onClose} size="md" title={proveedor ? proveedor.nombre : 'Nuevo proveedor'}>
+      <ModalBody className="space-y-3">
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Nombre / razón social *</label>
+          <input value={form.nombre} onChange={(e) => set('nombre', e.target.value)} className={cn(fieldCls, 'w-full')} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">RUC</label>
+            <input value={form.ruc ?? ''} onChange={(e) => set('ruc', e.target.value)} className={cn(fieldCls, 'w-full')} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Categoría</label>
+            <input
+              value={form.categoria ?? ''}
+              onChange={(e) => set('categoria', e.target.value)}
+              list="cat-proveedor"
+              className={cn(fieldCls, 'w-full')}
+            />
+            <datalist id="cat-proveedor">
+              {categorias.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Contacto</label>
+            <input value={form.contacto ?? ''} onChange={(e) => set('contacto', e.target.value)} className={cn(fieldCls, 'w-full')} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Teléfono</label>
+            <input value={form.telefono ?? ''} onChange={(e) => set('telefono', e.target.value)} className={cn(fieldCls, 'w-full')} />
+          </div>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección</label>
+          <input value={form.direccion ?? ''} onChange={(e) => set('direccion', e.target.value)} className={cn(fieldCls, 'w-full')} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Observación</label>
+          <input value={form.obs ?? ''} onChange={(e) => set('obs', e.target.value)} className={cn(fieldCls, 'w-full')} />
+        </div>
+        <label className="flex items-center gap-2 text-sm text-navy">
+          <input type="checkbox" checked={form.activo} onChange={(e) => set('activo', e.target.checked)} />
+          Proveedor activo
+        </label>
+        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={guardar}
+          disabled={pending}
+          className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
+        >
+          {pending ? 'Guardando…' : 'Guardar'}
+        </button>
+      </ModalFooter>
+    </Modal>
+  );
+}

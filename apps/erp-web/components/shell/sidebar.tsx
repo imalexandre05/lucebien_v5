@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, Settings, Laptop, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Bell, Settings, Laptop, Truck, Boxes, ShoppingCart, type LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
 
@@ -13,6 +13,7 @@ const NAV: { section: string; items: Item[] }[] = [
     section: 'Interno',
     items: [
       { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+      { label: 'Notificaciones', href: '/notificaciones', icon: Bell },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt },
       { label: 'Reportes', href: '/reportes', icon: ClipboardList },
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck },
@@ -33,32 +34,33 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Pedidos', href: '/pedidos', icon: ShoppingBag },
       { label: 'Caja', href: '/caja', icon: Banknote },
       { label: 'Finanzas', href: '/finanzas', icon: LineChart },
+      { label: 'Estadísticas', href: '/estadisticas', icon: BarChart3 },
+    ],
+  },
+  {
+    section: 'Abastecimiento',
+    items: [
+      { label: 'Proveedores', href: '/proveedores', icon: Truck },
+      { label: 'Materiales', href: '/materiales', icon: Boxes },
+      { label: 'Compras', href: '/compras', icon: ShoppingCart },
     ],
   },
 ];
 
-export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
+// Listado de navegación (compartido entre la sidebar de escritorio y el drawer móvil).
+export function SidebarNav({ esAdmin }: { esAdmin: boolean }) {
   const path = usePathname();
   return (
-    <aside className="sticky top-0 flex h-screen w-60 flex-col bg-navy-deep text-paper/80 print:hidden">
-      <Link
-        href="/"
-        aria-label="Ir al inicio"
-        className="flex items-center border-b border-white/10 px-5 py-6 transition-transform duration-150 ease-out-expo hover:translate-x-0.5 active:scale-[0.98]"
-      >
-        <Logo tone="onDark" size="md" />
-      </Link>
-
-      <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
-        {NAV.map((group) => (
-          <div key={group.section}>
-            <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-paper/40">
-              {group.section}
-            </div>
-            <ul className="space-y-0.5">
-              {group.items
-                .filter((it) => !it.admin || esAdmin)
-                .map((it) => {
+    <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
+      {NAV.map((group) => (
+        <div key={group.section}>
+          <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-paper/40">
+            {group.section}
+          </div>
+          <ul className="space-y-0.5">
+            {group.items
+              .filter((it) => !it.admin || esAdmin)
+              .map((it) => {
                 const active = it.href === '/' ? path === '/' : path.startsWith(it.href);
                 const Icon = it.icon;
                 return (
@@ -67,7 +69,7 @@ export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
                       href={it.href}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'group relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-[background-color,color,transform] duration-150 ease-out-expo hover:translate-x-0.5',
+                        'group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-[background-color,color,transform] duration-150 ease-out-expo hover:translate-x-0.5',
                         active ? 'bg-white/10 text-paper' : 'text-paper/60 hover:bg-white/5 hover:text-paper',
                       )}
                     >
@@ -86,16 +88,36 @@ export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
                   </li>
                 );
               })}
-            </ul>
-          </div>
-        ))}
-      </nav>
+          </ul>
+        </div>
+      ))}
+    </nav>
+  );
+}
 
-      <div className="border-t border-white/10 px-6 py-4 text-[11px] leading-relaxed text-paper/40">
-        Fase 1 · demo
-        <br />
-        Confecciones Aliaga E.I.R.L.
-      </div>
+export function SidebarFooter() {
+  return (
+    <div className="border-t border-white/10 px-6 py-4 text-[11px] leading-relaxed text-paper/40">
+      Fase 1 · demo
+      <br />
+      Confecciones Aliaga E.I.R.L.
+    </div>
+  );
+}
+
+// Sidebar fija de escritorio; en anchos menores la navegación vive en el drawer (MobileNav).
+export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
+  return (
+    <aside className="sticky top-0 hidden h-screen w-60 flex-col bg-navy-deep text-paper/80 lg:flex print:hidden">
+      <Link
+        href="/"
+        aria-label="Ir al inicio"
+        className="flex items-center border-b border-white/10 px-5 py-6 transition-transform duration-150 ease-out-expo hover:translate-x-0.5 active:scale-[0.98]"
+      >
+        <Logo tone="onDark" size="md" />
+      </Link>
+      <SidebarNav esAdmin={esAdmin} />
+      <SidebarFooter />
     </aside>
   );
 }

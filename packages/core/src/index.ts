@@ -13,3 +13,6 @@ export * from './reportes';
 export * from './evaluaciones';
 export * from './crm';
 export * from './caja';
+export * from './compras';
+export * from './estadisticas';
+export * from './alertas';

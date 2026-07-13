@@ -11,8 +11,8 @@ test('login y navegación por módulos internos y comerciales', async ({ page })
   await page.fill('input[name="cod"]', COD);
   await page.getByRole('button', { name: 'Ingresar' }).click();
 
-  // Tras el login, cae en el Dashboard.
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+  // Tras el login, cae en el Dashboard (hero "sala de mando" con saludo).
+  await expect(page.getByRole('heading', { name: /Buen[oa]s (días|tardes|noches)/ })).toBeVisible();
 
   // Cada módulo carga su encabezado (PageHeader h1) sin romper.
   const rutas: Array<[string, RegExp]> = [
@@ -40,5 +40,5 @@ test('rechaza credenciales inválidas (no entra al dashboard)', async ({ page })
   await page.waitForLoadState('networkidle');
   // Clave de seguridad: credenciales inválidas NO deben dar acceso.
   await expect(page).toHaveURL(/\/login/);
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: /Buen[oa]s (días|tardes|noches)/ })).toHaveCount(0);
 });

@@ -7,6 +7,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { buttonVariants } from '../../components/ui/button';
+import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
 
 // Landing dedicado "Evaluación de Reporte" (como ítem aparte del SCI viejo): solo los
@@ -25,9 +26,10 @@ export default async function EvaluarReportesPage() {
 
       {pendientes.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-12 text-center">
-            <ClipboardCheck className="h-9 w-9 text-emerald-600" strokeWidth={1.5} />
-            <p className="text-sm text-muted">No hay reportes pendientes de evaluación. Todo al día.</p>
+          <CardContent className="pb-0">
+            <EmptyState icon={ClipboardCheck} titulo="Todo al día">
+              No hay reportes pendientes de evaluación. Cuando un turno envíe su FR-01 aparecerá aquí.
+            </EmptyState>
           </CardContent>
         </Card>
       ) : (

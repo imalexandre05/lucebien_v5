@@ -6,12 +6,10 @@ import { Card, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { StatBox } from '../../../components/ui/stat-box';
 import { cn } from '../../../lib/cn';
+import { hoyPeru } from '../../../lib/fechas';
 
 // Alertas de devolución (contrato S12): alquileres con fecha de devolución, marcados por
 // vencimiento (vencido / hoy / próximo). Excluye pedidos ya cerrados/devueltos/anulados.
-function hoyPeru(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
-}
 function diasEntre(desde: string, hasta: string): number {
   const a = new Date(`${desde}T00:00:00`).getTime();
   const b = new Date(`${hasta}T00:00:00`).getTime();
