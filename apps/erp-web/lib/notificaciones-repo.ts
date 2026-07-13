@@ -10,6 +10,9 @@ import { getServerClient } from './supabase/server';
 
 // Notificaciones internas (S21). La generación evalúa el estado con el motor de reglas del core
 // y hace UPSERT (ignora las que ya existen por dedup_key) para no re-alertar lo ya visto/leído.
+// Este es el camino MANUAL (botón admin). El camino AUTOMÁTICO (pg_cron) usa la función SQL
+// `generar_alertas()` (migración 0042), espejo de esta lógica y del mismo dedup_key → ambos son
+// idempotentes entre sí. Si cambian las reglas aquí o en core/alertas.ts, actualizar también 0042.
 
 export type Notificacion = {
   id: string;
