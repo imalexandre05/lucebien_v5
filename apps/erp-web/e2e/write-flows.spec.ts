@@ -39,13 +39,17 @@ test.describe('flujos de escritura', () => {
 
     await page.getByTestId('enviar-reporte').click();
     await page.waitForURL(/\/reportes\/[^/]+$/, { timeout: 20000 });
+    const reporteUrl = page.url();
 
     // Evaluar si el panel lo permite (necesita ≥1 actividad/limpieza; si está deshabilitado, se salta).
     const enviarEval = page.getByTestId('enviar-evaluacion');
     if (await enviarEval.isVisible().catch(() => false)) {
       if (await enviarEval.isEnabled().catch(() => false)) {
         await enviarEval.click();
-        await expect(enviarEval).toBeHidden({ timeout: 15000 }).catch(() => {});
+        // Al evaluar, redirige a /reportes/nuevo (el evaluador pasa a su propio turno).
+        await page.waitForURL(/\/reportes\/nuevo$/, { timeout: 15000 }).catch(() => {});
+        // Vuelve al reporte evaluado para poder anularlo (limpieza del test).
+        await page.goto(reporteUrl);
       }
     }
 

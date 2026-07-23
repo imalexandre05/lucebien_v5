@@ -124,7 +124,8 @@ export function EvaluarPanel({
         setError(r.error ?? 'Error al evaluar');
         return;
       }
-      router.refresh();
+      // Al evaluar, el evaluador pasa directo a su propio reporte de turno (como el viejo).
+      router.push('/reportes/nuevo');
     });
   }
 

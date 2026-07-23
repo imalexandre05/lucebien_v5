@@ -46,7 +46,10 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
   const regulares = r.actividades.filter((a) => !esLimpieza(a.cod));
   const limpiezaActs = r.actividades.filter((a) => esLimpieza(a.cod));
   const limpiezaCods = limpiezaActs.map((a) => a.cod.slice(3));
-  const zonas = limpiezaCods.length ? await listarLayoutZonas(r.sedeCod) : [];
+  // Solo las zonas REALMENTE registradas en este reporte (no el layout completo de la sede):
+  // masivo, ciclado, estado inicial y envío deben operar sobre el mismo conjunto exacto.
+  const zonasSede = limpiezaCods.length ? await listarLayoutZonas(r.sedeCod) : [];
+  const zonas = zonasSede.filter((z) => limpiezaCods.includes(z.cod));
 
   return (
     <div className="max-w-5xl">

@@ -458,7 +458,7 @@ export function LayoutMap({
   const filas = [...mostradas.filter(puntuable)].sort((a, b) => a.cod.localeCompare(b.cod));
   const frac = totalPts > 0 ? ganados / totalPts : 1;
   return (
-    <div className="flex flex-col gap-4 lg:flex-row">
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 lg:flex-row">
       {mapa}
       <aside className="w-full shrink-0 lg:w-64">
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">
