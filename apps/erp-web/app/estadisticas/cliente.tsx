@@ -189,11 +189,11 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
           </CardContent>
         </Card>
 
-        {/* ── Cumplimiento FR-01 ── */}
+        {/* ── Cumplimiento de reportes de actividades ── */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2.5">
-              <ClipboardCheck className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden /> Cumplimiento FR-01 por sede
+              <ClipboardCheck className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden /> Cumplimiento de reportes por sede
             </CardTitle>
           </CardHeader>
           <CardContent className="overflow-x-auto px-0 pb-0">

@@ -209,7 +209,7 @@ export function IncidenciasCliente({
               <div>
                 <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Responsable</label>
                 <select value={responsable} onChange={(e) => setResponsable(e.target.value)} className={cn(fieldCls, 'w-full')}>
-                  <option value="">— sin asignar —</option>
+                  <option value="">— sin responsable (el admin investigará) —</option>
                   {empleados.map((e) => (
                     <option key={e.id} value={e.id}>
                       {e.nombre}
@@ -217,19 +217,29 @@ export function IncidenciasCliente({
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Nivel</label>
-                <select value={nivel} onChange={(e) => setNivel(e.target.value)} className={cn(fieldCls, 'w-full')}>
-                  {NIVELES.map((n) => (
-                    <option key={n} value={n}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Puntos de penalidad</label>
-                <input type="number" step="0.5" value={puntos} onChange={(e) => setPuntos(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Gravedad</label>
+              <div className="grid grid-cols-3 gap-2">
+                {NIVELES.map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    onClick={() => setNivel(n)}
+                    className={cn(
+                      'rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors duration-150',
+                      nivel === n
+                        ? n === 'Alto'
+                          ? 'border-red-500 bg-red-50 text-red-700'
+                          : n === 'Medio'
+                            ? 'border-amber-500 bg-amber-50 text-amber-700'
+                            : 'border-slate-400 bg-slate-100 text-slate-700'
+                        : 'border-line bg-white text-muted hover:border-gold/60',
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
               </div>
             </div>
             <div>

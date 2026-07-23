@@ -1,5 +1,6 @@
 import {
   actAplicaHoy,
+  turnosQueBloquean,
   type ActividadConfig,
   type Reporte,
   type ReporteActividad,
@@ -248,6 +249,31 @@ export async function buscarReporteId(sede: string, fecha: string, turno: string
   return (data as { id: string } | null)?.id ?? null;
 }
 
+// Exclusividad de turno: si ya existe un reporte REAL (no un stub vacío del auto-cierre) de un
+// turno que bloquea al solicitado (ver turnosQueBloquean en el core), no se puede crear otro.
+// Distinto de "ya enviado" (que es el MISMO turno exacto, y pasa a evaluación); esto es un turno
+// DISTINTO que ya cubrió el horario. Los reportes no_evaluable=true son placeholders que el cron
+// de auto-cierre crea cuando nadie reportó ese turno (0 actividades, sin encargado): no cuentan
+// como "horario cubierto", si no un colaborador que sí trabajó quedaría bloqueado sin motivo.
+export type ConflictoTurno = { turno: TurnoReporte; id: string } | null;
+export async function buscarConflictoTurno(sede: string, fecha: string, turno: TurnoReporte): Promise<ConflictoTurno> {
+  const bloqueantes = turnosQueBloquean(turno);
+  if (bloqueantes.length === 0) return null;
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('reportes')
+    .select('id, turno')
+    .eq('sede_cod', sede)
+    .eq('fecha', fecha)
+    .eq('no_evaluable', false)
+    .in('turno', bloqueantes)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const row = data as { id: string; turno: string } | null;
+  return row ? { turno: row.turno as TurnoReporte, id: row.id } : null;
+}
+
 // ── Mutaciones vía RPC (atómicas, security invoker → RLS real; ver 0020) ─────
 
 export async function crearReporte(p: {
@@ -259,7 +285,7 @@ export async function crearReporte(p: {
   actDone: number;
   trabajadores: string[];
   actividades: { cod: string; nombre: string; cat: string | null; peso: number; obs: string }[];
-  extras: { tipo: string; nombre: string; cantidad: number; precio_unitario: number; monto_total: number; detalle: string }[];
+  extras: { tipo: string; nombre: string; cantidad: number; precio_unitario: number; monto_total: number; detalle: string; registrado_por_id: string | null }[];
 }): Promise<string> {
   const sb = getServerClient();
   const { data, error } = await sb.rpc('reportes_crear', {

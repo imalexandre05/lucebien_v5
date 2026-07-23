@@ -28,7 +28,7 @@ export default async function EvaluarReportesPage() {
         <Card>
           <CardContent className="pb-0">
             <EmptyState icon={ClipboardCheck} titulo="Todo al día">
-              No hay reportes pendientes de evaluación. Cuando un turno envíe su FR-01 aparecerá aquí.
+              No hay reportes pendientes de evaluación. Cuando un turno envíe su reporte de actividades aparecerá aquí.
             </EmptyState>
           </CardContent>
         </Card>

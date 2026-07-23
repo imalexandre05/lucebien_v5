@@ -15,7 +15,7 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Dashboard', href: '/', icon: LayoutDashboard },
       { label: 'Notificaciones', href: '/notificaciones', icon: Bell },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt },
-      { label: 'Reportes', href: '/reportes', icon: ClipboardList },
+      { label: 'Reporte de Actividades', href: '/reportes', icon: ClipboardList },
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck },
       { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle },
       { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck },

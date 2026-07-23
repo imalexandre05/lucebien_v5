@@ -29,6 +29,16 @@ test.describe('flujos de escritura', () => {
     await expect(turno, 'debería verse el selector de turno (gate en modo instalación)').toBeVisible();
     await turno.click();
 
+    // Exclusividad de turno: si M o T ya cubren el día, "C" (completo) queda bloqueado.
+    // waitFor (no isVisible): isVisible no reintenta, y esto corre justo tras el click, antes
+    // de que resuelva el fetch async de iniciarTurno.
+    const conflicto = page.getByText('Este horario ya está cubierto');
+    const hayConflicto = await conflicto
+      .waitFor({ state: 'visible', timeout: 8000 })
+      .then(() => true)
+      .catch(() => false);
+    test.skip(hayConflicto, 'Ya existe un reporte de M o T hoy (exclusividad de turno); se omite.');
+
     // El picker de encargado solo aparece si el turno aún no fue enviado hoy.
     const encargado = page.getByTestId('picker-encargado').getByTestId('persona-row').first();
     const hayPicker = await encargado.isVisible({ timeout: 8000 }).catch(() => false);

@@ -6,7 +6,7 @@ import type { TurnoReporte } from '@scilb/core';
 import type { LayoutZona } from '../../lib/reportes-repo';
 import { cn } from '../../lib/cn';
 
-// Mapa de limpieza (FR-01): lienzo 800×580 del sistema viejo, elevado. Las zonas conservan
+// Mapa de limpieza (Reporte de Actividades): lienzo 800×580 del sistema viejo, elevado. Las zonas conservan
 // su lenguaje: color por turno (ámbar AM / azul PM, viene de la BD), domo para maniquíes,
 // rayas para plancha/riel, chip ✓ al marcar, y CALLE/PISO como tarjetas de actividad arriba
 // y abajo del lienzo. En evaluación cada zona cicla ✓→👁→✗ y hay panel de calificación.

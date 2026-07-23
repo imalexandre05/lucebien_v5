@@ -122,7 +122,7 @@ export async function eliminarIncidencia(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-// Incidencias registradas DESDE un reporte (side-effect del FR-01, origen='reporte').
+// Incidencias registradas DESDE un reporte de actividades (side-effect, origen='reporte').
 export async function crearIncidenciasDeReporte(p: {
   sede: string;
   fecha: string;

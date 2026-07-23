@@ -161,6 +161,14 @@ export function actAplicaHoy(
   return true;
 }
 
+// Exclusividad de turno: si ya se hizo el reporte de la mañana, no se puede volver a hacer
+// mañana ni "día completo" (C se solapa con M y T); análogo para tarde. Devuelve, para un turno
+// NUEVO a crear, qué otros turnos (ya existentes) lo bloquearían.
+export function turnosQueBloquean(turno: TurnoReporte): TurnoReporte[] {
+  if (turno === 'C') return ['M', 'T'];
+  return ['C'];
+}
+
 // Puntaje 0-100 de un reporte evaluado: Σ(peso×calificación)/Σ(peso) × 100, redondeado.
 // calificación ∈ [0,1] (1 = perfecto). Portado de public/js/app.js (triggerEnviarEval).
 export function calcularPuntajeEval(items: { peso: number; calificacion: number }[]): number {

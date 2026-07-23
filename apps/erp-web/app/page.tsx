@@ -97,7 +97,7 @@ export default async function Dashboard() {
       icon: ClipboardList,
       titulo: (
         <>
-          Reporte FR-01 · {r.sedeCod} · {TURNO_LABEL[r.turno] ?? r.turno}
+          Reporte de Actividades · {r.sedeCod} · {TURNO_LABEL[r.turno] ?? r.turno}
         </>
       ),
       detalle: r.encargadoNombre ? `Encargado: ${r.encargadoNombre}` : null,

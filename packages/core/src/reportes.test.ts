@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { fechaDesdeId, idReporte, actAplicaHoy, calcularPuntajeEval } from './reportes';
+import { fechaDesdeId, idReporte, actAplicaHoy, calcularPuntajeEval, turnosQueBloquean } from './reportes';
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
 const diaDe = (fecha: string) => DIAS[new Date(`${fecha}T12:00:00`).getDay()];
@@ -63,5 +63,15 @@ describe('calcularPuntajeEval', () => {
   });
   it('sin actividades = 0 (evita división por cero)', () => {
     expect(calcularPuntajeEval([])).toBe(0);
+  });
+});
+
+describe('turnosQueBloquean — exclusividad de turno', () => {
+  it('mañana y tarde se bloquean solo por "día completo" (C)', () => {
+    expect(turnosQueBloquean('M')).toEqual(['C']);
+    expect(turnosQueBloquean('T')).toEqual(['C']);
+  });
+  it('"día completo" se bloquea si ya existe mañana o tarde', () => {
+    expect(turnosQueBloquean('C')).toEqual(['M', 'T']);
   });
 });

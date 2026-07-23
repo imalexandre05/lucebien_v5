@@ -11,7 +11,7 @@ export default async function ReportesPage() {
   return (
     <div>
       <PageHeader
-        title="Reportes FR-01"
+        title="Reporte de Actividades"
         subtitle={`${conContenido} con contenido · ${reportes.length} en total`}
         action={
           <Link href="/reportes/nuevo" className={buttonVariants({ variant: 'primary' })}>

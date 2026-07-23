@@ -60,7 +60,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
             <LogoMark size="md" />
             <div>
               <div className="font-display text-2xl font-semibold leading-none text-navy">
-                Reporte diario FR-01
+                Reporte diario de actividades
               </div>
               <div className="mt-1 text-xs text-muted">
                 LuceBien · Confecciones Aliaga E.I.R.L. · Huancayo
@@ -204,6 +204,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
                   <TR>
                     <TH className="pl-5">Tipo</TH>
                     <TH>Detalle</TH>
+                    <TH>Quién lo hizo</TH>
                     <TH className="text-right">Cantidad</TH>
                     <TH className="pr-5 text-right">Monto</TH>
                   </TR>
@@ -213,6 +214,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
                     <TR key={e.id}>
                       <TD className="pl-5">{e.tipo}</TD>
                       <TD>{e.detalle || e.nombre}</TD>
+                      <TD className="text-xs text-muted">{e.registradoPorNombre ?? '—'}</TD>
                       <TD className="text-right font-mono tabular-nums">{e.cantidad}</TD>
                       <TD className="pr-5 text-right font-mono tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
                     </TR>

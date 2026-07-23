@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Sun, Moon, Clock, Check, Square, Plus, Trash2, Send, Users, PenLine, ClipboardCheck, ArrowRight } from 'lucide-react';
-import { idReporte, type TurnoReporte } from '@scilb/core';
+import { idReporte, TURNO_LABEL, type TurnoReporte } from '@scilb/core';
 import { iniciarTurno, accionCrearReporte, accionGuardarDraft } from '../actions';
 import type { ActividadDelTurno, LayoutZona } from '../../../lib/reportes-repo';
 import type { TipoIncidencia } from '../../../lib/incidencias-repo';
@@ -16,7 +16,7 @@ import { PersonaPicker } from '../../../components/ui/persona-picker';
 import { cn } from '../../../lib/cn';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
-type Extra = { tipo: string; nombre: string; cantidad: number; monto: number };
+type Extra = { tipo: string; nombre: string; cantidad: number; monto: number; registradoPorId: string };
 type IncRep = { tipo: string; nivel: string; descripcion: string; responsableId: string; puntosPenalidad: number };
 const NIVELES_INC = ['Alto', 'Medio', 'Bajo'];
 
@@ -85,6 +85,7 @@ export function NuevoReporteForm({
   const [limpieza, setLimpieza] = useState<string[]>([]);
   const [incidencias, setIncidencias] = useState<IncRep[]>([]);
   const [yaEnviado, setYaEnviado] = useState<string | null>(null);
+  const [conflicto, setConflicto] = useState<{ turno: TurnoReporte; id: string } | null>(null);
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
@@ -108,10 +109,12 @@ export function NuevoReporteForm({
     setCargando(true);
     setError('');
     setYaEnviado(null);
+    setConflicto(null);
     iniciarTurno(sede, fecha, turno)
-      .then(({ actividades, zonas, draft, yaEnviado }) => {
+      .then(({ actividades, zonas, draft, yaEnviado, conflicto }) => {
         if (!vivo) return;
         setYaEnviado(yaEnviado);
+        setConflicto(conflicto);
         setCat(actividades);
         setZonas(zonas);
         const d = (draft ?? {}) as {
@@ -167,7 +170,7 @@ export function NuevoReporteForm({
   }, [zonas, limpieza, turno]);
 
   const totalPts = Math.round((actPts + limpiezaPts.got) * 10) / 10;
-  const puedeEnviar = Boolean(turno) && encargadoSel.length === 1 && !pending;
+  const puedeEnviar = Boolean(turno) && !conflicto && encargadoSel.length === 1 && !pending;
 
   // Autosave (debounce 1.2s).
   const primeraVez = useRef(true);
@@ -241,6 +244,7 @@ export function NuevoReporteForm({
             precio_unitario: 0,
             monto_total: e.monto || 0,
             detalle: '',
+            registrado_por_id: e.registradoPorId || null,
           })),
         incidencias: incidencias
           .filter((i) => i.tipo)
@@ -300,7 +304,7 @@ export function NuevoReporteForm({
             </p>
           </div>
 
-          {turno && !yaEnviado && (
+          {turno && !yaEnviado && !conflicto && (
             <div className="grid gap-5 border-t border-line/60 pt-5 lg:grid-cols-2">
               <div>
                 <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
@@ -360,7 +364,24 @@ export function NuevoReporteForm({
         </Card>
       )}
 
-      {turno && !cargando && !yaEnviado && (
+      {turno && !cargando && !yaEnviado && conflicto && (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <Clock className="h-10 w-10 text-amber-500" strokeWidth={1.5} />
+            <div>
+              <p className="font-display text-lg font-semibold text-navy">Este horario ya está cubierto</p>
+              <p className="mt-1 text-sm text-muted">
+                Ya existe un reporte de <span className="font-semibold">{TURNO_LABEL[conflicto.turno] ?? conflicto.turno}</span> para {sede} · {fecha}, que ya cubre este horario. No se puede crear otro reporte encima.
+              </p>
+            </div>
+            <Link href={`/reportes/${conflicto.id}`} className={cn(buttonVariants({ variant: 'outline' }), 'px-5')}>
+              Ver ese reporte <ArrowRight className="h-4 w-4" strokeWidth={2} />
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {turno && !cargando && !yaEnviado && !conflicto && (
         <>
           {/* ── Limpieza + Actividades lado a lado en xl (una pantalla, no un pergamino) ── */}
           <div className={cn('grid grid-cols-1 gap-4', zonas.length > 0 && 'xl:grid-cols-5')}>
@@ -486,7 +507,7 @@ export function NuevoReporteForm({
                         onChange={(e) => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, responsableId: e.target.value } : x)))}
                         className={cn(fieldCls, 'w-full')}
                       >
-                        <option value="">Responsable…</option>
+                        <option value="">— sin responsable (el admin investigará) —</option>
                         {empleados.map((e) => (
                           <option key={e.id} value={e.id}>
                             {e.nombre}
@@ -500,26 +521,27 @@ export function NuevoReporteForm({
                         className={cn(fieldCls, 'w-full sm:col-span-2')}
                       />
                       <div className="flex items-center gap-2 sm:col-span-2">
-                        <select
-                          value={inc.nivel}
-                          onChange={(e) => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, nivel: e.target.value } : x)))}
-                          className={cn(fieldCls, 'w-28')}
-                          aria-label="Nivel"
-                        >
+                        <div className="flex gap-1.5">
                           {NIVELES_INC.map((n) => (
-                            <option key={n} value={n}>
+                            <button
+                              key={n}
+                              type="button"
+                              onClick={() => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, nivel: n } : x)))}
+                              className={cn(
+                                'rounded-md border-2 px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
+                                inc.nivel === n
+                                  ? n === 'Alto'
+                                    ? 'border-red-500 bg-red-50 text-red-700'
+                                    : n === 'Medio'
+                                      ? 'border-amber-500 bg-amber-50 text-amber-700'
+                                      : 'border-slate-400 bg-slate-100 text-slate-700'
+                                  : 'border-line bg-white text-muted hover:border-gold/60',
+                              )}
+                            >
                               {n}
-                            </option>
+                            </button>
                           ))}
-                        </select>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={inc.puntosPenalidad}
-                          onChange={(e) => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, puntosPenalidad: Number(e.target.value) } : x)))}
-                          className={cn(fieldCls, 'w-20')}
-                          aria-label="Puntos"
-                        />
+                        </div>
                         <button
                           type="button"
                           onClick={() => setIncidencias((p) => p.filter((_, j) => j !== i))}
@@ -542,7 +564,7 @@ export function NuevoReporteForm({
               <CardTitle>Extras</CardTitle>
               <button
                 type="button"
-                onClick={() => setExtras((p) => [...p, { tipo: '', nombre: '', cantidad: 1, monto: 0 }])}
+                onClick={() => setExtras((p) => [...p, { tipo: '', nombre: '', cantidad: 1, monto: 0, registradoPorId: '' }])}
                 className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
@@ -554,12 +576,12 @@ export function NuevoReporteForm({
               ) : (
                 <div className="space-y-2">
                   {extras.map((e, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                    <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-line/60 p-2">
                       <input
                         value={e.nombre}
                         onChange={(ev) => setExtras((p) => p.map((x, j) => (j === i ? { ...x, nombre: ev.target.value } : x)))}
                         placeholder="Descripción"
-                        className={cn(fieldCls, 'flex-1')}
+                        className={cn(fieldCls, 'min-w-[10rem] flex-1')}
                       />
                       <input
                         type="number"
@@ -583,6 +605,19 @@ export function NuevoReporteForm({
                       >
                         <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                       </button>
+                      <select
+                        value={e.registradoPorId}
+                        onChange={(ev) => setExtras((p) => p.map((x, j) => (j === i ? { ...x, registradoPorId: ev.target.value } : x)))}
+                        aria-label="Quién lo hizo"
+                        className={cn(fieldCls, 'w-full sm:w-auto sm:flex-1')}
+                      >
+                        <option value="">¿Quién lo hizo?…</option>
+                        {empleadosOrden.map((emp) => (
+                          <option key={emp.id} value={emp.id}>
+                            {emp.nombre}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   ))}
                 </div>

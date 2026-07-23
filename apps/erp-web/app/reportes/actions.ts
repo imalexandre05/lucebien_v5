@@ -13,8 +13,10 @@ import {
   anularEval,
   marcarAsistenciaReporte,
   buscarReporteId,
+  buscarConflictoTurno,
   type ActividadDelTurno,
   type LayoutZona,
+  type ConflictoTurno,
 } from '../../lib/reportes-repo';
 import { getSesion } from '../../lib/auth';
 import { crearIncidenciasDeReporte } from '../../lib/incidencias-repo';
@@ -30,14 +32,16 @@ export async function iniciarTurno(
   zonas: LayoutZona[];
   draft: Record<string, unknown> | null;
   yaEnviado: string | null;
+  conflicto: ConflictoTurno;
 }> {
-  const [actividades, zonas, draft, yaEnviado] = await Promise.all([
+  const [actividades, zonas, draft, yaEnviado, conflicto] = await Promise.all([
     listarActividadesConfig(sede, fecha, turno),
     listarLayoutZonas(sede),
     getDraft(sede, fecha, turno),
     buscarReporteId(sede, fecha, turno),
+    buscarConflictoTurno(sede, fecha, turno),
   ]);
-  return { actividades, zonas, draft: draft?.payload ?? null, yaEnviado };
+  return { actividades, zonas, draft: draft?.payload ?? null, yaEnviado, conflicto };
 }
 
 // Tipos locales (no exportados): un archivo 'use server' solo puede EXPORTAR funciones async.
@@ -59,7 +63,7 @@ type CrearReporteInput = {
   actDone: number;
   trabajadores: string[];
   actividades: { cod: string; nombre: string; cat: string | null; peso: number; obs: string }[];
-  extras: { tipo: string; nombre: string; cantidad: number; precio_unitario: number; monto_total: number; detalle: string }[];
+  extras: { tipo: string; nombre: string; cantidad: number; precio_unitario: number; monto_total: number; detalle: string; registrado_por_id: string | null }[];
   incidencias: IncidenciaReporte[];
 };
 

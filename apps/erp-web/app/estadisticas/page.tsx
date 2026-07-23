@@ -20,7 +20,7 @@ export default async function EstadisticasPage({
 
   return (
     <div>
-      <PageHeader title="Estadísticas del negocio" subtitle="Panel gerencial · cruza caja, pedidos, producción, incidencias y FR-01" />
+      <PageHeader title="Estadísticas del negocio" subtitle="Panel gerencial · cruza caja, pedidos, producción, incidencias y reportes de actividades" />
       <EstadisticasCliente data={data} rango={rango} />
     </div>
   );

@@ -15,7 +15,7 @@ export default async function NuevoReportePage() {
 
   return (
     <div>
-      <PageHeader title="Nuevo reporte FR-01" subtitle={`${sede || 'sin sede'} · ${fecha}`} />
+      <PageHeader title="Nuevo reporte de actividades" subtitle={`${sede || 'sin sede'} · ${fecha}`} />
       <NuevoReporteForm
         sede={sede}
         fecha={fecha}
