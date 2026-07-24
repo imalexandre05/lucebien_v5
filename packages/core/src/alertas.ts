@@ -94,7 +94,7 @@ export function alertasCajaSinCerrar(sesiones: CajaAbierta[], hoy: string): Aler
     }));
 }
 
-// ── Reportes FR-01 sin evaluar tras un margen de días ──
+// ── Reportes de Actividades sin evaluar tras un margen de días ──
 export type ReporteEval = { id: string; sedeCod: string; fecha: string; evaluado: boolean; noEvaluable?: boolean };
 
 export function alertasReportesSinEvaluar(reportes: ReporteEval[], hoy: string, diasGracia = 2): Alerta[] {
@@ -102,7 +102,7 @@ export function alertasReportesSinEvaluar(reportes: ReporteEval[], hoy: string, 
     .filter((r) => !r.evaluado && !r.noEvaluable && diasEntre(r.fecha, hoy) >= diasGracia)
     .map((r) => ({
       tipo: 'reporte_sin_evaluar',
-      titulo: 'FR-01 sin evaluar',
+      titulo: 'Reporte de Actividades sin evaluar',
       mensaje: `El reporte de ${r.sedeCod} del ${r.fecha} lleva ${diasEntre(r.fecha, hoy)} día(s) sin evaluar.`,
       severidad: 'info',
       sede: r.sedeCod,
