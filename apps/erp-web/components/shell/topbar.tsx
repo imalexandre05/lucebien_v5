@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LogOut } from 'lucide-react';
+import { LogOut, Search } from 'lucide-react';
 import { ROL_LABEL, type MatrizPermisos } from '@scilb/core';
 import { cerrarSesion } from '../../app/login/actions';
 import { getSesion } from '../../lib/auth';
@@ -49,6 +49,16 @@ export async function Topbar() {
         <span className="hidden md:inline">Confecciones Aliaga · Huancayo</span>
       </div>
       <div className="flex items-center gap-3">
+        {sesion && (
+          <Link
+            href="/buscar"
+            title="Buscar un terno (código, tipo, talla, color)"
+            aria-label="Buscar"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-[0.97]"
+          >
+            <Search className="h-4 w-4" strokeWidth={1.75} />
+          </Link>
+        )}
         {sesion && <NotificacionesBell notificaciones={notificaciones} esAdmin={esAdmin} />}
         {sede && (
           <span className="hidden rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-navy sm:inline">
