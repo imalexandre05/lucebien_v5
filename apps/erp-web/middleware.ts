@@ -71,7 +71,16 @@ export async function middleware(req: NextRequest) {
   if (isOn('DEVICE_GATE') && user && !enLogin && !enDispositivo && !esAsset) {
     try {
       const { data: estado } = await supabase.rpc('dispositivo_estado', { p_device_id: deviceId });
-      if (estado !== 'aprobado' && estado !== 'setup') return redir('/dispositivo');
+      if (estado !== 'aprobado') {
+        // Autoaprobación silenciosa: si quien entra es admin/dueño, dispositivo_autoaprobar (0036)
+        // valida app_es_admin() adentro y aprueba el equipo actual sin pasar por /dispositivo. En
+        // 'setup' (bootstrap: aún no hay NINGÚN equipo aprobado) el intento es best-effort — nunca
+        // bloquea aunque falle, para no romper el bootstrap del primer admin (o de un no-admin
+        // antes de que exista el primer equipo aprobado). Fuera de 'setup', un no-admin sí recibe
+        // el error de la RPC y sigue el flujo normal (solicitar acceso → admin aprueba).
+        const { error: autoErr } = await supabase.rpc('dispositivo_autoaprobar', { p_device_id: deviceId });
+        if (autoErr && estado !== 'setup') return redir('/dispositivo');
+      }
     } catch {
       // Fail-open: nunca brickear el arranque por un fallo de red/BD.
     }
