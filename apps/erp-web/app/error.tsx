@@ -13,7 +13,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         <div aria-hidden className="h-0.5 bg-gradient-to-r from-gold via-gold/50 to-line" />
         <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
           <AlertTriangle className="h-10 w-10 text-gold" strokeWidth={1.25} aria-hidden />
-          <h1 className="font-display text-2xl font-semibold text-navy">Algo salió mal</h1>
+          <h1 className="text-2xl font-semibold text-navy">Algo salió mal</h1>
           <p className="max-w-sm text-sm leading-relaxed text-muted">
             No pudimos cargar esta pantalla. Puedes reintentar; si el problema continúa, avisa al
             administrador.

@@ -3,52 +3,57 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Bell, Settings, Laptop, Truck, Boxes, ShoppingCart, type LucideIcon } from 'lucide-react';
+import { puede, type MatrizPermisos, type Rol } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
 
-type Item = { label: string; href: string; icon: LucideIcon; admin?: boolean };
+// `modulo` es la clave que evalúa puede(matriz, rol, modulo, 'ver') — un solo mecanismo de gating
+// (antes había un flag `admin` aparte para 3 ítems; ahora todo pasa por la misma matriz, admin/dueno
+// siempre pasan por el mecanismo del core, el resto según lo que el admin configuró en /configuracion/permisos).
+type Item = { label: string; href: string; icon: LucideIcon; modulo: string };
 
 const NAV: { section: string; items: Item[] }[] = [
   {
     section: 'Interno',
     items: [
-      { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-      { label: 'Notificaciones', href: '/notificaciones', icon: Bell },
-      { label: 'Pipeline', href: '/pipeline', icon: Shirt },
-      { label: 'Reporte de Actividades', href: '/reportes', icon: ClipboardList },
-      { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck },
-      { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle },
-      { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck },
-      { label: 'Evaluaciones', href: '/evaluaciones', icon: Award },
-      { label: 'Pagos', href: '/pagos', icon: Wallet },
-      { label: 'Empleados', href: '/empleados', icon: Users, admin: true },
-      { label: 'Configuración', href: '/configuracion', icon: Settings, admin: true },
-      { label: 'Dispositivos', href: '/dispositivos', icon: Laptop, admin: true },
+      { label: 'Dashboard', href: '/', icon: LayoutDashboard, modulo: 'dashboard' },
+      { label: 'Notificaciones', href: '/notificaciones', icon: Bell, modulo: 'notificaciones' },
+      { label: 'Pipeline', href: '/pipeline', icon: Shirt, modulo: 'pipeline' },
+      { label: 'Reporte de Actividades', href: '/reportes', icon: ClipboardList, modulo: 'reportes' },
+      { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },
+      { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle, modulo: 'incidencias' },
+      { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck, modulo: 'asistencias' },
+      { label: 'Evaluaciones', href: '/evaluaciones', icon: Award, modulo: 'evaluaciones' },
+      { label: 'Pagos', href: '/pagos', icon: Wallet, modulo: 'pagos' },
+      { label: 'Empleados', href: '/empleados', icon: Users, modulo: 'empleados' },
+      { label: 'Configuración', href: '/configuracion', icon: Settings, modulo: 'configuracion' },
+      { label: 'Dispositivos', href: '/dispositivos', icon: Laptop, modulo: 'dispositivos' },
     ],
   },
   {
     section: 'Comercial',
     items: [
-      { label: 'Inventario', href: '/inventario', icon: Package },
-      { label: 'Clientes', href: '/clientes', icon: Contact },
-      { label: 'Pedidos', href: '/pedidos', icon: ShoppingBag },
-      { label: 'Caja', href: '/caja', icon: Banknote },
-      { label: 'Finanzas', href: '/finanzas', icon: LineChart },
-      { label: 'Estadísticas', href: '/estadisticas', icon: BarChart3 },
+      { label: 'Inventario', href: '/inventario', icon: Package, modulo: 'inventario' },
+      { label: 'Clientes', href: '/clientes', icon: Contact, modulo: 'clientes' },
+      { label: 'Pedidos', href: '/pedidos', icon: ShoppingBag, modulo: 'pedidos' },
+      { label: 'Caja', href: '/caja', icon: Banknote, modulo: 'caja' },
+      { label: 'Finanzas', href: '/finanzas', icon: LineChart, modulo: 'finanzas' },
+      { label: 'Estadísticas', href: '/estadisticas', icon: BarChart3, modulo: 'estadisticas' },
     ],
   },
   {
     section: 'Abastecimiento',
     items: [
-      { label: 'Proveedores', href: '/proveedores', icon: Truck },
-      { label: 'Materiales', href: '/materiales', icon: Boxes },
-      { label: 'Compras', href: '/compras', icon: ShoppingCart },
+      { label: 'Proveedores', href: '/proveedores', icon: Truck, modulo: 'proveedores' },
+      { label: 'Materiales', href: '/materiales', icon: Boxes, modulo: 'materiales' },
+      { label: 'Compras', href: '/compras', icon: ShoppingCart, modulo: 'compras' },
     ],
   },
 ];
 
-// Listado de navegación (compartido entre la sidebar de escritorio y el drawer móvil).
-export function SidebarNav({ esAdmin }: { esAdmin: boolean }) {
+// Listado de navegación (compartido entre la sidebar de escritorio y el drawer móvil). Filtra por
+// la matriz de permisos configurable (Configuración → Permisos), no por un flag hardcodeado.
+export function SidebarNav({ rol, matriz }: { rol: Rol; matriz: MatrizPermisos }) {
   const path = usePathname();
   return (
     <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
@@ -59,7 +64,7 @@ export function SidebarNav({ esAdmin }: { esAdmin: boolean }) {
           </div>
           <ul className="space-y-0.5">
             {group.items
-              .filter((it) => !it.admin || esAdmin)
+              .filter((it) => puede(matriz, rol, it.modulo, 'ver'))
               .map((it) => {
                 const active = it.href === '/' ? path === '/' : path.startsWith(it.href);
                 const Icon = it.icon;
@@ -106,7 +111,7 @@ export function SidebarFooter() {
 }
 
 // Sidebar fija de escritorio; en anchos menores la navegación vive en el drawer (MobileNav).
-export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
+export function Sidebar({ rol, matriz }: { rol: Rol; matriz: MatrizPermisos }) {
   return (
     <aside className="sticky top-0 hidden h-screen w-60 flex-col bg-navy-deep text-paper/80 lg:flex print:hidden">
       <Link
@@ -116,7 +121,7 @@ export function Sidebar({ esAdmin }: { esAdmin: boolean }) {
       >
         <Logo tone="onDark" size="md" />
       </Link>
-      <SidebarNav esAdmin={esAdmin} />
+      <SidebarNav rol={rol} matriz={matriz} />
       <SidebarFooter />
     </aside>
   );

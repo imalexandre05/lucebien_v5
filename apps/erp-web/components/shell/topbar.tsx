@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { Bell, LogOut } from 'lucide-react';
+import { ROL_LABEL, type MatrizPermisos } from '@scilb/core';
 import { cerrarSesion } from '../../app/login/actions';
 import { getSesion } from '../../lib/auth';
 import { contarNoLeidas } from '../../lib/notificaciones-repo';
+import { leerMatrizPermisos } from '../../lib/permisos-repo';
 import { LogoMark } from '../brand/logo';
 import { MobileNav } from './mobile-nav';
 
@@ -18,22 +20,29 @@ export async function Topbar() {
   const sesion = await getSesion();
   const nombre = sesion?.nombre ?? '';
   const sede = sesion?.usuario.sede ?? '';
-  const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
+  const rol = sesion?.usuario.rol;
 
-  // Contador de no leídas para la campana; nunca debe tumbar el topbar.
+  // Contador de no leídas y matriz de permisos; nunca deben tumbar el topbar (fallback seguro:
+  // matriz vacía = solo admin/dueno ven módulos no-operativos, hasta que la migración/red vuelvan).
   let noLeidas = 0;
+  let matriz: MatrizPermisos = {};
   if (sesion) {
     try {
       noLeidas = await contarNoLeidas();
     } catch {
       noLeidas = 0;
     }
+    try {
+      matriz = await leerMatrizPermisos();
+    } catch {
+      matriz = {};
+    }
   }
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-line bg-paper/85 px-4 backdrop-blur sm:px-7 print:hidden">
       <div className="flex items-center gap-2.5 text-sm text-muted">
-        <MobileNav esAdmin={esAdmin} />
+        {rol && <MobileNav rol={rol} matriz={matriz} />}
         <LogoMark size="sm" className="lg:hidden" />
         <span className="hidden md:inline">Confecciones Aliaga · Huancayo</span>
       </div>
@@ -54,8 +63,13 @@ export async function Topbar() {
           </Link>
         )}
         {sede && (
-          <span className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-navy">
+          <span className="hidden rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-navy sm:inline">
             Sede · {sede}
+          </span>
+        )}
+        {rol && (
+          <span className="hidden rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-[#7a6e0e] md:inline">
+            {ROL_LABEL[rol] ?? rol}
           </span>
         )}
         {nombre && (

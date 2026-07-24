@@ -229,7 +229,7 @@ export function TableroPipeline({
       {/* ── Banda de cabecera (navy) ── */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
         <div>
-          <div className="font-display text-xl font-semibold leading-none">Prendas recibidas</div>
+          <div className="text-xl font-semibold leading-none">Prendas recibidas</div>
           <div className="mt-1 font-mono text-[11px] uppercase tracking-widest text-gold">Almacén Central</div>
         </div>
         <div className="flex items-center gap-5">

@@ -97,7 +97,7 @@ export function CajaCliente({
         <CardContent className="mx-auto max-w-md space-y-4 py-10 text-center">
           <Wallet className="mx-auto h-10 w-10 text-gold/80" strokeWidth={1.5} />
           <div>
-            <p className="font-display text-lg font-semibold text-navy">Caja cerrada</p>
+            <p className="text-lg font-semibold text-navy">Caja cerrada</p>
             <p className="mt-1 text-sm text-muted">Abre la caja de {sede || 'tu sede'} para registrar cobros y egresos.</p>
           </div>
           <div className="mx-auto max-w-xs text-left">
@@ -125,7 +125,7 @@ export function CajaCliente({
       {/* Cabecera de la sesión */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
         <div>
-          <div className="inline-flex items-center gap-2 font-display text-xl font-semibold leading-none">
+          <div className="inline-flex items-center gap-2 text-xl font-semibold leading-none">
             <span className="h-2 w-2 rounded-full bg-emerald-400" /> Caja abierta · {sesion.sedeCod}
           </div>
           <div className="mt-1 font-mono text-[11px] text-paper/60">

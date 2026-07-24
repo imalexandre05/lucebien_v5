@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import {
   Shirt,
@@ -13,7 +14,7 @@ import {
   Activity,
   type LucideIcon,
 } from 'lucide-react';
-import { ETAPAS_PIPELINE, estadoReporte, TURNO_LABEL } from '@scilb/core';
+import { ETAPAS_PIPELINE, estadoReporte, TURNO_LABEL, puede, type MatrizPermisos } from '@scilb/core';
 import { listarPasadas, rankingHoy } from '../lib/pipeline-repo';
 import { listarReportes } from '../lib/reportes-repo';
 import { listarIncidencias } from '../lib/incidencias-repo';
@@ -21,6 +22,7 @@ import { resumenFinanciero, cobrosPendientes, totalGarantias } from '../lib/caja
 import { pedidosRepo } from '../lib/pedidos-repo';
 import { getSesion } from '../lib/auth';
 import { listarSedes } from '../lib/sedes-repo';
+import { leerMatrizPermisos } from '../lib/permisos-repo';
 import { hoyPeru, fechaLargaPeru, etiquetaDia, saludoPeru, tiempoRelativo } from '../lib/fechas';
 import { LogoMark } from '../components/brand/logo';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -49,6 +51,23 @@ const KPI_TONE = 'border-line bg-white text-navy shadow-card';
 type Evento = { ts: string; icon: LucideIcon; titulo: ReactNode; detalle: string | null; href: string };
 
 export default async function Dashboard() {
+  // Landing directo operativo (Fase 4): un usuario sin permiso de 've' el dashboard entra
+  // directo a su Reporte de Actividades, como el sistema viejo — antes de disparar las
+  // consultas pesadas del panel gerencial. Fallback seguro: si la matriz falla, no ve el
+  // dashboard (solo admin/dueno pasan siempre, por el mecanismo de puede()).
+  const sesionPrevia = await getSesion();
+  if (sesionPrevia) {
+    let matrizPrevia: MatrizPermisos = {};
+    try {
+      matrizPrevia = await leerMatrizPermisos();
+    } catch {
+      matrizPrevia = {};
+    }
+    if (!puede(matrizPrevia, sesionPrevia.usuario.rol, 'dashboard', 'ver')) {
+      redirect('/reportes/nuevo');
+    }
+  }
+
   const [sesion, pasadas, reportes, incidencias, ranking, finHoy, pedidos, pendientes, garantias, sedes] =
     await Promise.all([
       getSesion(),
@@ -141,7 +160,7 @@ export default async function Dashboard() {
           <div className="flex items-center gap-4">
             <LogoMark size="lg" className="animate-scale-in" />
             <div>
-              <h1 className="animate-rise font-display text-3xl font-semibold leading-none text-navy sm:text-4xl">
+              <h1 className="animate-rise text-3xl font-semibold leading-none text-navy sm:text-4xl">
                 {saludoPeru(ahora)}
                 {primerNombre ? `, ${primerNombre}` : ''}
               </h1>
@@ -162,7 +181,7 @@ export default async function Dashboard() {
           >
             <div className="pointer-events-none absolute inset-[5px] rounded-[9px] border border-gold/45" />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="font-display text-3xl font-semibold leading-none text-navy">{dia.dia}</span>
+              <span className="text-3xl font-semibold leading-none text-navy">{dia.dia}</span>
               <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
                 {dia.mes} {dia.anio}
               </span>

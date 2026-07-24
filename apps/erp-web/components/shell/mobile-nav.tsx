@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
+import type { MatrizPermisos, Rol } from '@scilb/core';
 import { Logo } from '../brand/logo';
 import { SidebarNav, SidebarFooter } from './sidebar';
 
@@ -11,7 +12,7 @@ import { SidebarNav, SidebarFooter } from './sidebar';
 // sidebar como drawer off-canvas. Cierra con Escape, al tocar el fondo o al navegar.
 // El drawer va por portal a <body>: el backdrop-blur de la topbar crea un containing
 // block y un `fixed` anidado quedaría atrapado dentro del header.
-export function MobileNav({ esAdmin }: { esAdmin: boolean }) {
+export function MobileNav({ rol, matriz }: { rol: Rol; matriz: MatrizPermisos }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
 
@@ -58,7 +59,7 @@ export function MobileNav({ esAdmin }: { esAdmin: boolean }) {
                   <X className="h-5 w-5" strokeWidth={1.75} />
                 </button>
               </div>
-              <SidebarNav esAdmin={esAdmin} />
+              <SidebarNav rol={rol} matriz={matriz} />
               <SidebarFooter />
             </div>
           </div>,

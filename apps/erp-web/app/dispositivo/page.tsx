@@ -32,7 +32,7 @@ export default async function DispositivoPage({
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center">
           <LogoMark size="lg" className="animate-scale-in" />
-          <div className="mt-3 animate-rise font-display text-2xl font-semibold text-navy [animation-delay:90ms]">
+          <div className="mt-3 animate-rise text-2xl font-semibold text-navy [animation-delay:90ms]">
             Equipo {aprobado ? 'autorizado' : 'no autorizado'}
           </div>
         </div>

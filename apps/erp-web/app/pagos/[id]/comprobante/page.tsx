@@ -17,7 +17,7 @@ export default async function ComprobantePago({ params }: { params: { id: string
         {/* Encabezado */}
         <div className="flex items-start justify-between border-b-2 border-navy pb-4">
           <div>
-            <div className="font-display text-2xl font-semibold leading-none text-navy">
+            <div className="text-2xl font-semibold leading-none text-navy">
               Luce<span className="text-gold">Bien</span>
             </div>
             <div className="mt-1 text-xs text-muted">Confecciones Aliaga E.I.R.L. · RUC 20611777761</div>

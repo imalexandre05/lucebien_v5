@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ClipboardList, Map, Building2 } from 'lucide-react';
+import { ClipboardList, Map, Building2, Shield } from 'lucide-react';
 import { listarConfig } from '../../lib/config-repo';
 import { getSesion } from '../../lib/auth';
 import { PageHeader } from '../../components/shell/page-header';
@@ -29,6 +29,9 @@ export default async function ConfiguracionPage() {
             </Link>
             <Link href="/configuracion/layout" className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
               <Map className="h-3.5 w-3.5" strokeWidth={2} /> Layout
+            </Link>
+            <Link href="/configuracion/permisos" className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
+              <Shield className="h-3.5 w-3.5" strokeWidth={2} /> Permisos
             </Link>
           </div>
         }

@@ -79,7 +79,7 @@ export function Modal({
               {icon}
               <div className="min-w-0">
                 {title && (
-                  <div className="truncate font-display text-lg font-semibold text-navy">{title}</div>
+                  <div className="truncate text-lg font-semibold text-navy">{title}</div>
                 )}
                 {subtitle && <div className="truncate text-xs text-muted">{subtitle}</div>}
               </div>

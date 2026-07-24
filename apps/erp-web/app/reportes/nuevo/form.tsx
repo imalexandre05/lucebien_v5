@@ -352,7 +352,7 @@ export function NuevoReporteForm({
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <ClipboardCheck className="h-10 w-10 text-emerald-600" strokeWidth={1.5} />
             <div>
-              <p className="font-display text-lg font-semibold text-navy">Este turno ya se envió</p>
+              <p className="text-lg font-semibold text-navy">Este turno ya se envió</p>
               <p className="mt-1 text-sm text-muted">
                 El reporte <span className="font-mono">{yaEnviado}</span> ya está registrado. Ahora corresponde evaluarlo.
               </p>
@@ -369,7 +369,7 @@ export function NuevoReporteForm({
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <Clock className="h-10 w-10 text-amber-500" strokeWidth={1.5} />
             <div>
-              <p className="font-display text-lg font-semibold text-navy">Este horario ya está cubierto</p>
+              <p className="text-lg font-semibold text-navy">Este horario ya está cubierto</p>
               <p className="mt-1 text-sm text-muted">
                 Ya existe un reporte de <span className="font-semibold">{TURNO_LABEL[conflicto.turno] ?? conflicto.turno}</span> para {sede} · {fecha}, que ya cubre este horario. No se puede crear otro reporte encima.
               </p>

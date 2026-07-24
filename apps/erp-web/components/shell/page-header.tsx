@@ -13,7 +13,7 @@ export function PageHeader({
     <div className="mb-7">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-semibold leading-none text-navy">{title}</h1>
+          <h1 className="text-3xl font-semibold leading-none text-navy">{title}</h1>
           {subtitle && <p className="mt-2 text-sm text-muted">{subtitle}</p>}
         </div>
         {action}

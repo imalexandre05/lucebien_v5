@@ -59,7 +59,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
           <div className="flex items-center gap-3">
             <LogoMark size="md" />
             <div>
-              <div className="font-display text-2xl font-semibold leading-none text-navy">
+              <div className="text-2xl font-semibold leading-none text-navy">
                 Reporte diario de actividades
               </div>
               <div className="mt-1 text-xs text-muted">

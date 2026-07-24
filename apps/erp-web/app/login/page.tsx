@@ -16,7 +16,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center">
           <LogoMark size="xl" className="animate-scale-in" />
-          <div className="mt-4 animate-rise font-display text-4xl font-semibold leading-none text-navy [animation-delay:90ms]">
+          <div className="mt-4 animate-rise text-4xl font-semibold leading-none text-navy [animation-delay:90ms]">
             LuceBien
           </div>
           <div className="mt-2 animate-rise font-mono text-[10px] tracking-brand text-gold [animation-delay:150ms]">

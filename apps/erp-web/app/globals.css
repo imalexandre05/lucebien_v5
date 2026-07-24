@@ -17,11 +17,13 @@
     @apply bg-paper text-ink font-body antialiased;
     text-rendering: optimizeLegibility;
   }
+  /* Sin serifas en el sistema (Fase 4): la Cormorant Garamond queda solo en el logo
+     (components/brand/logo.tsx), que sigue usando font-display explícitamente. */
   h1,
   h2,
   h3,
   h4 {
-    @apply font-display;
+    @apply font-body;
     letter-spacing: -0.01em;
   }
 }

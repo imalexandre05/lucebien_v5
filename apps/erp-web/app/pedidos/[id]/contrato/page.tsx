@@ -21,7 +21,7 @@ export default async function ContratoPage({ params }: { params: { id: string } 
 
       <article className="rounded-lg border border-line bg-white p-10 shadow-card print:border-0 print:shadow-none">
         <header className="border-b-2 border-navy pb-4">
-          <div className="font-display text-3xl font-semibold text-navy">LuceBien</div>
+          <div className="text-3xl font-semibold text-navy">LuceBien</div>
           <div className="mt-1 font-mono text-[10px] tracking-brand text-gold">CONTRATO DE ALQUILER · SCI-LB</div>
           <div className="mt-2 text-xs text-muted">Confecciones Aliaga E.I.R.L. · Huancayo, Perú</div>
         </header>

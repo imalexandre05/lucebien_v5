@@ -414,7 +414,7 @@ export function LayoutEditor({
             <Card>
               <CardContent className="space-y-3 pt-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-display text-lg font-semibold text-navy">Zona {sel.cod}</span>
+                  <span className="text-lg font-semibold text-navy">Zona {sel.cod}</span>
                   <div className="flex items-center gap-1">
                     <button type="button" onClick={() => duplicarZona(sel.key)} aria-label="Duplicar zona" title="Duplicar zona" className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-navy/5 hover:text-navy">
                       <CopyPlus className="h-4 w-4" strokeWidth={1.75} />
