@@ -1,31 +1,48 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { activoSchema } from '@scilb/core';
+import { activoSchema, type ActivoInput } from '@scilb/core';
 import { inventarioRepo } from '../../lib/inventario-repo';
 
-export async function crearActivo(formData: FormData) {
-  const parsed = activoSchema.safeParse({
-    codigo: formData.get('codigo'),
-    tipo: formData.get('tipo'),
-    talla: formData.get('talla') ?? '',
-    color: formData.get('color') ?? '',
-    sedeCod: formData.get('sedeCod'),
-    estado: formData.get('estado') ?? 'disponible',
-    precioBase: Number(formData.get('precioBase') ?? 0),
-    precioAlquiler: Number(formData.get('precioAlquiler') ?? 0),
-    precioVenta: Number(formData.get('precioVenta') ?? 0),
-    usosAcumulados: Number(formData.get('usosAcumulados') ?? 0),
-  });
+type R = { ok: boolean; error?: string };
+
+// El modal envía un objeto tipado (no FormData): los atributos son pares clave-valor dinámicos
+// que no calzan bien en un <form> nativo. Mismo patrón que otras acciones del ERP (p.ej.
+// accionCrearReporte) que ya reciben objetos en vez de FormData.
+export async function accionCrearActivo(input: ActivoInput): Promise<R> {
+  const parsed = activoSchema.safeParse(input);
   if (!parsed.success) {
-    // Demo: en la versión real devolvemos los errores de Zod a la UI.
-    return;
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
   }
-  await inventarioRepo.crear(parsed.data);
-  revalidatePath('/inventario');
+  try {
+    await inventarioRepo.crear(parsed.data);
+    revalidatePath('/inventario');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al crear el activo' };
+  }
 }
 
-export async function eliminarActivo(formData: FormData) {
-  await inventarioRepo.eliminar(String(formData.get('id')));
-  revalidatePath('/inventario');
+export async function accionEditarActivo(id: string, input: ActivoInput): Promise<R> {
+  const parsed = activoSchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Datos inválidos' };
+  }
+  try {
+    await inventarioRepo.editar(id, parsed.data);
+    revalidatePath('/inventario');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al editar el activo' };
+  }
+}
+
+export async function accionEliminarActivo(id: string): Promise<R> {
+  try {
+    await inventarioRepo.eliminar(id);
+    revalidatePath('/inventario');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al dar de baja' };
+  }
 }

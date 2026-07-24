@@ -17,6 +17,17 @@ export interface ActivoInventario {
   precioAlquiler: number;
   precioVenta: number;
   usosAcumulados: number;
+  // Atributos libres clave-valor (tela, forro, cuello, ancho, ...): no hay un esquema fijo por
+  // tipo de prenda (regla de negocio no confirmada) — el admin agrega lo que corresponda.
+  atributos: Record<string, string>;
+  // Preparación para el futuro catálogo público de LB-Web (otro repo): qué activos se muestran
+  // y con qué descripción — no se construye la integración aquí, solo los campos.
+  publicable: boolean;
+  descripcionPublica: string;
+  // Trazabilidad (Fase 8): si el activo tiene una prenda_pasada activa (etapa != 'enviado') vía
+  // el vínculo prenda_pasada.activo_id, esto refleja dónde está de verdad ahora mismo — el
+  // estado comercial (arriba) es el "de reposo"; mientras está en pipeline, prevalece esto.
+  enPipeline: { pasadaId: string; etapa: string } | null;
 }
 
 // Codificación [TIPO]-[NNN] global; la sede es campo aparte, NO va en el código.
@@ -54,11 +65,15 @@ export const activoSchema = z.object({
   precioAlquiler: z.number().nonnegative().default(0),
   precioVenta: z.number().nonnegative().default(0),
   usosAcumulados: z.number().int().nonnegative().default(0),
+  atributos: z.record(z.string()).default({}),
+  publicable: z.boolean().default(false),
+  descripcionPublica: z.string().default(''),
 });
 export type ActivoInput = z.infer<typeof activoSchema>;
 
 export interface InventarioRepo {
   listar(): Promise<ActivoInventario[]>;
   crear(input: ActivoInput): Promise<ActivoInventario>;
+  editar(id: string, input: ActivoInput): Promise<ActivoInventario>;
   eliminar(id: string): Promise<void>;
 }

@@ -1,97 +1,19 @@
-import Link from 'next/link';
-import { Plus } from 'lucide-react';
-import type { EstadoActivo } from '@scilb/core';
 import { inventarioRepo } from '../../lib/inventario-repo';
-import { eliminarActivo } from './actions';
+import { listarSedes } from '../../lib/sedes-repo';
 import { PageHeader } from '../../components/shell/page-header';
-import { Card, CardContent } from '../../components/ui/card';
-import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
-import { Badge, type Tone } from '../../components/ui/badge';
-import { buttonVariants } from '../../components/ui/button';
+import { InventarioCliente } from './cliente';
 
-const TONE: Record<EstadoActivo, Tone> = {
-  disponible: 'green',
-  alquilado: 'amber',
-  en_lavanderia: 'navy',
-  baja: 'gray',
-};
-const LABEL: Record<EstadoActivo, string> = {
-  disponible: 'Disponible',
-  alquilado: 'Alquilado',
-  en_lavanderia: 'En lavandería',
-  baja: 'Baja',
-};
-
+// Inventario comercial (Fase 8): "nuevo activo" y edición son MODAL, nunca una página nueva —
+// múltiples páginas confunden al personal. La tabla permite edición rápida en línea para lo
+// cotidiano (estado, precios) y el modal cubre todo lo demás (atributos libres por tipo,
+// código, sede...). Cada fila refleja su trazabilidad real: si tiene una pasada de pipeline
+// activa, se ve "En pipeline: {etapa}" en vez del estado de reposo.
 export default async function InventarioPage() {
-  const activos = await inventarioRepo.listar();
+  const [activos, sedes] = await Promise.all([inventarioRepo.listar(), listarSedes().catch(() => [])]);
   return (
     <div>
-      <PageHeader
-        title="Inventario comercial"
-        subtitle="Activos de alquiler y venta"
-        action={
-          <Link href="/inventario/nuevo" className={buttonVariants({ variant: 'primary' })}>
-            <Plus className="h-4 w-4" strokeWidth={2} />
-            Nuevo activo
-          </Link>
-        }
-      />
-      <Card>
-        <CardContent className="px-0 pb-0">
-          <Table>
-            <THead>
-              <TR>
-                <TH className="pl-5">Código</TH>
-                <TH>Tipo</TH>
-                <TH>Talla</TH>
-                <TH>Color</TH>
-                <TH>Sede</TH>
-                <TH>Estado</TH>
-                <TH className="text-right">Alquiler</TH>
-                <TH className="text-right">Venta</TH>
-                <TH className="text-right">Usos</TH>
-                <TH className="pr-5" />
-              </TR>
-            </THead>
-            <TBody>
-              {activos.map((a) => (
-                <TR key={a.id}>
-                  <TD className="pl-5 font-mono font-medium text-navy">{a.codigo}</TD>
-                  <TD>{a.tipo}</TD>
-                  <TD>{a.talla}</TD>
-                  <TD>{a.color}</TD>
-                  <TD>{a.sedeCod}</TD>
-                  <TD>
-                    <Badge tone={TONE[a.estado]}>{LABEL[a.estado]}</Badge>
-                  </TD>
-                  <TD className="text-right font-mono">S/ {a.precioAlquiler.toFixed(2)}</TD>
-                  <TD className="text-right font-mono">S/ {a.precioVenta.toFixed(2)}</TD>
-                  <TD className="text-right font-mono">{a.usosAcumulados}</TD>
-                  <TD className="pr-5 text-right">
-                    <form action={eliminarActivo}>
-                      <input type="hidden" name="id" value={a.id} />
-                      <button className="cursor-pointer rounded px-1.5 py-0.5 text-xs text-muted transition-colors hover:text-red-600 active:scale-[0.97]">
-                        Baja
-                      </button>
-                    </form>
-                  </TD>
-                </TR>
-              ))}
-              {activos.length === 0 && (
-                <TR>
-                  <TD colSpan={10} className="px-5 py-10 text-center text-muted">
-                    Sin activos en el inventario todavía.
-                  </TD>
-                </TR>
-              )}
-            </TBody>
-          </Table>
-        </CardContent>
-      </Card>
-      <p className="mt-3 text-xs text-muted">
-        Precio sugerido por uso acumulado (E3): el modelo ya guarda <span className="font-mono">usosAcumulados</span>;
-        la regla numérica se aplica al confirmarse.
-      </p>
+      <PageHeader title="Inventario comercial" subtitle="Activos de alquiler y venta" />
+      <InventarioCliente activosIniciales={activos} sedes={sedes.map((s) => s.cod)} />
     </div>
   );
 }

@@ -84,6 +84,14 @@ export async function crearPasadaDesdePedido(p: {
 }
 
 // Alta manual desde la pestaña Registrar: prendas que llegan al almacén sin pedido asociado.
+// Trazabilidad (Fase 8): el vínculo prenda_pasada.activo_id → inventario_activo.id ya existía
+// en el esquema (E5, migración 0001) pero nunca se usaba. Al registrar una prenda: si su código
+// ya tiene un activo en el inventario (una prenda que vuelve a proceso, ej. lavado tras un
+// alquiler), se reusa ese activo y se linkea la nueva pasada; si es completamente nueva
+// (llega recién de proveedor/confección), se crea el activo de una vez — "pasa por el pipeline
+// para codificarse" antes de mostrarse, tal como describe el flujo del negocio. Dos escrituras
+// secuenciales (sin RPC): mismo patrón que el resto de este archivo (registrarPasada ya era un
+// insert simple, no transaccional).
 export async function registrarPasada(p: {
   codigo: string;
   tipo: string;
@@ -95,7 +103,33 @@ export async function registrarPasada(p: {
   obsGeneral: string | null;
 }): Promise<void> {
   const sb = getServerClient();
+
+  const { data: existente, error: buscarErr } = await sb
+    .from('inventario_activo')
+    .select('id')
+    .eq('codigo', p.codigo)
+    .maybeSingle();
+  if (buscarErr) throw new Error(buscarErr.message);
+
+  let activoId = (existente as { id: string } | null)?.id ?? null;
+  if (!activoId) {
+    const { data: nuevo, error: crearErr } = await sb
+      .from('inventario_activo')
+      .insert({
+        codigo: p.codigo,
+        tipo: p.tipo,
+        color: p.color ?? '',
+        talla: p.talla ?? '',
+        sede_cod: p.sedeOrigenCod,
+      })
+      .select('id')
+      .single();
+    if (crearErr) throw new Error(crearErr.message);
+    activoId = (nuevo as { id: string }).id;
+  }
+
   const { error } = await sb.from('prenda_pasada').insert({
+    activo_id: activoId,
     codigo: p.codigo,
     tipo: p.tipo,
     color: p.color,
