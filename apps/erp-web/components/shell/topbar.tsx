@@ -1,12 +1,13 @@
 import Link from 'next/link';
-import { Bell, LogOut } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { ROL_LABEL, type MatrizPermisos } from '@scilb/core';
 import { cerrarSesion } from '../../app/login/actions';
 import { getSesion } from '../../lib/auth';
-import { contarNoLeidas } from '../../lib/notificaciones-repo';
+import { listarNotificaciones, type Notificacion } from '../../lib/notificaciones-repo';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
 import { LogoMark } from '../brand/logo';
 import { MobileNav } from './mobile-nav';
+import { NotificacionesBell } from './notificaciones-popover';
 
 function iniciales(nombre: string): string {
   const parts = nombre.trim().split(/\s+/).filter(Boolean);
@@ -22,15 +23,16 @@ export async function Topbar() {
   const sede = sesion?.usuario.sede ?? '';
   const rol = sesion?.usuario.rol;
 
-  // Contador de no leídas y matriz de permisos; nunca deben tumbar el topbar (fallback seguro:
-  // matriz vacía = solo admin/dueno ven módulos no-operativos, hasta que la migración/red vuelvan).
-  let noLeidas = 0;
+  // Notificaciones (para la campana) y matriz de permisos; nunca deben tumbar el topbar
+  // (fallback seguro: matriz vacía = solo admin/dueno ven módulos no-operativos).
+  let notificaciones: Notificacion[] = [];
   let matriz: MatrizPermisos = {};
+  const esAdmin = rol === 'admin' || rol === 'dueno';
   if (sesion) {
     try {
-      noLeidas = await contarNoLeidas();
+      notificaciones = await listarNotificaciones(false, 30);
     } catch {
-      noLeidas = 0;
+      notificaciones = [];
     }
     try {
       matriz = await leerMatrizPermisos();
@@ -47,21 +49,7 @@ export async function Topbar() {
         <span className="hidden md:inline">Confecciones Aliaga · Huancayo</span>
       </div>
       <div className="flex items-center gap-3">
-        {sesion && (
-          <Link
-            href="/notificaciones"
-            title="Notificaciones"
-            aria-label={noLeidas > 0 ? `Notificaciones, ${noLeidas} sin leer` : 'Notificaciones'}
-            className="relative flex h-8 w-8 items-center justify-center rounded-full text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-[0.97]"
-          >
-            <Bell className="h-4 w-4" strokeWidth={1.75} />
-            {noLeidas > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
-                {noLeidas > 99 ? '99+' : noLeidas}
-              </span>
-            )}
-          </Link>
-        )}
+        {sesion && <NotificacionesBell notificaciones={notificaciones} esAdmin={esAdmin} />}
         {sede && (
           <span className="hidden rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-navy sm:inline">
             Sede · {sede}

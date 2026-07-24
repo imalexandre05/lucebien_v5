@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Bell, Settings, Laptop, Truck, Boxes, ShoppingCart, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, type LucideIcon } from 'lucide-react';
 import { puede, type MatrizPermisos, type Rol } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -17,7 +17,6 @@ const NAV: { section: string; items: Item[] }[] = [
     section: 'Interno',
     items: [
       { label: 'Dashboard', href: '/', icon: LayoutDashboard, modulo: 'dashboard' },
-      { label: 'Notificaciones', href: '/notificaciones', icon: Bell, modulo: 'notificaciones' },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt, modulo: 'pipeline' },
       { label: 'Reporte de Actividades', href: '/reportes', icon: ClipboardList, modulo: 'reportes' },
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },
