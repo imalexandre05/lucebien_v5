@@ -10,6 +10,16 @@ export const loginSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginSchema>;
 
+// Login usuario+contraseña (LOGIN_V2): reemplaza cod+sede. `usuario` es empleados.nombre
+// (case-insensitive); la contraseña real se migra desde el hash bcrypt que ya vive en
+// empleados.password_hash (ver migración 0049) — no se inventa ni se pide texto plano nuevo
+// salvo que el admin la reasigne desde /empleados.
+export const loginUsuarioSchema = z.object({
+  usuario: z.string().min(1, 'Usuario requerido'),
+  password: z.string().min(1, 'Contraseña requerida'),
+});
+export type LoginUsuarioInput = z.infer<typeof loginUsuarioSchema>;
+
 export interface Sesion {
   nombre: string;
   usuario: Usuario;

@@ -1,3 +1,4 @@
+import { isOn } from '@scilb/adapter-lucebien';
 import { iniciarSesion } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input, Select, Label } from '../../components/ui/form';
@@ -6,11 +7,13 @@ import { listarSedesPublico } from '../../lib/sedes-repo';
 import { BotonIngresar } from './boton';
 
 // Primera impresión (§4B): entrada escalonada crest → wordmark → tarjeta → pie,
-// código estilo "cerradura" (mono, centrado, tracking ancho). La lógica de auth
-// (cod + sede, 4 dígitos) no cambia. Las sedes salen de la BD: crear una sede
-// nueva en Configuración la habilita aquí sin tocar código.
+// código estilo "cerradura" (mono, centrado, tracking ancho). Con LOGIN_V2 apagado (default)
+// se mantiene el login híbrido cod+sede; encendido, pide usuario+contraseña — ver
+// C:\Users\ASUS\.claude\plans\glittery-plotting-shannon.md. Las sedes salen de la BD: crear una
+// sede nueva en Configuración la habilita aquí sin tocar código (solo aplica al modo cod+sede).
 export default async function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
-  const SEDES = await listarSedesPublico();
+  const loginV2 = isOn('LOGIN_V2');
+  const SEDES = loginV2 ? [] : await listarSedesPublico();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper px-4">
       <div className="w-full max-w-sm">
@@ -30,46 +33,71 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
             {searchParams.error && (
               <p role="alert" className="mb-4 animate-rise rounded-md bg-amber-500/15 px-3 py-2 text-xs text-amber-700">
                 {searchParams.error === 'credenciales'
-                  ? 'Código o sede incorrectos.'
-                  : 'Datos inválidos. Revisa la sede y el código (4 dígitos).'}
+                  ? loginV2
+                    ? 'Usuario o contraseña incorrectos.'
+                    : 'Código o sede incorrectos.'
+                  : loginV2
+                    ? 'Datos inválidos. Revisa el usuario y la contraseña.'
+                    : 'Datos inválidos. Revisa la sede y el código (4 dígitos).'}
               </p>
             )}
-            <form action={iniciarSesion} className="space-y-4">
-              <div>
-                <Label htmlFor="login-sede">Sede</Label>
-                <Select id="login-sede" name="sede" defaultValue="LB">
-                  {SEDES.map((s) => (
-                    <option key={s.cod} value={s.cod}>
-                      {s.nombre}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="login-cod">Código</Label>
-                <Input
-                  id="login-cod"
-                  name="cod"
-                  inputMode="numeric"
-                  pattern="[0-9]{4}"
-                  maxLength={4}
-                  placeholder="····"
-                  autoComplete="off"
-                  className="py-2.5 text-center font-mono text-lg tracking-[0.5em] placeholder:tracking-[0.3em]"
-                  aria-describedby="login-ayuda"
-                  required
-                  autoFocus
-                />
-              </div>
-              <BotonIngresar />
-            </form>
+            {loginV2 ? (
+              <form action={iniciarSesion} className="space-y-4">
+                <div>
+                  <Label htmlFor="login-usuario">Usuario</Label>
+                  <Input
+                    id="login-usuario"
+                    name="usuario"
+                    autoComplete="username"
+                    placeholder="Tu nombre"
+                    required
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="login-password">Contraseña</Label>
+                  <Input id="login-password" name="password" type="password" autoComplete="current-password" required />
+                </div>
+                <BotonIngresar />
+              </form>
+            ) : (
+              <form action={iniciarSesion} className="space-y-4">
+                <div>
+                  <Label htmlFor="login-sede">Sede</Label>
+                  <Select id="login-sede" name="sede" defaultValue="LB">
+                    {SEDES.map((s) => (
+                      <option key={s.cod} value={s.cod}>
+                        {s.nombre}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="login-cod">Código</Label>
+                  <Input
+                    id="login-cod"
+                    name="cod"
+                    inputMode="numeric"
+                    pattern="[0-9]{4}"
+                    maxLength={4}
+                    placeholder="····"
+                    autoComplete="off"
+                    className="py-2.5 text-center font-mono text-lg tracking-[0.5em] placeholder:tracking-[0.3em]"
+                    aria-describedby="login-ayuda"
+                    required
+                    autoFocus
+                  />
+                </div>
+                <BotonIngresar />
+              </form>
+            )}
           </CardContent>
         </Card>
         <p
           id="login-ayuda"
           className="mt-4 animate-rise text-center text-[11px] text-muted [animation-delay:270ms]"
         >
-          Ingresa con tu código de 4 dígitos y tu sede
+          {loginV2 ? 'Ingresa con tu usuario y contraseña' : 'Ingresa con tu código de 4 dígitos y tu sede'}
         </p>
       </div>
     </div>

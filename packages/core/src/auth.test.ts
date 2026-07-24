@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { loginSchema, puede, type MatrizPermisos } from './auth';
+import { loginSchema, loginUsuarioSchema, puede, type MatrizPermisos } from './auth';
 
 describe('loginSchema (cod+sede)', () => {
   it('valida código de 4 dígitos', () => {
@@ -8,6 +8,16 @@ describe('loginSchema (cod+sede)', () => {
   it('rechaza código que no sea de 4 dígitos', () => {
     expect(loginSchema.safeParse({ sede: 'LB', cod: '12', password: 'x' }).success).toBe(false);
     expect(loginSchema.safeParse({ sede: 'LB', cod: 'abcd', password: 'x' }).success).toBe(false);
+  });
+});
+
+describe('loginUsuarioSchema (usuario+contraseña, LOGIN_V2)', () => {
+  it('acepta usuario y contraseña no vacíos', () => {
+    expect(loginUsuarioSchema.safeParse({ usuario: 'Alexander', password: 'secreta' }).success).toBe(true);
+  });
+  it('rechaza usuario o contraseña vacíos', () => {
+    expect(loginUsuarioSchema.safeParse({ usuario: '', password: 'secreta' }).success).toBe(false);
+    expect(loginUsuarioSchema.safeParse({ usuario: 'Alexander', password: '' }).success).toBe(false);
   });
 });
 

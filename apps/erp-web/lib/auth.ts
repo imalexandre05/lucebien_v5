@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { cookies } from 'next/headers';
 import type { Sesion } from '@scilb/core';
 import { getServerClient } from './supabase/server';
+import { getAdminClient } from './supabase/admin';
 
 const SEDE_COOKIE = 'sci_sede';
 const EMAIL_DOMAIN = 'lucebien.local';
@@ -18,6 +19,27 @@ export async function login(cod: string, sede: string): Promise<{ ok: boolean; e
   });
   if (error) return { ok: false, error: error.message };
   cookies().set(SEDE_COOKIE, sede, { httpOnly: true, sameSite: 'lax', path: '/' });
+  return { ok: true };
+}
+
+// LOGIN_V2: usuario (empleados.nombre) + contraseña real. Se conserva el mismo email interno
+// {cod}@lucebien.local — cod nunca se pide ni se muestra, queda como PIN de atribución interno
+// (ya usado desde Fase 2). La búsqueda del empleado usa el cliente admin (bypassa RLS) porque
+// corre ANTES de que exista sesión — mismo patrón que listarSedesPublico() en sedes-repo.ts.
+// No se setea SEDE_COOKIE: getSesion() ya cae a empleados.sede_cod cuando no hay cookie.
+// Mensaje de error genérico en ambos casos (usuario inexistente o contraseña incorrecta) para no
+// filtrar qué usuarios existen.
+export async function loginConUsuario(usuario: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  const admin = getAdminClient();
+  const { data: emp } = await admin.from('empleados').select('cod').ilike('nombre', usuario.trim()).maybeSingle();
+  if (!emp) return { ok: false, error: 'Usuario o contraseña incorrectos' };
+
+  const sb = getServerClient();
+  const { error } = await sb.auth.signInWithPassword({
+    email: `${(emp as { cod: string }).cod}@${EMAIL_DOMAIN}`,
+    password,
+  });
+  if (error) return { ok: false, error: 'Usuario o contraseña incorrectos' };
   return { ok: true };
 }
 

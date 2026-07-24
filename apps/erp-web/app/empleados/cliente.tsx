@@ -2,9 +2,9 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Filter, Pencil, UserX, UserCheck } from 'lucide-react';
+import { Filter, Pencil, UserX, UserCheck, KeyRound } from 'lucide-react';
 import type { EmpleadoAdmin } from '../../lib/empleados-repo';
-import { accionEstadoEmpleado, accionEditarContacto } from './actions';
+import { accionEstadoEmpleado, accionEditarContacto, accionEstablecerContrasena } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { buttonVariants } from '../../components/ui/button';
@@ -252,6 +252,13 @@ function EditarModal({ emp, onClose, onSaved }: { emp: EmpleadoAdmin; onClose: (
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
+  // Contraseña: acción propia, separada del guardado de contacto (distinto endpoint, distinto
+  // feedback — no tiene sentido bloquear una por la otra).
+  const [password, setPassword] = useState('');
+  const [passError, setPassError] = useState('');
+  const [passOk, setPassOk] = useState(false);
+  const [passPending, startPassTransition] = useTransition();
+
   function guardar() {
     setError('');
     startTransition(async () => {
@@ -261,6 +268,20 @@ function EditarModal({ emp, onClose, onSaved }: { emp: EmpleadoAdmin; onClose: (
         return;
       }
       onSaved();
+    });
+  }
+
+  function guardarContrasena() {
+    setPassError('');
+    setPassOk(false);
+    startPassTransition(async () => {
+      const r = await accionEstablecerContrasena(emp.id, password);
+      if (!r.ok) {
+        setPassError(r.error ?? 'Error');
+        return;
+      }
+      setPassword('');
+      setPassOk(true);
     });
   }
 
@@ -302,6 +323,34 @@ function EditarModal({ emp, onClose, onSaved }: { emp: EmpleadoAdmin; onClose: (
           />
         </div>
         {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+        <div className="border-t border-line/60 pt-3">
+          <label className="mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted">
+            <KeyRound className="h-3.5 w-3.5" strokeWidth={2} /> Asignar / reiniciar contraseña
+          </label>
+          <p className="mb-2 text-[11px] text-muted">
+            Toma efecto cuando el login por usuario+contraseña esté activado. No afecta el código de 4 dígitos.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Nueva contraseña"
+              className={cn(fieldCls, 'flex-1')}
+            />
+            <button
+              type="button"
+              onClick={guardarContrasena}
+              disabled={passPending || password.length < 4}
+              className={cn(buttonVariants({ variant: 'outline' }), passPending && 'opacity-60')}
+            >
+              {passPending ? 'Guardando…' : 'Asignar'}
+            </button>
+          </div>
+          {passOk && <p className="mt-1.5 text-xs font-medium text-emerald-700">Contraseña actualizada ✓</p>}
+          {passError && <p className="mt-1.5 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{passError}</p>}
+        </div>
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>

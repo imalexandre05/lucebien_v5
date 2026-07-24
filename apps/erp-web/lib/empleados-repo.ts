@@ -1,4 +1,5 @@
 import { getServerClient } from './supabase/server';
+import { getAdminClient } from './supabase/admin';
 
 // Gestión de colaboradores (solo admin). La RLS ya lo garantiza:
 //  · emp_select     → app_es_admin() OR id = auth.uid()  (admin ve todos)
@@ -76,6 +77,15 @@ export async function actualizarEstadoEmpleado(id: string, activo: boolean): Pro
     .from('empleados')
     .update({ activo, estado: activo ? 'activo' : 'suspendido' })
     .eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
+// Asignar/reiniciar la contraseña de login (LOGIN_V2). Usa el cliente admin — cambiar la
+// contraseña de OTRO usuario en Supabase Auth requiere la Admin API (service_role), no está
+// expuesto por PostgREST/RLS normal. updateUserById hashea server-side; nunca pasa por una
+// tabla propia ni se loguea en texto plano.
+export async function establecerContrasenaEmpleado(id: string, password: string): Promise<void> {
+  const { error } = await getAdminClient().auth.admin.updateUserById(id, { password });
   if (error) throw new Error(error.message);
 }
 
