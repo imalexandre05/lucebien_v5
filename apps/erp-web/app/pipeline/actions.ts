@@ -28,6 +28,12 @@ export async function enviarPrenda(id: string, sede: string) {
   revalidatePath('/pipeline');
 }
 
+export async function enviarTandaPrendas(ids: string[], sede: string) {
+  if (!ids.length || !sede) return;
+  await Promise.all(ids.map((id) => enviarPasada(id, sede)));
+  revalidatePath('/pipeline');
+}
+
 export async function rechazarPrenda(id: string, destino: string) {
   if (!id || !destino) return;
   await rechazarPasada(id, destino);

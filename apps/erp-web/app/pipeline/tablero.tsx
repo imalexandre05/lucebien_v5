@@ -29,7 +29,7 @@ import type { RankingItem } from '../../lib/pipeline-repo';
 import { cn } from '../../lib/cn';
 import {
   avanzarPrenda,
-  enviarPrenda,
+  enviarTandaPrendas,
   rechazarPrenda,
   deshacerPrenda,
   avanzarTandaPrendas,
@@ -71,17 +71,6 @@ const COLUMNAS: Col[] = [
 ];
 const NOMBRE: Record<string, string> = Object.fromEntries(COLUMNAS.map((c) => [c.k, c.n]));
 
-// Destino primario al avanzar en tanda (toda la columna), portado del mapa NEXT del viejo.
-const NEXT_TANDA: Record<string, string> = {
-  recepcion: 'lavado',
-  lavado: 'empatado',
-  empatado: 'refaccion',
-  refaccion: 'planchado',
-  compostura: 'planchado',
-  planchado: 'control_calidad',
-  control_calidad: 'listo',
-};
-
 // Pestañas del módulo (como el viejo), todas activas.
 const TABS: { k: string; label: string; href?: string; pronto?: boolean }[] = [
   { k: 'kanban', label: 'Kanban', href: '/pipeline' },
@@ -102,7 +91,7 @@ const tipoLavadoCls = (t: string): string => {
 type Handlers = {
   avanzar: (id: string, destino: string, etapaActual: string) => void;
   avanzarTanda: (ids: string[], destino: string) => void;
-  enviar: (id: string, sede: string) => void;
+  enviarTanda: (ids: string[], sede: string) => void;
   rechazar: (id: string, destino: string) => void;
   dividir: (id: string) => void;
 };
@@ -131,6 +120,7 @@ export function TableroPipeline({
   const [tipoF, setTipoF] = useState('');
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [selEtapa, setSelEtapa] = useState<string | null>(null);
+  const [sedeEnvio, setSedeEnvio] = useState(tiendas[0] ?? 'LB');
 
   useEffect(() => {
     if (!toast) return;
@@ -163,11 +153,11 @@ export function TableroPipeline({
           undo: () => deshacer(id, etapaActual, pts ?? 0),
         });
       }),
-    enviar: (id, sede) =>
+    enviarTanda: (ids, sede) =>
       startTransition(async () => {
-        aplicar({ id, etapa: 'enviado' });
-        await enviarPrenda(id, sede);
-        setToast({ msg: `Enviado a ${sede}`, tono: 'gold' });
+        ids.forEach((id) => aplicar({ id, etapa: 'enviado' }));
+        await enviarTandaPrendas(ids, sede);
+        setToast({ msg: `${ids.length} prendas enviadas a ${sede}`, tono: 'gold' });
       }),
     rechazar: (id, destino) =>
       startTransition(async () => {
@@ -201,6 +191,20 @@ export function TableroPipeline({
     });
   };
 
+  // Seleccionar/deseleccionar toda la columna de un clic (el avance en sí vive SOLO en la
+  // barra superior, no hay botones por tarjeta ni por columna).
+  const toggleColumna = (ids: string[], etapa: string) => {
+    setSel((prev) => {
+      const yaCompleta = selEtapa === etapa && ids.every((id) => prev.has(id));
+      if (yaCompleta) {
+        setSelEtapa(null);
+        return new Set();
+      }
+      setSelEtapa(etapa);
+      return new Set(ids);
+    });
+  };
+
   // Filtros: sede y tipo de lavado dinámicos (de la data, sin inventar valores).
   const sedes = useMemo(
     () => Array.from(new Set(optimistas.map((p) => p.sedeOrigenCod).filter(Boolean))).sort(),
@@ -225,9 +229,12 @@ export function TableroPipeline({
   const destsSel = selEtapa ? ((TRANSICIONES as Record<string, readonly string[]>)[selEtapa] ?? []) : [];
 
   return (
-    <div>
+    // Alto = viewport menos topbar (h-14) y el padding vertical del <main> (py-6/sm:py-8):
+    // el tablero NUNCA crece más que la pantalla — solo el carril de columnas hace scroll
+    // (y cada columna, internamente), nunca la página entera.
+    <div className="flex h-[calc(100vh-6.5rem)] flex-col overflow-hidden sm:h-[calc(100vh-7.5rem)]">
       {/* ── Banda de cabecera (navy) ── */}
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
+      <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
         <div>
           <div className="text-xl font-semibold leading-none">Prendas recibidas</div>
           <div className="mt-1 font-mono text-[11px] uppercase tracking-widest text-gold">Almacén Central</div>
@@ -252,7 +259,7 @@ export function TableroPipeline({
       </div>
 
       {/* ── Pestañas ── */}
-      <div className="mb-3 flex flex-wrap items-center gap-1 border-b border-line">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-1 border-b border-line">
         {TABS.map((t) =>
           t.href ? (
             <NavLink key={t.k} href={t.href} activo={t.k === 'kanban'}>
@@ -278,7 +285,7 @@ export function TableroPipeline({
       </div>
 
       {/* ── Filtros + búsqueda ── */}
-      <div className="mb-3 flex flex-wrap items-center gap-2">
+      <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
         <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Filtros</span>
         <Chip on={!sedeF} onClick={() => setSedeF('')}>Todas</Chip>
         {sedes.map((s) => (
@@ -301,33 +308,61 @@ export function TableroPipeline({
         </div>
       </div>
 
-      {/* ── Barra de acción por selección ── */}
+      {/* ── Barra de avance: ÚNICO lugar del tablero con botones para pasar de etapa (nada de
+          esto vive en las tarjetas). El tablero no hace scroll de página, así que esta barra
+          siempre está a la vista sin necesidad de sticky. ── */}
       {sel.size > 0 && selEtapa && (
-        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-lg border border-navy/15 bg-navy/5 px-3 py-2">
-          <span className="text-sm font-medium text-navy">
-            <span className="font-mono">{sel.size}</span> en {NOMBRE[selEtapa] ?? selEtapa}
+        <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2.5 rounded-xl border-2 border-navy bg-white px-4 py-3 shadow-lift">
+          <span className="text-sm font-semibold text-navy">
+            <span className="font-mono text-base">{sel.size}</span> en {NOMBRE[selEtapa] ?? selEtapa}
           </span>
-          {destsSel.map((d) => (
-            <button
-              key={d}
-              onClick={() => {
-                h.avanzarTanda([...sel], d);
-                limpiarSel();
-              }}
-              className="inline-flex items-center gap-1 rounded-md bg-navy px-2.5 py-1.5 text-xs font-medium text-white transition hover:bg-[#26345c]"
-            >
-              <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.5} /> {NOMBRE[d] ?? d}
-            </button>
-          ))}
+          {selEtapa === 'listo' ? (
+            <>
+              <select
+                value={sedeEnvio}
+                onChange={(e) => setSedeEnvio(e.target.value)}
+                aria-label="Sede destino"
+                className="rounded-md border border-line bg-white px-2 py-2 text-sm text-navy"
+              >
+                {tiendas.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => {
+                  h.enviarTanda([...sel], sedeEnvio);
+                  limpiarSel();
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-sm font-semibold text-navy transition hover:brightness-95 active:scale-[.98]"
+              >
+                <Send className="h-4 w-4" strokeWidth={2.5} /> Enviar a {sedeEnvio}
+              </button>
+            </>
+          ) : (
+            destsSel.map((d) => (
+              <button
+                key={d}
+                onClick={() => {
+                  h.avanzarTanda([...sel], d);
+                  limpiarSel();
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#26345c] active:scale-[.98]"
+              >
+                {NOMBRE[d] ?? d} <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            ))
+          )}
           <button onClick={limpiarSel} className="ml-auto inline-flex items-center gap-1 text-xs text-muted hover:text-navy">
-            <X className="h-3.5 w-3.5" strokeWidth={2.5} /> Limpiar
+            <X className="h-3.5 w-3.5" strokeWidth={2.5} /> Limpiar selección
           </button>
         </div>
       )}
 
       {/* ── Ranking del día ── */}
       {ranking.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-white p-3">
+        <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-lg border border-line bg-white p-3">
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
             <Trophy className="h-4 w-4 text-gold" strokeWidth={2} /> Puntos de hoy
           </span>
@@ -341,13 +376,15 @@ export function TableroPipeline({
         </div>
       )}
 
-      {/* ── Tablero: columnas a una pantalla, scroll interno (no una página kilométrica) ── */}
-      <div className="flex gap-3 overflow-x-auto pb-3">
+      {/* ── Tablero: columnas a una pantalla, scroll interno (no una página kilométrica). El
+          carril ocupa TODO el espacio que quede (flex-1 min-h-0) — nunca hace crecer la página,
+          cada columna llena ese alto exacto y solo su LISTA de tarjetas hace scroll interno. ── */}
+      <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto pb-3">
         {COLUMNAS.map((col) => {
           const items = visibles.filter((p) => p.etapa === col.k);
           const Icon = col.icon;
           return (
-            <div key={col.k} className="flex max-h-[calc(100vh-300px)] min-h-[300px] w-56 shrink-0 flex-col">
+            <div key={col.k} className="flex h-full w-56 shrink-0 flex-col">
               <div className="mb-2 flex shrink-0 items-center gap-2 rounded-lg px-3 py-2" style={{ background: `${col.tint}14` }}>
                 <Icon className="h-4 w-4 shrink-0" style={{ color: col.tint }} strokeWidth={2} />
                 <span className="text-sm font-medium" style={{ color: col.tint }}>
@@ -360,17 +397,22 @@ export function TableroPipeline({
                   {items.length}
                 </span>
               </div>
-              {items.length >= 2 && NEXT_TANDA[col.k] && (
+              {items.length >= 2 && (TRANSICIONES[col.k as keyof typeof TRANSICIONES]?.length || col.k === 'listo') && (
                 <button
-                  onClick={() => h.avanzarTanda(items.map((i) => i.id), NEXT_TANDA[col.k])}
-                  className="mb-2 inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-md border border-navy/15 bg-navy/5 px-2 py-1 text-[11px] font-medium text-navy transition hover:bg-navy/10"
+                  onClick={() => toggleColumna(items.map((i) => i.id), col.k)}
+                  className={cn(
+                    'mb-2 inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition',
+                    selEtapa === col.k && items.every((i) => sel.has(i.id))
+                      ? 'border-navy bg-navy text-white'
+                      : 'border-navy/15 bg-navy/5 text-navy hover:bg-navy/10',
+                  )}
                 >
-                  Avanzar todas → {NOMBRE[NEXT_TANDA[col.k]] ?? NEXT_TANDA[col.k]}
+                  <Check className="h-3 w-3" strokeWidth={2.5} /> Seleccionar todas ({items.length})
                 </button>
               )}
               <div className="-mr-1 min-h-0 flex-1 space-y-2 overflow-y-auto pb-1 pr-1">
                 {items.map((p) => (
-                  <Tarjeta key={p.id} p={p} h={h} tiendas={tiendas} seleccionado={sel.has(p.id)} onSel={() => toggleSel(p.id, p.etapa)} />
+                  <Tarjeta key={p.id} p={p} h={h} seleccionado={sel.has(p.id)} onSel={() => toggleSel(p.id, p.etapa)} />
                 ))}
                 {items.length === 0 && (
                   <div className="rounded-lg border border-dashed border-line py-5 text-center text-xs text-slate-400">
@@ -450,17 +492,14 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 function Tarjeta({
   p,
   h,
-  tiendas,
   seleccionado,
   onSel,
 }: {
   p: PrendaPasada;
   h: Handlers;
-  tiendas: string[];
   seleccionado: boolean;
   onSel: () => void;
 }) {
-  const dests = (TRANSICIONES as Record<string, readonly string[]>)[p.etapa] ?? [];
   const meta = [p.tipo, p.color, p.talla ? `T.${p.talla}` : ''].filter(Boolean).join(' · ');
   const esTerno = (p.tipo ?? '').toLowerCase().includes('terno');
   return (
@@ -527,23 +566,6 @@ function Tarjeta({
         </div>
       )}
 
-      {dests.length > 0 && (
-        <div className="mt-1.5 flex gap-1">
-          {dests.map((d) => (
-            <button
-              key={d}
-              onClick={() => h.avanzar(p.id, d, p.etapa)}
-              title={`Avanzar a ${NOMBRE[d] ?? d}`}
-              className="inline-flex flex-1 items-center justify-center gap-1 truncate rounded-md bg-navy px-1.5 py-1 text-[11px] font-medium text-white transition hover:bg-[#26345c] active:scale-[.98]"
-            >
-              <span className="truncate">{NOMBRE[d] ?? d}</span>
-              <ArrowRight className="h-3 w-3 shrink-0" strokeWidth={2.5} />
-            </button>
-          ))}
-        </div>
-      )}
-
-      {p.etapa === 'listo' && <Enviar p={p} h={h} tiendas={tiendas} />}
       {p.etapa === 'control_calidad' && <Rechazar p={p} h={h} />}
       {/* La confirmación es de la tienda receptora: vive en /pipeline/envios, no en el kanban del almacén. */}
       {p.etapa === 'enviado' && (
@@ -554,32 +576,6 @@ function Tarjeta({
           Confirmar en Envíos <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
         </a>
       )}
-    </div>
-  );
-}
-
-function Enviar({ p, h, tiendas }: { p: PrendaPasada; h: Handlers; tiendas: string[] }) {
-  const [sede, setSede] = useState(tiendas.includes(p.sedeOrigenCod) ? p.sedeOrigenCod : tiendas[0] ?? 'LB');
-  return (
-    <div className="mt-2 flex items-center gap-1.5">
-      <select
-        value={sede}
-        onChange={(e) => setSede(e.target.value)}
-        className="rounded-md border border-line bg-white px-1.5 py-1 text-xs text-navy"
-        aria-label="Sede destino"
-      >
-        {tiendas.map((t) => (
-          <option key={t} value={t}>
-            {t}
-          </option>
-        ))}
-      </select>
-      <button
-        onClick={() => h.enviar(p.id, sede)}
-        className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-md bg-gold px-2.5 py-1.5 text-xs font-semibold text-navy transition hover:brightness-95 active:scale-[.98]"
-      >
-        <Send className="h-3.5 w-3.5" strokeWidth={2.5} /> Enviar
-      </button>
     </div>
   );
 }
