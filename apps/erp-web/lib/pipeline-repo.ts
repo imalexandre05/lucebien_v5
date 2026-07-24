@@ -143,6 +143,31 @@ export async function registrarPasada(p: {
   if (error) throw new Error(error.message);
 }
 
+// Fase 9: al devolver un pedido de alquiler, el/los activo(s) reingresan al pipeline de
+// lavandería (recepción) para procesarse antes de volver a estar disponibles — reusa el vínculo
+// activo_id (Fase 8), sin buscar por código porque ya se tiene el id.
+export async function reingresarActivoAPipeline(activoId: string): Promise<void> {
+  const sb = getServerClient();
+  const { data: activo, error: e1 } = await sb
+    .from('inventario_activo')
+    .select('codigo, tipo, color, talla, sede_cod')
+    .eq('id', activoId)
+    .maybeSingle();
+  if (e1) throw new Error(e1.message);
+  if (!activo) return;
+  const a = activo as { codigo: string; tipo: string; color: string | null; talla: string | null; sede_cod: string | null };
+  const { error } = await sb.from('prenda_pasada').insert({
+    activo_id: activoId,
+    codigo: a.codigo,
+    tipo: a.tipo,
+    color: a.color,
+    talla: a.talla,
+    sede_origen_cod: a.sede_cod,
+    etapa: 'recepcion',
+  });
+  if (error) throw new Error(error.message);
+}
+
 // ── Mutaciones del tablero vía RPC (una sola llamada atómica, ~200ms; ver 0009). ──
 
 // Avanza la prenda y devuelve los puntos ganados por el actor (para feedback en la UI).

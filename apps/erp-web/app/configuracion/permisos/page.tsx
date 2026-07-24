@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import type { MatrizPermisos } from '@scilb/core';
 import { getSesion } from '../../../lib/auth';
 import { leerMatrizPermisos } from '../../../lib/permisos-repo';
 import { PageHeader } from '../../../components/shell/page-header';
@@ -11,7 +12,12 @@ export default async function PermisosPage() {
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
   if (!esAdmin) redirect('/');
 
-  const matriz = await leerMatrizPermisos();
+  let matriz: MatrizPermisos = {};
+  try {
+    matriz = await leerMatrizPermisos();
+  } catch {
+    matriz = {};
+  }
   return (
     <div>
       <PageHeader

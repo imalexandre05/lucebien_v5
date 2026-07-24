@@ -30,12 +30,19 @@ const NAV: { section: string; items: Item[] }[] = [
     ],
   },
   {
+    // POS (Fase 9): Pedidos + Caja agrupados — es el mismo mostrador, un pedido nuevo y un cobro
+    // son parte del mismo flujo de atención al cliente.
+    section: 'POS',
+    items: [
+      { label: 'Pedidos', href: '/pedidos', icon: ShoppingBag, modulo: 'pedidos' },
+      { label: 'Caja', href: '/caja', icon: Banknote, modulo: 'caja' },
+    ],
+  },
+  {
     section: 'Comercial',
     items: [
       { label: 'Inventario', href: '/inventario', icon: Package, modulo: 'inventario' },
       { label: 'Clientes', href: '/clientes', icon: Contact, modulo: 'clientes' },
-      { label: 'Pedidos', href: '/pedidos', icon: ShoppingBag, modulo: 'pedidos' },
-      { label: 'Caja', href: '/caja', icon: Banknote, modulo: 'caja' },
       { label: 'Finanzas', href: '/finanzas', icon: LineChart, modulo: 'finanzas' },
       { label: 'Estadísticas', href: '/estadisticas', icon: BarChart3, modulo: 'estadisticas' },
     ],

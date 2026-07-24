@@ -45,12 +45,14 @@ export function CajaCliente({
   movimientos,
   resumen,
   pendientes,
+  puedeCobrar,
 }: {
   sede: string;
   sesion: CajaSesion | null;
   movimientos: CajaMovimiento[];
   resumen: Resumen | null;
   pendientes: CobroPendiente[];
+  puedeCobrar: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -90,8 +92,19 @@ export function CajaCliente({
     });
   };
 
-  // ── Caja cerrada → abrir ──
+  // ── Caja cerrada → abrir (solo cajeros: permiso pos_cobro) ──
   if (!sesion) {
+    if (!puedeCobrar) {
+      return (
+        <Card>
+          <CardContent className="mx-auto max-w-md space-y-2 py-10 text-center">
+            <Wallet className="mx-auto h-10 w-10 text-line" strokeWidth={1.5} />
+            <p className="text-lg font-semibold text-navy">Caja cerrada</p>
+            <p className="text-sm text-muted">No tienes el permiso de cajero para abrirla. Pide a un cajero de {sede || 'tu sede'} que la abra.</p>
+          </CardContent>
+        </Card>
+      );
+    }
     return (
       <Card>
         <CardContent className="mx-auto max-w-md space-y-4 py-10 text-center">
@@ -132,20 +145,24 @@ export function CajaCliente({
             Apertura {soles(sesion.montoApertura)} · {sesion.aperturaAt.slice(0, 16).replace('T', ' ')}
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button data-testid="abrir-cobro" onClick={() => setModal('cobro')} className="inline-flex items-center gap-1.5 rounded-md bg-gold px-3 py-2 text-sm font-semibold text-navy transition hover:brightness-95">
-            <ArrowDownCircle className="h-4 w-4" strokeWidth={2} /> Cobro
-          </button>
-          <button onClick={() => setModal('egreso')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/20">
-            <ArrowUpCircle className="h-4 w-4" strokeWidth={2} /> Egreso
-          </button>
-          <button onClick={() => setModal('garantia')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/20">
-            <Shield className="h-4 w-4" strokeWidth={2} /> Garantía
-          </button>
-          <button data-testid="abrir-cerrar" onClick={() => { setMontoCierre(resumen?.efectivoEsperado ?? 0); setModal('cerrar'); }} className="inline-flex items-center gap-1.5 rounded-md border border-white/25 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/10">
-            <Lock className="h-4 w-4" strokeWidth={2} /> Cerrar caja
-          </button>
-        </div>
+        {puedeCobrar ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <button data-testid="abrir-cobro" onClick={() => setModal('cobro')} className="inline-flex items-center gap-1.5 rounded-md bg-gold px-3 py-2 text-sm font-semibold text-navy transition hover:brightness-95">
+              <ArrowDownCircle className="h-4 w-4" strokeWidth={2} /> Cobro
+            </button>
+            <button onClick={() => setModal('egreso')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/20">
+              <ArrowUpCircle className="h-4 w-4" strokeWidth={2} /> Egreso
+            </button>
+            <button onClick={() => setModal('garantia')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/20">
+              <Shield className="h-4 w-4" strokeWidth={2} /> Garantía
+            </button>
+            <button data-testid="abrir-cerrar" onClick={() => { setMontoCierre(resumen?.efectivoEsperado ?? 0); setModal('cerrar'); }} className="inline-flex items-center gap-1.5 rounded-md border border-white/25 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/10">
+              <Lock className="h-4 w-4" strokeWidth={2} /> Cerrar caja
+            </button>
+          </div>
+        ) : (
+          <span className="rounded-md bg-white/10 px-3 py-2 text-xs text-paper/70">Solo lectura — sin permiso de cajero</span>
+        )}
       </div>
 
       {/* Resumen del día */}
@@ -187,13 +204,15 @@ export function CajaCliente({
                   <TD className="text-right font-mono tabular-nums text-muted">{soles(p.cobrado)}</TD>
                   <TD className="text-right font-mono font-semibold tabular-nums text-navy">{soles(p.saldo)}</TD>
                   <TD className="pr-5 text-right">
-                    <button
-                      type="button"
-                      onClick={() => { setCPedido(p.pedidoId); setCMonto(p.saldo); setCTipo('saldo'); setCMetodo('efectivo'); setModal('cobro'); }}
-                      className="rounded-md border border-line px-2.5 py-1 text-xs text-navy transition hover:border-gold"
-                    >
-                      Cobrar
-                    </button>
+                    {puedeCobrar && (
+                      <button
+                        type="button"
+                        onClick={() => { setCPedido(p.pedidoId); setCMonto(p.saldo); setCTipo('saldo'); setCMetodo('efectivo'); setModal('cobro'); }}
+                        className="rounded-md border border-line px-2.5 py-1 text-xs text-navy transition hover:border-gold"
+                      >
+                        Cobrar
+                      </button>
+                    )}
                   </TD>
                 </TR>
               ))}

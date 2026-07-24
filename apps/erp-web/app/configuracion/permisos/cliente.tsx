@@ -33,12 +33,21 @@ const GRUPOS: { seccion: string; modulos: { modulo: string; label: string }[] }[
     ],
   },
   {
+    // POS (Fase 9): Pedidos + Caja. "Caja: cobrar (cajero)" es un permiso, no un rol — cualquier
+    // rol al que se le active puede registrar cobros/egresos/garantías y cerrar caja; sin él,
+    // solo puede VER la caja (movimientos, cobros pendientes) según el módulo 'caja' de arriba.
+    seccion: 'POS',
+    modulos: [
+      { modulo: 'pedidos', label: 'Pedidos' },
+      { modulo: 'caja', label: 'Caja (ver)' },
+      { modulo: 'pos_cobro', label: 'Caja: cobrar (cajero)' },
+    ],
+  },
+  {
     seccion: 'Comercial',
     modulos: [
       { modulo: 'inventario', label: 'Inventario' },
       { modulo: 'clientes', label: 'Clientes' },
-      { modulo: 'pedidos', label: 'Pedidos' },
-      { modulo: 'caja', label: 'Caja' },
       { modulo: 'finanzas', label: 'Finanzas' },
       { modulo: 'estadisticas', label: 'Estadísticas' },
     ],

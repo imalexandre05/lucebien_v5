@@ -1,8 +1,8 @@
-import type { Pedido, PedidoInput, PedidoRepo } from '@scilb/core';
-import { generaPasada } from '@scilb/core';
+import type { Pedido, PedidoInput, PedidoRepo, EstadoPedido, EtapaConfeccion } from '@scilb/core';
+import { generaPasada, requiereProcesoAlDevolver } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import { inventarioRepo } from './inventario-repo';
-import { crearPasadaDesdePedido } from './pipeline-repo';
+import { crearPasadaDesdePedido, reingresarActivoAPipeline } from './pipeline-repo';
 
 type Row = {
   id: string;
@@ -12,6 +12,13 @@ type Row = {
   estado: Pedido['estado'];
   fecha: string;
   fecha_devolucion: string | null;
+  fecha_entrega: string | null;
+  notas: string | null;
+  garantia_monto: number | null;
+  tela: string | null;
+  fecha_prueba: string | null;
+  fecha_segunda_prueba: string | null;
+  etapa_confeccion: EtapaConfeccion | null;
   total: number;
   created_at: string;
   clientes?: { nombre: string } | null;
@@ -27,12 +34,25 @@ const fromRow = (r: Row): Pedido => ({
   estado: r.estado,
   fecha: (r.fecha ?? '').slice(0, 10),
   fechaDevolucion: r.fecha_devolucion,
+  fechaEntrega: r.fecha_entrega,
+  notas: r.notas ?? '',
+  garantiaMonto: Number(r.garantia_monto ?? 0),
+  tela: r.tela,
+  fechaPrueba: r.fecha_prueba,
+  fechaSegundaPrueba: r.fecha_segunda_prueba,
+  etapaConfeccion: r.etapa_confeccion,
   detalle: r.pedido_items?.[0]?.descripcion ?? '',
   total: Number(r.total),
   createdAt: (r.created_at ?? '').slice(0, 10),
 });
 
-const SELECT = '*, clientes(nombre), pedido_items(descripcion)';
+const SELECT =
+  '*, clientes(nombre), pedido_items(descripcion)';
+
+// El id llega crudo desde la URL ([id] dinámico) — validar el formato UUID antes de consultar
+// evita un error de Postgres feo si alguien navega a una ruta vieja (ej. /pedidos/nuevo, que
+// ahora es un modal y ya no existe como página).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function detalleDe(input: PedidoInput): Promise<string> {
   if (input.activoId) {
@@ -64,6 +84,7 @@ export const pedidosRepo: PedidoRepo = {
     return (data as Row[]).map(fromRow);
   },
   async obtener(id) {
+    if (!UUID_RE.test(id)) return null;
     const sb = getServerClient();
     const { data, error } = await sb.from('pedidos').select(SELECT).eq('id', id).maybeSingle();
     if (error) throw new Error(error.message);
@@ -81,6 +102,13 @@ export const pedidosRepo: PedidoRepo = {
         estado: 'abierto',
         fecha: input.fecha,
         fecha_devolucion: input.fechaDevolucion || null,
+        fecha_entrega: input.fechaEntrega || null,
+        notas: input.notas,
+        garantia_monto: input.garantiaMonto,
+        tela: input.tipo === 'confeccion' ? input.tela || null : null,
+        fecha_prueba: input.fechaPrueba || null,
+        fecha_segunda_prueba: input.fechaSegundaPrueba || null,
+        etapa_confeccion: input.tipo === 'confeccion' ? 'corte' : null,
         total: input.total,
       })
       .select(SELECT)
@@ -97,5 +125,24 @@ export const pedidosRepo: PedidoRepo = {
       await crearPasadaDesdePedido({ codigo: detalle, tipo: input.tipo, sedeOrigenCod: input.sedeCod, pedidoId: pedido.id });
     }
     return { ...fromRow(pedido), detalle };
+  },
+  async cambiarEstado(id: string, estado: EstadoPedido) {
+    const sb = getServerClient();
+    const { data: ped, error: e0 } = await sb.from('pedidos').select('tipo').eq('id', id).maybeSingle();
+    if (e0) throw new Error(e0.message);
+    const { error } = await sb.from('pedidos').update({ estado }).eq('id', id);
+    if (error) throw new Error(error.message);
+    if (estado === 'devuelto' && ped && requiereProcesoAlDevolver((ped as { tipo: Pedido['tipo'] }).tipo)) {
+      const { data: items, error: e1 } = await sb.from('pedido_items').select('activo_id').eq('pedido_id', id);
+      if (e1) throw new Error(e1.message);
+      for (const it of (items as { activo_id: string | null }[]) ?? []) {
+        if (it.activo_id) await reingresarActivoAPipeline(it.activo_id);
+      }
+    }
+  },
+  async actualizarEtapaConfeccion(id: string, etapa: EtapaConfeccion) {
+    const sb = getServerClient();
+    const { error } = await sb.from('pedidos').update({ etapa_confeccion: etapa }).eq('id', id);
+    if (error) throw new Error(error.message);
   },
 };

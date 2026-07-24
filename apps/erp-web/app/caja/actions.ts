@@ -1,9 +1,30 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { puede, type MatrizPermisos } from '@scilb/core';
 import { abrirCaja, cerrarCaja, registrarCobro, registrarEgreso, registrarGarantia } from '../../lib/caja-repo';
+import { getSesion } from '../../lib/auth';
+import { leerMatrizPermisos } from '../../lib/permisos-repo';
+
+// Cajero como permiso configurable (Fase 9): 'pos_cobro'. Se valida aquí (no solo ocultando
+// botones en el cliente) porque estas acciones mueven dinero — mismo criterio que Fase 7
+// (incidencias) de no dejar la restricción solo en la UI.
+async function exigirCajero(): Promise<string | null> {
+  const sesion = await getSesion();
+  if (!sesion) return 'Sesión requerida';
+  let matriz: MatrizPermisos = {};
+  try {
+    matriz = await leerMatrizPermisos();
+  } catch {
+    matriz = {};
+  }
+  if (!puede(matriz, sesion.usuario.rol, 'pos_cobro', 'ver')) return 'No tienes el permiso de cajero';
+  return null;
+}
 
 export async function accionAbrirCaja(sede: string, montoApertura: number): Promise<{ ok: boolean; error?: string }> {
+  const bloqueo = await exigirCajero();
+  if (bloqueo) return { ok: false, error: bloqueo };
   try {
     await abrirCaja(sede, montoApertura);
     revalidatePath('/caja');
@@ -14,6 +35,8 @@ export async function accionAbrirCaja(sede: string, montoApertura: number): Prom
 }
 
 export async function accionCerrarCaja(sesionId: string, montoCierre: number): Promise<{ ok: boolean; error?: string }> {
+  const bloqueo = await exigirCajero();
+  if (bloqueo) return { ok: false, error: bloqueo };
   try {
     await cerrarCaja(sesionId, montoCierre);
     revalidatePath('/caja');
@@ -30,6 +53,8 @@ export async function accionRegistrarCobro(p: {
   cobroTipo: 'adelanto' | 'saldo' | 'completo';
   descripcion?: string;
 }): Promise<{ ok: boolean; error?: string }> {
+  const bloqueo = await exigirCajero();
+  if (bloqueo) return { ok: false, error: bloqueo };
   try {
     await registrarCobro(p);
     revalidatePath('/caja');
@@ -46,6 +71,8 @@ export async function accionRegistrarEgreso(p: {
   categoria: 'gasto' | 'devolucion_garantia' | 'otro';
   descripcion?: string;
 }): Promise<{ ok: boolean; error?: string }> {
+  const bloqueo = await exigirCajero();
+  if (bloqueo) return { ok: false, error: bloqueo };
   try {
     await registrarEgreso(p);
     revalidatePath('/caja');
@@ -61,6 +88,8 @@ export async function accionRegistrarGarantia(p: {
   metodo: string;
   descripcion?: string;
 }): Promise<{ ok: boolean; error?: string }> {
+  const bloqueo = await exigirCajero();
+  if (bloqueo) return { ok: false, error: bloqueo };
   try {
     await registrarGarantia(p);
     revalidatePath('/caja');
