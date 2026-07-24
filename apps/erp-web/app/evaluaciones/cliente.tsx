@@ -110,6 +110,10 @@ export function EvaluacionesCliente({
   const [empleadoId, setEmpleadoId] = useState('');
   const [mes, setMes] = useState(mesPeru());
   const [comp, setComp] = useState<ComponentesEval>(CERO);
+  // Contexto informativo (no entra a la fórmula: no hay regla de negocio confirmada para
+  // convertir puntos de pipeline o soles de extras a la escala /20). El admin lo ve al lado
+  // de los componentes editables y lo pondera con su propio criterio.
+  const [infoExtra, setInfoExtra] = useState<{ puntosPipeline: number; extrasMonto: number; extrasCantidad: number } | null>(null);
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
@@ -164,6 +168,14 @@ export function EvaluacionesCliente({
         tardanza: c.tardanza ?? p.tardanza,
         descuentoIncidencias: c.descuento ?? 0,
       }));
+      // Solo aparece si la migración 0044 ya está aplicada (campos nuevos en el RPC).
+      if (c.puntosPipeline != null || c.extrasMonto != null) {
+        setInfoExtra({
+          puntosPipeline: c.puntosPipeline ?? 0,
+          extrasMonto: c.extrasMonto ?? 0,
+          extrasCantidad: c.extrasCantidad ?? 0,
+        });
+      }
     });
   }
 
@@ -279,6 +291,20 @@ export function EvaluacionesCliente({
                 Llena operaciones/software/limpieza (reportes evaluados como encargado), tardanza y descuento.
               </span>
             </div>
+
+            {infoExtra && (
+              <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line/60 bg-paper/60 px-3 py-2 text-xs text-muted">
+                <span>
+                  Puntos de pipeline en el mes <span className="font-mono font-semibold text-navy">{infoExtra.puntosPipeline}</span>
+                </span>
+                <span>
+                  Extras registrados <span className="font-mono font-semibold text-navy">{infoExtra.extrasCantidad}</span>
+                  {' · '}
+                  <span className="font-mono font-semibold text-navy">S/ {infoExtra.extrasMonto.toFixed(2)}</span>
+                </span>
+                <span className="italic">No entran a la fórmula — contexto para tu criterio.</span>
+              </div>
+            )}
 
             <div className="text-xs uppercase tracking-wide text-muted">Componentes (escala /20)</div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

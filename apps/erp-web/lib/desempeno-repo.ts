@@ -1,0 +1,62 @@
+// Mi desempeño (Fase 3): lo que ve CADA usuario de sí mismo — sus propios movimientos del mes
+// (reportes como encargado, extras que registró, incidencias donde es responsable, puntos de
+// pipeline) más su última evaluación mensual. Consultas explícitamente acotadas al propio id
+// (independiente del alcance más amplio por sede que tiene la RLS de reportes/incidencias).
+import { getServerClient } from './supabase/server';
+
+export type MiReporte = { id: string; fecha: string; turno: string; evaluado: boolean; puntajeEval: number | null };
+export type MiExtra = { id: string; fecha: string; nombre: string; montoTotal: number };
+export type MiIncidencia = { id: string; fecha: string; tipo: string; nivel: string };
+export type MiEvaluacion = { mes: string; notaFinal: number } | null;
+
+export type MiDesempeno = {
+  reportes: MiReporte[];
+  extras: MiExtra[];
+  incidencias: MiIncidencia[];
+  puntosPipeline: number;
+  ultimaEvaluacion: MiEvaluacion;
+};
+
+export async function miDesempeno(empleadoId: string, desde: string, hasta: string): Promise<MiDesempeno> {
+  const sb = getServerClient();
+
+  const [repRes, extRes, incRes, pipeRes, evalRes] = await Promise.all([
+    sb.from('reportes').select('id, fecha, turno, evaluado, puntaje_eval').eq('encargado_id', empleadoId).gte('fecha', desde).lte('fecha', hasta).order('fecha', { ascending: false }),
+    sb.from('reporte_extras').select('id, nombre, monto_total, reportes!inner(fecha)').eq('registrado_por_id', empleadoId).gte('reportes.fecha', desde).lte('reportes.fecha', hasta),
+    sb.from('incidencias').select('id, fecha, tipo, nivel').eq('responsable_id', empleadoId).gte('fecha', desde).lte('fecha', hasta).order('fecha', { ascending: false }),
+    sb.from('pipeline_puntos').select('puntos').eq('empleado_id', empleadoId).gte('fecha', desde).lte('fecha', hasta),
+    sb.from('evaluaciones_mensuales').select('mes, nota_final').eq('empleado_id', empleadoId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  for (const r of [repRes, extRes, incRes, pipeRes, evalRes]) {
+    if (r.error) throw new Error(r.error.message);
+  }
+
+  const reportes: MiReporte[] = ((repRes.data as Record<string, unknown>[]) ?? []).map((r) => ({
+    id: String(r.id),
+    fecha: String(r.fecha ?? '').slice(0, 10),
+    turno: String(r.turno ?? ''),
+    evaluado: Boolean(r.evaluado),
+    puntajeEval: r.puntaje_eval == null ? null : Number(r.puntaje_eval),
+  }));
+
+  const extras: MiExtra[] = ((extRes.data as Record<string, unknown>[]) ?? []).map((e) => ({
+    id: String(e.id),
+    fecha: String((e.reportes as { fecha: string } | null)?.fecha ?? '').slice(0, 10),
+    nombre: String(e.nombre ?? ''),
+    montoTotal: Number(e.monto_total ?? 0),
+  }));
+
+  const incidencias: MiIncidencia[] = ((incRes.data as Record<string, unknown>[]) ?? []).map((i) => ({
+    id: String(i.id),
+    fecha: String(i.fecha ?? '').slice(0, 10),
+    tipo: String(i.tipo ?? ''),
+    nivel: String(i.nivel ?? ''),
+  }));
+
+  const puntosPipeline = ((pipeRes.data as { puntos: number }[]) ?? []).reduce((s, p) => s + Number(p.puntos ?? 0), 0);
+
+  const evalRow = evalRes.data as { mes: string; nota_final: number } | null;
+  const ultimaEvaluacion: MiEvaluacion = evalRow ? { mes: evalRow.mes, notaFinal: Number(evalRow.nota_final) } : null;
+
+  return { reportes, extras, incidencias, puntosPipeline: Math.round(puntosPipeline * 100) / 100, ultimaEvaluacion };
+}
