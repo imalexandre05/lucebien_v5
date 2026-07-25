@@ -4,7 +4,7 @@ export const features = {
   CLIENTES_V2: false,
   AUTH_V2: true, // W13: login real Supabase Auth (cod+sede) activado
   DEVICE_GATE: false, // W13: acceso solo desde equipos autorizados. Probado+verificado; OFF a pedido (bootstrap diferido). Activar = true + aprobar equipos en /dispositivos.
-  LOGIN_V2: false, // Login usuario+contraseña (reemplaza cod+sede). OFF hasta migrar 0049 en scilb y verificar en vivo con el usuario presente.
+  LOGIN_V2: true, // Login usuario+contraseña activado 2026-07-25 — migración 0049 aplicada y verificada en vivo con el usuario presente (login real confirmado). cod+sede queda como PIN interno.
 
   CRM_V2: false,
   PEDIDOS_ALQUILER_V2: false,
