@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, type LucideIcon } from 'lucide-react';
 import { puede, type MatrizPermisos, type Rol } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -17,16 +17,25 @@ const NAV: { section: string; items: Item[] }[] = [
     section: 'Interno',
     items: [
       { label: 'Dashboard', href: '/', icon: LayoutDashboard, modulo: 'dashboard' },
+      { label: 'Notificaciones', href: '/notificaciones', icon: Bell, modulo: 'notificaciones' },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt, modulo: 'pipeline' },
+    ],
+  },
+  {
+    // Administración (Fase 3): agrupa todo lo administrativo/de seguimiento, antes disuelto en
+    // "Interno" junto a Dashboard/Pipeline. La lista de reportes se muda de ruta recién en la
+    // Fase 4 (a /administracion/reportes) — acá solo se reordena la sidebar, el href no cambia.
+    section: 'Administración',
+    items: [
       { label: 'Reporte de Actividades', href: '/reportes', icon: ClipboardList, modulo: 'reportes' },
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },
-      { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle, modulo: 'incidencias' },
-      { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck, modulo: 'asistencias' },
       { label: 'Evaluaciones', href: '/evaluaciones', icon: Award, modulo: 'evaluaciones' },
       { label: 'Pagos', href: '/pagos', icon: Wallet, modulo: 'pagos' },
+      { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle, modulo: 'incidencias' },
+      { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck, modulo: 'asistencias' },
       { label: 'Empleados', href: '/empleados', icon: Users, modulo: 'empleados' },
-      { label: 'Configuración', href: '/configuracion', icon: Settings, modulo: 'configuracion' },
       { label: 'Dispositivos', href: '/dispositivos', icon: Laptop, modulo: 'dispositivos' },
+      { label: 'Configuración', href: '/configuracion', icon: Settings, modulo: 'configuracion' },
     ],
   },
   {
@@ -65,15 +74,19 @@ export function SidebarNav({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPe
   const path = usePathname();
   return (
     <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
-      {NAV.map((group) => (
-        <div key={group.section}>
-          <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-paper/40">
-            {group.section}
-          </div>
-          <ul className="space-y-0.5">
-            {group.items
-              .filter((it) => puede(matriz, rol, it.modulo, 'ver', rolCod))
-              .map((it) => {
+      {NAV.map((group) => {
+        // Si el filtro de permisos deja la sección vacía, no se renderiza ni el encabezado
+        // (Fase 3) — antes quedaba un título "Administración" o "Comercial" huérfano, sin ítems
+        // debajo, para roles que no ven ninguno de sus módulos.
+        const items = group.items.filter((it) => puede(matriz, rol, it.modulo, 'ver', rolCod));
+        if (items.length === 0) return null;
+        return (
+          <div key={group.section}>
+            <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-paper/40">
+              {group.section}
+            </div>
+            <ul className="space-y-0.5">
+              {items.map((it) => {
                 const active = it.href === '/' ? path === '/' : path.startsWith(it.href);
                 const Icon = it.icon;
                 return (
@@ -101,9 +114,10 @@ export function SidebarNav({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPe
                   </li>
                 );
               })}
-          </ul>
-        </div>
-      ))}
+            </ul>
+          </div>
+        );
+      })}
     </nav>
   );
 }

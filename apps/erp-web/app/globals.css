@@ -17,14 +17,40 @@
     @apply bg-paper text-ink font-body antialiased;
     text-rendering: optimizeLegibility;
   }
-  /* Sin serifas en el sistema (Fase 4): la Cormorant Garamond queda solo en el logo
-     (components/brand/logo.tsx), que sigue usando font-display explícitamente. */
+  /* Sin serifas en el sistema (Fase 4): la Cormorant Garamond queda solo en el logo, y desde la
+     Fase 3 ni siquiera como clase CSS — el wordmark real (components/brand/logo.tsx) es un PNG
+     oficial (docs/manual-de-marca.md), la tipografía ya viene grabada en el archivo. */
   h1,
   h2,
   h3,
   h4 {
     @apply font-body;
     letter-spacing: -0.01em;
+  }
+
+  /* Scrollbar navy/gold (Fase 3): antes no había ninguna regla y quedaba la barra gris del SO,
+     fuera de sistema. `scrollbar-width/color` cubre Firefox; los pseudo-elementos, WebKit/Blink.
+     Track transparente (se ve el fondo real de cada superficie) + thumb dorado, que se lee bien
+     tanto sobre el navy de la sidebar como sobre el papel del resto del ERP. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold) transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--gold);
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: var(--navy);
   }
 }
 
