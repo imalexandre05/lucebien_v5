@@ -3,12 +3,14 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Filter } from 'lucide-react';
+import { TURNO_LABEL } from '@scilb/core';
 import { accionCrearAsistencia, accionEliminarAsistencia } from './actions';
 import type { Asistencia } from '../../lib/asistencias-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
+import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
@@ -17,6 +19,8 @@ type Emp = { id: string; nombre: string };
 
 const FUENTE_TONE: Record<string, Tone> = { manual: 'gray', reporte: 'navy', huellero: 'green' };
 const TURNOS = ['M', 'T', 'C'];
+const OPC_TURNO: Opcion[] = TURNOS.map((t) => ({ value: t, label: TURNO_LABEL[t as 'M' | 'T' | 'C'] }));
+const OPC_FILTRO_TURNO: Opcion[] = [{ value: '', label: 'Todos los turnos' }, ...OPC_TURNO];
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
 
@@ -126,14 +130,7 @@ export function AsistenciasCliente({
             className={`${fieldCls} min-w-[12rem] flex-1`}
           />
           <input type="date" value={fFecha} onChange={(e) => setFFecha(e.target.value)} className={fieldCls} aria-label="Fecha" />
-          <select value={fTurno} onChange={(e) => setFTurno(e.target.value)} className={fieldCls} aria-label="Turno">
-            <option value="">Todos los turnos</option>
-            {TURNOS.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+          <OpcionBotones opciones={OPC_FILTRO_TURNO} value={fTurno} onChange={setFTurno} ariaLabel="Turno" />
           <select value={fFuente} onChange={(e) => setFFuente(e.target.value)} className={fieldCls} aria-label="Fuente">
             <option value="">Toda fuente</option>
             <option value="manual">Manual</option>
@@ -178,13 +175,7 @@ export function AsistenciasCliente({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Turno</label>
-                  <select value={turno} onChange={(e) => setTurno(e.target.value)} className={cn(fieldCls, 'w-full')}>
-                    {TURNOS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
+                  <OpcionBotones opciones={OPC_TURNO} value={turno} onChange={setTurno} ariaLabel="Turno" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">

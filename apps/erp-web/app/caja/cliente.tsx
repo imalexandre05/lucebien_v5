@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/ca
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
+import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { Modal as SharedModal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { cn } from '../../lib/cn';
@@ -23,7 +24,16 @@ type Resumen = {
   transferencia: number;
 };
 
-const METODOS = ['efectivo', 'yape', 'transferencia'];
+const OPC_METODO: Opcion[] = [
+  { value: 'efectivo', label: 'Efectivo' },
+  { value: 'yape', label: 'Yape' },
+  { value: 'transferencia', label: 'Transferencia' },
+];
+const OPC_CATEGORIA_EGRESO: Opcion<'gasto' | 'devolucion_garantia' | 'otro'>[] = [
+  { value: 'gasto', label: 'Gasto' },
+  { value: 'devolucion_garantia', label: 'Devolución de garantía' },
+  { value: 'otro', label: 'Otro' },
+];
 const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 const fieldCls =
   'w-full rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
@@ -311,9 +321,7 @@ export function CajaCliente({
             </div>
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-              <select value={cMetodo} onChange={(e) => setCMetodo(e.target.value)} className={fieldCls}>
-                {METODOS.map((x) => <option key={x} value={x}>{x}</option>)}
-              </select>
+              <OpcionBotones opciones={OPC_METODO} value={cMetodo} onChange={setCMetodo} ariaLabel="Método de pago" />
             </div>
           </div>
           <div>
@@ -353,18 +361,12 @@ export function CajaCliente({
             </div>
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-              <select value={eMetodo} onChange={(e) => setEMetodo(e.target.value)} className={fieldCls}>
-                {METODOS.map((x) => <option key={x} value={x}>{x}</option>)}
-              </select>
+              <OpcionBotones opciones={OPC_METODO} value={eMetodo} onChange={setEMetodo} ariaLabel="Método de pago" />
             </div>
           </div>
           <div>
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Categoría</label>
-            <select value={eCat} onChange={(e) => setECat(e.target.value as 'gasto' | 'devolucion_garantia' | 'otro')} className={fieldCls}>
-              <option value="gasto">Gasto</option>
-              <option value="devolucion_garantia">Devolución de garantía</option>
-              <option value="otro">Otro</option>
-            </select>
+            <OpcionBotones opciones={OPC_CATEGORIA_EGRESO} value={eCat} onChange={setECat} ariaLabel="Categoría de egreso" />
           </div>
           <div>
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción</label>
@@ -400,9 +402,7 @@ export function CajaCliente({
             </div>
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-              <select value={gMetodo} onChange={(e) => setGMetodo(e.target.value)} className={fieldCls}>
-                {METODOS.map((x) => <option key={x} value={x}>{x}</option>)}
-              </select>
+              <OpcionBotones opciones={OPC_METODO} value={gMetodo} onChange={setGMetodo} ariaLabel="Método de pago" />
             </div>
           </div>
           <div>

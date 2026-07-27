@@ -11,6 +11,7 @@ import { accionEstadoEmpleado, accionEditarEmpleado, accionEstablecerContrasena,
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Button, buttonVariants } from '../../components/ui/button';
+import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
@@ -24,6 +25,12 @@ const ROL: Record<string, { label: string; cls: string }> = {
   ventas_junior: { label: 'Ventas Jr.', cls: 'bg-sky-50 text-sky-700' },
   ventas_junior_2: { label: 'Ventas Jr. 2', cls: 'bg-sky-50 text-sky-700' },
 };
+
+const OPC_FILTRO_ESTADO: Opcion[] = [
+  { value: '', label: 'Todos' },
+  { value: 'activo', label: 'Activos' },
+  { value: 'suspendido', label: 'Suspendidos' },
+];
 const rolInfo = (r: string) => ROL[r] ?? { label: r.replace(/_/g, ' '), cls: 'bg-ink/10 text-muted' };
 
 const fieldCls =
@@ -167,11 +174,7 @@ export function EmpleadosCliente({
               </option>
             ))}
           </select>
-          <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} className={fieldCls} aria-label="Estado">
-            <option value="">Todos</option>
-            <option value="activo">Activos</option>
-            <option value="suspendido">Suspendidos</option>
-          </select>
+          <OpcionBotones opciones={OPC_FILTRO_ESTADO} value={fEstado} onChange={setFEstado} ariaLabel="Estado" />
           <span className="font-mono text-xs text-muted tabular-nums">{filtrados.length} colaboradores</span>
           <button type="button" onClick={() => setCrear(true)} className={cn(buttonVariants({ variant: 'gold' }), 'ml-auto')}>
             <Plus className="h-4 w-4" strokeWidth={2} /> Nuevo colaborador

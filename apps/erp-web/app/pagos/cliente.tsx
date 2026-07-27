@@ -10,13 +10,27 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/ca
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
+import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
 
 const ESTADO_TONE: Record<string, Tone> = { pagado: 'green', pendiente: 'amber', anulado: 'gray' };
-const METODOS = ['efectivo', 'yape', 'transferencia'];
-const ESTADOS = ['pagado', 'pendiente'];
+const OPC_METODO: Opcion[] = [
+  { value: 'efectivo', label: 'Efectivo' },
+  { value: 'yape', label: 'Yape' },
+  { value: 'transferencia', label: 'Transferencia' },
+];
+const OPC_FILTRO_METODO: Opcion[] = [{ value: '', label: 'Todo método' }, ...OPC_METODO];
+const OPC_ESTADO_PAGO: Opcion[] = [
+  { value: 'pagado', label: 'Pagado' },
+  { value: 'pendiente', label: 'Pendiente' },
+];
+const OPC_FILTRO_ESTADO: Opcion[] = [
+  { value: '', label: 'Todo estado' },
+  ...OPC_ESTADO_PAGO,
+  { value: 'anulado', label: 'Anulado' },
+];
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
 const r2 = (n: number) => Math.round(n * 100) / 100;
@@ -125,20 +139,8 @@ export function PagosCliente({
             placeholder="Buscar empleado…"
             className={`${fieldCls} min-w-[12rem] flex-1`}
           />
-          <select value={fMetodo} onChange={(e) => setFMetodo(e.target.value)} className={fieldCls} aria-label="Método">
-            <option value="">Todo método</option>
-            {METODOS.map((m) => (
-              <option key={m} value={m}>
-                {m}
-              </option>
-            ))}
-          </select>
-          <select value={fEstado} onChange={(e) => setFEstado(e.target.value)} className={fieldCls} aria-label="Estado">
-            <option value="">Todo estado</option>
-            <option value="pagado">Pagado</option>
-            <option value="pendiente">Pendiente</option>
-            <option value="anulado">Anulado</option>
-          </select>
+          <OpcionBotones opciones={OPC_FILTRO_METODO} value={fMetodo} onChange={setFMetodo} ariaLabel="Método" />
+          <OpcionBotones opciones={OPC_FILTRO_ESTADO} value={fEstado} onChange={setFEstado} ariaLabel="Estado" />
           {esAdmin && (
             <button
               type="button"
@@ -183,13 +185,7 @@ export function PagosCliente({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-                  <select value={metodo} onChange={(e) => setMetodo(e.target.value)} className={cn(fieldCls, 'w-full')}>
-                    {METODOS.map((m) => (
-                      <option key={m} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </select>
+                  <OpcionBotones opciones={OPC_METODO} value={metodo} onChange={setMetodo} ariaLabel="Método" />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -203,13 +199,7 @@ export function PagosCliente({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Estado</label>
-                  <select value={estado} onChange={(e) => setEstado(e.target.value)} className={cn(fieldCls, 'w-full')}>
-                    {ESTADOS.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  <OpcionBotones opciones={OPC_ESTADO_PAGO} value={estado} onChange={setEstado} ariaLabel="Estado" />
                 </div>
               </div>
               <div>

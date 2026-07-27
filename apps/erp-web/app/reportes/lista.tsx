@@ -13,6 +13,7 @@ import {
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
+import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { cn } from '../../lib/cn';
 
 const ESTADO_TONE: Record<EstadoReporte, Tone> = {
@@ -35,6 +36,17 @@ const ESTADO_FILTRO_LABEL: Record<FiltroEstado, string> = {
 
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+
+const OPC_FILTRO_TURNO: Opcion[] = [
+  { value: '', label: 'Todos los turnos' },
+  { value: 'M', label: 'Mañana' },
+  { value: 'T', label: 'Tarde' },
+  { value: 'C', label: 'Día completo' },
+];
+const OPC_FILTRO_ESTADO: Opcion<FiltroEstado>[] = (Object.keys(ESTADO_FILTRO_LABEL) as FiltroEstado[]).map((k) => ({
+  value: k,
+  label: ESTADO_FILTRO_LABEL[k],
+}));
 
 function Puntaje({ r }: { r: Reporte }) {
   if (!r.evaluado) return <span className="text-muted">—</span>;
@@ -103,24 +115,8 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
               </option>
             ))}
           </select>
-          <select value={turno} onChange={(e) => setTurno(e.target.value)} className={fieldCls} aria-label="Turno">
-            <option value="">Todos los turnos</option>
-            <option value="M">Mañana</option>
-            <option value="T">Tarde</option>
-            <option value="C">Día completo</option>
-          </select>
-          <select
-            value={estado}
-            onChange={(e) => setEstado(e.target.value as FiltroEstado)}
-            className={fieldCls}
-            aria-label="Estado"
-          >
-            {(Object.keys(ESTADO_FILTRO_LABEL) as FiltroEstado[]).map((k) => (
-              <option key={k} value={k}>
-                {ESTADO_FILTRO_LABEL[k]}
-              </option>
-            ))}
-          </select>
+          <OpcionBotones opciones={OPC_FILTRO_TURNO} value={turno} onChange={setTurno} ariaLabel="Turno" />
+          <OpcionBotones opciones={OPC_FILTRO_ESTADO} value={estado} onChange={setEstado} ariaLabel="Estado" />
           <span className="ml-auto font-mono text-xs text-muted tabular-nums">
             {filtrados.length} reportes
           </span>

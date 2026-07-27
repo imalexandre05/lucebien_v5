@@ -9,12 +9,14 @@ import type { Incidencia, TipoIncidencia } from '../../lib/incidencias-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Button, buttonVariants } from '../../components/ui/button';
+import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 
 type Emp = { id: string; nombre: string };
 
 const NIVELES = ['Alto', 'Medio', 'Bajo'];
+const OPC_FILTRO_NIVEL: Opcion[] = [{ value: '', label: 'Todos los niveles' }, ...NIVELES.map((n) => ({ value: n, label: n }))];
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
 
@@ -160,14 +162,7 @@ export function IncidenciasCliente({
               </option>
             ))}
           </select>
-          <select value={fNivel} onChange={(e) => setFNivel(e.target.value)} className={fieldCls} aria-label="Nivel">
-            <option value="">Todos los niveles</option>
-            {NIVELES.map((n) => (
-              <option key={n} value={n}>
-                {n}
-              </option>
-            ))}
-          </select>
+          <OpcionBotones opciones={OPC_FILTRO_NIVEL} value={fNivel} onChange={setFNivel} ariaLabel="Nivel" />
           <select value={fOrigen} onChange={(e) => setFOrigen(e.target.value)} className={fieldCls} aria-label="Origen">
             <option value="">Todo origen</option>
             <option value="manual">Manual</option>
