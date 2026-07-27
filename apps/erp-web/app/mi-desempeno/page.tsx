@@ -3,7 +3,9 @@ import { TURNO_LABEL, tramoEval, TRAMO_LABEL, type TramoEval } from '@scilb/core
 import { getSesion } from '../../lib/auth';
 import { miDesempeno } from '../../lib/desempeno-repo';
 import { mesPeru } from '../../lib/fechas';
+import { tieneReauth } from '../../lib/reauth';
 import { PageHeader } from '../../components/shell/page-header';
+import { ReauthGate } from '../../components/ui/reauth-gate';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
@@ -25,6 +27,17 @@ const TRAMO_TONE: Record<TramoEval, Tone> = {
 export default async function MiDesempenoPage() {
   const sesion = await getSesion();
   if (!sesion) redirect('/login');
+
+  // Reautenticación (Fase 1): "mi desempeño" es propio (no de terceros), pero igual muestra
+  // evaluación/puntos/incidencias con el nombre del empleado a la vista de quien pase por la PC.
+  if (!(await tieneReauth(sesion.usuario.id))) {
+    return (
+      <div>
+        <PageHeader title="Mi desempeño" subtitle="Verificación requerida" />
+        <ReauthGate mensaje="Tu desempeño y evaluación son información personal." />
+      </div>
+    );
+  }
 
   const mes = mesPeru();
   const [y, m] = mes.split('-').map(Number);

@@ -59,7 +59,9 @@ const NAV: { section: string; items: Item[] }[] = [
 
 // Listado de navegación (compartido entre la sidebar de escritorio y el drawer móvil). Filtra por
 // la matriz de permisos configurable (Configuración → Permisos), no por un flag hardcodeado.
-export function SidebarNav({ rol, matriz }: { rol: Rol; matriz: MatrizPermisos }) {
+// `rolCod` (Fase 1, roles derivados): si el empleado tiene un rol propio, afina qué módulos ve
+// por encima de lo que dicta su rol base — ver puede() en @scilb/core.
+export function SidebarNav({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPermisos; rolCod?: string | null }) {
   const path = usePathname();
   return (
     <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
@@ -70,7 +72,7 @@ export function SidebarNav({ rol, matriz }: { rol: Rol; matriz: MatrizPermisos }
           </div>
           <ul className="space-y-0.5">
             {group.items
-              .filter((it) => puede(matriz, rol, it.modulo, 'ver'))
+              .filter((it) => puede(matriz, rol, it.modulo, 'ver', rolCod))
               .map((it) => {
                 const active = it.href === '/' ? path === '/' : path.startsWith(it.href);
                 const Icon = it.icon;
@@ -117,7 +119,7 @@ export function SidebarFooter() {
 }
 
 // Sidebar fija de escritorio; en anchos menores la navegación vive en el drawer (MobileNav).
-export function Sidebar({ rol, matriz }: { rol: Rol; matriz: MatrizPermisos }) {
+export function Sidebar({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPermisos; rolCod?: string | null }) {
   return (
     <aside className="sticky top-0 hidden h-screen w-60 flex-col bg-navy-deep text-paper/80 lg:flex print:hidden">
       <Link
@@ -127,7 +129,7 @@ export function Sidebar({ rol, matriz }: { rol: Rol; matriz: MatrizPermisos }) {
       >
         <Logo tone="onDark" size="md" />
       </Link>
-      <SidebarNav rol={rol} matriz={matriz} />
+      <SidebarNav rol={rol} matriz={matriz} rolCod={rolCod} />
       <SidebarFooter />
     </aside>
   );

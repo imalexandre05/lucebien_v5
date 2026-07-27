@@ -2,9 +2,12 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Filter, Pencil, UserX, UserCheck, KeyRound } from 'lucide-react';
+import { Filter, Pencil, UserX, UserCheck, KeyRound, Plus, Info } from 'lucide-react';
+import { ROL_LABEL, ROLES_BASE, type Rol } from '@scilb/core';
 import type { EmpleadoAdmin } from '../../lib/empleados-repo';
-import { accionEstadoEmpleado, accionEditarContacto, accionEstablecerContrasena } from './actions';
+import type { RolDerivado } from '../../lib/roles-repo';
+import type { Sede } from '../../lib/sedes-repo';
+import { accionEstadoEmpleado, accionEditarEmpleado, accionEstablecerContrasena, accionCrearEmpleado } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { buttonVariants } from '../../components/ui/button';
@@ -26,23 +29,73 @@ const rolInfo = (r: string) => ROL[r] ?? { label: r.replace(/_/g, ' '), cls: 'bg
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
 
-function iniciales(e: EmpleadoAdmin): string {
+function iniciales(e: { nombre: string; iniciales: string | null }): string {
   if (e.iniciales) return e.iniciales.slice(0, 2).toUpperCase();
   const p = e.nombre.trim().split(/\s+/).filter(Boolean);
   return (p.map((w) => w[0]).slice(0, 2).join('') || '·').toUpperCase();
 }
 
-export function EmpleadosCliente({ empleados }: { empleados: EmpleadoAdmin[] }) {
+// Botón tipo pill (patrón "botones > selects" del sistema de diseño): activo = navy sólido.
+function Pill({
+  active,
+  onClick,
+  children,
+  disabled,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
+      className={cn(
+        'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+        active ? 'border-navy bg-navy text-paper' : 'border-line bg-white text-navy hover:border-gold/60',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+// Opciones de rol combinadas: los 7 base + los roles derivados activos (Fase 1). Un rol derivado
+// lleva su rol_base entre paréntesis porque ESE es el que manda para la RLS/alcance por sede.
+type OpcionRol = { valor: string; label: string; rolBase: Rol; rolCod: string | null };
+
+function opcionesRol(rolesDerivados: RolDerivado[]): OpcionRol[] {
+  return [
+    ...ROLES_BASE.map((r) => ({ valor: r, label: ROL_LABEL[r], rolBase: r, rolCod: null })),
+    ...rolesDerivados
+      .filter((r) => r.activo)
+      .map((r) => ({ valor: r.cod, label: `${r.nombre} (${ROL_LABEL[r.rolBase]})`, rolBase: r.rolBase, rolCod: r.cod })),
+  ];
+}
+
+export function EmpleadosCliente({
+  empleados,
+  sedes,
+  rolesDerivados,
+}: {
+  empleados: EmpleadoAdmin[];
+  sedes: Sede[];
+  rolesDerivados: RolDerivado[];
+}) {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [fRol, setFRol] = useState('');
   const [fSede, setFSede] = useState('');
   const [fEstado, setFEstado] = useState('');
   const [editar, setEditar] = useState<EmpleadoAdmin | null>(null);
+  const [crear, setCrear] = useState(false);
   const [pending, startTransition] = useTransition();
 
   const roles = useMemo(() => [...new Set(empleados.map((e) => e.rol))].sort(), [empleados]);
-  const sedes = useMemo(() => [...new Set(empleados.flatMap((e) => e.tiendas))].sort(), [empleados]);
+  const sedesFiltro = useMemo(() => [...new Set(empleados.flatMap((e) => e.tiendas))].sort(), [empleados]);
 
   const filtrados = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -86,7 +139,7 @@ export function EmpleadosCliente({ empleados }: { empleados: EmpleadoAdmin[] }) 
         <StatBox index={3} label="Encargados" valor={resumen.encargados} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
       </div>
 
-      {/* Filtros */}
+      {/* Filtros + nuevo colaborador */}
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-4">
           <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
@@ -108,7 +161,7 @@ export function EmpleadosCliente({ empleados }: { empleados: EmpleadoAdmin[] }) 
           </select>
           <select value={fSede} onChange={(e) => setFSede(e.target.value)} className={fieldCls} aria-label="Sede">
             <option value="">Todas las sedes</option>
-            {sedes.map((s) => (
+            {sedesFiltro.map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>
@@ -119,7 +172,10 @@ export function EmpleadosCliente({ empleados }: { empleados: EmpleadoAdmin[] }) 
             <option value="activo">Activos</option>
             <option value="suspendido">Suspendidos</option>
           </select>
-          <span className="ml-auto font-mono text-xs text-muted tabular-nums">{filtrados.length} colaboradores</span>
+          <span className="font-mono text-xs text-muted tabular-nums">{filtrados.length} colaboradores</span>
+          <button type="button" onClick={() => setCrear(true)} className={cn(buttonVariants({ variant: 'gold' }), 'ml-auto')}>
+            <Plus className="h-4 w-4" strokeWidth={2} /> Nuevo colaborador
+          </button>
         </CardContent>
       </Card>
 
@@ -169,6 +225,7 @@ export function EmpleadosCliente({ empleados }: { empleados: EmpleadoAdmin[] }) 
                     <TD>
                       <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', rol.cls)}>
                         {rol.label}
+                        {e.rolCod && <span className="ml-1 opacity-70">· {e.rolCod}</span>}
                       </span>
                     </TD>
                     <TD>
@@ -233,9 +290,22 @@ export function EmpleadosCliente({ empleados }: { empleados: EmpleadoAdmin[] }) 
       {editar && (
         <EditarModal
           emp={editar}
+          sedes={sedes}
+          rolesDerivados={rolesDerivados}
           onClose={() => setEditar(null)}
           onSaved={() => {
             setEditar(null);
+            router.refresh();
+          }}
+        />
+      )}
+      {crear && (
+        <CrearModal
+          sedes={sedes}
+          rolesDerivados={rolesDerivados}
+          onClose={() => setCrear(false)}
+          onCreado={() => {
+            setCrear(false);
             router.refresh();
           }}
         />
@@ -244,7 +314,138 @@ export function EmpleadosCliente({ empleados }: { empleados: EmpleadoAdmin[] }) 
   );
 }
 
-function EditarModal({ emp, onClose, onSaved }: { emp: EmpleadoAdmin; onClose: () => void; onSaved: () => void }) {
+// ── Campos compartidos entre Crear y Editar (identidad + rol + sedes + notas) ──────────────────
+function CamposPerfil({
+  nombre,
+  setNombre,
+  rolValor,
+  setRolValor,
+  sedePrimaria,
+  setSedePrimaria,
+  tiendas,
+  setTiendas,
+  fechaIngreso,
+  setFechaIngreso,
+  notas,
+  setNotas,
+  sedes,
+  opciones,
+}: {
+  nombre: string;
+  setNombre: (v: string) => void;
+  rolValor: string;
+  setRolValor: (v: string) => void;
+  sedePrimaria: string;
+  setSedePrimaria: (v: string) => void;
+  tiendas: string[];
+  setTiendas: (v: string[]) => void;
+  fechaIngreso: string;
+  setFechaIngreso: (v: string) => void;
+  notas: string;
+  setNotas: (v: string) => void;
+  sedes: Sede[];
+  opciones: OpcionRol[];
+}) {
+  function toggleTienda(cod: string) {
+    setTiendas(tiendas.includes(cod) ? tiendas.filter((t) => t !== cod) : [...tiendas, cod]);
+  }
+  function elegirSedePrimaria(cod: string) {
+    setSedePrimaria(cod);
+    if (!tiendas.includes(cod)) setTiendas([...tiendas, cod]);
+  }
+
+  return (
+    <>
+      <div>
+        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Nombre completo</label>
+        <input value={nombre} onChange={(e) => setNombre(e.target.value)} className={cn(fieldCls, 'w-full')} />
+        <p className="mt-1 text-[11px] text-muted">Es también el usuario de login — debe ser único.</p>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Rol</label>
+        <div className="flex flex-wrap gap-1.5">
+          {opciones.map((o) => (
+            <Pill key={o.valor} active={rolValor === o.valor} onClick={() => setRolValor(o.valor)}>
+              {o.label}
+            </Pill>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Sede primaria</label>
+        <div className="flex flex-wrap gap-1.5">
+          {sedes.map((s) => (
+            <Pill key={s.cod} active={sedePrimaria === s.cod} onClick={() => elegirSedePrimaria(s.cod)}>
+              {s.nombre} ({s.cod})
+            </Pill>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tiendas (acceso)</label>
+        <div className="flex flex-wrap gap-1.5">
+          {sedes.map((s) => (
+            <Pill
+              key={s.cod}
+              active={tiendas.includes(s.cod)}
+              onClick={() => toggleTienda(s.cod)}
+              disabled={s.cod === sedePrimaria}
+            >
+              {s.cod}
+            </Pill>
+          ))}
+        </div>
+        <p className="mt-1 text-[11px] text-muted">La sede primaria siempre queda incluida.</p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Fecha de ingreso</label>
+          <input
+            type="date"
+            value={fechaIngreso}
+            onChange={(e) => setFechaIngreso(e.target.value)}
+            className={cn(fieldCls, 'w-full')}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Notas</label>
+        <textarea
+          value={notas}
+          onChange={(e) => setNotas(e.target.value)}
+          rows={2}
+          className={cn(fieldCls, 'w-full resize-none')}
+        />
+      </div>
+    </>
+  );
+}
+
+function EditarModal({
+  emp,
+  sedes,
+  rolesDerivados,
+  onClose,
+  onSaved,
+}: {
+  emp: EmpleadoAdmin;
+  sedes: Sede[];
+  rolesDerivados: RolDerivado[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const opciones = useMemo(() => opcionesRol(rolesDerivados), [rolesDerivados]);
+  const [nombre, setNombre] = useState(emp.nombre);
+  const [rolValor, setRolValor] = useState(emp.rolCod ?? emp.rol);
+  const [sedePrimaria, setSedePrimaria] = useState(emp.sedeCod ?? '');
+  const [tiendas, setTiendas] = useState<string[]>(emp.tiendas);
+  const [fechaIngreso, setFechaIngreso] = useState(emp.fechaIngreso ?? '');
+  const [notas, setNotas] = useState(emp.notas ?? '');
   const [telefono, setTelefono] = useState(emp.telefono ?? '');
   const [dni, setDni] = useState(emp.dni ?? '');
   const [direccion, setDireccion] = useState(emp.direccion ?? '');
@@ -252,7 +453,7 @@ function EditarModal({ emp, onClose, onSaved }: { emp: EmpleadoAdmin; onClose: (
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
-  // Contraseña: acción propia, separada del guardado de contacto (distinto endpoint, distinto
+  // Contraseña: acción propia, separada del guardado de perfil (distinto endpoint, distinto
   // feedback — no tiene sentido bloquear una por la otra).
   const [password, setPassword] = useState('');
   const [passError, setPassError] = useState('');
@@ -261,8 +462,29 @@ function EditarModal({ emp, onClose, onSaved }: { emp: EmpleadoAdmin; onClose: (
 
   function guardar() {
     setError('');
+    if (!sedePrimaria) {
+      setError('Elige una sede primaria');
+      return;
+    }
+    const opcion = opciones.find((o) => o.valor === rolValor);
+    if (!opcion) {
+      setError('Elige un rol');
+      return;
+    }
     startTransition(async () => {
-      const r = await accionEditarContacto(emp.id, { telefono, dni, direccion, salarioBase: salario });
+      const r = await accionEditarEmpleado(emp.id, {
+        nombre,
+        rolBase: opcion.rolBase,
+        rolCod: opcion.rolCod,
+        sedeCod: sedePrimaria,
+        tiendas,
+        fechaIngreso: fechaIngreso || null,
+        notas,
+        telefono,
+        dni,
+        direccion,
+        salarioBase: salario,
+      });
       if (!r.ok) {
         setError(r.error ?? 'Error');
         return;
@@ -298,15 +520,39 @@ function EditarModal({ emp, onClose, onSaved }: { emp: EmpleadoAdmin; onClose: (
         </span>
       }
     >
-      <ModalBody className="space-y-3">
-        <p className="text-xs text-muted">Datos de contacto. El nombre, código y rol se gestionan aparte (afectan credenciales e historial).</p>
-        <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Teléfono</label>
-          <input value={telefono} onChange={(e) => setTelefono(e.target.value)} className={cn(fieldCls, 'w-full')} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">DNI</label>
-          <input value={dni} onChange={(e) => setDni(e.target.value)} className={cn(fieldCls, 'w-full')} />
+      <ModalBody className="max-h-[70vh] space-y-3 overflow-y-auto">
+        <p className="flex items-start gap-1.5 rounded-md bg-navy/5 px-3 py-2 text-[11px] text-muted">
+          <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+          El código de acceso (4 dígitos) es fijo y no se muestra ni se edita aquí — es la
+          credencial interna de Supabase Auth. El login usa nombre + contraseña.
+        </p>
+
+        <CamposPerfil
+          nombre={nombre}
+          setNombre={setNombre}
+          rolValor={rolValor}
+          setRolValor={setRolValor}
+          sedePrimaria={sedePrimaria}
+          setSedePrimaria={setSedePrimaria}
+          tiendas={tiendas}
+          setTiendas={setTiendas}
+          fechaIngreso={fechaIngreso}
+          setFechaIngreso={setFechaIngreso}
+          notas={notas}
+          setNotas={setNotas}
+          sedes={sedes}
+          opciones={opciones}
+        />
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Teléfono</label>
+            <input value={telefono} onChange={(e) => setTelefono(e.target.value)} className={cn(fieldCls, 'w-full')} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">DNI</label>
+            <input value={dni} onChange={(e) => setDni(e.target.value)} className={cn(fieldCls, 'w-full')} />
+          </div>
         </div>
         <div>
           <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección</label>
@@ -328,9 +574,6 @@ function EditarModal({ emp, onClose, onSaved }: { emp: EmpleadoAdmin; onClose: (
           <label className="mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted">
             <KeyRound className="h-3.5 w-3.5" strokeWidth={2} /> Asignar / reiniciar contraseña
           </label>
-          <p className="mb-2 text-[11px] text-muted">
-            Toma efecto cuando el login por usuario+contraseña esté activado. No afecta el código de 4 dígitos.
-          </p>
           <div className="flex gap-2">
             <input
               type="password"
@@ -363,6 +606,137 @@ function EditarModal({ emp, onClose, onSaved }: { emp: EmpleadoAdmin; onClose: (
           className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
         >
           {pending ? 'Guardando…' : 'Guardar cambios'}
+        </button>
+      </ModalFooter>
+    </Modal>
+  );
+}
+
+function CrearModal({
+  sedes,
+  rolesDerivados,
+  onClose,
+  onCreado,
+}: {
+  sedes: Sede[];
+  rolesDerivados: RolDerivado[];
+  onClose: () => void;
+  onCreado: () => void;
+}) {
+  const opciones = useMemo(() => opcionesRol(rolesDerivados), [rolesDerivados]);
+  const [nombre, setNombre] = useState('');
+  const [rolValor, setRolValor] = useState<string>('ventas_junior');
+  const [sedePrimaria, setSedePrimaria] = useState(sedes[0]?.cod ?? '');
+  const [tiendas, setTiendas] = useState<string[]>(sedes[0] ? [sedes[0].cod] : []);
+  const [fechaIngreso, setFechaIngreso] = useState('');
+  const [notas, setNotas] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [cod, setCod] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function crear() {
+    setError('');
+    if (!nombre.trim()) {
+      setError('El nombre es obligatorio');
+      return;
+    }
+    if (!sedePrimaria) {
+      setError('Elige una sede primaria');
+      return;
+    }
+    if (password.length < 4) {
+      setError('La contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+    const opcion = opciones.find((o) => o.valor === rolValor);
+    if (!opcion) {
+      setError('Elige un rol');
+      return;
+    }
+    startTransition(async () => {
+      const r = await accionCrearEmpleado({
+        nombre,
+        rolBase: opcion.rolBase,
+        rolCod: opcion.rolCod,
+        sedeCod: sedePrimaria,
+        tiendas,
+        fechaIngreso: fechaIngreso || null,
+        notas,
+        password,
+      });
+      if (!r.ok) {
+        setError(r.error ?? 'Error');
+        return;
+      }
+      setCod(r.cod ?? null);
+    });
+  }
+
+  // Tras crear, se muestra el código interno una sola vez (referencia de soporte; el login del
+  // día a día es nombre + contraseña, no requiere que el empleado lo sepa).
+  if (cod) {
+    return (
+      <Modal open onClose={onCreado} size="sm" title="Colaborador creado">
+        <ModalBody className="space-y-2 text-center">
+          <p className="text-sm text-navy">
+            <strong>{nombre}</strong> ya puede iniciar sesión con su nombre y la contraseña asignada.
+          </p>
+          <p className="text-xs text-muted">
+            Código interno (soporte): <span className="font-mono text-navy">{cod}</span>
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <button type="button" onClick={onCreado} className={buttonVariants({ variant: 'primary' })}>
+            Listo
+          </button>
+        </ModalFooter>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal open onClose={onClose} size="md" title="Nuevo colaborador" subtitle="Crea el acceso y el perfil en un solo paso">
+      <ModalBody className="max-h-[70vh] space-y-3 overflow-y-auto">
+        <CamposPerfil
+          nombre={nombre}
+          setNombre={setNombre}
+          rolValor={rolValor}
+          setRolValor={setRolValor}
+          sedePrimaria={sedePrimaria}
+          setSedePrimaria={setSedePrimaria}
+          tiendas={tiendas}
+          setTiendas={setTiendas}
+          fechaIngreso={fechaIngreso}
+          setFechaIngreso={setFechaIngreso}
+          notas={notas}
+          setNotas={setNotas}
+          sedes={sedes}
+          opciones={opciones}
+        />
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Contraseña inicial</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mínimo 4 caracteres"
+            className={cn(fieldCls, 'w-full')}
+          />
+        </div>
+        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      </ModalBody>
+      <ModalFooter>
+        <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
+          Cancelar
+        </button>
+        <button
+          type="button"
+          onClick={crear}
+          disabled={pending}
+          className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
+        >
+          {pending ? 'Creando…' : 'Crear colaborador'}
         </button>
       </ModalFooter>
     </Modal>

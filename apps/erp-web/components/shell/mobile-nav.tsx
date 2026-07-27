@@ -12,7 +12,7 @@ import { SidebarNav, SidebarFooter } from './sidebar';
 // sidebar como drawer off-canvas. Cierra con Escape, al tocar el fondo o al navegar.
 // El drawer va por portal a <body>: el backdrop-blur de la topbar crea un containing
 // block y un `fixed` anidado quedaría atrapado dentro del header.
-export function MobileNav({ rol, matriz }: { rol: Rol; matriz: MatrizPermisos }) {
+export function MobileNav({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPermisos; rolCod?: string | null }) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
 
@@ -59,7 +59,7 @@ export function MobileNav({ rol, matriz }: { rol: Rol; matriz: MatrizPermisos })
                   <X className="h-5 w-5" strokeWidth={1.75} />
                 </button>
               </div>
-              <SidebarNav rol={rol} matriz={matriz} />
+              <SidebarNav rol={rol} matriz={matriz} rolCod={rolCod} />
               <SidebarFooter />
             </div>
           </div>,

@@ -18,7 +18,7 @@ export default async function IncidenciasPage() {
   } catch {
     matriz = {};
   }
-  if (!puede(matriz, sesion.usuario.rol, 'incidencias', 'ver')) redirect('/reportes/nuevo');
+  if (!puede(matriz, sesion.usuario.rol, 'incidencias', 'ver', sesion.usuario.rolCod)) redirect('/reportes/nuevo');
 
   const [incidencias, tipos, empleados] = await Promise.all([
     listarIncidencias(),

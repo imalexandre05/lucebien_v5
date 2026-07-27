@@ -5,7 +5,9 @@ import { getServerClient } from './supabase/server';
 import { getAdminClient } from './supabase/admin';
 
 const SEDE_COOKIE = 'sci_sede';
-const EMAIL_DOMAIN = 'lucebien.local';
+// Exportado (Fase 1): lo reutilizan crearEmpleado() (empleados-repo.ts) y la reautenticación
+// (lib/reauth.ts) — antes solo vivía aquí y se hubiera vuelto a duplicar en cada archivo nuevo.
+export const EMAIL_DOMAIN = 'lucebien.local';
 
 // Login híbrido: el empleado entra con su código de 4 dígitos + sede.
 // El código ES la credencial (Supabase Auth tiene el bcrypt del código importado del
@@ -60,10 +62,24 @@ export const getSesion = cache(async (): Promise<Sesion | null> => {
   } = await sb.auth.getUser();
   if (!user) return null;
 
-  const [{ data: emp }, { data: tiendas }] = await Promise.all([
-    sb.from('empleados').select('id, nombre, rol, sede_cod').eq('id', user.id).maybeSingle(),
+  const [empRes, { data: tiendas }] = await Promise.all([
+    sb.from('empleados').select('id, nombre, rol, rol_cod, sede_cod').eq('id', user.id).maybeSingle(),
     sb.from('empleado_tiendas').select('sede_cod').eq('empleado_id', user.id),
   ]);
+
+  let emp = empRes.data as Record<string, unknown> | null;
+  if (empRes.error) {
+    // Puente defensivo (Fase 1): si la migración 0050 (columna empleados.rol_cod) todavía no se
+    // aplicó en este entorno, no tumbar TODA la sesión de TODOS por una columna que falta —
+    // reintentar sin rol_cod. Se auto-desactiva solo (deja de entrar aquí) en cuanto la migración
+    // corra; no borrar esto antes de confirmar que 0050 está aplicada en producción.
+    const { data: fallback } = await sb
+      .from('empleados')
+      .select('id, nombre, rol, sede_cod')
+      .eq('id', user.id)
+      .maybeSingle();
+    emp = fallback as Record<string, unknown> | null;
+  }
   if (!emp) return null;
 
   const sedeActiva = cookies().get(SEDE_COOKIE)?.value || (emp.sede_cod as string) || '';
@@ -73,6 +89,7 @@ export const getSesion = cache(async (): Promise<Sesion | null> => {
     usuario: {
       id: emp.id as string,
       rol: emp.rol as Sesion['usuario']['rol'],
+      rolCod: (emp.rol_cod as string | null | undefined) ?? null,
       sede: sedeActiva,
       tiendas: lista.length ? lista : sedeActiva ? [sedeActiva] : [],
     },

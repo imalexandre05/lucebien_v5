@@ -20,7 +20,7 @@ export default async function CajaPage() {
   } catch {
     matriz = {};
   }
-  const puedeCobrar = sesion ? puede(matriz, sesion.usuario.rol, 'pos_cobro', 'ver') : false;
+  const puedeCobrar = sesion ? puede(matriz, sesion.usuario.rol, 'pos_cobro', 'ver', sesion.usuario.rolCod) : false;
   const [ses, pendientes] = await Promise.all([sesionAbierta(sede), cobrosPendientes()]);
   const movimientos = ses ? await movimientosSesion(ses.id) : [];
   const resumen = ses ? resumenMovimientos(ses, movimientos) : null;

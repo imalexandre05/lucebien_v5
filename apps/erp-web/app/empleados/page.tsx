@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getSesion } from '../../lib/auth';
 import { listarEmpleadosAdmin } from '../../lib/empleados-repo';
+import { listarSedes } from '../../lib/sedes-repo';
+import { listarRoles } from '../../lib/roles-repo';
 import { PageHeader } from '../../components/shell/page-header';
 import { Card, CardContent } from '../../components/ui/card';
 import { EmpleadosCliente } from './cliente';
@@ -23,7 +25,13 @@ export default async function EmpleadosPage() {
     );
   }
 
-  const empleados = await listarEmpleadosAdmin();
+  const [empleados, sedes, rolesDerivados] = await Promise.all([
+    listarEmpleadosAdmin(),
+    listarSedes().catch(() => []),
+    // roles derivados (migración 0050): si aún no se aplicó, no tumbar la página — sin roles
+    // derivados el picker solo muestra los 7 base.
+    listarRoles().catch(() => []),
+  ]);
   const activos = empleados.filter((e) => e.activo).length;
 
   return (
@@ -32,7 +40,7 @@ export default async function EmpleadosPage() {
         title="Gestión de colaboradores"
         subtitle={`${empleados.length} colaboradores · ${activos} activos`}
       />
-      <EmpleadosCliente empleados={empleados} />
+      <EmpleadosCliente empleados={empleados} sedes={sedes} rolesDerivados={rolesDerivados} />
     </div>
   );
 }

@@ -1,7 +1,10 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { ClipboardCheck, ArrowRight } from 'lucide-react';
-import { TURNO_LABEL, estadoReporte } from '@scilb/core';
+import { TURNO_LABEL, estadoReporte, puede, type MatrizPermisos } from '@scilb/core';
 import { listarReportes } from '../../lib/reportes-repo';
+import { getSesion } from '../../lib/auth';
+import { leerMatrizPermisos } from '../../lib/permisos-repo';
 import { PageHeader } from '../../components/shell/page-header';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
@@ -13,7 +16,19 @@ import { cn } from '../../lib/cn';
 // Landing dedicado "Evaluación de Reporte" (como ítem aparte del SCI viejo): solo los
 // reportes pendientes de evaluar, con acceso directo a evaluarlos. El detalle de cada
 // reporte ya trae el panel de evaluación (3 estados + mapa).
+//
+// Gate server-side (Fase 1): antes 'evaluar_reportes'.'ver' solo ocultaba el sidebar.
 export default async function EvaluarReportesPage() {
+  const sesion = await getSesion();
+  if (!sesion) redirect('/login');
+  let matriz: MatrizPermisos = {};
+  try {
+    matriz = await leerMatrizPermisos();
+  } catch {
+    matriz = {};
+  }
+  if (!puede(matriz, sesion.usuario.rol, 'evaluar_reportes', 'ver', sesion.usuario.rolCod)) redirect('/reportes/nuevo');
+
   const reportes = await listarReportes();
   const pendientes = reportes.filter((r) => estadoReporte(r) === 'pendiente');
 

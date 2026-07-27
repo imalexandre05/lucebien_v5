@@ -18,7 +18,7 @@ async function exigirCajero(): Promise<string | null> {
   } catch {
     matriz = {};
   }
-  if (!puede(matriz, sesion.usuario.rol, 'pos_cobro', 'ver')) return 'No tienes el permiso de cajero';
+  if (!puede(matriz, sesion.usuario.rol, 'pos_cobro', 'ver', sesion.usuario.rolCod)) return 'No tienes el permiso de cajero';
   return null;
 }
 

@@ -63,7 +63,7 @@ export default async function Dashboard() {
     } catch {
       matrizPrevia = {};
     }
-    if (!puede(matrizPrevia, sesionPrevia.usuario.rol, 'dashboard', 'ver')) {
+    if (!puede(matrizPrevia, sesionPrevia.usuario.rol, 'dashboard', 'ver', sesionPrevia.usuario.rolCod)) {
       redirect('/reportes/nuevo');
     }
   }

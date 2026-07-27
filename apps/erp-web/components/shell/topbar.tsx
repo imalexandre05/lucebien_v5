@@ -22,6 +22,7 @@ export async function Topbar() {
   const nombre = sesion?.nombre ?? '';
   const sede = sesion?.usuario.sede ?? '';
   const rol = sesion?.usuario.rol;
+  const rolCod = sesion?.usuario.rolCod;
 
   // Notificaciones (para la campana) y matriz de permisos; nunca deben tumbar el topbar
   // (fallback seguro: matriz vacía = solo admin/dueno ven módulos no-operativos).
@@ -44,7 +45,7 @@ export async function Topbar() {
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-line bg-paper/85 px-4 backdrop-blur sm:px-7 print:hidden">
       <div className="flex items-center gap-2.5 text-sm text-muted">
-        {rol && <MobileNav rol={rol} matriz={matriz} />}
+        {rol && <MobileNav rol={rol} matriz={matriz} rolCod={rolCod} />}
         <LogoMark size="sm" className="lg:hidden" />
         <span className="hidden md:inline">Confecciones Aliaga · Huancayo</span>
       </div>

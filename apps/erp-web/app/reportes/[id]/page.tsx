@@ -1,13 +1,16 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import {
   TURNO_LABEL,
   estadoReporte,
   ESTADO_REPORTE_LABEL,
+  puede,
   type EstadoReporte,
+  type MatrizPermisos,
 } from '@scilb/core';
 import { obtenerReporte, listarLayoutZonas } from '../../../lib/reportes-repo';
 import { getSesion } from '../../../lib/auth';
+import { leerMatrizPermisos } from '../../../lib/permisos-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
@@ -35,11 +38,22 @@ function Campo({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default async function ReporteDetalle({ params }: { params: { id: string } }) {
+  // Gate server-side (Fase 1): mismo criterio que /reportes (lista) — antes solo se ocultaba del
+  // sidebar, cualquiera con la URL directa (o el id) entraba igual al detalle de cualquier sede.
+  const sesion = await getSesion();
+  if (!sesion) redirect('/login');
+  let matriz: MatrizPermisos = {};
+  try {
+    matriz = await leerMatrizPermisos();
+  } catch {
+    matriz = {};
+  }
+  if (!puede(matriz, sesion.usuario.rol, 'reportes', 'ver', sesion.usuario.rolCod)) redirect('/reportes/nuevo');
+
   const r = await obtenerReporte(params.id);
   if (!r) notFound();
   const estado = estadoReporte(r);
-  const sesion = await getSesion();
-  const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
+  const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
   const puedeEvaluar = !r.evaluado && !r.noEvaluable;
 
   // Separa actividades regulares de las de limpieza (OL_), que se muestran en el mapa.

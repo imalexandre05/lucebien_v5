@@ -28,7 +28,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="es">
       <body>
         <div className="flex min-h-screen">
-          <Sidebar rol={rol} matriz={matriz} />
+          <Sidebar rol={rol} matriz={matriz} rolCod={sesion?.usuario.rolCod} />
           <div className="flex min-w-0 flex-1 flex-col">
             <Topbar />
             <main className="flex-1 px-4 py-6 sm:px-7 sm:py-8">
