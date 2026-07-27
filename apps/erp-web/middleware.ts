@@ -90,5 +90,9 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+  // `assets` (Fase 3, logo real): estaba fuera de esta lista y el gate de AUTH_V2 redirigía
+  // cualquier request no autenticado a /login — incluida la petición interna que hace el
+  // optimizador de next/image al leer el PNG. Efecto: el logo salía roto para cualquiera que
+  // todavía no tuviera sesión, justo el caso que más importa (la propia página de login).
+  matcher: ['/((?!_next/static|_next/image|assets|favicon.ico).*)'],
 };

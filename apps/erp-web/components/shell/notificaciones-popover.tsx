@@ -40,11 +40,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const [abierto, setAbierto] = useState(false);
-  const [coords, setCoords] = useState<{ top: number | null; bottom: number | null; right: number }>({
-    top: null,
-    bottom: null,
-    right: 8,
-  });
+  const [coords, setCoords] = useState<{ top: number | null; right: number }>({ top: null, right: 8 });
   const [, startTransition] = useTransition();
 
   useEffect(() => setAbierto(false), [path]);
@@ -56,6 +52,11 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
     return () => document.removeEventListener('keydown', onKey);
   }, [abierto]);
 
+  // Siempre resuelve a un `top` concreto (nunca `bottom`): si cabe hacia abajo del botón, ancla
+  // ahí; si no, sube el panel para que su base quede pegada arriba del botón. El clamp final a
+  // `margen` es lo que evita que en un viewport muy bajo (móvil apaisado) el panel termine con
+  // top negativo, empujado fuera de la pantalla por el propio flip — mejor que quede pegado
+  // arriba y su lista interna (`max-h-80 overflow-y-auto`) absorba el resto con scroll.
   const reposicionar = useCallback(() => {
     const btn = btnRef.current;
     if (!btn) return;
@@ -63,11 +64,8 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
     const margen = 8;
     const alturaPanel = panelRef.current?.offsetHeight ?? ALTURA_ESTIMADA;
     const cabeAbajo = r.bottom + margen + alturaPanel <= window.innerHeight;
-    setCoords({
-      top: cabeAbajo ? r.bottom + margen : null,
-      bottom: cabeAbajo ? null : Math.max(8, window.innerHeight - r.top + margen),
-      right: Math.max(8, window.innerWidth - r.right),
-    });
+    const top = cabeAbajo ? r.bottom + margen : Math.max(margen, r.top - margen - alturaPanel);
+    setCoords({ top, right: Math.max(margen, window.innerWidth - r.right) });
   }, []);
 
   // Primera pasada (con estimado) antes de pintar, para no mostrar un flash en (0,0).
@@ -143,11 +141,11 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
               aria-label="Notificaciones"
               style={{
                 top: coords.top ?? undefined,
-                bottom: coords.bottom ?? undefined,
                 right: coords.right,
-                visibility: coords.top === null && coords.bottom === null ? 'hidden' : 'visible',
+                visibility: coords.top === null ? 'hidden' : 'visible',
+                maxHeight: 'calc(100vh - 1rem)',
               }}
-              className="fixed z-30 w-80 max-w-[calc(100vw-1rem)] animate-fade rounded-xl border border-line bg-white shadow-lift"
+              className="fixed z-30 w-80 max-w-[calc(100vw-1rem)] animate-fade overflow-y-auto rounded-xl border border-line bg-white shadow-lift"
             >
               <div className="flex items-center justify-between border-b border-line/60 px-3.5 py-2.5">
                 <span className="text-sm font-semibold text-navy">Notificaciones</span>

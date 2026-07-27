@@ -7,35 +7,41 @@ import { cn } from '../../lib/cn';
 // viviendo dentro de una chapa navy propia (igual que el placeholder anterior): así el ícono se ve
 // igual de bien en el topbar (fondo claro) que en la sidebar (fondo navy), sin depender del fondo
 // que lo rodea. El favicon usa el sello a color (`logo_lion_color.png`, ver app/icon.png).
+//
+// width/height explícitos (no `fill`): el tamaño del ícono ya se conoce por `size`, así que no
+// hace falta que next/image mida el padre — y evita su warning de "height value of 0" en los
+// call sites que a veces están ocultos vía CSS (ej. el crest del topbar es `lg:hidden`; next/image
+// mide 0 en el primer render si el contenedor está en display:none, aunque sea a propósito).
 
 type Size = 'sm' | 'md' | 'lg' | 'xl';
 type Tone = 'onLight' | 'onDark';
 
 // Caja cuadrada del ícono — mismo box-model que el placeholder anterior, para no romper el layout
 // de los call sites (topbar, login, /dispositivo, dashboard, reportes).
-const BOX: Record<Size, { box: string; inset: string; rOuter: string; rInner: string; pad: string }> = {
-  sm: { box: 'h-8 w-8', inset: 'inset-[3px]', rOuter: 'rounded-md', rInner: 'rounded-[4px]', pad: 'p-1.5' },
-  md: { box: 'h-10 w-10', inset: 'inset-[3.5px]', rOuter: 'rounded-lg', rInner: 'rounded-[5px]', pad: 'p-2' },
-  lg: { box: 'h-14 w-14', inset: 'inset-[4px]', rOuter: 'rounded-xl', rInner: 'rounded-[7px]', pad: 'p-2.5' },
-  xl: { box: 'h-20 w-20', inset: 'inset-[5px]', rOuter: 'rounded-2xl', rInner: 'rounded-[9px]', pad: 'p-3.5' },
+const BOX: Record<Size, { box: string; inset: string; rOuter: string; rInner: string }> = {
+  sm: { box: 'h-8 w-8', inset: 'inset-[3px]', rOuter: 'rounded-md', rInner: 'rounded-[4px]' },
+  md: { box: 'h-10 w-10', inset: 'inset-[3.5px]', rOuter: 'rounded-lg', rInner: 'rounded-[5px]' },
+  lg: { box: 'h-14 w-14', inset: 'inset-[4px]', rOuter: 'rounded-xl', rInner: 'rounded-[7px]' },
+  xl: { box: 'h-20 w-20', inset: 'inset-[5px]', rOuter: 'rounded-2xl', rInner: 'rounded-[9px]' },
 };
 
-const BOX_PX: Record<Size, number> = { sm: 32, md: 40, lg: 56, xl: 80 };
+// Tamaño del ícono DENTRO de la chapa (deja el aire que antes daba el padding p-1.5/2/2.5/3.5).
+const ICON_PX: Record<Size, number> = { sm: 20, md: 24, lg: 36, xl: 52 };
 
 export function LogoMark({ size = 'md', className }: { size?: Size; className?: string }) {
   const m = BOX[size];
   return (
     <div
-      className={cn('relative shrink-0 overflow-hidden bg-navy shadow-card', m.box, m.rOuter, className)}
+      className={cn('relative flex shrink-0 items-center justify-center overflow-hidden bg-navy shadow-card', m.box, m.rOuter, className)}
       aria-hidden="true"
     >
       <div className={cn('pointer-events-none absolute z-10 border border-gold/55', m.inset, m.rInner)} />
       <Image
         src="/assets/logo_lion_white.png"
         alt=""
-        fill
-        sizes={`${BOX_PX[size]}px`}
-        className={cn('object-contain', m.pad)}
+        width={ICON_PX[size]}
+        height={ICON_PX[size]}
+        className="object-contain"
         priority
       />
     </div>
@@ -72,9 +78,7 @@ export function Logo({
       className={cn('flex items-center gap-3', vertical && 'flex-col gap-2', className)}
       aria-label="LuceBien"
     >
-      <div style={{ height: h, width: w }} className="relative shrink-0">
-        <Image src={LOCKUP_SRC[tone]} alt="LuceBien" fill sizes={`${w}px`} className="object-contain" priority />
-      </div>
+      <Image src={LOCKUP_SRC[tone]} alt="LuceBien" width={w} height={h} className="shrink-0 object-contain" priority />
       {tagline && (
         <div className={cn(vertical && 'text-center')}>
           <div className="font-mono text-[10px] tracking-brand text-gold">SCI · LB</div>
