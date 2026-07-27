@@ -6,7 +6,7 @@ import { Check, AlertCircle } from 'lucide-react';
 import { accionGuardarConfig } from './actions';
 import type { ConfigItem } from '../../lib/config-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
-import { buttonVariants } from '../../components/ui/button';
+import { Button } from '../../components/ui/button';
 import { cn } from '../../lib/cn';
 
 const fieldCls =
@@ -87,14 +87,9 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
         </p>
       )}
 
-      <button
-        type="button"
-        onClick={guardar}
-        disabled={pending}
-        className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-      >
+      <Button type="button" onClick={guardar} pending={pending}>
         {pending ? 'Guardando…' : 'Guardar cambios'}
-      </button>
+      </Button>
     </div>
   );
 }

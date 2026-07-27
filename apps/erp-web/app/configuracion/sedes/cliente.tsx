@@ -10,7 +10,7 @@ import { Card, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button, buttonVariants } from '../../../components/ui/button';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -173,14 +173,9 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
           <button type="button" onClick={() => setModal(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </button>
-          <button
-            type="button"
-            onClick={guardar}
-            disabled={pending}
-            className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-          >
+          <Button type="button" onClick={guardar} pending={pending}>
             {pending ? 'Guardando…' : 'Guardar'}
-          </button>
+          </Button>
         </ModalFooter>
       </Modal>
     </div>

@@ -18,7 +18,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { EmptyState } from '../../../components/ui/empty-state';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button, buttonVariants } from '../../../components/ui/button';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -644,14 +644,9 @@ export function ActividadesCliente({
           <button type="button" onClick={() => setModal(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </button>
-          <button
-            type="button"
-            onClick={guardar}
-            disabled={pending}
-            className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-          >
+          <Button type="button" onClick={guardar} pending={pending}>
             {pending ? 'Guardando…' : 'Guardar'}
-          </button>
+          </Button>
         </ModalFooter>
       </Modal>
 
@@ -674,14 +669,14 @@ export function ActividadesCliente({
           <button type="button" onClick={() => setEliminar(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </button>
-          <button
+          <Button
             type="button"
             onClick={confirmarEliminar}
-            disabled={pending}
-            className={cn(buttonVariants({ variant: 'primary' }), 'bg-red-600 hover:bg-red-700', pending && 'opacity-60')}
+            pending={pending}
+            className="bg-red-600 hover:bg-red-700"
           >
             {pending ? 'Eliminando…' : 'Sí, eliminar'}
-          </button>
+          </Button>
         </ModalFooter>
       </Modal>
 
@@ -712,14 +707,9 @@ export function ActividadesCliente({
           <button type="button" onClick={() => setDuplicarAbierto(false)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </button>
-          <button
-            type="button"
-            onClick={duplicar}
-            disabled={pending || !duplicarDe}
-            className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-          >
+          <Button type="button" onClick={duplicar} disabled={!duplicarDe} pending={pending}>
             {pending ? 'Copiando…' : 'Duplicar'}
-          </button>
+          </Button>
         </ModalFooter>
       </Modal>
     </div>

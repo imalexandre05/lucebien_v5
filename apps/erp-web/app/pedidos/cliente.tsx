@@ -9,7 +9,7 @@ import { accionCrearPedido } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
-import { buttonVariants } from '../../components/ui/button';
+import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { EmptyState } from '../../components/ui/empty-state';
 import { ShoppingBag } from 'lucide-react';
@@ -362,14 +362,14 @@ export function PedidosCliente({
           <button type="button" onClick={cerrar} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </button>
-          <button
+          <Button
             type="button"
             onClick={guardar}
-            disabled={pending || !form.clienteId || !form.sedeCod || !form.fecha}
-            className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
+            disabled={!form.clienteId || !form.sedeCod || !form.fecha}
+            pending={pending}
           >
             {pending ? 'Guardando…' : 'Crear pedido'}
-          </button>
+          </Button>
         </ModalFooter>
       </Modal>
     </div>

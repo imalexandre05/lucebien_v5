@@ -7,7 +7,7 @@ import { ArrowLeft, Plus, Save, Trash2 } from 'lucide-react';
 import { totalCompra } from '@scilb/core';
 import { crearCompraAction } from '../actions';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -185,15 +185,16 @@ export function NuevaCompraForm({
               Total de la compra:{' '}
               <span className="font-mono text-lg font-semibold tabular-nums text-[#7a6e0e]">{soles(total)}</span>
             </span>
-            <button
+            <Button
               type="button"
               onClick={guardar}
-              disabled={pending || materialesSede.length === 0}
-              className={cn(buttonVariants({ variant: 'primary' }), 'py-2.5', (pending || materialesSede.length === 0) && 'opacity-50')}
+              disabled={materialesSede.length === 0}
+              pending={pending}
+              className="py-2.5"
             >
-              <Save className="h-4 w-4" strokeWidth={2} />
+              {!pending && <Save className="h-4 w-4" strokeWidth={2} />}
               {pending ? 'Guardando…' : 'Registrar compra'}
-            </button>
+            </Button>
           </div>
           <p className="text-xs text-muted">Se registra como “por recibir”. El stock sube cuando la marques como recibida en la lista de compras.</p>
         </CardContent>

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Check, PackagePlus } from 'lucide-react';
 import { registrarPrenda } from '../actions';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/cn';
 
 // Mismos vocabularios que usa el tablero (no inventar valores nuevos).
@@ -155,14 +155,15 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
             )}
 
             <div className="col-span-2 sm:col-span-3">
-              <button
+              <Button
                 type="submit"
-                disabled={pending || !codigo.trim()}
-                className={cn(buttonVariants({ variant: 'primary' }), 'w-full justify-center py-2.5', (pending || !codigo.trim()) && 'opacity-50')}
+                disabled={!codigo.trim()}
+                pending={pending}
+                className="w-full justify-center py-2.5"
               >
-                <PackagePlus className="h-4 w-4" strokeWidth={2} />
+                {!pending && <PackagePlus className="h-4 w-4" strokeWidth={2} />}
                 {pending ? 'Registrando…' : 'Registrar y seguir'}
-              </button>
+              </Button>
             </div>
           </form>
         </CardContent>

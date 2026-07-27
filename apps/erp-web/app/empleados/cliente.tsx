@@ -10,7 +10,7 @@ import type { Sede } from '../../lib/sedes-repo';
 import { accionEstadoEmpleado, accionEditarEmpleado, accionEstablecerContrasena, accionCrearEmpleado } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
-import { buttonVariants } from '../../components/ui/button';
+import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
@@ -582,14 +582,15 @@ function EditarModal({
               placeholder="Nueva contraseña"
               className={cn(fieldCls, 'flex-1')}
             />
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={guardarContrasena}
-              disabled={passPending || password.length < 4}
-              className={cn(buttonVariants({ variant: 'outline' }), passPending && 'opacity-60')}
+              disabled={password.length < 4}
+              pending={passPending}
             >
               {passPending ? 'Guardando…' : 'Asignar'}
-            </button>
+            </Button>
           </div>
           {passOk && <p className="mt-1.5 text-xs font-medium text-emerald-700">Contraseña actualizada ✓</p>}
           {passError && <p className="mt-1.5 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{passError}</p>}
@@ -599,14 +600,9 @@ function EditarModal({
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
           Cancelar
         </button>
-        <button
-          type="button"
-          onClick={guardar}
-          disabled={pending}
-          className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-        >
+        <Button type="button" onClick={guardar} pending={pending}>
           {pending ? 'Guardando…' : 'Guardar cambios'}
-        </button>
+        </Button>
       </ModalFooter>
     </Modal>
   );
@@ -730,14 +726,9 @@ function CrearModal({
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
           Cancelar
         </button>
-        <button
-          type="button"
-          onClick={crear}
-          disabled={pending}
-          className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-        >
+        <Button type="button" onClick={crear} pending={pending}>
           {pending ? 'Creando…' : 'Crear colaborador'}
-        </button>
+        </Button>
       </ModalFooter>
     </Modal>
   );

@@ -17,7 +17,7 @@ import type { Evaluacion } from '../../lib/evaluaciones-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
-import { buttonVariants } from '../../components/ui/button';
+import { Button, buttonVariants } from '../../components/ui/button';
 import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
@@ -279,14 +279,16 @@ export function EvaluacionesCliente({
             </div>
 
             <div className="flex items-center gap-3 border-t border-line/60 pt-3">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={calcularDesdeData}
-                disabled={pending || !empleadoId}
-                className={cn(buttonVariants({ variant: 'outline' }), 'text-xs', pending && 'opacity-60')}
+                disabled={!empleadoId}
+                pending={pending}
+                className="text-xs"
               >
                 Calcular desde la data
-              </button>
+              </Button>
               <span className="text-xs text-muted">
                 Llena operaciones/software/limpieza (reportes evaluados como encargado), tardanza y descuento.
               </span>
@@ -340,9 +342,9 @@ export function EvaluacionesCliente({
 
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex items-center gap-3">
-              <button type="button" onClick={guardar} disabled={pending || !empleadoId} className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}>
+              <Button type="button" onClick={guardar} disabled={!empleadoId} pending={pending}>
                 {pending ? 'Guardando…' : `Guardar · ${nota.toFixed(2)}`}
-              </button>
+              </Button>
               <span className="text-xs text-muted">La nota usa los pesos de Configuración y se guarda un snapshot.</span>
             </div>
           </CardContent>

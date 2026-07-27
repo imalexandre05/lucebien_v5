@@ -7,7 +7,7 @@ import type { MatrizPermisos, Rol, Accion } from '@scilb/core';
 import type { RolDerivado } from '../../../lib/roles-repo';
 import { accionGuardarPermisos, accionCrearRol, accionActualizarRol } from './actions';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button, buttonVariants } from '../../../components/ui/button';
 import { cn } from '../../../lib/cn';
 
 // Roles base editables (admin/dueno siempre ven todo por mecanismo, no tienen fila en la matriz
@@ -159,15 +159,10 @@ export function PermisosCliente({
           <div className="ml-auto flex items-center gap-3">
             {guardado && <span className="text-xs font-medium text-emerald-700">Guardado ✓</span>}
             {error && <span className="text-xs text-red-600">{error}</span>}
-            <button
-              type="button"
-              onClick={guardar}
-              disabled={pending}
-              className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-            >
-              <Save className="h-4 w-4" strokeWidth={2} />
+            <Button type="button" onClick={guardar} pending={pending}>
+              {!pending && <Save className="h-4 w-4" strokeWidth={2} />}
               {pending ? 'Guardando…' : 'Guardar cambios'}
-            </button>
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -339,14 +334,9 @@ function RolesDerivados({ roles, onCambio }: { roles: RolDerivado[]; onCambio: (
               <button type="button" onClick={() => setAbierto(false)} className={buttonVariants({ variant: 'outline' })}>
                 Cancelar
               </button>
-              <button
-                type="button"
-                onClick={crear}
-                disabled={pending}
-                className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-              >
+              <Button type="button" onClick={crear} pending={pending}>
                 {pending ? 'Creando…' : 'Crear rol'}
-              </button>
+              </Button>
             </div>
           </div>
         )}

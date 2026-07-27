@@ -9,7 +9,7 @@ import { crearRemesaAccesorios, confirmarRemesaAccesorios } from './actions';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -136,15 +136,10 @@ export function AccesoriosCliente({
 
             {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-            <button
-              type="button"
-              onClick={enviar}
-              disabled={pending}
-              className={cn(buttonVariants({ variant: 'primary' }), 'w-full justify-center py-2.5', pending && 'opacity-50')}
-            >
-              <Send className="h-4 w-4" strokeWidth={2} />
+            <Button type="button" onClick={enviar} pending={pending} className="w-full justify-center py-2.5">
+              {!pending && <Send className="h-4 w-4" strokeWidth={2} />}
               {pending ? 'Enviando…' : 'Registrar envío'}
-            </button>
+            </Button>
           </CardContent>
         </Card>
 

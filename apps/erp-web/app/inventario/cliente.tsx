@@ -8,7 +8,7 @@ import { accionCrearActivo, accionEditarActivo, accionEliminarActivo } from './a
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
-import { buttonVariants } from '../../components/ui/button';
+import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
@@ -428,9 +428,9 @@ export function InventarioCliente({
               <button type="button" onClick={cerrarModal} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
                 Cancelar
               </button>
-              <button type="button" onClick={guardarModal} disabled={pending} className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}>
+              <Button type="button" onClick={guardarModal} pending={pending}>
                 {pending ? 'Guardando…' : 'Guardar activo'}
-              </button>
+              </Button>
             </ModalFooter>
           </>
         )}

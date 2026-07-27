@@ -8,7 +8,7 @@ import { accionCrearIncidencia, accionEliminarIncidencia } from './actions';
 import type { Incidencia, TipoIncidencia } from '../../lib/incidencias-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
-import { buttonVariants } from '../../components/ui/button';
+import { Button, buttonVariants } from '../../components/ui/button';
 import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 
@@ -247,14 +247,9 @@ export function IncidenciasCliente({
               <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Qué pasó…" className={cn(fieldCls, 'w-full')} />
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <button
-              type="button"
-              onClick={registrar}
-              disabled={pending || !tipo}
-              className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-            >
+            <Button type="button" onClick={registrar} disabled={!tipo} pending={pending}>
               {pending ? 'Registrando…' : 'Registrar incidencia'}
-            </button>
+            </Button>
           </CardContent>
         </Card>
       )}

@@ -11,7 +11,7 @@ import type { TipoIncidencia } from '../../../lib/incidencias-repo';
 import { LayoutMap } from '../layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Badge, type Tone } from '../../../components/ui/badge';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button, buttonVariants } from '../../../components/ui/button';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
 import { cn } from '../../../lib/cn';
 
@@ -665,16 +665,17 @@ export function NuevoReporteForm({
                     ? 'Se guarda automáticamente mientras lo completas.'
                     : 'Selecciona al encargado del turno para poder enviar.'}
                 </span>
-                <button
+                <Button
                   type="button"
                   data-testid="enviar-reporte"
                   onClick={submit}
                   disabled={!puedeEnviar}
-                  className={cn(buttonVariants({ variant: 'primary' }), 'px-6 py-2.5', !puedeEnviar && 'opacity-50')}
+                  pending={pending}
+                  className="px-6 py-2.5"
                 >
-                  <Send className="h-4 w-4" strokeWidth={2} />
+                  {!pending && <Send className="h-4 w-4" strokeWidth={2} />}
                   {pending ? 'Enviando…' : 'Enviar reporte'}
-                </button>
+                </Button>
               </div>
             </div>
           </div>

@@ -11,7 +11,7 @@ import { accionGuardarLayout, accionClonarLayout } from './actions';
 import { LIENZO_W, LIENZO_H, formaZona, texturaZona } from '../../reportes/layout-map';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button, buttonVariants } from '../../../components/ui/button';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -297,14 +297,9 @@ export function LayoutEditor({
             >
               <Copy className="h-3.5 w-3.5" strokeWidth={2} /> Clonar de sede
             </button>
-            <button
-              type="button"
-              onClick={guardar}
-              disabled={pending || !dirty}
-              className={cn(buttonVariants({ variant: 'primary' }), (pending || !dirty) && 'opacity-60')}
-            >
-              <Save className="h-4 w-4" strokeWidth={2} /> {pending ? 'Guardando…' : 'Guardar'}
-            </button>
+            <Button type="button" onClick={guardar} disabled={!dirty} pending={pending}>
+              {!pending && <Save className="h-4 w-4" strokeWidth={2} />} {pending ? 'Guardando…' : 'Guardar'}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -633,14 +628,9 @@ export function LayoutEditor({
           <button type="button" onClick={() => setClonarAbierto(false)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </button>
-          <button
-            type="button"
-            onClick={clonar}
-            disabled={pending || !clonarDe}
-            className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
-          >
+          <Button type="button" onClick={clonar} disabled={!clonarDe} pending={pending}>
             {pending ? 'Clonando…' : 'Clonar y reemplazar'}
-          </button>
+          </Button>
         </ModalFooter>
       </Modal>
     </div>

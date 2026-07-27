@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ShieldCheck } from 'lucide-react';
 import { accionReautenticar } from './reauth-actions';
 import { Card, CardContent } from './card';
-import { buttonVariants } from './button';
-import { cn } from '../../lib/cn';
+import { Button } from './button';
 
 // Reautenticación por contraseña (Fase 1): /pagos, /evaluaciones y /mi-desempeno lo montan en
 // vez de su contenido cuando lib/reauth.ts (tieneReauth) dice que no hay verificación vigente
@@ -60,14 +59,9 @@ export function ReauthGate({ mensaje }: { mensaje?: string }) {
             className="w-full rounded-md border border-line bg-white px-3 py-2 text-center text-sm text-navy outline-none transition-colors focus:border-gold"
           />
           {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-          <button
-            type="button"
-            onClick={confirmar}
-            disabled={pending}
-            className={cn(buttonVariants({ variant: 'primary' }), 'w-full', pending && 'opacity-60')}
-          >
+          <Button type="button" onClick={confirmar} pending={pending} className="w-full">
             {pending ? 'Verificando…' : 'Continuar'}
-          </button>
+          </Button>
         </CardContent>
       </Card>
     </div>

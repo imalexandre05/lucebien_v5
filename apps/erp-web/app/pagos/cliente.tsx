@@ -9,7 +9,7 @@ import type { Pago, EmpleadoPago } from '../../lib/pagos-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
-import { buttonVariants } from '../../components/ui/button';
+import { Button, buttonVariants } from '../../components/ui/button';
 import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
@@ -225,9 +225,9 @@ export function PagosCliente({
               </div>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <button type="button" onClick={registrar} disabled={pending || !empleadoId} className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}>
+            <Button type="button" onClick={registrar} disabled={!empleadoId} pending={pending}>
               {pending ? 'Registrando…' : `Registrar · ${soles(monto)}`}
-            </button>
+            </Button>
           </CardContent>
         </Card>
       )}

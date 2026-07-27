@@ -9,7 +9,7 @@ import type { LayoutZona } from '../../../lib/reportes-repo';
 import { LayoutMap } from '../layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Badge, type Tone } from '../../../components/ui/badge';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button, buttonVariants } from '../../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { cn } from '../../../lib/cn';
 
@@ -217,15 +217,16 @@ export function EvaluarPanel({
 
       {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      <button
+      <Button
         type="button"
         data-testid="enviar-evaluacion"
         onClick={enviar}
-        disabled={pending || (actividades.length === 0 && limpieza.length === 0)}
-        className={cn(buttonVariants({ variant: 'primary' }), 'w-full justify-center py-3 text-base', pending && 'opacity-60')}
+        disabled={actividades.length === 0 && limpieza.length === 0}
+        pending={pending}
+        className="w-full justify-center py-3 text-base"
       >
         {pending ? 'Enviando…' : `Enviar evaluación · ${puntaje}%`}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -297,19 +298,15 @@ export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean 
           <button type="button" onClick={cerrar} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </button>
-          <button
+          <Button
             type="button"
             data-testid="confirmar-anular"
             onClick={ejecutar}
-            disabled={pending}
-            className={cn(
-              buttonVariants({ variant: 'primary' }),
-              'bg-red-600 hover:bg-red-700',
-              pending && 'opacity-60',
-            )}
+            pending={pending}
+            className="bg-red-600 hover:bg-red-700"
           >
             {pending ? 'Anulando…' : 'Sí, anular'}
-          </button>
+          </Button>
         </ModalFooter>
       </Modal>
     </div>

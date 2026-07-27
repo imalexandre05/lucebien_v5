@@ -9,7 +9,7 @@ import { guardarMaterial, ajustarStockAction } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
-import { buttonVariants } from '../../components/ui/button';
+import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { cn } from '../../lib/cn';
 
@@ -299,9 +299,9 @@ function MaterialModal({
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
           Cancelar
         </button>
-        <button type="button" onClick={guardar} disabled={pending} className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}>
+        <Button type="button" onClick={guardar} pending={pending}>
           {pending ? 'Guardando…' : 'Guardar'}
-        </button>
+        </Button>
       </ModalFooter>
     </Modal>
   );
@@ -354,9 +354,9 @@ function AjusteModal({ material, onClose, onSaved }: { material: Material; onClo
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
           Cancelar
         </button>
-        <button type="button" onClick={guardar} disabled={pending} className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}>
+        <Button type="button" onClick={guardar} pending={pending}>
           {pending ? 'Aplicando…' : 'Aplicar ajuste'}
-        </button>
+        </Button>
       </ModalFooter>
     </Modal>
   );

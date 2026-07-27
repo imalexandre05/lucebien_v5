@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ETAPAS_CONFECCION, type Pedido, type EstadoPedido, type EtapaConfeccion } from '@scilb/core';
 import { accionCambiarEstadoPedido, accionActualizarEtapaConfeccion } from '../actions';
-import { buttonVariants } from '../../../components/ui/button';
+import { Button, buttonVariants } from '../../../components/ui/button';
 import { cn } from '../../../lib/cn';
 
 const ETAPA_LABEL: Record<EtapaConfeccion, string> = { corte: 'Corte', armado: 'Armado', ajuste: 'Ajuste', entrega: 'Entrega' };
@@ -71,19 +71,19 @@ export function PedidoAcciones({ pedido }: { pedido: Pedido }) {
           <p className="mb-1.5 text-xs uppercase tracking-wide text-muted">Estado del pedido</p>
           <div className="flex flex-wrap gap-2">
             {pedido.estado === 'abierto' && (
-              <button type="button" disabled={pending} onClick={() => cambiarEstado('entregado')} className={cn(buttonVariants({ variant: 'outline' }), pending && 'opacity-60')}>
+              <Button type="button" variant="outline" pending={pending} onClick={() => cambiarEstado('entregado')}>
                 Marcar entregado
-              </button>
+              </Button>
             )}
             {pedido.tipo === 'alquiler' && pedido.estado === 'entregado' && (
-              <button type="button" disabled={pending} onClick={() => cambiarEstado('devuelto')} className={cn(buttonVariants({ variant: 'outline' }), pending && 'opacity-60')}>
+              <Button type="button" variant="outline" pending={pending} onClick={() => cambiarEstado('devuelto')}>
                 Marcar devuelto
-              </button>
+              </Button>
             )}
             {pedido.estado !== 'abierto' && (
-              <button type="button" disabled={pending} onClick={() => cambiarEstado('cerrado')} className={cn(buttonVariants({ variant: 'ghost' }), pending && 'opacity-60')}>
+              <Button type="button" variant="ghost" pending={pending} onClick={() => cambiarEstado('cerrado')}>
                 Cerrar pedido
-              </button>
+              </Button>
             )}
           </div>
           {pedido.tipo === 'alquiler' && pedido.estado === 'devuelto' && (

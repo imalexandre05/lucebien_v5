@@ -8,7 +8,7 @@ import { accionAbrirCaja, accionCerrarCaja, accionRegistrarCobro, accionRegistra
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
-import { buttonVariants } from '../../components/ui/button';
+import { Button, buttonVariants } from '../../components/ui/button';
 import { StatBox } from '../../components/ui/stat-box';
 import { Modal as SharedModal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { cn } from '../../lib/cn';
@@ -118,15 +118,16 @@ export function CajaCliente({
             <input type="number" step="0.5" data-testid="monto-apertura" value={montoApertura} onChange={(e) => setMontoApertura(Number(e.target.value))} className={fieldCls} />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
-          <button
+          <Button
             type="button"
             data-testid="abrir-caja"
-            disabled={pending || !sede}
+            disabled={!sede}
+            pending={pending}
             onClick={() => run(() => accionAbrirCaja(sede, montoApertura))}
-            className={cn(buttonVariants({ variant: 'primary' }), 'px-6', pending && 'opacity-60')}
+            className="px-6"
           >
             {pending ? 'Abriendo…' : 'Abrir caja'}
-          </button>
+          </Button>
         </CardContent>
       </Card>
     );
@@ -280,15 +281,15 @@ export function CajaCliente({
           footer={
             <>
               <button type="button" onClick={() => setModal(null)} className={buttonVariants({ variant: 'outline' })}>Cancelar</button>
-              <button
+              <Button
                 type="button"
                 data-testid="confirmar-cobro"
-                disabled={pending || !cPedido || cMonto <= 0}
+                disabled={!cPedido || cMonto <= 0}
+                pending={pending}
                 onClick={() => run(() => accionRegistrarCobro({ pedidoId: cPedido, monto: cMonto, metodo: cMetodo, cobroTipo: cTipo }))}
-                className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
               >
                 {pending ? 'Registrando…' : `Cobrar ${soles(cMonto)}`}
-              </button>
+              </Button>
             </>
           }
         >
@@ -334,14 +335,14 @@ export function CajaCliente({
           footer={
             <>
               <button type="button" onClick={() => setModal(null)} className={buttonVariants({ variant: 'outline' })}>Cancelar</button>
-              <button
+              <Button
                 type="button"
-                disabled={pending || eMonto <= 0}
+                disabled={eMonto <= 0}
+                pending={pending}
                 onClick={() => run(() => accionRegistrarEgreso({ sede: sesion.sedeCod, monto: eMonto, metodo: eMetodo, categoria: eCat, descripcion: eDesc }))}
-                className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
               >
                 {pending ? 'Registrando…' : `Egresar ${soles(eMonto)}`}
-              </button>
+              </Button>
             </>
           }
         >
@@ -380,14 +381,14 @@ export function CajaCliente({
           footer={
             <>
               <button type="button" onClick={() => setModal(null)} className={buttonVariants({ variant: 'outline' })}>Cancelar</button>
-              <button
+              <Button
                 type="button"
-                disabled={pending || gMonto <= 0}
+                disabled={gMonto <= 0}
+                pending={pending}
                 onClick={() => run(() => accionRegistrarGarantia({ sede: sesion.sedeCod, monto: gMonto, metodo: gMetodo, descripcion: gDesc }))}
-                className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
               >
                 {pending ? 'Registrando…' : `Garantía ${soles(gMonto)}`}
-              </button>
+              </Button>
             </>
           }
         >
@@ -419,15 +420,14 @@ export function CajaCliente({
           footer={
             <>
               <button type="button" onClick={() => setModal(null)} className={buttonVariants({ variant: 'outline' })}>Cancelar</button>
-              <button
+              <Button
                 type="button"
                 data-testid="confirmar-cerrar"
-                disabled={pending}
+                pending={pending}
                 onClick={() => run(() => accionCerrarCaja(sesion.id, montoCierre))}
-                className={cn(buttonVariants({ variant: 'primary' }), pending && 'opacity-60')}
               >
                 {pending ? 'Cerrando…' : 'Cerrar caja'}
-              </button>
+              </Button>
             </>
           }
         >
