@@ -28,7 +28,6 @@ export async function Topbar() {
   // (fallback seguro: matriz vacía = solo admin/dueno ven módulos no-operativos).
   let notificaciones: Notificacion[] = [];
   let matriz: MatrizPermisos = {};
-  const esAdmin = rol === 'admin' || rol === 'dueno';
   if (sesion) {
     try {
       notificaciones = await listarNotificaciones(false, 30);
@@ -60,7 +59,7 @@ export async function Topbar() {
             <Search className="h-4 w-4" strokeWidth={1.75} />
           </Link>
         )}
-        {sesion && <NotificacionesBell notificaciones={notificaciones} esAdmin={esAdmin} />}
+        {sesion && <NotificacionesBell notificaciones={notificaciones} />}
         {sede && (
           <span className="hidden rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-navy sm:inline">
             Sede · {sede}
