@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { cn } from '../../lib/cn';
+import { Spinner } from './spinner';
 
 type Variant = 'primary' | 'gold' | 'outline' | 'ghost';
 
@@ -18,10 +19,28 @@ export function buttonVariants({ variant = 'primary' }: { variant?: Variant } = 
   return cn(base, variants[variant]);
 }
 
+// `pending` (Fase 3): antes NINGÚN botón del proyecto mostraba que una acción estaba en curso —
+// el usuario solo veía "se bugea o demora". Con `pending` el botón se deshabilita solo, marca
+// `aria-busy` y antepone un Spinner que hereda el color del texto vía currentColor. Los call
+// sites que ya alternaban su propio texto ("Guardando…") lo pueden seguir haciendo tal cual: el
+// spinner es un añadido, no un reemplazo del label.
 export function Button({
   variant = 'primary',
+  pending = false,
+  disabled,
   className,
+  children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
-  return <button className={cn(buttonVariants({ variant }), className)} {...props} />;
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; pending?: boolean }) {
+  return (
+    <button
+      className={cn(buttonVariants({ variant }), className)}
+      disabled={disabled || pending}
+      aria-busy={pending || undefined}
+      {...props}
+    >
+      {pending && <Spinner className="h-3.5 w-3.5" />}
+      {children}
+    </button>
+  );
 }
