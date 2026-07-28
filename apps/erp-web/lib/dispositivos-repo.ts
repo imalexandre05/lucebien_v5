@@ -1,4 +1,5 @@
 import { getServerClient } from './supabase/server';
+import { getAdminClient, adminConfigurado } from './supabase/admin';
 
 // Acceso restringido a equipos autorizados (migración 0036). El token del equipo vive en la
 // cookie httpOnly `sci_device`; el estado se resuelve por RPC SECURITY DEFINER.
@@ -61,4 +62,35 @@ export async function listarDispositivos(): Promise<Dispositivo[]> {
     aprobadoEn: (d.aprobado_en as string) ?? null,
     ultimoVisto: d.ultimo_visto as string,
   }));
+}
+
+// Asignar/editar la sede de un equipo (Fase 2: "el dispositivo manda" — el admin decide qué sede
+// pre-marca el login en cada PC). Update directo de tabla, no RPC: la policy `disp_admin_rw`
+// (0036) ya exige app_es_admin() para escribir cualquier columna de dispositivos_autorizados.
+export async function actualizarSedeDispositivo(id: string, sedeCod: string | null): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb
+    .from('dispositivos_autorizados')
+    .update({ sede_cod: sedeCod || null })
+    .eq('id', id);
+  if (error) throw error;
+}
+
+// Sede pre-marcada del equipo ACTUAL, resuelta ANTES de autenticar (login/page.tsx: "el
+// dispositivo manda"). Usa el cliente admin porque corre sin sesión — mismo patrón que
+// listarSedesPublico() en sedes-repo.ts. Nunca lanza: sin match, sin service_role o cualquier
+// error devuelve null y el login cae a su default (primera sede de la lista).
+export async function sedeDispositivoPublico(deviceId: string): Promise<string | null> {
+  if (!deviceId || !adminConfigurado()) return null;
+  try {
+    const { data, error } = await getAdminClient()
+      .from('dispositivos_autorizados')
+      .select('sede_cod')
+      .eq('device_id', deviceId)
+      .maybeSingle();
+    if (error || !data) return null;
+    return (data as { sede_cod: string | null }).sede_cod ?? null;
+  } catch {
+    return null;
+  }
 }

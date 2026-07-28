@@ -1,6 +1,7 @@
 import { ShieldCheck, ShieldX, Ban } from 'lucide-react';
 import { getSesion } from '../../lib/auth';
 import { listarDispositivos, type Dispositivo } from '../../lib/dispositivos-repo';
+import { listarSedes } from '../../lib/sedes-repo';
 import { PageHeader } from '../../components/shell/page-header';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
@@ -8,7 +9,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { StatBox } from '../../components/ui/stat-box';
 import { buttonVariants } from '../../components/ui/button';
 import { cn } from '../../lib/cn';
-import { accionAprobar, accionRechazar, accionRevocar } from './actions';
+import { accionAprobar, accionRechazar, accionRevocar, accionCambiarSede } from './actions';
 
 const TONE: Record<Dispositivo['estado'], Tone> = {
   aprobado: 'green',
@@ -42,7 +43,7 @@ export default async function DispositivosPage() {
     );
   }
 
-  const disp = await listarDispositivos();
+  const [disp, sedes] = await Promise.all([listarDispositivos(), listarSedes().catch(() => [])]);
   const n = (e: Dispositivo['estado']) => disp.filter((d) => d.estado === e).length;
 
   return (
@@ -89,7 +90,27 @@ export default async function DispositivosPage() {
                       …{d.deviceId.slice(-8)}
                     </span>
                   </TD>
-                  <TD className="font-mono">{d.sedeCod || '—'}</TD>
+                  <TD>
+                    <form action={accionCambiarSede} className="flex flex-wrap gap-1">
+                      <input type="hidden" name="id" value={d.id} />
+                      {sedes.map((s) => (
+                        <button
+                          key={s.cod}
+                          type="submit"
+                          name="sede"
+                          value={s.cod}
+                          aria-pressed={d.sedeCod === s.cod}
+                          title={`Pre-marcar ${s.nombre} en el login de este equipo`}
+                          className={cn(
+                            'rounded-full border px-2 py-0.5 font-mono text-[11px] font-medium transition-colors',
+                            d.sedeCod === s.cod ? 'border-navy bg-navy text-paper' : 'border-line text-muted hover:border-gold hover:text-navy',
+                          )}
+                        >
+                          {s.cod}
+                        </button>
+                      ))}
+                    </form>
+                  </TD>
                   <TD>
                     <Badge tone={TONE[d.estado]}>{LABEL[d.estado]}</Badge>
                   </TD>
@@ -138,8 +159,11 @@ export default async function DispositivosPage() {
       </Card>
 
       <p className="mt-3 text-xs text-muted">
-        El control por equipo se activa con el flag <span className="font-mono">DEVICE_GATE</span>. Mientras no haya
-        ningún equipo aprobado, el acceso queda abierto (modo instalación) para no bloquear al primer administrador.
+        La <strong className="font-medium text-navy">sede</strong> es la que este equipo pre-marca como botón en su
+        pantalla de login (&ldquo;el dispositivo manda&rdquo;) — quien tenga varias tiendas puede cambiarla ahí mismo o
+        después desde el topbar. El control de acceso por equipo se activa con el flag{' '}
+        <span className="font-mono">DEVICE_GATE</span>. Mientras no haya ningún equipo aprobado, el acceso queda
+        abierto (modo instalación) para no bloquear al primer administrador.
       </p>
     </div>
   );
