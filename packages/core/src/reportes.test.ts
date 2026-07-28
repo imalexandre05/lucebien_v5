@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { fechaDesdeId, idReporte, actAplicaHoy, calcularPuntajeEval, turnosQueBloquean } from './reportes';
+import {
+  fechaDesdeId,
+  idReporte,
+  actAplicaHoy,
+  calcularPuntajeEval,
+  turnosQueBloquean,
+  minutosHastaCierre,
+  formatoCierre,
+} from './reportes';
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
 const diaDe = (fecha: string) => DIAS[new Date(`${fecha}T12:00:00`).getDay()];
@@ -73,5 +81,35 @@ describe('turnosQueBloquean — exclusividad de turno', () => {
   });
   it('"día completo" se bloquea si ya existe mañana o tarde', () => {
     expect(turnosQueBloquean('C')).toEqual(['M', 'T']);
+  });
+});
+
+// Perú (America/Lima) es UTC-5 todo el año (sin horario de verano) → instantes UTC fijos alcanzan.
+describe('minutosHastaCierre — cuenta regresiva del turno', () => {
+  it('exactamente en la hora de cierre = 0', () => {
+    expect(minutosHastaCierre(new Date('2026-07-15T20:00:00Z'), '15:00')).toBe(0);
+  });
+  it('30 minutos antes del cierre = 30', () => {
+    expect(minutosHastaCierre(new Date('2026-07-15T19:30:00Z'), '15:00')).toBe(30);
+  });
+  it('después del cierre = negativo', () => {
+    expect(minutosHastaCierre(new Date('2026-07-15T20:10:00Z'), '15:00')).toBe(-10);
+  });
+  it('cruza la hora exacta (23:00 Perú = 04:00 UTC del día siguiente)', () => {
+    expect(minutosHastaCierre(new Date('2026-07-15T03:45:00Z'), '23:00')).toBe(15);
+  });
+});
+
+describe('formatoCierre', () => {
+  it('turno ya cerrado (0 o negativo)', () => {
+    expect(formatoCierre(0)).toBe('turno cerrado');
+    expect(formatoCierre(-5)).toBe('turno cerrado');
+  });
+  it('menos de una hora: solo minutos', () => {
+    expect(formatoCierre(8)).toBe('cierra en 8m');
+  });
+  it('una hora o más: horas y minutos', () => {
+    expect(formatoCierre(90)).toBe('cierra en 1h 30m');
+    expect(formatoCierre(60)).toBe('cierra en 1h 0m');
   });
 });

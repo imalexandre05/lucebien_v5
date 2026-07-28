@@ -27,8 +27,24 @@ export type Reporte = {
   bloqueado: boolean;
   noEvaluable: boolean;
   autoEnviado: boolean;
+  estadoEnvio: EstadoEnvio;
   trabajadores: string[];
   createdAt: string;
+};
+
+// ── Estado de envío (Fase 4 tarea 4) ─────────────────────────────────────────
+// Eje distinto de `evaluado`/`noEvaluable`: no dice si YA SE EVALUÓ, dice CÓMO llegó a existir.
+//   enviado       — el usuario le dio a Enviar dentro del plazo.
+//   no_enviado    — venció el plazo pero había un borrador con contenido: se persiste todo lo
+//                   marcado (actividades, limpieza, extras, colaboradores) y queda evaluable.
+//   sin_actividad — venció el plazo sin borrador (o vacío): no hay nada que evaluar. Es el
+//                   `no_evaluable` histórico, renombrado para reflejar qué significa de verdad.
+export type EstadoEnvio = 'enviado' | 'no_enviado' | 'sin_actividad';
+
+export const ESTADO_ENVIO_LABEL: Record<EstadoEnvio, string> = {
+  enviado: 'Enviado',
+  no_enviado: 'No enviado',
+  sin_actividad: 'Sin actividad',
 };
 
 export type ReporteActividad = {
@@ -179,4 +195,31 @@ export function calcularPuntajeEval(items: { peso: number; calificacion: number 
     max += it.peso;
   }
   return max > 0 ? Math.round((total / max) * 100) : 0;
+}
+
+// ── Cuenta regresiva del turno (Fase 4 tarea 5) ──────────────────────────────
+// Minutos restantes hasta la hora de cierre (formato 'HH:MM', hora Perú) del turno activo, a
+// partir de un instante dado. Negativo si el cierre ya pasó. Pura: no lee el reloj del sistema
+// (recibe `ahora`) para poder testearse sin mocks — la usa el contador de la barra sticky del
+// formulario. Réplica del cálculo de public/js/header.js:36-89 (calcTurnoActual/fmtRestante) pero
+// contra un cierre único configurable en vez del rango [inicio,fin) fijo del sistema viejo.
+export function minutosHastaCierre(ahora: Date, horaCierreHHMM: string): number {
+  const partes = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'America/Lima',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(ahora);
+  const horaAhora = Number(partes.find((p) => p.type === 'hour')?.value ?? 0);
+  const minAhora = Number(partes.find((p) => p.type === 'minute')?.value ?? 0);
+  const [hc, mc] = horaCierreHHMM.split(':').map((x) => Number(x) || 0);
+  return hc * 60 + mc - (horaAhora * 60 + minAhora);
+}
+
+// Formato corto en español, como el header.js viejo: "cierra en 1h 30m" / "cierra en 8m".
+export function formatoCierre(minutos: number): string {
+  if (minutos <= 0) return 'turno cerrado';
+  const h = Math.floor(minutos / 60);
+  const m = minutos % 60;
+  return h > 0 ? `cierra en ${h}h ${m}m` : `cierra en ${m}m`;
 }
