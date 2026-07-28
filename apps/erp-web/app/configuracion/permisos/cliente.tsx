@@ -29,6 +29,7 @@ const GRUPOS: { seccion: string; modulos: { modulo: string; label: string }[] }[
       { modulo: 'dashboard', label: 'Dashboard' },
       { modulo: 'pipeline', label: 'Pipeline' },
       { modulo: 'reportes', label: 'Reporte de Actividades' },
+      { modulo: 'reportes_admin', label: 'Reportes: historial y seguimiento' },
       { modulo: 'evaluar_reportes', label: 'Evaluar reportes' },
       { modulo: 'incidencias', label: 'Incidencias' },
       { modulo: 'asistencias', label: 'Asistencias' },

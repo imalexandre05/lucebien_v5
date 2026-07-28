@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -18,16 +18,20 @@ const NAV: { section: string; items: Item[] }[] = [
     items: [
       { label: 'Dashboard', href: '/', icon: LayoutDashboard, modulo: 'dashboard' },
       { label: 'Notificaciones', href: '/notificaciones', icon: Bell, modulo: 'notificaciones' },
+      // Fase 4 tarea 1: acceso operativo al formulario del turno — vive en "Interno" (uso diario),
+      // separado del historial administrativo de abajo. Mismo permiso 'reportes' de siempre.
+      { label: 'Reporte de Actividades', href: '/reportes/nuevo', icon: ClipboardList, modulo: 'reportes' },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt, modulo: 'pipeline' },
     ],
   },
   {
     // Administración (Fase 3): agrupa todo lo administrativo/de seguimiento, antes disuelto en
-    // "Interno" junto a Dashboard/Pipeline. La lista de reportes se muda de ruta recién en la
-    // Fase 4 (a /administracion/reportes) — acá solo se reordena la sidebar, el href no cambia.
+    // "Interno" junto a Dashboard/Pipeline. Fase 4: el historial de reportes se muda de ruta acá
+    // (/administracion/reportes) con permiso propio 'reportes_admin' — /reportes ya no es la
+    // lista, es el formulario operativo (arriba, en "Interno").
     section: 'Administración',
     items: [
-      { label: 'Reporte de Actividades', href: '/reportes', icon: ClipboardList, modulo: 'reportes' },
+      { label: 'Historial de reportes', href: '/administracion/reportes', icon: Files, modulo: 'reportes_admin' },
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },
       { label: 'Evaluaciones', href: '/evaluaciones', icon: Award, modulo: 'evaluaciones' },
       { label: 'Pagos', href: '/pagos', icon: Wallet, modulo: 'pagos' },

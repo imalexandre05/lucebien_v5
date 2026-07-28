@@ -178,7 +178,12 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                       <Puntaje r={r} />
                     </TD>
                     <TD>
-                      <Badge tone={ESTADO_TONE[est]}>{ESTADO_REPORTE_LABEL[est]}</Badge>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <Badge tone={ESTADO_TONE[est]}>{ESTADO_REPORTE_LABEL[est]}</Badge>
+                        {/* Tarea 4: distingue un envío real de uno auto-cerrado con contenido —
+                            "pendiente" solo no dice si alguien le dio a Enviar o venció el plazo. */}
+                        {r.estadoEnvio === 'no_enviado' && <Badge tone="amber">No enviado</Badge>}
+                      </div>
                     </TD>
                     <TD className="pr-5 text-sm text-muted">{r.evaluadorNombre ?? '—'}</TD>
                   </TR>

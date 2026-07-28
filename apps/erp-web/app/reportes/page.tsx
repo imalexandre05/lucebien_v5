@@ -1,42 +1,14 @@
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Plus } from 'lucide-react';
-import { puede, type MatrizPermisos } from '@scilb/core';
-import { listarReportes } from '../../lib/reportes-repo';
-import { getSesion } from '../../lib/auth';
-import { leerMatrizPermisos } from '../../lib/permisos-repo';
-import { PageHeader } from '../../components/shell/page-header';
-import { buttonVariants } from '../../components/ui/button';
-import { ReportesLista } from './lista';
 
-// Gate server-side (Fase 1): antes el permiso 'reportes'.'ver' solo ocultaba el ítem del sidebar
-// — cualquiera con la URL entraba igual a la lista completa de todas las sedes.
-export default async function ReportesPage() {
-  const sesion = await getSesion();
-  if (!sesion) redirect('/login');
-  let matriz: MatrizPermisos = {};
-  try {
-    matriz = await leerMatrizPermisos();
-  } catch {
-    matriz = {};
-  }
-  if (!puede(matriz, sesion.usuario.rol, 'reportes', 'ver', sesion.usuario.rolCod)) redirect('/reportes/nuevo');
-
-  const reportes = await listarReportes();
-  const conContenido = reportes.filter((r) => !r.noEvaluable).length;
-  return (
-    <div>
-      <PageHeader
-        title="Reporte de Actividades"
-        subtitle={`${conContenido} con contenido · ${reportes.length} en total`}
-        action={
-          <Link href="/reportes/nuevo" className={buttonVariants({ variant: 'primary' })}>
-            <Plus className="h-4 w-4" strokeWidth={2} />
-            Nuevo reporte
-          </Link>
-        }
-      />
-      <ReportesLista reportes={reportes} />
-    </div>
-  );
+// Fase 4 tarea 1: /reportes para el usuario operativo es SOLO el formulario del turno — sin
+// lista. La lista administrativa (antes vivía acá) se mudó a /administracion/reportes, con
+// permiso propio ('reportes_admin') y el resumen de todos los reportes.
+//
+// El formulario en sí sigue viviendo en /reportes/nuevo sin cambios: es el destino "puerto
+// seguro" al que ya redirigen /page.tsx, /evaluar-reportes, /evaluaciones, /pagos, /incidencias
+// cuando el usuario no tiene permiso para esos módulos, y no valida ningún permiso propio (debe
+// quedar alcanzable siempre para cualquier sesión válida). Esta ruta solo reenvía — no duplica esa
+// lógica ni le agrega un gate que no tenía.
+export default function ReportesPage() {
+  redirect('/reportes/nuevo');
 }

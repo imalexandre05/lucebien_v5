@@ -55,6 +55,9 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
   const estado = estadoReporte(r);
   const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
   const puedeEvaluar = !r.evaluado && !r.noEvaluable;
+  // Fase 4 tarea 1: a quién manda "← Volver" — el que puede ver el historial vuelve a la lista
+  // (/administracion/reportes), el resto vuelve a su formulario del turno (/reportes/nuevo).
+  const puedeVerLista = puede(matriz, sesion.usuario.rol, 'reportes_admin', 'ver', sesion.usuario.rolCod);
 
   // Separa actividades regulares de las de limpieza (OL_), que se muestran en el mapa.
   const regulares = r.actividades.filter((a) => !esLimpieza(a.cod));
@@ -100,6 +103,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
           subtitle={`${r.sedeCod} · ${r.fecha}`}
           action={
             <div className="flex items-center gap-3">
+              {r.estadoEnvio === 'no_enviado' && <Badge tone="amber">No enviado</Badge>}
               <Badge tone={ESTADO_TONE[estado]}>{ESTADO_REPORTE_LABEL[estado]}</Badge>
               <PrintButton />
             </div>
@@ -247,10 +251,10 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
       )}
 
       <Link
-        href="/reportes"
+        href={puedeVerLista ? '/administracion/reportes' : '/reportes/nuevo'}
         className="mt-4 inline-block text-sm text-muted transition-colors duration-150 hover:text-navy print:hidden"
       >
-        ← Volver a reportes
+        ← Volver a {puedeVerLista ? 'reportes' : 'mi turno'}
       </Link>
 
       {/* Pie de documento — solo impresión. */}

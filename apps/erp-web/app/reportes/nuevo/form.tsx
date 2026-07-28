@@ -4,9 +4,9 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Sun, Moon, Clock, Check, Square, Plus, Trash2, Send, Users, PenLine, ClipboardCheck, ArrowRight } from 'lucide-react';
-import { idReporte, TURNO_LABEL, type TurnoReporte } from '@scilb/core';
+import { idReporte, TURNO_LABEL, minutosHastaCierre, formatoCierre, type TurnoReporte } from '@scilb/core';
 import { iniciarTurno, accionCrearReporte, accionGuardarDraft } from '../actions';
-import type { ActividadDelTurno, LayoutZona } from '../../../lib/reportes-repo';
+import type { ActividadDelTurno, LayoutZona, YaEnviado, ReportePendiente } from '../../../lib/reportes-repo';
 import type { TipoIncidencia } from '../../../lib/incidencias-repo';
 import { LayoutMap } from '../layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
@@ -65,12 +65,14 @@ export function NuevoReporteForm({
   encargadoId,
   empleados,
   tiposIncidencia,
+  cierres,
 }: {
   sede: string;
   fecha: string;
   encargadoId: string | null;
   empleados: Emp[];
   tiposIncidencia: TipoIncidencia[];
+  cierres: Record<TurnoReporte, string>;
 }) {
   const router = useRouter();
   const [turno, setTurno] = useState<TurnoReporte | ''>('');
@@ -84,9 +86,15 @@ export function NuevoReporteForm({
   const [zonas, setZonas] = useState<LayoutZona[]>([]);
   const [limpieza, setLimpieza] = useState<string[]>([]);
   const [incidencias, setIncidencias] = useState<IncRep[]>([]);
-  const [yaEnviado, setYaEnviado] = useState<string | null>(null);
+  const [yaEnviado, setYaEnviado] = useState<YaEnviado>(null);
   const [conflicto, setConflicto] = useState<{ turno: TurnoReporte; id: string } | null>(null);
+  // Tarea 2: reporte anterior de la sede aún pendiente de evaluación — bloquea igual que
+  // `conflicto` (mismo patrón visual), pero el RPC reportes_crear es quien lo hace cumplir de
+  // verdad; esto es solo para avisar ANTES de llenar todo el formulario.
+  const [pendienteAnterior, setPendienteAnterior] = useState<ReportePendiente>(null);
   const [error, setError] = useState('');
+  const [bloqueoId, setBloqueoId] = useState<string | null>(null);
+  const [minutosRestantes, setMinutosRestantes] = useState<number | null>(null);
   const [pending, startTransition] = useTransition();
 
   // Equipo: la propia sede aparece primero (como el hint del viejo).
@@ -108,13 +116,16 @@ export function NuevoReporteForm({
     let vivo = true;
     setCargando(true);
     setError('');
+    setBloqueoId(null);
     setYaEnviado(null);
     setConflicto(null);
+    setPendienteAnterior(null);
     iniciarTurno(sede, fecha, turno)
-      .then(({ actividades, zonas, draft, yaEnviado, conflicto }) => {
+      .then(({ actividades, zonas, draft, yaEnviado, conflicto, pendienteAnterior }) => {
         if (!vivo) return;
         setYaEnviado(yaEnviado);
         setConflicto(conflicto);
+        setPendienteAnterior(conflicto ? null : pendienteAnterior);
         setCat(actividades);
         setZonas(zonas);
         const d = (draft ?? {}) as {
@@ -170,7 +181,28 @@ export function NuevoReporteForm({
   }, [zonas, limpieza, turno]);
 
   const totalPts = Math.round((actPts + limpiezaPts.got) * 10) / 10;
-  const puedeEnviar = Boolean(turno) && !conflicto && encargadoSel.length === 1 && !pending;
+  const puedeEnviar = Boolean(turno) && !conflicto && !pendienteAnterior && encargadoSel.length === 1 && !pending;
+
+  // Tarea 6: el encargado SIEMPRE cuenta como colaborador (el RPC lo agrega a
+  // reporte_trabajadores aunque no esté en el picker de "Colaboradores del turno") — el contador
+  // de Equipo refleja esa unión, no solo el picker de trabajadores.
+  const equipoCount = useMemo(
+    () => new Set([...trabajadores, ...encargadoSel]).size,
+    [trabajadores, encargadoSel],
+  );
+
+  // Tarea 5: cuenta regresiva hasta el cierre del turno elegido. Solo informativa — el cierre
+  // real lo hace el cron server-side (reportes_auto_cierre); esto avisa antes de que llegue.
+  useEffect(() => {
+    if (!turno || yaEnviado || conflicto || pendienteAnterior) {
+      setMinutosRestantes(null);
+      return;
+    }
+    const tick = () => setMinutosRestantes(minutosHastaCierre(new Date(), cierres[turno]));
+    tick();
+    const t = setInterval(tick, 30_000);
+    return () => clearInterval(t);
+  }, [turno, yaEnviado, conflicto, pendienteAnterior, cierres]);
 
   // Autosave (debounce 1.2s).
   const primeraVez = useRef(true);
@@ -224,6 +256,7 @@ export function NuevoReporteForm({
       .filter((z) => z.tipo !== 'area' && limpieza.includes(z.cod))
       .map((z) => ({ cod: `OL_${z.cod}`, nombre: `Limpieza: ${z.nombre}`, cat: 'IND', peso: z.peso, obs: '' }));
     setError('');
+    setBloqueoId(null);
     startTransition(async () => {
       const r = await accionCrearReporte({
         id,
@@ -258,6 +291,7 @@ export function NuevoReporteForm({
       });
       if (!r.ok) {
         setError(r.error ?? 'Error al crear el reporte');
+        setBloqueoId(r.bloqueoId ?? null);
         return;
       }
       router.push(`/reportes/${r.id}`);
@@ -350,16 +384,38 @@ export function NuevoReporteForm({
       {turno && !cargando && yaEnviado && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <ClipboardCheck className="h-10 w-10 text-emerald-600" strokeWidth={1.5} />
-            <div>
-              <p className="text-lg font-semibold text-navy">Este turno ya se envió</p>
-              <p className="mt-1 text-sm text-muted">
-                El reporte <span className="font-mono">{yaEnviado}</span> ya está registrado. Ahora corresponde evaluarlo.
-              </p>
-            </div>
-            <Link href={`/reportes/${yaEnviado}`} className={cn(buttonVariants({ variant: 'primary' }), 'px-5')}>
-              Evaluar reporte <ArrowRight className="h-4 w-4" strokeWidth={2} />
-            </Link>
+            {yaEnviado.estadoEnvio === 'sin_actividad' ? (
+              <>
+                <Clock className="h-10 w-10 text-muted" strokeWidth={1.5} />
+                <div>
+                  <p className="text-lg font-semibold text-navy">Este turno venció sin actividad registrada</p>
+                  <p className="mt-1 text-sm text-muted">
+                    Se cerró automáticamente al pasar el plazo porque no había ningún borrador guardado. No hay nada que evaluar.
+                  </p>
+                </div>
+              </>
+            ) : (
+              <>
+                <ClipboardCheck className="h-10 w-10 text-emerald-600" strokeWidth={1.5} />
+                <div>
+                  <p className="text-lg font-semibold text-navy">
+                    {yaEnviado.estadoEnvio === 'no_enviado' ? 'Este turno se cerró automáticamente' : 'Este turno ya se envió'}
+                  </p>
+                  <p className="mt-1 text-sm text-muted">
+                    {yaEnviado.estadoEnvio === 'no_enviado' ? (
+                      'Venció el plazo, pero se guardó todo lo que ya habías marcado (actividades, limpieza, extras, colaboradores). Corresponde evaluarlo.'
+                    ) : (
+                      <>
+                        El reporte <span className="font-mono">{yaEnviado.id}</span> ya está registrado. Ahora corresponde evaluarlo.
+                      </>
+                    )}
+                  </p>
+                </div>
+                <Link href={`/reportes/${yaEnviado.id}`} className={cn(buttonVariants({ variant: 'primary' }), 'px-5')}>
+                  Evaluar reporte <ArrowRight className="h-4 w-4" strokeWidth={2} />
+                </Link>
+              </>
+            )}
           </CardContent>
         </Card>
       )}
@@ -381,7 +437,28 @@ export function NuevoReporteForm({
         </Card>
       )}
 
-      {turno && !cargando && !yaEnviado && !conflicto && (
+      {/* Tarea 2: reporte anterior de la sede aún pendiente de evaluación — mismo patrón que el
+          conflicto de turno de arriba (bloqueo total con enlace), pero por un motivo distinto:
+          no es que este horario esté cubierto, es que el ciclo evaluación→siguiente reporte no se
+          cerró. El RPC reportes_crear rechaza esto igual aunque se saltee esta pantalla. */}
+      {turno && !cargando && !yaEnviado && !conflicto && pendienteAnterior && (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
+            <ClipboardCheck className="h-10 w-10 text-amber-500" strokeWidth={1.5} />
+            <div>
+              <p className="text-lg font-semibold text-navy">Hay un reporte anterior pendiente de evaluación</p>
+              <p className="mt-1 text-sm text-muted">
+                El reporte de <span className="font-semibold">{TURNO_LABEL[pendienteAnterior.turno] ?? pendienteAnterior.turno}</span> del {pendienteAnterior.fecha} en {sede} todavía no se evaluó. Evalúalo antes de crear uno nuevo.
+              </p>
+            </div>
+            <Link href={`/reportes/${pendienteAnterior.id}`} className={cn(buttonVariants({ variant: 'outline' }), 'px-5')}>
+              Ver ese reporte <ArrowRight className="h-4 w-4" strokeWidth={2} />
+            </Link>
+          </CardContent>
+        </Card>
+      )}
+
+      {turno && !cargando && !yaEnviado && !conflicto && !pendienteAnterior && (
         <>
           {/* ── Limpieza + Actividades lado a lado en xl (una pantalla, no un pergamino) ── */}
           <div className={cn('grid grid-cols-1 gap-4', zonas.length > 0 && 'xl:grid-cols-5')}>
@@ -628,7 +705,19 @@ export function NuevoReporteForm({
 
           {/* ── Resumen + Envío: barra fija abajo, siempre a la vista ── */}
           <div className="sticky bottom-0 z-20 rounded-t-xl border border-line bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
-            {error && <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+            {error && (
+              <p className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+                <span>{error}</span>
+                {bloqueoId && (
+                  <Link
+                    href={`/reportes/${bloqueoId}`}
+                    className="font-medium underline underline-offset-2 hover:text-red-800"
+                  >
+                    Ver ese reporte
+                  </Link>
+                )}
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <span className="text-xs text-muted">
                 Limpieza{' '}
@@ -643,8 +732,8 @@ export function NuevoReporteForm({
                   {actDone}/{cat.length}
                 </span>
               </span>
-              <span className="text-xs text-muted">
-                Equipo <span className="font-mono text-sm font-bold tabular-nums text-navy">{trabajadores.length}</span>
+              <span className="text-xs text-muted" title="El encargado del turno siempre cuenta como colaborador">
+                Equipo <span className="font-mono text-sm font-bold tabular-nums text-navy">{equipoCount}</span>
               </span>
               {extras.filter((e) => e.nombre.trim()).length > 0 && (
                 <span className="text-xs text-muted">
@@ -659,6 +748,23 @@ export function NuevoReporteForm({
                 <span className="font-mono text-base font-bold tabular-nums text-[#7a6e0e]">{totalPts}</span>{' '}
                 pts
               </span>
+              {/* Tarea 5: cuenta regresiva del turno — ámbar a ≤30 min, como avisaba el header.js
+                  del sistema viejo. */}
+              {minutosRestantes !== null && (
+                <span
+                  className={cn(
+                    'inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-xs font-medium tabular-nums',
+                    minutosRestantes <= 0
+                      ? 'bg-red-50 text-red-700'
+                      : minutosRestantes <= 30
+                        ? 'bg-amber-100 text-amber-800'
+                        : 'bg-navy/5 text-muted',
+                  )}
+                >
+                  <Clock className="h-3.5 w-3.5" strokeWidth={2} />
+                  {formatoCierre(minutosRestantes)}
+                </span>
+              )}
               <div className="ml-auto flex items-center gap-3">
                 <span className="hidden text-xs text-muted sm:inline">
                   {encargadoSel.length === 1

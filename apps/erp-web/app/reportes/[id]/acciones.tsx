@@ -250,7 +250,10 @@ export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean 
         return;
       }
       setConfirmar(null);
-      if (accion === 'reporte') router.push('/reportes');
+      // AccionesAdmin solo se monta para admin/dueno (ver [id]/page.tsx) — siempre tienen acceso
+      // al historial, así que tras anular vuelven ahí (Fase 4: la lista se mudó a
+      // /administracion/reportes, /reportes ya no es la lista).
+      if (accion === 'reporte') router.push('/administracion/reportes');
       else router.refresh();
     });
   }
