@@ -9,6 +9,8 @@ import {
   formatoCierre,
   zonasSolapadas,
   zonasSolapadasInesperadas,
+  estadoActividadReporte,
+  coberturaTurno,
 } from './reportes';
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -83,6 +85,61 @@ describe('turnosQueBloquean — exclusividad de turno', () => {
   });
   it('"día completo" se bloquea si ya existe mañana o tarde', () => {
     expect(turnosQueBloquean('C')).toEqual(['M', 'T']);
+  });
+});
+
+describe('estadoActividadReporte — badge combinado del dashboard (Fase 6)', () => {
+  it('enviado + evaluado → ok (verde)', () => {
+    expect(estadoActividadReporte({ estadoEnvio: 'enviado', evaluado: true })).toBe('ok');
+  });
+  it('enviado sin evaluar → por_evaluar (ámbar)', () => {
+    expect(estadoActividadReporte({ estadoEnvio: 'enviado', evaluado: false })).toBe('por_evaluar');
+  });
+  it('no_enviado prima sobre evaluado (rojo), evaluado o no', () => {
+    expect(estadoActividadReporte({ estadoEnvio: 'no_enviado', evaluado: true })).toBe('no_enviado');
+    expect(estadoActividadReporte({ estadoEnvio: 'no_enviado', evaluado: false })).toBe('no_enviado');
+  });
+  it('sin_actividad siempre gana (gris)', () => {
+    expect(estadoActividadReporte({ estadoEnvio: 'sin_actividad', evaluado: false })).toBe('sin_actividad');
+    expect(estadoActividadReporte({ estadoEnvio: 'sin_actividad', evaluado: true })).toBe('sin_actividad');
+  });
+});
+
+describe('coberturaTurno — matriz sede×turno del dashboard (Fase 6)', () => {
+  it('sin reportes y turno todavía abierto: en_curso (no es una alerta)', () => {
+    expect(coberturaTurno('M', [], 30)).toBe('en_curso');
+  });
+  it('sin reportes y turno ya vencido: sin_reportar (alerta real)', () => {
+    expect(coberturaTurno('M', [], -5)).toBe('sin_reportar');
+    expect(coberturaTurno('M', [], 0)).toBe('sin_reportar');
+  });
+  it('reporte enviado del turno exacto: cubierto', () => {
+    expect(coberturaTurno('M', [{ turno: 'M', estadoEnvio: 'enviado' }], -5)).toBe('cubierto');
+  });
+  it('un reporte "C" (día completo) cubre tanto M como T', () => {
+    expect(coberturaTurno('M', [{ turno: 'C', estadoEnvio: 'enviado' }], -5)).toBe('cubierto');
+    expect(coberturaTurno('T', [{ turno: 'C', estadoEnvio: 'enviado' }], -5)).toBe('cubierto');
+  });
+  it('un reporte de OTRO turno no cubre (T no cubre M)', () => {
+    expect(coberturaTurno('M', [{ turno: 'T', estadoEnvio: 'enviado' }], -5)).toBe('sin_reportar');
+  });
+  it('no_enviado: venció con borrador con contenido, sin dar Enviar', () => {
+    expect(coberturaTurno('M', [{ turno: 'M', estadoEnvio: 'no_enviado' }], -5)).toBe('no_enviado');
+  });
+  it('sin_actividad (venció sin nada) se trata igual que sin_reportar', () => {
+    expect(coberturaTurno('M', [{ turno: 'M', estadoEnvio: 'sin_actividad' }], -5)).toBe('sin_reportar');
+  });
+  it('con varios candidatos, "cubierto" gana sobre los demás', () => {
+    expect(
+      coberturaTurno(
+        'M',
+        [
+          { turno: 'M', estadoEnvio: 'sin_actividad' },
+          { turno: 'C', estadoEnvio: 'enviado' },
+        ],
+        -5,
+      ),
+    ).toBe('cubierto');
   });
 });
 

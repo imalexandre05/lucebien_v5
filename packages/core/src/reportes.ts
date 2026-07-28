@@ -103,6 +103,27 @@ export const ESTADO_REPORTE_LABEL: Record<EstadoReporte, string> = {
   no_evaluable: 'No evaluable',
 };
 
+// ── Estado combinado para el dashboard (Fase 6 tarea 1) ──────────────────────
+// Un solo badge de color a partir de dos ejes que hoy viven por separado (estadoEnvio y
+// evaluado): la actividad reciente del dashboard necesita UN estado, no dos apilados como en
+// /administracion/reportes (Badge de estadoReporte + Badge aparte de "No enviado"). sin_actividad
+// y no_enviado priman sobre evaluado porque describen CÓMO llegó a existir el reporte, no si ya
+// se revisó — un reporte no_enviado evaluado igual necesita saltar a la vista como excepción.
+export type EstadoActividad = 'ok' | 'por_evaluar' | 'no_enviado' | 'sin_actividad';
+
+export function estadoActividadReporte(r: Pick<Reporte, 'estadoEnvio' | 'evaluado'>): EstadoActividad {
+  if (r.estadoEnvio === 'sin_actividad') return 'sin_actividad';
+  if (r.estadoEnvio === 'no_enviado') return 'no_enviado';
+  return r.evaluado ? 'ok' : 'por_evaluar';
+}
+
+export const ESTADO_ACTIVIDAD_LABEL: Record<EstadoActividad, string> = {
+  ok: 'Enviado y evaluado',
+  por_evaluar: 'Por evaluar',
+  no_enviado: 'No enviado',
+  sin_actividad: 'Sin actividad',
+};
+
 // ── Catálogo de actividades (config por sede) ────────────────────────────────
 
 export type ActividadConfig = {
@@ -195,6 +216,37 @@ export function turnosQueBloquean(turno: TurnoReporte): TurnoReporte[] {
   if (turno === 'C') return ['M', 'T'];
   return ['C'];
 }
+
+// ── Cobertura de turnos del día (Fase 6 tarea 2) ─────────────────────────────
+// Estado de UN turno lógico (M o T) de UNA sede, mirando los reportes YA CREADOS hoy para esa
+// sede — es lo que arma la matriz sede×turno del dashboard ("qué falta hoy" de un vistazo). Un
+// reporte 'C' (día completo) cubre M y T a la vez (mismo criterio que turnosQueBloquean). Pura:
+// no lee la hora del sistema ni la BD, recibe los minutos hasta el cierre ya calculados
+// (minutosHastaCierre) para poder testearse sin mocks, igual que el resto de este archivo.
+//   cubierto     — hay un reporte 'enviado' que cubre el turno.
+//   no_enviado   — venció con un borrador con contenido, sin nadie darle a Enviar.
+//   sin_reportar — venció sin nada en absoluto (ni fila en la tabla, ni borrador): la alerta real.
+//   en_curso     — el turno todavía no vence: normal que no haya nada todavía, no es una alerta.
+export type EstadoCobertura = 'cubierto' | 'no_enviado' | 'sin_reportar' | 'en_curso';
+
+export function coberturaTurno(
+  turnoLogico: 'M' | 'T',
+  reportesHoySede: Pick<Reporte, 'turno' | 'estadoEnvio'>[],
+  minutosHastaCierreTurno: number,
+): EstadoCobertura {
+  const candidatos = reportesHoySede.filter((r) => r.turno === turnoLogico || r.turno === 'C');
+  if (candidatos.some((r) => r.estadoEnvio === 'enviado')) return 'cubierto';
+  if (candidatos.some((r) => r.estadoEnvio === 'no_enviado')) return 'no_enviado';
+  if (candidatos.length > 0) return 'sin_reportar'; // los que hay son todos 'sin_actividad'
+  return minutosHastaCierreTurno > 0 ? 'en_curso' : 'sin_reportar';
+}
+
+export const ESTADO_COBERTURA_LABEL: Record<EstadoCobertura, string> = {
+  cubierto: 'Cubierto',
+  no_enviado: 'No enviado',
+  sin_reportar: 'Sin reportar',
+  en_curso: 'En curso',
+};
 
 // Puntaje 0-100 de un reporte evaluado: Σ(peso×calificación)/Σ(peso) × 100, redondeado.
 // calificación ∈ [0,1] (1 = perfecto). Portado de public/js/app.js (triggerEnviarEval).
