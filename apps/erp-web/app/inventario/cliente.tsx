@@ -41,12 +41,15 @@ const ETAPA_LABEL: Record<string, string> = {
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
 
-const vacio = (): ActivoInput => ({
+// Sede (Fase 2): un activo nuevo nace en la sede activa de quien lo registra — ya no se elige en
+// un <select> aparte. Al editar, la sede existente del activo se conserva tal cual (ver
+// abrirEditar/aInput más abajo); esta pantalla no reasigna un activo a otra sede.
+const vacio = (sedeActual: string): ActivoInput => ({
   codigo: '',
   tipo: '',
   talla: '',
   color: '',
-  sedeCod: '',
+  sedeCod: sedeActual,
   estado: 'disponible',
   precioBase: 0,
   precioAlquiler: 0,
@@ -75,10 +78,10 @@ const aInput = (a: ActivoInventario): ActivoInput => ({
 
 export function InventarioCliente({
   activosIniciales,
-  sedes,
+  sedeActual,
 }: {
   activosIniciales: ActivoInventario[];
-  sedes: string[];
+  sedeActual: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -91,7 +94,7 @@ export function InventarioCliente({
 
   function abrirNuevo() {
     setError('');
-    setModal({ id: null, form: vacio() });
+    setModal({ id: null, form: vacio(sedeActual) });
   }
   function abrirEditar(a: ActivoInventario) {
     setError('');
@@ -333,14 +336,12 @@ export function InventarioCliente({
                 </div>
                 <div>
                   <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Sede</label>
-                  <select value={modal.form.sedeCod} onChange={(e) => setCampo('sedeCod', e.target.value)} className={cn(fieldCls, 'w-full')}>
-                    <option value="">Elige…</option>
-                    {sedes.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Fase 2: ya no es un <select> — un activo nuevo nace en tu sede activa; uno
+                      existente conserva la suya (reubicarlo es un movimiento físico real, no un
+                      campo de formulario — ver Fase 11, Solicitudes tienda↔almacén). */}
+                  <div className={cn(fieldCls, 'flex w-full items-center font-mono text-navy')}>
+                    {modal.form.sedeCod || '—'}
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Estado</label>

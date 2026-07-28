@@ -23,10 +23,12 @@ const fieldCls =
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-const vacio = (): PedidoInput => ({
+// Sede (Fase 2): ya no se elige en el modal — cada pedido nuevo nace en la sede activa de quien
+// lo crea (sesion.usuario.sede), nunca en un <select> aparte.
+const vacio = (sedeActual: string): PedidoInput => ({
   clienteId: '',
   tipo: 'alquiler',
-  sedeCod: '',
+  sedeCod: sedeActual,
   activoId: '',
   descripcion: '',
   fecha: hoy(),
@@ -116,24 +118,24 @@ export function PedidosCliente({
   pedidosIniciales,
   clientes,
   activos,
-  sedes,
+  sedeActual,
 }: {
   pedidosIniciales: Pedido[];
   clientes: { id: string; nombre: string }[];
   activos: ActivoInventario[];
-  sedes: string[];
+  sedeActual: string;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [abierto, setAbierto] = useState(false);
-  const [form, setForm] = useState<PedidoInput>(vacio());
+  const [form, setForm] = useState<PedidoInput>(() => vacio(sedeActual));
   const [error, setError] = useState('');
 
   const pedidos = pedidosIniciales;
 
   function abrir() {
     setError('');
-    setForm(vacio());
+    setForm(vacio(sedeActual));
     setAbierto(true);
   }
   function cerrar() {
@@ -154,7 +156,7 @@ export function PedidosCliente({
       setForm((f) => ({ ...f, activoId: '' }));
       return;
     }
-    setForm((f) => ({ ...f, activoId: a.id, sedeCod: f.sedeCod || a.sedeCod, total: precioSugerido(f.tipo, a) }));
+    setForm((f) => ({ ...f, activoId: a.id, total: precioSugerido(f.tipo, a) }));
   }
 
   function guardar() {
@@ -273,18 +275,7 @@ export function PedidosCliente({
             <ActivoPicker activos={activos} activoId={form.activoId ?? ''} onPick={onPickActivo} />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Sede</label>
-              <select value={form.sedeCod} onChange={(e) => setCampo('sedeCod', e.target.value)} className={fieldCls}>
-                <option value="">Elige…</option>
-                {sedes.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Fecha</label>
               <input type="date" value={form.fecha} onChange={(e) => setCampo('fecha', e.target.value)} className={fieldCls} />
@@ -294,6 +285,12 @@ export function PedidosCliente({
               <input type="number" step="0.01" value={form.total} onChange={(e) => setCampo('total', Number(e.target.value))} className={fieldCls} />
             </div>
           </div>
+          {/* Sede (Fase 2): ya no es un campo editable — el pedido nace en la sede activa de quien
+              lo crea. Solo informativa, para que quede claro dónde va a quedar registrado. */}
+          <p className="text-xs text-muted">
+            Sede <span className="font-mono font-medium text-navy">{form.sedeCod || '—'}</span> · la de tu sesión
+            actual (cámbiala desde el topbar si corresponde).
+          </p>
 
           {form.tipo === 'servicio' && (
             <div>
