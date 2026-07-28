@@ -16,6 +16,7 @@ import {
   Undo2,
   Search,
   Split,
+  Combine,
   Check,
   Zap,
   Trophy,
@@ -27,6 +28,7 @@ import type { PrendaPasada } from '@scilb/core';
 import { TRANSICIONES } from '@scilb/core';
 import type { RankingItem } from '../../lib/pipeline-repo';
 import { cn } from '../../lib/cn';
+import { OpcionBotones } from '../../components/ui/opcion-botones';
 import {
   avanzarPrenda,
   enviarTandaPrendas,
@@ -34,6 +36,7 @@ import {
   deshacerPrenda,
   avanzarTandaPrendas,
   dividirPrenda,
+  deshacerDivisionPrenda,
 } from './actions';
 
 // Color real de la prenda → punto de color en la tarjeta (del sistema viejo).
@@ -94,6 +97,9 @@ type Handlers = {
   enviarTanda: (ids: string[], sede: string) => void;
   rechazar: (id: string, destino: string) => void;
   dividir: (id: string) => void;
+  // Tarea 6: recibe el id de la MADRE (resuelto por el tablero vía madrePorHijo), no el de la
+  // tarjeta -S/-P que dispara el botón.
+  deshacerDivision: (madreId: string) => void;
 };
 type Toast = { msg: string; tono: 'ok' | 'gold' | 'warn'; undo?: () => void };
 
@@ -177,6 +183,19 @@ export function TableroPipeline({
         await dividirPrenda(id);
         setToast({ msg: 'Terno dividido en saco + pantalón', tono: 'gold' });
       }),
+    // Sin actualización optimista (mismo criterio que dividir): borra 2 tarjetas y resucita la
+    // madre en su etapa original, un cambio estructural que conviene dejarle a la revalidación
+    // del servidor en vez de simularlo a mano. Si el RPC rechaza (p. ej. una pieza ya avanzó), el
+    // mensaje real del RPC llega tal cual al toast — no uno genérico.
+    deshacerDivision: (madreId) =>
+      startTransition(async () => {
+        const error = await deshacerDivisionPrenda(madreId);
+        setToast(
+          error
+            ? { msg: error, tono: 'warn' }
+            : { msg: 'División deshecha: vuelve al tablero como una sola prenda', tono: 'gold' },
+        );
+      }),
   };
 
   // Selección por columna (como el viejo: la barra dice "N en {etapa}"). Cruzar de etapa reinicia.
@@ -215,6 +234,21 @@ export function TableroPipeline({
     [optimistas],
   );
 
+  // Tarea 6: mapa hijo→madre para ofrecer "Deshacer división" en las tarjetas -S/-P. Las madres
+  // (etapa 'dividido') SÍ están en `optimistas` — listarPasadas no filtra por etapa — pero ninguna
+  // columna del kanban las pinta (COLUMNAS no tiene 'dividido'); solo se leen acá para el vínculo.
+  const madrePorHijo = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of optimistas) {
+      if (!p.dividida || !p.divididaEn) continue;
+      for (const hijoId of p.divididaEn.split(',')) {
+        const id = hijoId.trim();
+        if (id) m.set(id, p.id);
+      }
+    }
+    return m;
+  }, [optimistas]);
+
   const ql = q.trim().toLowerCase();
   const visibles = optimistas.filter((p) => {
     if (sedeF && p.sedeOrigenCod !== sedeF) return false;
@@ -231,8 +265,9 @@ export function TableroPipeline({
   return (
     // Alto = viewport menos topbar (h-14) y el padding vertical del <main> (py-6/sm:py-8):
     // el tablero NUNCA crece más que la pantalla — solo el carril de columnas hace scroll
-    // (y cada columna, internamente), nunca la página entera.
-    <div className="flex h-[calc(100vh-6.5rem)] flex-col overflow-hidden sm:h-[calc(100vh-7.5rem)]">
+    // (y cada columna, internamente), nunca la página entera. `relative` es el ancla de la
+    // barra de avance (tarea 5), que se posiciona `absolute` sobre este contenedor.
+    <div className="relative flex h-[calc(100vh-6.5rem)] flex-col overflow-hidden sm:h-[calc(100vh-7.5rem)]">
       {/* ── Banda de cabecera (navy) ── */}
       <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
         <div>
@@ -309,10 +344,11 @@ export function TableroPipeline({
       </div>
 
       {/* ── Barra de avance: ÚNICO lugar del tablero con botones para pasar de etapa (nada de
-          esto vive en las tarjetas). El tablero no hace scroll de página, así que esta barra
-          siempre está a la vista sin necesidad de sticky. ── */}
+          esto vive en las tarjetas). Tarea 5: `absolute` sobre el contenedor `relative` del
+          tablero (flota igual que el toast) en vez de ser un ítem más del flex-col — así
+          aparece/desaparece sin correr el alto del carril de columnas ni de "Ranking del día". ── */}
       {sel.size > 0 && selEtapa && (
-        <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2.5 rounded-xl border-2 border-navy bg-white px-4 py-3 shadow-lift">
+        <div className="absolute inset-x-3 bottom-3 z-40 flex flex-wrap items-center gap-2.5 rounded-xl border-2 border-navy bg-white px-4 py-3 shadow-lift">
           <span className="text-sm font-semibold text-navy">
             <span className="font-mono text-base">{sel.size}</span> en {NOMBRE[selEtapa] ?? selEtapa}
           </span>
@@ -412,7 +448,14 @@ export function TableroPipeline({
               )}
               <div className="-mr-1 min-h-0 flex-1 space-y-2 overflow-y-auto pb-1 pr-1">
                 {items.map((p) => (
-                  <Tarjeta key={p.id} p={p} h={h} seleccionado={sel.has(p.id)} onSel={() => toggleSel(p.id, p.etapa)} />
+                  <Tarjeta
+                    key={p.id}
+                    p={p}
+                    h={h}
+                    seleccionado={sel.has(p.id)}
+                    onSel={() => toggleSel(p.id, p.etapa)}
+                    madreId={madrePorHijo.get(p.id)}
+                  />
                 ))}
                 {items.length === 0 && (
                   <div className="rounded-lg border border-dashed border-line py-5 text-center text-xs text-slate-400">
@@ -494,18 +537,36 @@ function Tarjeta({
   h,
   seleccionado,
   onSel,
+  madreId,
 }: {
   p: PrendaPasada;
   h: Handlers;
   seleccionado: boolean;
   onSel: () => void;
+  // Tarea 6: presente solo en tarjetas -S/-P hijas de una división activa (ver madrePorHijo en
+  // TableroPipeline). Dispara deshacerDivision con el id de la MADRE, no el de esta tarjeta.
+  madreId?: string;
 }) {
   const meta = [p.tipo, p.color, p.talla ? `T.${p.talla}` : ''].filter(Boolean).join(' · ');
   const esTerno = (p.tipo ?? '').toLowerCase().includes('terno');
   return (
+    // Tarea 4: el cuerpo entero selecciona (antes solo el checkbox). Los controles que hacen
+    // otra cosa (dividir/deshacer división/rechazar/confirmar en envíos) paran la propagación
+    // del click para no seleccionar de rebote; el checkbox se queda como afordancia visual y
+    // sigue funcionando igual (también para el usuario, que ya lo tiene ubicado).
     <div
+      role="checkbox"
+      aria-checked={seleccionado}
+      tabIndex={0}
+      onClick={onSel}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSel();
+        }
+      }}
       className={cn(
-        'rounded-lg border bg-white p-2 shadow-card transition hover:shadow-lift',
+        'cursor-pointer rounded-lg border bg-white p-2 shadow-card transition hover:shadow-lift',
         seleccionado ? 'border-navy ring-2 ring-navy/30' : 'border-line',
       )}
     >
@@ -519,7 +580,10 @@ function Tarjeta({
         {esTerno && (
           <button
             type="button"
-            onClick={() => h.dividir(p.id)}
+            onClick={(e) => {
+              e.stopPropagation();
+              h.dividir(p.id);
+            }}
             aria-label="Dividir en saco + pantalón"
             title="Dividir en saco + pantalón"
             className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-300 transition-colors hover:bg-navy/5 hover:text-navy"
@@ -527,9 +591,26 @@ function Tarjeta({
             <Split className="h-3 w-3" strokeWidth={2.5} />
           </button>
         )}
+        {madreId && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              h.deshacerDivision(madreId);
+            }}
+            aria-label="Deshacer división"
+            title="Deshacer división (vuelve a ser una sola prenda)"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-300 transition-colors hover:bg-navy/5 hover:text-navy"
+          >
+            <Combine className="h-3 w-3" strokeWidth={2.5} />
+          </button>
+        )}
         <button
           type="button"
-          onClick={onSel}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSel();
+          }}
           aria-label="Seleccionar"
           className={cn(
             'ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors',
@@ -571,6 +652,7 @@ function Tarjeta({
       {p.etapa === 'enviado' && (
         <a
           href="/pipeline/envios"
+          onClick={(e) => e.stopPropagation()}
           className="mt-1.5 inline-flex w-full items-center justify-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted transition hover:border-gold hover:text-navy"
         >
           Confirmar en Envíos <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
@@ -583,7 +665,10 @@ function Tarjeta({
 function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
   const [destino, setDestino] = useState('planchado');
   return (
-    <div className="mt-1.5 flex items-center gap-1.5">
+    // stopPropagation en el contenedor (tarea 4): el select y el botón Rechazar están dentro de
+    // la tarjeta ahora clicable entera; sin esto, abrir el desplegable o rechazar también
+    // seleccionaría/deseleccionaría la tarjeta de rebote.
+    <div className="mt-1.5 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
       <select
         value={destino}
         onChange={(e) => setDestino(e.target.value)}
