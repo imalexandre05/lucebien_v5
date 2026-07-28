@@ -35,11 +35,15 @@ const fromRow = (r: Row): ProductoTipo => ({
   activo: r.activo ?? true,
 });
 
-// Código de relación de Postgres para "la tabla/relación no existe" (migración 0055 pendiente).
-// Igual que en otros repos de este proyecto: se degrada a "sin catálogo" en vez de tumbar la
-// página — /inventario y /configuracion/tipos-producto siguen funcionando sin el catálogo.
-function esTablaInexistente(error: { code?: string } | null): boolean {
-  return error?.code === '42P01';
+// "La tabla no existe" (migración 0055 pendiente) — verificado en vivo contra la base sin migrar:
+// PostgREST NUNCA llega a Postgres (42P01) para esto, resuelve contra su propio schema cache y
+// devuelve PGRST205 con el mensaje "Could not find the table 'public.producto_tipos' in the
+// schema cache". Se cubren los tres (PGRST205 + el mensaje + 42P01 por si acaso) para no volver a
+// tumbar /inventario y /configuracion/tipos-producto — igual que en otros repos de este proyecto,
+// se degrada a "sin catálogo" en vez de reventar la página.
+function esTablaInexistente(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST205' || error.code === '42P01' || /could not find the table/i.test(error.message ?? '');
 }
 
 export async function listarTiposProducto(soloActivos = false): Promise<ProductoTipo[]> {

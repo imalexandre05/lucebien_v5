@@ -66,11 +66,14 @@ const toRow = (i: ActivoInput) => ({
 
 // Fase 7: 'pieza' puede no existir todavía si la migración 0055 no se aplicó — a diferencia de un
 // SELECT (donde falta el campo y ya, sin error), un INSERT/UPDATE con una columna que no existe SÍ
-// falla (PostgREST valida contra su schema cache, código PGRST204). Igual que getSesion() con
-// rol_cod (lib/auth.ts): reintenta sin el campo nuevo en vez de tumbar la creación/edición entera.
+// falla. Verificado en vivo (mismo patrón que esTablaInexistente en producto-tipos-repo.ts):
+// PostgREST devuelve PGRST204 con mensaje "Could not find the 'pieza' column of ... in the schema
+// cache" — se cubren código + mensaje. Igual que getSesion() con rol_cod (lib/auth.ts): reintenta
+// sin el campo nuevo en vez de tumbar la creación/edición entera.
 function esColumnaPiezaDesconocida(error: { message?: string; code?: string } | null): boolean {
   if (!error) return false;
-  return error.code === 'PGRST204' && (error.message ?? '').toLowerCase().includes('pieza');
+  const msg = (error.message ?? '').toLowerCase();
+  return (error.code === 'PGRST204' || /could not find the '.*' column/i.test(msg)) && msg.includes('pieza');
 }
 
 // Repo por-request con el cliente `server` (RLS): cada empleado ve/escribe solo el
