@@ -8,6 +8,7 @@ import {
   deshacerPasada,
   avanzarTanda,
   dividirPasada,
+  deshacerDivisionPasada,
   calificarPasada,
   registrarPasada,
 } from '../../lib/pipeline-repo';
@@ -57,6 +58,20 @@ export async function dividirPrenda(id: string) {
   if (!id) return;
   await dividirPasada(id);
   revalidatePath('/pipeline');
+}
+
+// Tarea 6: `id` es el id de la MADRE dividida (no el de una hija — el tablero lo resuelve desde
+// dividida_en, ver madrePorHijo en tablero.tsx). Devuelve un mensaje de error legible cuando el
+// RPC rechaza (p. ej. una hija ya avanzó de etapa) en vez de reventar sin explicación.
+export async function deshacerDivisionPrenda(id: string): Promise<string | null> {
+  if (!id) return 'Falta el id de la prenda dividida.';
+  try {
+    await deshacerDivisionPasada(id);
+  } catch (e) {
+    return e instanceof Error ? e.message : 'No se pudo deshacer la división.';
+  }
+  revalidatePath('/pipeline');
+  return null;
 }
 
 export async function calificarPrenda(id: string, aceptada: boolean, destino = '') {

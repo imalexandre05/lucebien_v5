@@ -244,6 +244,16 @@ export async function dividirPasada(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+// Deshace una división (Fase 6 tarea 6, migración 0054): borra las hijas -S/-P y devuelve la
+// madre a su etapa original — SOLO si ninguna hija avanzó de etapa (el RPC lo valida server-side
+// y rechaza con un mensaje claro si no se puede). `id` es el id de la MADRE (mismo parámetro que
+// dividirPasada, no el de una hija — ver deshacerDivisionPrenda en actions.ts).
+export async function deshacerDivisionPasada(id: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_deshacer_division', { p_id: id });
+  if (error) throw new Error(error.message);
+}
+
 // Calificar en tienda: aceptar (→ recibido) u observar (→ etapa destino, vuelve al trabajo).
 export async function calificarPasada(id: string, aceptada: boolean, destino = '', obs = ''): Promise<void> {
   const sb = getServerClient();
