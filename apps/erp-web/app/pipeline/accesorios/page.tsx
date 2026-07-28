@@ -12,7 +12,7 @@ export default async function AccesoriosPage() {
     listarSedes().catch(() => []),
     getSesion(),
   ]);
-  const tiendas = sedes.filter((s) => !s.interna).map((s) => s.cod);
+  const tiendas = sedes.filter((s) => s.perfil !== 'almacen').map((s) => s.cod);
   return (
     <div>
       <PageHeader

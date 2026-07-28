@@ -11,8 +11,8 @@ export default async function PipelinePage() {
     getSesion(),
     listarSedes().catch(() => []),
   ]);
-  // Destinos de despacho: las tiendas del catálogo (una sede nueva aparece sola).
-  const tiendas = sedes.filter((s) => !s.interna).map((s) => s.cod);
+  // Destinos de despacho: las sedes de perfil 'pos' del catálogo (una sede nueva aparece sola).
+  const tiendas = sedes.filter((s) => s.perfil !== 'almacen').map((s) => s.cod);
 
   return (
     <div>
