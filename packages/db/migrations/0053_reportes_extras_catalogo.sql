@@ -2,10 +2,26 @@
 -- cerrado de actividades extras con puntaje, en vez de los 4 campos libres (cantidad + monto sin
 -- explicación) que hay hoy. Aditiva e idempotente: no borra ni renombra ninguna columna existente.
 --
--- Fuente canónica de los 17 extras: database/seed.js líneas 20-38 (const EXTRAS), portados
--- LITERALMENTE (cod/nombre/tipo/precio/unidad/peso) — no se inventa ningún puntaje ni precio.
--- El sistema viejo los sembraba en actividades_config con categoria='EXT' para las 4 sedes
--- (ST, LB, TR, AL); aquí se hace lo mismo en Postgres.
+-- ⚠️ HALLAZGO IMPORTANTE (verificado con select contra la base scilb antes de escribir esto):
+-- el plan pedía portar el catálogo de 17 extras de database/seed.js:20-38 (códigos XR01/XR02/
+-- XP01..XP15) porque "hoy no existe ningún catálogo EXT". Eso YA NO es cierto: actividades_config
+-- YA TIENE un catálogo EXT sembrado en la base viva — 17 filas en LB/ST/TR y 11 en AL, códigos
+-- XTR02..XTR18 — que no viene de ningún archivo de este repo (grep de "XTR0" en todo el repo: 0
+-- resultados) ni de generarCod() (que produce prefijo 'EX', no 'XTR'), así que se sembró por fuera
+-- del código versionado (SQL manual o antes de que este repo trackeara la migración de datos).
+-- Sus valores NO coinciden con seed.js: p. ej. 'Confección de michis' es XR02/remunerada/S·3/0pts
+-- en seed.js, pero XTR02/por_puntos/10pts en la base viva. AL además tiene un SUBCONJUNTO de 11
+-- (no los 17), lo que parece deliberado (el almacén no hace ciertos arreglos de sastrería) y no un
+-- catálogo incompleto a corregir.
+--
+-- Sin soporte del dueño para decidir cuál de los dos catálogos es el vigente, sembrar el de
+-- seed.js encima habría creado un catálogo DUPLICADO y confuso (dos botones "Confección de
+-- michis" con puntajes distintos) — eso SÍ sería inventar una regla de negocio. Se opta por NO
+-- tocar el catálogo ya sembrado: el schema/RPC de abajo son agnósticos a qué códigos tenga
+-- actividades_config (categoria='EXT') — funcionan igual con XTR* que con XR*/XP*. El bloque de
+-- siembra queda como red de seguridad SOLO para una sede que no tenga NINGUNA fila EXT todavía
+-- (hoy eso no pasa en ninguna de las 4 sedes reales, así que no se ejecuta en este entorno).
+-- Ver docs/pendientes-negocio.md para el detalle y la pregunta pendiente para el dueño.
 
 -- ─────────────────────────────────────────────────────────────────────────────────────────────
 -- 1) reporte_extras: columnas para enlazar con el catálogo y no perder el puntaje.
@@ -29,11 +45,10 @@ alter table reporte_extras
 create index if not exists idx_reporte_extras_cod on reporte_extras(cod) where cod is not null;
 
 -- ─────────────────────────────────────────────────────────────────────────────────────────────
--- 2) Catálogo EXT sembrado para las 4 sedes. Idempotente por (sede_cod, cod) — la unique de 0014
---    ya cubre ese par, así que `on conflict do nothing` permite re-aplicar sin duplicar y sin
---    pisar ediciones que el admin haya hecho después desde /configuracion (actividades-repo.ts
---    ya soporta categoria='EXT' de punta a punta: generarCod usa prefijo 'EX', crearActividad/
---    editarActividad no distinguen categoría).
+-- 2) Catálogo EXT de seed.js — SOLO como red de seguridad para una sede sin NINGÚN EXT sembrado
+--    (instalación nueva / sede nueva). El `where not exists (...)` hace que este bloque sea un
+--    no-op contra las 4 sedes reales de hoy (todas ya tienen EXT propio, ver hallazgo arriba) —
+--    no pisa ni duplica el catálogo XTR* ya vigente. Idempotente por (sede_cod, cod) además.
 --    orden arranca en 900 para no interleavearse con las obligatorias PO/SO/IND (que usan
 --    números bajos) en cualquier listado combinado del catálogo completo.
 -- ─────────────────────────────────────────────────────────────────────────────────────────────
@@ -59,12 +74,13 @@ from (values
   ('XP15', 'Planchado y doblado de camisas',             'por_puntos', 1, 0, 'unidad',  17)
 ) as x(cod, nombre, tipo_act, peso, precio_unitario, unidad, orden)
 cross join (select cod from sedes where cod in ('LB', 'ST', 'TR', 'AL')) as s
+where not exists (select 1 from actividades_config ac where ac.sede_cod = s.cod and ac.categoria = 'EXT')
 on conflict (sede_cod, cod) do nothing;
 
--- Verificación (correr manualmente tras aplicar): 17 extras × sedes reales presentes = filas
--- esperadas (68 si las 4 sedes LB/ST/TR/AL existen). Si sale menos, falta alguna sede.
+-- Verificación (correr manualmente tras aplicar):
 --   select sede_cod, count(*) from actividades_config where categoria='EXT' group by 1 order by 1;
---   -- esperado: 17 en cada una de LB/ST/TR/AL.
+--   -- esperado (contra scilb HOY): LB 17 · ST 17 · TR 17 · AL 11 — el catálogo XTR* ya existente,
+--   -- SIN cambios (el insert de arriba no debería agregar nada: las 4 sedes ya tienen EXT).
 
 -- ─────────────────────────────────────────────────────────────────────────────────────────────
 -- 3) reportes_crear: MISMA firma que 0052 (create or replace, sin romper el call site de
@@ -351,8 +367,8 @@ revoke execute on function evaluacion_componentes(uuid, date, date) from public,
 grant execute on function evaluacion_componentes(uuid, date, date) to authenticated;
 
 -- ─────────────────────────────────────────────────────────────────────────────────────────────
--- Nota: no hay parámetro de negocio pendiente de confirmar en esta migración — los 17 extras
--- (cod/nombre/tipo/peso/precio/unidad) se portan literalmente de database/seed.js:20-38, y el
--- extra "libre" (sin catálogo) queda a propósito en precio=0/puntos=0/revisar=true en vez de
--- inventarle un valor (ver docs/pendientes-negocio.md si esto cambia).
+-- Nota de negocio pendiente (ver docs/pendientes-negocio.md): esta migración deliberadamente NO
+-- decide entre el catálogo de seed.js y el catálogo XTR* ya vigente en la base — ver el hallazgo
+-- al inicio del archivo. El extra "libre" (sin catálogo) queda a propósito en precio=0/puntos=0/
+-- revisar=true en vez de inventarle un valor.
 -- ─────────────────────────────────────────────────────────────────────────────────────────────
