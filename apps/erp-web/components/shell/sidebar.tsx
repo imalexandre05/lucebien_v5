@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, type LucideIcon } from 'lucide-react';
-import { puede, type MatrizPermisos, type Rol } from '@scilb/core';
+import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
 
@@ -70,7 +70,20 @@ const NAV: { section: string; items: Item[] }[] = [
 // la matriz de permisos configurable (Configuración → Permisos), no por un flag hardcodeado.
 // `rolCod` (Fase 1, roles derivados): si el empleado tiene un rol propio, afina qué módulos ve
 // por encima de lo que dicta su rol base — ver puede() en @scilb/core.
-export function SidebarNav({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPermisos; rolCod?: string | null }) {
+// `perfilSede` (Fase 2): además de puede(), un módulo debe tener sentido en el PERFIL de la sede
+// activa — pipeline no aparece en una sede 'pos' ni pedidos/caja/clientes en una 'almacen' (ver
+// permiteModuloPerfil() en @scilb/core). null/undefined (sede sin perfil resuelto) no filtra nada.
+export function SidebarNav({
+  rol,
+  matriz,
+  rolCod,
+  perfilSede,
+}: {
+  rol: Rol;
+  matriz: MatrizPermisos;
+  rolCod?: string | null;
+  perfilSede?: SedePerfil | null;
+}) {
   const path = usePathname();
   return (
     <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
@@ -78,7 +91,9 @@ export function SidebarNav({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPe
         // Si el filtro de permisos deja la sección vacía, no se renderiza ni el encabezado
         // (Fase 3) — antes quedaba un título "Administración" o "Comercial" huérfano, sin ítems
         // debajo, para roles que no ven ninguno de sus módulos.
-        const items = group.items.filter((it) => puede(matriz, rol, it.modulo, 'ver', rolCod));
+        const items = group.items.filter(
+          (it) => puede(matriz, rol, it.modulo, 'ver', rolCod) && permiteModuloPerfil(it.modulo, perfilSede),
+        );
         if (items.length === 0) return null;
         return (
           <div key={group.section}>
@@ -133,7 +148,17 @@ export function SidebarFooter() {
 }
 
 // Sidebar fija de escritorio; en anchos menores la navegación vive en el drawer (MobileNav).
-export function Sidebar({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPermisos; rolCod?: string | null }) {
+export function Sidebar({
+  rol,
+  matriz,
+  rolCod,
+  perfilSede,
+}: {
+  rol: Rol;
+  matriz: MatrizPermisos;
+  rolCod?: string | null;
+  perfilSede?: SedePerfil | null;
+}) {
   return (
     <aside className="sticky top-0 hidden h-screen w-60 flex-col bg-navy-deep text-paper/80 lg:flex print:hidden">
       <Link
@@ -143,7 +168,7 @@ export function Sidebar({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPermi
       >
         <Logo tone="onDark" size="md" />
       </Link>
-      <SidebarNav rol={rol} matriz={matriz} rolCod={rolCod} />
+      <SidebarNav rol={rol} matriz={matriz} rolCod={rolCod} perfilSede={perfilSede} />
       <SidebarFooter />
     </aside>
   );

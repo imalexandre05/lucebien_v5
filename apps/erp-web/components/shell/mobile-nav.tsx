@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
-import type { MatrizPermisos, Rol } from '@scilb/core';
+import type { MatrizPermisos, Rol, SedePerfil } from '@scilb/core';
 import { Logo } from '../brand/logo';
 import { SidebarNav, SidebarFooter } from './sidebar';
 
@@ -12,7 +12,17 @@ import { SidebarNav, SidebarFooter } from './sidebar';
 // sidebar como drawer off-canvas. Cierra con Escape, al tocar el fondo o al navegar.
 // El drawer va por portal a <body>: el backdrop-blur de la topbar crea un containing
 // block y un `fixed` anidado quedaría atrapado dentro del header.
-export function MobileNav({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPermisos; rolCod?: string | null }) {
+export function MobileNav({
+  rol,
+  matriz,
+  rolCod,
+  perfilSede,
+}: {
+  rol: Rol;
+  matriz: MatrizPermisos;
+  rolCod?: string | null;
+  perfilSede?: SedePerfil | null;
+}) {
   const [open, setOpen] = useState(false);
   const path = usePathname();
 
@@ -59,7 +69,7 @@ export function MobileNav({ rol, matriz, rolCod }: { rol: Rol; matriz: MatrizPer
                   <X className="h-5 w-5" strokeWidth={1.75} />
                 </button>
               </div>
-              <SidebarNav rol={rol} matriz={matriz} rolCod={rolCod} />
+              <SidebarNav rol={rol} matriz={matriz} rolCod={rolCod} perfilSede={perfilSede} />
               <SidebarFooter />
             </div>
           </div>,

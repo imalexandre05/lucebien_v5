@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import { LogOut, Search } from 'lucide-react';
-import { ROL_LABEL, type MatrizPermisos } from '@scilb/core';
+import { ROL_LABEL, sedesPermitidas, type MatrizPermisos } from '@scilb/core';
 import { cerrarSesion } from '../../app/login/actions';
 import { getSesion } from '../../lib/auth';
 import { listarNotificaciones, type Notificacion } from '../../lib/notificaciones-repo';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
+import { listarSedes, getPerfilSede } from '../../lib/sedes-repo';
 import { LogoMark } from '../brand/logo';
 import { MobileNav } from './mobile-nav';
 import { NotificacionesBell } from './notificaciones-popover';
+import { SedePopover } from './sede-popover';
 
 function iniciales(nombre: string): string {
   const parts = nombre.trim().split(/\s+/).filter(Boolean);
@@ -24,10 +26,13 @@ export async function Topbar() {
   const rol = sesion?.usuario.rol;
   const rolCod = sesion?.usuario.rolCod;
 
-  // Notificaciones (para la campana) y matriz de permisos; nunca deben tumbar el topbar
-  // (fallback seguro: matriz vacía = solo admin/dueno ven módulos no-operativos).
+  // Notificaciones (para la campana), matriz de permisos y sedes elegibles para el popover;
+  // nunca deben tumbar el topbar (fallback seguro: matriz vacía = solo admin/dueno ven módulos
+  // no-operativos; sin sedes = el popover degrada solo al badge de lectura).
   let notificaciones: Notificacion[] = [];
   let matriz: MatrizPermisos = {};
+  let sedesDisponibles: { cod: string; nombre: string }[] = [];
+  let perfilSede: Awaited<ReturnType<typeof getPerfilSede>> = null;
   if (sesion) {
     try {
       notificaciones = await listarNotificaciones(false, 30);
@@ -39,12 +44,28 @@ export async function Topbar() {
     } catch {
       matriz = {};
     }
+    try {
+      // admin/dueño (sedesPermitidas → null) eligen entre TODAS las sedes; el resto, solo las suyas.
+      const permitidas = sedesPermitidas(sesion.usuario);
+      const todas = await listarSedes();
+      sedesDisponibles = (permitidas === null ? todas : todas.filter((s) => permitidas.includes(s.cod))).map((s) => ({
+        cod: s.cod,
+        nombre: s.nombre,
+      }));
+    } catch {
+      sedesDisponibles = [];
+    }
+    try {
+      perfilSede = await getPerfilSede(sede);
+    } catch {
+      perfilSede = null;
+    }
   }
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-line bg-paper/85 px-4 backdrop-blur sm:px-7 print:hidden">
       <div className="flex items-center gap-2.5 text-sm text-muted">
-        {rol && <MobileNav rol={rol} matriz={matriz} rolCod={rolCod} />}
+        {rol && <MobileNav rol={rol} matriz={matriz} rolCod={rolCod} perfilSede={perfilSede} />}
         <LogoMark size="sm" className="lg:hidden" />
         <span className="hidden md:inline">Confecciones Aliaga · Huancayo</span>
       </div>
@@ -60,11 +81,7 @@ export async function Topbar() {
           </Link>
         )}
         {sesion && <NotificacionesBell notificaciones={notificaciones} />}
-        {sede && (
-          <span className="hidden rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-navy sm:inline">
-            Sede · {sede}
-          </span>
-        )}
+        {sesion && <SedePopover sedeActual={sede} sedes={sedesDisponibles} />}
         {rol && (
           <span className="hidden rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-[#7a6e0e] md:inline">
             {ROL_LABEL[rol] ?? rol}
