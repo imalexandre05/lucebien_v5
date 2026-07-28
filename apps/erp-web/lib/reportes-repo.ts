@@ -144,9 +144,16 @@ export async function obtenerReporte(id: string): Promise<ReporteDetalle | null>
     id: String(e.id),
     tipo: String(e.tipo),
     nombre: String(e.nombre),
+    // cod/peso_unitario/puntos_total/revisar: columnas nuevas de la migración 0053. select('*')
+    // ya cubre el caso "migración no aplicada" (undefined en vez de error) — mismo patrón que
+    // estado_envio en baseReporte().
+    cod: (e.cod as string | null) ?? null,
     cantidad: Number(e.cantidad ?? 1),
     montoTotal: Number(e.monto_total ?? 0),
     precioUnitario: Number(e.precio_unitario ?? 0),
+    pesoUnitario: Number(e.peso_unitario ?? 0),
+    puntosTotal: Number(e.puntos_total ?? 0),
+    revisar: Boolean(e.revisar ?? false),
     detalle: (e.detalle as string | null) ?? null,
     registradoPorId: (e.registrado_por_id as string | null) ?? null,
     registradoPorNombre: nombre((e.registrado_por_id as string | null) ?? null),
@@ -235,6 +242,42 @@ export async function listarActividadesConfig(
     }
   }
   return aplican;
+}
+
+// ── Catálogo de extras con puntaje (Fase 5 tarea 3) ──────────────────────────
+// Mismas filas de actividades_config que listarActividadesConfig ya trae, pero filtradas al
+// revés: solo categoria='EXT' (el catálogo cerrado de 17 extras portado de database/seed.js,
+// migración 0053), en vez de las obligatorias. Consulta propia (no reutiliza el array de arriba)
+// para no acoplar el formulario de extras a los filtros de "qué actividad obligatoria aplica hoy"
+// — un extra no depende de frecuencia/día, solo de estar activo en la sede.
+export type ExtraCatalogo = {
+  cod: string;
+  nombre: string;
+  tipoAct: string; // 'remunerada' | 'por_puntos'
+  peso: number; // puntos por unidad — NO se muestra al usuario operativo (ver form.tsx)
+  precioUnitario: number; // soles por unidad — 0 en 'por_puntos'
+  unidad: string;
+};
+
+export async function listarExtrasCatalogo(sede: string): Promise<ExtraCatalogo[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('actividades_config')
+    .select('*')
+    .eq('sede_cod', sede)
+    .eq('categoria', 'EXT')
+    .eq('activa', true)
+    .order('orden', { ascending: true })
+    .order('cod', { ascending: true });
+  if (error) throw new Error(error.message);
+  return ((data as Record<string, unknown>[]) ?? []).map((r) => ({
+    cod: String(r.cod),
+    nombre: String(r.nombre ?? ''),
+    tipoAct: String(r.tipo_act ?? 'por_puntos'),
+    peso: Number(r.peso ?? 0),
+    precioUnitario: Number(r.precio_unitario ?? 0),
+    unidad: String(r.unidad ?? 'unidad'),
+  }));
 }
 
 // Empleados (id+nombre+rol+sede) para elegir trabajadores/encargado del turno. El rol/sede
@@ -360,7 +403,11 @@ export async function crearReporte(p: {
   actDone: number;
   trabajadores: string[];
   actividades: { cod: string; nombre: string; cat: string | null; peso: number; obs: string }[];
-  extras: { tipo: string; nombre: string; cantidad: number; precio_unitario: number; monto_total: number; detalle: string; registrado_por_id: string | null }[];
+  // cod (Fase 5 tarea 3): enlaza con el catálogo de actividades_config (categoria='EXT') para que
+  // el RPC derive precio_unitario/peso server-side — null en los extras "libres". precio_unitario/
+  // monto_total ya NO se mandan desde el cliente (el RPC los ignora si vinieran): son insumo de
+  // pago/desempeño, el server es quien decide.
+  extras: { cod: string | null; tipo: string; nombre: string; cantidad: number; detalle: string; registrado_por_id: string | null }[];
 }): Promise<string> {
   const sb = getServerClient();
   const { data, error } = await sb.rpc('reportes_crear', {

@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Sun, Moon, Clock, Check, Square, Plus, Trash2, Send, Users, PenLine, ClipboardCheck, ArrowRight } from 'lucide-react';
+import { Sun, Moon, Clock, Check, Square, Plus, Minus, Trash2, Send, Users, PenLine, ClipboardCheck, ArrowRight, Wallet, Star, HelpCircle } from 'lucide-react';
 import { idReporte, TURNO_LABEL, minutosHastaCierre, formatoCierre, type TurnoReporte } from '@scilb/core';
 import { iniciarTurno, accionCrearReporte, accionGuardarDraft } from '../actions';
-import type { ActividadDelTurno, LayoutZona, YaEnviado, ReportePendiente } from '../../../lib/reportes-repo';
+import type { ActividadDelTurno, ExtraCatalogo, LayoutZona, YaEnviado, ReportePendiente } from '../../../lib/reportes-repo';
 import type { TipoIncidencia } from '../../../lib/incidencias-repo';
 import { LayoutMap } from '../layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
@@ -16,7 +16,11 @@ import { PersonaPicker } from '../../../components/ui/persona-picker';
 import { cn } from '../../../lib/cn';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
-type Extra = { tipo: string; nombre: string; cantidad: number; monto: number; registradoPorId: string };
+// Extras (Fase 5 tarea 3): cod enlaza con el catálogo (actividades_config, categoria='EXT');
+// null = extra "libre" (escape hatch de texto, sin catálogo). Nada de monto/peso aquí — son
+// insumo de pago/desempeño que el RPC deriva server-side del catálogo (ver reportes-repo.ts);
+// el operativo solo decide QUÉ se hizo y CUÁNTAS veces, nunca ve puntos ni tipea un monto.
+type Extra = { cod: string | null; nombre: string; tipoAct: 'remunerada' | 'por_puntos' | 'libre'; cantidad: number; registradoPorId: string };
 type IncRep = { tipo: string; nivel: string; descripcion: string; responsableId: string; puntosPenalidad: number };
 const NIVELES_INC = ['Alto', 'Medio', 'Bajo'];
 
@@ -35,6 +39,25 @@ function catTone(cat: string | null): Tone {
   if (c.startsWith('IND') || c.includes('INDISP')) return 'green';
   if (c.startsWith('A') || c.includes('PRIMER') || c === '1') return 'navy';
   return 'gray';
+}
+
+// Normaliza un extra del draft (jsonb, tipo desconocido) a la forma actual — cubre drafts en
+// vuelo guardados ANTES de la Fase 5 (forma vieja: tipo/nombre/cantidad/monto/registradoPorId,
+// sin cod/tipoAct). Un draft viejo simplemente cae a "libre" con su nombre tal cual.
+function normalizarExtraDraft(raw: unknown): Extra | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  const nombre = typeof r.nombre === 'string' ? r.nombre : '';
+  const cod = typeof r.cod === 'string' && r.cod ? r.cod : null;
+  const tipoAct: Extra['tipoAct'] = r.tipoAct === 'remunerada' || r.tipoAct === 'por_puntos' ? r.tipoAct : 'libre';
+  if (!cod && !nombre) return null;
+  return {
+    cod,
+    nombre,
+    tipoAct: cod ? tipoAct : 'libre',
+    cantidad: Number(r.cantidad) > 0 ? Number(r.cantidad) : 1,
+    registradoPorId: typeof r.registradoPorId === 'string' ? r.registradoPorId : '',
+  };
 }
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
@@ -83,6 +106,7 @@ export function NuevoReporteForm({
   const [trabajadores, setTrabajadores] = useState<string[]>([]);
   const [encargadoSel, setEncargadoSel] = useState<string[]>(encargadoId ? [encargadoId] : []);
   const [extras, setExtras] = useState<Extra[]>([]);
+  const [catalogoExtras, setCatalogoExtras] = useState<ExtraCatalogo[]>([]);
   const [zonas, setZonas] = useState<LayoutZona[]>([]);
   const [limpieza, setLimpieza] = useState<string[]>([]);
   const [incidencias, setIncidencias] = useState<IncRep[]>([]);
@@ -121,18 +145,19 @@ export function NuevoReporteForm({
     setConflicto(null);
     setPendienteAnterior(null);
     iniciarTurno(sede, fecha, turno)
-      .then(({ actividades, zonas, draft, yaEnviado, conflicto, pendienteAnterior }) => {
+      .then(({ actividades, zonas, extrasCatalogo, draft, yaEnviado, conflicto, pendienteAnterior }) => {
         if (!vivo) return;
         setYaEnviado(yaEnviado);
         setConflicto(conflicto);
         setPendienteAnterior(conflicto ? null : pendienteAnterior);
         setCat(actividades);
         setZonas(zonas);
+        setCatalogoExtras(extrasCatalogo);
         const d = (draft ?? {}) as {
           trabajadores?: string[];
           encargado?: string[];
           actividades?: { cod: string; realizada?: boolean; obs?: string }[];
-          extras?: Extra[];
+          extras?: unknown[];
           limpieza?: string[];
         };
         const prev = new Map((d.actividades ?? []).map((x) => [x.cod, x]));
@@ -147,7 +172,7 @@ export function NuevoReporteForm({
         setObs(initObs);
         setTrabajadores(d.trabajadores ?? []);
         setEncargadoSel(d.encargado ?? (encargadoId ? [encargadoId] : []));
-        setExtras(d.extras ?? []);
+        setExtras((d.extras ?? []).map(normalizarExtraDraft).filter((x): x is Extra => x !== null));
         setLimpieza(d.limpieza ?? []);
         setCargando(false);
       })
@@ -241,6 +266,25 @@ export function NuevoReporteForm({
     setDone(Object.fromEntries(cat.map((a) => [a.cod, valor])));
   }
 
+  // Extras (Fase 5 tarea 3): clic en el catálogo agrega +1 (o crea la fila si es la primera vez).
+  // Nunca pide un monto — el precio/peso los deriva el servidor del catálogo al enviar.
+  function agregarCatalogo(c: ExtraCatalogo) {
+    setExtras((p) => {
+      const i = p.findIndex((e) => e.cod === c.cod);
+      if (i >= 0) return p.map((e, j) => (j === i ? { ...e, cantidad: e.cantidad + 1 } : e));
+      return [...p, { cod: c.cod, nombre: c.nombre, tipoAct: c.tipoAct as Extra['tipoAct'], cantidad: 1, registradoPorId: '' }];
+    });
+  }
+  function cambiarCantidadExtra(i: number, delta: number) {
+    setExtras((p) => p.map((e, j) => (j === i ? { ...e, cantidad: Math.max(1, e.cantidad + delta) } : e)));
+  }
+  function quitarExtra(i: number) {
+    setExtras((p) => p.filter((_, j) => j !== i));
+  }
+  function agregarExtraLibre() {
+    setExtras((p) => [...p, { cod: null, nombre: '', tipoAct: 'libre', cantidad: 1, registradoPorId: '' }]);
+  }
+
   function submit() {
     if (!turno) return;
     if (encargadoSel.length !== 1) {
@@ -269,13 +313,12 @@ export function NuevoReporteForm({
         trabajadores,
         actividades: [...actividades, ...limpiezaActs],
         extras: extras
-          .filter((e) => e.nombre.trim())
+          .filter((e) => e.cod || e.nombre.trim())
           .map((e) => ({
-            tipo: e.tipo || 'extra',
+            cod: e.cod,
+            tipo: e.tipoAct,
             nombre: e.nombre,
             cantidad: e.cantidad || 1,
-            precio_unitario: 0,
-            monto_total: e.monto || 0,
             detalle: '',
             registrado_por_id: e.registradoPorId || null,
           })),
@@ -635,53 +678,93 @@ export function NuevoReporteForm({
             </CardContent>
           </Card>
 
-          {/* ── Actividades Extras ── */}
+          {/* ── Actividades Extras: catálogo en botones (Fase 5 tarea 3) ──
+              Sin monto ni puntaje visibles — el operativo solo elige qué + cuántas veces + quién.
+              El precio/peso los deriva el servidor del catálogo al enviar (reportes-repo.ts). */}
           <Card>
             <CardHeader>
               <CardTitle>Extras</CardTitle>
-              <button
-                type="button"
-                onClick={() => setExtras((p) => [...p, { tipo: '', nombre: '', cantidad: 1, monto: 0, registradoPorId: '' }])}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
-              >
-                <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
-              </button>
+              {extras.length > 0 && (
+                <span className="font-mono text-xs text-muted tabular-nums">{extras.length} agregado(s)</span>
+              )}
             </CardHeader>
-            <CardContent>
-              {extras.length === 0 ? (
-                <p className="text-sm text-muted">Sin extras registrados.</p>
+            <CardContent className="space-y-3">
+              {catalogoExtras.length === 0 ? (
+                <p className="text-xs text-muted">
+                  Catálogo de extras no configurado para esta sede — usa &quot;Otra actividad&quot; para registrar uno igual.
+                </p>
               ) : (
-                <div className="space-y-2">
+                (['remunerada', 'por_puntos'] as const).map((tipoAct) => {
+                  const grupo = catalogoExtras.filter((c) => c.tipoAct === tipoAct);
+                  if (!grupo.length) return null;
+                  const Icon = tipoAct === 'remunerada' ? Wallet : Star;
+                  return (
+                    <div key={tipoAct}>
+                      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
+                        {tipoAct === 'remunerada' ? 'Remuneradas' : 'Por puntos'}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {grupo.map((c) => {
+                          const enLista = extras.find((e) => e.cod === c.cod);
+                          return (
+                            <button
+                              key={c.cod}
+                              type="button"
+                              onClick={() => agregarCatalogo(c)}
+                              title={tipoAct === 'remunerada' && c.precioUnitario > 0 ? `S/ ${c.precioUnitario.toFixed(2)} / ${c.unidad}` : c.nombre}
+                              className={cn(
+                                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
+                                enLista
+                                  ? 'border-emerald-600 bg-emerald-600/10 text-emerald-700'
+                                  : 'border-line bg-white text-navy hover:border-gold/70',
+                              )}
+                            >
+                              {enLista ? <Check className="h-3 w-3" strokeWidth={2.5} /> : <Plus className="h-3 w-3" strokeWidth={2.5} />}
+                              {c.nombre}
+                              {enLista && <span className="font-mono text-[11px] font-bold">×{enLista.cantidad}</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              {extras.length > 0 && (
+                <div className="space-y-2 border-t border-line/60 pt-3">
                   {extras.map((e, i) => (
                     <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-line/60 p-2">
-                      <input
-                        value={e.nombre}
-                        onChange={(ev) => setExtras((p) => p.map((x, j) => (j === i ? { ...x, nombre: ev.target.value } : x)))}
-                        placeholder="Descripción"
-                        className={cn(fieldCls, 'min-w-[10rem] flex-1')}
-                      />
-                      <input
-                        type="number"
-                        value={e.cantidad}
-                        onChange={(ev) => setExtras((p) => p.map((x, j) => (j === i ? { ...x, cantidad: Number(ev.target.value) } : x)))}
-                        className={cn(fieldCls, 'w-20')}
-                        aria-label="Cantidad"
-                      />
-                      <input
-                        type="number"
-                        value={e.monto}
-                        onChange={(ev) => setExtras((p) => p.map((x, j) => (j === i ? { ...x, monto: Number(ev.target.value) } : x)))}
-                        className={cn(fieldCls, 'w-24')}
-                        aria-label="Monto"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setExtras((p) => p.filter((_, j) => j !== i))}
-                        className="text-muted transition-colors hover:text-red-600"
-                        aria-label="Quitar"
-                      >
-                        <Trash2 className="h-4 w-4" strokeWidth={1.75} />
-                      </button>
+                      {e.cod ? (
+                        <span className="min-w-[9rem] flex-1 text-sm text-navy">{e.nombre}</span>
+                      ) : (
+                        <input
+                          value={e.nombre}
+                          onChange={(ev) => setExtras((p) => p.map((x, j) => (j === i ? { ...x, nombre: ev.target.value } : x)))}
+                          placeholder="Descripción de la actividad"
+                          className={cn(fieldCls, 'min-w-[9rem] flex-1')}
+                        />
+                      )}
+                      <div className="inline-flex items-center gap-0.5 rounded-md border border-line">
+                        <button
+                          type="button"
+                          onClick={() => cambiarCantidadExtra(i, -1)}
+                          aria-label={`Menos ${e.nombre || 'cantidad'}`}
+                          className="flex h-8 w-8 items-center justify-center text-muted transition-colors hover:bg-paper active:scale-[0.97]"
+                        >
+                          <Minus className="h-3.5 w-3.5" strokeWidth={2} />
+                        </button>
+                        <span className="w-6 text-center font-mono text-sm font-semibold tabular-nums">{e.cantidad}</span>
+                        <button
+                          type="button"
+                          onClick={() => cambiarCantidadExtra(i, 1)}
+                          aria-label={`Más ${e.nombre || 'cantidad'}`}
+                          className="flex h-8 w-8 items-center justify-center text-muted transition-colors hover:bg-paper active:scale-[0.97]"
+                        >
+                          <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+                        </button>
+                      </div>
                       <select
                         value={e.registradoPorId}
                         onChange={(ev) => setExtras((p) => p.map((x, j) => (j === i ? { ...x, registradoPorId: ev.target.value } : x)))}
@@ -695,10 +778,31 @@ export function NuevoReporteForm({
                           </option>
                         ))}
                       </select>
+                      {!e.cod && (
+                        <span title="Sin catálogo: el admin la revisa a mano">
+                          <Badge tone="amber">A revisar</Badge>
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => quitarExtra(i)}
+                        className="text-muted transition-colors hover:text-red-600"
+                        aria-label="Quitar"
+                      >
+                        <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
+
+              <button
+                type="button"
+                onClick={agregarExtraLibre}
+                className="inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
+              >
+                <HelpCircle className="h-3.5 w-3.5" strokeWidth={2} /> Otra actividad (sin catálogo)
+              </button>
             </CardContent>
           </Card>
           </div>

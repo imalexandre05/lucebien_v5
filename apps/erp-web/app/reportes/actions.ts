@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import type { TurnoReporte } from '@scilb/core';
 import {
   listarActividadesConfig,
+  listarExtrasCatalogo,
   listarLayoutZonas,
   getDraft,
   saveDraft,
@@ -17,6 +18,7 @@ import {
   buscarReportePendienteSede,
   ReporteCrearError,
   type ActividadDelTurno,
+  type ExtraCatalogo,
   type LayoutZona,
   type ConflictoTurno,
   type YaEnviado,
@@ -37,20 +39,22 @@ export async function iniciarTurno(
 ): Promise<{
   actividades: ActividadDelTurno[];
   zonas: LayoutZona[];
+  extrasCatalogo: ExtraCatalogo[];
   draft: Record<string, unknown> | null;
   yaEnviado: YaEnviado;
   conflicto: ConflictoTurno;
   pendienteAnterior: ReportePendiente;
 }> {
-  const [actividades, zonas, draft, yaEnviado, conflicto, pendienteAnterior] = await Promise.all([
+  const [actividades, zonas, extrasCatalogo, draft, yaEnviado, conflicto, pendienteAnterior] = await Promise.all([
     listarActividadesConfig(sede, fecha, turno),
     listarLayoutZonas(sede),
+    listarExtrasCatalogo(sede),
     getDraft(sede, fecha, turno),
     buscarReporteId(sede, fecha, turno),
     buscarConflictoTurno(sede, fecha, turno),
     buscarReportePendienteSede(sede),
   ]);
-  return { actividades, zonas, draft: draft?.payload ?? null, yaEnviado, conflicto, pendienteAnterior };
+  return { actividades, zonas, extrasCatalogo, draft: draft?.payload ?? null, yaEnviado, conflicto, pendienteAnterior };
 }
 
 // Tipos locales (no exportados): un archivo 'use server' solo puede EXPORTAR funciones async.
@@ -72,7 +76,7 @@ type CrearReporteInput = {
   actDone: number;
   trabajadores: string[];
   actividades: { cod: string; nombre: string; cat: string | null; peso: number; obs: string }[];
-  extras: { tipo: string; nombre: string; cantidad: number; precio_unitario: number; monto_total: number; detalle: string; registrado_por_id: string | null }[];
+  extras: { cod: string | null; tipo: string; nombre: string; cantidad: number; detalle: string; registrado_por_id: string | null }[];
   incidencias: IncidenciaReporte[];
 };
 
