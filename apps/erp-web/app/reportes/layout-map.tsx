@@ -1,8 +1,8 @@
 'use client';
 
-import { useMemo, type CSSProperties, type ReactNode } from 'react';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Check, Eye, X, Square, CheckSquare } from 'lucide-react';
-import type { TurnoReporte } from '@scilb/core';
+import { zonasSolapadas, type TurnoReporte } from '@scilb/core';
 import type { LayoutZona } from '../../lib/reportes-repo';
 import { cn } from '../../lib/cn';
 
@@ -184,12 +184,40 @@ export function LayoutMap({
   const sel = useMemo(() => new Set(selected), [selected]);
   const esEval = modo === 'eval';
   const estadoDe = (cod: string) => estados?.[cod] ?? 1;
+  // Fase 5 tarea 2: zona cuyo desplegable de "zonas ocultas en este punto" está abierto.
+  const [dropdownCod, setDropdownCod] = useState<string | null>(null);
 
   // Puntúa solo lo que aplica al turno, pero el lienzo muestra la tienda completa
   // (las zonas del otro turno van atenuadas, como el viejo).
   const mostradas = useMemo(() => zonas.filter((z) => aplicaTurno(z.turno, turno)), [zonas, turno]);
   const especiales = useMemo(() => mostradas.filter((z) => z.forma === 'special'), [mostradas]);
   const enMapa = useMemo(() => zonas.filter((z) => z.forma !== 'special'), [zonas]);
+
+  // Fase 5 tarea 2: zonas con nivel/sobreCod se pintan una encima de otra — sin esto, la de abajo
+  // queda inalcanzable (mismo z-index, gana la que esté después en el DOM). gruposSolape mapea
+  // cod → todos los cods que comparten ese punto (incluida ella misma), para poder ofrecer un
+  // desplegable con TODAS las zonas de un punto en vez de solo la que quedó encima.
+  const gruposSolape = useMemo(() => {
+    // Las zonas 'area' son telón de fondo no interactivo (pointer-events-none, sin botón propio
+    // más abajo) — se excluyen para no ofrecerlas como si fueran seleccionables desde el desplegable.
+    const rects = enMapa
+      .filter((z) => z.tipo !== 'area')
+      .map((z) => ({ cod: z.cod, posX: z.posX, posY: z.posY, ancho: z.ancho, alto: z.alto }));
+    const grupos = new Map<string, Set<string>>();
+    const asegurar = (cod: string) => {
+      let s = grupos.get(cod);
+      if (!s) {
+        s = new Set([cod]);
+        grupos.set(cod, s);
+      }
+      return s;
+    };
+    for (const [a, b] of zonasSolapadas(rects)) {
+      asegurar(a).add(b);
+      asegurar(b).add(a);
+    }
+    return grupos;
+  }, [enMapa]);
 
   const calle = especiales.find((z) => z.cod.toUpperCase() === 'CALLE');
   const piso = especiales.find((z) => z.cod.toUpperCase() === 'PISO');
@@ -206,6 +234,9 @@ export function LayoutMap({
 
   const emit = (cods: string[]) => onChange?.(cods);
   const toggle = (cod: string) => {
+    // Cualquier toggle "de verdad" cierra el desplegable de solapes que hubiera quedado abierto
+    // (el propio clic en un ítem del desplegable pasa por acá) — así nunca queda flotando.
+    setDropdownCod(null);
     if (readOnly) return;
     if (esEval) {
       onCycle?.(cod);
@@ -220,7 +251,7 @@ export function LayoutMap({
   const pisoMarcado = piso ? sel.has(piso.cod) : false;
 
   const mapa = (
-    <div className="min-w-0 flex-1 space-y-2">
+    <div className="flex min-w-0 flex-1 flex-col space-y-2">
       {/* Acciones rápidas + total */}
       <div className="flex flex-wrap items-center gap-2">
         {!readOnly && !esEval && (
@@ -289,21 +320,27 @@ export function LayoutMap({
         />
       )}
 
-      {/* Lienzo */}
+      {/* Lienzo — Fase 5 tarea 1: antes tenía SOLO aspectRatio como altura, así que en columnas
+          altas (al lado de la lista de Actividades) se cortaba a media sección. Ahora crece con
+          flex-1 dentro de un padre en columna (form.tsx pasa "flex flex-col" al Card/CardContent
+          de Limpieza) hasta llenar la misma altura que la lista vecina; aspectRatio queda como
+          mínimo/fallback cuando no hay un padre con altura que estirar (p. ej. una sola columna en
+          mobile), vía minHeight en vez de forzar el height. */}
       <div
         role={!readOnly && piso ? 'button' : undefined}
         aria-label={piso ? `Piso: clic en el espacio vacío para marcar "${piso.nombre}"` : undefined}
         onClick={(e) => {
+          if (e.target === e.currentTarget) setDropdownCod(null);
           if (readOnly || !piso) return;
           if (e.target === e.currentTarget) toggle(piso.cod);
         }}
         className={cn(
-          'relative w-full overflow-hidden rounded-xl border transition-colors duration-200',
+          'relative w-full flex-1 overflow-hidden rounded-xl border transition-colors duration-200',
           pisoMarcado && !esEval ? 'border-emerald-500/70 bg-emerald-50/70' : 'border-line bg-[#f8fafc]',
           esEval && piso && 'cursor-pointer',
           !readOnly && piso && !esEval && 'cursor-pointer',
         )}
-        style={{ aspectRatio: `${LIENZO_W} / ${LIENZO_H}` }}
+        style={{ aspectRatio: `${LIENZO_W} / ${LIENZO_H}`, minHeight: 340 }}
       >
         {/* Hint del piso, al fondo del lienzo */}
         {piso && !readOnly && (
@@ -381,42 +418,109 @@ export function LayoutMap({
           const oscuro = !esEval && !on && ['#eab308', '#facc15', '#c59100', '#fde68a'].includes(z.color);
           if (readOnly && !esEval && !on) return null;
 
+          // Fase 5 tarea 2: z-index por nivel ('sobre' siempre encima de 'piso', como un maniquí
+          // sobre su mesa) + bonus si está marcada/en-eval (para que lo activo siempre resalte).
+          // Sin esto todas las zonas compartían el mismo z-index (3/5) y la que quedaba abajo por
+          // puro orden de array era inalcanzable al clic.
+          const grupo = gruposSolape.get(z.cod);
+          const tieneSolape = Boolean(grupo && grupo.size > 1);
+          const dropdownAbierto = dropdownCod === z.cod;
+          const zIndexBase = (z.nivel === 'sobre' ? 4 : 2) + (on || esEval ? 10 : 0);
+
           return (
-            <button
-              key={z.cod}
-              type="button"
-              disabled={readOnly || !miTurno}
-              onClick={() => toggle(z.cod)}
-              title={
-                miTurno
-                  ? `${z.nombre || z.cod} · ${z.peso} pts — ${instruccionDe(z)}`
-                  : `${z.nombre || z.cod} · turno ${z.turno}`
-              }
-              aria-label={`${z.nombre || z.cod} (${z.peso} pts)`}
-              aria-pressed={esEval ? undefined : on}
-              style={{ ...style, background: bg, border: ring, opacity, boxShadow: glow || undefined, zIndex: on || esEval ? 5 : 3 }}
-              className={cn(
-                'flex items-center justify-center overflow-visible outline-none transition-[background-color,box-shadow,opacity] duration-150',
-                readOnly || !miTurno ? 'cursor-default' : 'hover:brightness-105 focus-visible:ring-2 focus-visible:ring-gold',
-              )}
-            >
-              {texturaZona(z)}
-              {chip}
-              <span
+            <div key={z.cod} style={{ ...style, zIndex: dropdownAbierto ? 50 : zIndexBase }}>
+              <button
+                type="button"
+                disabled={readOnly || !miTurno}
+                onClick={() => {
+                  // Con solape: abre/cierra el desplegable de "zonas ocultas aquí" en vez de
+                  // marcar directo — mismo gesto que PISO al clicar el lienzo vacío. Sin solape:
+                  // toggle normal (y toggle() ya cierra cualquier desplegable ajeno que quedara abierto).
+                  if (tieneSolape) {
+                    setDropdownCod((c) => (c === z.cod ? null : z.cod));
+                    return;
+                  }
+                  toggle(z.cod);
+                }}
+                title={
+                  miTurno
+                    ? `${z.nombre || z.cod} · ${z.peso} pts — ${instruccionDe(z)}${tieneSolape ? ' · hay más zonas aquí' : ''}`
+                    : `${z.nombre || z.cod} · turno ${z.turno}`
+                }
+                aria-label={`${z.nombre || z.cod} (${z.peso} pts)${tieneSolape ? ', zona con solape, clic para elegir' : ''}`}
+                aria-pressed={esEval ? undefined : on}
+                aria-expanded={tieneSolape ? dropdownAbierto : undefined}
+                style={{ background: bg, border: ring, opacity, boxShadow: glow || undefined }}
                 className={cn(
-                  'pointer-events-none px-0.5 font-mono text-[7px] font-semibold leading-none',
-                  esEval ? 'text-ink/70' : oscuro ? 'text-[#5c3d00]' : 'text-white',
+                  'relative flex h-full w-full items-center justify-center overflow-visible outline-none transition-[background-color,box-shadow,opacity] duration-150',
+                  readOnly || !miTurno ? 'cursor-default' : 'hover:brightness-105 focus-visible:ring-2 focus-visible:ring-gold',
                 )}
-                style={{ textShadow: oscuro || esEval ? undefined : '0 0 2px rgba(0,0,0,.25)' }}
               >
-                {z.cod}
-              </span>
-              {z.sobreCod && (
-                <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-full bg-navy-deep px-1 py-px font-mono text-[6px] leading-tight text-paper/90">
-                  s/{z.sobreCod}
+                {texturaZona(z)}
+                {chip}
+                <span
+                  className={cn(
+                    'pointer-events-none px-0.5 font-mono text-[7px] font-semibold leading-none',
+                    esEval ? 'text-ink/70' : oscuro ? 'text-[#5c3d00]' : 'text-white',
+                  )}
+                  style={{ textShadow: oscuro || esEval ? undefined : '0 0 2px rgba(0,0,0,.25)' }}
+                >
+                  {z.cod}
                 </span>
+                {z.sobreCod && (
+                  <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-full bg-navy-deep px-1 py-px font-mono text-[6px] leading-tight text-paper/90">
+                    s/{z.sobreCod}
+                  </span>
+                )}
+                {tieneSolape && !dropdownAbierto && (
+                  <span
+                    aria-hidden
+                    className="absolute -left-1.5 -top-1.5 z-[7] flex h-4 w-4 items-center justify-center rounded-full border border-white bg-navy-deep font-mono text-[8px] font-bold text-paper"
+                  >
+                    {grupo!.size}
+                  </span>
+                )}
+              </button>
+
+              {/* Desplegable de zonas ocultas en este punto (Fase 5 tarea 2). */}
+              {dropdownAbierto && (
+                <div
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute left-0 top-full z-[6] mt-1 w-48 space-y-0.5 rounded-lg border border-line bg-white p-1.5 shadow-lift"
+                >
+                  <p className="px-1.5 pb-1 text-[9px] font-semibold uppercase tracking-wide text-muted">
+                    {grupo!.size} zonas en este punto
+                  </p>
+                  {[...grupo!].map((cod) => {
+                    const zz = enMapa.find((x) => x.cod === cod);
+                    if (!zz) return null;
+                    const zzOn = sel.has(zz.cod);
+                    const zzEstado = estadoDe(zz.cod);
+                    return (
+                      <button
+                        key={cod}
+                        type="button"
+                        onClick={() => toggle(cod)}
+                        className={cn(
+                          'flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] transition-colors duration-150',
+                          !esEval && zzOn ? 'bg-emerald-50 text-emerald-800' : 'hover:bg-paper',
+                        )}
+                      >
+                        {esEval ? (
+                          <IconoEstado v={zzEstado} className="h-3 w-3 shrink-0" />
+                        ) : zzOn ? (
+                          <CheckSquare className="h-3 w-3 shrink-0 text-emerald-600" strokeWidth={2} />
+                        ) : (
+                          <Square className="h-3 w-3 shrink-0 text-muted/50" strokeWidth={1.75} />
+                        )}
+                        <span className="min-w-0 flex-1 truncate">{zz.nombre || zz.cod}</span>
+                        <span className="shrink-0 font-mono text-[9px] text-muted">{zz.cod}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               )}
-            </button>
+            </div>
           );
         })}
       </div>

@@ -506,12 +506,16 @@ export function NuevoReporteForm({
           {/* ── Limpieza + Actividades lado a lado en xl (una pantalla, no un pergamino) ── */}
           <div className={cn('grid grid-cols-1 gap-4', zonas.length > 0 && 'xl:grid-cols-5')}>
             {zonas.length > 0 && (
-              <Card className="xl:col-span-3">
+              // Fase 5 tarea 1: flex-col + CardContent flex-1 propaga la altura que el grid ya le
+              // da a esta Card (stretch por defecto, igualada a la de "Actividades del turno") hasta
+              // el lienzo — antes el lienzo solo medía lo que su aspectRatio 800×580 daba y el resto
+              // de la columna quedaba vacío/cortado a media sección.
+              <Card className="flex flex-col xl:col-span-3">
                 <CardHeader>
                   <CardTitle>Limpieza</CardTitle>
                   <span className="text-xs text-muted">Marca en el mapa las zonas que limpiaste</span>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex flex-1 flex-col">
                   <LayoutMap zonas={zonas} turno={turno} selected={limpieza} onChange={setLimpieza} />
                 </CardContent>
               </Card>

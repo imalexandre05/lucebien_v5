@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Plus, Save, Grid3x3, Copy, Trash2, CopyPlus, AlertTriangle, Check } from 'lucide-react';
+import { zonasSolapadasInesperadas } from '@scilb/core';
 import type { LayoutZona } from '../../../lib/reportes-repo';
 import type { Sede } from '../../../lib/sedes-repo';
 import type { ZonaInput } from '../../../lib/layout-repo';
@@ -76,6 +77,27 @@ export function LayoutEditor({
     [zonas],
   );
   const muebles = enCanvas.filter((z) => z.tipo === 'mueble');
+
+  // Fase 5 tarea 2: aviso de solapes al guardar. zonasSolapadasInesperadas ya descarta el solape
+  // "sobre" declarado (un maniquí sobre su mueble exacto es intencional) — solo avisa de pares
+  // que probablemente sean un accidente de arrastre. No bloquea: el mapa de limpieza ya resuelve
+  // cualquier solape con el desplegable de "zonas ocultas aquí", así que guardar sigue siendo
+  // seguro; esto es solo una señal para que el admin confirme que la posición es la deseada.
+  const solapesInesperados = useMemo(
+    () =>
+      zonasSolapadasInesperadas(
+        enCanvas.map((z) => ({
+          cod: z.cod,
+          posX: z.posX,
+          posY: z.posY,
+          ancho: z.ancho,
+          alto: z.alto,
+          nivel: z.nivel,
+          sobreCod: z.sobreCod,
+        })),
+      ),
+    [enCanvas],
+  );
 
   // Aviso al salir con cambios sin guardar.
   useEffect(() => {
@@ -313,6 +335,25 @@ export function LayoutEditor({
         >
           {okMsg && <Check className="h-4 w-4" strokeWidth={2.5} />} {error || okMsg}
         </p>
+      )}
+
+      {/* Fase 5 tarea 2: aviso de solapes (no bloquea — el mapa de limpieza los resuelve con el
+          desplegable de "zonas ocultas aquí"). Solo pares NO explicados por nivel=sobre+sobreCod. */}
+      {solapesInesperados.length > 0 && (
+        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
+          <p>
+            <span className="font-semibold">{solapesInesperados.length} solape(s) sin declarar:</span>{' '}
+            {solapesInesperados.map(([a, b], i) => (
+              <span key={`${a}-${b}`} className="font-mono">
+                {i > 0 && ', '}
+                {a}↔{b}
+              </span>
+            ))}
+            . El operador podrá elegir entre ellas con el menú al marcar limpieza, pero confirma que
+            la posición es intencional (o ajústalas antes de guardar).
+          </p>
+        </div>
       )}
 
       <div className="flex flex-col gap-4 xl:flex-row">
