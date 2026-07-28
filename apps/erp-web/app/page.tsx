@@ -12,9 +12,23 @@ import {
   Coins,
   Trophy,
   Activity,
+  LayoutGrid,
   type LucideIcon,
 } from 'lucide-react';
-import { ETAPAS_PIPELINE, estadoReporte, TURNO_LABEL, puede, type MatrizPermisos } from '@scilb/core';
+import {
+  ETAPAS_PIPELINE,
+  estadoReporte,
+  estadoActividadReporte,
+  ESTADO_ACTIVIDAD_LABEL,
+  type EstadoActividad,
+  coberturaTurno,
+  ESTADO_COBERTURA_LABEL,
+  type EstadoCobertura,
+  minutosHastaCierre,
+  TURNO_LABEL,
+  puede,
+  type MatrizPermisos,
+} from '@scilb/core';
 import { listarPasadas, rankingHoy } from '../lib/pipeline-repo';
 import { listarReportes } from '../lib/reportes-repo';
 import { listarIncidencias } from '../lib/incidencias-repo';
@@ -23,9 +37,12 @@ import { pedidosRepo } from '../lib/pedidos-repo';
 import { getSesion } from '../lib/auth';
 import { listarSedes } from '../lib/sedes-repo';
 import { leerMatrizPermisos } from '../lib/permisos-repo';
-import { hoyPeru, fechaLargaPeru, etiquetaDia, saludoPeru, tiempoRelativo } from '../lib/fechas';
+import { leerConfigMap, CIERRE_TURNO_DEFAULT } from '../lib/config-repo';
+import { hoyPeru, fechaLargaPeru, etiquetaDia, saludoPeru, tiempoRelativo, fechaHoraCorta } from '../lib/fechas';
 import { LogoMark } from '../components/brand/logo';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table';
+import { Badge, type Tone } from '../components/ui/badge';
 import { StatBox } from '../components/ui/stat-box';
 import { CountUp } from '../components/ui/count-up';
 import { EmptyState } from '../components/ui/empty-state';
@@ -47,8 +64,43 @@ const ETAPA_LABEL: Record<string, string> = {
 };
 
 const KPI_TONE = 'border-line bg-white text-navy shadow-card';
+// Semáforo (Fase 6 tarea 3): mismo tile, solo cambia de tono cuando el valor amerita atención.
+const KPI_TONE_AMBER = 'border-amber-200 bg-amber-50 text-amber-900 shadow-card';
 
-type Evento = { ts: string; icon: LucideIcon; titulo: ReactNode; detalle: string | null; href: string };
+// Badge de estado por color (Fase 6 tarea 1) — icono circular de la fila de "Actividad reciente"
+// y Badge de texto comparten la misma paleta para que se lean como el mismo estado.
+const ESTADO_ACTIVIDAD_TONE: Record<EstadoActividad, Tone> = {
+  ok: 'green',
+  por_evaluar: 'amber',
+  no_enviado: 'red',
+  sin_actividad: 'gray',
+};
+const ICONO_ESTADO_CLS: Record<EstadoActividad, string> = {
+  ok: 'bg-emerald-600/10 text-emerald-700',
+  por_evaluar: 'bg-amber-500/15 text-amber-700',
+  no_enviado: 'bg-red-500/15 text-red-700',
+  sin_actividad: 'bg-ink/10 text-muted',
+};
+// Cobertura de turnos (tarea 2): verde = cubierto, rojo = falta (no_enviado o sin_reportar),
+// gris = todavía no vence — mismo criterio "de un vistazo" que el resto del dashboard.
+const ESTADO_COBERTURA_TONE: Record<EstadoCobertura, Tone> = {
+  cubierto: 'green',
+  no_enviado: 'red',
+  sin_reportar: 'red',
+  en_curso: 'gray',
+};
+
+type Evento = {
+  kind: 'reporte' | 'incidencia' | 'pipeline';
+  ts: string;
+  icon: LucideIcon;
+  titulo: ReactNode;
+  detalle: string | null;
+  href: string;
+  // Solo kind === 'reporte' (tarea 1): badge de estado + % de cumplimiento cuando ya se evaluó.
+  estado?: EstadoActividad;
+  puntaje?: number | null;
+};
 
 export default async function Dashboard() {
   // Landing directo operativo (Fase 4): un usuario sin permiso de 've' el dashboard entra
@@ -68,7 +120,7 @@ export default async function Dashboard() {
     }
   }
 
-  const [sesion, pasadas, reportes, incidencias, ranking, finHoy, pedidos, pendientes, garantias, sedes] =
+  const [sesion, pasadas, reportes, incidencias, ranking, finHoy, pedidos, pendientes, garantias, sedes, config] =
     await Promise.all([
       getSesion(),
       listarPasadas(),
@@ -80,6 +132,7 @@ export default async function Dashboard() {
       cobrosPendientes(),
       totalGarantias(),
       listarSedes().catch(() => []),
+      leerConfigMap().catch(() => ({}) as Record<string, string>),
     ]);
   const SEDE_NOMBRE = Object.fromEntries(sedes.map((s) => [s.cod, s.nombre]));
 
@@ -98,6 +151,27 @@ export default async function Dashboard() {
   const incidenciasHoy = incidencias.filter((i) => i.fecha === hoy).length;
   const incidenciasMes = incidencias.filter((i) => i.fecha.startsWith(hoy.slice(0, 7))).length;
 
+  // Cobertura de turnos de hoy (§tarea 2): matriz sede × turno lógico (M/T) — un reporte 'C'
+  // cubre ambos. Mismas horas de cierre que /reportes/nuevo (config con default compartido).
+  const cierres = {
+    M: config.turno_m_cierre || CIERRE_TURNO_DEFAULT.M,
+    T: config.turno_t_cierre || CIERRE_TURNO_DEFAULT.T,
+  };
+  const reportesHoy = reportes.filter((r) => r.fecha === hoy);
+  const cobertura = sedes.map((s) => {
+    const deLaSede = reportesHoy.filter((r) => r.sedeCod === s.cod);
+    return {
+      sedeCod: s.cod,
+      sedeNombre: s.nombre || s.cod,
+      m: coberturaTurno('M', deLaSede, minutosHastaCierre(ahora, cierres.M)),
+      t: coberturaTurno('T', deLaSede, minutosHastaCierre(ahora, cierres.T)),
+    };
+  });
+  const faltanPorCubrir = cobertura.reduce(
+    (n, c) => n + (c.m === 'en_curso' || c.m === 'cubierto' ? 0 : 1) + (c.t === 'en_curso' || c.t === 'cubierto' ? 0 : 1),
+    0,
+  );
+
   const soles = (n: number) => `S/ ${n.toFixed(2)}`;
   const totalVentas = pedidos.filter((p) => p.tipo === 'venta').reduce((s, p) => s + p.total, 0);
   const totalAlquiler = pedidos.filter((p) => p.tipo === 'alquiler').reduce((s, p) => s + p.total, 0);
@@ -110,19 +184,28 @@ export default async function Dashboard() {
   const totalFlujo = ETAPAS_PIPELINE.reduce((s, e) => s + (porEtapa.get(e) ?? 0), 0);
 
   // Actividad reciente: reportes + incidencias + movimientos de prendas, mezclados por fecha.
+  // Los reportes (tarea 1) llevan además estado (color) y puntaje — es la fuente correcta
+  // introducida en la Fase 4 (estadoEnvio tri-estado), no el chip uniforme de antes.
   const eventos: Evento[] = [
-    ...reportes.slice(0, 12).map((r) => ({
-      ts: r.createdAt,
-      icon: ClipboardList,
-      titulo: (
-        <>
-          Reporte de Actividades · {r.sedeCod} · {TURNO_LABEL[r.turno] ?? r.turno}
-        </>
-      ),
-      detalle: r.encargadoNombre ? `Encargado: ${r.encargadoNombre}` : null,
-      href: `/reportes/${r.id}`,
-    })),
+    ...reportes.slice(0, 12).map((r) => {
+      const estado = estadoActividadReporte(r);
+      return {
+        kind: 'reporte' as const,
+        ts: r.createdAt,
+        icon: ClipboardList,
+        titulo: (
+          <>
+            Reporte de Actividades · {r.sedeCod} · {TURNO_LABEL[r.turno] ?? r.turno}
+          </>
+        ),
+        detalle: r.encargadoNombre ? `Encargado: ${r.encargadoNombre}` : null,
+        href: `/reportes/${r.id}`,
+        estado,
+        puntaje: r.evaluado ? (r.puntajeEval ?? r.puntaje) : null,
+      };
+    }),
     ...incidencias.slice(0, 12).map((i) => ({
+      kind: 'incidencia' as const,
       ts: i.createdAt,
       icon: AlertTriangle,
       titulo: (
@@ -137,6 +220,7 @@ export default async function Dashboard() {
       .filter((p) => p.fechaActualizado)
       .slice(0, 12)
       .map((p) => ({
+        kind: 'pipeline' as const,
         ts: p.fechaActualizado as string,
         icon: Shirt,
         titulo: (
@@ -212,7 +296,7 @@ export default async function Dashboard() {
             align="left"
             icon={ClipboardCheck}
             href="/evaluar-reportes"
-            tone={KPI_TONE}
+            tone={porEvaluar > 0 ? KPI_TONE_AMBER : KPI_TONE}
             label="Reportes por evaluar"
             valor={<CountUp value={porEvaluar} delayMs={60} />}
             sub={`${enviadosHoy} enviado(s) hoy`}
@@ -234,7 +318,7 @@ export default async function Dashboard() {
             align="left"
             icon={AlertTriangle}
             href="/incidencias"
-            tone={KPI_TONE}
+            tone={incidenciasHoy > 0 ? KPI_TONE_AMBER : KPI_TONE}
             label="Incidencias hoy"
             valor={<CountUp value={incidenciasHoy} delayMs={180} />}
             sub={`${incidenciasMes} en el mes`}
@@ -323,6 +407,50 @@ export default async function Dashboard() {
         </CardContent>
       </Card>
 
+      {/* ── Cobertura de turnos: matriz sede × turno de hoy (tarea 2) — "qué falta hoy" de un
+          vistazo. Va ANTES de la actividad reciente a propósito (el brief pide "encima"). ── */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <LayoutGrid className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
+            Cobertura de turnos hoy
+          </CardTitle>
+          {faltanPorCubrir > 0 && (
+            <Badge tone="red">{faltanPorCubrir} por cubrir</Badge>
+          )}
+        </CardHeader>
+        <CardContent className="overflow-x-auto px-0 pb-3">
+          {cobertura.length === 0 ? (
+            <EmptyState icon={LayoutGrid} titulo="Sin sedes configuradas" compacto>
+              Crea sedes en Configuración para ver la cobertura de turnos.
+            </EmptyState>
+          ) : (
+            <Table>
+              <THead>
+                <TR>
+                  <TH className="pl-5">Sede</TH>
+                  <TH className="text-center">Mañana</TH>
+                  <TH className="text-center">Tarde</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {cobertura.map((c) => (
+                  <TR key={c.sedeCod}>
+                    <TD className="pl-5 font-medium text-navy">{c.sedeNombre}</TD>
+                    <TD className="text-center">
+                      <Badge tone={ESTADO_COBERTURA_TONE[c.m]}>{ESTADO_COBERTURA_LABEL[c.m]}</Badge>
+                    </TD>
+                    <TD className="text-center">
+                      <Badge tone={ESTADO_COBERTURA_TONE[c.t]}>{ESTADO_COBERTURA_LABEL[c.t]}</Badge>
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
       {/* ── Actividad reciente + ranking del día ── */}
       <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -341,21 +469,33 @@ export default async function Dashboard() {
               <ul className="divide-y divide-line/70">
                 {eventos.map((ev, i) => {
                   const Icon = ev.icon;
+                  const esReporte = ev.kind === 'reporte';
+                  const chipCls = esReporte && ev.estado ? ICONO_ESTADO_CLS[ev.estado] : 'bg-navy/5 text-navy';
                   return (
                     <li key={i} className="animate-rise" style={{ animationDelay: `${i * 40}ms` }}>
                       <Link
                         href={ev.href}
                         className="group flex items-center gap-3 px-5 py-3 outline-none transition-colors duration-150 hover:bg-navy/[0.03] focus-visible:bg-navy/[0.05]"
                       >
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-navy/5 text-navy">
+                        <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full', chipCls)}>
                           <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm text-ink">{ev.titulo}</span>
+                          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                            <span className="truncate text-sm text-ink">{ev.titulo}</span>
+                            {esReporte && ev.estado && (
+                              <Badge tone={ESTADO_ACTIVIDAD_TONE[ev.estado]}>{ESTADO_ACTIVIDAD_LABEL[ev.estado]}</Badge>
+                            )}
+                            {esReporte && ev.puntaje != null && <PuntajePill puntaje={ev.puntaje} />}
+                          </span>
                           {ev.detalle && <span className="block truncate text-xs text-muted">{ev.detalle}</span>}
                         </span>
-                        <span className="shrink-0 font-mono text-[11px] text-muted">
-                          {tiempoRelativo(ev.ts, ahora)}
+                        <span className="shrink-0 text-right">
+                          <span className="block font-mono text-[11px] text-muted">{tiempoRelativo(ev.ts, ahora)}</span>
+                          {/* Fecha absoluta (tarea 1): "hace 3 h" no dice CUÁNDO fue — solo en reportes. */}
+                          {esReporte && (
+                            <span className="block font-mono text-[10px] text-muted/70">{fechaHoraCorta(ev.ts)}</span>
+                          )}
                         </span>
                       </Link>
                     </li>
@@ -468,5 +608,22 @@ export default async function Dashboard() {
         </div>
       </section>
     </div>
+  );
+}
+
+// Puntaje de un reporte evaluado, como pastilla compacta (tarea 1: "% de cumplimiento cuando
+// exista"). Mismos umbrales que Puntaje en app/reportes/lista.tsx para leerse igual en todo
+// el ERP: ≥85 verde, ≥60 dorado, el resto rojo.
+function PuntajePill({ puntaje }: { puntaje: number }) {
+  const cls =
+    puntaje >= 85
+      ? 'bg-emerald-600/10 text-emerald-700'
+      : puntaje >= 60
+        ? 'bg-gold/20 text-[#7a6e0e]'
+        : 'bg-red-500/15 text-red-700';
+  return (
+    <span className={cn('rounded-full px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums', cls)}>
+      {puntaje}%
+    </span>
   );
 }

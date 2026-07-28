@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 
-export type Tone = 'navy' | 'gold' | 'green' | 'amber' | 'gray';
+export type Tone = 'navy' | 'gold' | 'green' | 'amber' | 'red' | 'gray';
 
 const tones: Record<Tone, string> = {
   navy: 'bg-navy/10 text-navy',
   gold: 'bg-gold/20 text-[#7a6e0e]',
   green: 'bg-emerald-600/10 text-emerald-700',
   amber: 'bg-amber-500/20 text-amber-700',
+  // 'red' (Fase 6): alerta dura, distinta de amber — mismo par bg/text que ya se usaba suelto
+  // (sin pasar por Badge) en el aviso de calidad del pipeline y en el botón Rechazar.
+  red: 'bg-red-500/15 text-red-700',
   gray: 'bg-ink/10 text-muted',
 };
 

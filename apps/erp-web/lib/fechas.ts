@@ -53,3 +53,19 @@ export function tiempoRelativo(iso: string, ahora: Date = new Date()): string {
     .format(entonces)
     .replace('.', '');
 }
+
+/** Fecha + hora corta y absoluta en español: "28 jul · 14:32" (Fase 6: complementa a
+ * tiempoRelativo en la actividad reciente del dashboard — "hace 3 h" no dice CUÁNDO fue). */
+export function fechaHoraCorta(iso: string): string {
+  const d = new Date(iso.includes('T') ? iso : `${iso}T12:00:00-05:00`);
+  const fecha = new Intl.DateTimeFormat('es-PE', { day: 'numeric', month: 'short', timeZone: TZ })
+    .format(d)
+    .replace('.', '');
+  const hora = new Intl.DateTimeFormat('es-PE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: TZ,
+  }).format(d);
+  return `${fecha} · ${hora}`;
+}
