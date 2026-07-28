@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { esSupervisor, sedesPermitidas, slugRol, ROLES_BASE, type Usuario } from './permisos';
+import { esSupervisor, sedesPermitidas, slugRol, ROLES_BASE, permiteModuloPerfil, type Usuario } from './permisos';
 
 const u = (rol: Usuario['rol'], sede = 'LB', tiendas?: string[]): Usuario => ({ id: 'x', rol, sede, tiendas });
 
@@ -33,6 +33,30 @@ describe('ROLES_BASE', () => {
     expect(ROLES_BASE).toHaveLength(7);
     expect(ROLES_BASE).toContain('admin');
     expect(ROLES_BASE).toContain('ventas_junior_2');
+  });
+});
+
+describe('permiteModuloPerfil (Fase 2: perfil de sede pos/almacen)', () => {
+  it('sin perfil conocido, no filtra nada', () => {
+    expect(permiteModuloPerfil('pedidos', null)).toBe(true);
+    expect(permiteModuloPerfil('pipeline', undefined)).toBe(true);
+  });
+  it('almacén oculta pedidos/caja/clientes', () => {
+    expect(permiteModuloPerfil('pedidos', 'almacen')).toBe(false);
+    expect(permiteModuloPerfil('caja', 'almacen')).toBe(false);
+    expect(permiteModuloPerfil('clientes', 'almacen')).toBe(false);
+    expect(permiteModuloPerfil('pipeline', 'almacen')).toBe(true);
+  });
+  it('pos oculta pipeline', () => {
+    expect(permiteModuloPerfil('pipeline', 'pos')).toBe(false);
+    expect(permiteModuloPerfil('pedidos', 'pos')).toBe(true);
+    expect(permiteModuloPerfil('caja', 'pos')).toBe(true);
+  });
+  it('módulos neutrales (dashboard, empleados…) se ven en ambos perfiles', () => {
+    expect(permiteModuloPerfil('dashboard', 'pos')).toBe(true);
+    expect(permiteModuloPerfil('dashboard', 'almacen')).toBe(true);
+    expect(permiteModuloPerfil('empleados', 'almacen')).toBe(true);
+    expect(permiteModuloPerfil('configuracion', 'pos')).toBe(true);
   });
 });
 

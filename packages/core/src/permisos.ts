@@ -74,3 +74,26 @@ export function sedesPermitidas(u: Usuario): string[] | null {
   if (u.rol === 'admin' || u.rol === 'dueno') return null;
   return u.tiendas?.length ? u.tiendas : [u.sede];
 }
+
+// ── Perfil de sede (Fase 2: sede única dispositivo→login→topbar) ────────────────────────────
+// `AL` (Almacén Central) es 'almacen': ahí se codifica y se procesa el pipeline de lavandería,
+// no hay mostrador. `LB/ST/TR` son 'pos': punto de venta con pedidos y caja, sin pipeline propio.
+// El perfil vive en `sedes.perfil` (migración 0051); esta es la ÚNICA regla que decide qué
+// módulos de mostrador/almacén se filtran del sidebar — puede() decide el permiso, esto decide
+// si el módulo tiene sentido en ESTA sede.
+export type SedePerfil = 'pos' | 'almacen';
+
+// Módulos exclusivos de un perfil. Cualquier módulo que no aparezca en ninguna de las dos listas
+// (dashboard, notificaciones, empleados, configuración, estadísticas…) es neutral: se ve en
+// cualquier sede si puede() lo permite.
+const MODULOS_SOLO_POS: string[] = ['pedidos', 'caja', 'clientes'];
+const MODULOS_SOLO_ALMACEN: string[] = ['pipeline'];
+
+// perfil null/undefined (admin sin sede activa, o dato aún no migrado): no filtra nada — nunca
+// hay que perder acceso por falta de información, solo por una regla explícita.
+export function permiteModuloPerfil(modulo: string, perfil: SedePerfil | null | undefined): boolean {
+  if (!perfil) return true;
+  if (perfil === 'almacen' && MODULOS_SOLO_POS.includes(modulo)) return false;
+  if (perfil === 'pos' && MODULOS_SOLO_ALMACEN.includes(modulo)) return false;
+  return true;
+}
