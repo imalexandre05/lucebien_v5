@@ -58,6 +58,12 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
   // Fase 4 tarea 1: a quién manda "← Volver" — el que puede ver el historial vuelve a la lista
   // (/administracion/reportes), el resto vuelve a su formulario del turno (/reportes/nuevo).
   const puedeVerLista = puede(matriz, sesion.usuario.rol, 'reportes_admin', 'ver', sesion.usuario.rolCod);
+  // Fase 5 tarea 3: los puntos de los extras son insumo interno de desempeño/pago, no
+  // información de mostrador — decisión explícita del dueño. Se muestran solo a quien tiene
+  // administración ('reportes_admin') o evaluación ('evaluar_reportes') de reportes; el mismo
+  // operativo que ve su propio reporte enviado ('reportes'.'ver', mucho más amplio) no los ve.
+  const puedeVerPuntosExtras =
+    puedeVerLista || puede(matriz, sesion.usuario.rol, 'evaluar_reportes', 'ver', sesion.usuario.rolCod);
 
   // Separa actividades regulares de las de limpieza (OL_), que se muestran en el mapa.
   const regulares = r.actividades.filter((a) => !esLimpieza(a.cod));
@@ -224,17 +230,26 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
                     <TH>Detalle</TH>
                     <TH>Quién lo hizo</TH>
                     <TH className="text-right">Cantidad</TH>
-                    <TH className="pr-5 text-right">Monto</TH>
+                    <TH className="text-right">Monto</TH>
+                    {/* Puntos (Fase 5 tarea 3): solo administración/evaluación — ver
+                        puedeVerPuntosExtras arriba. El operativo no llega a ver esta columna. */}
+                    {puedeVerPuntosExtras && <TH className="pr-5 text-right">Puntos</TH>}
                   </TR>
                 </THead>
                 <TBody>
                   {r.extras.map((e) => (
                     <TR key={e.id}>
                       <TD className="pl-5">{e.tipo}</TD>
-                      <TD>{e.detalle || e.nombre}</TD>
+                      <TD className="flex items-center gap-1.5">
+                        {e.detalle || e.nombre}
+                        {puedeVerPuntosExtras && e.revisar && <Badge tone="amber">A revisar</Badge>}
+                      </TD>
                       <TD className="text-xs text-muted">{e.registradoPorNombre ?? '—'}</TD>
                       <TD className="text-right font-mono tabular-nums">{e.cantidad}</TD>
-                      <TD className="pr-5 text-right font-mono tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
+                      <TD className="text-right font-mono tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
+                      {puedeVerPuntosExtras && (
+                        <TD className="pr-5 text-right font-mono tabular-nums">{e.puntosTotal}</TD>
+                      )}
                     </TR>
                   ))}
                 </TBody>

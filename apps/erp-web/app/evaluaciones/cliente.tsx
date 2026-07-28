@@ -113,7 +113,7 @@ export function EvaluacionesCliente({
   // Contexto informativo (no entra a la fórmula: no hay regla de negocio confirmada para
   // convertir puntos de pipeline o soles de extras a la escala /20). El admin lo ve al lado
   // de los componentes editables y lo pondera con su propio criterio.
-  const [infoExtra, setInfoExtra] = useState<{ puntosPipeline: number; extrasMonto: number; extrasCantidad: number } | null>(null);
+  const [infoExtra, setInfoExtra] = useState<{ puntosPipeline: number; extrasMonto: number; extrasCantidad: number; extrasPuntos: number } | null>(null);
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
@@ -169,11 +169,14 @@ export function EvaluacionesCliente({
         descuentoIncidencias: c.descuento ?? 0,
       }));
       // Solo aparece si la migración 0044 ya está aplicada (campos nuevos en el RPC).
+      // extrasPuntos (Fase 5, migración 0053): puntos de los extras 'por_puntos' del catálogo —
+      // mismo trato informativo que puntosPipeline, undefined con elegancia si 0053 no corrió.
       if (c.puntosPipeline != null || c.extrasMonto != null) {
         setInfoExtra({
           puntosPipeline: c.puntosPipeline ?? 0,
           extrasMonto: c.extrasMonto ?? 0,
           extrasCantidad: c.extrasCantidad ?? 0,
+          extrasPuntos: c.extrasPuntos ?? 0,
         });
       }
     });
@@ -303,6 +306,8 @@ export function EvaluacionesCliente({
                   Extras registrados <span className="font-mono font-semibold text-navy">{infoExtra.extrasCantidad}</span>
                   {' · '}
                   <span className="font-mono font-semibold text-navy">S/ {infoExtra.extrasMonto.toFixed(2)}</span>
+                  {' · '}
+                  <span className="font-mono font-semibold text-navy">{infoExtra.extrasPuntos} pts</span>
                 </span>
                 <span className="italic">No entran a la fórmula — contexto para tu criterio.</span>
               </div>
