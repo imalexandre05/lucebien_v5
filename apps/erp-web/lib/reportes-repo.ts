@@ -2,6 +2,7 @@ import {
   actAplicaHoy,
   turnosQueBloquean,
   type ActividadConfig,
+  type EstadoEnvio,
   type Reporte,
   type ReporteActividad,
   type ReporteDetalle,
@@ -26,6 +27,10 @@ type RepRow = {
   bloqueado: boolean;
   no_evaluable: boolean | null;
   auto_enviado: boolean | null;
+  // Puente defensivo (Fase 4, migración 0052): columna nueva. `select('*')` no la pide por
+  // nombre explícito, así que si la migración aún no corrió simplemente no viene en la fila
+  // (undefined) en vez de que Postgres tire error — igual que rol_cod en getSesion() (Fase 1).
+  estado_envio?: EstadoEnvio | null;
   created_at: string;
 };
 
@@ -35,6 +40,14 @@ type RepRow = {
 async function nombresEmpleados(): Promise<(id: string | null) => string | null> {
   const map = await mapaNombres();
   return (id) => (id ? map.get(id) ?? null : null);
+}
+
+// Deriva estadoEnvio incluso sin la columna nueva (pre-migración 0052): mismo cálculo que hace el
+// backfill SQL, a partir de auto_enviado/no_evaluable que sí existen desde 0014/0021.
+function derivarEstadoEnvio(r: Pick<RepRow, 'estado_envio' | 'auto_enviado' | 'no_evaluable'>): EstadoEnvio {
+  if (r.estado_envio) return r.estado_envio;
+  if (!r.auto_enviado) return 'enviado';
+  return r.no_evaluable ? 'sin_actividad' : 'no_enviado';
 }
 
 function baseReporte(r: RepRow, nombre: (id: string | null) => string | null, trabajadores: string[]): Reporte {
@@ -55,6 +68,7 @@ function baseReporte(r: RepRow, nombre: (id: string | null) => string | null, tr
     bloqueado: Boolean(r.bloqueado),
     noEvaluable: Boolean(r.no_evaluable),
     autoEnviado: Boolean(r.auto_enviado),
+    estadoEnvio: derivarEstadoEnvio(r),
     trabajadores,
     createdAt: r.created_at,
   };
@@ -234,19 +248,43 @@ export async function listarEmpleados(): Promise<EmpPicker[]> {
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
-// ¿Ya existe un reporte para esta sede/fecha/turno? Devuelve su id (para enrutar a evaluación,
-// como el viejo: si el turno ya se envió, la pantalla pasa a Evaluación).
-export async function buscarReporteId(sede: string, fecha: string, turno: string): Promise<string | null> {
+// ¿Ya existe un reporte para esta sede/fecha/turno? Devuelve id + estadoEnvio (para enrutar a
+// evaluación, como el viejo: si el turno ya se envió, la pantalla pasa a Evaluación) — el
+// estadoEnvio deja distinguir en la UI un envío real de uno auto-cerrado (Fase 4 tarea 4).
+export type YaEnviado = { id: string; estadoEnvio: EstadoEnvio } | null;
+export async function buscarReporteId(sede: string, fecha: string, turno: string): Promise<YaEnviado> {
   const sb = getServerClient();
   const { data, error } = await sb
     .from('reportes')
-    .select('id')
+    .select('id, estado_envio, auto_enviado, no_evaluable')
     .eq('sede_cod', sede)
     .eq('fecha', fecha)
     .eq('turno', turno)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  return (data as { id: string } | null)?.id ?? null;
+  const row = data as Pick<RepRow, 'id' | 'estado_envio' | 'auto_enviado' | 'no_evaluable'> | null;
+  return row ? { id: row.id, estadoEnvio: derivarEstadoEnvio(row) } : null;
+}
+
+// Tarea 2: el reporte anterior de la sede (cualquier turno/fecha) que aún no se evaluó ni quedó
+// sin actividad. Espeja el criterio de estadoReporte()==='pendiente' del core. Es advisory (mismo
+// rol que buscarConflictoTurno) — el RPC reportes_crear vuelve a validarlo server-side (0052).
+export type ReportePendiente = { id: string; sedeCod: string; fecha: string; turno: TurnoReporte } | null;
+export async function buscarReportePendienteSede(sede: string): Promise<ReportePendiente> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('reportes')
+    .select('id, sede_cod, fecha, turno')
+    .eq('sede_cod', sede)
+    .eq('evaluado', false)
+    .eq('no_evaluable', false)
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const row = data as { id: string; sede_cod: string; fecha: string; turno: string } | null;
+  return row ? { id: row.id, sedeCod: row.sede_cod, fecha: row.fecha.slice(0, 10), turno: row.turno as TurnoReporte } : null;
 }
 
 // Exclusividad de turno: si ya existe un reporte REAL (no un stub vacío del auto-cierre) de un
@@ -276,6 +314,39 @@ export async function buscarConflictoTurno(sede: string, fecha: string, turno: T
 
 // ── Mutaciones vía RPC (atómicas, security invoker → RLS real; ver 0020) ─────
 
+// Error tipado del RPC (tareas 2/3, migración 0052): reportes_crear rechaza con una excepción
+// prefijada 'PREFIJO:id' cuando hay un conflicto de turno o un reporte anterior sin evaluar.
+// bloqueoId deja que la UI enlace directo al reporte causante en vez de un mensaje mudo.
+export class ReporteCrearError extends Error {
+  bloqueoId?: string;
+  tipo?: 'turno_conflicto' | 'reporte_pendiente';
+  constructor(message: string, tipo?: 'turno_conflicto' | 'reporte_pendiente', bloqueoId?: string) {
+    super(message);
+    this.tipo = tipo;
+    this.bloqueoId = bloqueoId;
+  }
+}
+
+function parsearErrorCrear(mensaje: string): ReporteCrearError {
+  const conflicto = mensaje.match(/^TURNO_CONFLICTO:(.+)$/);
+  if (conflicto) {
+    return new ReporteCrearError(
+      'Ese horario ya está cubierto por otro reporte de la sede.',
+      'turno_conflicto',
+      conflicto[1],
+    );
+  }
+  const pendiente = mensaje.match(/^REPORTE_PENDIENTE:(.+)$/);
+  if (pendiente) {
+    return new ReporteCrearError(
+      'Hay un reporte anterior de esta sede pendiente de evaluación. Evalúalo antes de crear uno nuevo.',
+      'reporte_pendiente',
+      pendiente[1],
+    );
+  }
+  return new ReporteCrearError(mensaje);
+}
+
 export async function crearReporte(p: {
   id: string;
   sede: string;
@@ -299,7 +370,7 @@ export async function crearReporte(p: {
     p_extras: p.extras,
     p_encargado: p.encargado ?? null,
   });
-  if (error) throw new Error(error.message);
+  if (error) throw parsearErrorCrear(error.message);
   return String(data);
 }
 

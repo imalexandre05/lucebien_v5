@@ -14,15 +14,22 @@ import {
   marcarAsistenciaReporte,
   buscarReporteId,
   buscarConflictoTurno,
+  buscarReportePendienteSede,
+  ReporteCrearError,
   type ActividadDelTurno,
   type LayoutZona,
   type ConflictoTurno,
+  type YaEnviado,
+  type ReportePendiente,
 } from '../../lib/reportes-repo';
 import { getSesion } from '../../lib/auth';
 import { crearIncidenciasDeReporte } from '../../lib/incidencias-repo';
 
 // Inicia el espacio de trabajo de un turno: catálogo de actividades + zonas de limpieza + draft.
-// `yaEnviado` = id del reporte si el turno ya se envió (para pasar a Evaluación, como el viejo).
+// `yaEnviado` = reporte si el turno ya se envió (para pasar a Evaluación, como el viejo).
+// `pendienteAnterior` (Fase 4 tarea 2): el reporte previo de la sede que aún no se evaluó — solo
+// advisory (el RPC reportes_crear vuelve a validarlo server-side), pero deja avisar ANTES de que
+// el usuario llene todo el formulario.
 export async function iniciarTurno(
   sede: string,
   fecha: string,
@@ -31,17 +38,19 @@ export async function iniciarTurno(
   actividades: ActividadDelTurno[];
   zonas: LayoutZona[];
   draft: Record<string, unknown> | null;
-  yaEnviado: string | null;
+  yaEnviado: YaEnviado;
   conflicto: ConflictoTurno;
+  pendienteAnterior: ReportePendiente;
 }> {
-  const [actividades, zonas, draft, yaEnviado, conflicto] = await Promise.all([
+  const [actividades, zonas, draft, yaEnviado, conflicto, pendienteAnterior] = await Promise.all([
     listarActividadesConfig(sede, fecha, turno),
     listarLayoutZonas(sede),
     getDraft(sede, fecha, turno),
     buscarReporteId(sede, fecha, turno),
     buscarConflictoTurno(sede, fecha, turno),
+    buscarReportePendienteSede(sede),
   ]);
-  return { actividades, zonas, draft: draft?.payload ?? null, yaEnviado, conflicto };
+  return { actividades, zonas, draft: draft?.payload ?? null, yaEnviado, conflicto, pendienteAnterior };
 }
 
 // Tipos locales (no exportados): un archivo 'use server' solo puede EXPORTAR funciones async.
@@ -69,7 +78,7 @@ type CrearReporteInput = {
 
 export async function accionCrearReporte(
   input: CrearReporteInput,
-): Promise<{ ok: boolean; id?: string; error?: string }> {
+): Promise<{ ok: boolean; id?: string; error?: string; bloqueoId?: string }> {
   try {
     const id = await crearReporte(input);
     // Incidencias del turno → registradas ligadas al reporte (origen='reporte').
@@ -90,10 +99,14 @@ export async function accionCrearReporte(
       /* ignore */
     }
     revalidatePath('/reportes');
+    revalidatePath('/administracion/reportes');
     revalidatePath('/incidencias');
     revalidatePath('/asistencias');
     return { ok: true, id };
   } catch (e) {
+    if (e instanceof ReporteCrearError) {
+      return { ok: false, error: e.message, bloqueoId: e.bloqueoId };
+    }
     return { ok: false, error: e instanceof Error ? e.message : 'Error al crear el reporte' };
   }
 }
@@ -121,6 +134,7 @@ export async function accionEvaluar(
     const puntaje = await evaluarReporte(id, calificaciones);
     revalidatePath(`/reportes/${id}`);
     revalidatePath('/reportes');
+    revalidatePath('/administracion/reportes');
     return { ok: true, puntaje };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error al evaluar' };
@@ -131,6 +145,7 @@ export async function accionAnular(id: string): Promise<{ ok: boolean; error?: s
   try {
     await anularReporte(id);
     revalidatePath('/reportes');
+    revalidatePath('/administracion/reportes');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error al anular' };
@@ -142,6 +157,7 @@ export async function accionAnularEval(id: string): Promise<{ ok: boolean; error
     await anularEval(id);
     revalidatePath(`/reportes/${id}`);
     revalidatePath('/reportes');
+    revalidatePath('/administracion/reportes');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error al anular la evaluación' };
