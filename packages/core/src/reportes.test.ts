@@ -7,6 +7,8 @@ import {
   turnosQueBloquean,
   minutosHastaCierre,
   formatoCierre,
+  zonasSolapadas,
+  zonasSolapadasInesperadas,
 } from './reportes';
 
 const DIAS = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
@@ -111,5 +113,77 @@ describe('formatoCierre', () => {
   it('una hora o más: horas y minutos', () => {
     expect(formatoCierre(90)).toBe('cierra en 1h 30m');
     expect(formatoCierre(60)).toBe('cierra en 1h 0m');
+  });
+});
+
+describe('zonasSolapadas — geometría del lienzo de limpieza', () => {
+  it('sin zonas o una sola: ningún par', () => {
+    expect(zonasSolapadas([])).toEqual([]);
+    expect(zonasSolapadas([{ cod: 'Z01', posX: 0, posY: 0, ancho: 40, alto: 40 }])).toEqual([]);
+  });
+  it('rectángulos que no se tocan: ningún par', () => {
+    const zonas = [
+      { cod: 'Z01', posX: 0, posY: 0, ancho: 40, alto: 40 },
+      { cod: 'Z02', posX: 100, posY: 100, ancho: 40, alto: 40 },
+    ];
+    expect(zonasSolapadas(zonas)).toEqual([]);
+  });
+  it('rectángulos que solo se tocan en el borde: no cuenta como solape', () => {
+    const zonas = [
+      { cod: 'Z01', posX: 0, posY: 0, ancho: 40, alto: 40 },
+      { cod: 'Z02', posX: 40, posY: 0, ancho: 40, alto: 40 }, // pegado exactamente al borde derecho
+    ];
+    expect(zonasSolapadas(zonas)).toEqual([]);
+  });
+  it('rectángulos que se solapan en área: detecta el par', () => {
+    const zonas = [
+      { cod: 'Z01', posX: 0, posY: 0, ancho: 50, alto: 50 },
+      { cod: 'Z02', posX: 30, posY: 30, ancho: 50, alto: 50 },
+    ];
+    expect(zonasSolapadas(zonas)).toEqual([['Z01', 'Z02']]);
+  });
+  it('un mueble con dos zonas "sobre" solapadas entre sí: detecta el par (no lo explica sobreCod)', () => {
+    const zonas = [
+      { cod: 'MESA', posX: 0, posY: 0, ancho: 100, alto: 60 },
+      { cod: 'Z_A', posX: 10, posY: 10, ancho: 30, alto: 20 },
+      { cod: 'Z_B', posX: 20, posY: 15, ancho: 30, alto: 20 }, // se solapa con Z_A, no con MESA
+    ];
+    const pares = zonasSolapadas(zonas);
+    expect(pares).toContainEqual(['Z_A', 'Z_B']);
+  });
+  it('tres zonas mutuamente solapadas: reporta los 3 pares', () => {
+    const zonas = [
+      { cod: 'A', posX: 0, posY: 0, ancho: 50, alto: 50 },
+      { cod: 'B', posX: 10, posY: 10, ancho: 50, alto: 50 },
+      { cod: 'C', posX: 20, posY: 20, ancho: 50, alto: 50 },
+    ];
+    expect(zonasSolapadas(zonas)).toHaveLength(3);
+  });
+});
+
+describe('zonasSolapadasInesperadas — descarta el solape "sobre" declarado', () => {
+  it('maniquí "sobre" su mueble exacto: solape esperado, no se avisa', () => {
+    const zonas = [
+      { cod: 'MESA', posX: 0, posY: 0, ancho: 100, alto: 60, nivel: 'piso', sobreCod: '' },
+      { cod: 'MANIQUI', posX: 10, posY: 10, ancho: 30, alto: 30, nivel: 'sobre', sobreCod: 'MESA' },
+    ];
+    expect(zonasSolapadasInesperadas(zonas)).toEqual([]);
+  });
+  it('dos zonas de piso que se solapan sin ninguna relación sobre: sí avisa', () => {
+    const zonas = [
+      { cod: 'Z01', posX: 0, posY: 0, ancho: 50, alto: 50, nivel: 'piso', sobreCod: '' },
+      { cod: 'Z02', posX: 30, posY: 30, ancho: 50, alto: 50, nivel: 'piso', sobreCod: '' },
+    ];
+    expect(zonasSolapadasInesperadas(zonas)).toEqual([['Z01', 'Z02']]);
+  });
+  it('zona "sobre" que se solapa con un mueble QUE NO ES el declarado en sobreCod: sí avisa', () => {
+    const zonas = [
+      { cod: 'MESA1', posX: 0, posY: 0, ancho: 50, alto: 50, nivel: 'piso', sobreCod: '' },
+      { cod: 'MESA2', posX: 200, posY: 200, ancho: 50, alto: 50, nivel: 'piso', sobreCod: '' },
+      // declara sobreCod=MESA2 pero geométricamente está encima de MESA1 → posicionamiento inconsistente
+      { cod: 'MANIQUI', posX: 10, posY: 10, ancho: 20, alto: 20, nivel: 'sobre', sobreCod: 'MESA2' },
+    ];
+    const pares = zonasSolapadasInesperadas(zonas);
+    expect(pares).toContainEqual(['MESA1', 'MANIQUI']);
   });
 });

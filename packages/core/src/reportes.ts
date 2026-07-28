@@ -63,9 +63,20 @@ export type ReporteExtra = {
   id: string;
   tipo: string;
   nombre: string;
+  // Código del catálogo (actividades_config, categoria='EXT') — null en los extras "libres"
+  // (escape hatch sin catálogo, Fase 5 tarea 3). Snapshot server-side, no lo decide el cliente.
+  cod: string | null;
   cantidad: number;
   montoTotal: number;
   precioUnitario: number;
+  // Puntos por unidad (catálogo 'por_puntos') y total (peso × cantidad, columna generada en BD).
+  // 0 para remuneradas y libres. NO se muestra al usuario operativo (decisión del dueño) — solo
+  // en /administracion y en la evaluación.
+  pesoUnitario: number;
+  puntosTotal: number;
+  // true cuando no hubo catálogo que lo respalde (extra "libre"): precio/puntos quedan en 0 y el
+  // admin lo revisa a mano (Fase 5 tarea 3 — "marcados para revisión", no se inventa un valor).
+  revisar: boolean;
   detalle: string | null;
   registradoPorId: string | null;
   registradoPorNombre: string | null;
@@ -222,4 +233,56 @@ export function formatoCierre(minutos: number): string {
   const h = Math.floor(minutos / 60);
   const m = minutos % 60;
   return h > 0 ? `cierra en ${h}h ${m}m` : `cierra en ${m}m`;
+}
+
+// ── Solapes del layout de limpieza (Fase 5 tarea 2) ──────────────────────────
+// El lienzo posiciona cada zona con posX/posY/ancho/alto en px absolutos (LIENZO_W×LIENZO_H,
+// ver layout-map.tsx). Dos zonas con nivel/sobreCod (p. ej. un maniquí "sobre" una mesa) pueden
+// pintarse una encima de otra a propósito, pero cuando el solape NO está declarado así, la de
+// abajo queda inalcanzable al clic (mismo z-index, gana la que esté después en el DOM). Estas
+// funciones son puras (solo geometría) para poder testearlas sin el DOM; la UI las usa para (a)
+// agrupar "zonas ocultas en este punto" en el desplegable del mapa y (b) avisar al guardar en el
+// editor de layout.
+
+export type ZonaRect = { cod: string; posX: number; posY: number; ancho: number; alto: number };
+
+// AABB overlap: exige solape de ÁREA real (tocar solo el borde no cuenta).
+function rectsSolapan(a: ZonaRect, b: ZonaRect): boolean {
+  return (
+    a.posX < b.posX + b.ancho &&
+    a.posX + a.ancho > b.posX &&
+    a.posY < b.posY + b.alto &&
+    a.posY + a.alto > b.posY
+  );
+}
+
+// Todos los pares (cod, cod) cuyo rectángulo se solapa, sin importar nivel/sobreCod — es lo que
+// necesita el mapa para saber qué zonas agrupar en el desplegable de un punto dado (toggle() debe
+// poder alcanzar CUALQUIER zona debajo, esté o no "declarado" el solape).
+export function zonasSolapadas(zonas: ZonaRect[]): [string, string][] {
+  const pares: [string, string][] = [];
+  for (let i = 0; i < zonas.length; i++) {
+    for (let j = i + 1; j < zonas.length; j++) {
+      if (rectsSolapan(zonas[i], zonas[j])) pares.push([zonas[i].cod, zonas[j].cod]);
+    }
+  }
+  return pares;
+}
+
+export type ZonaRectNivel = ZonaRect & { nivel?: string | null; sobreCod?: string | null };
+
+// Igual que zonasSolapadas, pero descarta los pares ya EXPLICADOS por la relación nivel/sobreCod
+// declarada en el editor (una zona 'sobre' cuyo sobreCod apunta exactamente al mueble que ocupa:
+// eso es intencional, no un error de posicionamiento). Lo usa el editor de layout para avisar al
+// guardar — solo de los solapes que probablemente sean un accidente de arrastre.
+export function zonasSolapadasInesperadas(zonas: ZonaRectNivel[]): [string, string][] {
+  const porCod = new Map(zonas.map((z) => [z.cod, z]));
+  return zonasSolapadas(zonas).filter(([codA, codB]) => {
+    const a = porCod.get(codA);
+    const b = porCod.get(codB);
+    if (!a || !b) return true;
+    const explicado =
+      (a.nivel === 'sobre' && a.sobreCod === b.cod) || (b.nivel === 'sobre' && b.sobreCod === a.cod);
+    return !explicado;
+  });
 }
