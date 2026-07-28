@@ -52,4 +52,39 @@ se registra.
 
 ---
 
+---
+
+## Fase 7 — Inventario: despiece, tipos y estados
+
+- **Reparto de precio del despiece** (`config.despiece_pct_saco`, migración `0055`): sembrado en
+  `0.6` (60% del precio al saco, 40% al pantalón). Es un número de ejemplo elegido para que la
+  suma cuadre exactamente al 100%, **no una proporción confirmada por el dueño**. Aplica a
+  `precio_base`, `precio_alquiler` y `precio_venta` por igual. Pendiente: confirmar si el reparto
+  real es 60/40, si varía por tipo de terno, o si en la práctica cada pieza se tasa a mano en vez
+  de derivarse automáticamente del precio del set completo.
+- **Estado `en_lavanderia` → `en_pipeline`.** El plan pide el set de estados
+  `disponible/alquilado/vendido/en_pipeline/codificando/en_compostura/en_almacen/baja`, que ya no
+  incluye `en_lavanderia` (nombre viejo, sugería que el pipeline es solo lavado). La migración
+  `0055` migra las filas existentes (`update ... set estado='en_pipeline' where estado=
+  'en_lavanderia'`) antes de agregar el check constraint. Verificado contra la base viva: solo
+  afectaba 1 fila de datos de seed/demo, no hay impacto en datos reales.
+- **Automatización parcial de estados.** Se conectaron solo los dos bordes del ciclo que son
+  inequívocos: un activo nuevo entra "codificando" cuando se registra por primera vez en el
+  pipeline (`registrarPasada`, `lib/pipeline-repo.ts`), y sale a `disponible` cuando `pipeline_
+  enviar` lo despacha a una tienda (solo si estaba en un estado de proceso). Los estados
+  `en_compostura`/`en_almacen` quedan disponibles en el selector pero **no se fijan automáticamente
+  al entrar a la etapa de compostura del pipeline** — forzar esa transición hubiera significado
+  inventar una regla no pedida explícitamente (¿debe pisar un estado que el admin fijó a mano?
+  ¿qué pasa si el activo está simultáneamente "vendido" y en compostura por una reparación
+  post-venta?). Pendiente: confirmar si se quiere esa automatización adicional y con qué reglas.
+- **Catálogo `producto_tipos` (migración `0055`).** Se verificó la base viva antes de sembrar
+  (lección de la Fase 5): `inventario_activo` solo tenía 4 filas de datos de seed/demo con tipos
+  "SC"/"TN", sin catálogo real que preservar. Se sembró con la lista de 9 tipos que da el propio
+  texto del plan (terno/saco/pantalón/camisa/corbata/chaleco/pañuelo/zapatos/correa), con prefijos
+  de 2 letras elegidos por el asistente (TN/SC/PT/CM/CB/CH/PN/ZP/CR) y `atributos_sugeridos`
+  también elegidos por el asistente como conveniencia de UI (no son una regla de negocio: solo
+  pre-cargan claves vacías en el editor de atributos libres, que el admin puede ignorar o borrar).
+  Pendiente: que el dueño revise/ajuste nombres, prefijos y atributos sugeridos desde
+  `/configuracion/tipos-producto` — el catálogo es 100% editable ahí, nada quedó hardcodeado.
+
 _Agregar aquí, por fase, cualquier parámetro nuevo que se sembró con un default sin confirmar._

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { activoSchema, type ActivoInput } from '@scilb/core';
-import { inventarioRepo } from '../../lib/inventario-repo';
+import { inventarioRepo, despiezarActivo, type PiezaDespiece } from '../../lib/inventario-repo';
 
 type R = { ok: boolean; error?: string };
 
@@ -44,5 +44,17 @@ export async function accionEliminarActivo(id: string): Promise<R> {
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error al dar de baja' };
+  }
+}
+
+// Despiece saco/pantalón (Fase 7). Idempotente en el RPC: si ya estaba despiezado, devuelve las
+// mismas piezas en vez de duplicar — acá simplemente se propaga el resultado.
+export async function accionDespiezarActivo(id: string): Promise<R & { piezas?: PiezaDespiece[] }> {
+  try {
+    const piezas = await despiezarActivo(id);
+    revalidatePath('/inventario');
+    return { ok: true, piezas };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al despiezar' };
   }
 }

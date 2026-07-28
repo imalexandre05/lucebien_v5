@@ -113,6 +113,11 @@ export async function registrarPasada(p: {
 
   let activoId = (existente as { id: string } | null)?.id ?? null;
   if (!activoId) {
+    // Fase 7 tarea 2: un activo que nace acá (código nunca visto) entra a "codificarse" —
+    // todavía no es una prenda vendible/alquilable. pipeline_enviar (migración 0055) lo pasa a
+    // 'disponible' cuando sale del pipeline hacia una tienda. Con fallback (Fase 4/7: nunca pedir
+    // una columna nueva por nombre explícito contra una base sin migrar) por si 'codificando'
+    // todavía no está en el check constraint del entorno (migración 0055 pendiente).
     const { data: nuevo, error: crearErr } = await sb
       .from('inventario_activo')
       .insert({
@@ -121,11 +126,21 @@ export async function registrarPasada(p: {
         color: p.color ?? '',
         talla: p.talla ?? '',
         sede_cod: p.sedeOrigenCod,
+        estado: 'codificando',
       })
       .select('id')
       .single();
-    if (crearErr) throw new Error(crearErr.message);
-    activoId = (nuevo as { id: string }).id;
+    if (crearErr) {
+      const { data: reintento, error: reintentoErr } = await sb
+        .from('inventario_activo')
+        .insert({ codigo: p.codigo, tipo: p.tipo, color: p.color ?? '', talla: p.talla ?? '', sede_cod: p.sedeOrigenCod })
+        .select('id')
+        .single();
+      if (reintentoErr) throw new Error(reintentoErr.message);
+      activoId = (reintento as { id: string }).id;
+    } else {
+      activoId = (nuevo as { id: string }).id;
+    }
   }
 
   const { error } = await sb.from('prenda_pasada').insert({
@@ -146,6 +161,10 @@ export async function registrarPasada(p: {
 // Fase 9: al devolver un pedido de alquiler, el/los activo(s) reingresan al pipeline de
 // lavandería (recepción) para procesarse antes de volver a estar disponibles — reusa el vínculo
 // activo_id (Fase 8), sin buscar por código porque ya se tiene el id.
+// Fase 7 tarea 2: "los devueltos van tienda → almacén → proceso → inventario" — el activo pasa a
+// 'en_pipeline' acá (no queda en 'alquilado' mientras se procesa). Best-effort: si falla (p. ej.
+// migración 0055 pendiente y el check constraint todavía no acepta 'en_pipeline'), no revierte la
+// pasada ya insertada — la prenda igual entra al tablero, que es lo crítico de esta función.
 export async function reingresarActivoAPipeline(activoId: string): Promise<void> {
   const sb = getServerClient();
   const { data: activo, error: e1 } = await sb
@@ -166,6 +185,8 @@ export async function reingresarActivoAPipeline(activoId: string): Promise<void>
     etapa: 'recepcion',
   });
   if (error) throw new Error(error.message);
+
+  await sb.from('inventario_activo').update({ estado: 'en_pipeline' }).eq('id', activoId);
 }
 
 // ── Mutaciones del tablero vía RPC (una sola llamada atómica, ~200ms; ver 0009). ──

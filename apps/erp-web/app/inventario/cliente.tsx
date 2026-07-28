@@ -2,29 +2,54 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Pencil, Trash2, X, Globe, Package } from 'lucide-react';
-import { ESTADOS_ACTIVO, type ActivoInventario, type ActivoInput, type EstadoActivo } from '@scilb/core';
-import { accionCrearActivo, accionEditarActivo, accionEliminarActivo } from './actions';
+import { Plus, Pencil, Trash2, X, Globe, Package, Scissors, Lock } from 'lucide-react';
+import {
+  ESTADOS_ACTIVO,
+  PIEZAS_ACTIVO,
+  activoBloqueadoPor,
+  type ActivoInventario,
+  type ActivoInput,
+  type EstadoActivo,
+  type PiezaActivo,
+} from '@scilb/core';
+import type { ProductoTipo } from '../../lib/producto-tipos-repo';
+import { accionCrearActivo, accionEditarActivo, accionEliminarActivo, accionDespiezarActivo } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { EmptyState } from '../../components/ui/empty-state';
+import { OpcionBotones } from '../../components/ui/opcion-botones';
 import { cn } from '../../lib/cn';
 
-const TONE: Record<EstadoActivo, Tone> = {
+// Fase 7: 8 estados de ciclo completo (antes solo 4). TONE/LABEL como funciones con fallback en
+// vez de Record estricto — una base sin migrar (o con datos viejos tipo 'en_lavanderia' antes del
+// backfill de la 0055) puede traer un estado que no está en la lista; que se vea "gris + el texto
+// crudo" es preferible a que la fila reviente.
+const TONE: Partial<Record<EstadoActivo, Tone>> = {
   disponible: 'green',
   alquilado: 'amber',
-  en_lavanderia: 'navy',
-  baja: 'gray',
+  vendido: 'navy',
+  en_pipeline: 'gold',
+  codificando: 'gold',
+  en_compostura: 'gold',
+  en_almacen: 'gray',
+  baja: 'red',
 };
-const LABEL: Record<EstadoActivo, string> = {
+const LABEL: Partial<Record<EstadoActivo, string>> = {
   disponible: 'Disponible',
   alquilado: 'Alquilado',
-  en_lavanderia: 'En lavandería',
+  vendido: 'Vendido',
+  en_pipeline: 'En pipeline',
+  codificando: 'Codificando',
+  en_compostura: 'En compostura',
+  en_almacen: 'En almacén',
   baja: 'Baja',
 };
+const tonoEstado = (e: string): Tone => TONE[e as EstadoActivo] ?? 'gray';
+const labelEstado = (e: string): string => LABEL[e as EstadoActivo] ?? e;
+
 // Mismas etiquetas que el tablero de pipeline (app/pipeline/tablero.tsx) — un activo "en
 // pipeline" muestra la etapa real en vez del estado comercial de reposo.
 const ETAPA_LABEL: Record<string, string> = {
@@ -36,6 +61,13 @@ const ETAPA_LABEL: Record<string, string> = {
   planchado: 'Planchado',
   control_calidad: 'Control calidad',
   listo: 'Listo p/ envío',
+};
+
+// Fase 7 — despiece: etiqueta corta junto al código. 'unica' (99% de los casos) no se etiqueta.
+const PIEZA_LABEL: Partial<Record<PiezaActivo, string>> = {
+  completo: 'Set completo',
+  saco: 'Saco',
+  pantalon: 'Pantalón',
 };
 
 const fieldCls =
@@ -58,6 +90,7 @@ const vacio = (sedeActual: string): ActivoInput => ({
   atributos: {},
   publicable: false,
   descripcionPublica: '',
+  pieza: 'unica',
 });
 
 const aInput = (a: ActivoInventario): ActivoInput => ({
@@ -74,31 +107,44 @@ const aInput = (a: ActivoInventario): ActivoInput => ({
   atributos: a.atributos,
   publicable: a.publicable,
   descripcionPublica: a.descripcionPublica,
+  pieza: a.pieza,
 });
 
 export function InventarioCliente({
   activosIniciales,
   sedeActual,
+  tiposProducto,
 }: {
   activosIniciales: ActivoInventario[];
   sedeActual: string;
+  tiposProducto: ProductoTipo[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [modal, setModal] = useState<{ id: string | null; form: ActivoInput } | null>(null);
+  const [modal, setModal] = useState<{ id: string | null; form: ActivoInput; original: ActivoInventario | null } | null>(
+    null,
+  );
   const [error, setError] = useState('');
-  // Edición rápida en línea (estilo Excel): solo estado y precios, lo demás va por el modal.
+  // Edición rápida en línea (estilo Excel): estado, precios, talla, color — el resto va por el modal.
   const [editandoInline, setEditandoInline] = useState<Record<string, Partial<ActivoInput>>>({});
 
   const activos = activosIniciales;
 
+  // Fase 7: código → activo, para resolver "ocupado por AST-501" a partir del id bloqueante, y
+  // prefijo → tipo del catálogo, para mostrar el nombre legible junto al código crudo (TN → Terno).
+  const porId = useMemo(() => new Map(activos.map((a) => [a.id, a])), [activos]);
+  const catalogoPorPrefijo = useMemo(
+    () => new Map(tiposProducto.map((t) => [t.prefijo.toUpperCase(), t])),
+    [tiposProducto],
+  );
+
   function abrirNuevo() {
     setError('');
-    setModal({ id: null, form: vacio(sedeActual) });
+    setModal({ id: null, form: vacio(sedeActual), original: null });
   }
   function abrirEditar(a: ActivoInventario) {
     setError('');
-    setModal({ id: a.id, form: aInput(a) });
+    setModal({ id: a.id, form: aInput(a), original: a });
   }
   function cerrarModal() {
     if (pending) return;
@@ -129,7 +175,21 @@ export function InventarioCliente({
     });
   }
 
-  // Edición inline: guarda un campo (estado / precio) sin abrir el modal completo.
+  function despiezar(a: ActivoInventario) {
+    if (!confirm(`¿Despiezar ${a.codigo} en saco + pantalón? Podrás alquilar/vender cada pieza por separado.`)) return;
+    startTransition(async () => {
+      const r = await accionDespiezarActivo(a.id);
+      if (r.ok) {
+        const piezas = r.piezas ?? [];
+        alert(piezas.length ? `Despiezado: ${piezas.map((p) => p.codigo).join(' + ')}` : 'Despiezado.');
+        router.refresh();
+      } else {
+        alert(r.error);
+      }
+    });
+  }
+
+  // Edición inline: guarda un campo (estado / precio / talla / color) sin abrir el modal completo.
   function guardarInline(a: ActivoInventario, patch: Partial<ActivoInput>) {
     startTransition(async () => {
       const r = await accionEditarActivo(a.id, { ...aInput(a), ...patch });
@@ -146,12 +206,24 @@ export function InventarioCliente({
   }
 
   const atributosLista = useMemo(() => Object.entries(modal?.form.atributos ?? {}), [modal]);
+  const tipoSeleccionadoCatalogo = useMemo(
+    () => catalogoPorPrefijo.get((modal?.form.tipo ?? '').toUpperCase()) ?? null,
+    [catalogoPorPrefijo, modal],
+  );
 
   function setCampo<K extends keyof ActivoInput>(campo: K, valor: ActivoInput[K]) {
     setModal((m) => (m ? { ...m, form: { ...m.form, [campo]: valor } } : m));
   }
   function agregarAtributo() {
     setModal((m) => (m ? { ...m, form: { ...m.form, atributos: { ...m.form.atributos, '': '' } } } : m));
+  }
+  function usarAtributosSugeridos(claves: string[]) {
+    setModal((m) => {
+      if (!m) return m;
+      const nuevos = { ...m.form.atributos };
+      for (const k of claves) if (!(k in nuevos)) nuevos[k] = '';
+      return { ...m, form: { ...m.form, atributos: nuevos } };
+    });
   }
   function cambiarAtributoClave(claveVieja: string, claveNueva: string) {
     setModal((m) => {
@@ -202,15 +274,56 @@ export function InventarioCliente({
             <TBody>
               {activos.map((a) => {
                 const inl = editandoInline[a.id] ?? {};
+                const catTipo = catalogoPorPrefijo.get(a.tipo.toUpperCase());
+                // Bloqueo (Fase 7): solo se muestra cuando cambiaría la conclusión — un activo que
+                // YA está alquilado/vendido/baja habla por sí solo; el aviso importa cuando el
+                // estado propio dice 'disponible' pero el padre o un hijo está ocupado.
+                const bloqueo = a.estado === 'disponible' ? activoBloqueadoPor(activos, a.id) : null;
+                const padre = a.activoPadreId ? porId.get(a.activoPadreId) : null;
                 return (
-                  <TR key={a.id}>
-                    <TD className="pl-5 font-mono font-medium text-navy">
-                      {a.codigo}
-                      {a.publicable && <Globe className="ml-1 inline h-3 w-3 text-emerald-600" strokeWidth={2} aria-label="Publicable en la web" />}
+                  <TR key={a.id} className={cn(bloqueo && 'bg-amber-50/40')}>
+                    <TD className="pl-5">
+                      <div className="flex items-center gap-1 font-mono font-medium text-navy">
+                        {a.codigo}
+                        {a.publicable && <Globe className="h-3 w-3 text-emerald-600" strokeWidth={2} aria-label="Publicable en la web" />}
+                      </div>
+                      {(PIEZA_LABEL[a.pieza] || padre) && (
+                        <div className="text-[10px] text-muted">
+                          {PIEZA_LABEL[a.pieza]}
+                          {padre && ` de ${padre.codigo}`}
+                        </div>
+                      )}
                     </TD>
-                    <TD>{a.tipo}</TD>
-                    <TD>{a.talla}</TD>
-                    <TD>{a.color}</TD>
+                    <TD>
+                      {catTipo ? (
+                        <>
+                          <div className="text-sm text-navy">{catTipo.nombre}</div>
+                          <div className="font-mono text-[10px] text-muted">{a.tipo}</div>
+                        </>
+                      ) : (
+                        <span className="font-mono text-sm">{a.tipo}</span>
+                      )}
+                    </TD>
+                    <TD>
+                      <input
+                        defaultValue={a.talla}
+                        disabled={pending}
+                        onBlur={(e) => {
+                          if (e.target.value !== a.talla) guardarInline(a, { talla: e.target.value });
+                        }}
+                        className="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                      />
+                    </TD>
+                    <TD>
+                      <input
+                        defaultValue={a.color}
+                        disabled={pending}
+                        onBlur={(e) => {
+                          if (e.target.value !== a.color) guardarInline(a, { color: e.target.value });
+                        }}
+                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                      />
+                    </TD>
                     <TD className="font-mono">{a.sedeCod}</TD>
                     <TD>
                       {a.enPipeline ? (
@@ -224,18 +337,25 @@ export function InventarioCliente({
                           disabled={pending}
                           className={cn(
                             'rounded-full border-0 px-2.5 py-1 text-xs font-medium outline-none',
-                            TONE[a.estado] === 'green' && 'bg-emerald-50 text-emerald-700',
-                            TONE[a.estado] === 'amber' && 'bg-amber-50 text-amber-700',
-                            TONE[a.estado] === 'navy' && 'bg-navy/10 text-navy',
-                            TONE[a.estado] === 'gray' && 'bg-slate-100 text-slate-600',
+                            tonoEstado(a.estado) === 'green' && 'bg-emerald-50 text-emerald-700',
+                            tonoEstado(a.estado) === 'amber' && 'bg-amber-50 text-amber-700',
+                            tonoEstado(a.estado) === 'navy' && 'bg-navy/10 text-navy',
+                            tonoEstado(a.estado) === 'gold' && 'bg-gold/20 text-[#7a6e0e]',
+                            tonoEstado(a.estado) === 'red' && 'bg-red-500/15 text-red-700',
+                            tonoEstado(a.estado) === 'gray' && 'bg-slate-100 text-slate-600',
                           )}
                         >
                           {ESTADOS_ACTIVO.map((e) => (
                             <option key={e} value={e}>
-                              {LABEL[e]}
+                              {labelEstado(e)}
                             </option>
                           ))}
                         </select>
+                      )}
+                      {bloqueo && (
+                        <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-amber-700" title={`Bloqueado por ${bloqueo.codigo} (${labelEstado(bloqueo.estado)})`}>
+                          <Lock className="h-2.5 w-2.5" strokeWidth={2.5} /> Ocupado por {bloqueo.codigo}
+                        </div>
                       )}
                     </TD>
                     <TD className="text-right">
@@ -267,6 +387,18 @@ export function InventarioCliente({
                     <TD className="text-right font-mono">{a.usosAcumulados}</TD>
                     <TD className="pr-5">
                       <div className="flex items-center justify-end gap-1">
+                        {a.pieza === 'unica' && (
+                          <button
+                            type="button"
+                            onClick={() => despiezar(a)}
+                            disabled={pending}
+                            aria-label="Despiezar en saco + pantalón"
+                            title="Despiezar en saco + pantalón"
+                            className="rounded-md p-1.5 text-muted transition-colors hover:bg-navy/5 hover:text-navy disabled:opacity-50"
+                          >
+                            <Scissors className="h-3.5 w-3.5" strokeWidth={2} />
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => abrirEditar(a)}
@@ -304,8 +436,10 @@ export function InventarioCliente({
         </CardContent>
       </Card>
       <p className="text-xs text-muted">
-        Clic en el estado o los precios de una fila para editarlos al instante. El lápiz abre todos los
-        datos, incluidos los atributos libres (tela, forro, etc.) — no hay una lista fija por tipo de prenda.
+        Clic en el estado, precios, talla o color de una fila para editarlos al instante. El lápiz abre
+        todos los datos, incluidos los atributos libres (tela, forro, etc.). Las tijeras despiezan un
+        activo &ldquo;único&rdquo; en saco + pantalón — alquilar una pieza bloquea el set completo pero
+        deja la otra pieza disponible.
       </p>
 
       <Modal
@@ -325,6 +459,26 @@ export function InventarioCliente({
                 <div>
                   <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tipo</label>
                   <input value={modal.form.tipo} onChange={(e) => setCampo('tipo', e.target.value)} placeholder="TN, CM, CO…" className={cn(fieldCls, 'w-full')} />
+                  {tiposProducto.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {tiposProducto.map((t) => (
+                        <button
+                          key={t.cod}
+                          type="button"
+                          aria-pressed={modal.form.tipo.toUpperCase() === t.prefijo.toUpperCase()}
+                          onClick={() => setCampo('tipo', t.prefijo)}
+                          className={cn(
+                            'rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                            modal.form.tipo.toUpperCase() === t.prefijo.toUpperCase()
+                              ? 'border-navy bg-navy text-paper'
+                              : 'border-line text-muted hover:border-gold hover:text-navy',
+                          )}
+                        >
+                          {t.nombre}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Talla</label>
@@ -348,7 +502,7 @@ export function InventarioCliente({
                   <select value={modal.form.estado} onChange={(e) => setCampo('estado', e.target.value as EstadoActivo)} className={cn(fieldCls, 'w-full')}>
                     {ESTADOS_ACTIVO.map((e) => (
                       <option key={e} value={e}>
-                        {LABEL[e]}
+                        {labelEstado(e)}
                       </option>
                     ))}
                   </select>
@@ -372,6 +526,27 @@ export function InventarioCliente({
               </div>
 
               <div className="border-t border-line/60 pt-3">
+                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
+                  Pieza (despiece saco/pantalón)
+                </label>
+                <OpcionBotones
+                  opciones={PIEZAS_ACTIVO.map((p) => ({ value: p, label: PIEZA_LABEL[p] ?? 'Única' }))}
+                  value={modal.form.pieza}
+                  onChange={(v) => setCampo('pieza', v)}
+                  ariaLabel="Pieza"
+                />
+                {modal.original?.activoPadreId && (
+                  <p className="mt-1.5 text-xs text-muted">
+                    Vinculado a {porId.get(modal.original.activoPadreId)?.codigo ?? modal.original.activoPadreId}.
+                  </p>
+                )}
+                <p className="mt-1.5 text-xs text-muted">
+                  Normalmente esto lo fija el botón de tijeras de la tabla (despiece automático). Cámbialo
+                  a mano solo para corregir datos.
+                </p>
+              </div>
+
+              <div className="border-t border-line/60 pt-3">
                 <div className="mb-2 flex items-center justify-between">
                   <label className="text-xs uppercase tracking-wide text-muted">
                     Atributos (tela, forro, cuello… lo que corresponda a este tipo)
@@ -380,6 +555,15 @@ export function InventarioCliente({
                     <Plus className="h-3 w-3" strokeWidth={2.5} /> Agregar
                   </button>
                 </div>
+                {tipoSeleccionadoCatalogo && tipoSeleccionadoCatalogo.atributosSugeridos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => usarAtributosSugeridos(tipoSeleccionadoCatalogo.atributosSugeridos)}
+                    className="mb-2 text-left text-xs text-navy underline decoration-dotted underline-offset-2 hover:text-gold"
+                  >
+                    Usar sugeridos de &ldquo;{tipoSeleccionadoCatalogo.nombre}&rdquo;: {tipoSeleccionadoCatalogo.atributosSugeridos.join(', ')}
+                  </button>
+                )}
                 {atributosLista.length === 0 ? (
                   <p className="text-xs text-muted">Sin atributos agregados.</p>
                 ) : (

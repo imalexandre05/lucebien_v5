@@ -1,7 +1,11 @@
-import type { ActivoInventario, ActivoInput, InventarioRepo } from '@scilb/core';
+import type { ActivoInventario, ActivoInput, InventarioRepo, PiezaActivo } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 
 // snake_case (Postgres) <-> camelCase (dominio)
+// pieza/activo_padre_id (Fase 7, migración 0055): opcionales en el tipo Row porque en un entorno
+// sin migrar `select('*')` simplemente no las trae — nunca se piden por nombre explícito (lección
+// de la Fase 4: "column does not exist" tumba toda la página). fromRow cae a los defaults de antes
+// de la migración ('unica' / sin padre) cuando faltan.
 type Row = {
   id: string;
   codigo: string;
@@ -9,7 +13,7 @@ type Row = {
   talla: string | null;
   color: string | null;
   sede_cod: string | null;
-  estado: ActivoInventario['estado'];
+  estado: string;
   precio_base: number;
   precio_alquiler: number;
   precio_venta: number;
@@ -17,6 +21,8 @@ type Row = {
   atributos: Record<string, string> | null;
   publicable: boolean | null;
   descripcion_publica: string | null;
+  pieza?: PiezaActivo | null;
+  activo_padre_id?: string | null;
 };
 
 type PasadaActivaRow = { id: string; activo_id: string | null; etapa: string };
@@ -28,7 +34,7 @@ const fromRow = (r: Row, enPipeline: ActivoInventario['enPipeline']): ActivoInve
   talla: r.talla ?? '',
   color: r.color ?? '',
   sedeCod: r.sede_cod ?? '',
-  estado: r.estado,
+  estado: (r.estado ?? 'disponible') as ActivoInventario['estado'],
   precioBase: Number(r.precio_base),
   precioAlquiler: Number(r.precio_alquiler),
   precioVenta: Number(r.precio_venta),
@@ -37,6 +43,8 @@ const fromRow = (r: Row, enPipeline: ActivoInventario['enPipeline']): ActivoInve
   publicable: Boolean(r.publicable),
   descripcionPublica: r.descripcion_publica ?? '',
   enPipeline,
+  pieza: r.pieza ?? 'unica',
+  activoPadreId: r.activo_padre_id ?? null,
 });
 
 const toRow = (i: ActivoInput) => ({
@@ -53,7 +61,17 @@ const toRow = (i: ActivoInput) => ({
   atributos: i.atributos,
   publicable: i.publicable,
   descripcion_publica: i.descripcionPublica,
+  pieza: i.pieza,
 });
+
+// Fase 7: 'pieza' puede no existir todavía si la migración 0055 no se aplicó — a diferencia de un
+// SELECT (donde falta el campo y ya, sin error), un INSERT/UPDATE con una columna que no existe SÍ
+// falla (PostgREST valida contra su schema cache, código PGRST204). Igual que getSesion() con
+// rol_cod (lib/auth.ts): reintenta sin el campo nuevo en vez de tumbar la creación/edición entera.
+function esColumnaPiezaDesconocida(error: { message?: string; code?: string } | null): boolean {
+  if (!error) return false;
+  return error.code === 'PGRST204' && (error.message ?? '').toLowerCase().includes('pieza');
+}
 
 // Repo por-request con el cliente `server` (RLS): cada empleado ve/escribe solo el
 // inventario de su sede; admin/dueño ven todo. Reemplaza el singleton service_role (H1).
@@ -79,13 +97,21 @@ export const inventarioRepo: InventarioRepo = {
   },
   async crear(input) {
     const sb = getServerClient();
-    const { data, error } = await sb.from('inventario_activo').insert(toRow(input)).select().single();
+    let { data, error } = await sb.from('inventario_activo').insert(toRow(input)).select().single();
+    if (error && esColumnaPiezaDesconocida(error)) {
+      const { pieza: _pieza, ...sinPieza } = toRow(input);
+      ({ data, error } = await sb.from('inventario_activo').insert(sinPieza).select().single());
+    }
     if (error) throw new Error(error.message);
     return fromRow(data as Row, null);
   },
   async editar(id, input) {
     const sb = getServerClient();
-    const { data, error } = await sb.from('inventario_activo').update(toRow(input)).eq('id', id).select().single();
+    let { data, error } = await sb.from('inventario_activo').update(toRow(input)).eq('id', id).select().single();
+    if (error && esColumnaPiezaDesconocida(error)) {
+      const { pieza: _pieza, ...sinPieza } = toRow(input);
+      ({ data, error } = await sb.from('inventario_activo').update(sinPieza).eq('id', id).select().single());
+    }
     if (error) throw new Error(error.message);
     return fromRow(data as Row, null);
   },
@@ -95,3 +121,22 @@ export const inventarioRepo: InventarioRepo = {
     if (error) throw new Error(error.message);
   },
 };
+
+// ── Despiece saco/pantalón (Fase 7, RPC 0055) ──────────────────────────────────────────────
+export type PiezaDespiece = { id: string; codigo: string; pieza: PiezaActivo };
+
+// Fuera de la interfaz InventarioRepo (como dividirPasada/avanzarPasada en pipeline-repo.ts): es
+// una mutación respaldada por RPC, no CRUD genérico. Si la migración 0055 no está aplicada, el RPC
+// no existe todavía (Postgres 42883 "function does not exist") — se traduce a un mensaje claro en
+// vez de dejar pasar el error crudo de Postgres.
+export async function despiezarActivo(id: string): Promise<PiezaDespiece[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('inventario_despiece', { p_activo_id: id });
+  if (error) {
+    if (error.code === '42883' || /inventario_despiece/i.test(error.message ?? '')) {
+      throw new Error('El despiece todavía no está disponible: falta aplicar la migración 0055.');
+    }
+    throw new Error(error.message);
+  }
+  return (data as PiezaDespiece[]) ?? [];
+}

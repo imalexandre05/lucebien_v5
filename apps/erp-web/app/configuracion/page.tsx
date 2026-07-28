@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ClipboardList, Map, Building2, Shield } from 'lucide-react';
+import { ClipboardList, Map, Building2, Shield, Shirt } from 'lucide-react';
 import { listarConfig } from '../../lib/config-repo';
 import { getSesion } from '../../lib/auth';
 import { PageHeader } from '../../components/shell/page-header';
@@ -23,6 +23,9 @@ export default async function ConfiguracionPage() {
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/configuracion/actividades" className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
               <ClipboardList className="h-3.5 w-3.5" strokeWidth={2} /> Actividades
+            </Link>
+            <Link href="/configuracion/tipos-producto" className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
+              <Shirt className="h-3.5 w-3.5" strokeWidth={2} /> Tipos de producto
             </Link>
             <Link href="/configuracion/sedes" className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
               <Building2 className="h-3.5 w-3.5" strokeWidth={2} /> Sedes
