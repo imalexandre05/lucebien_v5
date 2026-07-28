@@ -254,15 +254,19 @@ export async function listarEmpleados(): Promise<EmpPicker[]> {
 export type YaEnviado = { id: string; estadoEnvio: EstadoEnvio } | null;
 export async function buscarReporteId(sede: string, fecha: string, turno: string): Promise<YaEnviado> {
   const sb = getServerClient();
+  // select('*') a propósito (no una lista explícita con estado_envio): así, si la migración 0052
+  // todavía no corrió, Postgres simplemente no devuelve esa columna (undefined) en vez de tirar
+  // "column does not exist" — pedirla por nombre explícito SÍ revienta contra una BD sin migrar
+  // (lo mismo que evita baseReporte() más arriba).
   const { data, error } = await sb
     .from('reportes')
-    .select('id, estado_envio, auto_enviado, no_evaluable')
+    .select('*')
     .eq('sede_cod', sede)
     .eq('fecha', fecha)
     .eq('turno', turno)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  const row = data as Pick<RepRow, 'id' | 'estado_envio' | 'auto_enviado' | 'no_evaluable'> | null;
+  const row = data as RepRow | null;
   return row ? { id: row.id, estadoEnvio: derivarEstadoEnvio(row) } : null;
 }
 
