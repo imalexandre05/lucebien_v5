@@ -321,11 +321,16 @@ export function LayoutMap({
       )}
 
       {/* Lienzo — Fase 5 tarea 1: antes tenía SOLO aspectRatio como altura, así que en columnas
-          altas (al lado de la lista de Actividades) se cortaba a media sección. Ahora crece con
-          flex-1 dentro de un padre en columna (form.tsx pasa "flex flex-col" al Card/CardContent
-          de Limpieza) hasta llenar la misma altura que la lista vecina; aspectRatio queda como
-          mínimo/fallback cuando no hay un padre con altura que estirar (p. ej. una sola columna en
-          mobile), vía minHeight en vez de forzar el height. */}
+          altas (al lado de la lista de Actividades) se cortaba a media sección: medido en vivo,
+          hasta ~53px de espacio muerto al fondo de la card en viewports angostos (1300px), porque
+          aspect-ratio fija el alto ANTES que flex-grow pueda actuar (gana incluso con
+          flex-basis:0%, confirmado empíricamente — no basta con poner flex-1 al lado). Se resuelve
+          apagando aspect-ratio exactamente en el breakpoint xl (donde form.tsx pasa a las dos
+          columnas Limpieza/Actividades vía "flex flex-col" en Card/CardContent): de ahí para
+          arriba, el lienzo crece con flex-1 puro hasta la altura real de la card (verificado:
+          espacio muerto pasa de 53px a 0px, ambos con Playwright + boundingBox). Por debajo de xl
+          (una sola columna, sin card vecina que igualar) aspect-ratio sigue gobernando como antes
+          — sin regresión en mobile (verificado a 768px: aspect-ratio activo, altura ~486px). */}
       <div
         role={!readOnly && piso ? 'button' : undefined}
         aria-label={piso ? `Piso: clic en el espacio vacío para marcar "${piso.nombre}"` : undefined}
@@ -336,11 +341,12 @@ export function LayoutMap({
         }}
         className={cn(
           'relative w-full flex-1 overflow-hidden rounded-xl border transition-colors duration-200',
+          'aspect-[800/580] xl:aspect-auto',
           pisoMarcado && !esEval ? 'border-emerald-500/70 bg-emerald-50/70' : 'border-line bg-[#f8fafc]',
           esEval && piso && 'cursor-pointer',
           !readOnly && piso && !esEval && 'cursor-pointer',
         )}
-        style={{ aspectRatio: `${LIENZO_W} / ${LIENZO_H}`, minHeight: 340 }}
+        style={{ minHeight: 340 }}
       >
         {/* Hint del piso, al fondo del lienzo */}
         {piso && !readOnly && (
