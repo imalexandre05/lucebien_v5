@@ -4,10 +4,19 @@ import type { Sesion } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import { getAdminClient } from './supabase/admin';
 
-const SEDE_COOKIE = 'sci_sede';
+// Exportada (Fase 2): la reutilizan el switcher de sede del topbar (components/shell/sede-
+// actions.ts) y el login — antes solo vivía aquí como constante local.
+export const SEDE_COOKIE = 'sci_sede';
 // Exportado (Fase 1): lo reutilizan crearEmpleado() (empleados-repo.ts) y la reautenticación
 // (lib/reauth.ts) — antes solo vivía aquí y se hubiera vuelto a duplicar en cada archivo nuevo.
 export const EMAIL_DOMAIN = 'lucebien.local';
+
+// "El dispositivo manda" (Fase 2): fija la sede activa en una cookie httpOnly de sesión. La usan
+// el login (ambos modos) y el switcher del topbar — un único punto que decide cómo se persiste.
+export function fijarSedeActiva(sede: string): void {
+  if (!sede) return;
+  cookies().set(SEDE_COOKIE, sede, { httpOnly: true, sameSite: 'lax', path: '/' });
+}
 
 // Login híbrido: el empleado entra con su código de 4 dígitos + sede.
 // El código ES la credencial (Supabase Auth tiene el bcrypt del código importado del
@@ -20,7 +29,7 @@ export async function login(cod: string, sede: string): Promise<{ ok: boolean; e
     password: cod,
   });
   if (error) return { ok: false, error: error.message };
-  cookies().set(SEDE_COOKIE, sede, { httpOnly: true, sameSite: 'lax', path: '/' });
+  fijarSedeActiva(sede);
   return { ok: true };
 }
 
@@ -28,10 +37,16 @@ export async function login(cod: string, sede: string): Promise<{ ok: boolean; e
 // {cod}@lucebien.local — cod nunca se pide ni se muestra, queda como PIN de atribución interno
 // (ya usado desde Fase 2). La búsqueda del empleado usa el cliente admin (bypassa RLS) porque
 // corre ANTES de que exista sesión — mismo patrón que listarSedesPublico() en sedes-repo.ts.
-// No se setea SEDE_COOKIE: getSesion() ya cae a empleados.sede_cod cuando no hay cookie.
 // Mensaje de error genérico en ambos casos (usuario inexistente o contraseña incorrecta) para no
 // filtrar qué usuarios existen.
-export async function loginConUsuario(usuario: string, password: string): Promise<{ ok: boolean; error?: string }> {
+// `sede` (Fase 2, "el dispositivo manda"): opcional — el login la pre-marca con la sede del
+// equipo y la manda tal cual la eligió el usuario. Si no llega (o llega vacía), getSesion() sigue
+// cayendo a empleados.sede_cod como antes; no es un campo de seguridad, solo la sede activa.
+export async function loginConUsuario(
+  usuario: string,
+  password: string,
+  sede?: string,
+): Promise<{ ok: boolean; error?: string }> {
   const admin = getAdminClient();
   const { data: emp } = await admin.from('empleados').select('cod').ilike('nombre', usuario.trim()).maybeSingle();
   if (!emp) return { ok: false, error: 'Usuario o contraseña incorrectos' };
@@ -42,6 +57,7 @@ export async function loginConUsuario(usuario: string, password: string): Promis
     password,
   });
   if (error) return { ok: false, error: 'Usuario o contraseña incorrectos' };
+  if (sede) fijarSedeActiva(sede);
   return { ok: true };
 }
 

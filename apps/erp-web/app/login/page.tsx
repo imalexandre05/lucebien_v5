@@ -1,19 +1,32 @@
+import { cookies } from 'next/headers';
 import { isOn } from '@scilb/adapter-lucebien';
 import { iniciarSesion } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
-import { Input, Select, Label } from '../../components/ui/form';
+import { Input, Label } from '../../components/ui/form';
 import { LogoMark } from '../../components/brand/logo';
 import { listarSedesPublico } from '../../lib/sedes-repo';
+import { sedeDispositivoPublico } from '../../lib/dispositivos-repo';
+import { SedeBotones } from './sede-botones';
 import { BotonIngresar } from './boton';
+
+const DEVICE_COOKIE = 'sci_device';
 
 // Primera impresión (§4B): entrada escalonada crest → wordmark → tarjeta → pie,
 // código estilo "cerradura" (mono, centrado, tracking ancho). Con LOGIN_V2 apagado (default)
 // se mantiene el login híbrido cod+sede; encendido, pide usuario+contraseña — ver
 // C:\Users\ASUS\.claude\plans\glittery-plotting-shannon.md. Las sedes salen de la BD: crear una
 // sede nueva en Configuración la habilita aquí sin tocar código (solo aplica al modo cod+sede).
+//
+// "El dispositivo manda" (Fase 2): el admin asigna una sede a cada equipo desde /dispositivos
+// (dispositivos_autorizados.sede_cod). Este equipo se identifica por la cookie `sci_device` (la
+// pone el middleware, siempre, incluso sin sesión) y login la resuelve ANTES de pintar para
+// pre-marcar el botón correspondiente — en los dos modos de login, no solo en cod+sede.
 export default async function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
   const loginV2 = isOn('LOGIN_V2');
-  const SEDES = loginV2 ? [] : await listarSedesPublico();
+  const deviceId = cookies().get(DEVICE_COOKIE)?.value ?? '';
+  const [SEDES, sedeDispositivo] = await Promise.all([listarSedesPublico(), sedeDispositivoPublico(deviceId)]);
+  const defaultSede = SEDES.some((s) => s.cod === sedeDispositivo) ? (sedeDispositivo as string) : (SEDES[0]?.cod ?? '');
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper px-4">
       <div className="w-full max-w-sm">
@@ -43,6 +56,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
             )}
             {loginV2 ? (
               <form action={iniciarSesion} className="space-y-4">
+                <SedeBotones sedes={SEDES} defaultSede={defaultSede} />
                 <div>
                   <Label htmlFor="login-usuario">Usuario</Label>
                   <Input
@@ -62,16 +76,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
               </form>
             ) : (
               <form action={iniciarSesion} className="space-y-4">
-                <div>
-                  <Label htmlFor="login-sede">Sede</Label>
-                  <Select id="login-sede" name="sede" defaultValue="LB">
-                    {SEDES.map((s) => (
-                      <option key={s.cod} value={s.cod}>
-                        {s.nombre}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
+                <SedeBotones sedes={SEDES} defaultSede={defaultSede} />
                 <div>
                   <Label htmlFor="login-cod">Código</Label>
                   <Input

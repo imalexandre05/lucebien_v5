@@ -12,7 +12,10 @@ export async function iniciarSesion(formData: FormData) {
       password: formData.get('password'),
     });
     if (!parsed.success) redirect('/login?error=datos');
-    const res = await loginConUsuario(parsed.data.usuario, parsed.data.password);
+    // `sede` (Fase 2): botón pre-marcado por el equipo (SedeBotones) — no forma parte del schema
+    // de credenciales porque no es una entrada de seguridad, solo la sede activa inicial.
+    const sede = String(formData.get('sede') ?? '');
+    const res = await loginConUsuario(parsed.data.usuario, parsed.data.password, sede);
     if (!res.ok) redirect('/login?error=credenciales');
     redirect('/');
   }
