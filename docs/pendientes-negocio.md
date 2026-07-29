@@ -87,4 +87,72 @@ se registra.
   Pendiente: que el dueño revise/ajuste nombres, prefijos y atributos sugeridos desde
   `/configuracion/tipos-producto` — el catálogo es 100% editable ahí, nada quedó hardcodeado.
 
+---
+
+## Fase 12 — Evaluación mensual completa + Valores 360° + pagos
+
+- **Migración `0057` sin aplicar.** El MCP de Supabase no estaba disponible en este entorno (igual
+  que reportó la Fase 7/11 en momentos similares) y `SUPABASE_DB_URL` no existe en
+  `apps/erp-web/.env.local` (confirmado, igual que documentó la Fase 11). La migración se escribió
+  y quedó lista (`packages/db/migrations/0057_valores360_competencias_pagos.sql`), pero **nadie la
+  aplicó contra `scilb`**. Hasta que se aplique: `/valores` muestra el aviso "Falta aplicar la
+  migración 0057" en vez de un 500 (`ValoresNoMigradoError`, mismo patrón que
+  `SolicitudesNoMigradoError` de la Fase 11); en `/evaluaciones` el catálogo de competencias
+  aparece vacío con el mismo aviso inline, y "Registrar pago" del ciclo devuelve un mensaje claro
+  (`PagosCicloNoMigradoError`) en vez de fallar en silencio — el resto de `/evaluaciones` y
+  `/pagos` (que no dependen de columnas nuevas) sigue funcionando igual que antes de esta fase.
+- **`bonusVentas` es SIEMPRE 0 en el autollenado — no hay fuente de datos.** El plan pedía que el
+  RPC `evaluacion_componentes` devolviera también `bonusVentas`, pero el módulo que lo calculaba en
+  el sistema viejo (`routes/ventas.js`, tabla `ventas_metas`, bonus por cumplimiento de meta de
+  venta) **queda explícitamente fuera de alcance de este loop completo de 13 fases** (ver el plan,
+  sección "Fuera de alcance" de la Fase 13: "Metas de venta (`routes/ventas.js`)"). No se migró su
+  schema ni su lógica de `pct >= 120/100/80 → bonus`. La clave `bonusVentas` se agrega al RPC solo
+  para que el autollenado tenga una forma consistente (no `undefined`); el campo sigue siendo
+  100% manual/editable en `/evaluaciones`, exactamente como ya lo era antes de esta fase. Si se
+  quiere el bonus real por metas de venta, hace falta un loop futuro que migre `ventas.js`.
+- **`competencias` NO se autocompleta — nunca fue un dato con historial que recuperar.** A
+  diferencia de `valores` (peer review, sí queda guardado por periodo y sí se promedia), las 8
+  competencias del sistema viejo siempre las puntuaba el jefe **en vivo**, dentro de la misma
+  sesión de evaluación (`public/js/admin.js:1554`, los botones `evalC-*` no se leían de ninguna
+  tabla). No existe — ni existió — un `evaluaciones_competencias` con historial por empleado/mes
+  del que "traer" una nota. Por eso el RPC `evaluacion_componentes` **no** incluye una clave
+  `competencias`: lo único que se portó es el **catálogo** (`competencias_config`, tarea 2), para
+  que la rúbrica ya no esté hardcodeada en el frontend — la nota en sí sigue siendo criterio del
+  evaluador en cada cierre de ciclo, exactamente como en el sistema viejo.
+- **El cálculo de puntos de extras sigue leyendo `actividades_config` tal cual está hoy, sin
+  resolver el conflicto de catálogos que dejó la Fase 5** (`XTR02`-`XTR18` en la base viva vs.
+  `XR01`/`XP01`-`XP15` en `database/seed.js` — ver sección "Fase 5" arriba, todavía sin decidir).
+  Esta fase no tocó ese catálogo ni ese conflicto: `evaluacion_componentes` sigue sumando
+  `reporte_extras.puntos_total`/`monto_total` de forma agnóstica (informativo, no entra a la
+  fórmula de la nota — igual que desde la Fase 5). **Cualquier número de "extras" que el admin vea
+  en `/evaluaciones` o `/mi-desempeño` depende de esa decisión pendiente**: si el dueño confirma que
+  el catálogo vigente es el `XTR*` de la base o el `XR*`/`XP*` de `seed.js`, los puntos por extra
+  (y por tanto esos totales informativos) pueden cambiar.
+- **Ciclo por aniversario: hereda una rareza de bordes de mes del sistema viejo, sin corregirla.**
+  `calcularCiclo()` (`packages/core/src/evaluaciones.ts`, puerto literal de
+  `routes/evaluaciones.js:98-127`) usa aritmética de calendario estándar de JavaScript
+  (`Date.UTC`), igual que el original. Para un empleado con `fecha_ingreso` en día 29, 30 o 31, si
+  el mes de destino tiene menos días, la fecha "rueda" al mes siguiente (ej.: aniversario día 31,
+  ciclo que cae en febrero de un año no bisiesto → arranca el 3 de marzo, no el 28 de febrero). Es
+  el mismo comportamiento que ya tenía `routes/evaluaciones.js` en el sistema viejo (no es un bug
+  nuevo de esta migración), pero **nadie confirmó si es el comportamiento deseado** o si el dueño
+  prefiere que el ciclo se "recorte" al último día del mes en esos casos. Cubierto con test
+  (`evaluaciones.test.ts`, caso "hereda el mismo rollover de calendario") para que cualquier cambio
+  futuro de este comportamiento sea deliberado, no accidental.
+- **Valores 360°: no se portó la ventana de habilitación por fecha del sistema viejo.**
+  `routes/valores.js` tenía un interruptor `eval_valores_habilitado`/`eval_valores_modo`/
+  `eval_valores_dias` (por defecto: solo días 25-28 de cada mes, o un flag manual on/off) que
+  restringía CUÁNDO se podía evaluar a compañeros. El plan de esta fase no lo pidió explícitamente
+  y se decidió dejarlo **siempre abierto** (cualquier día del mes) para no inventar una restricción
+  no confirmada — es la opción más permisiva, no la más parecida al original. Si el dueño quiere
+  recuperar la ventana de días, es una clave de `config` + una condición en
+  `lib/valores-repo.ts` a agregar después, no algo que haya que migrar de nuevo.
+- **Reautenticación en `/valores`: decisión de diseño, no del dueño.** "Evaluar compañeros" y "Mi
+  resumen" quedaron SIN el gate de `sci_reauth` (a diferencia de `/evaluaciones`, `/pagos` y
+  `/mi-desempeno`) porque dar tu opinión sobre un compañero — o ver el promedio que TE dieron, sin
+  saber quién — no es tan sensible como ver salarios o notas ajenas. Solo el panel "Seguimiento"
+  (agrega desempeño de TODO el equipo, visible solo para admin/dueño) pide reauth, sin bloquear el
+  resto de la pantalla. Es una interpretación razonable del criterio de la Fase 1, no una regla que
+  el dueño haya confirmado explícitamente para este caso puntual.
+
 _Agregar aquí, por fase, cualquier parámetro nuevo que se sembró con un default sin confirmar._

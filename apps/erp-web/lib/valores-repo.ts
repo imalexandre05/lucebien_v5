@@ -15,9 +15,37 @@ import { getServerClient } from './supabase/server';
 // nombres históricos también).
 export type CompaneroValor = { id: string; nombre: string; evaluado: boolean };
 
+// "Falta aplicar la migración 0057" — degradación elegante (mismo patrón que
+// SolicitudesNoMigradoError en solicitudes-repo.ts, lección explícita de la Fase 4/7): /valores es
+// un módulo enteramente NUEVO (no existía nada antes de esta fase), así que CUALQUIER lectura de
+// evaluaciones_valores o de app_directorio_activos() falla igual sin la migración — la página debe
+// avisar, no reventar con un 500.
+export class ValoresNoMigradoError extends Error {
+  constructor() {
+    super('Falta aplicar la migración 0057 (tabla evaluaciones_valores y función app_directorio_activos).');
+    this.name = 'ValoresNoMigradoError';
+  }
+}
+
+function esTablaOFuncionInexistente(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const msg = (error.message ?? '').toLowerCase();
+  return (
+    error.code === 'PGRST205' ||
+    error.code === 'PGRST202' ||
+    error.code === '42P01' ||
+    error.code === '42883' ||
+    /could not find the table/i.test(msg) ||
+    /could not find the function/i.test(msg)
+  );
+}
+
 async function directorioActivos(sb: ReturnType<typeof getServerClient>): Promise<{ id: string; nombre: string }[]> {
   const { data, error } = await sb.rpc('app_directorio_activos');
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (esTablaOFuncionInexistente(error)) throw new ValoresNoMigradoError();
+    throw new Error(error.message);
+  }
   return ((data as { id: string; nombre: string }[]) ?? []).map((d) => ({ id: String(d.id), nombre: d.nombre }));
 }
 
@@ -29,7 +57,10 @@ export async function companerosParaEvaluar(evaluadorId: string, mes: string): P
     directorioActivos(sb),
     sb.from('evaluaciones_valores').select('evaluado_id').eq('evaluador_id', evaluadorId).eq('mes', mes),
   ]);
-  if (yaEval.error) throw new Error(yaEval.error.message);
+  if (yaEval.error) {
+    if (esTablaOFuncionInexistente(yaEval.error)) throw new ValoresNoMigradoError();
+    throw new Error(yaEval.error.message);
+  }
   const evaluados = new Set((yaEval.data ?? []).map((r) => String((r as { evaluado_id: string }).evaluado_id)));
   return dir
     .filter((d) => d.id !== evaluadorId)
@@ -54,7 +85,10 @@ export async function enviarEvaluacionValores(
       { evaluador_id: evaluadorId, evaluado_id: evaluadoId, mes, ...puntaje },
       { onConflict: 'evaluador_id,evaluado_id,mes' },
     );
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (esTablaOFuncionInexistente(error)) throw new ValoresNoMigradoError();
+    throw new Error(error.message);
+  }
 }
 
 export type MiResumenValores = {
@@ -72,7 +106,10 @@ export async function miResumenValores(empleadoId: string, mes: string): Promise
     .select('integridad, respeto, honestidad, amabilidad, relacion, actitud')
     .eq('evaluado_id', empleadoId)
     .eq('mes', mes);
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (esTablaOFuncionInexistente(error)) throw new ValoresNoMigradoError();
+    throw new Error(error.message);
+  }
   const rows = (data as PuntajeValores[]) ?? [];
   if (!rows.length) return { recibidas: 0, promedios: null, nota20: null };
   const promedios = promediosPorValor(rows);
@@ -104,7 +141,10 @@ export async function seguimientoValores(mes: string): Promise<{
     directorioActivos(sb),
     sb.from('evaluaciones_valores').select('*').eq('mes', mes),
   ]);
-  if (evalsRes.error) throw new Error(evalsRes.error.message);
+  if (evalsRes.error) {
+    if (esTablaOFuncionInexistente(evalsRes.error)) throw new ValoresNoMigradoError();
+    throw new Error(evalsRes.error.message);
+  }
   const evals = (evalsRes.data as (PuntajeValores & { evaluador_id: string; evaluado_id: string })[]) ?? [];
 
   const recibidasPor = new Map<string, (typeof evals)[number][]>();
