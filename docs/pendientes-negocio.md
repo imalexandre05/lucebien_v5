@@ -24,33 +24,32 @@ se registra.
 
 ## Fase 5 — Reportes de actividad II: layout de limpieza y extras
 
-- **Dos catálogos de extras distintos, ninguno tocado.** El plan pedía portar el catálogo de 17
-  extras de `database/seed.js:20-38` (códigos `XR01`/`XR02`/`XP01`..`XP15`) a `actividades_config`
-  porque "hoy no hay ningún catálogo EXT". Al verificar contra la base real (`scilb`) antes de
-  escribir la migración `0053`, resultó que **ya existe un catálogo EXT sembrado** — 17 filas en
-  `LB`/`ST`/`TR` y 11 en `AL`, con códigos `XTR02`..`XTR18` — que **no viene de ningún archivo de
-  este repo** (no está en ninguna migración ni en `seed.js`; probablemente se cargó a mano por
-  SQL directo o en la migración inicial de datos del sistema viejo, antes de que este repo la
-  trackeara). Sus valores **no coinciden** con `seed.js`: por ejemplo "Confección de michis" es
-  `XR02` remunerada (S/ 3, 0 pts) en `seed.js`, pero `XTR02` por puntos (10 pts) en la base viva.
-  `AL` además tiene un subconjunto de 11 (no los 17), que parece deliberado (el almacén no hace
-  ciertos arreglos de sastrería) y no un catálogo incompleto.
-  - **Decisión tomada:** no sembrar el catálogo de `seed.js` encima (crearía un catálogo
-    duplicado y confuso — dos botones "Confección de michis" con puntajes distintos). La
-    migración `0053` deja el schema (`reporte_extras.cod/peso_unitario/revisar/puntos_total`) y
-    las funciones RPC agnósticas a qué códigos tenga `actividades_config` — funcionan igual con
-    `XTR*` que con `XR*`/`XP*` — y agrega el seed de `seed.js` solo como red de seguridad para una
-    sede que no tenga NINGÚN extra sembrado (hoy no aplica a ninguna de las 4 sedes reales).
-  - **Pendiente de confirmar con el dueño:** ¿cuál catálogo es el vigente — el `XTR*` ya en la
-    base, o el de `seed.js`? Si es el `XTR*`, valdría la pena actualizar `seed.js` para que deje
-    de estar desactualizado como fuente de referencia.
+- **✅ RESUELTA (decisión del dueño, 2026-07-29 — Fase 13): manda el catálogo `XTR02`-`XTR18`
+  que ya vive en la base, no el de `database/seed.js`.** Quedaba pendiente desde la Fase 5 (y lo
+  volvió a anotar la Fase 12) cuál de los dos catálogos de extras era el vigente. El dueño
+  confirmó: el catálogo real es el que ya está sembrado en `scilb` (`XTR02`..`XTR18`, 17 filas en
+  `LB`/`ST`/`TR` y 11 en `AL`). **No se migra ni se toca ningún dato por esta decisión** — el
+  catálogo vivo se queda tal cual, tal como ya lo dejaba la migración `0053` (agnóstica a qué
+  códigos tenga `actividades_config`). Queda pendiente, ahora como mejora menor no urgente,
+  actualizar `database/seed.js` para que dibuje el catálogo `XTR*` en vez de `XR*`/`XP*` y deje de
+  ser una fuente de referencia desactualizada — no bloquea nada del ERP nuevo.
+- Contexto original del hallazgo (se conserva para quien retome el tema): el plan pedía portar el
+  catálogo de 17 extras de `database/seed.js:20-38` (códigos `XR01`/`XR02`/`XP01`..`XP15`) a
+  `actividades_config` porque "hoy no hay ningún catálogo EXT". Al verificar contra la base real
+  (`scilb`) antes de escribir la migración `0053`, resultó que **ya existía un catálogo EXT
+  sembrado** que no viene de ningún archivo de este repo (no está en ninguna migración ni en
+  `seed.js`; probablemente se cargó a mano por SQL directo o en la migración inicial de datos del
+  sistema viejo, antes de que este repo la trackeara). Sus valores no coinciden con `seed.js`: por
+  ejemplo "Confección de michis" es `XR02` remunerada (S/ 3, 0 pts) en `seed.js`, pero `XTR02` por
+  puntos (10 pts) en la base viva. `AL` además tiene un subconjunto de 11 (no los 17), que parece
+  deliberado (el almacén no hace ciertos arreglos de sastrería) y no un catálogo incompleto. La
+  Fase 5 ya había decidido no sembrar `seed.js` encima (crearía un catálogo duplicado y confuso) y
+  dejar las funciones RPC agnósticas a qué códigos tenga `actividades_config` — eso sigue igual.
 - **Extras "libres" sin monto.** Antes tenían un input de monto libre; ahora, tanto los del
   catálogo como los libres solo piden cantidad + quién. Los libres (sin `cod` de catálogo) se
   guardan con `precio_unitario=0`/`peso_unitario=0`/`revisar=true` — no se les inventa un precio
   ni un puntaje; el admin los revisa a mano vía la columna "Puntos" + badge "A revisar" en
   `/reportes/[id]` (visible solo con permiso `reportes_admin`/`evaluar_reportes`).
-
----
 
 ---
 
@@ -159,9 +158,13 @@ se registra.
   `eval_valores_dias` (por defecto: solo días 25-28 de cada mes, o un flag manual on/off) que
   restringía CUÁNDO se podía evaluar a compañeros. El plan de esta fase no lo pidió explícitamente
   y se decidió dejarlo **siempre abierto** (cualquier día del mes) para no inventar una restricción
-  no confirmada — es la opción más permisiva, no la más parecida al original. Si el dueño quiere
-  recuperar la ventana de días, es una clave de `config` + una condición en
-  `lib/valores-repo.ts` a agregar después, no algo que haya que migrar de nuevo.
+  no confirmada — es la opción más permisiva, no la más parecida al original.
+  **→ Actualización Fase 13:** el mecanismo ya se portó (`config.valores_habilitado`/
+  `valores_modo`/`valores_dia_inicio`/`valores_dia_fin`, migración `0058`,
+  `puedeEvaluarValoresHoy()` en `packages/core/src/valores360.ts` con test). Default = habilitado +
+  modo `'siempre'`: sigue exactamente igual de abierto que antes. Lo que queda pendiente de
+  confirmar con el dueño es solo **si quiere activar la ventana** y con qué días — ver la sección
+  "Fase 13" más abajo.
 - **Reautenticación en `/valores`: decisión de diseño, no del dueño.** "Evaluar compañeros" y "Mi
   resumen" quedaron SIN el gate de `sci_reauth` (a diferencia de `/evaluaciones`, `/pagos` y
   `/mi-desempeno`) porque dar tu opinión sobre un compañero — o ver el promedio que TE dieron, sin
@@ -169,5 +172,94 @@ se registra.
   (agrega desempeño de TODO el equipo, visible solo para admin/dueño) pide reauth, sin bloquear el
   resto de la pantalla. Es una interpretación razonable del criterio de la Fase 1, no una regla que
   el dueño haya confirmado explícitamente para este caso puntual.
+
+---
+
+## Fase 13 — Configuración integral + auditoría
+
+- ⚠️ **Migración `0058` sin aplicar** — mismo motivo que `0050`-`0057`: no hay MCP de Supabase
+  disponible en este entorno ni `SUPABASE_DB_URL` en `apps/erp-web/.env.local` (verificado, igual
+  que documentaron las fases anteriores). La migración se escribió y quedó lista
+  (`packages/db/migrations/0058_config_tipado_auditoria.sql`) pero **nadie la aplicó contra
+  `scilb`**. Hasta que se aplique:
+  - `/administracion/auditoria` muestra el aviso "Falta aplicar la migración 0058" en vez de un
+    500 (`AuditoriaNoMigradoError`, mismo patrón que `SolicitudesNoMigradoError`/
+    `ValoresNoMigradoError`) — verificado en vivo.
+  - `/configuracion` funciona igual que siempre para los 22 parámetros del catálogo (siguen
+    editables, con su default visible aunque la fila real todavía no exista en `config`), pero
+    "Nuevo parámetro" (crear una clave que NO está en el catálogo) devuelve un mensaje claro en
+    vez de un 500, porque las columnas `tipo`/`descripcion`/`seccion`/`opciones` de `config` son
+    justamente parte de esta migración — verificado en vivo con Playwright.
+  - Los triggers de auditoría (`pedidos`, `caja_movimientos`, `empleados`, `pagos`,
+    `evaluaciones_mensuales`) no existen todavía, así que **ninguna escritura en esas tablas se
+    está auditando hoy** — no hay impacto en el funcionamiento normal del ERP (los triggers son
+    puramente aditivos/observacionales), solo significa que la auditoría arranca a contar desde
+    que `0058` se aplique, no desde antes.
+- **`/configuracion` rediseñada con un catálogo tipado en CÓDIGO, no en la base.** Los
+  22 parámetros conocidos (`pts_*`, `peso_*`/`eval_*`, `turno_*_cierre`, `despiece_pct_saco`,
+  `valores_*`) tienen su tipo/descripción/sección/default en
+  `apps/erp-web/lib/config-catalogo.ts`, no en columnas de `config`. Es una decisión deliberada
+  (evita que la misma descripción viva duplicada en SQL y en TS y se desincronice) — las columnas
+  nuevas de `config` (`tipo`/`descripcion`/`seccion`/`opciones`) solo se usan para parámetros que
+  el admin cree desde la UI y que NO están en ese catálogo de código. Si se agrega un parámetro
+  nuevo de negocio en una fase futura, el patrón a seguir es sumarlo al catálogo de código, no
+  crear la fila directo en la base.
+- **Auditoría: alcance deliberadamente acotado a 5 tablas, no "todo".** El plan pedía
+  específicamente `pedidos`, `caja_movimientos`, `empleados`, `pagos`, `evaluaciones_mensuales` y
+  excluía a propósito `prenda_pasada` (alta frecuencia — cada avance de una prenda en el pipeline
+  generaría una fila de auditoría, volumen que no aporta valor de negocio proporcional). Si en el
+  futuro se quiere auditar otra tabla (p. ej. `incidencias` o `solicitudes`), es tan simple como
+  agregar dos líneas (`drop trigger if exists` + `create trigger`) apuntando a la misma función
+  `private.audit_log_trigger()` — no hace falta reescribir nada, pero **es una decisión a
+  confirmar con el dueño antes de sumar más tablas**, no algo que se debiera hacer por inercia.
+- **`empleados.password_hash` nunca se registra en `antes`/`despues`**, ni siquiera el hash. No
+  era un requisito explícito del plan (que solo pedía cuidar tamaño de columnas y frecuencia de
+  tablas), pero es una precaución barata: reduce lo que habría que proteger si `audit_log` alguna
+  vez se exporta o se comparte con alguien fuera del equipo técnico.
+- **"Bloqueo por evaluación pendiente" (Fase 4) sigue sin un margen de gracia — no se agregó una
+  clave de `config` para esto en esta fase.** Se revisó de nuevo en la Fase 13 (la tarea pedía
+  "subir a config lo que quedó hardcodeado") pero se decidió NO inventar un parámetro para esto: a
+  diferencia de `despiece_pct_saco` o de la ventana de Valores 360° (que son números/interruptores
+  con una forma clara), acá lo que falta confirmar es si la REGLA en sí (cero margen) es la
+  correcta o si hace falta un margen — y de qué tipo (¿turnos de gracia? ¿horas?). Inventar la
+  forma del parámetro sin esa respuesta sería la misma clase de invención que la instrucción pide
+  evitar. Sigue exactamente como lo dejó la Fase 4, sin cambios.
+- **Catálogo de tipos de incidencia: ya tiene UI de administración
+  (`/configuracion/tipos-incidencia`).** No hay pendiente de negocio nuevo aquí — la tabla
+  `incidencia_tipos` (migración `0024`) ya estaba aplicada y con datos reales (21 tipos en 8
+  categorías), la UI solo le puso una pantalla de administración encima. Verificado en vivo:
+  crear, desactivar y eliminar un tipo contra la tabla real, sin dejar residuos.
+
+---
+
+## Fuera de alcance del plan de 13 fases (registrado al cierre — Fase 13)
+
+El plan explícito de 13 fases marcaba estos módulos del sistema viejo como backlog, "para que la
+decisión quede escrita en vez de olvidada" (texto literal del plan). Ninguno se ejecutó en este
+loop; se registran aquí para que quien retome el proyecto los vea juntos con el resto de
+pendientes, no perdidos en el texto del plan:
+
+- **Horarios v2** (periodos + slots + importador XLSX, `routes/horarios.js`, ~22 KB) — módulo
+  grande, hoy nadie lo pidió activamente.
+- **Préstamos por lote** (`routes/prestamos.js`) — no migrado.
+- **Metas de venta** (`routes/ventas.js`, tabla `ventas_metas`) — es la pieza que le falta a
+  `bonusVentas` en la evaluación mensual (ver Fase 12 arriba: hoy `bonusVentas` es siempre 0 en el
+  autollenado, 100% manual). Migrarlo destrabaría ese bono.
+- **Listas de lavandería legacy** (`routes/lavanderia.js`) — cubierto en parte por el pipeline
+  nuevo; lo que no se migró explícitamente no se evaluó a detalle en este loop.
+- **Activar `DEVICE_GATE`** (paso manual, no de código): el mecanismo está implementado y
+  verificado (Fase 2), pero requiere aprobar los 4 equipos reales en `/dispositivos` primero. El
+  flag sigue en `false`; ninguna fase de este loop lo activó ni debía hacerlo.
+
+## Estado de las migraciones al cierre de la Fase 13
+
+`scilb` sigue aplicada solo hasta aproximadamente la `0049` (verificado en vivo de nuevo en esta
+fase: `empleados.rol_cod` y `sedes.perfil` siguen sin existir, `roles`/`producto_tipos`/
+`solicitudes`/`evaluaciones_valores`/`competencias_config`/`audit_log` siguen sin existir). El
+hueco es `0050` → `0058`, las nueve migraciones de F1/F2/F4/F5/F6/F7/F11/F12/F13, todas
+idempotentes y pensadas para aplicarse en secuencia. Aplicarlas de una vez contra `scilb` (por MCP
+o `SUPABASE_DB_URL` cuando estén disponibles) destraba de golpe: roles derivados, perfil de sede,
+catálogo de extras con puntaje, despiece/tipos de inventario, Solicitudes, Valores 360°/
+competencias/pagos por ciclo, y ahora también la ventana de Valores 360° + la auditoría completa.
 
 _Agregar aquí, por fase, cualquier parámetro nuevo que se sembró con un default sin confirmar._
