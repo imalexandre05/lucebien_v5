@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -21,6 +21,9 @@ const NAV: { section: string; items: Item[] }[] = [
       // Fase 4 tarea 1: acceso operativo al formulario del turno — vive en "Interno" (uso diario),
       // separado del historial administrativo de abajo. Mismo permiso 'reportes' de siempre.
       { label: 'Reporte de Actividades', href: '/reportes/nuevo', icon: ClipboardList, modulo: 'reportes' },
+      // Fase 11: tienda → almacén. Neutral en permiteModuloPerfil (ni MODULOS_SOLO_POS ni
+      // MODULOS_SOLO_ALMACEN) a propósito — el plan pide que se vea en AMBOS perfiles de sede.
+      { label: 'Solicitudes', href: '/solicitudes', icon: PackagePlus, modulo: 'solicitudes' },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt, modulo: 'pipeline' },
     ],
   },
