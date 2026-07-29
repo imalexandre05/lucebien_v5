@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Trash2, FileText, Filter } from 'lucide-react';
+import { sugerirMontoPago } from '@scilb/core';
 import { accionCrearPago, accionEliminarPago } from './actions';
 import type { Pago, EmpleadoPago } from '../../lib/pagos-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -33,7 +34,6 @@ const OPC_FILTRO_ESTADO: Opcion[] = [
 ];
 const fieldCls =
   'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
-const r2 = (n: number) => Math.round(n * 100) / 100;
 const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 
 export function PagosCliente({
@@ -82,13 +82,16 @@ export function PagosCliente({
     return { total: filtrados.length, pagado, pendiente, anulados };
   }, [filtrados]);
 
+  // Fase 12 tarea 5: misma fórmula que /evaluaciones (sugerirMontoPago del core, puerto literal de
+  // routes/pagos.js:107-139) — antes esta pantalla tenía su propio cálculo suelto, sin el clamp
+  // ≥ 0 que sí pedía el plan. Una sola fuente de verdad para la sugerencia en todo el ERP.
   const emp = empleados.find((e) => e.id === empleadoId);
-  const sugerido = emp && emp.ultimaNota != null ? r2(emp.salarioBase * (emp.ultimaNota / 20) + bonus - descuentos) : null;
+  const sugerido = emp ? sugerirMontoPago(emp.salarioBase, emp.ultimaNota, bonus, descuentos) : null;
 
   function elegirEmpleado(id: string) {
     setEmpleadoId(id);
     const e = empleados.find((x) => x.id === id);
-    if (e && e.ultimaNota != null) setMonto(r2(e.salarioBase * (e.ultimaNota / 20) + bonus - descuentos));
+    if (e) setMonto(sugerirMontoPago(e.salarioBase, e.ultimaNota, bonus, descuentos));
   }
 
   function registrar() {
