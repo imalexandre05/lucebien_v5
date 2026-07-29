@@ -31,6 +31,7 @@ const GRUPOS: { seccion: string; modulos: { modulo: string; label: string }[] }[
       { modulo: 'reportes', label: 'Reporte de Actividades' },
       { modulo: 'reportes_admin', label: 'Reportes: historial y seguimiento' },
       { modulo: 'evaluar_reportes', label: 'Evaluar reportes' },
+      { modulo: 'valores', label: 'Valores 360° (evaluar compañeros)' },
       { modulo: 'incidencias', label: 'Incidencias' },
       { modulo: 'asistencias', label: 'Asistencias' },
       { modulo: 'evaluaciones', label: 'Evaluaciones' },

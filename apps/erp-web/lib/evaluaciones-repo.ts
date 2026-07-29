@@ -78,6 +78,53 @@ export async function componentesEvaluacion(
   return (data as Record<string, number>) ?? {};
 }
 
+// Empleados con fecha de ingreso + salario base (Fase 12): la herramienta única de ciclo
+// (/evaluaciones) los necesita para calcularCiclo() (aniversario) y sugerirMontoPago(). RLS
+// (emp_select: admin O id=auth.uid()) ya limita esto a lo que el propio esAdmin gate de la
+// página permite ver — un no-admin que llegue a llamarla solo se ve a sí mismo, sin fuga de datos.
+export type EmpleadoParaEvaluacion = { id: string; nombre: string; fechaIngreso: string | null; salarioBase: number };
+
+export async function empleadosParaEvaluacion(): Promise<EmpleadoParaEvaluacion[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('empleados')
+    .select('id, nombre, fecha_ingreso, salario_base')
+    .eq('activo', true)
+    .order('nombre');
+  if (error) throw new Error(error.message);
+  return ((data as Record<string, unknown>[]) ?? []).map((r) => ({
+    id: String(r.id),
+    nombre: String(r.nombre ?? ''),
+    fechaIngreso: r.fecha_ingreso ? String(r.fecha_ingreso).slice(0, 10) : null,
+    salarioBase: Number(r.salario_base ?? 0),
+  }));
+}
+
+// Catálogo editable de las 8 competencias con rúbrica (Fase 12 tarea 2, migración 0057,
+// competencias_config) — reemplaza la constante COMPETENCIAS hardcodeada de public/js/data.js
+// del sistema viejo. select('*') a propósito (lección de la Fase 4): si 0057 no corrió todavía,
+// Postgres devuelve "relation does not exist" de todos modos (es tabla nueva, no columna nueva en
+// tabla existente) — ver accionListarCompetencias en actions.ts para el aviso "falta migrar".
+export type CompetenciaConfig = { cod: string; nombre: string; orden: number; rubrica: string[] };
+
+export async function listarCompetenciasConfig(): Promise<CompetenciaConfig[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('competencias_config')
+    .select('*')
+    .eq('activo', true)
+    .order('orden');
+  if (error) throw new Error(error.message);
+  return ((data as Record<string, unknown>[]) ?? []).map((r) => ({
+    cod: String(r.cod ?? ''),
+    nombre: String(r.nombre ?? ''),
+    orden: Number(r.orden ?? 0),
+    rubrica: Array.isArray(r.rubrica) ? (r.rubrica as string[]) : [],
+  }));
+}
+
+// Devuelve el id (Fase 12): la herramienta única de ciclo lo necesita para enlazar el pago que
+// se registra justo después (pagos.evaluacion_id) sin una segunda consulta.
 export async function crearEvaluacion(p: {
   empleadoId: string;
   mes: string;
@@ -86,16 +133,21 @@ export async function crearEvaluacion(p: {
   pesos: PesosEval;
   cicloDesde: string | null;
   cicloHasta: string | null;
-}): Promise<void> {
+}): Promise<string> {
   const sb = getServerClient();
-  const { error } = await sb.from('evaluaciones_mensuales').insert({
-    empleado_id: p.empleadoId,
-    mes: p.mes,
-    nota_final: p.notaFinal,
-    componentes: p.componentes,
-    pesos_usados: p.pesos,
-    ciclo_desde: p.cicloDesde,
-    ciclo_hasta: p.cicloHasta,
-  });
+  const { data, error } = await sb
+    .from('evaluaciones_mensuales')
+    .insert({
+      empleado_id: p.empleadoId,
+      mes: p.mes,
+      nota_final: p.notaFinal,
+      componentes: p.componentes,
+      pesos_usados: p.pesos,
+      ciclo_desde: p.cicloDesde,
+      ciclo_hasta: p.cicloHasta,
+    })
+    .select('id')
+    .single();
   if (error) throw new Error(error.message);
+  return String((data as { id: string }).id);
 }

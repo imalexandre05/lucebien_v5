@@ -1,7 +1,12 @@
 import { redirect } from 'next/navigation';
 import { puede, type MatrizPermisos } from '@scilb/core';
-import { listarEvaluaciones, leerPesosEval } from '../../lib/evaluaciones-repo';
-import { listarEmpleados } from '../../lib/reportes-repo';
+import {
+  listarEvaluaciones,
+  leerPesosEval,
+  empleadosParaEvaluacion,
+  listarCompetenciasConfig,
+  type CompetenciaConfig,
+} from '../../lib/evaluaciones-repo';
 import { getSesion } from '../../lib/auth';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
 import { tieneReauth } from '../../lib/reauth';
@@ -34,16 +39,27 @@ export default async function EvaluacionesPage() {
     );
   }
 
-  const [evaluaciones, empleados, pesos] = await Promise.all([
+  // competenciasConfig (migración 0057, tabla nueva): si todavía no se aplicó, la tabla ni existe
+  // — se degrada a [] en vez de tumbar toda la página (lección de la Fase 4/7). El resto de la
+  // herramienta (auto-cálculo, guardar, pago) sigue funcionando; solo la rúbrica de competencias
+  // queda vacía con un aviso, ver EvaluacionesCliente.
+  const [evaluaciones, empleados, pesos, competenciasConfig] = await Promise.all([
     listarEvaluaciones(),
-    listarEmpleados(),
+    empleadosParaEvaluacion(),
     leerPesosEval(),
+    listarCompetenciasConfig().catch(() => [] as CompetenciaConfig[]),
   ]);
 
   return (
     <div>
       <PageHeader title="Evaluaciones mensuales" subtitle={`${evaluaciones.length} registradas · pesos editables en Configuración`} />
-      <EvaluacionesCliente evaluaciones={evaluaciones} empleados={empleados} pesos={pesos} esAdmin={esAdmin} />
+      <EvaluacionesCliente
+        evaluaciones={evaluaciones}
+        empleados={empleados}
+        pesos={pesos}
+        esAdmin={esAdmin}
+        competenciasConfig={competenciasConfig}
+      />
     </div>
   );
 }

@@ -2,26 +2,32 @@
 
 import { Fragment, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Filter, ChevronRight, Award } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Filter, ChevronRight, Award, FileText } from 'lucide-react';
 import {
   COMPONENTES,
   calcularNotaMensual,
+  calcularCiclo,
+  notaCompetencias,
+  sugerirMontoPago,
   tramoEval,
   TRAMO_LABEL,
   type ComponentesEval,
   type PesosEval,
   type TramoEval,
+  type Ciclo,
 } from '@scilb/core';
-import { accionCrearEvaluacion, accionComponentesEval } from './actions';
-import type { Evaluacion } from '../../lib/evaluaciones-repo';
+import { accionCrearEvaluacion, accionComponentesEval, accionRegistrarPagoCiclo } from './actions';
+import type { Evaluacion, EmpleadoParaEvaluacion, CompetenciaConfig } from '../../lib/evaluaciones-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
+import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
-import { mesPeru } from '../../lib/fechas';
+import { hoyPeru } from '../../lib/fechas';
 
 // Perfil por componente (§4C): barras sobrias /20 con el peso usado al lado.
 // Los valores van siempre en texto (la barra es refuerzo, nunca el único canal).
@@ -70,8 +76,6 @@ function PerfilComponentes({
   );
 }
 
-type Emp = { id: string; nombre: string };
-
 const TRAMO_TONE: Record<TramoEval, Tone> = {
   excelente: 'green',
   bueno: 'navy',
@@ -80,7 +84,14 @@ const TRAMO_TONE: Record<TramoEval, Tone> = {
 };
 const TRAMOS: TramoEval[] = ['excelente', 'bueno', 'mejorar', 'bajo'];
 const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold disabled:cursor-not-allowed disabled:opacity-60';
+const soles = (n: number) => `S/ ${n.toFixed(2)}`;
+
+const OPC_METODO_PAGO: Opcion[] = [
+  { value: 'efectivo', label: 'Efectivo' },
+  { value: 'yape', label: 'Yape' },
+  { value: 'transferencia', label: 'Transferencia' },
+];
 
 const CERO: ComponentesEval = {
   competencias: 0,
@@ -94,22 +105,42 @@ const CERO: ComponentesEval = {
   bonusVentas: 0,
 };
 
+// Evaluación recién guardada: el contexto mínimo que necesita el panel de pago (Fase 12 tarea 6).
+type EvalGuardada = {
+  id: string;
+  empleadoId: string;
+  nombre: string;
+  salarioBase: number;
+  notaFinal: number;
+  cicloDesde: string;
+  cicloHasta: string;
+};
+
 export function EvaluacionesCliente({
   evaluaciones,
   empleados,
   pesos,
   esAdmin,
+  competenciasConfig,
 }: {
   evaluaciones: Evaluacion[];
-  empleados: Emp[];
+  empleados: EmpleadoParaEvaluacion[];
   pesos: PesosEval;
   esAdmin: boolean;
+  competenciasConfig: CompetenciaConfig[];
 }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const [empleadoId, setEmpleadoId] = useState('');
-  const [mes, setMes] = useState(mesPeru());
+  // Ciclo por aniversario (Fase 12 tarea 3): se auto-calcula al elegir empleado
+  // (calcularCiclo, packages/core/src/evaluaciones.ts, puerto de routes/evaluaciones.js:98-127).
+  // Los inputs quedan editables por si el admin necesita corregirlo a mano.
+  const [ciclo, setCiclo] = useState<Ciclo | null>(null);
+  const [cicloEditado, setCicloEditado] = useState(false);
   const [comp, setComp] = useState<ComponentesEval>(CERO);
+  // Competencias (Fase 12 tarea 2): nivel 0-4 elegido por competencia, cod → nivel. La nota se
+  // deriva con notaCompetencias() y se mezcla en compParaCalculo, no se edita como número suelto.
+  const [competenciaSel, setCompetenciaSel] = useState<Record<string, number>>({});
   // Contexto informativo (no entra a la fórmula: no hay regla de negocio confirmada para
   // convertir puntos de pipeline o soles de extras a la escala /20). El admin lo ve al lado
   // de los componentes editables y lo pondera con su propio criterio.
@@ -117,14 +148,37 @@ export function EvaluacionesCliente({
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
-  // Filtros.
+  // Panel de pago (Fase 12 tarea 6): aparece justo después de guardar la evaluación, en la MISMA
+  // pantalla — "herramienta única del admin que junta evaluación + pagos del ciclo".
+  const [evalGuardada, setEvalGuardada] = useState<EvalGuardada | null>(null);
+  const [pagoBonus, setPagoBonus] = useState(0);
+  const [pagoDescuentos, setPagoDescuentos] = useState(0);
+  const [pagoMetodo, setPagoMetodo] = useState('efectivo');
+  const [pagoFecha, setPagoFecha] = useState(hoyPeru());
+  const [pagoObs, setPagoObs] = useState('');
+  const [pagoError, setPagoError] = useState('');
+  const [pagoId, setPagoId] = useState<string | null>(null);
+  const [pagoPending, startPagoTransition] = useTransition();
+
+  // Filtros del historial.
   const [q, setQ] = useState('');
   const [fMes, setFMes] = useState('');
   const [fTramo, setFTramo] = useState('');
   const [expandida, setExpandida] = useState<string | null>(null);
 
-  const nota = useMemo(() => calcularNotaMensual(comp, pesos), [comp, pesos]);
+  const competenciaNota = useMemo(() => {
+    if (!competenciasConfig.length) return 0;
+    return notaCompetencias(competenciasConfig.map((c) => competenciaSel[c.cod] ?? 0));
+  }, [competenciaSel, competenciasConfig]);
+
+  const compParaCalculo = useMemo(() => ({ ...comp, competencias: competenciaNota }), [comp, competenciaNota]);
+  const nota = useMemo(() => calcularNotaMensual(compParaCalculo, pesos), [compParaCalculo, pesos]);
   const tramo = tramoEval(nota);
+
+  const montoSugerido = useMemo(
+    () => (evalGuardada ? sugerirMontoPago(evalGuardada.salarioBase, evalGuardada.notaFinal, pagoBonus, pagoDescuentos) : 0),
+    [evalGuardada, pagoBonus, pagoDescuentos],
+  );
 
   const meses = useMemo(() => [...new Set(evaluaciones.map((e) => e.mes))].sort().reverse(), [evaluaciones]);
 
@@ -151,10 +205,32 @@ export function EvaluacionesCliente({
 
   const set = (k: keyof ComponentesEval, v: number) => setComp((p) => ({ ...p, [k]: v }));
 
+  function elegirEmpleado(id: string) {
+    setEmpleadoId(id);
+    setEvalGuardada(null);
+    setPagoId(null);
+    setInfoExtra(null);
+    setComp(CERO);
+    setCompetenciaSel({});
+    setCicloEditado(false);
+    const emp = empleados.find((e) => e.id === id);
+    setCiclo(emp ? calcularCiclo(emp.fechaIngreso, hoyPeru()) : null);
+  }
+
+  function setCicloDesde(v: string) {
+    setCiclo((c) => (c ? { ...c, desde: v } : c));
+    setCicloEditado(true);
+  }
+  function setCicloHasta(v: string) {
+    setCiclo((c) => (c ? { ...c, hasta: v } : c));
+    setCicloEditado(true);
+  }
+
   function calcularDesdeData() {
+    if (!ciclo) return;
     setError('');
     startTransition(async () => {
-      const r = await accionComponentesEval(empleadoId, mes);
+      const r = await accionComponentesEval(empleadoId, ciclo.desde, ciclo.hasta);
       if (!r.ok || !r.comp) {
         setError(r.error ?? 'Error al calcular');
         return;
@@ -167,10 +243,12 @@ export function EvaluacionesCliente({
         limpieza: c.limpieza ?? 0,
         tardanza: c.tardanza ?? p.tardanza,
         descuentoIncidencias: c.descuento ?? 0,
+        // valores (Fase 12, RPC 0057): nota real de Valores 360° del mes del ciclo. Sigue igual
+        // (típicamente 0) si nadie evaluó a esta persona todavía este mes.
+        valores: c.valores ?? p.valores,
+        bonusVentas: c.bonusVentas ?? p.bonusVentas,
       }));
-      // Solo aparece si la migración 0044 ya está aplicada (campos nuevos en el RPC).
-      // extrasPuntos (Fase 5, migración 0053): puntos de los extras 'por_puntos' del catálogo —
-      // mismo trato informativo que puntosPipeline, undefined con elegancia si 0053 no corrió.
+      // Solo aparece si la migración 0044+ ya está aplicada (campos nuevos en el RPC).
       if (c.puntosPipeline != null || c.extrasMonto != null) {
         setInfoExtra({
           puntosPipeline: c.puntosPipeline ?? 0,
@@ -183,24 +261,77 @@ export function EvaluacionesCliente({
   }
 
   function guardar() {
+    if (!ciclo) return;
     setError('');
     startTransition(async () => {
       const r = await accionCrearEvaluacion({
         empleadoId,
-        mes,
+        mes: ciclo.desde.slice(0, 7),
         notaFinal: nota,
-        componentes: comp as unknown as Record<string, number>,
+        componentes: compParaCalculo as unknown as Record<string, number>,
         pesos,
+        cicloDesde: ciclo.desde,
+        cicloHasta: ciclo.hasta,
       });
-      if (!r.ok) {
-        setError(r.error ?? 'Error');
+      if (!r.ok || !r.id) {
+        setError(r.error ?? 'Error al guardar');
         return;
       }
-      setAbierto(false);
-      setEmpleadoId('');
-      setComp(CERO);
+      const emp = empleados.find((e) => e.id === empleadoId);
+      setEvalGuardada({
+        id: r.id,
+        empleadoId,
+        nombre: emp?.nombre ?? '',
+        salarioBase: emp?.salarioBase ?? 0,
+        notaFinal: nota,
+        cicloDesde: ciclo.desde,
+        cicloHasta: ciclo.hasta,
+      });
+      setPagoBonus(0);
+      setPagoDescuentos(0);
+      setPagoMetodo('efectivo');
+      setPagoFecha(hoyPeru());
+      setPagoObs('');
+      setPagoError('');
+      setPagoId(null);
       router.refresh();
     });
+  }
+
+  function registrarPago() {
+    if (!evalGuardada) return;
+    setPagoError('');
+    startPagoTransition(async () => {
+      const r = await accionRegistrarPagoCiclo({
+        empleadoId: evalGuardada.empleadoId,
+        evaluacionId: evalGuardada.id,
+        cicloDesde: evalGuardada.cicloDesde,
+        cicloHasta: evalGuardada.cicloHasta,
+        montoBase: evalGuardada.salarioBase,
+        monto: montoSugerido,
+        bonus: pagoBonus,
+        descuentos: pagoDescuentos,
+        metodo: pagoMetodo,
+        fechaPago: pagoFecha,
+        observaciones: pagoObs,
+      });
+      if (!r.ok || !r.id) {
+        setPagoError(r.error ?? 'Error al registrar el pago');
+        return;
+      }
+      setPagoId(r.id);
+      router.refresh();
+    });
+  }
+
+  function reiniciar() {
+    setAbierto(false);
+    setEmpleadoId('');
+    setCiclo(null);
+    setComp(CERO);
+    setCompetenciaSel({});
+    setEvalGuardada(null);
+    setPagoId(null);
   }
 
   return (
@@ -244,7 +375,7 @@ export function EvaluacionesCliente({
           {esAdmin && (
             <button
               type="button"
-              onClick={() => setAbierto((v) => !v)}
+              onClick={() => (abierto ? reiniciar() : setAbierto(true))}
               className={cn(buttonVariants({ variant: abierto ? 'outline' : 'primary' }), 'ml-auto')}
             >
               <Plus className="h-4 w-4" strokeWidth={2} />
@@ -254,7 +385,7 @@ export function EvaluacionesCliente({
         </CardContent>
       </Card>
 
-      {esAdmin && abierto && (
+      {esAdmin && abierto && !evalGuardada && (
         <Card>
           <CardHeader>
             <CardTitle>Nueva evaluación</CardTitle>
@@ -266,7 +397,7 @@ export function EvaluacionesCliente({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Empleado</label>
-                <select value={empleadoId} onChange={(e) => setEmpleadoId(e.target.value)} className={cn(fieldCls, 'w-full')}>
+                <select value={empleadoId} onChange={(e) => elegirEmpleado(e.target.value)} className={cn(fieldCls, 'w-full')}>
                   <option value="">Elige…</option>
                   {empleados.map((e) => (
                     <option key={e.id} value={e.id}>
@@ -276,8 +407,20 @@ export function EvaluacionesCliente({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Mes</label>
-                <input value={mes} onChange={(e) => setMes(e.target.value)} placeholder="2026-06" className={cn(fieldCls, 'w-full')} />
+                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
+                  Ciclo
+                  {ciclo && (
+                    <span className="ml-1.5 font-normal normal-case text-muted">
+                      ({ciclo.fuente === 'aniversario' ? 'por aniversario' : 'mes calendario — sin fecha de ingreso'}
+                      {cicloEditado ? ', editado' : ''})
+                    </span>
+                  )}
+                </label>
+                <div className="flex items-center gap-2">
+                  <input type="date" value={ciclo?.desde ?? ''} disabled={!ciclo} onChange={(e) => setCicloDesde(e.target.value)} className={cn(fieldCls, 'w-full')} />
+                  <span className="text-xs text-muted">a</span>
+                  <input type="date" value={ciclo?.hasta ?? ''} disabled={!ciclo} onChange={(e) => setCicloHasta(e.target.value)} className={cn(fieldCls, 'w-full')} />
+                </div>
               </div>
             </div>
 
@@ -286,21 +429,21 @@ export function EvaluacionesCliente({
                 type="button"
                 variant="outline"
                 onClick={calcularDesdeData}
-                disabled={!empleadoId}
+                disabled={!empleadoId || !ciclo}
                 pending={pending}
                 className="text-xs"
               >
                 Calcular desde la data
               </Button>
               <span className="text-xs text-muted">
-                Llena operaciones/software/limpieza (reportes evaluados como encargado), tardanza y descuento.
+                Llena operaciones/software/limpieza/valores (del ciclo elegido), tardanza y descuento.
               </span>
             </div>
 
             {infoExtra && (
               <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line/60 bg-paper/60 px-3 py-2 text-xs text-muted">
                 <span>
-                  Puntos de pipeline en el mes <span className="font-mono font-semibold text-navy">{infoExtra.puntosPipeline}</span>
+                  Puntos de pipeline en el ciclo <span className="font-mono font-semibold text-navy">{infoExtra.puntosPipeline}</span>
                 </span>
                 <span>
                   Extras registrados <span className="font-mono font-semibold text-navy">{infoExtra.extrasCantidad}</span>
@@ -315,7 +458,7 @@ export function EvaluacionesCliente({
 
             <div className="text-xs uppercase tracking-wide text-muted">Componentes (escala /20)</div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {COMPONENTES.map(({ key, label }) => (
+              {COMPONENTES.filter(({ key }) => key !== 'competencias').map(({ key, label }) => (
                 <div key={key} className="flex items-center gap-2">
                   <label className="flex-1 text-sm text-navy">
                     {label}
@@ -334,6 +477,34 @@ export function EvaluacionesCliente({
               ))}
             </div>
 
+            {/* Competencias con rúbrica (Fase 12 tarea 2): 8 competencias, catálogo editable en
+                competencias_config — nunca hardcodeado. La nota se deriva, no se escribe a mano. */}
+            <div className="border-t border-line/60 pt-3">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wide text-muted">
+                  Competencias <span className="ml-1 font-mono text-[10px] text-muted">×{pesos.competencias}</span>
+                </span>
+                <span className="font-mono text-sm font-semibold text-navy">{competenciaNota.toFixed(1)}/20</span>
+              </div>
+              {competenciasConfig.length === 0 ? (
+                <p className="text-xs text-muted">Sin catálogo de competencias todavía (falta aplicar la migración 0057) — la nota queda en 0.</p>
+              ) : (
+                <div className="space-y-3">
+                  {competenciasConfig.map((c) => (
+                    <div key={c.cod}>
+                      <div className="mb-1 text-xs font-medium text-navy">{c.nombre}</div>
+                      <OpcionBotones
+                        opciones={c.rubrica.map((texto, i) => ({ value: String(i), label: `${i} · ${texto}` }))}
+                        value={String(competenciaSel[c.cod] ?? 0)}
+                        onChange={(v) => setCompetenciaSel((p) => ({ ...p, [c.cod]: Number(v) }))}
+                        ariaLabel={c.nombre}
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 gap-2 border-t border-line/60 pt-3 sm:grid-cols-2">
               <div className="flex items-center gap-2">
                 <label className="flex-1 text-sm text-navy">Descuento por incidencias</label>
@@ -347,11 +518,79 @@ export function EvaluacionesCliente({
 
             {error && <p className="text-sm text-red-600">{error}</p>}
             <div className="flex items-center gap-3">
-              <Button type="button" onClick={guardar} disabled={!empleadoId} pending={pending}>
+              <Button type="button" onClick={guardar} disabled={!empleadoId || !ciclo} pending={pending}>
                 {pending ? 'Guardando…' : `Guardar · ${nota.toFixed(2)}`}
               </Button>
               <span className="text-xs text-muted">La nota usa los pesos de Configuración y se guarda un snapshot.</span>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Sugerencia de pago (Fase 12 tarea 5+6): aparece justo después de guardar, misma pantalla —
+          cierra el ciclo evaluación → pago sin navegar a /pagos. */}
+      {esAdmin && evalGuardada && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Evaluación guardada — {evalGuardada.nombre}</CardTitle>
+            <Badge tone={TRAMO_TONE[tramoEval(evalGuardada.notaFinal)]}>
+              {evalGuardada.notaFinal.toFixed(2)} · {TRAMO_LABEL[tramoEval(evalGuardada.notaFinal)]}
+            </Badge>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted">
+              Ciclo {evalGuardada.cicloDesde} a {evalGuardada.cicloHasta}. Cierra el ciclo registrando el pago correspondiente.
+            </p>
+
+            {pagoId ? (
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+                <FileText className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+                Pago registrado.
+                <Link href={`/pagos/${pagoId}/comprobante`} className="font-medium underline underline-offset-2">
+                  Ver comprobante
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-lg border border-gold/30 bg-gold/10 p-4 text-center">
+                  <div className="text-xs uppercase tracking-wide text-muted">Sugerencia de pago</div>
+                  <div className="font-mono text-2xl font-bold tabular-nums text-navy">{soles(montoSugerido)}</div>
+                  <div className="mt-0.5 text-[11px] text-muted">salario base × (nota final / 20) + bonus − descuentos</div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Fecha</label>
+                    <input type="date" value={pagoFecha} onChange={(e) => setPagoFecha(e.target.value)} className={cn(fieldCls, 'w-full')} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
+                    <OpcionBotones opciones={OPC_METODO_PAGO} value={pagoMetodo} onChange={setPagoMetodo} ariaLabel="Método" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Bonus</label>
+                    <input type="number" step="0.5" value={pagoBonus} onChange={(e) => setPagoBonus(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descuentos</label>
+                    <input type="number" step="0.5" value={pagoDescuentos} onChange={(e) => setPagoDescuentos(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Observaciones (opcional)</label>
+                    <input value={pagoObs} onChange={(e) => setPagoObs(e.target.value)} className={cn(fieldCls, 'w-full')} />
+                  </div>
+                </div>
+
+                {pagoError && <p className="text-sm text-red-600">{pagoError}</p>}
+                <Button type="button" onClick={registrarPago} pending={pagoPending}>
+                  {pagoPending ? 'Registrando…' : `Registrar pago · ${soles(montoSugerido)}`}
+                </Button>
+              </>
+            )}
+
+            <button type="button" onClick={reiniciar} className="block text-xs text-muted underline underline-offset-2 hover:text-navy">
+              Nueva evaluación
+            </button>
           </CardContent>
         </Card>
       )}
