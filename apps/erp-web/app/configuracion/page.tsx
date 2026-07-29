@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ClipboardList, Map, Building2, Shield, Shirt } from 'lucide-react';
+import { ClipboardList, Map, Building2, Shield, Shirt, AlertOctagon } from 'lucide-react';
 import { listarConfig } from '../../lib/config-repo';
 import { getSesion } from '../../lib/auth';
 import { PageHeader } from '../../components/shell/page-header';
@@ -35,6 +35,9 @@ export default async function ConfiguracionPage() {
             </Link>
             <Link href="/configuracion/permisos" className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
               <Shield className="h-3.5 w-3.5" strokeWidth={2} /> Permisos
+            </Link>
+            <Link href="/configuracion/tipos-incidencia" className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
+              <AlertOctagon className="h-3.5 w-3.5" strokeWidth={2} /> Tipos de incidencia
             </Link>
           </div>
         }
