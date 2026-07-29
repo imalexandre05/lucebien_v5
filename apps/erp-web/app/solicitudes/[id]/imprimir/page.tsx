@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { obtenerSolicitud } from '../../../../lib/solicitudes-repo';
+import { obtenerSolicitud, SolicitudesNoMigradoError } from '../../../../lib/solicitudes-repo';
 import { ESTADO_LABEL, URGENCIA_LABEL, fechaHora } from '../../constantes';
 import { ImprimirAcciones } from './imprimir-acciones';
 
@@ -9,7 +9,24 @@ import { ImprimirAcciones } from './imprimir-acciones';
 // muestra también la columna Recibido y pasa a "Confirmación de entrega". Menos superficie que
 // mantener sin perder ninguna de las dos lecturas.
 export default async function ImprimirSolicitudPage({ params }: { params: { id: string } }) {
-  const s = await obtenerSolicitud(params.id);
+  // En la práctica esta ruta solo se llega desde el botón "Imprimir" del detalle (que no se monta
+  // si la migración 0056 no está aplicada — /solicitudes ya avisa antes), pero una URL escrita a
+  // mano sí podría llegar aquí directo. Mismo criterio de degradación que el resto del módulo: sin
+  // 500, un aviso claro (lección de la Fase 7 con PostgREST).
+  let s;
+  try {
+    s = await obtenerSolicitud(params.id);
+  } catch (e) {
+    if (e instanceof SolicitudesNoMigradoError) {
+      return (
+        <div className="mx-auto max-w-md py-16 text-center">
+          <p className="text-sm font-semibold text-navy">Falta aplicar la migración 0056</p>
+          <p className="mt-1 text-sm text-muted">Este módulo todavía no tiene sus tablas en la base de datos.</p>
+        </div>
+      );
+    }
+    throw e;
+  }
   if (!s) notFound();
 
   const tipo: 'pedido' | 'confirmacion' = s.estado === 'entregada' || s.estado === 'confirmada' ? 'confirmacion' : 'pedido';
