@@ -397,7 +397,7 @@ export function EvaluacionesCliente({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Empleado</label>
-                <select value={empleadoId} onChange={(e) => elegirEmpleado(e.target.value)} className={cn(fieldCls, 'w-full')}>
+                <select value={empleadoId} onChange={(e) => elegirEmpleado(e.target.value)} className={cn(fieldCls, 'w-full')} aria-label="Empleado">
                   <option value="">Elige…</option>
                   {empleados.map((e) => (
                     <option key={e.id} value={e.id}>
