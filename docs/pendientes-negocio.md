@@ -91,6 +91,21 @@ se registra.
 
 ## Fase 12 — Evaluación mensual completa + Valores 360° + pagos
 
+- ⚠️ **Hallazgo que va más allá de esta fase: la base viva (`scilb`) está aplicada solo hasta
+  aproximadamente la migración `0045`.** Se verificó en vivo (consultas directas contra `scilb`,
+  no una suposición) para poder crear las cuentas QA de esta fase: `empleados.rol_cod` (F1,
+  `0050`), `sedes.perfil` (F2, `0051`), `reportes.estado_envio` (F4, `0052`), `reporte_extras.cod`
+  (F5, `0053`), `inventario_activo.pieza` / tabla `producto_tipos` (F7, `0055`) y la tabla
+  `solicitudes` (F11, `0056`) **NO EXISTEN todavía** en la base real — `permisos_modulos` (`0045`)
+  sí existe. Esto significa que **todo el trabajo de las fases F1, F2, F4, F5, F7 y F11 corre hoy
+  en producción en su modo degradado** (roles derivados sin efecto, perfil de sede sin filtrar,
+  catálogo de extras con puntaje sin aplicar, despiece/tipos de inventario sin tabla, Solicitudes
+  mostrando su aviso de "falta migrar"), no por un problema de esta fase sino porque **ninguna
+  migración de `0050` en adelante se ha aplicado contra `scilb` todavía**. No es una sorpresa nueva
+  para el patrón (F7/F11 ya habían anotado que el MCP no estaba disponible), pero el alcance real
+  — 6 fases completas, no solo "la última" — no estaba escrito en ningún lado hasta ahora. Aplicar
+  `0050` a `0057` **en orden** (son idempotentes y aditivas, pensadas para correr en secuencia)
+  destrabaría todo el bloque de una vez.
 - **Migración `0057` sin aplicar.** El MCP de Supabase no estaba disponible en este entorno (igual
   que reportó la Fase 7/11 en momentos similares) y `SUPABASE_DB_URL` no existe en
   `apps/erp-web/.env.local` (confirmado, igual que documentó la Fase 11). La migración se escribió
