@@ -17,3 +17,4 @@ export * from './compras';
 export * from './estadisticas';
 export * from './alertas';
 export * from './trazabilidad';
+export * from './solicitudes';
