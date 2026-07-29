@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { puedeEvaluarValores, promediosPorValor, notaValores360, VALORES, type PuntajeValores } from './valores360';
+import {
+  puedeEvaluarValores,
+  promediosPorValor,
+  notaValores360,
+  puedeEvaluarValoresHoy,
+  VALORES,
+  type PuntajeValores,
+  type ConfigVentanaValores,
+} from './valores360';
 
 const full = (v: number): PuntajeValores => ({
   integridad: v,
@@ -56,5 +64,35 @@ describe('notaValores360', () => {
   });
   it('sin promedios: null (nadie evaluó todavía)', () => {
     expect(notaValores360({})).toBeNull();
+  });
+});
+
+describe('puedeEvaluarValoresHoy', () => {
+  const siempre = (): ConfigVentanaValores => ({ habilitado: true, modo: 'siempre', diaInicio: 1, diaFin: 31 });
+
+  it('default (habilitado + modo siempre): abierto cualquier día — mismo comportamiento que antes de esta fase', () => {
+    expect(puedeEvaluarValoresHoy(siempre(), 1)).toBe(true);
+    expect(puedeEvaluarValoresHoy(siempre(), 15)).toBe(true);
+    expect(puedeEvaluarValoresHoy(siempre(), 31)).toBe(true);
+  });
+
+  it('habilitado=false: cerrado siempre, sin importar el modo ni el día', () => {
+    expect(puedeEvaluarValoresHoy({ habilitado: false, modo: 'siempre', diaInicio: 1, diaFin: 31 }, 15)).toBe(false);
+    expect(puedeEvaluarValoresHoy({ habilitado: false, modo: 'ventana', diaInicio: 1, diaFin: 31 }, 15)).toBe(false);
+  });
+
+  it('modo ventana: abierto solo dentro del rango [diaInicio, diaFin], inclusive', () => {
+    const cfg: ConfigVentanaValores = { habilitado: true, modo: 'ventana', diaInicio: 25, diaFin: 28 };
+    expect(puedeEvaluarValoresHoy(cfg, 24)).toBe(false);
+    expect(puedeEvaluarValoresHoy(cfg, 25)).toBe(true);
+    expect(puedeEvaluarValoresHoy(cfg, 26)).toBe(true);
+    expect(puedeEvaluarValoresHoy(cfg, 28)).toBe(true);
+    expect(puedeEvaluarValoresHoy(cfg, 29)).toBe(false);
+  });
+
+  it('modo ventana con diaInicio > diaFin: se trata como rango invertido (se intercambian)', () => {
+    const cfg: ConfigVentanaValores = { habilitado: true, modo: 'ventana', diaInicio: 28, diaFin: 25 };
+    expect(puedeEvaluarValoresHoy(cfg, 26)).toBe(true);
+    expect(puedeEvaluarValoresHoy(cfg, 24)).toBe(false);
   });
 });

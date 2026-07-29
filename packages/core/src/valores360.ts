@@ -53,3 +53,30 @@ export function notaValores360(promedios: Partial<Record<ValorKey, number>>): nu
   if (total == null) return null;
   return Math.round((total / 5) * 20 * 10) / 10; // toFixed(1) del original
 }
+
+// ── Ventana de habilitación (Fase 13 tarea 3: "sube a config lo que quedó hardcodeado") ──────
+// El sistema viejo (routes/valores.js) tenía un interruptor eval_valores_habilitado/modo/dias que
+// restringía A QUÉ DÍAS del mes se podía evaluar a compañeros (por defecto, solo unos días fijos
+// antes del cierre). La Fase 12 no lo portó y dejó el módulo SIEMPRE abierto a propósito, por no
+// tener forma de confirmar la regla sin inventarla (ver docs/pendientes-negocio.md). Esta función
+// solo PORTA EL MECANISMO, config-driven — el default (habilitado=true, modo='siempre') reproduce
+// EXACTAMENTE el comportamiento actual (sin restricción); el dueño decide si activar la ventana
+// desde /configuracion, sin que haga falta otra migración.
+export type ConfigVentanaValores = {
+  habilitado: boolean;
+  modo: 'siempre' | 'ventana';
+  diaInicio: number; // 1-31
+  diaFin: number; // 1-31
+};
+
+// diaDelMes: 1-31 (el caller pasa el día de hoy en hora Perú, el core no llama a `new Date()`).
+// Si diaInicio > diaFin se interpreta como rango invertido (se intercambian) — no se soporta una
+// ventana que cruce fin de mes (p. ej. "28 a 3"); con el default siempre/1-31 no aplica de todos
+// modos, y no hay una regla confirmada sobre qué hacer en ese caso límite.
+export function puedeEvaluarValoresHoy(cfg: ConfigVentanaValores, diaDelMes: number): boolean {
+  if (!cfg.habilitado) return false;
+  if (cfg.modo === 'siempre') return true;
+  const desde = Math.min(cfg.diaInicio, cfg.diaFin);
+  const hasta = Math.max(cfg.diaInicio, cfg.diaFin);
+  return diaDelMes >= desde && diaDelMes <= hasta;
+}
