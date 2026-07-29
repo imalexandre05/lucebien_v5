@@ -211,3 +211,44 @@ export const CONFIG_CATALOGO_MAP: Map<string, ConfigCatalogoItem> = new Map(CONF
 export function etiquetaDesdeClave(clave: string): string {
   return clave.replace(/_/g, ' ');
 }
+
+// ── ConfigItem + ordenarSecciones ──────────────────────────────────────────────────────────────
+// Viven ACÁ (no en config-repo.ts) a propósito: este archivo no importa nada de servidor (sin
+// getServerClient/next-headers), así que app/configuracion/cliente.tsx (componente 'use client')
+// puede importar el TIPO y esta función pura sin arrastrar next/headers al bundle del navegador —
+// ese exacto error tumbó /configuracion la primera vez que se escribió esta fase.
+//
+// Un ConfigItem mezcla dos fuentes:
+//  · Parámetros del CATÁLOGO (arriba): tipo/descripción/sección/default vienen del código, el
+//    valor real (si ya se guardó alguna vez) viene de la tabla `config`. Si todavía no hay fila en
+//    la base (migración de esa clave sin aplicar, o nunca se guardó), `guardado` queda en false y
+//    `valor` cae al default del catálogo — así el parámetro YA es visible y editable antes de que
+//    exista la fila, y guardar lo inserta.
+//  · Parámetros PERSONALIZADOS (creados desde /configuracion, no están en el catálogo): tipo/
+//    descripción/sección salen de las columnas nuevas de `config` (migración 0058). Si esas
+//    columnas todavía no existen (migración sin aplicar), caen a 'texto'/'Personalizados'.
+export type ConfigItem = {
+  clave: string;
+  valor: string;
+  tipo: ConfigTipo;
+  seccion: string;
+  etiqueta: string;
+  descripcion: string;
+  default: string | null; // null para personalizados (no hay "valor de fábrica" que restaurar)
+  opciones?: string[];
+  min?: number;
+  max?: number;
+  step?: number;
+  guardado: boolean; // false = todavía no hay fila en `config` (se está mostrando el default)
+  esPersonalizado: boolean;
+};
+
+// Orden de secciones para la UI: catálogo en su orden fijo, luego cualquier sección personalizada
+// (alfabético), con "Personalizados" siempre al final de todas.
+export function ordenarSecciones(items: ConfigItem[]): { nombre: string; items: ConfigItem[] }[] {
+  const nombres = new Set(items.map((i) => i.seccion));
+  const catalogadas = ORDEN_SECCIONES.filter((s) => nombres.has(s));
+  const otras = [...nombres].filter((s) => !ORDEN_SECCIONES.includes(s) && s !== 'Personalizados').sort();
+  const orden = [...catalogadas, ...otras, ...(nombres.has('Personalizados') ? ['Personalizados'] : [])];
+  return orden.map((nombre) => ({ nombre, items: items.filter((i) => i.seccion === nombre) }));
+}

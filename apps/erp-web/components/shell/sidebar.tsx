@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, History, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -46,6 +46,9 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck, modulo: 'asistencias' },
       { label: 'Empleados', href: '/empleados', icon: Users, modulo: 'empleados' },
       { label: 'Dispositivos', href: '/dispositivos', icon: Laptop, modulo: 'dispositivos' },
+      // Fase 13 tarea 4: sin filas propias en permisos_modulos (mismo criterio que empleados/
+      // configuracion/dispositivos arriba) → puede() solo deja pasar a admin/dueño por mecanismo.
+      { label: 'Auditoría', href: '/administracion/auditoria', icon: History, modulo: 'auditoria' },
       { label: 'Configuración', href: '/configuracion', icon: Settings, modulo: 'configuracion' },
     ],
   },

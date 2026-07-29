@@ -1,37 +1,25 @@
 import { getServerClient } from './supabase/server';
-import { CONFIG_CATALOGO, CONFIG_CATALOGO_MAP, ORDEN_SECCIONES, etiquetaDesdeClave, type ConfigTipo } from './config-catalogo';
+import {
+  CONFIG_CATALOGO,
+  CONFIG_CATALOGO_MAP,
+  etiquetaDesdeClave,
+  ordenarSecciones as _ordenarSecciones,
+  type ConfigTipo,
+  type ConfigItem,
+} from './config-catalogo';
+
+// Re-exportados por compatibilidad: el resto del código (incluido app/configuracion/cliente.tsx)
+// sigue importando ConfigItem/ordenarSecciones de aquí. La definición real vive en
+// config-catalogo.ts (sin imports de servidor) para que un componente 'use client' pueda
+// importarla directo sin arrastrar next/headers al bundle — ver el comentario grande ahí.
+export type { ConfigItem };
+export const ordenarSecciones = _ordenarSecciones;
 
 // Defaults de horas de cierre de turno (Fase 4 tarea 5): MISMOS valores que regían hardcodeados
 // en packages/db/migrations/0021_reportes_auto_cierre.sql antes de esa fase. Compartido entre
 // /reportes/nuevo (cuenta regresiva del formulario) y el dashboard (panel de cobertura, Fase 6) —
 // no es una hora confirmada por el dueño, ver docs/pendientes-negocio.md.
 export const CIERRE_TURNO_DEFAULT = { M: '15:00', T: '23:00', C: '23:00' } as const;
-
-// ── Config tipada (Fase 13 tarea 1) ────────────────────────────────────────────────────────────
-// Un ConfigItem mezcla dos fuentes:
-//  · Parámetros del CATÁLOGO (config-catalogo.ts): tipo/descripción/sección/default vienen del
-//    código, el valor real (si ya se guardó alguna vez) viene de la tabla `config`. Si todavía no
-//    hay fila en la base (migración de esa clave sin aplicar, o nunca se guardó), `guardado` queda
-//    en false y `valor` cae al default del catálogo — así el parámetro YA es visible y editable
-//    antes de que exista la fila, y guardar lo inserta.
-//  · Parámetros PERSONALIZADOS (creados desde /configuracion, no están en el catálogo): tipo/
-//    descripción/sección salen de las columnas nuevas de `config` (migración 0058). Si esas
-//    columnas todavía no existen (migración sin aplicar), caen a 'texto'/'Personalizados'.
-export type ConfigItem = {
-  clave: string;
-  valor: string;
-  tipo: ConfigTipo;
-  seccion: string;
-  etiqueta: string;
-  descripcion: string;
-  default: string | null; // null para personalizados (no hay "valor de fábrica" que restaurar)
-  opciones?: string[];
-  min?: number;
-  max?: number;
-  step?: number;
-  guardado: boolean; // false = todavía no hay fila en `config` (se está mostrando el default)
-  esPersonalizado: boolean;
-};
 
 // select('*') a propósito (lección de la Fase 4): las columnas tipo/descripcion/seccion/opciones
 // son de la migración 0058, que puede no estar aplicada — pedirlas por nombre en el select
@@ -99,16 +87,6 @@ export async function listarConfig(): Promise<ConfigItem[]> {
   }
 
   return items;
-}
-
-// Orden de secciones para la UI: catálogo en su orden fijo, luego cualquier sección personalizada
-// (alfabético), con "Personalizados" siempre al final de todas.
-export function ordenarSecciones(items: ConfigItem[]): { nombre: string; items: ConfigItem[] }[] {
-  const nombres = new Set(items.map((i) => i.seccion));
-  const catalogadas = ORDEN_SECCIONES.filter((s) => nombres.has(s));
-  const otras = [...nombres].filter((s) => !ORDEN_SECCIONES.includes(s) && s !== 'Personalizados').sort();
-  const orden = [...catalogadas, ...otras, ...(nombres.has('Personalizados') ? ['Personalizados'] : [])];
-  return orden.map((nombre) => ({ nombre, items: items.filter((i) => i.seccion === nombre) }));
 }
 
 export async function guardarConfig(items: { clave: string; valor: string }[]): Promise<void> {
