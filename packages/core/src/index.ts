@@ -18,3 +18,6 @@ export * from './estadisticas';
 export * from './alertas';
 export * from './trazabilidad';
 export * from './solicitudes';
+export * from './valores360';
+export * from './competencias';
+export * from './pagos';

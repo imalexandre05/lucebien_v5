@@ -66,3 +66,52 @@ export const TRAMO_LABEL: Record<TramoEval, string> = {
   mejorar: 'Requiere mejorar',
   bajo: 'Bajo rendimiento',
 };
+
+// ── Ciclo por aniversario (Fase 12 tarea 3) ──────────────────────────────────────────────────
+// Puerto literal de calcularCiclo() en routes/evaluaciones.js:98-127 (sistema viejo, nunca
+// migrado): el periodo de evaluación arranca el día del mes de `fecha_ingreso` (aniversario) y
+// termina el día anterior al próximo aniversario. Sin fecha_ingreso válida → fallback a mes
+// calendario (1º al último día del mes de "hoy"), igual que el original.
+//
+// Aritmética: se usa Date.UTC (no `new Date(y,m,d)` local) para que el resultado NUNCA dependa
+// de la zona horaria del proceso que ejecuta esto (el server viejo corría con TZ fija; aquí no se
+// puede asumir). El comportamiento de "normalización de calendario" de JS (p. ej. día 31 en un
+// mes de 30 días rueda al mes siguiente) es el MISMO en Date.UTC que en Date local — se preserva
+// tal cual el original, incluida esa rareza de bordes de mes (ver docs/pendientes-negocio.md).
+export type FuenteCiclo = 'aniversario' | 'mes_calendario';
+export interface Ciclo {
+  desde: string;
+  hasta: string;
+  fuente: FuenteCiclo;
+}
+
+const MS_DIA = 24 * 60 * 60 * 1000;
+const fmtUTC = (t: number): string => new Date(t).toISOString().slice(0, 10);
+
+/** hoyStr: 'YYYY-MM-DD' (pasar hoyPeru() desde el caller — el core no llama a `new Date()`). */
+export function calcularCiclo(fechaIngreso: string | null | undefined, hoyStr: string): Ciclo {
+  const [hy, hm, hd] = hoyStr.split('-').map(Number);
+  const fechaIng = (fechaIngreso ?? '').trim();
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(fechaIng)) {
+    // Fallback: mes calendario (routes/evaluaciones.js:106-111).
+    const desde = fmtUTC(Date.UTC(hy, hm - 1, 1));
+    const hasta = fmtUTC(Date.UTC(hy, hm, 0)); // día 0 del mes siguiente = último día del actual
+    return { desde, hasta, fuente: 'mes_calendario' };
+  }
+
+  const dInicio = Number(fechaIng.slice(8, 10));
+  let y = hy;
+  let m = hm - 1; // 0-indexado, como el original (getMonth())
+  if (hd < dInicio) {
+    // Todavía no llegamos al aniversario de este mes → el ciclo arrancó el mes pasado.
+    m -= 1;
+    if (m < 0) {
+      m = 11;
+      y -= 1;
+    }
+  }
+  const desde = fmtUTC(Date.UTC(y, m, dInicio));
+  const hasta = fmtUTC(Date.UTC(y, m + 1, dInicio) - MS_DIA); // día antes del próximo aniversario
+  return { desde, hasta, fuente: 'aniversario' };
+}
