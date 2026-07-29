@@ -1,7 +1,13 @@
 import { redirect } from 'next/navigation';
 import { AlertTriangle } from 'lucide-react';
 import { puede, type MatrizPermisos } from '@scilb/core';
-import { companerosParaEvaluar, miResumenValores, seguimientoValores, ValoresNoMigradoError } from '../../lib/valores-repo';
+import {
+  companerosParaEvaluar,
+  miResumenValores,
+  seguimientoValores,
+  estadoVentanaValores,
+  ValoresNoMigradoError,
+} from '../../lib/valores-repo';
 import { getSesion } from '../../lib/auth';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
 import { tieneReauth } from '../../lib/reauth';
@@ -77,6 +83,12 @@ export default async function ValoresPage() {
     }
   }
 
+  // Fase 13 tarea 3: ventana de habilitación (config valores_habilitado/modo/dia_inicio/dia_fin,
+  // migración 0058). Default = siempre abierta, así que esto no cambia nada hasta que el admin la
+  // configure distinto desde /configuracion. Si 0058 no aplicó, leerConfigMap() no falla (select
+  // genérico) y estadoVentanaValores() cae a los mismos defaults.
+  const ventana = await estadoVentanaValores();
+
   return (
     <div>
       <PageHeader title="Valores 360°" subtitle={`${mes} · evaluación entre compañeros`} />
@@ -87,6 +99,7 @@ export default async function ValoresPage() {
         esAdmin={esAdmin}
         seguimiento={seguimiento}
         seguimientoBloqueado={seguimientoBloqueado}
+        avisoVentanaCerrada={ventana.abierto ? null : ventana.mensaje}
       />
     </div>
   );

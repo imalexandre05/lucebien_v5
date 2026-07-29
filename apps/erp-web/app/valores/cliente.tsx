@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, HeartHandshake } from 'lucide-react';
+import { CheckCircle2, HeartHandshake, AlertTriangle } from 'lucide-react';
 import { VALORES, LIKERT_LABELS, type PuntajeValores } from '@scilb/core';
 import { accionEnviarValores } from './actions';
 import type { CompaneroValor, MiResumenValores, SeguimientoValorFila } from '../../lib/valores-repo';
@@ -52,6 +52,7 @@ export function ValoresCliente({
   esAdmin,
   seguimiento,
   seguimientoBloqueado,
+  avisoVentanaCerrada,
 }: {
   mes: string;
   companeros: CompaneroValor[];
@@ -59,6 +60,10 @@ export function ValoresCliente({
   esAdmin: boolean;
   seguimiento: Seguimiento | null;
   seguimientoBloqueado: boolean;
+  // Fase 13 tarea 3: null cuando el módulo está abierto (default, sin cambios de comportamiento).
+  // Con texto: el admin activó una ventana de días desde /configuracion y hoy cae fuera — se
+  // avisa ANTES de abrir el modal en vez de dejar que el usuario llene todo y falle al enviar.
+  avisoVentanaCerrada?: string | null;
 }) {
   const router = useRouter();
   const [vista, setVista] = useState<'evaluar' | 'seguimiento'>('evaluar');
@@ -95,6 +100,12 @@ export function ValoresCliente({
 
   return (
     <div className="space-y-4">
+      {avisoVentanaCerrada && (
+        <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
+          <p>{avisoVentanaCerrada}</p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatBox index={0} label="Compañeros" valor={companeros.length} tone="border-navy/15 bg-navy/5 text-navy" />
         <StatBox

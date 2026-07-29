@@ -3,10 +3,14 @@ import {
   promediosPorValor,
   notaValores360,
   puedeEvaluarValores,
+  puedeEvaluarValoresHoy,
   type ValorKey,
   type PuntajeValores,
+  type ConfigVentanaValores,
 } from '@scilb/core';
 import { getServerClient } from './supabase/server';
+import { leerConfigMap } from './config-repo';
+import { hoyPeru } from './fechas';
 
 // Valores 360° (Fase 12 tarea 1) — peer review de 6 valores. Puerto de routes/valores.js
 // (sistema viejo, nunca migrado). Usa app_directorio_activos() (migración 0057) en vez del
@@ -68,6 +72,38 @@ export async function companerosParaEvaluar(evaluadorId: string, mes: string): P
     .sort((a, b) => Number(a.evaluado) - Number(b.evaluado) || a.nombre.localeCompare(b.nombre));
 }
 
+// Ventana de habilitación (Fase 13 tarea 3, migración 0058 — claves valores_habilitado/modo/
+// dia_inicio/dia_fin). Defaults iguales al catálogo (lib/config-catalogo.ts) por si la migración
+// todavía no corrió y las filas no existen: habilitado + modo 'siempre' = CERO restricción, el
+// mismo comportamiento que tenía /valores antes de esta fase.
+async function leerVentanaValores(): Promise<ConfigVentanaValores> {
+  const cfg = await leerConfigMap();
+  return {
+    habilitado: (cfg.valores_habilitado ?? 'true') !== 'false',
+    modo: cfg.valores_modo === 'ventana' ? 'ventana' : 'siempre',
+    diaInicio: Number(cfg.valores_dia_inicio ?? '1') || 1,
+    diaFin: Number(cfg.valores_dia_fin ?? '31') || 31,
+  };
+}
+
+// Para que la página muestre un aviso ANTES de que alguien llene el formulario entero y se
+// encuentre el rechazo recién al enviar (mismo espíritu que el resto del ERP: avisar, no fallar
+// en silencio). El repo (enviarEvaluacionValores, abajo) sigue siendo la autoridad real — este
+// estado es solo para la UI.
+export async function estadoVentanaValores(): Promise<{ abierto: boolean; mensaje: string | null }> {
+  const cfg = await leerVentanaValores();
+  if (!cfg.habilitado) {
+    return { abierto: false, mensaje: 'El módulo de Valores 360° está deshabilitado desde Configuración. No se pueden enviar evaluaciones nuevas.' };
+  }
+  if (cfg.modo === 'siempre') return { abierto: true, mensaje: null };
+  const diaHoy = Number(hoyPeru().slice(8, 10));
+  const abierto = puedeEvaluarValoresHoy(cfg, diaHoy);
+  if (abierto) return { abierto: true, mensaje: null };
+  const desde = Math.min(cfg.diaInicio, cfg.diaFin);
+  const hasta = Math.max(cfg.diaInicio, cfg.diaFin);
+  return { abierto: false, mensaje: `Las evaluaciones de Valores 360° solo se pueden enviar entre el día ${desde} y el día ${hasta} de cada mes.` };
+}
+
 // Guarda (o corrige, si ya existía este mes) la evaluación de un compañero. Puerto de
 // routes/valores.js:102-113 (POST /) — INSERT OR REPLACE se traduce a upsert por la unique
 // (evaluador_id, evaluado_id, mes) de la migración 0057.
@@ -78,6 +114,8 @@ export async function enviarEvaluacionValores(
   puntaje: PuntajeValores,
 ): Promise<void> {
   if (!puedeEvaluarValores(evaluadorId, evaluadoId)) throw new Error('No puedes evaluarte a ti mismo');
+  const ventana = await estadoVentanaValores();
+  if (!ventana.abierto) throw new Error(ventana.mensaje ?? 'Las evaluaciones de Valores 360° están cerradas en este momento.');
   const sb = getServerClient();
   const { error } = await sb
     .from('evaluaciones_valores')
