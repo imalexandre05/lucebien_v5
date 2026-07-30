@@ -76,13 +76,19 @@ export async function accionEstablecerContrasena(id: string, password: string): 
 // tener que ir hasta /configuracion/permisos. `rolKey` es el rol EFECTIVO del empleado (su rolCod
 // derivado si tiene uno, si no su rol base) — togglePosCobro() ya avisa en su comentario que esto
 // es por ROL, no por persona: afecta a todos los que compartan ese rol/rol derivado.
+//
+// A propósito SIN `revalidatePath()`: /empleados, /caja y /configuracion/permisos ya son rutas
+// dinámicas (leen la sesión vía cookies en cada request, nunca caché estático), así que la
+// próxima carga real de cualquiera de las tres YA trae el dato fresco sin necesidad de invalidar
+// nada. Y para ESTE toggle en particular, `revalidatePath` sería contraproducente: dispara un
+// refresh automático de la ruta actual apenas la Server Action resuelve, y /empleados tiene
+// `loading.tsx` (Fase 3) — ese refresh muestra su fallback de Suspense, que desmonta la página (y
+// con ella el modal de edición abierto, perdiendo el estado del admin a mitad de edición). El
+// cliente refleja el cambio con estado local optimista (ver EditarModal en cliente.tsx).
 export async function accionTogglePosCobro(rolKey: string, activar: boolean): Promise<{ ok: boolean; error?: string }> {
   try {
     await exigirAdmin();
     await togglePosCobro(rolKey, activar);
-    revalidatePath('/empleados');
-    revalidatePath('/configuracion/permisos');
-    revalidatePath('/caja');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error al cambiar el permiso de caja' };

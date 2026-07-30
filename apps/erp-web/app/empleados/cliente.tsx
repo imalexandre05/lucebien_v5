@@ -479,21 +479,30 @@ function EditarModal({
   const esAdminODueno = opcionRolActual?.rolBase === 'admin' || opcionRolActual?.rolBase === 'dueno';
   const [posCobroPending, startPosCobroTransition] = useTransition();
   const [posCobroError, setPosCobroError] = useState('');
-  const operaCaja = opcionRolActual
+  // Override optimista, keado por rol: NO se usa router.refresh() acá — /empleados tiene
+  // loading.tsx (Fase 3), y refresh() dispara su fallback de Suspense, que desmonta la página
+  // (y con ella este modal, perdiendo `editar`) mientras recarga. El toggle ya confirmó server-
+  // side (accionTogglePosCobro esperó la respuesta); reflejar el nuevo valor localmente es
+  // correcto y evita el parpadeo — la próxima carga normal de /empleados ya viene con
+  // `revalidatePath` aplicado.
+  const [posCobroOverride, setPosCobroOverride] = useState<{ rol: string; valor: boolean } | null>(null);
+  const operaCajaBase = opcionRolActual
     ? puede(matrizPermisos, opcionRolActual.rolBase, 'pos_cobro', 'ver', opcionRolActual.rolCod)
     : false;
+  const operaCaja = posCobroOverride && posCobroOverride.rol === rolValor ? posCobroOverride.valor : operaCajaBase;
 
-  const router = useRouter();
   function togglePosCobro() {
     if (!opcionRolActual) return;
     setPosCobroError('');
+    const rolAlTogglear = rolValor;
+    const nuevoValor = !operaCaja;
     startPosCobroTransition(async () => {
-      const r = await accionTogglePosCobro(rolValor, !operaCaja);
+      const r = await accionTogglePosCobro(rolAlTogglear, nuevoValor);
       if (!r.ok) {
         setPosCobroError(r.error ?? 'Error');
         return;
       }
-      router.refresh();
+      setPosCobroOverride({ rol: rolAlTogglear, valor: nuevoValor });
     });
   }
 
