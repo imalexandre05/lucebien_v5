@@ -1,3 +1,4 @@
+import { totalPorTipoLinea } from '@scilb/core';
 import { resumenFinanciero } from '../../lib/caja-repo';
 import { pedidosRepo } from '../../lib/pedidos-repo';
 import { PageHeader } from '../../components/shell/page-header';
@@ -24,11 +25,14 @@ function Fila({ label, valor }: { label: string; valor: string }) {
 
 export default async function FinanzasPage() {
   const [fin, pedidos] = await Promise.all([resumenFinanciero(), pedidosRepo.listar()]);
-  const porTipo = (t: string) => pedidos.filter((p) => p.tipo === t).reduce((s, p) => s + p.total, 0);
+  // Fase 9: agrupar por LÍNEA (pedido_items.tipo), no por el tipo de cabecera — un pedido 'mixto'
+  // (alquiler + venta en la misma visita, posible desde la Fase 8) no tiene un `p.tipo` que
+  // encaje en ninguno de los 3 buckets de abajo y desaparecía del todo del resumen comercial.
+  const porTipo = totalPorTipoLinea(pedidos.flatMap((p) => p.items));
   const comercial = [
-    { label: 'Ventas', valor: porTipo('venta') },
-    { label: 'Alquiler', valor: porTipo('alquiler') },
-    { label: 'Servicios', valor: porTipo('servicio') },
+    { label: 'Ventas', valor: porTipo.venta },
+    { label: 'Alquiler', valor: porTipo.alquiler },
+    { label: 'Servicios', valor: porTipo.servicio },
   ];
 
   const ingresosCat = Object.entries(fin.ingresosCat);

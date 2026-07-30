@@ -269,6 +269,28 @@ export function estadoPago(total: number, cobrado: number): EstadoPago {
   return 'parcial';
 }
 
+// Total por TIPO DE LÍNEA a través de N pedidos (Fase 9, hallazgo de la F8): app/page.tsx y
+// app/finanzas/page.tsx agrupaban los KPI comerciales por `pedido.tipo === 'venta' | 'alquiler'`
+// — con el modelo multi-línea, un pedido 'mixto' (que la propia F9 hace posible en la práctica: un
+// alquiler + una venta en la misma visita) no cae en NINGÚN grupo y desaparecía de las cifras. La
+// fuente correcta es la LÍNEA (`pedido_items.tipo`), nunca la cabecera derivada. Reutiliza el
+// `subtotal` ya calculado por línea (cortesía en 0, cantidad × precio) — mismo criterio de
+// exclusión de canceladas que `totalPedido`.
+export interface LineaParaTipo {
+  tipo: TipoLinea;
+  subtotal: number;
+  estado?: EstadoItemPedido;
+}
+
+export function totalPorTipoLinea(items: LineaParaTipo[]): Record<TipoLinea, number> {
+  const acc: Record<TipoLinea, number> = { alquiler: 0, venta: 0, servicio: 0, confeccion: 0 };
+  for (const i of items) {
+    if (i.estado === 'cancelado') continue;
+    acc[i.tipo] = r2(acc[i.tipo] + i.subtotal);
+  }
+  return acc;
+}
+
 export interface PedidoRepo {
   listar(): Promise<Pedido[]>;
   porCliente(clienteId: string): Promise<Pedido[]>;

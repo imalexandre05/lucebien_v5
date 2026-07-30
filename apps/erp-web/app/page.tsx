@@ -26,6 +26,7 @@ import {
   type EstadoCobertura,
   minutosHastaCierre,
   TURNO_LABEL,
+  totalPorTipoLinea,
   puede,
   type MatrizPermisos,
 } from '@scilb/core';
@@ -173,8 +174,12 @@ export default async function Dashboard() {
   );
 
   const soles = (n: number) => `S/ ${n.toFixed(2)}`;
-  const totalVentas = pedidos.filter((p) => p.tipo === 'venta').reduce((s, p) => s + p.total, 0);
-  const totalAlquiler = pedidos.filter((p) => p.tipo === 'alquiler').reduce((s, p) => s + p.total, 0);
+  // Fase 9 (hallazgo de la F8): agrupar por `pedido.tipo` (cabecera) perdía los pedidos 'mixto'
+  // por completo — un alquiler + una venta en la misma visita no cae en ningún grupo. La fuente
+  // correcta es la LÍNEA (`pedido_items.tipo`), vía el helper puro y testeado del core.
+  const porTipoLinea = totalPorTipoLinea(pedidos.flatMap((p) => p.items));
+  const totalVentas = porTipoLinea.venta;
+  const totalAlquiler = porTipoLinea.alquiler;
   const saldoPendiente = pendientes.reduce((s, p) => s + p.saldo, 0);
 
   // Distribución del pipeline por etapa (flujo de 9 pasos).

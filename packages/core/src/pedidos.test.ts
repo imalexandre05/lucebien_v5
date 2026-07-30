@@ -6,6 +6,7 @@ import {
   pedidoCrearSchema,
   garantiaInputSchema,
   totalPedido,
+  totalPorTipoLinea,
   tipoDominante,
   clasificarCobro,
   estadoPago,
@@ -174,5 +175,46 @@ describe('garantiaInputSchema (polimórfica efectivo|documento|ninguna)', () => 
   it('exige documentoTipo + documentoNum para tipo documento', () => {
     expect(() => garantiaInputSchema.parse({ tipo: 'documento' })).toThrow();
     expect(garantiaInputSchema.parse({ tipo: 'documento', documentoTipo: 'dni', documentoNum: '12345678' }).tipo).toBe('documento');
+  });
+});
+
+describe('totalPorTipoLinea (Fase 9 — fix del KPI que perdía los pedidos mixto)', () => {
+  it('agrupa por LÍNEA, no por cabecera: un pedido mixto reparte su total entre sus tipos', () => {
+    const r = totalPorTipoLinea([
+      { tipo: 'alquiler', subtotal: 180 },
+      { tipo: 'venta', subtotal: 20 },
+    ]);
+    expect(r.alquiler).toBe(180);
+    expect(r.venta).toBe(20);
+    expect(r.servicio).toBe(0);
+    expect(r.confeccion).toBe(0);
+  });
+  it('devuelve los 4 tipos en 0 con una lista vacía (nunca undefined)', () => {
+    expect(totalPorTipoLinea([])).toEqual({ alquiler: 0, venta: 0, servicio: 0, confeccion: 0 });
+  });
+  it('suma varias líneas del mismo tipo entre distintos pedidos', () => {
+    const r = totalPorTipoLinea([
+      { tipo: 'venta', subtotal: 40 },
+      { tipo: 'venta', subtotal: 60 },
+    ]);
+    expect(r.venta).toBe(100);
+  });
+  it('excluye las líneas canceladas', () => {
+    const r = totalPorTipoLinea([
+      { tipo: 'alquiler', subtotal: 100, estado: 'activo' },
+      { tipo: 'alquiler', subtotal: 999, estado: 'cancelado' },
+    ]);
+    expect(r.alquiler).toBe(100);
+  });
+  it('una cortesía (subtotal ya en 0) no aporta al total de su tipo', () => {
+    const r = totalPorTipoLinea([{ tipo: 'venta', subtotal: 0, estado: 'activo' }]);
+    expect(r.venta).toBe(0);
+  });
+  it('redondea a 2 decimales', () => {
+    const r = totalPorTipoLinea([
+      { tipo: 'servicio', subtotal: 10.005 },
+      { tipo: 'servicio', subtotal: 10.005 },
+    ]);
+    expect(r.servicio).toBe(20.02);
   });
 });

@@ -23,8 +23,11 @@ const CERRADOS = ['cerrado', 'devuelto', 'cancelado'];
 export default async function DevolucionesPage() {
   const pedidos = await pedidosRepo.listar();
   const hoy = hoyPeru();
+  // Fase 9: un pedido 'mixto' (alquiler + venta en la misma visita) también puede tener una
+  // devolución pendiente — filtrar por `p.tipo === 'alquiler'` (cabecera) lo excluía. La fuente
+  // correcta es si el pedido tiene alguna LÍNEA de alquiler todavía activa.
   const items = pedidos
-    .filter((p) => p.tipo === 'alquiler' && p.fechaDevolucion && !CERRADOS.includes(p.estado))
+    .filter((p) => p.items.some((i) => i.tipo === 'alquiler' && i.estado === 'activo') && p.fechaDevolucion && !CERRADOS.includes(p.estado))
     .map((p) => ({ ...p, dias: diasEntre(hoy, p.fechaDevolucion as string) }))
     .sort((a, b) => ((a.fechaDevolucion ?? '') < (b.fechaDevolucion ?? '') ? -1 : 1));
 
