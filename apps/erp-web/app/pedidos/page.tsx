@@ -85,7 +85,7 @@ export default async function PedidosPage({
         fechasRapidas={posConfig.fechasRapidas}
       />
 
-      <PedidosPendientes pedidos={pedidos} hoy={hoyPeru()} />
+      <PedidosPendientes pedidos={pedidos} hoy={hoyPeru()} metodosPago={posConfig.metodosPago} />
     </div>
   );
 }

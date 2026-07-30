@@ -40,7 +40,15 @@ function Chip({ label, count, active, onClick, testId }: { label: string; count:
 // saldo, devolver, contrato) sin navegar fuera de /pedidos. Recibe la lista completa (ya trae
 // items/garantía) y filtra en cliente: el volumen de pedidos de LuceBien es chico, no justifica
 // un round-trip por filtro (mismo criterio que ActivoPicker/ClientePanel).
-export function PedidosPendientes({ pedidos, hoy }: { pedidos: Pedido[]; hoy: string }) {
+export function PedidosPendientes({
+  pedidos,
+  hoy,
+  metodosPago,
+}: {
+  pedidos: Pedido[];
+  hoy: string;
+  metodosPago?: { value: string; label: string }[];
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [filtro, setFiltro] = useState<FiltroKey | null>(null);
@@ -183,7 +191,7 @@ export function PedidosPendientes({ pedidos, hoy }: { pedidos: Pedido[]; hoy: st
                           <MontoInput value={montoCobro} onChange={setMontoCobro} total={p.saldo} label="Monto" testId="cobro-saldo-monto" />
                           <div>
                             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-                            <MetodoPagoBotones value={metodoCobro} onChange={setMetodoCobro} />
+                            <MetodoPagoBotones value={metodoCobro} onChange={setMetodoCobro} opciones={metodosPago} />
                           </div>
                           <button
                             type="button"
