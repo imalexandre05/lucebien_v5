@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, CalendarClock, Search, X } from 'lucide-react';
-import { TIPOS_PEDIDO, type Pedido, type PedidoInput, type TipoPedido, type ActivoInventario } from '@scilb/core';
+import { TIPOS_LINEA, type Pedido, type PedidoInput, type TipoPedido, type TipoLinea, type ActivoInventario } from '@scilb/core';
 import { accionCrearPedido } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
@@ -15,8 +15,10 @@ import { EmptyState } from '../../components/ui/empty-state';
 import { ShoppingBag } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
-const TIPO_TONE: Record<TipoPedido, Tone> = { alquiler: 'navy', venta: 'gold', servicio: 'green', confeccion: 'amber' };
-const TIPO_LABEL: Record<TipoPedido, string> = { alquiler: 'Alquiler', venta: 'Venta', servicio: 'Servicio', confeccion: 'Confección' };
+// Cubre los 4 tipos de línea (el modal, todavía de un solo ítem — Fase 9 trae el constructor
+// multi-línea) + 'mixto' (el tipo de CABECERA que puede traer un pedido ya existente en la lista).
+const TIPO_TONE: Record<TipoPedido, Tone> = { alquiler: 'navy', venta: 'gold', servicio: 'green', confeccion: 'amber', mixto: 'gray' };
+const TIPO_LABEL: Record<TipoPedido, string> = { alquiler: 'Alquiler', venta: 'Venta', servicio: 'Servicio', confeccion: 'Confección', mixto: 'Mixto' };
 
 const fieldCls =
   'w-full rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
@@ -42,7 +44,7 @@ const vacio = (sedeActual: string): PedidoInput => ({
   total: 0,
 });
 
-function precioSugerido(tipo: TipoPedido, a: ActivoInventario): number {
+function precioSugerido(tipo: TipoLinea, a: ActivoInventario): number {
   if (tipo === 'alquiler') return a.precioAlquiler;
   if (tipo === 'venta') return a.precioVenta;
   return a.precioBase;
@@ -147,7 +149,7 @@ export function PedidosCliente({
   function setCampo<K extends keyof PedidoInput>(campo: K, valor: PedidoInput[K]) {
     setForm((f) => ({ ...f, [campo]: valor }));
   }
-  function setTipo(t: TipoPedido) {
+  function setTipo(t: TipoLinea) {
     const activo = activos.find((a) => a.id === form.activoId);
     setForm((f) => ({ ...f, tipo: t, total: activo ? precioSugerido(t, activo) : f.total }));
   }
@@ -251,7 +253,7 @@ export function PedidosCliente({
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tipo</label>
               <div className="flex flex-wrap gap-1.5">
-                {TIPOS_PEDIDO.map((t) => (
+                {TIPOS_LINEA.map((t) => (
                   <button
                     key={t}
                     type="button"

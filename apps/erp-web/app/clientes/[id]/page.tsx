@@ -10,7 +10,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { cn } from '../../../lib/cn';
 
-const TIPO_TONE: Record<TipoPedido, Tone> = { alquiler: 'navy', venta: 'gold', servicio: 'green', confeccion: 'amber' };
+const TIPO_TONE: Record<TipoPedido, Tone> = { alquiler: 'navy', venta: 'gold', servicio: 'green', confeccion: 'amber', mixto: 'gray' };
 const SEG_LABEL: Record<SegmentoCliente, string> = { vip: 'VIP', recurrente: 'Recurrente', nuevo: 'Nuevo' };
 const SEG_CLS: Record<SegmentoCliente, string> = {
   vip: 'bg-gold/20 text-[#7a6e0e]',

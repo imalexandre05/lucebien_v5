@@ -232,6 +232,50 @@ se registra.
 
 ---
 
+## Fase 8 — Pedidos: modelo multi-línea + RPC atómicas
+
+- **Numeración de `pedidos.numero`: correlativo GLOBAL, no por sede** (migración `0059`, columna
+  `generated always as identity`). El plan solo dio un ejemplo de formato (`LB-00043`), sin decir
+  si el número debía reiniciar por tienda. Se eligió global porque es más simple y no tiene
+  condición de carrera (una identity nativa de Postgres, sin tabla de contadores propia), y el
+  prefijo de sede en `codigo` (`sede_cod || '-' || numero`) ya distingue visualmente por tienda.
+  No es una fórmula de negocio (no hay monto de por medio), pero si el dueño prefiere que cada
+  sede arranque su propio correlativo en 1, es un cambio aislado a esa columna — avisar antes de
+  tocarlo porque `codigo` es `unique` y lo consumen el contrato (`/pedidos/[id]/contrato`) y la
+  lista.
+- **Contra-asiento de `pedido_anular`: un movimiento de caja POR MÉTODO de pago, no uno solo.**
+  Si un pedido se cobró parte en efectivo y parte en Yape, anular genera dos egresos (uno por
+  método) en vez de un único lump-sum — así el arqueo de caja por método sigue cuadrando tras la
+  anulación. No estaba especificado así en el plan (que solo decía "contra-asientos"); se decidió
+  por corrección contable, no por pedido explícito.
+- **Garantía "parcial": no es un tercer estado.** El ciclo de `pedido_garantias` (migración `0060`)
+  define exactamente 2 estados terminales (`devuelta` | `ejecutada`), tal como pide el plan.
+  "Devolver una parte y quedarse con el resto" se modela como `pedido_garantia_resolver(...,
+  'devolver', p_monto=<parte a devolver>, ...)`: el estado final queda `devuelta` con un egreso por
+  el monto parcial indicado, no un estado nuevo "parcial". Si el dueño quiere distinguir
+  explícitamente una devolución parcial de una total en el estado (no solo en el monto del
+  movimiento), es un cambio de schema a confirmar.
+- **Cortesía tipo "camisa que debe volver": modelada como línea `tipo='alquiler'`, no `'venta'`.**
+  El plan dice literalmente "la camisa gratis... sale de la tienda y debe volver" — de los 4 tipos
+  de línea, `alquiler` es el único con ciclo de devolución (`pedido_devolver` solo opera sobre
+  líneas `alquiler`). Si en la práctica una cortesía de este tipo NO se espera que vuelva (ej. un
+  llavero de regalo), esa línea debería ser `tipo='venta'` con `precio_unitario=0` en su lugar — es
+  una decisión que toma quien arma el pedido línea por línea (Fase 9), esta fase solo deja ambos
+  caminos disponibles sin forzar uno.
+- **El modal de "Nuevo pedido" (`app/pedidos/cliente.tsx`) sigue siendo de UN SOLO ítem.** Fuera de
+  alcance de esta fase a propósito (el plan reserva el constructor multi-línea real para la
+  Fase 9) — se ajustó lo mínimo para seguir funcionando contra el modelo nuevo: crea un pedido de
+  1 línea vía `pedido_crear`, con la garantía derivada de `garantiaMonto` (efectivo si > 0, si no
+  'ninguna') y sin cobro inicial (el cobro se sigue registrando aparte en `/caja`, como ya
+  funcionaba). El picker de "+ Cliente nuevo" y el de garantía por documento tampoco existen
+  todavía en este modal — ambos son parte del constructor de la Fase 9.
+- **`pedidosRepo.cambiarEstado()` se mantiene como método de compatibilidad**, pero ya no hace un
+  `update` plano para `'devuelto'`/`'cancelado'` (esos ahora delegan en `devolver()`/`anular()`,
+  que mueven dinero/inventario) — solo `'entregado'`/`'cerrado'` siguen como marca simple sin
+  efecto de caja/inventario, igual que antes de esta fase.
+
+---
+
 ## Fuera de alcance del plan de 13 fases (registrado al cierre — Fase 13)
 
 El plan explícito de 13 fases marcaba estos módulos del sistema viejo como backlog, "para que la

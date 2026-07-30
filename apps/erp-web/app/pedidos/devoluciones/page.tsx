@@ -16,7 +16,9 @@ function diasEntre(desde: string, hasta: string): number {
   return Math.round((b - a) / 86_400_000);
 }
 
-const CERRADOS = ['cerrado', 'devuelto', 'anulado'];
+// Bug real corregido (Fase 8): el core define 'cancelado', nunca 'anulado' — con el literal
+// viejo, los pedidos cancelados seguían apareciendo como devoluciones pendientes.
+const CERRADOS = ['cerrado', 'devuelto', 'cancelado'];
 
 export default async function DevolucionesPage() {
   const pedidos = await pedidosRepo.listar();

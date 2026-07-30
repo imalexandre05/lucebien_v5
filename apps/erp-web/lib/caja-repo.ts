@@ -203,38 +203,27 @@ export async function registrarGarantia(p: {
   if (error) throw new Error(error.message);
 }
 
-// Cobros pendientes: pedidos con saldo (total − cobrado) > 0.
+// Cobros pendientes: pedidos con saldo > 0. Fase 8: `saldo` (= total − cobrado) es ahora una
+// columna GENERADA de `pedidos` (migración 0059), mantenida por trigger ante cualquier movimiento
+// de caja categoría 'cobro' — antes esto traía TODOS los pedidos y TODOS los movimientos para
+// unirlos a mano en Node; ahora es un solo `where saldo > 0` directo sobre la base.
 export async function cobrosPendientes(): Promise<CobroPendiente[]> {
   const sb = getServerClient();
-  const [{ data: peds, error: e1 }, { data: movs, error: e2 }] = await Promise.all([
-    sb.from('pedidos').select('id, tipo, fecha, total, clientes(nombre)').order('fecha', { ascending: false }),
-    sb.from('caja_movimientos').select('pedido_id, monto').eq('categoria', 'cobro'),
-  ]);
-  if (e1) throw new Error(e1.message);
-  if (e2) throw new Error(e2.message);
-  const cobradoPor = new Map<string, number>();
-  for (const m of (movs as { pedido_id: string | null; monto: number }[]) ?? []) {
-    if (!m.pedido_id) continue;
-    cobradoPor.set(m.pedido_id, (cobradoPor.get(m.pedido_id) ?? 0) + Number(m.monto));
-  }
-  const out: CobroPendiente[] = [];
-  for (const p of (peds as Record<string, unknown>[]) ?? []) {
-    const total = Number(p.total ?? 0);
-    const cobrado = cobradoPor.get(String(p.id)) ?? 0;
-    const saldo = Math.round((total - cobrado) * 100) / 100;
-    if (saldo > 0) {
-      out.push({
-        pedidoId: String(p.id),
-        clienteNombre: (p.clientes as { nombre: string } | null)?.nombre ?? null,
-        tipo: String(p.tipo),
-        fecha: String(p.fecha).slice(0, 10),
-        total,
-        cobrado,
-        saldo,
-      });
-    }
-  }
-  return out;
+  const { data, error } = await sb
+    .from('pedidos')
+    .select('id, tipo, fecha, total, cobrado, saldo, clientes(nombre)')
+    .gt('saldo', 0)
+    .order('fecha', { ascending: false });
+  if (error) throw new Error(error.message);
+  return ((data as Record<string, unknown>[]) ?? []).map((p) => ({
+    pedidoId: String(p.id),
+    clienteNombre: (p.clientes as { nombre: string } | null)?.nombre ?? null,
+    tipo: String(p.tipo),
+    fecha: String(p.fecha).slice(0, 10),
+    total: Number(p.total),
+    cobrado: Number(p.cobrado),
+    saldo: Number(p.saldo),
+  }));
 }
 
 // Total de garantías vigentes: ingresos por garantía − devoluciones de garantía.
