@@ -10,6 +10,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
+import { MetodoPagoBotones } from '../../components/ui/metodo-pago-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { Modal as SharedModal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { cn } from '../../lib/cn';
@@ -24,11 +25,6 @@ type Resumen = {
   transferencia: number;
 };
 
-const OPC_METODO: Opcion[] = [
-  { value: 'efectivo', label: 'Efectivo' },
-  { value: 'yape', label: 'Yape' },
-  { value: 'transferencia', label: 'Transferencia' },
-];
 const OPC_CATEGORIA_EGRESO: Opcion<'gasto' | 'devolucion_garantia' | 'otro'>[] = [
   { value: 'gasto', label: 'Gasto' },
   { value: 'devolucion_garantia', label: 'Devolución de garantía' },
@@ -321,7 +317,7 @@ export function CajaCliente({
             </div>
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-              <OpcionBotones opciones={OPC_METODO} value={cMetodo} onChange={setCMetodo} ariaLabel="Método de pago" />
+              <MetodoPagoBotones value={cMetodo} onChange={setCMetodo} ariaLabel="Método de pago" />
             </div>
           </div>
           <div>
@@ -361,7 +357,7 @@ export function CajaCliente({
             </div>
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-              <OpcionBotones opciones={OPC_METODO} value={eMetodo} onChange={setEMetodo} ariaLabel="Método de pago" />
+              <MetodoPagoBotones value={eMetodo} onChange={setEMetodo} ariaLabel="Método de pago" />
             </div>
           </div>
           <div>
@@ -402,7 +398,7 @@ export function CajaCliente({
             </div>
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-              <OpcionBotones opciones={OPC_METODO} value={gMetodo} onChange={setGMetodo} ariaLabel="Método de pago" />
+              <MetodoPagoBotones value={gMetodo} onChange={setGMetodo} ariaLabel="Método de pago" />
             </div>
           </div>
           <div>
