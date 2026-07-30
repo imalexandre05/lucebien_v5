@@ -1,78 +1,50 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { pedidoSchema, type PedidoInput, type PedidoCrearInput, type EstadoPedido, type EtapaConfeccion } from '@scilb/core';
-import { pedidosRepo } from '../../lib/pedidos-repo';
-import { getServerClient } from '../../lib/supabase/server';
+import { pedidoCrearSchema, type PedidoCrearInput, type Pedido, type EstadoPedido, type EtapaConfeccion } from '@scilb/core';
+import { pedidosRepo, PedidoRpcError } from '../../lib/pedidos-repo';
 
 type R = { ok: boolean; error?: string };
 
-// El modal (app/pedidos/cliente.tsx) sigue siendo el de un solo ítem por ahora — el constructor
-// multi-línea real es la Fase 9, fuera de alcance aquí ("ajusta el modal actual lo mínimo para
-// que siga funcionando con el modelo nuevo"). Este adapter arma el payload real de pedido_crear
-// (cliente + 1 línea + garantía derivada de garantiaMonto) a partir de ese formulario plano, así
-// el repo/RPC nuevos no necesitan saber nada del formulario viejo.
-function aPedidoCrearInput(input: PedidoInput): PedidoCrearInput {
-  return {
-    cliente: { id: input.clienteId, nombre: '' /* ya existe: pedido_crear exige nombre incluso al editar, ver nota abajo */ },
-    sedeCod: input.sedeCod,
-    items: [
-      {
-        tipo: input.tipo,
-        activoId: input.activoId || undefined,
-        descripcion: input.descripcion,
-        cantidad: 1,
-        precioUnitario: input.total,
-        tela: input.tipo === 'confeccion' ? input.tela : undefined,
-        fechaPrueba: input.tipo === 'confeccion' ? input.fechaPrueba : undefined,
-        fechaSegundaPrueba: input.tipo === 'confeccion' ? input.fechaSegundaPrueba : undefined,
-        etapaConfeccion: input.tipo === 'confeccion' ? 'corte' : undefined,
-      },
-    ],
-    garantia:
-      input.tipo === 'alquiler' && input.garantiaMonto > 0
-        ? { tipo: 'efectivo', monto: input.garantiaMonto, metodo: 'efectivo' }
-        : { tipo: 'ninguna' },
-    pagos: [], // el modal viejo no cobra al crear — el cobro se sigue registrando aparte en /caja
-    fecha: input.fecha,
-    fechaDevolucion: input.fechaDevolucion || undefined,
-    fechaEntrega: input.fechaEntrega || undefined,
-    notas: input.notas,
-  };
-}
-
-// El modal envía un objeto tipado (no FormData) — mismo patrón que accionCrearActivo (Fase 8).
-export async function accionCrearPedido(input: PedidoInput): Promise<R> {
-  const parsed = pedidoSchema.safeParse(input);
+// Constructor multi-línea (Fase 9) — reemplaza el modal de un solo ítem (`app/pedidos/cliente.tsx`,
+// borrado en esta fase: el plan pide "una sola página /pedidos, sin modal, sin rutas nuevas para
+// el flujo principal"). Recibe el payload YA armado por `PedidosConstructor` (cliente + N líneas +
+// garantía + cobro inicial) y lo manda TAL CUAL a `pedidosRepo.crear()` → `pedido_crear` (una sola
+// transacción, Fase 8) — nada de adaptar un formulario plano viejo aquí.
+// `codigo` (SIN_CAJA/ACTIVO_OCUPADO/ACTIVO_EN_LAVANDERIA/COBRO_EXCEDE/...) viaja aparte del mensaje
+// para que el ticket pueda reaccionar (ej. abrir el banner "Abrir caja" inline) sin parsear texto.
+export async function accionCrearPedidoConstructor(
+  input: PedidoCrearInput,
+): Promise<{ ok: true; pedido: Pedido } | { ok: false; error: string; codigo?: string }> {
+  const parsed = pedidoCrearSchema.safeParse(input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Revisa los campos obligatorios' };
   }
   try {
-    // pedido_crear (0061) exige `cliente.nombre` incluso cuando se manda un `id` existente (es
-    // el mismo contrato de "editar todo" que pide el plan) — el modal viejo solo tiene el id del
-    // cliente elegido en el <select>, así que se resuelve el nombre server-side antes de llamar
-    // al repo para no tener que tocar el formulario del cliente por esto. Fetch mínimo (no la
-    // lista completa) — el <select> del modal ya la trajo aparte para pintarse.
-    const sb = getServerClient();
-    const { data: cliente, error: eCliente } = await sb
-      .from('clientes')
-      .select('nombre, dni, telefono')
-      .eq('id', parsed.data.clienteId)
-      .maybeSingle();
-    if (eCliente) return { ok: false, error: eCliente.message };
-    if (!cliente) return { ok: false, error: 'Cliente no encontrado' };
-
-    const crearInput = aPedidoCrearInput(parsed.data);
-    crearInput.cliente.nombre = (cliente as { nombre: string }).nombre;
-    crearInput.cliente.dni = (cliente as { dni: string | null }).dni ?? undefined;
-    crearInput.cliente.telefono = (cliente as { telefono: string | null }).telefono ?? undefined;
-
-    await pedidosRepo.crear(crearInput);
+    const pedido = await pedidosRepo.crear(parsed.data);
     revalidatePath('/pedidos');
     revalidatePath('/pipeline');
+    revalidatePath('/');
+    revalidatePath('/finanzas');
+    return { ok: true, pedido };
+  } catch (e) {
+    if (e instanceof PedidoRpcError) return { ok: false, error: e.message, codigo: e.codigo };
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al crear el pedido' };
+  }
+}
+
+// Cobro del saldo desde el panel de Pendientes (⑥) o el detalle del pedido — única verdad del
+// cobro (pedido_cobrar, 0061), la misma RPC que usará /caja desde la Fase 10.
+export async function accionCobrarSaldoPedido(pedidoId: string, monto: number, metodo: string): Promise<R & { codigo?: string }> {
+  try {
+    await pedidosRepo.cobrar({ pedidoId, monto, metodo });
+    revalidatePath('/pedidos');
+    revalidatePath(`/pedidos/${pedidoId}`);
+    revalidatePath('/caja');
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Error al crear el pedido' };
+    if (e instanceof PedidoRpcError) return { ok: false, error: e.message, codigo: e.codigo };
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al cobrar el saldo' };
   }
 }
 
