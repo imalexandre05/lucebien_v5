@@ -30,6 +30,7 @@ const SECCION_EVALUACION = 'Evaluación mensual';
 const SECCION_REPORTES = 'Reportes de turno';
 const SECCION_INVENTARIO = 'Inventario';
 const SECCION_VALORES = 'Valores 360°';
+const SECCION_POS = 'Caja y POS';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
 // simplemente no se muestran; "Personalizados" — parámetros creados por el admin — va siempre al
@@ -39,6 +40,7 @@ export const ORDEN_SECCIONES = [
   SECCION_EVALUACION,
   SECCION_REPORTES,
   SECCION_INVENTARIO,
+  SECCION_POS,
   SECCION_VALORES,
 ];
 
@@ -158,6 +160,51 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 0,
     max: 1,
     step: 0.01,
+  },
+
+  // ── Caja y POS (Fase 10, lib/pos-config.ts) ────────────────────────────────────────────────
+  // Las 3 listas van como TEXTO con un formato simple (no existe un tipo "lista múltiple" en
+  // ConfigTipo hoy): `valor:Etiqueta` separado por comas para métodos de pago y documentos de
+  // garantía; JSON para las fechas rápidas (tienen 2 sub-listas con offset numérico). Se parsean
+  // defensivamente en lib/pos-config.ts — un valor mal escrito cae al default, nunca tumba la
+  // página. Los 3 defaults son los que YA usaba /pedidos y /caja antes de esta fase (extraídos de
+  // components/ui/metodo-pago-botones.tsx, app/pedidos/constructor/garantia-panel.tsx y
+  // fechas-panel.tsx) — no son valores inventados nuevos, solo se hicieron editables.
+  {
+    clave: 'pos_metodos_pago',
+    seccion: SECCION_POS,
+    etiqueta: 'Métodos de pago',
+    descripcion:
+      'Métodos de pago disponibles en /caja y /pedidos (botones). Formato: "valor:Etiqueta" separado por comas, ej. "efectivo:Efectivo,yape:Yape,transferencia:Transferencia,tarjeta:Tarjeta".',
+    tipo: 'texto',
+    default: 'efectivo:Efectivo,yape:Yape,transferencia:Transferencia',
+  },
+  {
+    clave: 'pos_doc_garantia',
+    seccion: SECCION_POS,
+    etiqueta: 'Tipos de documento en garantía',
+    descripcion:
+      'Tipos de documento que se pueden retener como garantía en el constructor de pedidos. Formato: "valor:Etiqueta" separado por comas, ej. "dni:DNI,carnet:Carnet ext.".',
+    tipo: 'texto',
+    default: 'dni:DNI,carnet:Carnet ext.,licencia:Licencia,otro:Otro',
+  },
+  {
+    clave: 'pos_fechas_rapidas',
+    seccion: SECCION_POS,
+    etiqueta: 'Fechas rápidas (entrega / devolución)',
+    descripcion:
+      'Atajos de fecha del constructor de pedidos, en JSON: {"entrega":[{"dias":N,"label":"..."}],"devolucion":[{"dias":N,"label":"..."}]}. "dias" es el desplazamiento desde hoy. Editar con cuidado: un JSON inválido hace que el sistema use el valor por defecto.',
+    tipo: 'texto',
+    default: '{"entrega":[{"dias":0,"label":"Hoy"},{"dias":1,"label":"Mañana"},{"dias":3,"label":"+3"},{"dias":7,"label":"+7"}],"devolucion":[{"dias":1,"label":"+1"},{"dias":2,"label":"+2"},{"dias":3,"label":"+3"}]}',
+  },
+  {
+    clave: 'pos_garantia_regla',
+    seccion: SECCION_POS,
+    etiqueta: 'Regla de garantía sugerida',
+    descripcion:
+      'Regla de negocio para sugerir/exigir garantía en un pedido con alquiler (ej. monto mínimo, o a partir de qué total del pedido es obligatoria). NO CONFIRMADA por el dueño — hoy no se aplica en ningún cálculo, la garantía la decide el cajero a mano en cada pedido. Ver docs/pendientes-negocio.md.',
+    tipo: 'texto',
+    default: '',
   },
 
   // ── Valores 360° (Fase 13 tarea 3, migración 0058) ─────────────────────────────────────────

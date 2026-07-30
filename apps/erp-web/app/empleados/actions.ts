@@ -10,6 +10,7 @@ import {
   type EditarEmpleadoInput,
   type NuevoEmpleadoInput,
 } from '../../lib/empleados-repo';
+import { togglePosCobro } from '../../lib/permisos-repo';
 
 async function exigirAdmin(): Promise<void> {
   const s = await getSesion();
@@ -68,5 +69,22 @@ export async function accionEstablecerContrasena(id: string, password: string): 
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error' };
+  }
+}
+
+// "Opera caja" (Fase 10, punto 4): toggle directo del permiso 'pos_cobro' desde /empleados, sin
+// tener que ir hasta /configuracion/permisos. `rolKey` es el rol EFECTIVO del empleado (su rolCod
+// derivado si tiene uno, si no su rol base) — togglePosCobro() ya avisa en su comentario que esto
+// es por ROL, no por persona: afecta a todos los que compartan ese rol/rol derivado.
+export async function accionTogglePosCobro(rolKey: string, activar: boolean): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await exigirAdmin();
+    await togglePosCobro(rolKey, activar);
+    revalidatePath('/empleados');
+    revalidatePath('/configuracion/permisos');
+    revalidatePath('/caja');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al cambiar el permiso de caja' };
   }
 }

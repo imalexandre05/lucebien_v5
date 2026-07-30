@@ -126,36 +126,6 @@ export async function movimientosSesion(sesionId: string): Promise<CajaMovimient
   }));
 }
 
-// Registrar un COBRO: ligado a un pedido; exige caja abierta en la sede del pedido.
-export async function registrarCobro(p: {
-  pedidoId: string;
-  monto: number;
-  metodo: string;
-  cobroTipo: 'adelanto' | 'saldo' | 'completo';
-  descripcion?: string;
-}): Promise<void> {
-  const sb = getServerClient();
-  const { data: ped, error: e1 } = await sb.from('pedidos').select('sede_cod').eq('id', p.pedidoId).maybeSingle();
-  if (e1) throw new Error(e1.message);
-  if (!ped) throw new Error('Pedido no encontrado');
-  const sede = (ped as { sede_cod: string }).sede_cod;
-  const ses = await sesionAbierta(sede);
-  if (!ses) throw new Error(`Abre la caja de ${sede} antes de registrar cobros.`);
-  const { error } = await sb.from('caja_movimientos').insert({
-    sesion_id: ses.id,
-    sede_cod: sede,
-    tipo: 'ingreso',
-    categoria: 'cobro',
-    monto: p.monto,
-    metodo: p.metodo,
-    pedido_id: p.pedidoId,
-    cobro_tipo: p.cobroTipo,
-    descripcion: p.descripcion ?? null,
-    registrado_por_id: await usuarioId(),
-  });
-  if (error) throw new Error(error.message);
-}
-
 // Registrar un EGRESO/gasto (o devolución de garantía): exige caja abierta en la sede.
 export async function registrarEgreso(p: {
   sede: string;

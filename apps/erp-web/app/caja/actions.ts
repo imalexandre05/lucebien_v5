@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { puede, type MatrizPermisos } from '@scilb/core';
-import { abrirCaja, cerrarCaja, registrarCobro, registrarEgreso, registrarGarantia } from '../../lib/caja-repo';
+import { abrirCaja, cerrarCaja, registrarEgreso, registrarGarantia } from '../../lib/caja-repo';
+import { pedidosRepo, PedidoRpcError } from '../../lib/pedidos-repo';
 import { getSesion } from '../../lib/auth';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
 
@@ -46,20 +47,28 @@ export async function accionCerrarCaja(sesionId: string, montoCierre: number): P
   }
 }
 
+// Cobros unificados (Fase 10, punto 2): /caja deja de insertar el `caja_movimientos` a mano
+// (`registrarCobro()` en lib/caja-repo.ts, que ya no se usa acá) y llama a la MISMA RPC
+// `pedido_cobrar` que usa el ticket de /pedidos (ver accionCobrarSaldoPedido en
+// app/pedidos/actions.ts) — un cobro desde cualquiera de las dos pantallas produce exactamente el
+// mismo asiento y deja el mismo `saldo` (columna generada, Fase 8). Ya no se pide "tipo de cobro"
+// a mano: pedido_cobrar lo deriva sola de cuánto queda por cobrar.
 export async function accionRegistrarCobro(p: {
   pedidoId: string;
   monto: number;
   metodo: string;
-  cobroTipo: 'adelanto' | 'saldo' | 'completo';
   descripcion?: string;
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<{ ok: boolean; error?: string; codigo?: string }> {
   const bloqueo = await exigirCajero();
   if (bloqueo) return { ok: false, error: bloqueo };
   try {
-    await registrarCobro(p);
+    await pedidosRepo.cobrar({ pedidoId: p.pedidoId, monto: p.monto, metodo: p.metodo, descripcion: p.descripcion });
     revalidatePath('/caja');
+    revalidatePath('/pedidos');
+    revalidatePath(`/pedidos/${p.pedidoId}`);
     return { ok: true };
   } catch (e) {
+    if (e instanceof PedidoRpcError) return { ok: false, error: e.message, codigo: e.codigo };
     return { ok: false, error: e instanceof Error ? e.message : 'Error al registrar cobro' };
   }
 }

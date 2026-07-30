@@ -48,11 +48,21 @@ export function PedidosConstructor({
   activos,
   sedeActual,
   cajaAbierta,
+  autoFocusCliente,
+  metodosPago,
+  docGarantia,
+  fechasRapidas,
 }: {
   clientes: ClienteOpcion[];
   activos: ActivoInventario[];
   sedeActual: string;
   cajaAbierta: boolean;
+  // `/caja` enlaza aquí con `?nuevo=1` (Fase 10, punto 1) para enfocar el buscador de cliente
+  // apenas se monta la página, sin tener que hacer clic primero.
+  autoFocusCliente?: boolean;
+  metodosPago?: { value: string; label: string }[];
+  docGarantia?: { value: string; label: string }[];
+  fechasRapidas?: { entrega: { dias: number; label: string }[]; devolucion: { dias: number; label: string }[] };
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -182,6 +192,13 @@ export function PedidosConstructor({
     [sedeActual],
   );
 
+  // Foco inicial al llegar desde `/caja` (`?nuevo=1`) — mismo gesto que el atajo `/`, pero
+  // disparado al montar en vez de por teclado.
+  useEffect(() => {
+    if (autoFocusCliente) clienteInputRef.current?.focus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement | null;
@@ -267,12 +284,14 @@ export function PedidosConstructor({
                 onFechaEntregaChange={setFechaEntrega}
                 fechaDevolucion={fechaDevolucion}
                 onFechaDevolucionChange={setFechaDevolucion}
+                offsetsEntrega={fechasRapidas?.entrega}
+                offsetsDevolucion={fechasRapidas?.devolucion}
               />
             </section>
 
             <section className="border-t border-line/60 pt-4">
               <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">④ Garantía</h2>
-              <GarantiaPanel value={garantia} onChange={setGarantia} />
+              <GarantiaPanel value={garantia} onChange={setGarantia} docOpciones={docGarantia} />
             </section>
 
             <section className="border-t border-line/60 pt-4">
@@ -294,6 +313,7 @@ export function PedidosConstructor({
           items={items}
           metodo={metodo}
           onMetodoChange={setMetodo}
+          metodosPago={metodosPago}
           recibido={recibido}
           onRecibidoChange={setRecibido}
           onRegistrar={registrar}

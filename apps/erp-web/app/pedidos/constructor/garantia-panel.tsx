@@ -20,8 +20,8 @@ const TIPO_OPCIONES: { value: TipoGarantia; label: string }[] = [
 ];
 
 // DNI/carnet/licencia/otro: clasificación genérica de documento de identidad retenido en mostrador
-// mientras dura el alquiler — no es un parámetro de negocio (precio/regla), es la lista fija que
-// pide el propio layout de la Fase 9.
+// mientras dura el alquiler. Fase 10: configurable desde `config` (`pos_doc_garantia`, ver
+// lib/pos-config.ts) — este default queda como fallback si la página no manda `docOpciones`.
 const DOC_OPCIONES = [
   { value: 'dni', label: 'DNI' },
   { value: 'carnet', label: 'Carnet ext.' },
@@ -30,7 +30,15 @@ const DOC_OPCIONES = [
 ];
 
 // ④ GARANTÍA — efectivo (monto retenido) | documento (retenido físicamente, sin monto) | ninguna.
-export function GarantiaPanel({ value, onChange }: { value: GarantiaSel; onChange: (v: GarantiaSel) => void }) {
+export function GarantiaPanel({
+  value,
+  onChange,
+  docOpciones,
+}: {
+  value: GarantiaSel;
+  onChange: (v: GarantiaSel) => void;
+  docOpciones?: { value: string; label: string }[];
+}) {
   return (
     <div className="space-y-2.5">
       <div>
@@ -50,7 +58,7 @@ export function GarantiaPanel({ value, onChange }: { value: GarantiaSel; onChang
       {value.tipo === 'documento' && (
         <div className="space-y-2">
           <OpcionBotones
-            opciones={DOC_OPCIONES}
+            opciones={docOpciones ?? DOC_OPCIONES}
             value={value.documentoTipo}
             onChange={(documentoTipo) => onChange({ ...value, documentoTipo })}
             ariaLabel="Tipo de documento"

@@ -2,12 +2,12 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Filter, Pencil, UserX, UserCheck, KeyRound, Plus, Info } from 'lucide-react';
-import { ROL_LABEL, ROLES_BASE, type Rol } from '@scilb/core';
+import { Filter, Pencil, UserX, UserCheck, KeyRound, Plus, Info, Wallet } from 'lucide-react';
+import { ROL_LABEL, ROLES_BASE, puede, type Rol, type MatrizPermisos } from '@scilb/core';
 import type { EmpleadoAdmin } from '../../lib/empleados-repo';
 import type { RolDerivado } from '../../lib/roles-repo';
 import type { Sede } from '../../lib/sedes-repo';
-import { accionEstadoEmpleado, accionEditarEmpleado, accionEstablecerContrasena, accionCrearEmpleado } from './actions';
+import { accionEstadoEmpleado, accionEditarEmpleado, accionEstablecerContrasena, accionCrearEmpleado, accionTogglePosCobro } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Button, buttonVariants } from '../../components/ui/button';
@@ -87,10 +87,12 @@ export function EmpleadosCliente({
   empleados,
   sedes,
   rolesDerivados,
+  matrizPermisos,
 }: {
   empleados: EmpleadoAdmin[];
   sedes: Sede[];
   rolesDerivados: RolDerivado[];
+  matrizPermisos: MatrizPermisos;
 }) {
   const router = useRouter();
   const [q, setQ] = useState('');
@@ -226,10 +228,20 @@ export function EmpleadosCliente({
                       </div>
                     </TD>
                     <TD>
-                      <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', rol.cls)}>
-                        {rol.label}
-                        {e.rolCod && <span className="ml-1 opacity-70">· {e.rolCod}</span>}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', rol.cls)}>
+                          {rol.label}
+                          {e.rolCod && <span className="ml-1 opacity-70">· {e.rolCod}</span>}
+                        </span>
+                        {puede(matrizPermisos, e.rol as Rol, 'pos_cobro', 'ver', e.rolCod) && (
+                          <span
+                            title="Este rol tiene el permiso de cajero (opera caja)"
+                            className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-medium text-[#7a6e0e]"
+                          >
+                            <Wallet className="h-3 w-3" strokeWidth={2} /> Opera caja
+                          </span>
+                        )}
+                      </div>
                     </TD>
                     <TD>
                       {e.activo ? (
@@ -295,6 +307,7 @@ export function EmpleadosCliente({
           emp={editar}
           sedes={sedes}
           rolesDerivados={rolesDerivados}
+          matrizPermisos={matrizPermisos}
           onClose={() => setEditar(null)}
           onSaved={() => {
             setEditar(null);
@@ -433,12 +446,14 @@ function EditarModal({
   emp,
   sedes,
   rolesDerivados,
+  matrizPermisos,
   onClose,
   onSaved,
 }: {
   emp: EmpleadoAdmin;
   sedes: Sede[];
   rolesDerivados: RolDerivado[];
+  matrizPermisos: MatrizPermisos;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -455,6 +470,32 @@ function EditarModal({
   const [salario, setSalario] = useState(emp.salarioBase);
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
+
+  // "Opera caja" (Fase 10, punto 4): refleja el permiso 'pos_cobro' del ROL seleccionado ahora
+  // mismo en el picker de arriba (no necesariamente el rol original del empleado, si el admin lo
+  // está cambiando en el mismo modal). admin/dueno quedan fuera: puede() los deja pasar siempre,
+  // sin importar la matriz — togglear no tendría ningún efecto.
+  const opcionRolActual = opciones.find((o) => o.valor === rolValor);
+  const esAdminODueno = opcionRolActual?.rolBase === 'admin' || opcionRolActual?.rolBase === 'dueno';
+  const [posCobroPending, startPosCobroTransition] = useTransition();
+  const [posCobroError, setPosCobroError] = useState('');
+  const operaCaja = opcionRolActual
+    ? puede(matrizPermisos, opcionRolActual.rolBase, 'pos_cobro', 'ver', opcionRolActual.rolCod)
+    : false;
+
+  const router = useRouter();
+  function togglePosCobro() {
+    if (!opcionRolActual) return;
+    setPosCobroError('');
+    startPosCobroTransition(async () => {
+      const r = await accionTogglePosCobro(rolValor, !operaCaja);
+      if (!r.ok) {
+        setPosCobroError(r.error ?? 'Error');
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   // Contraseña: acción propia, separada del guardado de perfil (distinto endpoint, distinto
   // feedback — no tiene sentido bloquear una por la otra).
@@ -546,6 +587,45 @@ function EditarModal({
           sedes={sedes}
           opciones={opciones}
         />
+
+        {/* "Opera caja" (Fase 10, punto 4): expone el permiso 'pos_cobro' del rol seleccionado
+            arriba como un toggle directo, en vez de mandar al admin hasta la matriz completa de
+            /configuracion/permisos. */}
+        {!esAdminODueno && (
+          <div className="rounded-md border border-line bg-paper/40 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
+                <div>
+                  <p className="text-sm font-medium text-navy">Opera caja</p>
+                  <p className="text-[11px] text-muted">
+                    Permiso de cajero (<span className="font-mono">pos_cobro</span>) del rol{' '}
+                    <span className="font-medium">{opcionRolActual?.label}</span> — aplica a TODOS
+                    los colaboradores con este rol, no solo a {emp.nombre.split(' ')[0]}.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={togglePosCobro}
+                disabled={posCobroPending}
+                aria-pressed={operaCaja}
+                className={cn(
+                  'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+                  operaCaja ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-line bg-white text-muted hover:border-gold/60',
+                )}
+              >
+                {posCobroPending ? 'Guardando…' : operaCaja ? 'Sí, opera caja' : 'No opera caja'}
+              </button>
+            </div>
+            {posCobroError && <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{posCobroError}</p>}
+          </div>
+        )}
+        {esAdminODueno && (
+          <p className="rounded-md bg-navy/5 px-3 py-2 text-[11px] text-muted">
+            Administrador/dueño siempre puede operar caja — no depende de este permiso.
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <div>

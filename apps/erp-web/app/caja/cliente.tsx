@@ -52,6 +52,7 @@ export function CajaCliente({
   resumen,
   pendientes,
   puedeCobrar,
+  metodosPago,
 }: {
   sede: string;
   sesion: CajaSesion | null;
@@ -59,6 +60,7 @@ export function CajaCliente({
   resumen: Resumen | null;
   pendientes: CobroPendiente[];
   puedeCobrar: boolean;
+  metodosPago?: { value: string; label: string }[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -71,7 +73,6 @@ export function CajaCliente({
   const [cPedido, setCPedido] = useState('');
   const [cMonto, setCMonto] = useState(0);
   const [cMetodo, setCMetodo] = useState('efectivo');
-  const [cTipo, setCTipo] = useState<'adelanto' | 'saldo' | 'completo'>('saldo');
   // Egreso.
   const [eMonto, setEMonto] = useState(0);
   const [eMetodo, setEMetodo] = useState('efectivo');
@@ -214,7 +215,7 @@ export function CajaCliente({
                     {puedeCobrar && (
                       <button
                         type="button"
-                        onClick={() => { setCPedido(p.pedidoId); setCMonto(p.saldo); setCTipo('saldo'); setCMetodo('efectivo'); setModal('cobro'); }}
+                        onClick={() => { setCPedido(p.pedidoId); setCMonto(p.saldo); setCMetodo('efectivo'); setModal('cobro'); }}
                         className="rounded-md border border-line px-2.5 py-1 text-xs text-navy transition hover:border-gold"
                       >
                         Cobrar
@@ -292,7 +293,7 @@ export function CajaCliente({
                 data-testid="confirmar-cobro"
                 disabled={!cPedido || cMonto <= 0}
                 pending={pending}
-                onClick={() => run(() => accionRegistrarCobro({ pedidoId: cPedido, monto: cMonto, metodo: cMetodo, cobroTipo: cTipo }))}
+                onClick={() => run(() => accionRegistrarCobro({ pedidoId: cPedido, monto: cMonto, metodo: cMetodo }))}
               >
                 {pending ? 'Registrando…' : `Cobrar ${soles(cMonto)}`}
               </Button>
@@ -317,17 +318,12 @@ export function CajaCliente({
             </div>
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-              <MetodoPagoBotones value={cMetodo} onChange={setCMetodo} ariaLabel="Método de pago" />
+              <MetodoPagoBotones value={cMetodo} onChange={setCMetodo} opciones={metodosPago} ariaLabel="Método de pago" />
             </div>
           </div>
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tipo de cobro</label>
-            <select value={cTipo} onChange={(e) => setCTipo(e.target.value as 'adelanto' | 'saldo' | 'completo')} className={fieldCls}>
-              <option value="adelanto">Adelanto</option>
-              <option value="saldo">Saldo</option>
-              <option value="completo">Pago completo</option>
-            </select>
-          </div>
+          {/* Sin selector de "tipo de cobro": lo deriva pedido_cobrar solo (adelanto/saldo/completo
+              según cuánto queda por cobrar) — mismo criterio que el ticket de /pedidos, así los dos
+              puntos de entrada producen exactamente el mismo asiento (Fase 10, punto 2). */}
           {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
         </Modal>
       )}
@@ -357,7 +353,7 @@ export function CajaCliente({
             </div>
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-              <MetodoPagoBotones value={eMetodo} onChange={setEMetodo} ariaLabel="Método de pago" />
+              <MetodoPagoBotones value={eMetodo} onChange={setEMetodo} opciones={metodosPago} ariaLabel="Método de pago" />
             </div>
           </div>
           <div>
@@ -398,7 +394,7 @@ export function CajaCliente({
             </div>
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-              <MetodoPagoBotones value={gMetodo} onChange={setGMetodo} ariaLabel="Método de pago" />
+              <MetodoPagoBotones value={gMetodo} onChange={setGMetodo} opciones={metodosPago} ariaLabel="Método de pago" />
             </div>
           </div>
           <div>

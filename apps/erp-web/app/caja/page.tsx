@@ -1,11 +1,13 @@
 import Link from 'next/link';
-import { History } from 'lucide-react';
+import { History, Plus } from 'lucide-react';
 import { puede, type MatrizPermisos } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
 import { sesionAbierta, movimientosSesion, cobrosPendientes, resumenMovimientos } from '../../lib/caja-repo';
+import { leerPosConfig } from '../../lib/pos-config';
 import { PageHeader } from '../../components/shell/page-header';
 import { buttonVariants } from '../../components/ui/button';
+import { cn } from '../../lib/cn';
 import { CajaCliente } from './cliente';
 
 // Cajero como permiso configurable (Fase 9): 'pos_cobro' — quien lo tiene puede abrir/cerrar
@@ -21,7 +23,7 @@ export default async function CajaPage() {
     matriz = {};
   }
   const puedeCobrar = sesion ? puede(matriz, sesion.usuario.rol, 'pos_cobro', 'ver', sesion.usuario.rolCod) : false;
-  const [ses, pendientes] = await Promise.all([sesionAbierta(sede), cobrosPendientes()]);
+  const [ses, pendientes, posConfig] = await Promise.all([sesionAbierta(sede), cobrosPendientes(), leerPosConfig()]);
   const movimientos = ses ? await movimientosSesion(ses.id) : [];
   const resumen = ses ? resumenMovimientos(ses, movimientos) : null;
 
@@ -31,12 +33,28 @@ export default async function CajaPage() {
         title="Caja"
         subtitle={`Sede ${sede || '—'} · cobros y arqueo diario`}
         action={
-          <Link href="/caja/historial" className={buttonVariants({ variant: 'outline' })}>
-            <History className="h-4 w-4" strokeWidth={1.75} /> Historial
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Fase 10, punto 1: lleva al constructor de /pedidos con el buscador de cliente ya
+                enfocado — el flujo de "vender algo nuevo" arranca desde acá, no hace falta pasar
+                primero por /pedidos a mano. */}
+            <Link href="/pedidos?nuevo=1" className={cn(buttonVariants({ variant: 'gold' }))}>
+              <Plus className="h-4 w-4" strokeWidth={2} /> Nuevo pedido
+            </Link>
+            <Link href="/caja/historial" className={buttonVariants({ variant: 'outline' })}>
+              <History className="h-4 w-4" strokeWidth={1.75} /> Historial
+            </Link>
+          </div>
         }
       />
-      <CajaCliente sede={sede} sesion={ses} movimientos={movimientos} resumen={resumen} pendientes={pendientes} puedeCobrar={puedeCobrar} />
+      <CajaCliente
+        sede={sede}
+        sesion={ses}
+        movimientos={movimientos}
+        resumen={resumen}
+        pendientes={pendientes}
+        puedeCobrar={puedeCobrar}
+        metodosPago={posConfig.metodosPago}
+      />
     </div>
   );
 }

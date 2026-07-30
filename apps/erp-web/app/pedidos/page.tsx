@@ -4,6 +4,7 @@ import { pedidosRepo } from '../../lib/pedidos-repo';
 import { clientesRepo } from '../../lib/clientes-repo';
 import { inventarioRepo } from '../../lib/inventario-repo';
 import { sesionAbierta, movimientosSesion, resumenMovimientos } from '../../lib/caja-repo';
+import { leerPosConfig } from '../../lib/pos-config';
 import { getSesion } from '../../lib/auth';
 import { hoyPeru } from '../../lib/fechas';
 import { PageHeader } from '../../components/shell/page-header';
@@ -18,15 +19,24 @@ const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 // garantía + cobro, con el ticket sticky al costado y el panel de pendientes debajo, sin modal ni
 // rutas nuevas para el flujo principal. Sede (Fase 2, "el dispositivo manda"): sesion.usuario.sede,
 // no hay ningún selector de sede en esta pantalla.
-export default async function PedidosPage() {
+//
+// `?nuevo=1` (Fase 10, punto 1): lo manda el botón "+ Nuevo pedido" de /caja — enfoca el buscador
+// de cliente apenas se monta, para no obligar a un clic extra al llegar desde ahí.
+export default async function PedidosPage({
+  searchParams,
+}: {
+  searchParams: { nuevo?: string };
+}) {
   const sesion = await getSesion();
   const sede = sesion?.usuario.sede ?? '';
+  const autoFocusCliente = searchParams.nuevo === '1';
 
-  const [pedidos, clientes, activos, ses] = await Promise.all([
+  const [pedidos, clientes, activos, ses, posConfig] = await Promise.all([
     pedidosRepo.listar(),
     clientesRepo.listar(),
     inventarioRepo.listar(),
     sesionAbierta(sede),
+    leerPosConfig(),
   ]);
   const movimientos = ses ? await movimientosSesion(ses.id) : [];
   const resumen = ses ? resumenMovimientos(ses, movimientos) : null;
@@ -69,6 +79,10 @@ export default async function PedidosPage() {
         activos={activos}
         sedeActual={sede}
         cajaAbierta={Boolean(ses)}
+        autoFocusCliente={autoFocusCliente}
+        metodosPago={posConfig.metodosPago}
+        docGarantia={posConfig.docGarantia}
+        fechasRapidas={posConfig.fechasRapidas}
       />
 
       <PedidosPendientes pedidos={pedidos} hoy={hoyPeru()} />

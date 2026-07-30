@@ -18,6 +18,7 @@ export function Ticket({
   items,
   metodo,
   onMetodoChange,
+  metodosPago,
   recibido,
   onRecibidoChange,
   onRegistrar,
@@ -33,6 +34,7 @@ export function Ticket({
   items: LineaLocal[];
   metodo: string;
   onMetodoChange: (m: string) => void;
+  metodosPago?: { value: string; label: string }[];
   recibido: number;
   onRecibidoChange: (v: number) => void;
   onRegistrar: () => void;
@@ -79,7 +81,7 @@ export function Ticket({
 
       <div>
         <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-        <MetodoPagoBotones value={metodo} onChange={onMetodoChange} />
+        <MetodoPagoBotones value={metodo} onChange={onMetodoChange} opciones={metodosPago} />
       </div>
 
       <MontoInput ref={montoInputRef} value={recibido} onChange={onRecibidoChange} total={total} label="Recibe" testId="ticket-recibido" />

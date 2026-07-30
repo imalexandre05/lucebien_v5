@@ -276,6 +276,48 @@ se registra.
 
 ---
 
+## Fase 10 — Caja integrada + configuración del POS (última fase del plan)
+
+- **`pos_garantia_regla` — sin definir, sin default numérico.** El plan pide la clave marcando
+  "default pendiente de confirmar" para la regla de negocio que decidiría cuándo la garantía es
+  obligatoria o cuál sería su monto sugerido según el pedido (ej. "obligatoria si el total supera
+  S/ X", "sugerir el Y% del total en alquileres"). No existe ningún cálculo así hoy en el sistema
+  viejo ni en el nuevo — inventar la fórmula sería la misma clase de invención que la instrucción
+  pide evitar. Se creó la clave en `config` (sección "Caja y POS") con valor por defecto **vacío**
+  y **sin ningún wiring** al constructor de pedidos: el cajero sigue decidiendo tipo/monto de
+  garantía a mano en cada pedido, exactamente como antes de esta fase. Cuando el dueño confirme la
+  regla, se implementa como validación/sugerencia en `garantia-panel.tsx` leyendo esta clave.
+- **`pos_metodos_pago` / `pos_doc_garantia` / `pos_fechas_rapidas` — formato de texto, no un tipo
+  "lista múltiple" nuevo en `ConfigTipo`.** El catálogo tipado de `/configuracion` (Fase 13) no
+  tiene un control para "lista de pares editable" — agregar uno sería una pieza de UI nueva fuera
+  del alcance de esta fase. Se optó por texto con un formato simple y documentado en la propia
+  descripción del parámetro (`valor:Etiqueta` separado por comas; JSON para las fechas, que tienen
+  2 sub-listas con offset numérico) — editable desde `/configuracion` como cualquier otro
+  parámetro de texto, con parseo defensivo en `lib/pos-config.ts` (un valor mal escrito cae al
+  default, nunca tumba `/caja` ni `/pedidos`). Los 3 defaults son EXACTAMENTE los que ya usaban
+  las pantallas antes de esta fase (no son valores nuevos inventados).
+- **"Opera caja" en `/empleados` es un permiso POR ROL, no por persona.** `pos_cobro` sigue
+  viviendo en `permisos_modulos`, clave por rol base o rol derivado (mismo mecanismo que toda la
+  matriz de permisos desde la Fase 1) — no existe una capa de permisos por-empleado en el sistema.
+  El toggle nuevo en `/empleados` es honesto al respecto: togglear "Opera caja" mientras se edita
+  un colaborador cambia el permiso del ROL que tiene seleccionado en ese momento, y por lo tanto
+  afecta a TODOS los colaboradores con ese mismo rol (o rol derivado), no solo al que se está
+  editando — el propio texto de la UI lo advierte. Si el dueño quiere que la caja se autorice
+  persona por persona independientemente del rol, hace falta una tabla nueva (ej.
+  `empleado_permisos_extra`) — cambio de schema a confirmar, no se inventó aquí.
+- **Limpieza de columnas viejas de cabecera (migración `0062`): las 5 se pudieron borrar.**
+  `pedidos.garantia_monto`, `tela`, `fecha_prueba`, `fecha_segunda_prueba` y `etapa_confeccion`
+  quedaron sin ningún `.ts` de `apps/erp-web` leyéndolas del lado cabecera (verificado por grep
+  antes de escribir la migración — todo el código vivo ya leía/escribía la columna homónima de
+  `pedido_items`, la línea, desde la Fase 8). Se aplicó contra `scilb` con `pedidos` en 2 filas
+  antes y después (no se tocó ningún dato, solo columnas). El único resto en TypeScript es
+  `pedidoSchema.garantiaMonto` en `packages/core/src/pedidos.ts` — un schema Zod ya marcado como
+  "compat retro" del modal de un solo ítem que la Fase 9 borró; queda como código muerto sin uso,
+  no se tocó en esta fase por no ser parte del punto 6 del plan (limpieza de columnas de BASE DE
+  DATOS, no de TypeScript).
+
+---
+
 ## Fuera de alcance del plan de 13 fases (registrado al cierre — Fase 13)
 
 El plan explícito de 13 fases marcaba estos módulos del sistema viejo como backlog, "para que la

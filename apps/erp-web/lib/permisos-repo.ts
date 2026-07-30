@@ -25,3 +25,33 @@ export async function guardarMatrizPermisos(filas: { rol: string; modulo: string
   const { error } = await sb.rpc('permisos_guardar_matriz', { p_filas: filas });
   if (error) throw new Error(error.message);
 }
+
+// "Opera caja" (Fase 10, punto 4): el permiso 'pos_cobro' YA existía, pero solo era editable
+// escondido en la matriz completa de /configuracion/permisos. Esto lo expone como un toggle
+// directo en /empleados sin inventar una capa de permisos nueva — sigue siendo un permiso POR ROL
+// (rolCod si el empleado tiene uno derivado, si no el rol base; mismo criterio que puede() en el
+// core), así que activarlo/desactivarlo afecta a TODOS los que compartan ese rol, no solo a un
+// empleado — la UI de /empleados lo deja explícito.
+//
+// `permisos_guardar_matriz` reemplaza la tabla ENTERA (delete + insert) — nunca se le manda un
+// payload parcial. Por eso esto relee la matriz completa, la convierte 1:1 a filas (mismas que ya
+// hay en la base, ni una de más ni de menos) y solo toca la celda [rolKey][pos_cobro] antes de
+// reescribir todo — así ninguna otra fila de la matriz se pierde en el camino.
+export async function togglePosCobro(rolKey: string, activar: boolean): Promise<void> {
+  const matriz = await leerMatrizPermisos();
+  const filas: { rol: string; modulo: string; acciones: Accion[] }[] = [];
+  for (const [rol, modulos] of Object.entries(matriz)) {
+    for (const [modulo, acciones] of Object.entries(modulos ?? {})) {
+      filas.push({ rol, modulo, acciones: [...(acciones ?? [])] });
+    }
+  }
+  const fila = filas.find((f) => f.rol === rolKey && f.modulo === 'pos_cobro');
+  if (fila) {
+    fila.acciones = activar ? Array.from(new Set([...fila.acciones, 'ver'])) : fila.acciones.filter((a) => a !== 'ver');
+  } else if (activar) {
+    filas.push({ rol: rolKey, modulo: 'pos_cobro', acciones: ['ver'] });
+  }
+  // activar=false sin fila previa: no-op (ya está desactivado, nada que reescribir).
+  if (!fila && !activar) return;
+  await guardarMatrizPermisos(filas);
+}
