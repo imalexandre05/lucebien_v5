@@ -9,15 +9,17 @@ export type ResultadoTrazabilidad = {
 
 type PedidoItemRow = {
   activo_id: string;
+  // Fase 8: etapa_confeccion bajó de la cabecera (pedidos) a la línea (pedido_items) — un pedido
+  // nuevo ya no escribe pedidos.etapa_confeccion (queda NULL), así que se lee de la propia línea
+  // que la búsqueda ya está recorriendo, no del pedido anidado.
+  etapa_confeccion?: string | null;
   // select('*') sobre la tabla relacionada (mismo patrón que pedidos-repo.ts): trae todas las
-  // columnas reales sin nombrarlas una a una, para no depender de que la migración 0048
-  // (fecha_entrega/etapa_confeccion) ya esté aplicada en la BD.
+  // columnas reales sin nombrarlas una a una.
   pedidos: {
     tipo: string;
     estado: string;
     fecha_devolucion: string | null;
     fecha_entrega?: string | null;
-    etapa_confeccion?: string | null;
     created_at: string;
     clientes: { nombre: string } | null;
   } | null;
@@ -42,7 +44,7 @@ export async function buscarTrazabilidad(query: string): Promise<ResultadoTrazab
   const ids = encontrados.map((a) => a.id);
   const { data, error } = await sb
     .from('pedido_items')
-    .select('activo_id, pedidos(*, clientes(nombre))')
+    .select('activo_id, etapa_confeccion, pedidos(*, clientes(nombre))')
     .in('activo_id', ids);
   if (error) throw new Error(error.message);
 
@@ -59,7 +61,7 @@ export async function buscarTrazabilidad(query: string): Promise<ResultadoTrazab
       estado: p.estado,
       clienteNombre: p.clientes?.nombre ?? null,
       fechaDevolucion: p.fecha_devolucion,
-      etapaConfeccion: p.etapa_confeccion ?? null,
+      etapaConfeccion: row.etapa_confeccion ?? null,
       createdAt: p.created_at,
     });
   }
