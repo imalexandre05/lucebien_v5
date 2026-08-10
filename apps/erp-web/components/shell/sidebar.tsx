@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, History, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, History, Send, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -25,6 +25,10 @@ const NAV: { section: string; items: Item[] }[] = [
       // MODULOS_SOLO_ALMACEN) a propósito — el plan pide que se vea en AMBOS perfiles de sede.
       { label: 'Solicitudes', href: '/solicitudes', icon: PackagePlus, modulo: 'solicitudes' },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt, modulo: 'pipeline' },
+      // Módulo portado del sistema viejo (routes/lavanderia.js): lo usan las TIENDAS para mandar
+      // ternos sucios + accesorios a granel al pipeline. En MODULOS_SOLO_POS (@scilb/core) — no
+      // aparece en sedes de perfil 'almacen'.
+      { label: 'Envío a Lavandería', href: '/envio-lavanderia', icon: Send, modulo: 'lavanderia_envio' },
       // Fase 12: Valores 360° es TODO el equipo evaluando a TODO el equipo (peer review), no un
       // reporte administrativo — vive en "Interno" junto a las tareas operativas de todos, no en
       // "Administración" con Evaluaciones/Pagos (esos siguen siendo confidenciales).

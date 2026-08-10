@@ -86,7 +86,7 @@ export type SedePerfil = 'pos' | 'almacen';
 // Módulos exclusivos de un perfil. Cualquier módulo que no aparezca en ninguna de las dos listas
 // (dashboard, notificaciones, empleados, configuración, estadísticas…) es neutral: se ve en
 // cualquier sede si puede() lo permite.
-const MODULOS_SOLO_POS: string[] = ['pedidos', 'caja', 'clientes'];
+const MODULOS_SOLO_POS: string[] = ['pedidos', 'caja', 'clientes', 'lavanderia_envio'];
 const MODULOS_SOLO_ALMACEN: string[] = ['pipeline'];
 
 // perfil null/undefined (admin sin sede activa, o dato aún no migrado): no filtra nada — nunca

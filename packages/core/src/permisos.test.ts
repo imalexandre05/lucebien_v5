@@ -41,10 +41,11 @@ describe('permiteModuloPerfil (Fase 2: perfil de sede pos/almacen)', () => {
     expect(permiteModuloPerfil('pedidos', null)).toBe(true);
     expect(permiteModuloPerfil('pipeline', undefined)).toBe(true);
   });
-  it('almacén oculta pedidos/caja/clientes', () => {
+  it('almacén oculta pedidos/caja/clientes/envío a lavandería', () => {
     expect(permiteModuloPerfil('pedidos', 'almacen')).toBe(false);
     expect(permiteModuloPerfil('caja', 'almacen')).toBe(false);
     expect(permiteModuloPerfil('clientes', 'almacen')).toBe(false);
+    expect(permiteModuloPerfil('lavanderia_envio', 'almacen')).toBe(false);
     expect(permiteModuloPerfil('pipeline', 'almacen')).toBe(true);
   });
   it('pos oculta pipeline', () => {
