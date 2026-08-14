@@ -32,11 +32,30 @@ export interface ParametrosSueldo {
   penalidadTardanza: number;
   /** Soles por almuerzo no entregado en especie (RN-15). */
   valorAlmuerzo: number;
+  /**
+   * Horas que hacen que un día cuente como **tiempo completo** y gane el almuerzo (RN-15).
+   * Default 12 (tiempo completo ≈ 12 h, medio tiempo ≈ 6 h). Se mira día por día, no el contrato
+   * de la persona: hay colaboradores con días completos y días de medio turno, y sólo los
+   * completos ganan el almuerzo. El administrador puede saltearse el umbral con
+   * `almuerzoHabilitadoPorAdmin`.
+   */
+  horasMinimasAlmuerzo: number;
   /** Soles por persona nueva capacitada (RN-16). */
   valorCapacitacion: number;
   /** Soles por semana con la meta cumplida (RN-12). */
   bonoMetaSemanal: number;
-  /** Fracción de la meta teórica que hay que superar para cobrar el bono (RN-12). */
+  /**
+   * Meta de venta de la semana, **pactada en el contrato** (RN-10). Varía por tienda, temporada,
+   * experiencia y turno: habitualmente S/3.000 a tiempo completo y S/1.500 a medio tiempo.
+   * `null` = no hay meta pactada y el sistema **sugiere** una con la fórmula del Excel
+   * (`horas de la semana × metaPorHora`), igual que sugiere un sueldo por escala en RN-14.
+   */
+  metaSemanal: number | null;
+  /**
+   * Fracción de la meta que hay que superar (RN-12). Default 1.00: el 0.85 del Excel descontaba
+   * una meta *derivada* de una fórmula para hacerla alcanzable; a una meta pactada y negociada no
+   * se le descuenta nada. Editable por si lo quieren de vuelta.
+   */
   factorMeta: number;
   /**
    * `true` (default): la meta semanal es la misma todas las semanas y sale de la plantilla
@@ -50,7 +69,13 @@ export interface ParametrosSueldo {
   pctComision: number;
   /** Sólo las boletas por encima de este monto entran a la base de comisión (RN-13). */
   montoMinimoComision: number;
-  /** Cuántos días de sueldo cuesta una falta injustificada (RN-09). */
+  /**
+   * Días de sueldo que una falta injustificada cuesta **EN TOTAL** (RN-09), no los días de
+   * castigo encima. Se descuenta `(dias − 1)` porque el día que no trabajó ya salió por RN-06:
+   * como el sueldo se paga por horas, no presentarse ya vale un día sin necesidad de castigo.
+   * Default 2 → pierde el día que no vino más uno de castigo. La falta justificada pierde sólo
+   * el día que no vino.
+   */
   diasDescuentoPorFalta: number;
   /**
    * Soles de venta esperados por hora contratada (RN-10). Default = 1500 / 33 exacto:
@@ -59,12 +84,6 @@ export interface ParametrosSueldo {
    * en vez de 7.500,00.
    */
   metaPorHora: number;
-  /**
-   * Horas mínimas trabajadas en un día para ganar el almuerzo (RN-15). La spec dice "jornada
-   * completa" pero no la define; 0 = cualquier día con ingreso y salida registrados, que es la
-   * única lectura que reproduce el caso de prueba (spec §9.3). Pendiente de confirmar.
-   */
-  horasMinimasAlmuerzo: number;
 }
 
 export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
@@ -72,15 +91,16 @@ export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
   tardanzasLibres: 3,
   penalidadTardanza: 5,
   valorAlmuerzo: 8,
+  horasMinimasAlmuerzo: 12,
   valorCapacitacion: 25,
   bonoMetaSemanal: 30,
-  factorMeta: 0.85,
+  metaSemanal: null,
+  factorMeta: 1,
   metaSemanalFija: true,
   pctComision: 0.02,
   montoMinimoComision: 120,
   diasDescuentoPorFalta: 2,
   metaPorHora: 1500 / 33,
-  horasMinimasAlmuerzo: 0,
 };
 
 /**
@@ -93,10 +113,11 @@ export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
 export function resolverParametros(overrides?: Partial<ParametrosSueldo>): ParametrosSueldo {
   const p: ParametrosSueldo = { ...PARAMETROS_SUELDO_DEFAULT };
   for (const [clave, valor] of Object.entries(overrides ?? {})) {
-    if (valor === undefined || valor === null) continue;
     if (!(clave in PARAMETROS_SUELDO_DEFAULT)) {
       throw new Error(`Parámetro de sueldo desconocido: "${clave}".`);
     }
+    // `metaSemanal` es el único que acepta null: significa "no hay meta pactada, sugerila".
+    if (valor === undefined || (valor === null && clave !== 'metaSemanal')) continue;
     (p as Record<string, unknown>)[clave] = valor;
   }
   for (const [clave, valor] of Object.entries(p)) {
@@ -106,6 +127,7 @@ export function resolverParametros(overrides?: Partial<ParametrosSueldo>): Param
       }
       continue;
     }
+    if (clave === 'metaSemanal' && valor === null) continue;
     if (typeof valor !== 'number' || !Number.isFinite(valor)) {
       throw new Error(`El parámetro "${clave}" tiene que ser un número, llegó: ${String(valor)}.`);
     }
@@ -172,6 +194,11 @@ export interface EntradaLiquidacion {
   reportes?: MovimientoAdmin[];
   bonosExtras?: MovimientoAdmin[];
   almuerzosEntregados?: number;
+  /**
+   * El administrador le habilitó los almuerzos sin importar las horas del día (RN-15). Con esto
+   * en `true`, cualquier día trabajado gana almuerzo aunque no llegue a `horasMinimasAlmuerzo`.
+   */
+  almuerzoHabilitadoPorAdmin?: boolean;
   personasCapacitadas?: number;
   parametros?: Partial<ParametrosSueldo>;
 }
@@ -304,7 +331,12 @@ function minutosDeHora(hora: unknown, donde: string): number {
   return h * 60 + min + seg / 60;
 }
 
-const r2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+// Normaliza el cero negativo: `-0` es distinto de `0` para Object.is, y un desglose que
+// muestra "-S/0.00" en una línea vacía confunde a quien lo lee.
+const r2 = (n: number): number => {
+  const v = Math.round((n + Number.EPSILON) * 100) / 100;
+  return v === 0 ? 0 : v;
+};
 
 /** Recorta una lista larga para que un mensaje de error siga siendo legible. */
 const primeros = (xs: string[], n = 5): string =>
@@ -516,8 +548,10 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
 
     if (horas > 0) {
       diasTrabajados += 1;
-      // RN-15: "jornada completa" no está definida en la spec; el mínimo es un parámetro.
-      if (horas >= p.horasMinimasAlmuerzo) diasConDerechoAlmuerzo += 1;
+      // RN-15: el almuerzo se gana por DÍA de tiempo completo, no por contrato de la persona.
+      if (horas >= p.horasMinimasAlmuerzo || entrada.almuerzoHabilitadoPorAdmin) {
+        diasConDerechoAlmuerzo += 1;
+      }
     }
 
     let esTardanza = false;
@@ -596,7 +630,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   }
   if (almuerzosEntregados > diasConDerechoAlmuerzo) {
     advertencias.push(
-      `Se entregaron ${almuerzosEntregados} almuerzos pero sólo ${diasConDerechoAlmuerzo} días dan derecho.`,
+      `Se entregaron ${almuerzosEntregados} almuerzos pero sólo ${diasConDerechoAlmuerzo} día(s) de tiempo completo dan derecho.`,
     );
   }
   const almuerzosAPagar = Math.max(0, diasConDerechoAlmuerzo - almuerzosEntregados);
@@ -629,16 +663,11 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     );
   }
   const ventasTotal = ventasValidas.reduce((s, v) => s + v.monto, 0);
-  const metaPeriodo = horasContratadas * p.metaPorHora; // RN-11
-  const metaAlcanzada = ventasTotal >= metaPeriodo;
-  const baseComision = ventasValidas // RN-13
-    .filter((v) => v.monto > p.montoMinimoComision)
-    .reduce((s, v) => s + v.monto, 0);
-  const comision = metaAlcanzada ? baseComision * p.pctComision : 0;
 
   // RN-12: la última semana absorbe los días sobrantes para que ninguna venta quede fuera, pero
   // su meta NO sube por eso: es la de una semana tipo (spec §9.2).
   const horasSemanaTipo = [...porDia.values()].reduce((s, d) => s + d.horas, 0);
+  let metaPeriodo = 0; // RN-11: la meta del mes es la suma de las semanales, no un cálculo aparte
   const semanas: SemanaLiquidacion[] = tramosSemanales(entrada.fechaInicio, entrada.fechaFin).map((t, i) => {
     const diasSemana = diasDelPeriodo(t.desde, t.hasta);
     let horas = 0;
@@ -650,8 +679,11 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
         contratadosSemana += 1;
       }
     }
+    // RN-10: manda lo pactado en el contrato. Sin meta pactada, se sugiere una por horas.
     const horasDeLaMeta = p.metaSemanalFija ? horasSemanaTipo : horas;
-    const meta = horasDeLaMeta * p.metaPorHora * p.factorMeta;
+    const metaBase = p.metaSemanal ?? horasDeLaMeta * p.metaPorHora;
+    const meta = metaBase * p.factorMeta;
+    metaPeriodo += meta;
     const ventasSemana = ventasValidas
       .filter((v) => v.fecha >= t.desde && v.fecha <= t.hasta)
       .reduce((s, v) => s + v.monto, 0);
@@ -668,6 +700,14 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     };
   });
   const semanasCumplidas = semanas.filter((s) => s.cumplida).length;
+
+  // RN-13: la comisión se desbloquea sólo al llegar a la meta del mes. Es un premio distinto al
+  // bono semanal, no un reemplazo: se pueden cobrar los dos.
+  const metaAlcanzada = ventasTotal >= metaPeriodo;
+  const baseComision = ventasValidas
+    .filter((v) => v.monto > p.montoMinimoComision)
+    .reduce((s, v) => s + v.monto, 0);
+  const comision = metaAlcanzada ? baseComision * p.pctComision : 0;
 
   // ── Movimientos administrativos (RN-18 y spec §6: sin motivo no se registra) ───────────────
   const sumarMovimientos = (movs: MovimientoAdmin[] | undefined, etiqueta: string): number => {
@@ -694,7 +734,11 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
 
   // ── Liquidación (RN-19) ───────────────────────────────────────────────────────────────────
   const capacitaciones = personasCapacitadas * p.valorCapacitacion; // RN-16
-  const descuentoFaltas = faltasInjustificadas * sueldoPorDia * p.diasDescuentoPorFalta; // RN-09
+  // RN-09: `diasDescuentoPorFalta` son los días que la falta cuesta EN TOTAL. Se resta 1 porque
+  // el día que no trabajó ya salió por RN-06 — el sueldo se paga por horas, así que no
+  // presentarse ya vale un día sin necesidad de castigo. La falta justificada pierde sólo ese día.
+  const diasCastigoPorFalta = Math.max(0, p.diasDescuentoPorFalta - 1);
+  const descuentoFaltas = faltasInjustificadas * sueldoPorDia * diasCastigoPorFalta;
   const descuentoTardanzas = tardanzasInjustificadas * p.penalidadTardanza; // RN-08
 
   const lineas: LineaLiquidacion[] = [
@@ -718,7 +762,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     {
       grupo: 'ingreso',
       concepto: 'Almuerzos',
-      detalle: `${diasConDerechoAlmuerzo} día(s) trabajado(s) − ${almuerzosEntregados} entregado(s) = ${almuerzosAPagar} × S/${p.valorAlmuerzo}`,
+      detalle: `${diasConDerechoAlmuerzo} día(s) de tiempo completo − ${almuerzosEntregados} entregado(s) = ${almuerzosAPagar} × S/${p.valorAlmuerzo}`,
       monto: r2(almuerzosAPagar * p.valorAlmuerzo),
       regla: 'RN-15',
     },
@@ -732,15 +776,15 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     {
       grupo: 'descuento',
       concepto: 'Faltas injustificadas',
-      detalle: `${faltasInjustificadas} falta(s) × S/${r2(sueldoPorDia)} × ${p.diasDescuentoPorFalta} día(s)`,
-      monto: -r2(descuentoFaltas),
+      detalle: `${faltasInjustificadas} falta(s) × S/${r2(sueldoPorDia)} × ${diasCastigoPorFalta} día(s) de castigo (el día no trabajado ya salió por horas)`,
+      monto: r2(-descuentoFaltas),
       regla: 'RN-09',
     },
     {
       grupo: 'descuento',
       concepto: 'Adelantos',
       detalle: `${(entrada.adelantos ?? []).length} adelanto(s) entregado(s) en el periodo`,
-      monto: -r2(adelantos),
+      monto: r2(-adelantos),
       regla: 'RN-19',
     },
     {
@@ -761,14 +805,14 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       grupo: 'final',
       concepto: 'Descuento por tardanzas',
       detalle: `${tardanzas} tardanza(s) − ${p.tardanzasLibres} libre(s) − ${tardanzasJustificadas} justificada(s) = ${tardanzasInjustificadas} × S/${p.penalidadTardanza}`,
-      monto: -r2(descuentoTardanzas),
+      monto: r2(-descuentoTardanzas),
       regla: 'RN-08',
     },
     {
       grupo: 'final',
       concepto: 'Reportes con descuento',
       detalle: `${(entrada.reportes ?? []).length} reporte(s) del periodo`,
-      monto: -r2(reportes),
+      monto: r2(-reportes),
       regla: 'RN-19',
     },
     {

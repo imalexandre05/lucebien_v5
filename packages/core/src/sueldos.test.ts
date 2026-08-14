@@ -99,6 +99,10 @@ const GOLDEN: EntradaLiquidacion = {
   reportes: [{ fecha: '2025-07-02', motivo: 'malogró plancha', monto: 20 }],
   bonosExtras: [{ fecha: '2025-07-05', motivo: 'pintado de habitación', monto: 20 }],
   almuerzosEntregados: 8,
+  // Sus días son de 11 h y el umbral de tiempo completo son 12: si el administrador no le
+  // hubiera habilitado los almuerzos, no ganaría ninguno. El Excel se los pagaba, así que estaba
+  // habilitado (RN-15).
+  almuerzoHabilitadoPorAdmin: true,
   personasCapacitadas: 2,
 };
 
@@ -122,19 +126,36 @@ describe('golden test — spec §5', () => {
     expect(l.asistencia.faltas).toBe(0);
   });
 
-  it('ventas y meta del periodo (RN-11, RN-13)', () => {
+  it('ventas y meta del periodo (RN-10, RN-11, RN-13)', () => {
     expect(l.ventas.total).toBe(7200);
-    expect(l.ventas.metaPeriodo).toBe(7500);
+    // Sin meta pactada, se sugiere por horas: 33 h × S/45.4545 = S/1.500 por semana.
+    // La del periodo es la suma de las cuatro, no un cálculo aparte.
+    expect(l.ventas.metaPeriodo).toBe(6000);
     expect(l.ventas.baseComision).toBe(2320);
-    expect(l.ventas.metaAlcanzada).toBe(false);
-    // El Excel pagaba S/46.40 igual. RN-13 lo condiciona a la meta.
-    expect(linea('Comisión').monto).toBe(0);
+    expect(l.ventas.metaAlcanzada).toBe(true);
+    expect(linea('Comisión').monto).toBe(46.4);
   });
 
-  it('almuerzos: cuenta días trabajados, no días del calendario (RN-15)', () => {
+  it('la meta pactada del contrato manda sobre la sugerida (RN-10)', () => {
+    const conMetaPactada = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanal: 3000 } });
+    expect(conMetaPactada.ventas.semanas.map((s) => s.meta)).toEqual([3000, 3000, 3000, 3000]);
+    expect(conMetaPactada.ventas.metaPeriodo).toBe(12000);
+    expect(conMetaPactada.ventas.semanasCumplidas).toBe(0); // vendió 1.800 por semana
+    expect(conMetaPactada.ventas.metaAlcanzada).toBe(false); // 7.200 < 12.000
+    expect(conMetaPactada.lineas.find((x) => x.concepto.startsWith('Comisión'))!.monto).toBe(0);
+  });
+
+  it('almuerzos: cuenta días de tiempo completo, no días del calendario (RN-15)', () => {
     expect(l.asistencia.diasConDerechoAlmuerzo).toBe(16);
     expect(l.asistencia.almuerzosAPagar).toBe(8); // el Excel pagaba 19
     expect(linea('Almuerzos').monto).toBe(64); // el Excel pagaba 152
+  });
+
+  it('sin la habilitación del administrador, 11 h no llegan a tiempo completo (RN-15)', () => {
+    const sinHabilitar = liquidarPeriodo({ ...GOLDEN, almuerzoHabilitadoPorAdmin: false });
+    expect(sinHabilitar.asistencia.diasConDerechoAlmuerzo).toBe(0);
+    expect(sinHabilitar.lineas.find((x) => x.concepto === 'Almuerzos')!.monto).toBe(0);
+    expect(sinHabilitar.advertencias.join(' ')).toMatch(/Se entregaron 8 almuerzos/);
   });
 
   it('horas fuera de contrato y capacitaciones (RN-16, RN-17)', () => {
@@ -174,20 +195,27 @@ describe('golden test — spec §5', () => {
     expect(l.ventas.semanas).toHaveLength(4);
     const [, , , s4] = l.ventas.semanas;
     // Las cuatro metas son iguales aunque la semana 4 dure 10 días y tenga 6 días contratados.
-    expect(l.ventas.semanas.map((s) => s.meta)).toEqual([1275, 1275, 1275, 1275]);
+    expect(l.ventas.semanas.map((s) => s.meta)).toEqual([1500, 1500, 1500, 1500]);
     expect(s4.dias).toBe(10);
     expect(s4.diasContratados).toBe(6);
-    expect(s4.cumplida).toBe(true); // vendió 1.800 > 1.275
+    expect(s4.cumplida).toBe(true); // vendió 1.800 > 1.500
     expect(l.ventas.semanasCumplidas).toBe(4);
     expect(linea('Bono por metas semanales').monto).toBe(120);
   });
 
+  it('el bono semanal y la comisión se cobran los dos (RN-12 y RN-13)', () => {
+    // Son premios distintos por metas distintas: el bono se gana semana a semana, la comisión
+    // se desbloquea al llegar a la meta del mes. Uno no reemplaza al otro.
+    expect(linea('Bono por metas semanales').monto).toBe(120);
+    expect(linea('Comisión').monto).toBe(46.4);
+  });
+
   it('total del periodo', () => {
-    expect(l.ingresos).toBe(805.82);
+    expect(l.ingresos).toBe(852.22);
     expect(l.descuentos).toBe(-190);
     expect(l.ajustes).toBe(104.48);
-    expect(l.subtotal).toBe(720.3);
-    expect(l.total).toBe(705.3);
+    expect(l.subtotal).toBe(766.7);
+    expect(l.total).toBe(751.7);
   });
 });
 
@@ -210,7 +238,7 @@ describe('datos incompletos (hallazgos del verificador)', () => {
     expect(p.penalidadTardanza).toBe(PARAMETROS_SUELDO_DEFAULT.penalidadTardanza);
     expect(p.valorAlmuerzo).toBe(PARAMETROS_SUELDO_DEFAULT.valorAlmuerzo);
     const l = liquidarPeriodo({ ...GOLDEN, parametros: { penalidadTardanza: undefined } });
-    expect(l.total).toBe(705.3);
+    expect(l.total).toBe(751.7);
   });
 
   it('un parámetro con basura adentro corta el cálculo', () => {
@@ -250,7 +278,7 @@ describe('datos incompletos (hallazgos del verificador)', () => {
     expect(l.asistencia.tardanzasJustificadas).toBe(0);
     expect(l.asistencia.tardanzasInjustificadas).toBe(7);
     expect(l.advertencias.join(' ')).toMatch(/4 justificación\(es\) cayeron en días/);
-    expect(l.total).toBe(685.3);
+    expect(l.total).toBe(731.7);
   });
 
   it('un ingreso sin salida avisa', () => {
@@ -261,7 +289,7 @@ describe('datos incompletos (hallazgos del verificador)', () => {
     });
     expect(l.advertencias.join(' ')).toMatch(/2025-06-30: tiene ingreso sin salida/);
     expect(l.asistencia.faltas).toBe(0); // marcó entrada, no es falta
-    expect(l.total).toBe(657.97);
+    expect(l.total).toBe(704.37);
   });
 
   it('horas fuera de contrato de otro periodo no se pagan, y las repetidas cortan', () => {
@@ -274,7 +302,7 @@ describe('datos incompletos (hallazgos del verificador)', () => {
       ],
     });
     expect(l.asistencia.horasFueraDeContrato).toBe(6);
-    expect(l.total).toBe(705.3);
+    expect(l.total).toBe(751.7);
     expect(l.advertencias.join(' ')).toMatch(/fuera del periodo y no se pagaron/);
 
     expect(() =>
@@ -370,7 +398,7 @@ describe('modalidad semanal — el mismo motor con periodo de 7 días (spec §1.
     expect(semanal.ventas.semanas).toHaveLength(1);
     expect(semanal.base.valorPorHora).toBeCloseTo(140 / 33, 6);
     expect(semanal.asistencia.diferenciaHoras).toBe(0);
-    expect(semanal.total).toBe(164); // 140 + 3 almuerzos × 8
+    expect(semanal.total).toBe(140); // sin almuerzo: sus días de 11 h no llegan a tiempo completo
   });
 });
 
@@ -392,14 +420,27 @@ describe('faltas (RN-09)', () => {
       ],
     });
     expect(l.asistencia.faltas).toBe(1);
-    expect(l.lineas.find((x) => x.concepto === 'Faltas injustificadas')!.monto).toBe(-80);
     expect(l.advertencias.join(' ')).toMatch(/1 falta\(s\)/);
-    // ⚠️ La falta cuesta 3 días en total: S/80 por RN-09 más los S/40 del día no trabajado que
-    // ya restó RN-06. Nadie confirmó que sea así — S4 quedó sin responder. Ver
-    // docs/pendientes-negocio.md. Este test fija el comportamiento actual para que cualquier
-    // cambio sea deliberado.
-    expect(l.lineas.find((x) => x.concepto === 'Diferencia de horas')!.monto).toBe(-40);
-    expect(l.total).toBe(16);
+    // El ejemplo textual del dueño (14-ago-2026): "si trabaja 3 días y cobra 40, y falta uno
+    // recibe 80 de dos días, pero al faltar un día se le quita de uno más, entonces solo cobra
+    // 40". Los dos días salen por caminos distintos y suman exactamente eso.
+    expect(l.lineas.find((x) => x.concepto === 'Diferencia de horas')!.monto).toBe(-40); // el día que no vino
+    expect(l.lineas.find((x) => x.concepto === 'Faltas injustificadas')!.monto).toBe(-40); // el castigo
+    expect(l.total).toBe(40);
+  });
+
+  it('una falta justificada cuesta 1 día: sólo el que no vino, sin castigo', () => {
+    const l = liquidarPeriodo({
+      ...base,
+      asistencia: [
+        { fecha: '2025-06-16', horaIngreso: '09:00', horaSalida: '20:00' },
+        { fecha: '2025-06-17', horaIngreso: null, horaSalida: null, faltaJustificada: true },
+        { fecha: '2025-06-18', horaIngreso: '09:00', horaSalida: '20:00' },
+      ],
+    });
+    expect(l.asistencia.faltasInjustificadas).toBe(0);
+    expect(l.lineas.find((x) => x.concepto === 'Faltas injustificadas')!.monto).toBe(0);
+    expect(l.total).toBe(80); // 120 − los 40 del día que no vino
   });
 
   it('un día sin horario y sin ingreso no es falta', () => {
@@ -465,7 +506,7 @@ describe('validaciones (spec §6)', () => {
 
   it('los almuerzos nunca son negativos y avisan cuando no cuadran', () => {
     const l = liquidarPeriodo({ ...minimo, almuerzosEntregados: 5 });
-    expect(l.asistencia.diasConDerechoAlmuerzo).toBe(3);
+    expect(l.asistencia.diasConDerechoAlmuerzo).toBe(0); // 11 h no llegan a las 12 de tiempo completo
     expect(l.asistencia.almuerzosAPagar).toBe(0);
     expect(l.advertencias.join(' ')).toMatch(/Se entregaron 5 almuerzos/);
   });
@@ -503,7 +544,7 @@ describe('parámetros configurables (spec §3.3)', () => {
 
   it('metaSemanalFija:false vuelve a la RN-12 original (opción A de la spec §9.2)', () => {
     const proporcional = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanalFija: false } });
-    expect(proporcional.ventas.semanas.map((s) => s.meta)).toEqual([1275, 1275, 1275, 2550]);
+    expect(proporcional.ventas.semanas.map((s) => s.meta)).toEqual([1500, 1500, 1500, 3000]);
     expect(proporcional.ventas.semanasCumplidas).toBe(3);
     expect(proporcional.total).toBe(675.3);
   });
