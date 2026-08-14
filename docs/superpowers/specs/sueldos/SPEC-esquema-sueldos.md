@@ -649,13 +649,15 @@ llama por `/rest/v1/rpc`.
 
 Cada paso deja el sistema en un estado usable. Ninguno depende de la API del otro sistema.
 
-1. **`0068`** — `btree_gist`, el tipo `timerange`, las cinco tablas, las columnas de `asistencias`,
-   RLS, los triggers de auditoría y los tres triggers de inmutabilidad. Sembrar las 13 claves de
-   `config`. **Sin RPC**: la `0068` es sólo el esquema, para que el diff se pueda revisar entero.
-2. **`0069`** — las tres RPC de §8, cada una con su guard.
-3. **`config-catalogo.ts`** — las 13 entradas y la sección `'Sueldos'`.
+1. ✅ **`0068`** — `btree_gist`, el tipo `timerange`, las cinco tablas, las columnas de
+   `asistencias`, RLS, los triggers de auditoría y los tres triggers de inmutabilidad. Sembrar las
+   13 claves de `config`. **Aplicada y verificada el 14-ago-2026.**
+2. ✅ **`0069`** — las tres RPC de §8, cada una con su guard, más el `check` de `'trabajado'`.
+   **Aplicada y verificada el 14-ago-2026** con dos escenarios completos y una prueba de RLS como
+   colaborador (ve cero filas de todo, la RPC lo rechaza, no puede escribirse un bono).
+3. ✅ **`config-catalogo.ts`** — las 13 entradas y la sección `'Sueldos'`. Hecho.
 4. **`sueldos-repo.ts`** con `getServerClient()`. **No** `getAdminClient()`: serían siete archivos
-   y el no-negociable 3 lo prohíbe.
+   y el no-negociable 3 lo prohíbe. ← **acá va lo siguiente**
 5. **Pantalla del acuerdo**: pactar sueldo, horario y overrides. Sin esto no hay nada que liquidar
    (B-01).
 6. **Pantalla de asistencia**: declarar la condición de cada día. Sin esto, B-02.
