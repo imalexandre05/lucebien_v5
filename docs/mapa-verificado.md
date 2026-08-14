@@ -90,14 +90,32 @@ pipeline no otorgan puntos. Pendiente de confirmar si deberían.
 
 Tardanza: `eval_tardanza_min_por_punto = 15` (se pierde 1 punto cada 15 minutos acumulados).
 
-### Ciclo de evaluación — regla confirmada por el dueño
+### Ciclo de evaluación — regla completa, confirmada el 13-ago-2026
 
-Del día de ingreso al día anterior del mes siguiente. Quien ingresó un día 5 se evalúa del 5 al 4.
-La evaluación ocurre el día anterior al cumplimiento.
+**La regla, en una línea:** el ciclo termina el día anterior al próximo aniversario de ingreso; si
+ese aniversario no existe en el mes siguiente, termina el último día de ese mes.
 
-**Verificado ejecutando `calcularCiclo()`:** la regla ya está bien implementada para los días 1 al
-28. Falla sólo para los días 29, 30 y 31 cuando el mes siguiente es más corto — devuelve un ciclo
-que todavía no empezó. Hipótesis del dueño (sin confirmar): recortar al último día del mes.
+```
+hasta = próximo_aniversario − 1 día
+        si el aniversario no existe (entró 29/30/31 y el mes siguiente es más corto)
+        → hasta = último día de ese mes
+```
+
+| Entra el | Mes siguiente | Se evalúa el | Por qué |
+|---|---|---|---|
+| 1 | cualquiera | último día del mes | el día antes del 1 del próximo |
+| 5 | cualquiera | 4 | aniversario − 1 |
+| 29 | 30 o 31 días | 28 | aniversario − 1 |
+| 30 | 30 días | 29 | aniversario − 1 |
+| 31 | 30 días | **30** | el 31 no existe → último día |
+| 31 | 28 días | **28** | el 31 no existe → último día |
+
+**Además:** el administrador puede fijar el periodo a mano (de qué día a qué día) y el sistema
+adapta todo a esa cantidad de días. La regla automática es sólo el default.
+
+**Estado del código:** `calcularCiclo()` está bien para los días 1 al 28. Para 29, 30 y 31 hereda
+el "rollover" de calendario de JavaScript (31 de febrero → 3 de marzo) en vez de recortar al
+último día. **Es un defecto y ahora sí hay regla escrita para arreglarlo.**
 
 ---
 
@@ -136,6 +154,15 @@ que todavía no empezó. Hipótesis del dueño (sin confirmar): recortar al últ
 | Auditoría | *"Todo debe registrarse"*. Hoy sólo 5 lugares | Dueño |
 | Tienda Trece | **Entra al sistema nuevo** como tienda normal | Dueño |
 | Adelantos | Exigen mínimo una semana trabajada ese mes como garantía | Dueño |
+| Descuento por tardanza | S/5, editable. 3 libres. Las justificadas no descuentan; el admin decide qué se justifica | Dueño |
+| Falta **injustificada** | Descuenta **2 días** de trabajo | Dueño |
+| Falta **justificada** | Descuenta **1 día**, y preferiblemente se recupera | Dueño |
+| Ciclo de evaluación con ingreso 29/30/31 | Se recorta al último día del mes cuando el aniversario no existe. El admin además puede fijar el periodo a mano | Dueño |
+| Horas de cierre de turno | Se quedan como están: 15:00 mañana, 23:00 tarde, 23:00 cierre | Dueño |
+| Margen de gracia para reporte sin evaluar | **No hay.** Se evalúa sí o sí antes de crear otro | Dueño |
+| Bono por metas de venta en la evaluación | Lo pone el **administrador a mano**. Depende de temporada, tienda, turno y tipo de contrato | Dueño |
+| Meta de puntos que paga dinero | Se define después de medir cuántos puntos junta la gente | Dueño |
+| El Excel de sueldos | Es una **plantilla de referencia**, no la planilla real. Sirve para entender el flujo, no para copiar sus valores | Alexander |
 
 ---
 

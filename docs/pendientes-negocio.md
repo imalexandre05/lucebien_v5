@@ -325,8 +325,12 @@ está quemado en el código. **Ninguno está confirmado por el dueño.**
 
 - **Una falta cuesta TRES días de sueldo, no dos.** RN-09 descuenta 2 días, y RN-06 ya había
   restado el día de horas que no trabajó. Con S/120 de sueldo y 3 días contratados, una sola falta
-  deja el pago del periodo en S/16. Nadie confirmó que sea así — es exactamente lo que S4 habría
-  respondido. **Preguntar antes de que esto liquide a alguien.**
+  deja el pago del periodo en S/16.
+  **→ S4 respondida el 13-ago-2026:** *"las faltas injustificadas descuentan dos días de trabajo,
+  las justificadas solo descuenta un día, pero se deben recuperar preferiblemente"*. Falta
+  precisar si esos 2 días son **el total** (y entonces el motor descuenta uno de más) o **además**
+  del día no trabajado. Y hay una regla nueva: **la falta justificada descuenta 1 día**, cuando hoy
+  el motor la deja en cero. Ninguna de las dos se implementó todavía: van con spec primero.
 - **La meta semanal fija también aplica a periodos de menos de una semana.** Quien entra a mitad
   de semana tiene meta del periodo proporcional pero meta semanal completa: no puede cobrar el
   bono aunque venda bien.
