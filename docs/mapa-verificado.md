@@ -171,6 +171,7 @@ el "rollover" de calendario de JavaScript (31 de febrero → 3 de marzo) en vez 
 | Puntos de un terno | Por conjunto. Si se despieza, 60% saco / 40% pantalón, editable | Dueño |
 | Tardanza en día sin horario | **No cuenta.** Sólo se le paga el tiempo que estuvo | **Confirmado** 14-ago |
 | Meta semanal en meses de 31 días | **Fija.** La misma meta pactada para todas las semanas — funciona como periodo de gracia | **Confirmado por el dueño** 14-ago |
+| Licencia y descanso | **No son estados nuevos.** Una licencia es una falta que el administrador marca como justificada, con evidencia que aporta el colaborador; si no la marca, queda injustificada. El descanso semanal no necesita registro: no es día contratado | **Confirmado** 14-ago |
 | Jornada habitual | 6 días de trabajo y 1 de descanso; a veces trabajan todos. El modelo es **por horas** y muy variable | Alexander |
 | Contratos de pocos días (sólo domingos, sólo fines de semana) | Existen, pero **el contrato mínimo es de un mes**. Por eso se paga a fin de mes y no por día | Alexander |
 | Los 3 días de gracia de tardanza | El administrador decide **por contrato** si ese acuerdo los tiene habilitados. Con pocos días de trabajo al mes, no se justifican | Alexander |

@@ -205,19 +205,27 @@ alter table asistencias add column if not exists motivo_justificacion text;
 - **`falta`** es una declaración explícita del administrador. Sólo eso alimenta RN-09.
 - Las 13 filas que existen hoy quedan en `sin_dato`, que es exactamente lo que son.
 
-> **`'descanso'` y `'licencia'` quedan fuera hasta que exista la regla.** El borrador las incluía.
-> El motor no las puede representar: `RegistroAsistencia` sólo distingue *hay `horaIngreso`* de *no
-> hay* (= falta), con `faltaJustificada` como único matiz. Un día contratado marcado `'licencia'`
-> tiene dos destinos y los dos son malos: si la RPC lo manda con el ingreso en null y sin
-> justificar, es una falta injustificada y **cuesta dos días de sueldo**; si lo omite, el motor
-> corta con *"Faltan N día(s) contratado(s)"*.
+> ✅ **`'descanso'` y `'licencia'` NO hacen falta, y esa es la respuesta definitiva**
+> (Alexander, 14-ago-2026, después de aplicar la `0068`).
 >
-> Hoy no se pierde nada: el día de descanso semanal **no es un día contratado** —no tiene turno en
-> la plantilla— así que no necesita fila. La licencia sí va a hacer falta, y va a
-> `docs/pendientes-negocio.md` como pregunta para el administrador: *¿una licencia se paga, se
-> descuenta como falta justificada, o no cuenta como día contratado?* Agregar el valor después es
-> un `alter constraint`; agregarlo ahora sin la regla es descontarle dos días a alguien que estaba
-> de licencia médica.
+> Una licencia **es una falta que el administrador marca como justificada**. Sus palabras: *"se
+> justifican, y se evidencian con pruebas del colaborador, es un acuerdo entre el colaborador y
+> administrador; el administrador solo colocaría que ese día fue justificado, y si lo deja, pues no
+> fue justificado"*. Se representa con las columnas que ya existen:
+>
+> | Situación | `condicion` | `falta_justificada` |
+> |---|---|---|
+> | Licencia acordada, con evidencia | `falta` | `true` — pierde sólo el día que no vino |
+> | No vino y no avisó | `falta` | `false` (el default) — pierde ese día más uno de castigo |
+> | Día de descanso semanal | *no hay fila* | — no es un día contratado, no tiene turno en la plantilla |
+>
+> **Que el default sea "no justificada" es exactamente lo que él describe:** justificar es un acto
+> del administrador, y no hacer nada deja la falta como injustificada. El motivo del acuerdo va en
+> `motivo_justificacion`.
+>
+> Un tercer valor habría sido peor de dos maneras: el motor no lo sabe leer (`RegistroAsistencia`
+> sólo distingue *hay `horaIngreso`* de *no hay*), y habría dos formas distintas de decir lo mismo
+> conviviendo en la misma columna.
 
 > **La regla que esto protege:** el motor exige que todo día contratado tenga su fila y que la
 > falta se **declare** (`SPEC-sistema-sueldos.md` §6). Generar filas automáticas con la hora en

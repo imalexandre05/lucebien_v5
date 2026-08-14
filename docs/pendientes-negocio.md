@@ -441,13 +441,18 @@ pisar **por contrato**, como pidió Alexander.
 
 ### Lo que la capa de datos dejó abierto (14-ago-2026)
 
-- **🔴 Cómo se registra una licencia.** El `check` de `asistencias.condicion` quedó en tres valores
-  —`sin_dato`, `trabajado`, `falta`— porque el motor no sabe representar una licencia: sólo
-  distingue *hay hora de ingreso* de *no hay*. Un día contratado marcado "licencia" hoy costaría
-  **dos días de sueldo** o cortaría la liquidación. **Preguntar al administrador:** una licencia
-  ¿se paga, se descuenta como falta justificada, o directamente no cuenta como día contratado?
-  Hasta que haya respuesta, una licencia no se puede cargar. El día de descanso semanal no hace
-  falta: no es un día contratado.
+- ✅ **Cómo se registra una licencia — RESUELTO el 14-ago-2026.** Una licencia **es una falta que el
+  administrador marca como justificada**: *"se justifican, y se evidencian con pruebas del
+  colaborador, es un acuerdo entre el colaborador y administrador; el administrador solo colocaría
+  que ese día fue justificado, y si lo deja, pues no fue justificado"*. O sea `condicion = 'falta'`
+  con `falta_justificada = true`, que pierde sólo el día que no vino y ningún castigo. **El esquema
+  ya lo soporta tal cual** y el default `false` es justamente lo que él describe: justificar es un
+  acto del administrador, y no hacer nada deja la falta como injustificada. El día de descanso
+  semanal no necesita fila: no es un día contratado.
+- **La evidencia de la justificación no se adjunta, se describe.** Hoy sólo hay
+  `motivo_justificacion` (texto). Si el administrador quiere guardar la constancia médica o el
+  mensaje, hace falta un adjunto — se puede resolver con el mismo storage de Supabase que usa
+  `mt_*`. Preguntar si lo quiere antes de construir la pantalla de asistencia.
 - **Turno partido con hueco.** La asistencia se colapsa con `min(entrada)` / `max(salida)` por día,
   así que un turno con hueco al mediodía pagaría el hueco. Hoy no existe ninguno; si aparece, hay
   que decidir antes de liquidarlo.
