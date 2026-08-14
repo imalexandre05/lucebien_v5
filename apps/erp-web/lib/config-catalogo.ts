@@ -31,6 +31,7 @@ const SECCION_REPORTES = 'Reportes de turno';
 const SECCION_INVENTARIO = 'Inventario';
 const SECCION_VALORES = 'Valores 360°';
 const SECCION_POS = 'Caja y POS';
+const SECCION_SUELDOS = 'Sueldos';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
 // simplemente no se muestran; "Personalizados" — parámetros creados por el admin — va siempre al
@@ -38,6 +39,7 @@ const SECCION_POS = 'Caja y POS';
 export const ORDEN_SECCIONES = [
   SECCION_PUNTOS,
   SECCION_EVALUACION,
+  SECCION_SUELDOS,
   SECCION_REPORTES,
   SECCION_INVENTARIO,
   SECCION_POS,
@@ -248,6 +250,155 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 1,
     max: 31,
     step: 1,
+  },
+
+  // ── Sueldos (packages/core/src/sueldos.ts::PARAMETROS_SUELDO_DEFAULT, migración 0068) ───────
+  // Son 13 de los 14 parámetros del motor. `metaSemanal` NO está acá a propósito: es
+  // `number | null` y el null significa "no hay meta pactada, sugerila", cosa que una fila de
+  // texto no puede expresar. Vive en el contrato (sueldo_acuerdos.parametros).
+  //
+  // Todos se pueden pisar POR CONTRATO desde el mismo jsonb, con la clave en camelCase. Lo de acá
+  // es el default de la empresa.
+  {
+    clave: 'sueldo_tolerancia_minutos',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Tolerancia de ingreso (minutos)',
+    descripcion:
+      'Minutos de gracia después de la hora contratada antes de que el ingreso cuente como tardanza. Depende del acuerdo de cada persona: se puede cambiar por contrato.',
+    tipo: 'numero',
+    default: '10',
+    min: 0,
+    step: 1,
+  },
+  {
+    clave: 'sueldo_tardanzas_libres',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Tardanzas libres por periodo',
+    descripcion:
+      'Cuántas tardanzas del periodo no se descuentan nunca. Es un periodo de gracia; las que pasan de esta cantidad sí se cobran.',
+    tipo: 'numero',
+    default: '3',
+    min: 0,
+    step: 1,
+  },
+  {
+    clave: 'sueldo_penalidad_tardanza',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Descuento por tardanza (S/)',
+    descripcion:
+      'Soles que se descuentan por cada tardanza injustificada, una vez pasadas las libres. El administrador puede justificar una tardanza y entonces no se cobra.',
+    tipo: 'numero',
+    default: '5',
+    min: 0,
+    step: 0.5,
+  },
+  {
+    clave: 'sueldo_valor_almuerzo',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Valor del almuerzo (S/)',
+    descripcion:
+      'Soles que se pagan por cada almuerzo al que la persona tuvo derecho y NO se le entregó en especie. Los entregados se registran y se restan.',
+    tipo: 'numero',
+    default: '8',
+    min: 0,
+    step: 0.5,
+  },
+  {
+    clave: 'sueldo_horas_minimas_almuerzo',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Horas para que un día gane almuerzo',
+    descripcion:
+      'Horas trabajadas que hacen que un día cuente como tiempo completo y gane almuerzo. Se mira día por día, no el contrato: hay quien tiene días completos y días de medio turno, y sólo los completos ganan. El administrador puede habilitarlo igual desde el contrato.',
+    tipo: 'numero',
+    default: '12',
+    min: 0,
+    step: 0.5,
+  },
+  {
+    clave: 'sueldo_valor_capacitacion',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Pago por persona capacitada (S/)',
+    descripcion:
+      'Soles que se pagan por cada persona nueva que el colaborador capacitó en el periodo. No es un valor fijo: depende de qué tan bien se capacite, y está pendiente de confirmar con el administrador.',
+    tipo: 'numero',
+    default: '25',
+    min: 0,
+    step: 1,
+  },
+  {
+    clave: 'sueldo_bono_meta_semanal',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Bono por semana con la meta cumplida (S/)',
+    descripcion:
+      'Soles que gana la persona por cada semana del periodo en la que llegó a su meta de venta. Es un premio semanal fijo: una semana más larga no sube la meta.',
+    tipo: 'numero',
+    default: '30',
+    min: 0,
+    step: 5,
+  },
+  {
+    clave: 'sueldo_factor_meta',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Factor de la meta sugerida',
+    descripcion:
+      'Fracción de la meta que hay que superar para ganar el bono. El Excel usaba 0,85 para hacer alcanzable una meta que salía de una fórmula; a una meta pactada y negociada no se le descuenta nada, por eso el default es 1,00. Sólo afecta a la meta SUGERIDA, nunca a la pactada en el contrato.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    step: 0.05,
+  },
+  {
+    clave: 'sueldo_meta_semanal_fija',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Meta semanal fija',
+    descripcion:
+      'Encendido: la meta es la misma todas las semanas y sale de la plantilla semanal completa. Una semana que absorbe los días sobrantes del mes NO sube su meta — la persona no elige que el mes tenga 31 días. Apagado: la meta sale de las horas contratadas de cada tramo.',
+    tipo: 'booleano',
+    default: 'true',
+  },
+  {
+    clave: 'sueldo_pct_comision',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Comisión sobre ventas (fracción)',
+    descripcion:
+      'Fracción de la base de comisión que se paga. 0,02 = 2%. Sólo comisionan las semanas en las que la persona llegó a su meta.',
+    tipo: 'numero',
+    default: '0.02',
+    min: 0,
+    max: 1,
+    step: 0.005,
+  },
+  {
+    clave: 'sueldo_monto_minimo_comision',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Monto mínimo de boleta para comisionar (S/)',
+    descripcion:
+      'Sólo las boletas por encima de este monto entran a la base de comisión. Se mira el total de la boleta, no cada producto.',
+    tipo: 'numero',
+    default: '120',
+    min: 0,
+    step: 10,
+  },
+  {
+    clave: 'sueldo_dias_descuento_por_falta',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Días de sueldo que cuesta una falta',
+    descripcion:
+      'Días EN TOTAL que pierde quien falta sin justificar, contando el día que no vino. Con 2, pierde ese día más uno de castigo. Una falta justificada pierde sólo el día que no vino, sin castigo.',
+    tipo: 'numero',
+    default: '2',
+    min: 1,
+    step: 1,
+  },
+  {
+    clave: 'sueldo_meta_por_hora',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Venta esperada por hora contratada (S/)',
+    descripcion:
+      'Sólo se usa para SUGERIR una meta cuando el contrato no tiene una pactada: meta = horas de la semana × este valor. No es un valor fijo, es un indicativo. Ojo: guardarlo redondeado a 45,4545 deja la meta del periodo en 7.499,99 en vez de 7.500 y el bono no se paga — el default trae todos los decimales de 1500 ÷ 33.',
+    tipo: 'numero',
+    default: '45.45454545454545',
+    min: 0,
   },
 ];
 
