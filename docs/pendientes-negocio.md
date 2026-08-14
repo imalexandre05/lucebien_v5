@@ -433,6 +433,30 @@ S/8 el almuerzo · 12 h para ganarlo · S/25 la capacitación · S/30 el bono se
 meta 1,00 · 2% de comisión sobre boletas mayores a S/120 · una falta cuesta 2 días de sueldo en
 total · meta semanal pactada en el contrato (sin pactar, se sugiere por horas a S/45,4545).
 
+**Desde la migración `0068` (14-ago-2026) los 13 primeros son filas de `config`**, con las claves
+`sueldo_*`, así que el administrador los edita desde `/configuracion` en cuanto se sumen al
+catálogo de `config-catalogo.ts`. La meta semanal no va ahí: vive en el contrato, porque su
+"sin valor" significa *sugerila* y una fila de texto no puede decir eso. La tolerancia se puede
+pisar **por contrato**, como pidió Alexander.
+
+### Lo que la capa de datos dejó abierto (14-ago-2026)
+
+- **🔴 Cómo se registra una licencia.** El `check` de `asistencias.condicion` quedó en tres valores
+  —`sin_dato`, `trabajado`, `falta`— porque el motor no sabe representar una licencia: sólo
+  distingue *hay hora de ingreso* de *no hay*. Un día contratado marcado "licencia" hoy costaría
+  **dos días de sueldo** o cortaría la liquidación. **Preguntar al administrador:** una licencia
+  ¿se paga, se descuenta como falta justificada, o directamente no cuenta como día contratado?
+  Hasta que haya respuesta, una licencia no se puede cargar. El día de descanso semanal no hace
+  falta: no es un día contratado.
+- **Turno partido con hueco.** La asistencia se colapsa con `min(entrada)` / `max(salida)` por día,
+  así que un turno con hueco al mediodía pagaría el hueco. Hoy no existe ninguno; si aparece, hay
+  que decidir antes de liquidarlo.
+- **Trabajo fuera del horario pactado (RN-17).** El motor lo recibe aparte. El esquema no lo marca:
+  se deriva de que ese día no tenga turno en la plantilla. Confirmar que ese criterio alcanza.
+- **Quién declara la asistencia.** Hoy sólo el administrador (verificado en `pg_policies`). Falta
+  decidir si el encargado debe poder declarar la de su sede; si la respuesta es sí, va por RPC con
+  guard, nunca ampliando la policy.
+
 ---
 
 _Agregar aquí, por fase, cualquier parámetro nuevo que se sembró con un default sin confirmar._

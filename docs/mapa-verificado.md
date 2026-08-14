@@ -33,7 +33,7 @@ Verificado el 13-ago-2026 contra el proyecto Supabase `scilb` (`lszrvbfkgsdyvhyx
 
 | Dato | Valor |
 |---|---|
-| Migraciones aplicadas | **Las 67** (`0001`–`0067`). La `0067` se aplicó y verificó el 14-ago-2026 |
+| Migraciones aplicadas | **Las 68** (`0001`–`0068`). La `0067` (aislamiento) y la `0068` (capa de datos de sueldos) se aplicaron y verificaron el 14-ago-2026 |
 | Tablas | 53 |
 | Funciones en `public` | 53 |
 | Empleados | 18 |

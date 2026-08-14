@@ -4,6 +4,13 @@ Cómo se guarda lo que el motor de `packages/core/src/sueldos.ts` calcula: tabla
 congelado. Complementa a **[SPEC-sistema-sueldos.md](SPEC-sistema-sueldos.md)**, que define las
 reglas; esta define dónde viven los datos.
 
+> ✅ **La migración `0068` está APLICADA Y VERIFICADA contra `scilb` el 14-ago-2026.** Además de la
+> revisión estructural —6 tablas, 12 policies (6 de lectura y 6 de escritura), cero policies con
+> `app_es_almacen()`, 17 triggers, 13 claves de `config` y las 13 filas viejas de `asistencias` en
+> `sin_dato`— se corrió un escenario completo de **18 pasos** dentro de una transacción descartada:
+> acuerdo, turnos, adelanto, liquidación, cierre, y después catorce intentos de romper el congelado
+> y el aislamiento. Los 18 dieron el resultado esperado y no quedó ni una fila.
+>
 > **Estado:** aprobada, es la base de la migración `0068`. Sale de mapear el esquema vivo con seis
 > lectores en paralelo, tres propuestas independientes de diseño y un adversario por propuesta
 > (14-ago-2026). Todo dato de "lo que ya existe" está verificado contra las migraciones y contra la
