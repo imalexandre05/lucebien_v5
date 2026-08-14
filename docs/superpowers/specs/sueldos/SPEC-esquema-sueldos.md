@@ -459,6 +459,11 @@ alguien hoy cambiaría un pago de hace tres meses.
 (`sueldos.ts:119-121`): volcarle la tabla `config` entera tumba la liquidación con la primera
 `pts_*`. Se leen exactamente las 13 claves y ninguna más.
 
+**Vacío y basura no son lo mismo.** Una fila de `config` con el valor en blanco **cae al default**
+(es la trampa 1 de arriba). Una fila con algo que no es un número —`"diez"`, `"10 min"`— **corta con
+error**, no cae al default: un parámetro de sueldo ilegible es un problema real, y el motor ya
+eligió fallar ruidosamente antes que liquidar con datos que no entiende.
+
 ---
 
 ## 6. El congelado
@@ -583,8 +588,33 @@ Todas **`security invoker`** con `set search_path = public`: la RLS del actor de
 | RPC | Qué hace |
 |---|---|
 | `sueldo_entrada(p_acuerdo uuid)` | Devuelve el `jsonb` con la `EntradaLiquidacion` armada: acuerdo, turnos, asistencia colapsada por día, ventas, movimientos y parámetros resueltos |
-| `sueldo_liquidacion_cerrar(p_liquidacion uuid, p_resultado jsonb)` | Valida el estado, escribe el snapshot y las líneas, sella los movimientos y ventas consumidos, pasa a `cerrada`. Todo en una transacción |
+| `sueldo_liquidacion_cerrar(p_liquidacion uuid)` | Valida el estado, escribe las líneas desde el `resultado` guardado, sella los movimientos y ventas consumidos, pasa a `cerrada`. Todo en una transacción |
 | `sueldo_liquidacion_anular(p_liquidacion uuid, p_motivo text)` | Único camino para dejar sin efecto una cerrada. Escribe motivo y autor, y **libera el sello** de los movimientos y ventas que había consumido, para que la reemisión los vuelva a tomar |
+
+### 8.1 Tres decisiones que el diseño de las RPC obliga a tomar
+
+**`cerrar()` recibe un solo parámetro y deriva todo lo demás.** El borrador ya tiene `entrada`,
+`parametros_usados` y `resultado` —son `not null`, los escribió la Server Action después de correr
+`liquidarPeriodo()` en el servidor—, así que las líneas salen de `resultado->'lineas'` y no hace
+falta volver a mandarlas. Un parámetro menos es una forma menos de que el navegador influya en un
+pago.
+
+**El cierre comprueba que nada se movió entre el cálculo y el cierre.** `MovimientoAdmin` no lleva
+`id` (`sueldos.ts:180-184`), así que el sellado no puede ir por lista de ids: va por rango
+—empleado y periodo, con `liquidacion_id` nulo—, exactamente el mismo criterio con el que
+`sueldo_entrada()` los juntó. El riesgo es la carrera: si alguien carga un adelanto entre el
+preview y el cierre, esa fila quedaría sellada **sin estar en el snapshot que se pagó**. Por eso
+`cerrar()` recuenta y resuma contra la `entrada` guardada y **corta** si no coinciden. El
+administrador vuelve a calcular y cierra de nuevo.
+
+**Un dato faltante corta con un mensaje que dice qué falta.** `sueldo_entrada()` **no emite** las
+filas con `condicion = 'sin_dato'`: emitirlas con la hora en null las convertiría en faltas
+inventadas de dos días cada una. Pero tampoco las omite en silencio — antes de devolver nada,
+comprueba que todo día contratado del periodo tenga su fila declarada y, si falta alguno, corta
+nombrando las fechas. El motor también lo detectaría, pero con un mensaje genérico.
+
+Y del mismo criterio sale un `check` que faltaba: `condicion = 'trabajado'` **exige** hora de
+entrada y de salida. Un día "trabajado" sin horas es un día que el motor lee como falta.
 
 **El orden dentro de `sueldo_liquidacion_cerrar()` no es libre:** escribir el snapshot y las
 líneas, **sellar** los movimientos y ventas, y **recién al final** pasar el estado a `'cerrada'`.
