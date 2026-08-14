@@ -90,6 +90,35 @@ pipeline no otorgan puntos. Pendiente de confirmar si deberían.
 
 Tardanza: `eval_tardanza_min_por_punto = 15` (se pierde 1 punto cada 15 minutos acumulados).
 
+### 🔴 El modelo implementado NO es el que describe Alexander
+
+Esto es lo más grande que quedó abierto y merece su propia sesión. Lo dijo el 14-ago-2026 y
+**contradice lo que hay en el código**.
+
+**Lo que hace hoy `calcularNotaMensual()`** (`packages/core/src/evaluaciones.ts:41`): cada
+componente entra en escala /20, se multiplica por su peso, y la suma da la nota. Los pesos suman
+1.00 y la nota nunca pasa de 20.
+
+**Lo que Alexander describe:**
+
+> *"cada aspecto como los valores o examen o pipeline te dan puntos, y otras cosas como incidencias
+> y tardanzas descuentan puntos, no la nota general. Esa nota de 0 a 20 sale de una transformación
+> a base 20 de los puntos, que pueden llegar a ser centenas o miles."*
+
+Son **dos modelos distintos**, no dos formas de decir lo mismo:
+
+| | Implementado | Descrito |
+|---|---|---|
+| Unidad | Componentes en escala /20 | **Puntos acumulados**, centenas o miles |
+| Cómo se combina | Suma ponderada por pesos | **Suma de puntos**, y después una transformación a base 20 |
+| Qué hace una tardanza | Baja el componente `tardanza`, que pesa 0.05 | **Resta puntos** del total |
+| Techo | 20 por construcción | El techo sale de la transformación |
+
+**No se toca nada hasta tener la explicación completa.** Alexander avisó que es largo y va en una
+sesión aparte con su propia spec. Lo que sí queda claro y ya está decidido: la tardanza **descuenta
+plata y descuenta puntos**, son la misma tardanza, y descontar puntos no es lo mismo que bajar la
+nota.
+
 ### Ciclo de evaluación — regla completa, confirmada el 13-ago-2026
 
 **La regla, en una línea:** el ciclo termina el día anterior al próximo aniversario de ingreso; si
@@ -140,8 +169,16 @@ el "rollover" de calendario de JavaScript (31 de febrero → 3 de marzo) en vez 
 | Sueldos y notas | Sólo el administrador, y cada colaborador lo suyo con autenticación | Dueño |
 | Encargado de sede | Ve sólo su sede | Dueño |
 | Puntos de un terno | Por conjunto. Si se despieza, 60% saco / 40% pantalón, editable | Dueño |
-| Tardanza en día sin horario | **No cuenta.** Ese día sólo suma horas trabajadas a su pago | Alexander ⚠️ falta confirmar con el dueño |
-| Meta semanal en meses de 31 días | **Fija.** La semana que absorbe días sobrantes no sube su meta | Alexander ⚠️ falta confirmar con el dueño |
+| Tardanza en día sin horario | **No cuenta.** Sólo se le paga el tiempo que estuvo | **Confirmado** 14-ago |
+| Meta semanal en meses de 31 días | **Fija.** La misma meta pactada para todas las semanas — funciona como periodo de gracia | **Confirmado por el dueño** 14-ago |
+| Jornada habitual | 6 días de trabajo y 1 de descanso; a veces trabajan todos. El modelo es **por horas** y muy variable | Alexander |
+| Contratos de pocos días (sólo domingos, sólo fines de semana) | Existen, pero **el contrato mínimo es de un mes**. Por eso se paga a fin de mes y no por día | Alexander |
+| Los 3 días de gracia de tardanza | El administrador decide **por contrato** si ese acuerdo los tiene habilitados. Con pocos días de trabajo al mes, no se justifican | Alexander |
+| Colaborador que deja de trabajar | Se **suspende, nunca se elimina**: sus métricas y su historial de rendimiento quedan para cuando vuelva a contratarse | Alexander |
+| Las dos tardanzas | **Son la misma.** Descuenta plata Y descuenta puntos de la evaluación. No baja la nota directamente: baja los puntos, y la nota sale de los puntos | Alexander |
+| Fecha de ingreso | Se cargan desde el huellero hasta el inicio de año. El inicio de cada periodo lo pone el administrador, en el **módulo de contratos** | Alexander |
+| Módulo de contratos | Es **parte del sistema de sueldos**: asigna usuario, rol, horas de trabajo, datos personales, y con eso estima sueldo y condiciones | Alexander |
+| Escala salarial | Sube con experiencia, confiabilidad y responsabilidad en tienda. El administrador ve la sugerencia y decide, pero **lo ideal es seguirla** por transparencia con la persona | Alexander |
 | Tipo de lavado (normal / seco / especializado) | Lo decide el propio operario al hacerlo | Dueño |
 | Despiece 60/40 saco-pantalón | Aplica a **todos** los trabajos por igual | Dueño |
 | Evaluar antes de terminar el ciclo | **No se puede.** Tiene que cumplir su mes | Dueño |

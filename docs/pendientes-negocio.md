@@ -380,6 +380,29 @@ por las que rotó**, no las de la tienda.
   Consecuencia: `sueldo_por_dia` (RN-04) queda **sólo informativo** y ningún descuento cuelga de
   él.
 
+**Para preguntarle al administrador (14-ago-2026):**
+
+- **Cuánta tardanza se tolera dentro de los 3 días de gracia.** Los 3 días existen y están
+  confirmados, pero nadie definió si son 3 tardanzas de cualquier tamaño o hay un tope de minutos.
+- **Las metas de los contratos de pocos días.** Si alguien viene sólo los domingos, ¿qué meta de
+  venta se le pacta? La regla actual no distingue.
+- **La escala salarial.** Las cinco tarifas (S/2,90 · 3,20 · 3,50 · 3,80 · 5,00 por hora) salen
+  del Excel y nadie las confirmó. Suben con experiencia, confiabilidad y responsabilidad en
+  tienda; el administrador ve la sugerencia y decide, aunque lo ideal es seguirla por
+  transparencia con la persona. **Volver a preguntar.**
+- **Turno partido con hueco.** ¿Existe o va a existir alguno? El colapso de la asistencia pagaría
+  el hueco entre turnos.
+- **Tolerancia de tardanza.** Habitualmente 10 minutos, pero depende del contrato: tiene que ser
+  editable **por acuerdo**, no sólo global.
+
+**Ya no son valores fijos (14-ago-2026):**
+
+- **`valorCapacitacion` (S/25).** No es un monto fijo: depende de qué tan bien se capacite. Queda
+  pendiente un **módulo de capacitación** —con exámenes, que la evaluación mensual ya contempla—
+  antes de poder pagar por esto.
+- **`metaPorHora` (S/45,4545).** No es un parámetro de negocio sino una **métrica derivada**: es
+  la meta dividida entre las horas de trabajo. Sirve como indicativo, no como valor a configurar.
+
 **Defaults que hubo que elegir porque la spec no los fija:**
 
 | Parámetro | Default | Por qué |

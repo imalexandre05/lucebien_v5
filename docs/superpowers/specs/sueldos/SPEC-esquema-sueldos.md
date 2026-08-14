@@ -440,6 +440,34 @@ Cada paso deja el sistema en un estado usable. Ninguno depende de la API del otr
 
 ---
 
+## 9.bis Lo que el sistema de sueldos abarca además del cálculo
+
+Alexander lo precisó el 14-ago-2026. No cambia el modelo de datos de arriba, pero sí el alcance:
+
+**Módulo de contratos.** Es **parte del sistema de sueldos**, no un módulo aparte. Ahí se asigna
+usuario, rol, horas de trabajo y datos personales, y con eso se estima el sueldo y se fijan las
+condiciones. `sueldo_acuerdos` es su tabla: un contrato **es** un acuerdo de periodo.
+
+Ahí vive también **el inicio de periodo** de cada persona — incluido el de un periodo nuevo cuando
+alguien vuelve a contratarse. Las fechas históricas se cargan desde el huellero hasta el inicio de
+año; de ahí en adelante las pone el administrador.
+
+**Suspender, nunca eliminar.** Cuando alguien deja de trabajar se **suspende**: sus métricas y su
+historial de rendimiento quedan intactos para cuando vuelva a contratarse. Una tabla de sueldos no
+borra a nadie — de ahí el `on delete restrict` de `sueldo_acuerdos.empleado_id`.
+
+**Defensa contra el marcaje astuto.** Pedido explícito de Alexander: el administrador necesita
+detectar a quien marca la huella a las 9 de la mañana y a las 8 de la noche habiendo hecho sólo
+medio turno. El motor ya paga por horas reales, así que un día así **cobra el día entero sin
+haberlo trabajado**.
+
+El esquema deja el material para detectarlo —`marcas_huellero` guarda cada marca cruda, no sólo la
+primera y la última— pero **la regla no está definida**: hace falta decidir si el sistema exige
+marcar la salida del primer turno, si compara contra el horario contratado y avisa cuando las
+horas trabajadas superan a las contratadas por más de X, o ambas. Va con el diseño del huellero.
+
+---
+
 ## 10. Lo que este trabajo encontró en producción
 
 No son defectos de este diseño. Estaban antes y **violan el no-negociable 3**. Se dejan escritos
