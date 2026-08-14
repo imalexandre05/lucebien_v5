@@ -1,0 +1,86 @@
+{
+  "tipo": "diario",
+  "numero": 1,
+  "fecha": "2026-08-13",
+  "alcance": "Reporte de Actividades: candado de evaluación, permisos de operarios y el módulo de Envío a Lavandería para tiendas",
+  "estado": "Publicado en la nube · en uso interno",
+  "requerimientosDesde": "2026-08-13",
+  "resumen": [
+    "Se cerró el problema que dejaba una sede bloqueada de forma permanente cuando nadie evaluaba el turno anterior: el sistema ahora evalúa solo lo que lleva un día vencido y no le resta puntos al operario por una falla que no es suya. Junto con eso se amplió quién puede evaluar, de modo que la evaluación sea cruzada entre los propios operarios, como pidió la empresa, sin depender de que un encargado esté presente.",
+    "Además se construyó el módulo que faltaba para cerrar el circuito de lavandería desde tienda: las tiendas ya pueden revisar ternos sucios código por código, mandar los dañados directo a Compostura y enviar lotes de accesorios a granel. Cada prenda enviada aparece sola en el tablero de lavandería, en la etapa que corresponde, sin doble digitación."
+  ],
+  "enUnaLinea": "El reporte de actividades ya no se traba, los operarios se evalúan entre ellos, y las tiendas mandan prendas a lavar desde el sistema en lugar de avisar por teléfono.",
+  "hecho": [
+    {
+      "modulo": "Reporte de Actividades",
+      "cambio": "Si nadie evaluaba un turno, la sede quedaba bloqueada para siempre. Ahora el sistema evalúa solo lo vencido y la sede sigue operando.",
+      "estado": "✅ Corregido"
+    },
+    {
+      "modulo": "Evaluación entre operarios",
+      "cambio": "El de la tarde evalúa la mañana y al día siguiente la mañana evalúa la tarde. Ya no hace falta que esté el encargado.",
+      "estado": "✅ Ampliado"
+    },
+    {
+      "modulo": "Menú de operarios",
+      "cambio": "Incidencias y Evaluar Reportes ya aparecen en el menú del operario; antes sólo los veían encargados y administración.",
+      "estado": "✅ Nuevo"
+    },
+    {
+      "modulo": "Envío a Lavandería (tiendas)",
+      "cambio": "La tienda revisa los ternos sucios uno por uno y manda accesorios en lote; lo dañado va directo a Compostura.",
+      "estado": "✅ Nuevo"
+    }
+  ],
+  "revisar": [
+    {
+      "que": "Que una sede ya no se trabe",
+      "donde": "Reportes → Reporte de Actividades, en una sede con un turno sin evaluar de ayer",
+      "esperado": "Se puede crear el reporte del turno de hoy con normalidad, y el turno de ayer figura como evaluado por el sistema, no por una persona."
+    },
+    {
+      "que": "Evaluación cruzada",
+      "donde": "Entrar como un operario de tarde → Reportes → Evaluar Reportes",
+      "esperado": "Aparece el reporte del turno de la mañana de esa misma sede, listo para evaluar."
+    },
+    {
+      "que": "Envío de ternos sucios",
+      "donde": "Menú → Lavandería → Envío a Lavandería, desde una tienda",
+      "esperado": "Se agregan prendas por código; las marcadas con daño salen a Compostura y el resto entra al tablero de lavandería en el acto."
+    },
+    {
+      "que": "Envío de accesorios a granel",
+      "donde": "Misma pantalla, pestaña Accesorios",
+      "esperado": "Se indica la cantidad por tipo (camisas, corbatas, michis) y el lote entero se envía en un solo movimiento."
+    }
+  ],
+  "decisiones": [
+    "Nota de la evaluación automática: cuando el sistema evalúa solo un turno vencido, hoy asigna una nota neutra de arranque. Falta confirmar qué nota corresponde, porque esa nota entra al cálculo del sueldo del mes.",
+    "Plazo del vencimiento: hoy el sistema espera 1 día antes de evaluar solo. Falta confirmar si ese plazo le parece correcto o debería ser más corto."
+  ],
+  "pendientes": [
+    {
+      "pendiente": "Completar las pestañas de accesorios y métricas del tablero de lavandería",
+      "depende": "De mí",
+      "cuando": "Próximos días"
+    },
+    {
+      "pendiente": "Aprobar los equipos reales de cada sede para activar el control de equipos autorizados",
+      "depende": "De la empresa",
+      "cuando": "Cuando disponga"
+    },
+    {
+      "pendiente": "Confirmar los dos valores de la sección 4",
+      "depende": "De la empresa",
+      "cuando": "Antes del cierre de mes"
+    }
+  ],
+  "riesgos": [
+    "El cron que cerraba reportes automáticamente sigue apagado a propósito: no se reactiva hasta que exista el módulo de horarios, porque sin horarios cerraría turnos que todavía están abiertos."
+  ],
+  "anexo": [
+    "3 commits · 10 archivos · 834 líneas agregadas.",
+    "Migraciones de base de datos 0064, 0065 y 0066 (auto-evaluación de reportes, permisos operativos, RPC de envío a lavandería).",
+    "Verificado contra la base de datos real antes de publicar; las pruebas de las funciones nuevas se deshicieron solas sin dejar datos de prueba."
+  ]
+}
