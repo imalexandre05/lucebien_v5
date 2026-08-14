@@ -151,48 +151,61 @@ interface VectorRasgos {
 
 ## 5. Persistencia (Supabase `scilb`)
 
+Implementado en las migraciones **0068** (esquema, prefijo `mt_` para no
+colisionar con las 53 tablas del ERP en el mismo proyecto), **0069** (bucket
+`mi-talla` + policies de storage) y **0070** (endurecimiento tras el
+verificador: aislamiento por sede/origen, timestamps no insertables, tamaños
+acotados).
+
 ```sql
 -- estimación del motor; inmutable una vez creada
-medicion (
+mt_medicion (
   id uuid pk, cliente_id uuid null,          -- auth.uid() (anónimo o permanente)
+  cliente_nombre text null, cliente_dni text null,  -- solo origen taller
   motor text, version_calibracion text,
   entrada jsonb,                             -- formulario: altura, peso, edad, sexo
   medidas jsonb, confianza jsonb,
   vector_rasgos jsonb null,
   origen text check (origen in ('web','taller')),
-  sede text null, creada_en timestamptz
+  sede text null, creada_en timestamptz default now()  -- no insertable (0070)
 )
 
 -- verdad de cinta métrica; tabla aparte a propósito
-medicion_real (
+mt_medicion_real (
   id uuid pk, medicion_id uuid fk,
   tomada_por uuid,                           -- sastre (auth.users)
-  medidas jsonb, tomada_en timestamptz
+  medidas jsonb, observacion text null, tomada_en timestamptz default now()
 )
 
 -- consentimiento explícito, Ley 29733
-consentimiento (
+mt_consentimiento (
   id uuid pk, nombre text, dni text,
-  texto_version text, aceptado_en timestamptz, sede text
+  texto_version text, registrado_por uuid, aceptado_en timestamptz, sede text
 )
 
 -- solo taller, siempre con consentimiento
-medicion_imagen (
+mt_medicion_imagen (
   id uuid pk, medicion_id uuid fk,
   storage_path text,                         -- bucket privado
   vista text check (vista in ('frontal','lateral','video')),
   consentimiento_id uuid fk not null,
-  borrar_despues_de date not null
+  borrar_despues_de date not null            -- default +24 meses, no insertable
 )
+
+-- tallas y umbrales editables (lectura pública, escritura admin)
+mt_config (clave text pk, valor jsonb, descripcion text)
 ```
 
-**Patrón de acceso (validado contra doc oficial, § 11.3):**
+**Patrón de acceso (validado contra doc oficial, § 11.3; RLS final en 0070):**
 
 - Visitante web: `signInAnonymously` + Cloudflare Turnstile (anti-abuso) →
-  RLS `with check (cliente_id = auth.uid())` para INSERT, `using (cliente_id
-  = auth.uid())` para SELECT. Rol `anon` puro no inserta nada.
-- Sastre: rol `taller` (tabla de roles o claim) → acceso a mediciones de
-  origen taller y a `medicion_real`.
+  RLS `with check (cliente_id = auth.uid())` para INSERT (tope 20/día por
+  uid), `using (cliente_id = auth.uid())` para SELECT. Rol `anon` puro no
+  inserta nada.
+- Sastre: **empleado ACTIVO del ERP** (`private.app_es_empleado()`, mismo
+  usuario Supabase que ya tiene; login en /taller con su código +
+  contraseña) → SOLO mediciones de `origen='taller'` de SUS sedes
+  (`private.app_sedes()`); admin/dueño ve todo. No existe rol nuevo.
 - **Keys nuevas desde el día 1:** `sb_publishable_...` (cliente) y
   `sb_secret_...` (servidor). Las legacy anon/service_role quedan deprecadas
   a fines de 2026 — nacer con ellas es nacer con deuda.

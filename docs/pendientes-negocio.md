@@ -752,6 +752,8 @@ Módulo de medición corporal para la web pública (código en LB-Web; spec en
 | `largo_saco_cm = 0.385 × altura` | regla fija en `estadistico.ts` (LB-Web) | ANSUR II no mide largo de saco; regla aproximada de sastre |
 | Offset de hombros `+3.0 cm` | `cal-2026-08-lb-v1` (LB-Web) | ANSUR mide biacromial (hueso a hueso); el saco se mide costura-costura. Se recalibra con los pares de cinta de F2 |
 | Fracciones anatómicas de visión (F2) | pecho 0.30 · cintura 0.62 · cadera 0.95 del segmento hombro→cadera | Constantes provisionales hasta calibrar con pares reales |
+| Sede piloto del taller | `LB` (Calle Real 380), constante `SEDE_PILOTO` en `MedirFlow.tsx` (LB-Web) | Decisión de Alexander 13-ago-2026; cuando el piloto se extienda, pasa a `mt_config` |
+| Meta de pares visible al sastre | 80, constante `META_PARES` en `MedirFlow.tsx` (LB-Web) | Umbral "señal" del spec §8 (250 = confianza); número de diseño estadístico, no de negocio |
 
 Pendiente de confirmar con el dueño: medir el hombro real de los sacos del stock (reemplaza la
 progresión inventada de `tabla_saco`) y definir la política de retención de imágenes.
