@@ -155,8 +155,17 @@ el "rollover" de calendario de JavaScript (31 de febrero → 3 de marzo) en vez 
 | Tienda Trece | **Entra al sistema nuevo** como tienda normal | Dueño |
 | Adelantos | Exigen mínimo una semana trabajada ese mes como garantía | Dueño |
 | Descuento por tardanza | S/5, editable. 3 libres. Las justificadas no descuentan; el admin decide qué se justifica | Dueño |
-| Falta **injustificada** | Descuenta **2 días** de trabajo | Dueño |
-| Falta **justificada** | Descuenta **1 día**, y preferiblemente se recupera | Dueño |
+| Falta **injustificada** | Pierde **2 días en total**: el día que no trabajó más 1 de castigo. Con sueldo diario S/40 y 3 días contratados, cobra S/40 | Dueño |
+| Falta **justificada** | Pierde **1 día en total**: sólo el que no trabajó, sin castigo. Preferiblemente se recupera | Dueño |
+| Bono por meta semanal | **Existe.** S/30 por cada semana cumplida, editable | Dueño |
+| Comisión | Se habilita **sólo al llegar a la meta mensual**. Recién ahí se paga el 2% | Dueño |
+| Base de la comisión | El **total de la boleta** cuando supera S/120, no cada producto por separado | Dueño |
+| Ventas que cuentan | Las que hizo **cada persona**, sumadas entre todas las tiendas por las que rotó. No las de la tienda | Dueño |
+| Metas de venta | Se **acuerdan en el contrato**, por persona. Varían por tienda, temporada, experiencia y turno. Editables siempre | Dueño |
+| Horas extra | Valen lo mismo que la hora normal, sin recargo | Dueño |
+| Bonos extras | Los pone el administrador a mano, con su descripción y motivo. **No** salen de las actividades extra de los reportes | Dueño |
+| Almuerzo de S/8 | Sólo para **tiempo completo**, no medio turno. Se entregan día a día o todos a fin de mes | Dueño |
+| Semana del ciclo | Arranca el día de ingreso y termina el mismo día de la semana siguiente. Quien entra un jueves, su semana va de jueves a jueves | Dueño |
 | Ciclo de evaluación con ingreso 29/30/31 | Se recorta al último día del mes cuando el aniversario no existe. El admin además puede fijar el periodo a mano | Dueño |
 | Horas de cierre de turno | Se quedan como están: 15:00 mañana, 23:00 tarde, 23:00 cierre | Dueño |
 | Margen de gracia para reporte sin evaluar | **No hay.** Se evalúa sí o sí antes de crear otro | Dueño |

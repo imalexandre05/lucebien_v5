@@ -326,11 +326,11 @@ está quemado en el código. **Ninguno está confirmado por el dueño.**
 - **Una falta cuesta TRES días de sueldo, no dos.** RN-09 descuenta 2 días, y RN-06 ya había
   restado el día de horas que no trabajó. Con S/120 de sueldo y 3 días contratados, una sola falta
   deja el pago del periodo en S/16.
-  **→ S4 respondida el 13-ago-2026:** *"las faltas injustificadas descuentan dos días de trabajo,
-  las justificadas solo descuenta un día, pero se deben recuperar preferiblemente"*. Falta
-  precisar si esos 2 días son **el total** (y entonces el motor descuenta uno de más) o **además**
-  del día no trabajado. Y hay una regla nueva: **la falta justificada descuenta 1 día**, cuando hoy
-  el motor la deja en cero. Ninguna de las dos se implementó todavía: van con spec primero.
+  **→ S4 respondida y precisada el 14-ago-2026.** Son **2 días en total**, no 3: *"si trabaja 3
+  días y cobra 40, y falta uno recibe 80 de dos días, pero al faltar un día se le quita de uno
+  más, entonces solo cobra 40"*. O sea, el día que no trabajó **más uno de castigo**. La falta
+  justificada pierde **1 día en total**: sólo el que no trabajó, sin castigo encima.
+  **El motor descuenta hoy un día de más.** Pendiente de arreglar con spec primero.
 - **La meta semanal fija también aplica a periodos de menos de una semana.** Quien entra a mitad
   de semana tiene meta del periodo proporcional pero meta semanal completa: no puede cobrar el
   bono aunque venda bien.
@@ -349,6 +349,26 @@ está quemado en el código. **Ninguno está confirmado por el dueño.**
 Con ambas, el caso de prueba da **S/705.30**. Los S/700.30 que declaraba la spec original no
 correspondían a ninguna combinación coherente de reglas: mezclaban la tardanza del Excel con la
 meta semanal corregida a medias.
+
+**Confirmado el 14-ago-2026 — RN-12 y RN-13 quedan como estaban:**
+
+El bono de S/30 por semana cumplida **sí existe** y es editable. La comisión del 2% se habilita
+**sólo al llegar a la meta mensual**. Son dos premios distintos por dos metas distintas, no uno
+que reemplazó al otro. El motor ya lo hacía así: no hay que tocar nada.
+
+Se confirman también: las horas extra valen lo mismo que la hora normal; los bonos extras los
+escribe el administrador a mano con su motivo y no salen de las actividades extra de los reportes;
+y las ventas que cuentan para la meta son **las de cada persona sumadas entre todas las tiendas
+por las que rotó**, no las de la tienda.
+
+**Lo que sí hay que cambiar (spec primero):**
+
+- **La meta de venta se acuerda en el contrato, no se calcula.** Hoy el motor la deriva de
+  `horas_contratadas × S/45,4545`. El dueño la fija por persona y varía por tienda, temporada,
+  experiencia y turno. La fórmula por horas pasa a ser una **sugerencia**, como la escala salarial
+  de RN-14.
+- **El almuerzo es sólo para tiempo completo.** Hoy `horasMinimasAlmuerzo` está en 0, o sea lo
+  cobra cualquiera que haya trabajado ese día aunque sea medio turno.
 
 **Defaults que hubo que elegir porque la spec no los fija:**
 
