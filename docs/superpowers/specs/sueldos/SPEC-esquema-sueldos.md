@@ -184,17 +184,22 @@ Una sola tabla para los tres tipos de `SPEC-sistema-sueldos.md` §3.6, que tiene
 | `tipo` | text not null | `check (tipo in ('adelanto','reporte','bono_extra','capacitacion','almuerzo_entregado'))` |
 | `monto` | numeric(12,2) not null | `check (monto > 0)` — el signo lo pone la regla, no el dato |
 | `motivo` | text not null | `check (length(trim(motivo)) > 0)` — sin motivo no se registra |
-| `revocado_en`, `revocado_por`, `motivo_revocacion` | timestamptz, uuid, text | Para la sanción que se deshace |
-| `liquidacion_id` | uuid null | Se sella al cerrar: qué liquidación lo consumió |
+| `liquidacion_id` | uuid null | Sello: qué liquidación lo consumió. Con sello, la fila es intocable |
 | `creado_en`, `creado_por` | timestamptz, uuid | |
 
 > **`monto > 0` no es un detalle.** El verificador encontró que un adelanto tipeado en negativo
 > invertía la línea: de descontar S/100 pasaba a sumar S/100. El motor ya lo rechaza; la base
 > también.
 >
-> **Las sanciones se revocan, no se borran** (decisión del dueño, N3: *"en caso el terno se
-> recupere, la sanción se revoca"*). Una fila revocada no entra al cálculo pero queda en el
-> historial con quién la deshizo y por qué.
+> **Una sanción se corrige mientras el mes esté abierto, y después ya no** (decisión de
+> Alexander, 14-ago-2026: *"todo lo que se hace en el mes y se cierra se olvida, ya no se
+> vuelve"*). No hacen falta columnas de revocación ni una máquina de deshacer: mientras el
+> periodo está abierto el administrador edita o borra el movimiento como cualquier otro, y una vez
+> que la liquidación se cierra el sello `liquidacion_id` lo vuelve intocable. Si la prenda aparece
+> el mes siguiente, eso es un bono extra de ese mes, no una marcha atrás del anterior.
+
+> **El adelanto exige una semana trabajada como garantía** (decisión del dueño). La RPC que lo
+> registra **bloquea** y devuelve el motivo; no es una advertencia que se pueda ignorar.
 
 ### 4.5 `sueldo_ventas` — la frontera con el otro sistema
 
@@ -471,6 +476,7 @@ Sus escrituras fallan con 42501 y sus borrados quitan 0 filas, en silencio.
 | **Los dos caminos de la tardanza** | El motor la deriva del horario contratado + tolerancia e ignora `asistencias.minutos_tardanza`; la evaluación mensual suma `minutos_tardanza` y lo vuelve puntos. El día que se carguen horas reales, la nota /20 de todo el mundo cambia sola y en silencio. Hay que decidir quién escribe ese campo **antes** de encender el huellero |
 | **Turno partido con hueco** | El colapso `min`/`max` pagaría el hueco. Hoy no existe ningún turno partido; si aparece, hay que decidir antes de liquidarlo |
 | **Horario que cambia a mitad de periodo** | El modelo obliga a cerrar el acuerdo y abrir otro. Es coherente con el congelado, pero parte el periodo en dos liquidaciones |
+| **Turno partido con hueco** | Pendiente de preguntar al administrador si existe o va a existir alguno |
 | **Datos de personas vacíos** | `fecha_ingreso` en 1 de 18. La pantalla tiene que avisar, no inventar |
 
 ---

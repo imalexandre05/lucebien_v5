@@ -149,7 +149,9 @@ el "rollover" de calendario de JavaScript (31 de febrero → 3 de marzo) en vez 
 | A quién evalúa cada persona en 360° | A **todos** sus compañeros, no sólo a los de su sede o turno | Dueño |
 | Horarios | Los arma sólo el administrador, hoy en Excel. Son **por persona**, no por puesto. Cambian cada mes o dos | Dueño |
 | Prenda urgente | Automático: a menos de 3 días de su fecha de entrega. Sólo se resalta, no avisa | Dueño |
-| Sanción por prenda perdida o no devuelta | Costo completo, del sueldo. La decide el administrador. **Se revoca si la prenda aparece** | Dueño |
+| Sanción por prenda perdida o no devuelta | Costo completo, del sueldo. La decide el administrador. Se revoca si la prenda aparece, **pero sólo mientras el mes esté abierto** | Dueño |
+| Corregir un mes ya cerrado | **No se vuelve atrás.** Lo que se hizo en el mes se arregla en el mes; una vez cerrado y pagado, se olvida | Alexander |
+| Adelanto sin la semana de garantía | **Se bloquea**, y el sistema avisa el motivo. No es sólo una advertencia | Dueño |
 | Numeración de pedidos | **Por tienda**, no una cuenta única. Hoy está al revés | Dueño |
 | Auditoría | *"Todo debe registrarse"*. Hoy sólo 5 lugares | Dueño |
 | Tienda Trece | **Entra al sistema nuevo** como tienda normal | Dueño |
