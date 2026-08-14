@@ -29,11 +29,18 @@ respaldo_pre_*/
 _local_backup_pre_*/
 
 # Metadata local del CLI Claude Code (sesiones, worktrees, permisos de esta PC).
-# EXCEPCIÓN: agents/ y hooks/ son parte del harness del proyecto y sí se versionan —
-# el subagente verificador y el hook de cierre tienen que viajar con el repo.
+# EXCEPCIÓN: agents/, hooks/ y las skills propias del proyecto son parte del harness
+# y sí se versionan — el subagente verificador, el hook de cierre y la skill del
+# informe tienen que viajar con el repo. Una skill sin versionar deja sus
+# herramientas sin manual.
+# Las skills de terceros instaladas en esta PC (paletas, estilos de diseño) NO se
+# versionan: no son del proyecto y se reinstalan solas.
 .claude/*
 !.claude/agents/
 !.claude/hooks/
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/informe-diario/
 !.claude/settings.json
 
 # Tooling local (no compartir con cliente — vive solo en mi PC)
@@ -52,5 +59,7 @@ playwright-report/
 graphify-out/
 kg.html
 
-# Informe de avances: archivo de trabajo, se reescribe en cada informe.
+# Informe de avances: archivos de trabajo, uno por informe (informe-001.json…).
+# Quedan en disco para que el informe siguiente sepa qué se dijo y no lo repita.
 tools/informe-diario/informe.json
+tools/informe-diario/informe-*.json

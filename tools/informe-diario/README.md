@@ -23,11 +23,14 @@ documenta las piezas para operarlas a mano si hace falta.
 
 ```bash
 node tools/informe-diario/recolectar.mjs
-# redactar tools/informe-diario/informe.json
-node tools/informe-diario/generar.mjs tools/informe-diario/informe.json
-node tools/informe-diario/enviar.mjs tools/informe-diario/informe.json --simular
-node tools/informe-diario/enviar.mjs tools/informe-diario/informe.json
+# redactar el JSON en la ruta que devuelve `archivoASalvar` (informe-003.json, 004…)
+node tools/informe-diario/generar.mjs tools/informe-diario/informe-003.json
+node tools/informe-diario/enviar.mjs tools/informe-diario/informe-003.json --simular
+node tools/informe-diario/enviar.mjs tools/informe-diario/informe-003.json
 ```
+
+Un archivo por informe, numerado y sin borrar: `recolectar.mjs` lee el del informe anterior y lo
+devuelve en `anterior`, para que el siguiente no repita lo que el dueño ya leyó.
 
 ## Numeración
 

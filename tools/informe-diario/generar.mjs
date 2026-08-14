@@ -303,7 +303,41 @@ function main() {
   const destino = join(carpetaSalida, nombre);
 
   writeFileSync(destino, zip.generate({ type: 'nodebuffer', compression: 'DEFLATE' }));
+  avisarSiEsLargo(informe);
   process.stdout.write(destino);
+}
+
+// El informe se genera igual: esto no recorta nada, sólo avisa. Un informe largo
+// no se lee, y uno que el dueño no lee no sirve para que opine. Los límites salen
+// de los informes que sí funcionaron.
+function avisarSiEsLargo(informe) {
+  if (informe.tipo === 'semanal') return; // el semanal es un consolidado, se espera largo
+
+  const limites = [
+    ['resumen', (informe.resumen || []).length, 2, 'párrafos'],
+    ['hecho', (informe.hecho || []).length, 6, 'filas'],
+    ['revisar', (informe.revisar || []).length, 3, 'puntos'],
+    ['decisiones', (informe.decisiones || []).length, 5, 'puntos'],
+    ['pendientes', (informe.pendientes || []).length, 5, 'filas'],
+    ['riesgos', (informe.riesgos || []).length, 3, 'puntos'],
+  ];
+
+  const excedidos = limites.filter(([, cantidad, tope]) => cantidad > tope);
+
+  const palabrasResumen = (informe.resumen || [])
+    .map((p) => p.split(/\s+/).length)
+    .filter((n) => n > 120);
+
+  if (!excedidos.length && !palabrasResumen.length) return;
+
+  process.stderr.write('\nEl informe quedó más largo de lo que conviene:\n');
+  for (const [campo, cantidad, tope, unidad] of excedidos) {
+    process.stderr.write(`  ${campo}: ${cantidad} ${unidad} (conviene hasta ${tope})\n`);
+  }
+  for (const n of palabrasResumen) {
+    process.stderr.write(`  un párrafo del resumen tiene ${n} palabras (conviene hasta 120)\n`);
+  }
+  process.stderr.write('Se generó igual. Recortar lo que no cambie una decisión del dueño.\n\n');
 }
 
 main();

@@ -110,6 +110,47 @@ function trabajoSinCommitear() {
   };
 }
 
+// Nombre del archivo de trabajo de un informe: informe-001.json para el diario,
+// informe-semanal-005.json para el semanal.
+function rutaInforme(numero, semanal) {
+  const n = String(numero).padStart(3, '0');
+  return join(AQUI, semanal ? `informe-semanal-${n}.json` : `informe-${n}.json`);
+}
+
+// Qué se le dijo al dueño en el informe anterior. El informe nuevo no vuelve a
+// contarlo: sin esto, cada entrega repite el mismo párrafo de contexto y el
+// dueño deja de leerlos. Devuelve null si el anterior no dejó archivo (los
+// informes 2, 3 y 4 son previos a esta herramienta).
+function informeAnterior(estado, semanal) {
+  const numero = semanal ? estado.ultimoNumeroSemanal : estado.ultimoNumeroDiario;
+  if (!numero) return null;
+
+  const ruta = rutaInforme(numero, semanal);
+  if (!existsSync(ruta)) return null;
+
+  let previo;
+  try {
+    previo = JSON.parse(readFileSync(ruta, 'utf8'));
+  } catch {
+    return null;
+  }
+
+  return {
+    nota:
+      'Esto ya lo leyó el dueño. No volver a contarlo. Lo que siga abierto se nombra ' +
+      'en una línea y se sigue; lo que cambió respecto de esto sí se cuenta, diciendo qué cambió.',
+    numero: previo.numero,
+    fecha: previo.fecha,
+    alcance: previo.alcance,
+    enUnaLinea: previo.enUnaLinea,
+    yaContado: (previo.hecho || []).map((h) => `${h.modulo}: ${h.cambio}`),
+    yaPedidoQueRevise: (previo.revisar || []).map((r) => r.que),
+    decisionesYaPlanteadas: previo.decisiones || [],
+    pendientesYaListados: (previo.pendientes || []).map((p) => p.pendiente),
+    riesgosYaAvisados: previo.riesgos || [],
+  };
+}
+
 function parsearArgumentos() {
   const args = process.argv.slice(2);
   const opciones = { tipo: 'diario', desde: null };
@@ -166,6 +207,11 @@ function main() {
     generadoDesde: shaValido(shaPrevio) ? shaPrevio : null,
     headActual: git('rev-parse', 'HEAD').trim(),
     numeroSugerido: (semanal ? estado.ultimoNumeroSemanal : estado.ultimoNumeroDiario) + 1,
+    archivoASalvar: rutaInforme(
+      (semanal ? estado.ultimoNumeroSemanal : estado.ultimoNumeroDiario) + 1,
+      semanal
+    ).replace(RAIZ + '\\', '').replace(/\\/g, '/'),
+    anterior: informeAnterior(estado, semanal),
     commits,
     totales: { commits: commits.length, archivos: 0, lineasAgregadas: 0, lineasQuitadas: 0 },
     modulos: [],

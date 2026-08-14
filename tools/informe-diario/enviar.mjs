@@ -61,16 +61,21 @@ function cuerpoCorreo(informe, base) {
   if (informe.enUnaLinea) {
     lineas.push(`<p><b>En una línea:</b> ${informe.enUnaLinea}</p>`);
   }
+  // Sólo los tres primeros puntos de decisión: el correo es el resumen, la lista
+  // completa vive en el PDF. Cuando se recorta, se dice — no se oculta el resto.
   if (informe.decisiones && informe.decisiones.length) {
-    lineas.push('<p><b>Necesito su confirmación en estos puntos:</b></p><ul>');
-    for (const d of informe.decisiones) lineas.push(`<li>${d}</li>`);
+    const primeros = informe.decisiones.slice(0, 3);
+    lineas.push('<p><b>Puntos donde necesito su decisión:</b></p><ul>');
+    for (const d of primeros) lineas.push(`<li>${d}</li>`);
     lineas.push('</ul>');
+    if (informe.decisiones.length > primeros.length) {
+      lineas.push(
+        `<p>Hay ${informe.decisiones.length - primeros.length} punto(s) más en esa sección del PDF.</p>`
+      );
+    }
   }
   lineas.push(
-    '<p>En el punto <b>“Cómo revisarlo”</b> del PDF están los pasos exactos para verificar cada avance dentro del sistema.</p>'
-  );
-  lineas.push(
-    '<p>Puede responder este correo con <b>CONFORME</b>, <b>CON OBSERVACIONES</b> (detallando cuáles) o <b>REUNIÓN</b>.</p>'
+    '<p>En el punto <b>“Cómo revisarlo”</b> del PDF están los pasos exactos para verificar cada avance.</p>'
   );
   lineas.push('<p>Saludos,<br>Alexander</p>');
   lineas.push(
