@@ -371,13 +371,14 @@ por las que rotó**, no las de la tienda.
   `horasMinimasAlmuerzo` pasó de 0 a 12 h y se mira día por día, con
   `almuerzoHabilitadoPorAdmin` para que el administrador se saltee el umbral.
 
-**🔴 Abierto tras la segunda ronda del verificador (14-ago-2026, spec §9.6):**
+**✅ Resuelto en la segunda ronda del verificador (14-ago-2026, spec §9.6):**
 
-- **Cuánto cuesta una falta cuando las jornadas duran distinto.** El castigo se cobra en días
-  promedio y el día no trabajado en horas reales. Con jornadas iguales coinciden y la falta cuesta
-  2 días exactos; con jornadas desiguales no. Con horario lun-vie de 11 h más sábado de 1 h,
-  faltar al sábado cuesta S/55,36 — 10,3 sábados de trabajo. Hay tres salidas planteadas en la
-  spec §9.6 y la decide el dueño.
+- **Cuánto cuesta una falta cuando las jornadas duran distinto.** El castigo se cobraba en días
+  promedio y el día no trabajado en horas reales; con jornadas desiguales la falta dejaba de
+  costar los 2 días de la regla. **Decisión del dueño: la unidad es el día real que faltó.**
+  Faltar a un sábado de 1 hora cuesta dos sábados; faltar a un lunes de 11 horas cuesta dos lunes.
+  Consecuencia: `sueldo_por_dia` (RN-04) queda **sólo informativo** y ningún descuento cuelga de
+  él.
 
 **Defaults que hubo que elegir porque la spec no los fija:**
 

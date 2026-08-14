@@ -56,14 +56,17 @@ El Excel llega a este número por un camino más largo
 (`sueldo ÷ días → sueldo diario ÷ horas por día → valor por hora`) pero los días se cancelan
 algebraicamente y el resultado es idéntico. **Usa la división directa.**
 
-El **sueldo por día** sí es un número distinto y se usa aparte, solo para el descuento por
-falta:
+El **sueldo por día** es un número distinto y **sólo informativo**: sirve para que el
+administrador tenga una referencia de cuánto vale un día promedio.
 
 ```
 sueldo_por_dia = sueldo_pactado / dias_contratados_del_periodo
 ```
 
 `dias_contratados` = días del periodo que tienen horario asignado (ver RN-03).
+
+**No se usa para descontar nada.** El castigo por falta se cobra sobre las horas del día que
+efectivamente faltó, no sobre este promedio — ver RN-09 y §9.6.
 
 ---
 
@@ -200,8 +203,9 @@ Cantidad de fechas del periodo cuyo día de la semana tiene al menos un turno **
 > tengan cero horas asignadas. En el archivo v20 eso da 27 días cuando en realidad solo 15
 > tienen horario, y distorsiona el sueldo diario (S/22.22 en vez de S/40).
 
-**RN-04 — Sueldo por día.**
-`sueldo_por_dia = sueldo_pactado / dias_contratados` (RN-03).
+**RN-04 — Sueldo por día (informativo).**
+`sueldo_por_dia = sueldo_pactado / dias_contratados` (RN-03). Es una referencia para el
+administrador. Ningún descuento cuelga de este número.
 
 ### Asistencia
 
@@ -244,16 +248,28 @@ es_falta = dia_tiene_horario_contratado AND hora_ingreso is null
 ```
 
 - `faltas_injustificadas = total_faltas − faltas_justificadas`
-- `descuento_faltas = faltas_injustificadas × sueldo_por_dia × (dias_descuento_por_falta − 1)`
+- `horas_faltadas` = suma de las horas **contratadas de cada día** que se faltó sin justificar
+- `descuento_faltas = horas_faltadas × valor_por_hora × (dias_descuento_por_falta − 1)`
+
+**La unidad es el día que faltó, no un día promedio** (decisión del dueño, 14-ago-2026 — ver
+§9.6). Faltar a un sábado de 1 hora cuesta dos sábados; faltar a un lunes de 11 horas cuesta dos
+lunes. El castigo es proporcional al compromiso de ese día.
 
 **`dias_descuento_por_falta` son los días que la falta le cuesta EN TOTAL, no los días de castigo
 encima.** Se resta 1 porque el día que no trabajó ya salió por RN-06: como el sueldo se paga por
 horas, no presentarse ya vale un día sin necesidad de castigo.
 
-| | Días perdidos en total | Con sueldo diario S/40 |
+| | Cuesta en total | Con jornadas de 11 h y valor hora S/3,64 |
 |---|---|---|
-| Falta **injustificada** (default 2) | el día que no vino + 1 de castigo | −S/80 |
-| Falta **justificada** | sólo el día que no vino | −S/40 |
+| Falta **injustificada** (default 2) | 2 × las horas de ese día | −S/80 |
+| Falta **justificada** | 1 × las horas de ese día | −S/40 |
+
+Con jornadas de duración desigual (lunes 11 h, sábado 1 h, valor hora S/5,36):
+
+| Falta a… | RN-06 se lleva | El castigo agrega | Total |
+|---|---|---|---|
+| el sábado de 1 h | S/5,36 | S/5,36 | **S/10,71** = 2 sábados |
+| el lunes de 11 h | S/58,93 | S/58,93 | **S/117,86** = 2 lunes |
 
 > Confirmado por el dueño el 14-ago-2026: *"si trabaja 3 días y cobra 40, y falta uno recibe 80 de
 > dos días, pero al faltar un día se le quita de uno más, entonces solo cobra 40"*.
@@ -768,7 +784,17 @@ después; los reales están abajo.
   paga S/30 de una semana que no se ganó), la boleta de exactamente S/120, el minuto exacto de
   la tolerancia, y el umbral de horas del almuerzo.
 
-**V2-01 🔴 — Abierto: cuánto cuesta una falta cuando las jornadas duran distinto.**
+**V2-01 ✅ — Resuelto: la unidad del castigo por falta es el día real, no el promedio.**
+
+**Decidido por el dueño el 14-ago-2026: opción B.** Faltar a un sábado de 1 hora cuesta dos
+sábados; faltar a un lunes de 11 horas cuesta dos lunes. El castigo es proporcional al compromiso
+de ese día, igual que el resto del sistema, que ya cobra todo por horas.
+
+Consecuencia: `sueldo_por_dia` (RN-04) deja de usarse para descontar y queda **sólo informativo**.
+RN-09 pasa a `horas_faltadas × valor_por_hora × (dias_descuento_por_falta − 1)`. El caso de prueba
+no cambia —sus jornadas son todas de 11 h— así que no hay regresión.
+
+El planteo original del hallazgo, que se conserva porque explica por qué era un problema:
 
 RN-09 descuenta el castigo en **días promedio** (`sueldo_por_dia` = sueldo ÷ días contratados)
 mientras que el día no trabajado ya salió en **horas reales** por RN-06. Con jornadas iguales las
@@ -780,19 +806,16 @@ dos unidades coinciden y la falta cuesta exactamente 2 días. Con jornadas desig
 | Lun 11 h + sáb 2 h, sueldo S/520 | el sábado | S/85 | 4,25 sábados |
 | Lun 11 h + sáb 2 h, sueldo S/520 | el lunes | S/175 | 1,59 lunes |
 
-Ninguno da los 2 días que pide la regla. **Decisión pendiente:** cuando las jornadas duran
-distinto, ¿qué es "un día" para el castigo?
+Ninguno daba los 2 días que pide la regla. Las tres salidas que se plantearon:
 
-- **A)** El día promedio. Faltar cuesta siempre `2 × sueldo_por_dia`, sea el sábado corto o el
-  lunes largo. Implementación: `max(0, faltas × sueldo_por_dia × dias − horas_faltadas ×
-  valor_por_hora)`. Con el caso de prueba da exactamente lo mismo que hoy (jornadas uniformes),
-  así que no hay regresión.
-- **B)** El día real. Faltar a un sábado de 1 h cuesta 2 horas de sábado; faltar a un lunes de
-  11 h cuesta 22 horas. Proporcional al compromiso de ese día.
-- **C)** Dejarlo como está y aceptar que el castigo sea plano en soles.
+| Opción | Qué implica | Faltar al sábado de 1 h |
+|---|---|---|
+| **A** — El día promedio | Faltar cuesta siempre `2 × sueldo_por_dia`, sea el sábado corto o el lunes largo | S/100 |
+| **B** ✅ — El día real | Proporcional al compromiso de ese día | S/10,71 |
+| **C** — Dejarlo como estaba | El castigo queda plano en soles y sólo cuadra con jornadas uniformes | S/55,36 |
 
-La falta **justificada** tiene el mismo problema al revés: hoy cuesta el día real, no el
-promedio. Se decide junto.
+La falta **justificada** ya funcionaba por el día real, así que con la opción B las dos quedan
+coherentes: la justificada cuesta 1 día de ese día, la injustificada cuesta 2.
 
 ### 9.3 — Definiciones que la spec no fija (defaults tomados, editables)
 
