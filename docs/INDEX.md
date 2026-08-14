@@ -17,6 +17,7 @@
 |---|---|
 | [operacion-diaria.md](operacion-diaria.md) | **Cómo funciona el negocio en la realidad**: qué hace cada rol cada día, en cada sede, y el flujo real de las prendas |
 | [integracion-huellero.md](integracion-huellero.md) | Diseño de la integración del huellero Hikvision del almacén → tabla `asistencias`. Es la entrada del sistema de sueldos |
+| [integracion-tuxedo.md](integracion-tuxedo.md) | Inspección del sistema comercial TUXEDO Pro (inventario, POS, alquiler, caja) y contrato de datos propuesto para que el motor de sueldos consuma ventas/metas por sede sin acoplarse |
 | [hoja-de-ruta-sistema.md](hoja-de-ruta-sistema.md) | Cómo se conecta todo para que la evaluación mensual salga automática y trazable |
 | [entrevista-dueno.md](entrevista-dueno.md) | Primera ronda de preguntas al dueño — **respondida** |
 | [respuestas-dueno-2.md](respuestas-dueno-2.md) | **Las respuestas del dueño**, agrupadas por tema: puntos, urgencias, Valores 360°, horarios, sanciones, sueldos y qué es lo que más plata hace perder |
@@ -27,6 +28,7 @@
 | Documento | Qué contiene |
 |---|---|
 | [superpowers/specs/sueldos/SPEC-sistema-sueldos.md](superpowers/specs/sueldos/SPEC-sistema-sueldos.md) | **Las reglas del sueldo**: modelo, RN-01 a RN-20, el caso de prueba y el registro de cada decisión del dueño (§9). Implementada en `packages/core/src/sueldos.ts` |
+| [superpowers/specs/permisos/SPEC-aislamiento-datos-personas.md](superpowers/specs/permisos/SPEC-aislamiento-datos-personas.md) | **Quién puede ver datos de otras personas**: cierra 3 agujeros vivos del no-negociable 3 y hace que la RLS respete la matriz de permisos que edita el administrador |
 | [superpowers/specs/sueldos/SPEC-esquema-sueldos.md](superpowers/specs/sueldos/SPEC-esquema-sueldos.md) | **Dónde se guardan**: tablas, RPC, RLS y congelado. Incluye los 3 bloqueantes y 3 agujeros de aislamiento encontrados en producción |
 
 ## Arquitectura
