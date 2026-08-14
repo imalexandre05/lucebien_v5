@@ -4,10 +4,17 @@ Cómo se guarda lo que el motor de `packages/core/src/sueldos.ts` calcula: tabla
 congelado. Complementa a **[SPEC-sistema-sueldos.md](SPEC-sistema-sueldos.md)**, que define las
 reglas; esta define dónde viven los datos.
 
-> **Estado:** borrador para revisión. Sale de mapear el esquema vivo con seis lectores en
-> paralelo, tres propuestas independientes de diseño y un adversario por propuesta (14-ago-2026).
-> Todo dato de "lo que ya existe" está verificado contra las migraciones y contra la base, no
-> contra otro documento.
+> **Estado:** aprobada, es la base de la migración `0068`. Sale de mapear el esquema vivo con seis
+> lectores en paralelo, tres propuestas independientes de diseño y un adversario por propuesta
+> (14-ago-2026). Todo dato de "lo que ya existe" está verificado contra las migraciones y contra la
+> base, no contra otro documento.
+>
+> **Cambios sobre el borrador**, todos verificados contra `scilb` antes de escribir el SQL: sueldos
+> pasa de la `0067` a la `0068` (§3); `btree_gist` no está instalada y el tipo `timerange` no existe
+> en Postgres, así que la migración los crea (§3); la modalidad `'diario'` se elimina porque el
+> contrato mínimo es de un mes (§4.1); el congelado necesita **tres** triggers y no uno (§6);
+> `asistencias` entra a la auditoría (§4.3); y las 13 claves de `config` quedan listadas con su
+> semilla exacta (§5).
 
 ---
 
@@ -81,7 +88,17 @@ Verificado contra las migraciones.
 | `mapaNombres()` / `app_directorio` | `apps/erp-web/lib/directorio` | Los nombres nunca salen de un join a `empleados`: la RLS devuelve una sola fila a un no-admin |
 | `getServerClient()` | `apps/erp-web/lib/supabase/server.ts` | Respeta RLS. **No** `lib/supabase.ts`, que es el singleton service_role |
 
-**La última migración es la `0066_lavanderia_envio_rpc.sql`. Sueldos arranca en la `0067`.**
+**La `0067` se la llevó el cierre de los agujeros de aislamiento
+([SPEC-aislamiento-datos-personas.md](../permisos/SPEC-aislamiento-datos-personas.md), ya aplicada).
+Sueldos arranca en la `0068`.**
+
+**Dos piezas de Postgres que hay que crear antes de las tablas**, verificadas contra la base el
+14-ago-2026:
+
+| Pieza | Estado en `scilb` | Por qué hace falta |
+|---|---|---|
+| Extensión `btree_gist` | **No instalada** (sí disponible) | Sin ella, `exclude using gist (empleado_id with =, …)` falla: gist no sabe comparar un `uuid` o un `int` por igualdad |
+| Tipo `timerange` | **No existe** | Postgres trae `int4range`, `numrange`, `daterange`, `tsrange` y `tstzrange`, y **ninguno de `time`**. El solape de turnos dentro del día lo necesita, así que la migración crea el tipo: `create type public.timerange as range (subtype = time)` |
 
 ---
 
@@ -99,7 +116,7 @@ Lo pactado con una persona para un periodo concreto. Un acuerdo por persona y pe
 | `id` | uuid pk | |
 | `empleado_id` | uuid not null | `references empleados(id) on delete restrict` — un acuerdo pagado no se borra con la persona |
 | `fecha_inicio`, `fecha_fin` | date not null | `check (fecha_fin >= fecha_inicio)` |
-| `modalidad` | text not null default `'mensual'` | `check (modalidad in ('mensual','semanal','diario'))` |
+| `modalidad` | text not null default `'mensual'` | `check (modalidad in ('mensual','semanal'))` — ver la nota |
 | `sueldo_pactado` | numeric(12,2) not null | `check (sueldo_pactado >= 0)`. **Input manual**, no se deriva de `empleados.salario_base` |
 | `escala` | int null | `check (escala between 1 and 5)`. Sólo para la tarifa sugerida de RN-14 |
 | `parametros` | jsonb not null default `'{}'` | Overrides de este colaborador. §5 |
@@ -109,6 +126,13 @@ Lo pactado con una persona para un periodo concreto. Un acuerdo por persona y pe
 - `unique (empleado_id, fecha_inicio)`
 - **Sin solapes**: `exclude using gist (empleado_id with =, daterange(fecha_inicio, fecha_fin, '[]') with &&)`. Requiere `btree_gist`.
 
+> **`'diario'` se cae de la lista.** El borrador la incluía. Alexander confirmó el 14-ago-2026 que
+> **el contrato mínimo es de un mes**, aunque a la persona se la contrate sólo los domingos: por eso
+> se paga a fin de mes y no por día. Dejarla habilitada en la base abría un valor que el motor
+> rechaza —`ModalidadPago` en `sueldos.ts:146` es `'mensual' | 'semanal'` y nada más—, es decir una
+> fila insertable por PostgREST que después no se puede liquidar. La base y el motor aceptan
+> exactamente lo mismo.
+>
 > **Por qué no se reutiliza `empleados.salario_base`:** son dos cosas distintas. `salario_base` es
 > el salario de referencia de la evaluación mensual; `sueldo_pactado` es lo acordado para **un**
 > periodo, input manual e irrepetible. Mezclarlos haría que editar la ficha de alguien cambie un
@@ -126,7 +150,8 @@ La plantilla semanal del acuerdo. Una fila por turno.
 | `hora_inicio`, `hora_fin` | time not null | `check (hora_fin > hora_inicio)` |
 | `lugar` | text null | Informativo: en qué sede se cumple ese turno |
 
-- **Sin solapes dentro del día:** `exclude using gist (acuerdo_id with =, dia_semana with =, timerange(hora_inicio, hora_fin, '[)') with &&)`.
+- **Sin solapes dentro del día:** `exclude using gist (acuerdo_id with =, dia_semana with =, timerange(hora_inicio, hora_fin, '[)') with &&)`, con el tipo `timerange` que crea la propia migración (§3).
+- El intervalo va **`'[)'`**: 09:00–13:00 y 13:00–20:00 —el horario real de LuceBien— son contiguos, no solapados. Con `'[]'` la migración rechazaría el horario que la empresa usa todos los días.
 
 > **Por qué acá y no en una tabla de horarios global.** El horario **es** parte de lo pactado, y
 > colgarlo del acuerdo da el versionado gratis: cambia el horario → acuerdo nuevo → el periodo
@@ -162,6 +187,11 @@ alter table asistencias add column if not exists motivo_justificacion text;
 > falta se **declare** (`SPEC-sistema-sueldos.md` §6). Generar filas automáticas con la hora en
 > null para que el motor no corte convertiría "no cargué la asistencia" en "no vino nunca", y le
 > cobraría dos días de sueldo por cada día no cargado. **No se hace.**
+
+**`asistencias` entra a la auditoría.** Hoy el trigger genérico de la `0058` cubre cinco tablas y
+`asistencias` no es una de ellas. Con `condicion`, declarar un día como `falta` pasa a costar dos
+días de sueldo (RN-09): es una decisión de plata tanto como editar `pagos`, que sí está auditada.
+Son dos líneas de SQL y la tabla tiene 13 filas, así que el volumen no es un argumento.
 
 **El colapso de turnos.** `asistencias` tiene grano `(empleado, fecha, turno)` y el motor quiere
 un solo par ingreso/salida por fecha. El colapso se hace **en la lectura**, no cambiando la clave
@@ -250,6 +280,7 @@ compartido, no hay timeout que pueda dejar a alguien sin liquidar.
 | `valor_por_hora` | **numeric(14,6)** not null | Ver la nota de abajo |
 | `motor_version` | text not null | Para saber qué código produjo este número |
 | `cerrada_en`, `cerrada_por` | timestamptz, uuid | |
+| `anulada_en`, `anulada_por`, `anulada_motivo` | timestamptz, uuid, text | El único cambio que admite una cerrada (§6). Sin motivo no se anula |
 
 - `unique (acuerdo_id)` — un acuerdo, una liquidación.
 
@@ -290,6 +321,31 @@ PARAMETROS_SUELDO_DEFAULT (core)  ←  config (global)  ←  sueldo_acuerdos.par
 
 **Nivel global — 13 claves `sueldo_*` en `CONFIG_CATALOGO`**, sección nueva `'Sueldos'`. No hay UI
 nueva que escribir: `/configuracion` ya renderiza número y booleano.
+
+| Clave en `config` | Parámetro del motor | Semilla |
+|---|---|---|
+| `sueldo_tolerancia_minutos` | `toleranciaMinutos` | `10` |
+| `sueldo_tardanzas_libres` | `tardanzasLibres` | `3` |
+| `sueldo_penalidad_tardanza` | `penalidadTardanza` | `5` |
+| `sueldo_valor_almuerzo` | `valorAlmuerzo` | `8` |
+| `sueldo_horas_minimas_almuerzo` | `horasMinimasAlmuerzo` | `12` |
+| `sueldo_valor_capacitacion` | `valorCapacitacion` | `25` |
+| `sueldo_bono_meta_semanal` | `bonoMetaSemanal` | `30` |
+| `sueldo_factor_meta` | `factorMeta` | `1` |
+| `sueldo_meta_semanal_fija` | `metaSemanalFija` | `true` |
+| `sueldo_pct_comision` | `pctComision` | `0.02` |
+| `sueldo_monto_minimo_comision` | `montoMinimoComision` | `120` |
+| `sueldo_dias_descuento_por_falta` | `diasDescuentoPorFalta` | `2` |
+| `sueldo_meta_por_hora` | `metaPorHora` | `45.45454545454545` |
+
+> **`45.45454545454545` no es un número arbitrario ni un redondeo.** Es `1500/33` con todos los
+> dígitos que JavaScript conserva: `Number('45.45454545454545') === 1500/33` da `true`. Cortarlo en
+> `45.4545` —como lo muestra la spec de reglas— deja la meta del periodo en 7.499,99 en vez de
+> 7.500,00, y ese céntimo decide si el bono de S/30 se paga o no.
+>
+> **La tolerancia también va por contrato.** El valor global es el default de la empresa; Alexander
+> pidió el 14-ago-2026 que dependa del acuerdo de cada persona, así que se puede pisar desde
+> `sueldo_acuerdos.parametros`, igual que cualquier otro de los 14.
 
 **Son 13 y no 14.** `meta_semanal` **no va a `config`**: es `number | null` y el null es
 significativo (*"no hay meta pactada, sugerila"*). `config.valor` es `text` y la pantalla no puede
@@ -339,12 +395,22 @@ después de una corrección da otro número. Es exactamente lo que ya resolvió
 `evaluaciones_mensuales.pesos_usados`.
 
 **Cómo se hace cumplir.** No existe en este repo ningún flag `cerrado` que congele de verdad: el
-precedente es el snapshot, y el snapshot sólo protege si nadie reescribe la fila. Hace falta un
-**trigger `before update or delete`** que rechace tocar una liquidación en estado `cerrada`.
+precedente es el snapshot, y el snapshot sólo protege si nadie reescribe la fila. Hacen falta
+**tres triggers `before update or delete`**, porque congelar la cabecera y dejar sueltas sus
+partes no congela nada:
+
+| Trigger sobre | Qué rechaza |
+|---|---|
+| `sueldo_liquidaciones` | Cualquier cambio con `estado = 'cerrada'`. **Única excepción**: pasar a `'anulada'` con motivo no vacío, sin tocar ninguna otra columna |
+| `sueldo_liquidacion_lineas` | Todo cambio o borrado cuya liquidación esté `cerrada`. Sin esto, el total queda intacto y el desglose que lo justifica se puede reescribir línea por línea |
+| `sueldo_movimientos`, `sueldo_ventas` | Todo cambio o borrado de una fila con `liquidacion_id` sellado. Sin esto, se cambia el monto de un adelanto ya cobrado y el recibo impreso deja de coincidir con la base |
 
 > Es una pieza nueva para el repo y por eso se justifica acá y no se cuela en el código: sin ella,
 > un `PATCH` plano por PostgREST reescribe un pago ya emitido. Confiar el congelado a un
 > `estado = 'cerrada'` leído en la UI no es congelar.
+>
+> Los triggers son `security definer`: tienen que bloquear también al administrador y al
+> `service_role`, que son justamente quienes pueden escribir estas tablas.
 
 **Corregir el pasado.** Si aparece un error en un periodo cerrado, no se toca: se anula
 (`estado = 'anulada'`, con motivo y autor) y se emite una liquidación nueva. El rastro queda.
@@ -426,17 +492,19 @@ llama por `/rest/v1/rpc`.
 
 Cada paso deja el sistema en un estado usable. Ninguno depende de la API del otro sistema.
 
-1. **`0067`** — las cinco tablas, las columnas de `asistencias`, RLS, los triggers de auditoría y
-   el trigger de inmutabilidad. Sembrar las 13 claves de `config`.
-2. **`config-catalogo.ts`** — las 13 entradas y la sección `'Sueldos'`.
-3. **`sueldos-repo.ts`** con `getServerClient()`. **No** `getAdminClient()`: serían siete archivos
+1. **`0068`** — `btree_gist`, el tipo `timerange`, las cinco tablas, las columnas de `asistencias`,
+   RLS, los triggers de auditoría y los tres triggers de inmutabilidad. Sembrar las 13 claves de
+   `config`. **Sin RPC**: la `0068` es sólo el esquema, para que el diff se pueda revisar entero.
+2. **`0069`** — las tres RPC de §8, cada una con su guard.
+3. **`config-catalogo.ts`** — las 13 entradas y la sección `'Sueldos'`.
+4. **`sueldos-repo.ts`** con `getServerClient()`. **No** `getAdminClient()`: serían siete archivos
    y el no-negociable 3 lo prohíbe.
-4. **Pantalla del acuerdo**: pactar sueldo, horario y overrides. Sin esto no hay nada que liquidar
+5. **Pantalla del acuerdo**: pactar sueldo, horario y overrides. Sin esto no hay nada que liquidar
    (B-01).
-5. **Pantalla de asistencia**: declarar la condición de cada día. Sin esto, B-02.
-6. **Pantalla de liquidación**: preview en vivo con el core, cerrar, reimprimir.
-7. **Carga manual de ventas y movimientos.**
-8. **Recién después**, el colector de ventas cuando exista el contrato de API.
+6. **Pantalla de asistencia**: declarar la condición de cada día. Sin esto, B-02.
+7. **Pantalla de liquidación**: preview en vivo con el core, cerrar, reimprimir.
+8. **Carga manual de ventas y movimientos.**
+9. **Recién después**, el colector de ventas cuando exista el contrato de API.
 
 ---
 
@@ -473,6 +541,11 @@ horas trabajadas superan a las contratadas por más de X, o ambas. Va con el dis
 No son defectos de este diseño. Estaban antes y **violan el no-negociable 3**. Se dejan escritos
 acá porque el esquema de sueldos tiene que no repetirlos, y porque hay que arreglarlos aparte.
 
+> ✅ **Los tres se corrigieron con la migración `0067`, aplicada y verificada contra `scilb` el
+> 14-ago-2026** — ver [SPEC-aislamiento-datos-personas.md](../permisos/SPEC-aislamiento-datos-personas.md).
+> Quedan escritos acá como el motivo por el que las policies de sueldos son como son: **ninguna
+> usa `private.app_es_almacen()`**, y toda RPC lleva guard aunque sea `security invoker`.
+
 ### P-01 🔴 Un confeccionista lee el sueldo, la asistencia y los votos de todo el equipo
 
 `private.app_es_almacen()` devuelve `true` para `rol in ('encargado_almacen','confeccionista')`
@@ -504,8 +577,8 @@ Sus escrituras fallan con 42501 y sus borrados quitan 0 filas, en silencio.
 | **Los dos caminos de la tardanza** | El motor la deriva del horario contratado + tolerancia e ignora `asistencias.minutos_tardanza`; la evaluación mensual suma `minutos_tardanza` y lo vuelve puntos. El día que se carguen horas reales, la nota /20 de todo el mundo cambia sola y en silencio. Hay que decidir quién escribe ese campo **antes** de encender el huellero |
 | **Turno partido con hueco** | El colapso `min`/`max` pagaría el hueco. Hoy no existe ningún turno partido; si aparece, hay que decidir antes de liquidarlo |
 | **Horario que cambia a mitad de periodo** | El modelo obliga a cerrar el acuerdo y abrir otro. Es coherente con el congelado, pero parte el periodo en dos liquidaciones |
-| **Turno partido con hueco** | Pendiente de preguntar al administrador si existe o va a existir alguno |
 | **Datos de personas vacíos** | `fecha_ingreso` en 1 de 18. La pantalla tiene que avisar, no inventar |
+| **Quién puede declarar una asistencia** | La escritura de `asistencias` ya es **sólo del administrador** (`asist_admin_write`, verificado en `pg_policies`: `private.app_es_admin()` en `using` y en `with check`), así que con `condicion` no se abre nada nuevo. Lo que queda por decidir es de negocio: si el encargado debe poder declarar la asistencia de su sede. Si la respuesta es sí, va por RPC con guard, nunca ampliando la policy |
 
 ---
 
