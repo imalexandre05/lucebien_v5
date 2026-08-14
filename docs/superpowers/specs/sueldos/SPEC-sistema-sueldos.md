@@ -111,13 +111,15 @@ Lo pactado con el colaborador para un periodo concreto.
 | `tardanzas_libres` | int | Por defecto 3 |
 | `penalidad_tardanza` | decimal | Por defecto 5.00 |
 | `valor_almuerzo` | decimal | Por defecto 8.00 |
+| `horas_minimas_almuerzo` | decimal | Por defecto 12: las horas de un día de tiempo completo (RN-15) |
 | `valor_capacitacion` | decimal | Por defecto 25.00 |
 | `bono_meta_semanal` | decimal | Por defecto 30.00 |
-| `factor_meta` | decimal | Por defecto 0.85 (RN-12) |
+| `meta_semanal` | decimal \| null | **Lo pactado en el contrato** (RN-10). Null = usar la sugerencia por horas |
+| `factor_meta` | decimal | Por defecto 1.00. El 0.85 del Excel descontaba una meta *derivada*; una meta pactada no se descuenta |
 | `meta_semanal_fija` | bool | Por defecto `true`: la meta es igual todas las semanas (RN-12, §9.2) |
 | `pct_comision` | decimal | Por defecto 0.02 |
 | `monto_minimo_comision` | decimal | Por defecto 120.00 |
-| `dias_descuento_por_falta` | int | Por defecto 2 (RN-09) |
+| `dias_descuento_por_falta` | int | Por defecto 2. Son los días que la falta cuesta **en total** (RN-09) |
 
 Todos estos valores tienen defaults globales pero deben poder sobrescribirse por colaborador.
 En el Excel están quemados dentro de las fórmulas, que es la razón principal por la que el
@@ -239,7 +241,19 @@ es_falta = dia_tiene_horario_contratado AND hora_ingreso is null
 ```
 
 - `faltas_injustificadas = total_faltas − faltas_justificadas`
-- `descuento_faltas = faltas_injustificadas × sueldo_por_dia × dias_descuento_por_falta`
+- `descuento_faltas = faltas_injustificadas × sueldo_por_dia × (dias_descuento_por_falta − 1)`
+
+**`dias_descuento_por_falta` son los días que la falta le cuesta EN TOTAL, no los días de castigo
+encima.** Se resta 1 porque el día que no trabajó ya salió por RN-06: como el sueldo se paga por
+horas, no presentarse ya vale un día sin necesidad de castigo.
+
+| | Días perdidos en total | Con sueldo diario S/40 |
+|---|---|---|
+| Falta **injustificada** (default 2) | el día que no vino + 1 de castigo | −S/80 |
+| Falta **justificada** | sólo el día que no vino | −S/40 |
+
+> Confirmado por el dueño el 14-ago-2026: *"si trabaja 3 días y cobra 40, y falta uno recibe 80 de
+> dos días, pero al faltar un día se le quita de uno más, entonces solo cobra 40"*.
 
 > Corrección: hoy la falta se detecta buscando el texto `0:00` en la hora de ingreso, así que
 > un día simplemente vacío no cuenta como falta. Debe detectarse por ausencia de registro en un
@@ -247,25 +261,38 @@ es_falta = dia_tiene_horario_contratado AND hora_ingreso is null
 
 ### Ventas y metas
 
-**RN-10 — Meta por hora.**
-Parámetro global: **S/45.4545** por hora (viene de S/1,500 ÷ 33 horas semanales del turno
-mañana). Es el mismo valor para todos los turnos.
+**RN-10 — La meta semanal se acuerda, no se calcula.**
+
+`meta_semanal` es un **monto pactado con cada colaborador en su contrato**. Varía por tienda,
+temporada, experiencia y turno. Valores habituales: **S/3.000 tiempo completo** y **S/1.500 medio
+tiempo**, por semana. Editable siempre.
+
+Cuando no hay meta pactada, el sistema **sugiere** una con la fórmula del Excel:
+`horas_contratadas_de_la_semana × meta_por_hora`, donde `meta_por_hora` = S/45,4545 (S/1.500 ÷ 33
+horas del turno mañana). Es una sugerencia para negociar, igual que la escala salarial de RN-14 —
+nunca reemplaza a lo pactado.
 
 **RN-11 — Meta del periodo.**
-`meta_periodo = horas_contratadas × meta_por_hora`
+`meta_periodo = suma de las metas semanales del periodo`
+
+No se calcula aparte: es la suma de lo que ya se pactó semana a semana (confirmado por el dueño,
+14-ago-2026). Un periodo de 4 semanas a S/1.500 tiene meta mensual de S/6.000.
 
 **RN-12 — Semanas y meta semanal.**
 El periodo se divide en semanas de 7 días desde `fecha_inicio`.
 
 - **La última semana absorbe los días sobrantes.** Si el periodo tiene 31 días, la semana 4
   cubre los días 22 a 31, no solo hasta el 28. Ninguna venta queda fuera de una semana.
-- `meta_semanal = horas_de_la_plantilla_semanal × meta_por_hora × factor_meta`
-  La meta es **la misma todas las semanas** y sale del horario contratado de una semana tipo,
-  no de cuántos días cayeron en ese tramo. Una semana que absorbe días sobrantes **no** sube su
-  meta: el bono es un premio semanal fijo y el colaborador no elige que su mes tenga 31 días
-  (decisión de Alexander, 13-ago-2026 — ver §9.2).
+- La meta es **la misma todas las semanas**: la pactada de RN-10. Una semana que absorbe días
+  sobrantes **no** sube su meta — el bono es un premio semanal fijo y el colaborador no elige
+  que su mes tenga 31 días (decisión de Alexander, 13-ago-2026 — ver §9.2). Sin meta pactada, la
+  sugerencia sale del horario de una semana tipo, no de cuántos días cayeron en ese tramo.
 - Una semana se considera cumplida si `ventas_de_la_semana > meta_semanal`.
-- `bono_metas = semanas_cumplidas × bono_meta_semanal`
+- `bono_metas = semanas_cumplidas × bono_meta_semanal`, con `bono_meta_semanal` = S/30 editable.
+
+El bono semanal y la comisión de RN-13 son **dos premios distintos por dos metas distintas**, no
+uno que reemplazó al otro: el bono se gana semana a semana, la comisión se desbloquea al llegar a
+la meta del mes (confirmado por el dueño, 14-ago-2026).
 
 Para el caso contrario (meta proporcional a los días de cada tramo) existe el parámetro
 `meta_semanal_fija = false`, apagado por defecto.
@@ -307,14 +334,26 @@ Se muestra al lado del sueldo pactado como referencia para negociar. Nunca lo re
 ### Beneficios
 
 **RN-15 — Almuerzos.**
-El colaborador gana S/8 por cada día que trabaja jornada completa. Si el almuerzo se le
-entregó en especie, no se le paga; si no, se le paga en dinero.
+El colaborador gana S/8 **por cada día de tiempo completo que hizo en el periodo**. Si el almuerzo
+se le entregó en especie, no se le paga; si no, se le paga en dinero.
 
 ```
-dias_con_derecho     = días trabajados con jornada completa
+es_dia_de_tiempo_completo = horas_trabajadas >= horas_minimas_almuerzo
+                            OR almuerzo_habilitado_por_admin
+
+dias_con_derecho     = días de tiempo completo trabajados en el periodo
 almuerzos_a_pagar    = dias_con_derecho − almuerzos_entregados
 monto_almuerzos      = almuerzos_a_pagar × valor_almuerzo
 ```
+
+**Se mira día por día, no el contrato de la persona.** Hay colaboradores que tienen días completos
+y días de medio turno; sólo los completos ganan almuerzo. `horas_minimas_almuerzo` = **12 h** por
+defecto (tiempo completo ≈ 12 h, medio tiempo ≈ 6 h), editable. El administrador puede además
+habilitar los almuerzos de alguien a mano, sin importar las horas.
+
+El colaborador elige cuándo cobrarlos: día a día conforme los va ganando, o acumulados a fin de
+mes. Lo que ya recibió va en `almuerzos_entregados` y se resta. **El administrador necesita ver
+esa cuenta corriente** — cuántos ganó, cuántos ya se le dieron y cuántos quedan.
 
 Nunca puede ser negativo.
 
@@ -407,35 +446,41 @@ Datos reales del archivo `13.-NOMBRE_2026_MES_VERSIÓN 20.0.xlsx`, con las regla
 | Diferencia de horas | +14.9833 h | RN-06 |
 | Tardanzas | **10** — el jueves sin horario no cuenta | RN-08 |
 | Tardanzas injustificadas | **3** (10 − 3 libres − 4 justificadas) | RN-08 |
-| Meta del periodo | 7,500.00 | RN-11 |
-| Meta semanal | 1,275.00, **igual las cuatro semanas** | RN-12 |
+| Meta semanal sugerida | 1,500.00, **igual las cuatro semanas** | RN-10, RN-12 |
+| Meta del periodo | **6,000.00** (4 semanas × 1,500) | RN-11 |
 | Semanas cumplidas | **4** | RN-12 |
+| Días de tiempo completo | **0** por horas (ninguno llega a 12 h) — el administrador tenía habilitados sus almuerzos, así que cuentan los **16** días trabajados | RN-15 |
 
 ### Liquidación esperada
 
 | Línea | Monto |
 |---|---|
 | Sueldo | 600.00 |
-| Comisión 2% | **0.00** (ventas 7,200 < meta 7,500) |
+| Comisión 2% | **46.40** (ventas 7,200 ≥ meta 6,000, sobre S/2,320 en boletas grandes) |
 | Bono metas semanales | **120.00** (4 × 30) |
-| Almuerzos | **64.00** (16 trabajados − 8 entregados = 8 × 8) |
+| Almuerzos | **64.00** (16 días − 8 entregados = 8 × 8) |
 | Horas fuera de contrato | 21.82 |
-| **Ingresos** | **805.82** |
+| **Ingresos** | **852.22** |
 | Faltas | 0.00 |
 | Adelantos | −190.00 |
 | **Descuentos** | **−190.00** |
 | Diferencia de horas | +54.48 |
 | Capacitaciones | +50.00 |
 | **Ajustes** | **+104.48** |
-| **Subtotal** | **720.30** |
+| **Subtotal** | **766.70** |
 | Tardanzas (3 × 5) | **−15.00** |
 | Reportes | −20.00 |
 | Bonos extras | +20.00 |
-| **TOTAL A PAGAR** | **S/705.30** |
+| **TOTAL A PAGAR** | **S/751.70** |
 
-> El archivo Excel actual arroja **S/804.70** para estos mismos datos. La diferencia de S/99.40
-> son los cuatro bugs corregidos: almuerzos de más (−88.00), comisión indebida (−46.40), una meta
-> semanal no reconocida (+30.00) y una tardanza contada en un día sin horario (+5.00).
+> El archivo Excel actual arroja **S/804.70** para estos mismos datos. Los S/53.00 de diferencia
+> son tres correcciones: almuerzos contados sobre el calendario en vez de sobre días trabajados
+> (−88.00), una meta semanal que el admin no reconoció porque la fórmula estaba rota (+30.00) y
+> una tardanza contada en un día sin horario (+5.00). La comisión de S/46.40 que el Excel pagaba
+> resulta correcta: con la meta pactada de S/1.500 semanales, el mes sí la alcanza.
+>
+> **El Excel es una plantilla de referencia**, no la planilla real de nadie. Sirve para validar
+> que el motor recorre bien el flujo, no para tomar sus montos como verdad.
 
 ---
 
@@ -660,9 +705,8 @@ Ni la spec ni el dueño dicen que sea así. §9.4 documenta el castigo doble só
 (cita textual del dueño en N5), y **S4 —*"¿qué se le descuenta a alguien del sueldo?"*— quedó sin
 responder**, que es justo la pregunta que validaría esto.
 
-*Decisión pendiente:* ¿`dias_descuento_por_falta` es **además** del día no trabajado, o
-**incluyéndolo**? Si es incluyéndolo, hay que descontar `(dias − 1)`. El test de RN-09 fija el
-comportamiento actual para que cualquier cambio sea deliberado.
+**Resuelto por el dueño el 14-ago-2026: incluyéndolo.** Son 2 días en total, no 3. RN-09 ahora
+descuenta `(dias_descuento_por_falta − 1)`.
 
 **V-02 — La meta semanal fija también aplica hacia abajo.**
 La decisión de §9.2 fue sobre la semana que *absorbe días de más*. El código la aplica igual
