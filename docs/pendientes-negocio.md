@@ -90,31 +90,13 @@ se registra.
 
 ## Fase 12 — Evaluación mensual completa + Valores 360° + pagos
 
-- ⚠️ **Hallazgo que va más allá de esta fase: la base viva (`scilb`) está aplicada solo hasta
-  aproximadamente la migración `0045`.** Se verificó en vivo (consultas directas contra `scilb`,
-  no una suposición) para poder crear las cuentas QA de esta fase: `empleados.rol_cod` (F1,
-  `0050`), `sedes.perfil` (F2, `0051`), `reportes.estado_envio` (F4, `0052`), `reporte_extras.cod`
-  (F5, `0053`), `inventario_activo.pieza` / tabla `producto_tipos` (F7, `0055`) y la tabla
-  `solicitudes` (F11, `0056`) **NO EXISTEN todavía** en la base real — `permisos_modulos` (`0045`)
-  sí existe. Esto significa que **todo el trabajo de las fases F1, F2, F4, F5, F7 y F11 corre hoy
-  en producción en su modo degradado** (roles derivados sin efecto, perfil de sede sin filtrar,
-  catálogo de extras con puntaje sin aplicar, despiece/tipos de inventario sin tabla, Solicitudes
-  mostrando su aviso de "falta migrar"), no por un problema de esta fase sino porque **ninguna
-  migración de `0050` en adelante se ha aplicado contra `scilb` todavía**. No es una sorpresa nueva
-  para el patrón (F7/F11 ya habían anotado que el MCP no estaba disponible), pero el alcance real
-  — 6 fases completas, no solo "la última" — no estaba escrito en ningún lado hasta ahora. Aplicar
-  `0050` a `0057` **en orden** (son idempotentes y aditivas, pensadas para correr en secuencia)
-  destrabaría todo el bloque de una vez.
-- **Migración `0057` sin aplicar.** El MCP de Supabase no estaba disponible en este entorno (igual
-  que reportó la Fase 7/11 en momentos similares) y `SUPABASE_DB_URL` no existe en
-  `apps/erp-web/.env.local` (confirmado, igual que documentó la Fase 11). La migración se escribió
-  y quedó lista (`packages/db/migrations/0057_valores360_competencias_pagos.sql`), pero **nadie la
-  aplicó contra `scilb`**. Hasta que se aplique: `/valores` muestra el aviso "Falta aplicar la
-  migración 0057" en vez de un 500 (`ValoresNoMigradoError`, mismo patrón que
-  `SolicitudesNoMigradoError` de la Fase 11); en `/evaluaciones` el catálogo de competencias
-  aparece vacío con el mismo aviso inline, y "Registrar pago" del ciclo devuelve un mensaje claro
-  (`PagosCicloNoMigradoError`) en vez de fallar en silencio — el resto de `/evaluaciones` y
-  `/pagos` (que no dependen de columnas nuevas) sigue funcionando igual que antes de esta fase.
+- ~~⚠️ **La base viva (`scilb`) está aplicada solo hasta la migración `0045`**~~ y
+  ~~**la `0057` sin aplicar**~~ — **AMBAS FALSAS, corregidas el 13-ago-2026.** Se verificó objeto
+  por objeto contra `scilb`: **las 66 migraciones están aplicadas**, y `SUPABASE_DB_URL` sí
+  existía. Nada corre degradado. Es la misma afirmación falsa que se propagó entre las fases 11,
+  12 y 13 copiándose entre sí — ver el bloque tachado al final de este archivo y
+  `docs/mapa-verificado.md` §6. **Si encontrás otra copia de esta afirmación en cualquier
+  documento, es falsa.**
 - **`bonusVentas` es SIEMPRE 0 en el autollenado — no hay fuente de datos.** El plan pedía que el
   RPC `evaluacion_componentes` devolviera también `bonusVentas`, pero el módulo que lo calculaba en
   el sistema viejo (`routes/ventas.js`, tabla `ventas_metas`, bonus por cumplimiento de meta de
@@ -177,24 +159,9 @@ se registra.
 
 ## Fase 13 — Configuración integral + auditoría
 
-- ⚠️ **Migración `0058` sin aplicar** — mismo motivo que `0050`-`0057`: no hay MCP de Supabase
-  disponible en este entorno ni `SUPABASE_DB_URL` en `apps/erp-web/.env.local` (verificado, igual
-  que documentaron las fases anteriores). La migración se escribió y quedó lista
-  (`packages/db/migrations/0058_config_tipado_auditoria.sql`) pero **nadie la aplicó contra
-  `scilb`**. Hasta que se aplique:
-  - `/administracion/auditoria` muestra el aviso "Falta aplicar la migración 0058" en vez de un
-    500 (`AuditoriaNoMigradoError`, mismo patrón que `SolicitudesNoMigradoError`/
-    `ValoresNoMigradoError`) — verificado en vivo.
-  - `/configuracion` funciona igual que siempre para los 22 parámetros del catálogo (siguen
-    editables, con su default visible aunque la fila real todavía no exista en `config`), pero
-    "Nuevo parámetro" (crear una clave que NO está en el catálogo) devuelve un mensaje claro en
-    vez de un 500, porque las columnas `tipo`/`descripcion`/`seccion`/`opciones` de `config` son
-    justamente parte de esta migración — verificado en vivo con Playwright.
-  - Los triggers de auditoría (`pedidos`, `caja_movimientos`, `empleados`, `pagos`,
-    `evaluaciones_mensuales`) no existen todavía, así que **ninguna escritura en esas tablas se
-    está auditando hoy** — no hay impacto en el funcionamiento normal del ERP (los triggers son
-    puramente aditivos/observacionales), solo significa que la auditoría arranca a contar desde
-    que `0058` se aplique, no desde antes.
+- ~~⚠️ **Migración `0058` sin aplicar**~~ — **FALSO, corregido el 13-ago-2026.** Está aplicada,
+  igual que las otras 65. La auditoría, `/configuracion` y sus triggers funcionan. Tercera copia
+  de la misma afirmación falsa; ver el bloque tachado al final de este archivo.
 - **`/configuracion` rediseñada con un catálogo tipado en CÓDIGO, no en la base.** Los
   22 parámetros conocidos (`pts_*`, `peso_*`/`eval_*`, `turno_*_cierre`, `despiece_pct_saco`,
   `valores_*`) tienen su tipo/descripción/sección/default en
@@ -337,15 +304,77 @@ pendientes, no perdidos en el texto del plan:
   verificado (Fase 2), pero requiere aprobar los 4 equipos reales en `/dispositivos` primero. El
   flag sigue en `false`; ninguna fase de este loop lo activó ni debía hacerlo.
 
-## Estado de las migraciones al cierre de la Fase 13
+## ~~Estado de las migraciones al cierre de la Fase 13~~ — AFIRMACIÓN FALSA, corregida el 13-ago-2026
 
-`scilb` sigue aplicada solo hasta aproximadamente la `0049` (verificado en vivo de nuevo en esta
-fase: `empleados.rol_cod` y `sedes.perfil` siguen sin existir, `roles`/`producto_tipos`/
-`solicitudes`/`evaluaciones_valores`/`competencias_config`/`audit_log` siguen sin existir). El
-hueco es `0050` → `0058`, las nueve migraciones de F1/F2/F4/F5/F6/F7/F11/F12/F13, todas
-idempotentes y pensadas para aplicarse en secuencia. Aplicarlas de una vez contra `scilb` (por MCP
-o `SUPABASE_DB_URL` cuando estén disponibles) destraba de golpe: roles derivados, perfil de sede,
-catálogo de extras con puntaje, despiece/tipos de inventario, Solicitudes, Valores 360°/
-competencias/pagos por ciclo, y ahora también la ventana de Valores 360° + la auditoría completa.
+> Esta sección decía que `scilb` estaba aplicada sólo hasta la `0049` y que faltaba el hueco
+> `0050`–`0058`. **Es falso.** Se verificó objeto por objeto contra la base el 13-ago-2026: las
+> **66** migraciones están aplicadas. La afirmación se propagó porque las fases 11, 12 y 13 la
+> copiaron entre sí sin volver a comprobarla, y durante meses se creyó que producción corría
+> degradada. Ver `docs/mapa-verificado.md` §6. Se conserva tachada porque es el ejemplo vivo del
+> no-negociable 7: lo que se escribe se verifica contra la base, nunca contra otro documento.
+
+---
+
+## Sistema de sueldos — defaults tomados el 13-ago-2026
+
+De `docs/superpowers/specs/sueldos/SPEC-sistema-sueldos.md`, implementada en
+`packages/core/src/sueldos.ts`. Todos son parámetros de `ParametrosSueldo`, editables; ninguno
+está quemado en el código. **Ninguno está confirmado por el dueño.**
+
+**🔴 Lo más urgente que salió del verificador (spec §9.5):**
+
+- **Una falta cuesta TRES días de sueldo, no dos.** RN-09 descuenta 2 días, y RN-06 ya había
+  restado el día de horas que no trabajó. Con S/120 de sueldo y 3 días contratados, una sola falta
+  deja el pago del periodo en S/16. Nadie confirmó que sea así — es exactamente lo que S4 habría
+  respondido. **Preguntar antes de que esto liquide a alguien.**
+- **La meta semanal fija también aplica a periodos de menos de una semana.** Quien entra a mitad
+  de semana tiene meta del periodo proporcional pero meta semanal completa: no puede cobrar el
+  bono aunque venda bien.
+- **Las dos decisiones de abajo las tomó Alexander en conversación, no el dueño.** Mueven S/25 por
+  persona por mes. Quedan pendientes de confirmar con el dueño.
+
+**Decisiones de negocio — tomadas por Alexander el 13-ago-2026 (spec §9), sin confirmar por el dueño:**
+
+1. **¿Un día trabajado sin horario contratado puede generar tardanza?** → **No.** Textual:
+   *"solo afecta en cuántas horas trabajó y eso en su pago del día"*. Ese día entra por la
+   diferencia de horas (RN-06) y por nada más. RN-08 ya lo decía; se corrigió el caso de prueba.
+2. **¿La semana que absorbe los días sobrantes del mes sube su meta?** → **No.** La meta semanal
+   es fija: horas de la plantilla semanal × meta_por_hora × factor, igual todas las semanas.
+   RN-12 se reescribió. La otra opción sigue disponible con `metaSemanalFija: false`.
+
+Con ambas, el caso de prueba da **S/705.30**. Los S/700.30 que declaraba la spec original no
+correspondían a ninguna combinación coherente de reglas: mezclaban la tardanza del Excel con la
+meta semanal corregida a medias.
+
+**Defaults que hubo que elegir porque la spec no los fija:**
+
+| Parámetro | Default | Por qué |
+|---|---|---|
+| `horasMinimasAlmuerzo` | `0` | RN-15 habla de "jornada completa" pero no la define. Con 0 (cualquier día con ingreso y salida) salen los 16 días del caso de prueba; exigir cumplir las horas contratadas daría 12 y S/32 menos |
+| `metaPorHora` | `1500 / 33` exacto | La spec muestra `45,4545`, que es ese número redondeado. Con el redondeado la meta del periodo daría 7.499,99 en vez de 7.500,00 |
+| Redondeo | Cada línea del desglose a 2 decimales; los totales suman líneas ya redondeadas | Así el desglose que se le enseña al colaborador suma exactamente el total. `valorPorHora` es la única cifra sin redondear: llevarla a 3,64 movería el total unos S/0,06 |
+| Comparación de meta semanal | `ventas > meta`, estricto | Es lo que dice RN-12. Empatar la meta no la cumple |
+| Justificaciones | Por día (`tardanzaJustificada` en el registro), no por contador | El Excel sólo guarda el número total. Por día es lo que pide PEND-06 y deja rastro de qué día y por qué |
+
+**Huecos que abrieron las respuestas del dueño del 13-ago-2026** (`docs/respuestas-dueno-2.md`):
+
+- **S4 quedó sin responder**: *"¿qué se le descuenta a alguien del sueldo?"*. Es la pregunta que
+  valida los descuentos que ya están implementados. Volver a preguntarla.
+- **Modalidad "por día trabajado"** (S1): existe y la spec sólo contempla mensual y semanal.
+- **Garantía del adelanto** (S9): hace falta mínimo una semana trabajada ese mes. Sin implementar.
+- **Sanciones revocables** (N2, N3): si la prenda perdida aparece, la sanción se revoca. Hoy un
+  descuento sólo se registra, no se puede deshacer.
+- **¿La comisión va en este sistema o aparte?** (N1): el dueño dijo *"aparte"* pero la describió
+  igual que RN-13. Preguntar antes de construir la pantalla de ventas.
+- **Meta de puntos que paga dinero** (N4): sin definir. El dueño quiere medir primero cuántos
+  puntos junta la gente. Sabe dos cosas: el valor del punto debe ser editable, y la meta cambia
+  por puesto y por tienda.
+
+**Parámetros con default tomado de la spec §3.3** (ya escritos ahí, se repiten para que el
+administrador los revise de una): tolerancia 10 min · 3 tardanzas libres · S/5 por tardanza ·
+S/8 el almuerzo · S/25 la capacitación · S/30 el bono semanal · factor de meta 0,85 · 2% de
+comisión sobre boletas mayores a S/120 · una falta cuesta 2 días de sueldo.
+
+---
 
 _Agregar aquí, por fase, cualquier parámetro nuevo que se sembró con un default sin confirmar._
