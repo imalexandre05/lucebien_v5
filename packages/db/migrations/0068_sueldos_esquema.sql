@@ -13,6 +13,9 @@
 --
 -- Idempotente: se puede reaplicar sin fallar. Cada `create` lleva su `if not exists` y cada
 -- restricción que no lo soporta va envuelta en un `do $$ ... $$` que consulta pg_constraint.
+--
+-- Esta versión incorpora los diez defectos que encontró el subagente verificador sobre la primera
+-- escritura, antes de aplicarla (spec §12). Seis de los diez estaban en el congelado.
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 0) Las dos piezas de Postgres que el diseño necesita y no existen todavía
@@ -22,7 +25,8 @@
 
 -- btree_gist: sin ella, `exclude using gist (empleado_id with =, ...)` falla, porque gist no sabe
 -- comparar un uuid ni un int por igualdad. Va al schema `extensions`, que es donde Supabase pone
--- las suyas; si ese schema no existiera, cae al default.
+-- las suyas; si ese schema no existiera, cae al default. El opclass se resuelve por tipo y método
+-- de acceso, no por search_path, así que el schema donde viva no cambia nada.
 do $$
 begin
   if not exists (select 1 from pg_extension where extname = 'btree_gist') then
@@ -49,7 +53,8 @@ end $$;
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 1) sueldo_acuerdos — la unidad (spec §4.1)
 --    Lo pactado con una persona para un periodo concreto. Todo lo demás cuelga de acá, y eso es
---    lo que hace que el congelado salga casi gratis.
+--    lo que hace que el congelado salga casi gratis. Es también la tabla del módulo de contratos
+--    (spec §9.bis): un contrato ES un acuerdo de periodo.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create table if not exists sueldo_acuerdos (
   id             uuid primary key default gen_random_uuid(),
@@ -62,7 +67,14 @@ create table if not exists sueldo_acuerdos (
   -- Input manual. NO se deriva de empleados.salario_base: ese es el salario de referencia de la
   -- evaluación mensual, y mezclarlos haría que editar la ficha de alguien cambie un pago pasado.
   sueldo_pactado numeric(12,2) not null,
+  -- Sin techo a propósito: sueldos.ts:407-418 dice que la tabla de escalas es un default editable
+  -- ("cuando suba el sueldo mínimo o el dueño reajuste la escala"). Un `between 1 and 5` obligaría
+  -- a una migración para agregar la escala 6, que es exactamente lo que prohíbe el no-negociable 5.
   escala         int,
+  -- El almuerzoHabilitadoPorAdmin de EntradaLiquidacion (sueldos.ts:204). Sin esta columna no hay
+  -- dónde guardarlo, y quien trabaja medio turno pierde S/8 por día sin que el administrador
+  -- pueda evitarlo (RN-15).
+  almuerzo_habilitado boolean not null default false,
   -- Overrides de este colaborador sobre los parámetros globales (spec §5). Acá vive la tolerancia
   -- por contrato que pidió Alexander, y `metaSemanal`, que no puede vivir en `config` porque su
   -- null es significativo ("no hay meta pactada, sugerila") y config.valor es text.
@@ -77,10 +89,27 @@ create table if not exists sueldo_acuerdos (
   -- motor, para que no exista una fila insertable por PostgREST que después no se pueda liquidar.
   constraint sueldo_acuerdos_modalidad_chk check (modalidad in ('mensual', 'semanal')),
   constraint sueldo_acuerdos_pactado_chk   check (sueldo_pactado >= 0),
-  constraint sueldo_acuerdos_escala_chk    check (escala is null or escala between 1 and 5),
+  constraint sueldo_acuerdos_escala_chk    check (escala is null or escala >= 1),
   constraint sueldo_acuerdos_estado_chk    check (estado in ('borrador', 'vigente', 'liquidado')),
-  constraint sueldo_acuerdos_parametros_chk check (jsonb_typeof(parametros) = 'object'),
-  constraint sueldo_acuerdos_emp_inicio_uniq unique (empleado_id, fecha_inicio)
+
+  -- Lista blanca de claves. resolverParametros() LANZA ante cualquier clave que no esté en
+  -- ParametrosSueldo (sueldos.ts:119-121). Sin este check, la base acepta feliz
+  -- {"tolerancia_minutos": 15} —snake_case, que es como está escrito todo el SQL de este repo— el
+  -- acuerdo se guarda bien, y después TODA liquidación de esa persona corta con error hasta que
+  -- alguien encuentre el jsonb. Quitarle las 14 claves conocidas tiene que dejarlo vacío.
+  constraint sueldo_acuerdos_parametros_chk check (
+    jsonb_typeof(parametros) = 'object'
+    and parametros - array[
+      'toleranciaMinutos', 'tardanzasLibres', 'penalidadTardanza', 'valorAlmuerzo',
+      'horasMinimasAlmuerzo', 'valorCapacitacion', 'bonoMetaSemanal', 'metaSemanal',
+      'factorMeta', 'metaSemanalFija', 'pctComision', 'montoMinimoComision',
+      'diasDescuentoPorFalta', 'metaPorHora'
+    ] = '{}'::jsonb
+  ),
+
+  constraint sueldo_acuerdos_emp_inicio_uniq unique (empleado_id, fecha_inicio),
+  -- Destino de la clave foránea compuesta de sueldo_liquidaciones. Ver la nota de §6 de abajo.
+  constraint sueldo_acuerdos_id_emp_uniq     unique (id, empleado_id)
 );
 
 -- Dos acuerdos vigentes que se pisan significan dos sueldos pactados para el mismo día. La base
@@ -102,8 +131,9 @@ comment on table sueldo_acuerdos is
   'Lo pactado con una persona para un periodo. Es también la tabla del módulo de contratos
    (SPEC-esquema-sueldos.md §9.bis): un contrato ES un acuerdo de periodo.';
 comment on column sueldo_acuerdos.parametros is
-  'Overrides de ParametrosSueldo para esta persona y este periodo. Cuelga del acuerdo y no de la
-   persona a propósito: un override sin periodo se retroaplica y cambiaría un pago ya emitido.';
+  'Overrides de ParametrosSueldo para esta persona y este periodo, con las claves en camelCase
+   exactas del core. Cuelga del acuerdo y no de la persona a propósito: un override sin periodo se
+   retroaplica y cambiaría un pago ya emitido.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 2) sueldo_acuerdo_turnos — el horario contratado (spec §4.2, resuelve el bloqueante B-01)
@@ -155,18 +185,24 @@ comment on table sueldo_acuerdo_turnos is
 --    El problema que resuelve: hoy la tabla no puede distinguir "faltó" de "nadie cargó el dato".
 --    Las 13 filas que existen tienen hora_entrada y hora_salida en NULL, y el motor lee un ingreso
 --    nulo como FALTA (sueldos.ts:569). Si la liquidación leyera la tabla tal cual, cobraría 13
---    faltas inventadas a S/2 días de sueldo cada una.
+--    faltas inventadas a dos días de sueldo cada una.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 alter table asistencias add column if not exists condicion            text    not null default 'sin_dato';
 alter table asistencias add column if not exists tardanza_justificada boolean not null default false;
 alter table asistencias add column if not exists falta_justificada    boolean not null default false;
 alter table asistencias add column if not exists motivo_justificacion text;
 
+-- Tres valores y no cinco. 'descanso' y 'licencia' quedan fuera hasta que exista la regla: el
+-- motor no las sabe representar (RegistroAsistencia sólo distingue "hay horaIngreso" de "no hay"),
+-- así que un día contratado marcado 'licencia' o se manda sin justificar —y cuesta DOS DÍAS de
+-- sueldo— o se omite y el motor corta con "Faltan N día(s) contratado(s)". Hoy no se pierde nada:
+-- el día de descanso semanal no es un día contratado, no tiene turno en la plantilla y no necesita
+-- fila. Ver docs/pendientes-negocio.md.
 do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'asistencias_condicion_chk') then
     alter table asistencias add constraint asistencias_condicion_chk
-      check (condicion in ('sin_dato', 'trabajado', 'falta', 'descanso', 'licencia'));
+      check (condicion in ('sin_dato', 'trabajado', 'falta'));
   end if;
 end $$;
 
@@ -179,25 +215,43 @@ comment on column asistencias.motivo_justificacion is
   'Por qué se justificó la tardanza o la falta. Sin esto, "justificada" es una casilla sin rastro.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 4) sueldo_movimientos — adelantos, descuentos y bonos (spec §4.4)
+-- 4) sueldo_movimientos — adelantos, descuentos, bonos y conteos (spec §4.4)
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create table if not exists sueldo_movimientos (
   id             uuid primary key default gen_random_uuid(),
   empleado_id    uuid not null references empleados(id) on delete restrict,
   fecha          date not null,
   tipo           text not null,
-  -- monto > 0 NO es un detalle: el verificador encontró que un adelanto tipeado en negativo
-  -- invertía la línea, de descontar S/100 a SUMAR S/100. El signo lo pone la regla, no el dato.
-  monto          numeric(12,2) not null,
+  -- Nullable a propósito: hay dos clases de fila con la misma forma y distinta unidad. Ver el
+  -- check de más abajo.
+  monto          numeric(12,2),
+  cantidad       int not null default 1,
   motivo         text not null,
-  -- Sello: qué liquidación lo consumió. Con sello, la fila es intocable (trigger de §6).
+  -- Sello: qué liquidación lo consumió. Con sello, la fila es intocable (triggers de §8).
   liquidacion_id uuid,
   creado_en      timestamptz not null default now(),
   creado_por     uuid references empleados(id) on delete set null,
 
-  constraint sueldo_mov_tipo_chk   check (tipo in ('adelanto', 'reporte', 'bono_extra', 'capacitacion', 'almuerzo_entregado')),
-  constraint sueldo_mov_monto_chk  check (monto > 0),
-  constraint sueldo_mov_motivo_chk check (length(trim(motivo)) > 0)
+  constraint sueldo_mov_tipo_chk     check (tipo in ('adelanto', 'reporte', 'bono_extra', 'capacitacion', 'almuerzo_entregado')),
+  -- monto > 0 NO es un detalle: el verificador encontró que un adelanto tipeado en negativo
+  -- invertía la línea, de descontar S/100 a SUMAR S/100. El signo lo pone la regla, no el dato.
+  constraint sueldo_mov_monto_chk    check (monto is null or monto > 0),
+  constraint sueldo_mov_cantidad_chk check (cantidad > 0),
+  constraint sueldo_mov_motivo_chk   check (length(trim(motivo)) > 0),
+
+  -- Las dos unidades, hechas excluyentes. adelanto/reporte/bono_extra son PLATA: el motor los suma
+  -- como montos. capacitacion/almuerzo_entregado son CONTEOS: el motor recibe personasCapacitadas
+  -- y almuerzosEntregados (sueldos.ts:199-205) y multiplica él por valorCapacitacion y
+  -- valorAlmuerzo. Compartir una columna `monto not null` invita al error obvio —sum(monto) en vez
+  -- de sum(cantidad)— y ese error es caro: 10 almuerzos cargados a S/8 dan almuerzosEntregados=80,
+  -- y como almuerzosAPagar = max(0, diasConDerecho − entregados), la persona pierde el reintegro
+  -- de TODOS los almuerzos con una advertencia que se lee como cosmética.
+  constraint sueldo_mov_unidad_chk check (
+    case when tipo in ('capacitacion', 'almuerzo_entregado')
+         then monto is null       -- el valor sale de config/parametros, no de la fila
+         else monto is not null   -- adelanto/reporte/bono_extra: la fila ES el monto
+    end
+  )
 );
 
 create index if not exists idx_sueldo_mov_empleado_fecha on sueldo_movimientos(empleado_id, fecha);
@@ -207,6 +261,9 @@ comment on table sueldo_movimientos is
   'Una sanción se corrige mientras el mes esté abierto, y después ya no (decisión de Alexander,
    14-ago-2026). No hay columnas de revocación: con el periodo abierto el administrador edita o
    borra la fila, y una vez cerrada la liquidación el sello liquidacion_id la vuelve intocable.';
+comment on column sueldo_movimientos.cantidad is
+  'Cuántas unidades registra la fila. Es LA cifra que el motor consume en capacitacion y
+   almuerzo_entregado (son conteos, no montos). En los tipos de plata queda en 1.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 5) sueldo_ventas — la frontera con el sistema del otro programador (spec §4.5)
@@ -250,8 +307,13 @@ create index if not exists idx_sueldo_ventas_liquidacion    on sueldo_ventas(liq
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create table if not exists sueldo_liquidaciones (
   id                uuid primary key default gen_random_uuid(),
-  acuerdo_id        uuid not null references sueldo_acuerdos(id) on delete restrict,
-  -- Desnormalizado a propósito: la policy de lectura lo necesita sin join.
+  acuerdo_id        uuid not null,
+  -- Desnormalizado a propósito: la policy de lectura lo necesita sin join. Y por eso mismo tiene
+  -- que ser SIEMPRE el empleado del acuerdo: esta columna es la que decide la RLS, así que un uuid
+  -- equivocado no es un dato feo, es el aislamiento 1 roto — con el acuerdo de Ana y el uuid de
+  -- Beto, Beto lee el sueldo pactado, la asistencia y las ventas de Ana, y Ana no ve la suya. La
+  -- clave foránea COMPUESTA de más abajo hace imposible esa combinación, sin depender de que la
+  -- RPC no se equivoque.
   empleado_id       uuid not null references empleados(id) on delete restrict,
   periodo_desde     date not null,
   periodo_hasta     date not null,
@@ -287,17 +349,31 @@ create table if not exists sueldo_liquidaciones (
 
   constraint sueldo_liq_estado_chk  check (estado in ('borrador', 'cerrada', 'anulada')),
   constraint sueldo_liq_periodo_chk check (periodo_hasta >= periodo_desde),
-  -- Anular sin motivo es perder el rastro de por qué se anuló.
+  -- Anular sin motivo es perder el rastro de por qué. El AUTOR también es obligatorio, pero se
+  -- exige en el trigger de §8.1 y no acá: `anulada_por` es `on delete set null`, así que un check
+  -- que lo pidiera convertiría el borrado de cualquier empleado en un error incomprensible mucho
+  -- tiempo después.
   constraint sueldo_liq_anulacion_chk check (
     estado <> 'anulada' or coalesce(length(trim(anulada_motivo)), 0) > 0
   ),
-  constraint sueldo_liq_acuerdo_uniq unique (acuerdo_id)
+  constraint sueldo_liq_acuerdo_emp_fk
+    foreign key (acuerdo_id, empleado_id)
+    references sueldo_acuerdos(id, empleado_id) on delete restrict
 );
+
+-- Un acuerdo, UNA liquidación vigente. El unique va PARCIAL, y esa palabra vale un mes de sueldo:
+-- con un unique total, anular y reemitir —el único camino que la spec §6 admite para corregir el
+-- pasado— es imposible. Otra liquidación sobre el mismo acuerdo choca con el unique; un acuerdo
+-- nuevo para el mismo periodo choca con sueldo_acuerdos_sin_solape; y borrar la anulada está
+-- bloqueado por el on delete restrict de los movimientos que ya consumió. Callejón sin salida con
+-- el sueldo del mes sin emitir.
+create unique index if not exists uq_sueldo_liq_acuerdo_vigente
+  on sueldo_liquidaciones(acuerdo_id) where estado <> 'anulada';
 
 create index if not exists idx_sueldo_liq_empleado on sueldo_liquidaciones(empleado_id, periodo_desde desc);
 create index if not exists idx_sueldo_liq_estado   on sueldo_liquidaciones(estado, periodo_desde desc);
 
--- Las claves foráneas del sello, ahora que la tabla existe.
+-- Las claves foráneas del sello, ahora que la tabla destino existe.
 do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'sueldo_mov_liquidacion_fk') then
@@ -334,52 +410,83 @@ create table if not exists sueldo_liquidacion_lineas (
 create index if not exists idx_sueldo_lineas_liq on sueldo_liquidacion_lineas(liquidacion_id, orden);
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 8) El congelado (spec §6) — TRES triggers, no uno
---    Congelar la cabecera y dejar sueltas sus partes no congela nada. Todos son SECURITY DEFINER
---    porque tienen que bloquear también al administrador y al service_role, que son justamente
---    quienes pueden escribir estas tablas.
+-- 8) El congelado (spec §6) — cuatro guardas, no una
+--    Congelar la cabecera y dejar sueltas sus partes no congela nada. El verificador encontró seis
+--    caminos por los que un pago emitido cambiaba de valor; cada uno de los bloques de acá abajo
+--    cierra uno o más.
+--
+--    Los triggers NO bloquean al administrador por ser `security definer`: un trigger `before`
+--    dispara para cualquier rol, con o sin eso, y ESO es lo que hace que el congelado alcance
+--    también al admin y al service_role. `security definer` está por otra razón, mucho más chica:
+--    que puedan leer la cabecera sin quedar sujetos a la RLS de sueldo_liquidaciones.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 
--- 8.1 La cabecera. Único cambio permitido sobre una cerrada: pasarla a 'anulada' con motivo, sin
---     tocar ninguna otra columna. Corregir el pasado no es reescribirlo: se anula y se emite una
---     liquidación nueva.
+-- 8.0 Coherencia del periodo contra el acuerdo. No puede ser un `check`: compara dos tablas.
+--     Importa porque horasContratadas sale del periodo, y valorPorHora = sueldo / horasContratadas
+--     es el divisor de TODO el dinero del mes. Un tipeo en periodo_hasta no lo detecta nada más.
+create or replace function private.sueldo_liq_coherente() returns trigger
+  language plpgsql security definer set search_path = public as $$
+declare
+  v_desde date;
+  v_hasta date;
+begin
+  select a.fecha_inicio, a.fecha_fin into v_desde, v_hasta
+  from sueldo_acuerdos a where a.id = new.acuerdo_id;
+
+  if not found then
+    raise exception 'DATO:el acuerdo % no existe', new.acuerdo_id;
+  end if;
+
+  if new.periodo_desde < v_desde or new.periodo_hasta > v_hasta then
+    raise exception 'DATO:el periodo % a % se sale del acuerdo, que va de % a %',
+      new.periodo_desde, new.periodo_hasta, v_desde, v_hasta;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_sueldo_liq_coherente on sueldo_liquidaciones;
+create trigger trg_sueldo_liq_coherente before insert or update on sueldo_liquidaciones
+  for each row execute function private.sueldo_liq_coherente();
+
+-- 8.1 La cabecera. 'cerrada' Y 'anulada' son terminales.
+--
+--     Si sólo se mirara 'cerrada', alcanzan dos UPDATE para romper el congelado entero: se anula
+--     (permitido, es la excepción prevista) y desde 'anulada' la fila queda editable ENTERA,
+--     incluido volver a 'cerrada' con otro total. Y la anulada se podría borrar, llevándose sus
+--     líneas en cascada: del pago emitido no quedaría nada.
+--
+--     La comparación va por jsonb y no columna por columna a propósito: así cualquier columna que
+--     se agregue en el futuro queda protegida sola, sin que nadie se acuerde de sumarla acá.
 create or replace function private.sueldo_liq_inmutable() returns trigger
   language plpgsql security definer set search_path = public as $$
 begin
   if TG_OP = 'DELETE' then
-    if old.estado = 'cerrada' then
-      raise exception 'CONGELADA:una liquidación cerrada no se borra; anulala con motivo y emití una nueva';
+    if old.estado <> 'borrador' then
+      raise exception 'CONGELADA:una liquidación % no se borra; el rastro tiene que quedar', old.estado;
     end if;
     return old;
   end if;
 
-  if old.estado <> 'cerrada' then
+  if old.estado = 'borrador' then
     return new;
   end if;
 
-  if new.estado = 'anulada'
+  -- Único cambio admitido sobre una cerrada: anularla, con motivo y autor, sin tocar nada más.
+  -- Corregir el pasado no es reescribirlo — se anula y se emite una liquidación nueva.
+  if old.estado = 'cerrada'
+     and new.estado = 'anulada'
      and coalesce(length(trim(new.anulada_motivo)), 0) > 0
-     and new.acuerdo_id        is not distinct from old.acuerdo_id
-     and new.empleado_id       is not distinct from old.empleado_id
-     and new.periodo_desde     is not distinct from old.periodo_desde
-     and new.periodo_hasta     is not distinct from old.periodo_hasta
-     and new.entrada           is not distinct from old.entrada
-     and new.parametros_usados is not distinct from old.parametros_usados
-     and new.resultado         is not distinct from old.resultado
-     and new.total             is not distinct from old.total
-     and new.subtotal          is not distinct from old.subtotal
-     and new.ingresos          is not distinct from old.ingresos
-     and new.descuentos        is not distinct from old.descuentos
-     and new.ajustes           is not distinct from old.ajustes
-     and new.valor_por_hora    is not distinct from old.valor_por_hora
-     and new.motor_version     is not distinct from old.motor_version
-     and new.cerrada_en        is not distinct from old.cerrada_en
-     and new.cerrada_por       is not distinct from old.cerrada_por
+     and new.anulada_por is not null
+     and (to_jsonb(new) - 'estado' - 'anulada_en' - 'anulada_por' - 'anulada_motivo')
+       = (to_jsonb(old) - 'estado' - 'anulada_en' - 'anulada_por' - 'anulada_motivo')
   then
     return new;
   end if;
 
-  raise exception 'CONGELADA:una liquidación cerrada no se modifica; sólo puede anularse con motivo';
+  raise exception 'CONGELADA:una liquidación % no se modifica; sólo una cerrada puede anularse, con motivo y autor',
+    old.estado;
 end;
 $$;
 
@@ -387,47 +494,135 @@ drop trigger if exists trg_sueldo_liq_inmutable on sueldo_liquidaciones;
 create trigger trg_sueldo_liq_inmutable before update or delete on sueldo_liquidaciones
   for each row execute function private.sueldo_liq_inmutable();
 
--- 8.2 El desglose. Sin esto, el total queda intacto y las líneas que lo justifican se reescriben
---     una por una: el recibo diría una cosa y la suma otra.
+-- 8.2 El desglose. Se mira el estado de ORIGEN y de DESTINO, y se cubre también el INSERT.
+--
+--     Mirar sólo el destino deja SACAR las líneas de una liquidación cerrada moviéndolas a un
+--     borrador; y sin cubrir el insert, se le agregan líneas nuevas. Entre las dos, el desglose de
+--     una cerrada se reescribe de punta a punta sin tocar la cabecera: el total diría una cosa y
+--     las líneas que lo justifican, otra.
 create or replace function private.sueldo_linea_inmutable() returns trigger
   language plpgsql security definer set search_path = public as $$
 declare
-  v_liq uuid := coalesce(new.liquidacion_id, old.liquidacion_id);
+  v_origen  uuid;
+  v_destino uuid;
+  v_estado  text;
 begin
-  if exists (select 1 from sueldo_liquidaciones l where l.id = v_liq and l.estado = 'cerrada') then
-    raise exception 'CONGELADA:el desglose de una liquidación cerrada no se modifica';
+  if TG_OP in ('UPDATE', 'DELETE') then v_origen  := old.liquidacion_id; end if;
+  if TG_OP in ('INSERT', 'UPDATE') then v_destino := new.liquidacion_id; end if;
+
+  -- `id in (null, x)` nunca matchea el null, así que esto cubre los tres casos sin ramificar.
+  select l.estado into v_estado
+  from sueldo_liquidaciones l
+  where l.id in (v_origen, v_destino) and l.estado <> 'borrador'
+  limit 1;
+
+  if found then
+    raise exception 'CONGELADA:el desglose de una liquidación % no se modifica', v_estado;
   end if;
-  return coalesce(new, old);
+
+  if TG_OP = 'DELETE' then return old; end if;
+  return new;
 end;
 $$;
 
 drop trigger if exists trg_sueldo_linea_inmutable on sueldo_liquidacion_lineas;
-create trigger trg_sueldo_linea_inmutable before update or delete on sueldo_liquidacion_lineas
+create trigger trg_sueldo_linea_inmutable before insert or update or delete on sueldo_liquidacion_lineas
   for each row execute function private.sueldo_linea_inmutable();
 
--- 8.3 Movimientos y ventas sellados. Sin esto se cambia el monto de un adelanto ya cobrado y el
---     recibo impreso deja de coincidir con la base. Una función genérica para las dos tablas.
+-- 8.3 Movimientos y ventas sellados. Una función genérica para las dos tablas.
+--
+--     Sellar contra una liquidación YA CERRADA es peor que editarla: esa fila queda congelada para
+--     siempre apuntando a un snapshot que NUNCA la incluyó. No está descontada en el mes cerrado
+--     y, como toda consulta de pendientes filtra `liquidacion_id is null`, tampoco entra al
+--     siguiente. El adelanto no se descuenta nunca y la persona cobra de más.
+--
+--     ORDEN OBLIGATORIO PARA LA 0069: sueldo_liquidacion_cerrar() tiene que sellar PRIMERO y
+--     cerrar DESPUÉS. Al revés, este trigger la bloquea a ella misma. Y anular() tiene que anular
+--     primero y soltar los sellos después, por el mismo motivo al revés.
 create or replace function private.sueldo_sellado_inmutable() returns trigger
   language plpgsql security definer set search_path = public as $$
+declare
+  v_origen  uuid;
+  v_destino uuid;
+  v_estado  text;
 begin
-  -- Una fila sellada no se toca de ninguna forma: ni se edita el monto, ni se borra, ni se le
-  -- quita el sello. Sellar una fila SIN sello sí se permite: eso es justamente lo que hace el
-  -- cierre de la liquidación.
-  if old.liquidacion_id is not null then
-    raise exception 'CONGELADA:esta fila ya fue liquidada y no se puede %; corregí el mes en curso, no el cerrado',
-      lower(TG_OP);
+  if TG_OP in ('UPDATE', 'DELETE') then v_origen  := old.liquidacion_id; end if;
+  if TG_OP in ('INSERT', 'UPDATE') then v_destino := new.liquidacion_id; end if;
+
+  -- a) Sólo se sella contra un borrador.
+  if v_destino is not null and v_destino is distinct from v_origen then
+    select l.estado into v_estado from sueldo_liquidaciones l where l.id = v_destino;
+    if v_estado is distinct from 'borrador' then
+      raise exception 'CONGELADA:no se puede sellar esta fila contra una liquidación %',
+        coalesce(v_estado, 'inexistente');
+    end if;
   end if;
-  return coalesce(new, old);
+
+  -- b) Una fila ya sellada es intocable mientras su liquidación siga en pie.
+  if v_origen is not null then
+    select l.estado into v_estado from sueldo_liquidaciones l where l.id = v_origen;
+
+    if v_estado is distinct from 'anulada' then
+      raise exception 'CONGELADA:esta fila ya fue liquidada y no se puede %; corregí el mes en curso, no el cerrado',
+        lower(TG_OP);
+    end if;
+
+    -- La liquidación que la selló fue anulada. Lo ÚNICO que se le permite es cambiar de sello,
+    -- para que la reemisión la vuelva a tomar: si el sello quedara pegado, el adelanto no se
+    -- descontaría nunca y la persona cobraría de más exactamente ese monto.
+    if TG_OP = 'DELETE' then
+      raise exception 'CONGELADA:una fila que participó de una liquidación no se borra';
+    end if;
+    if (to_jsonb(new) - 'liquidacion_id') <> (to_jsonb(old) - 'liquidacion_id') then
+      raise exception 'CONGELADA:de una fila ya liquidada sólo se puede soltar el sello, nada más';
+    end if;
+  end if;
+
+  if TG_OP = 'DELETE' then return old; end if;
+  return new;
 end;
 $$;
 
 drop trigger if exists trg_sueldo_mov_sellado on sueldo_movimientos;
-create trigger trg_sueldo_mov_sellado before update or delete on sueldo_movimientos
+create trigger trg_sueldo_mov_sellado before insert or update or delete on sueldo_movimientos
   for each row execute function private.sueldo_sellado_inmutable();
 
 drop trigger if exists trg_sueldo_ventas_sellado on sueldo_ventas;
-create trigger trg_sueldo_ventas_sellado before update or delete on sueldo_ventas
+create trigger trg_sueldo_ventas_sellado before insert or update or delete on sueldo_ventas
   for each row execute function private.sueldo_sellado_inmutable();
+
+-- 8.4 TRUNCATE no dispara ningún trigger `for each row` ni respeta RLS. No es alcanzable desde
+--     PostgREST, pero sí desde cualquier conexión SQL con el rol dueño. Un guard por tabla.
+create or replace function private.sueldo_no_truncate() returns trigger
+  language plpgsql security definer set search_path = public as $$
+begin
+  raise exception 'CONGELADA:% guarda pagos emitidos y no se puede truncar', TG_TABLE_NAME;
+end;
+$$;
+
+drop trigger if exists trg_sueldo_acuerdos_no_truncate on sueldo_acuerdos;
+create trigger trg_sueldo_acuerdos_no_truncate before truncate on sueldo_acuerdos
+  for each statement execute function private.sueldo_no_truncate();
+
+drop trigger if exists trg_sueldo_turnos_no_truncate on sueldo_acuerdo_turnos;
+create trigger trg_sueldo_turnos_no_truncate before truncate on sueldo_acuerdo_turnos
+  for each statement execute function private.sueldo_no_truncate();
+
+drop trigger if exists trg_sueldo_mov_no_truncate on sueldo_movimientos;
+create trigger trg_sueldo_mov_no_truncate before truncate on sueldo_movimientos
+  for each statement execute function private.sueldo_no_truncate();
+
+drop trigger if exists trg_sueldo_ventas_no_truncate on sueldo_ventas;
+create trigger trg_sueldo_ventas_no_truncate before truncate on sueldo_ventas
+  for each statement execute function private.sueldo_no_truncate();
+
+drop trigger if exists trg_sueldo_liq_no_truncate on sueldo_liquidaciones;
+create trigger trg_sueldo_liq_no_truncate before truncate on sueldo_liquidaciones
+  for each statement execute function private.sueldo_no_truncate();
+
+drop trigger if exists trg_sueldo_lineas_no_truncate on sueldo_liquidacion_lineas;
+create trigger trg_sueldo_lineas_no_truncate before truncate on sueldo_liquidacion_lineas
+  for each statement execute function private.sueldo_no_truncate();
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 9) Aislamiento y RLS (spec §7) — no-negociable 3: nadie ve el sueldo de otro
@@ -530,10 +725,10 @@ create policy sueldo_lineas_admin on sueldo_liquidacion_lineas for all
   using (private.app_es_admin()) with check (private.app_es_admin());
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 10) Auditoría — el trigger genérico de la 0058 sobre las tablas nuevas
---     Se suma `asistencias`: con la columna condicion, declarar un día como falta cuesta dos días
---     de sueldo (RN-09). Es una decisión de plata tanto como editar `pagos`, que está auditada
---     desde la 0058.
+-- 10) Auditoría — el trigger genérico de la 0058 sobre las SEIS tablas nuevas y `asistencias`
+--     asistencias entra porque con la columna condicion, declarar un día como falta cuesta dos
+--     días de sueldo (RN-09). Es una decisión de plata tanto como editar `pagos`, que está
+--     auditada desde la 0058.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 drop trigger if exists trg_audit_sueldo_acuerdos on sueldo_acuerdos;
 create trigger trg_audit_sueldo_acuerdos after insert or update or delete on sueldo_acuerdos
@@ -553,6 +748,10 @@ create trigger trg_audit_sueldo_ventas after insert or update or delete on sueld
 
 drop trigger if exists trg_audit_sueldo_liquidaciones on sueldo_liquidaciones;
 create trigger trg_audit_sueldo_liquidaciones after insert or update or delete on sueldo_liquidaciones
+  for each row execute function private.audit_log_trigger();
+
+drop trigger if exists trg_audit_sueldo_liquidacion_lineas on sueldo_liquidacion_lineas;
+create trigger trg_audit_sueldo_liquidacion_lineas after insert or update or delete on sueldo_liquidacion_lineas
   for each row execute function private.audit_log_trigger();
 
 drop trigger if exists trg_audit_asistencias on asistencias;
