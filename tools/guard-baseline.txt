@@ -1,0 +1,20 @@
+# Línea base del guard de no-negociables — 13 de agosto de 2026
+#
+# Deuda que YA existía cuando se instaló el guard. Formato: regla|archivo
+# Una violación en un archivo listado acá se reporta como deuda conocida y no rompe el build.
+# Una violación en cualquier otro archivo sí lo rompe.
+#
+# Para saldar deuda: arreglá el código y borrá su línea de este archivo.
+# Nunca agregues una línea nueva para hacer pasar un cambio: eso es exactamente lo que el
+# guard existe para impedir.
+
+# ── regla4: el core no debe llamar new Date() ──────────────────────────────────────────────
+# estadisticas.ts:19 — `const hoy = new Date()` y después lee getUTCFullYear(). En Perú (UTC−5),
+# entre las 19:00 y medianoche UTC ya está en el día siguiente, así que el rango "últimos N días
+# hasta hoy" incluye mañana durante 5 horas cada día. BUG REAL, pendiente de arreglar.
+regla4|packages/core/src/estadisticas.ts
+
+# crm.ts:23,42 — `hoy: Date = new Date()` como parámetro por defecto. Menos grave (el caller
+# puede pasar la fecha), pero si se olvida hereda la zona del proceso. Además crm.ts es del
+# módulo comercial, hoy fuera de alcance.
+regla4|packages/core/src/crm.ts

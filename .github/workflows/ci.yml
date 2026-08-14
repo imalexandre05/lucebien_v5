@@ -19,6 +19,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # el Zone Guard recorre los commits del PR
+
+      # Los no-negociables de CLAUDE.md, comprobados por una máquina y no por la memoria de
+      # quien revisa. La deuda previa vive en tools/guard-baseline.txt y no rompe el build;
+      # una violación nueva sí. Va primero porque es lo más barato de todo el job.
+      - name: Guard de no-negociables
+        run: bash tools/guard-reglas.sh
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

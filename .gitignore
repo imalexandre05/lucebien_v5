@@ -28,8 +28,13 @@ database/backups/
 respaldo_pre_*/
 _local_backup_pre_*/
 
-# Metadata local del CLI Claude Code
-.claude/
+# Metadata local del CLI Claude Code (sesiones, worktrees, permisos de esta PC).
+# EXCEPCIÓN: agents/ y hooks/ son parte del harness del proyecto y sí se versionan —
+# el subagente verificador y el hook de cierre tienen que viajar con el repo.
+.claude/*
+!.claude/agents/
+!.claude/hooks/
+!.claude/settings.json
 
 # Tooling local (no compartir con cliente — vive solo en mi PC)
 tools/local/
@@ -39,3 +44,13 @@ tools/local/
 test-results/
 playwright-report/
 .next-build/
+
+# Grafo de código (graphify). Derivado del código: se regenera con
+# `graphify extract . --code-only` en ~35s. No se versiona porque el hook
+# post-commit lo reconstruye en cada commit y graph.json pesa ~5 MB — versionarlo
+# sumaría ese peso a CADA commit del historial.
+graphify-out/
+kg.html
+
+# Informe de avances: archivo de trabajo, se reescribe en cada informe.
+tools/informe-diario/informe.json

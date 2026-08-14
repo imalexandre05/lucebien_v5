@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# Guard de los no-negociables de SCI-LB (ver CLAUDE.md).
+#
+# Comprueba mecánicamente las reglas que una máquina PUEDE comprobar. Las que dependen de
+# criterio (¿la spec era correcta? ¿el default es razonable?) las revisa el subagente
+# verificador, no esto.
+#
+# Línea base: tools/guard-baseline.txt lista la deuda ya existente, en formato `regla|archivo`.
+# Una violación en un archivo de la línea base se reporta como deuda conocida y NO rompe el
+# build; una en cualquier otro archivo sí. Así el guard entra hoy sin bloquear a nadie, pero
+# ninguna violación nueva pasa. Para saldar deuda, borrá su línea del baseline.
+#
+# Uso:   bash tools/guard-reglas.sh
+# Sale distinto de cero si hay violaciones fuera de la línea base.
+
+set -uo pipefail
+cd "$(dirname "$0")/.." || exit 1
+
+BASELINE="tools/guard-baseline.txt"
+nuevas=0
+deuda=0
+
+# Filtra líneas de comentario (// ... o * ...) para no marcar un comentario que MENCIONA el patrón.
+sin_comentarios() { grep -vE '^[^:]+:[0-9]+: *(//|\*|/\*)'; }
+
+en_baseline() {
+  [ -f "$BASELINE" ] || return 1
+  grep -qxF "$1|$2" "$BASELINE" 2>/dev/null
+}
+
+# revisar <regla> <mensaje> <arreglo> <hits...>
+revisar() {
+  local regla="$1" mensaje="$2" arreglo="$3" hits="$4"
+  if [ -z "$hits" ]; then
+    printf '  ✓ %s\n' "$mensaje"
+    return
+  fi
+  local hubo_nuevas=0 hubo_deuda=0
+  while IFS= read -r linea; do
+    [ -z "$linea" ] && continue
+    local archivo="${linea%%:*}"
+    if en_baseline "$regla" "$archivo"; then
+      printf '  · deuda conocida — %s\n' "$linea"
+      hubo_deuda=1
+    else
+      printf '  ✗ %s\n' "$linea"
+      hubo_nuevas=1
+    fi
+  done <<< "$hits"
+  [ "$hubo_deuda" -eq 1 ] && deuda=$((deuda + 1))
+  if [ "$hubo_nuevas" -eq 1 ]; then
+    printf '    → %s\n' "$arreglo"
+    nuevas=$((nuevas + 1))
+  fi
+}
+
+echo "Guard de no-negociables — SCI-LB"
+echo
+
+# ── Regla 4: el core nunca llama new Date() ────────────────────────────────────────────────
+# El core recibe la fecha de quien lo invoca (hoyPeru()). Si la llama él, el resultado depende
+# de la zona horaria del proceso: en Perú (UTC−5), entre las 19:00 y medianoche, UTC ya está en
+# el día siguiente.
+revisar "regla4" "Regla 4 — el core no llama new Date()" \
+  "Recibí la fecha del caller: hoyPeru()." \
+  "$(grep -rn "new Date()" packages/core/src --include="*.ts" 2>/dev/null | grep -v "\.test\.ts" | sin_comentarios || true)"
+
+# ── Regla 3: getAdminClient() bypassa RLS y está restringido ───────────────────────────────
+permitidos="lib/auth.ts lib/reauth.ts lib/sedes-repo.ts lib/empleados-repo.ts lib/dispositivos-repo.ts lib/supabase/admin.ts"
+intrusos=""
+for archivo in $(grep -rl "getAdminClient" apps/erp-web --include="*.ts" --include="*.tsx" 2>/dev/null | sed 's|^apps/erp-web/||' | sort || true); do
+  case " $permitidos " in
+    *" $archivo "*) ;;
+    *) intrusos="${intrusos}${archivo}:0: usa getAdminClient() sin estar en la lista permitida"$'\n' ;;
+  esac
+done
+revisar "regla3-admin" "Regla 3 — getAdminClient() sólo en los archivos permitidos" \
+  "Bypassa RLS. Agregarlo exige justificación escrita en la spec." \
+  "$(printf '%s' "$intrusos")"
+
+# ── Regla 2: el AVANCE de una prenda pasa por una RPC ──────────────────────────────────────
+# Un update/delete directo sobre prenda_pasada mueve una prenda de etapa sin las validaciones
+# ni los puntos de la RPC. (Los insert son entradas al pipeline, no avances: se auditan aparte
+# por atomicidad — ver docs/pendientes-negocio.md.)
+revisar "regla2" "Regla 2 — sin update/delete directos sobre prenda_pasada" \
+  "Usá una de las RPC de pipeline-repo.ts." \
+  "$(grep -rn "from('prenda_pasada')\|from(\"prenda_pasada\")" apps/erp-web --include="*.ts" 2>/dev/null | grep -E "\.update\(|\.delete\(" | sin_comentarios || true)"
+
+# ── Regla 3: RLS sin filtro real ───────────────────────────────────────────────────────────
+revisar "regla3-rls" "Regla 3 — sin políticas RLS abiertas sin justificar" \
+  "Si es intencional, anotá '-- guard-ok' con el motivo en la misma línea." \
+  "$(grep -rn "using *( *true *)" packages/db/migrations --include="*.sql" 2>/dev/null | grep -vi "service_role\|guard-ok" || true)"
+
+# ── Regla 6 (Zone Guard): spec y código nunca en el mismo commit ───────────────────────────
+if [ "${CI:-}" = "true" ] && [ -n "${GITHUB_BASE_REF:-}" ]; then
+  git fetch --quiet origin "$GITHUB_BASE_REF" 2>/dev/null || true
+  mezclados=""
+  for sha in $(git rev-list "origin/$GITHUB_BASE_REF..HEAD" 2>/dev/null || true); do
+    archivos=$(git show --name-only --format="" "$sha" 2>/dev/null)
+    if printf '%s\n' "$archivos" | grep -q "^docs/superpowers/specs/" \
+       && printf '%s\n' "$archivos" | grep -qE "^(packages|apps)/.*\.(ts|tsx|sql)$"; then
+      mezclados="${mezclados}$(git log -1 --format=%h%x20%s "$sha"):0: mezcla spec y código"$'\n'
+    fi
+  done
+  revisar "regla6" "Regla 6 (Zone Guard) — ningún commit mezcla spec y código" \
+    "Separalos: primero la spec, confirmada; después el código." \
+    "$(printf '%s' "$mezclados")"
+else
+  printf '  – Regla 6 (Zone Guard) — se comprueba sólo en CI sobre un pull request\n'
+fi
+
+echo
+[ "$deuda" -gt 0 ] && echo "Deuda conocida en $deuda regla(s) — está en $BASELINE, no rompe el build."
+if [ "$nuevas" -gt 0 ]; then
+  echo "$nuevas regla(s) con violaciones NUEVAS. Ver CLAUDE.md."
+  exit 1
+fi
+echo "Sin violaciones nuevas."
