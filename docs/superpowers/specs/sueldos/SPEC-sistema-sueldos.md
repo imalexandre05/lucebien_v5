@@ -10,7 +10,8 @@ Documento de especificación para reimplementar el sistema que hoy vive en el ar
 
 > **Estado:** confirmada. La sección 5 (caso de prueba) contradecía a RN-08 y a RN-12 en dos
 > puntos; Alexander los resolvió el 13-ago-2026 y la sección 9 deja escrito qué se decidió y por
-> qué. El total del caso de prueba quedó en **S/705.30**.
+> qué. El 14-ago el dueño precisó tres reglas más (§9.6). El total del caso de prueba quedó en
+> **S/751.70**.
 
 ---
 
@@ -115,7 +116,8 @@ Lo pactado con el colaborador para un periodo concreto.
 | `valor_capacitacion` | decimal | Por defecto 25.00 |
 | `bono_meta_semanal` | decimal | Por defecto 30.00 |
 | `meta_semanal` | decimal \| null | **Lo pactado en el contrato** (RN-10). Null = usar la sugerencia por horas |
-| `factor_meta` | decimal | Por defecto 1.00. El 0.85 del Excel descontaba una meta *derivada*; una meta pactada no se descuenta |
+| `factor_meta` | decimal | Por defecto 1.00. Se aplica **sólo a la meta sugerida**, nunca a la pactada: el 0.85 del Excel existía para hacer alcanzable una meta derivada de una fórmula |
+| `meta_por_hora` | decimal | Por defecto 1500/33 = S/45,4545. Sólo se usa para **sugerir** una meta cuando no hay pactada (RN-10) |
 | `meta_semanal_fija` | bool | Por defecto `true`: la meta es igual todas las semanas (RN-12, §9.2) |
 | `pct_comision` | decimal | Por defecto 0.02 |
 | `monto_minimo_comision` | decimal | Por defecto 120.00 |
@@ -134,7 +136,8 @@ Un registro por día del periodo. Todos los días existen, trabajados o no.
 | `fecha` | date | |
 | `hora_ingreso` | time \| null | `null` = no se presentó |
 | `hora_salida` | time \| null | |
-| `justificada` | bool | Marca del administrador |
+| `tardanza_justificada` | bool | Marca del administrador: esta tardanza no se descuenta |
+| `falta_justificada` | bool | Marca del administrador: esta falta cuesta 1 día en vez de 2 |
 | `motivo_justificacion` | string | **No existe hoy.** Ver PEND-06 |
 | `observacion` | string | |
 
@@ -505,6 +508,9 @@ incompletos.
 - **Dos turnos del mismo día no pueden solaparse.** Inflan `horas_contratadas` y con eso hunden
   el valor por hora de todo el periodo.
 - Ninguna fecha repetida: ni en asistencia, ni en horas fuera de contrato.
+- Una fecha con formato válido pero **inexistente** (`2025-06-31`, `2025-02-30`) también corta.
+  El formato no alcanza: esas fechas pasan la expresión regular, no matchean contra ningún día
+  del periodo, y según dónde caigan se descartan en silencio o se pagan de más.
 - Una fecha no puede estar en asistencia normal y en horas fuera de contrato a la vez (RN-17).
 - Todo descuento, adelanto y bono extra necesita motivo **y monto mayor a cero**. Un monto
   negativo invierte la línea: un adelanto de −100 pasaría de descontar a sumar.
@@ -519,7 +525,11 @@ incompletos.
 - El periodo tiene faltas.
 - Se liquida sin ninguna venta cargada: no hay comisión ni bono, y hoy la grilla se llena a mano.
 - `almuerzos_entregados > dias_con_derecho`.
-- Registros de asistencia, ventas u horas fuera de contrato con fecha fuera del periodo.
+- Registros de asistencia, ventas u horas fuera de contrato con fecha fuera del periodo. Esos
+  **no se cuentan**: pertenecen a otra liquidación.
+- Un adelanto, reporte o bono extra con fecha fuera del periodo **sí se cuenta**, y avisa. La
+  diferencia es deliberada: una venta fuera del periodo pertenece a otra meta, pero un adelanto
+  ya entregado hay que descontarlo aunque le hayan puesto mal la fecha.
 - El total del periodo da negativo.
 
 ### Siempre
@@ -589,7 +599,8 @@ Alexander antes de tocar el código (no-negociable 6: la spec primero).
 
 **Resultado:** se confirmó RN-08 tal como estaba escrita (−S/5 respecto a §5) y se cambió RN-12
 por la meta fija (+S/30 respecto a lo que salía del texto anterior). El total quedó en
-**S/705.30**. Los S/700.30 originales no correspondían a ninguna combinación coherente: mezclaban
+**S/705.30** en ese momento; con las reglas del 14-ago (§9.6) quedó en **S/751.70**. Los S/700.30
+originales no correspondían a ninguna combinación coherente: mezclaban
 la tardanza del Excel con la meta semanal corregida a medias.
 
 ### 9.1 — Tardanzas: ¿10 u 11? → **10** (RN-08)
@@ -689,7 +700,7 @@ alguien del sueldo). Es la pregunta que valida los descuentos de RN-08, RN-09 y 
 ### 9.5 — Lo que encontró el verificador (13-ago-2026)
 
 El subagente verificador revisó el motor antes de mergear. **El caso feliz estaba bien**: el
-golden reproduce S/705.30, la aritmética cuadra, no hay pérdida por coma flotante, el orden de
+golden reproducía su total del momento, la aritmética cuadra, no hay pérdida por coma flotante, el orden de
 RN-19 coincide, y los resultados son idénticos corriendo en UTC, Lima, UTC+14 y UTC−12. Los 15
 hallazgos estaban todos en **qué hace el motor cuando el dato de entrada no es perfecto**.
 
@@ -728,6 +739,60 @@ en cuántas horas trabajó y eso en su pago del día"*.
 Y una mejora que se aplicó sin necesitar decisión: **la escala salarial de RN-14 dejó de estar
 quemada en el código.** `sueldoSugerido()` ahora acepta la tabla como parámetro, con
 `ESCALAS_SUELDO_DEFAULT` como valor por defecto.
+
+### 9.6 — Segunda ronda del verificador (14-ago-2026)
+
+Cinco revisores en paralelo con lentes distintas —aritmética, casos de borde, coherencia
+spec ↔ código, las reglas nuevas y cobertura de tests— y un escéptico por hallazgo con la carga
+de la prueba invertida. **35 hallazgos crudos, 6 refutados por no reproducirse, 3 confirmados de
+severidad alta.** Los otros 26 quedaron fuera del tope de verificación y se revisaron a mano
+después; los reales están abajo.
+
+**Corregidos sin necesitar decisión:**
+
+- **Una fecha inexistente sólo se validaba en los extremos del periodo.** `2025-06-31` pasa la
+  expresión regular. Según dónde caiga: una venta con esa fecha sumaba S/100 de comisión, una
+  jornada se descartaba en silencio perdiendo 11 h, y unas horas fuera de contrato se pagaban
+  enteras. Cero advertencias en los tres casos. Ahora `validarFecha()` comprueba también el
+  calendario, así que las cuatro rutas de datos quedan cubiertas de una vez.
+- **`factor_meta` se aplicaba también a la meta pactada**, cuando §3.3 dice que no. Hoy es
+  inocuo porque el default es 1.00, pero el día que alguien lo baje descontaría un número ya
+  negociado. Ahora sólo afecta a la meta sugerida.
+- **La spec se contradecía a sí misma en cuatro lugares**: el encabezado, §9 y §9.5 declaraban
+  un total del caso de prueba que el motor ya no producía, y §3.4 describía un campo
+  `justificada` que el código parte en dos marcas. Es exactamente la trampa del no-negociable 7,
+  cometida dentro de esta misma sesión.
+- **`meta_por_hora` no figuraba en la tabla de parámetros** de §3.3 aunque es configurable.
+- **Faltaban tests en los filos**: el empate exacto contra la meta semanal y contra la mensual
+  (las dos comparaciones son opuestas a propósito y ninguna estaba fijada — voltear la del bono
+  paga S/30 de una semana que no se ganó), la boleta de exactamente S/120, el minuto exacto de
+  la tolerancia, y el umbral de horas del almuerzo.
+
+**V2-01 🔴 — Abierto: cuánto cuesta una falta cuando las jornadas duran distinto.**
+
+RN-09 descuenta el castigo en **días promedio** (`sueldo_por_dia` = sueldo ÷ días contratados)
+mientras que el día no trabajado ya salió en **horas reales** por RN-06. Con jornadas iguales las
+dos unidades coinciden y la falta cuesta exactamente 2 días. Con jornadas desiguales divergen:
+
+| Horario | Falta a… | Cuesta | En días de ese día |
+|---|---|---|---|
+| Lun–vie 11 h + sáb 1 h, sueldo S/1.200 | el sábado | S/55,36 | **10,3 sábados** |
+| Lun 11 h + sáb 2 h, sueldo S/520 | el sábado | S/85 | 4,25 sábados |
+| Lun 11 h + sáb 2 h, sueldo S/520 | el lunes | S/175 | 1,59 lunes |
+
+Ninguno da los 2 días que pide la regla. **Decisión pendiente:** cuando las jornadas duran
+distinto, ¿qué es "un día" para el castigo?
+
+- **A)** El día promedio. Faltar cuesta siempre `2 × sueldo_por_dia`, sea el sábado corto o el
+  lunes largo. Implementación: `max(0, faltas × sueldo_por_dia × dias − horas_faltadas ×
+  valor_por_hora)`. Con el caso de prueba da exactamente lo mismo que hoy (jornadas uniformes),
+  así que no hay regresión.
+- **B)** El día real. Faltar a un sábado de 1 h cuesta 2 horas de sábado; faltar a un lunes de
+  11 h cuesta 22 horas. Proporcional al compromiso de ese día.
+- **C)** Dejarlo como está y aceptar que el castigo sea plano en soles.
+
+La falta **justificada** tiene el mismo problema al revés: hoy cuesta el día real, no el
+promedio. Se decide junto.
 
 ### 9.3 — Definiciones que la spec no fija (defaults tomados, editables)
 

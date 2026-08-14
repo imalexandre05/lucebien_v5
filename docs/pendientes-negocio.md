@@ -346,7 +346,7 @@ está quemado en el código. **Ninguno está confirmado por el dueño.**
    es fija: horas de la plantilla semanal × meta_por_hora × factor, igual todas las semanas.
    RN-12 se reescribió. La otra opción sigue disponible con `metaSemanalFija: false`.
 
-Con ambas, el caso de prueba da **S/705.30**. Los S/700.30 que declaraba la spec original no
+Con ambas, el caso de prueba daba **S/705.30**; con las reglas del 14-ago quedó en **S/751.70**. Los S/700.30 que declaraba la spec original no
 correspondían a ninguna combinación coherente de reglas: mezclaban la tardanza del Excel con la
 meta semanal corregida a medias.
 
@@ -367,14 +367,23 @@ por las que rotó**, no las de la tienda.
   `horas_contratadas × S/45,4545`. El dueño la fija por persona y varía por tienda, temporada,
   experiencia y turno. La fórmula por horas pasa a ser una **sugerencia**, como la escala salarial
   de RN-14.
-- **El almuerzo es sólo para tiempo completo.** Hoy `horasMinimasAlmuerzo` está en 0, o sea lo
-  cobra cualquiera que haya trabajado ese día aunque sea medio turno.
+- ~~**El almuerzo es sólo para tiempo completo.**~~ **Implementado el 14-ago:**
+  `horasMinimasAlmuerzo` pasó de 0 a 12 h y se mira día por día, con
+  `almuerzoHabilitadoPorAdmin` para que el administrador se saltee el umbral.
+
+**🔴 Abierto tras la segunda ronda del verificador (14-ago-2026, spec §9.6):**
+
+- **Cuánto cuesta una falta cuando las jornadas duran distinto.** El castigo se cobra en días
+  promedio y el día no trabajado en horas reales. Con jornadas iguales coinciden y la falta cuesta
+  2 días exactos; con jornadas desiguales no. Con horario lun-vie de 11 h más sábado de 1 h,
+  faltar al sábado cuesta S/55,36 — 10,3 sábados de trabajo. Hay tres salidas planteadas en la
+  spec §9.6 y la decide el dueño.
 
 **Defaults que hubo que elegir porque la spec no los fija:**
 
 | Parámetro | Default | Por qué |
 |---|---|---|
-| `horasMinimasAlmuerzo` | `0` | RN-15 habla de "jornada completa" pero no la define. Con 0 (cualquier día con ingreso y salida) salen los 16 días del caso de prueba; exigir cumplir las horas contratadas daría 12 y S/32 menos |
+| `horasMinimasAlmuerzo` | `12` | Confirmado el 14-ago: tiempo completo ≈ 12 h, medio tiempo ≈ 6 h. Se mira día por día. ~~Antes estaba en 0.~~ |
 | `metaPorHora` | `1500 / 33` exacto | La spec muestra `45,4545`, que es ese número redondeado. Con el redondeado la meta del periodo daría 7.499,99 en vez de 7.500,00 |
 | Redondeo | Cada línea del desglose a 2 decimales; los totales suman líneas ya redondeadas | Así el desglose que se le enseña al colaborador suma exactamente el total. `valorPorHora` es la única cifra sin redondear: llevarla a 3,64 movería el total unos S/0,06 |
 | Comparación de meta semanal | `ventas > meta`, estricto | Es lo que dice RN-12. Empatar la meta no la cumple |
@@ -396,8 +405,9 @@ por las que rotó**, no las de la tienda.
 
 **Parámetros con default tomado de la spec §3.3** (ya escritos ahí, se repiten para que el
 administrador los revise de una): tolerancia 10 min · 3 tardanzas libres · S/5 por tardanza ·
-S/8 el almuerzo · S/25 la capacitación · S/30 el bono semanal · factor de meta 0,85 · 2% de
-comisión sobre boletas mayores a S/120 · una falta cuesta 2 días de sueldo.
+S/8 el almuerzo · 12 h para ganarlo · S/25 la capacitación · S/30 el bono semanal · factor de
+meta 1,00 · 2% de comisión sobre boletas mayores a S/120 · una falta cuesta 2 días de sueldo en
+total · meta semanal pactada en el contrato (sin pactar, se sugiere por horas a S/45,4545).
 
 ---
 
