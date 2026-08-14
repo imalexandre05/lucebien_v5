@@ -516,6 +516,134 @@ describe('validaciones (spec §6)', () => {
   });
 });
 
+// ── Los filos: cada umbral, probado justo a un lado y justo al otro ─────────────────────────
+// Segunda ronda del verificador (spec §9.6). Todos estos límites existían en el motor pero
+// ningún test los fijaba: se podían voltear en silencio.
+
+describe('filos de los umbrales', () => {
+  const SEMANA = { fechaInicio: '2025-06-16', fechaFin: '2025-06-22', horario: HORARIO };
+  const jornadaCompleta = ['2025-06-16', '2025-06-17', '2025-06-18'].map((fecha) => ({
+    fecha,
+    horaIngreso: '09:00',
+    horaSalida: '20:00',
+  }));
+
+  it('el empate no cumple la meta semanal pero sí desbloquea la comisión (RN-12 vs RN-13)', () => {
+    // Las dos comparaciones son opuestas a propósito: §9.3 fija la semanal como estricta
+    // (`ventas > meta`) y RN-13 usa `>=`. Sin este test, voltear cualquiera de las dos pasa sin
+    // que nadie se entere, y voltear la del bono paga S/30 de una semana que no se ganó.
+    const l = liquidarPeriodo({
+      ...SEMANA,
+      sueldoPactado: 120,
+      asistencia: jornadaCompleta,
+      ventas: [venta('2025-06-16', 1500)], // exactamente la meta sugerida de 33 h × S/45,4545
+    });
+    expect(l.ventas.semanas[0].meta).toBe(1500);
+    expect(l.ventas.semanas[0].cumplida).toBe(false); // estricta: empatar no cumple
+    expect(l.ventas.metaAlcanzada).toBe(true); // `>=`: empatar sí desbloquea
+    expect(l.lineas.find((x) => x.concepto === 'Bono por metas semanales')!.monto).toBe(0);
+    expect(l.lineas.find((x) => x.concepto.startsWith('Comisión'))!.monto).toBe(30);
+    expect(l.total).toBe(150);
+  });
+
+  it('una boleta de exactamente S/120 queda fuera de la base de comisión (RN-13)', () => {
+    const conBoletas = (montos: number[]) =>
+      liquidarPeriodo({
+        ...SEMANA,
+        sueldoPactado: 120,
+        asistencia: jornadaCompleta,
+        ventas: montos.map((m) => venta('2025-06-16', m)),
+      }).ventas.baseComision;
+    expect(conBoletas([120, 1500])).toBe(1500); // la de 120 no entra
+    expect(conBoletas([120.01, 1500])).toBe(1620.01); // un céntimo más y entra
+  });
+
+  it('entrar en el minuto exacto de la tolerancia no es tardanza (RN-08)', () => {
+    // Turno 09:00 + 10 minutos de gracia = 09:10. La comparación es estricta.
+    const conIngreso = (hora: string) =>
+      liquidarPeriodo({
+        ...SEMANA,
+        sueldoPactado: 120,
+        asistencia: [{ fecha: '2025-06-16', horaIngreso: hora, horaSalida: '20:00' }, ...jornadaCompleta.slice(1)],
+      }).asistencia.tardanzas;
+    expect(conIngreso('09:10')).toBe(0);
+    expect(conIngreso('09:11')).toBe(1);
+  });
+
+  it('el almuerzo se gana a las 12 h exactas, no antes (RN-15)', () => {
+    const conJornada = (salida: string) =>
+      liquidarPeriodo({
+        ...SEMANA,
+        sueldoPactado: 120,
+        asistencia: [
+          { fecha: '2025-06-16', horaIngreso: '08:00', horaSalida: salida },
+          ...jornadaCompleta.slice(1),
+        ],
+      }).asistencia.diasConDerechoAlmuerzo;
+    expect(conJornada('19:59')).toBe(0); // 11 h 59
+    expect(conJornada('20:00')).toBe(1); // 12 h justas
+  });
+
+  it('factorMeta descuenta la meta sugerida pero nunca la pactada (RN-10)', () => {
+    const base = { ...SEMANA, sueldoPactado: 120, asistencia: jornadaCompleta };
+    const sugerida = liquidarPeriodo({ ...base, parametros: { factorMeta: 0.85 } });
+    expect(sugerida.ventas.semanas[0].meta).toBe(1275); // 1500 × 0.85
+    const pactada = liquidarPeriodo({ ...base, parametros: { factorMeta: 0.85, metaSemanal: 3000 } });
+    expect(pactada.ventas.semanas[0].meta).toBe(3000); // sin descuento
+  });
+
+  it('una fecha con formato válido pero inexistente corta el cálculo', () => {
+    // '2025-06-31' pasa la expresión regular. Antes: la venta sumaba comisión, la jornada se
+    // descartaba en silencio y las horas fuera de contrato se pagaban enteras.
+    const conFechaImposible = (extra: Partial<EntradaLiquidacion>) => () =>
+      liquidarPeriodo({ ...GOLDEN, ...extra });
+    expect(conFechaImposible({ ventas: [...VENTAS, venta('2025-06-31', 5000)] })).toThrow(/no existe en el calendario/);
+    expect(
+      conFechaImposible({ horasFueraDeContrato: [{ fecha: '2025-06-31', horaIngreso: '08:00', horaSalida: '20:00' }] }),
+    ).toThrow(/no existe en el calendario/);
+    expect(
+      conFechaImposible({ adelantos: [{ fecha: '2025-02-30', motivo: 'x', monto: 50 }] }),
+    ).toThrow(/no existe en el calendario/);
+  });
+
+  it('un movimiento administrativo fuera del periodo se cuenta igual, pero avisa (§6)', () => {
+    // Asimetría deliberada: una venta fuera del periodo pertenece a otra meta y no cuenta; un
+    // adelanto ya entregado hay que descontarlo aunque le hayan puesto mal la fecha.
+    const l = liquidarPeriodo({
+      ...GOLDEN,
+      adelantos: [{ fecha: '2025-05-02', motivo: 'adelanto con fecha mal puesta', monto: 100 }],
+    });
+    expect(l.lineas.find((x) => x.concepto === 'Adelantos')!.monto).toBe(-100);
+    expect(l.advertencias.join(' ')).toMatch(/está fuera del periodo, pero se contó igual/);
+  });
+
+  it('una salida sin ingreso avisa y no cuenta como falta', () => {
+    const l = liquidarPeriodo({
+      ...SEMANA,
+      sueldoPactado: 120,
+      asistencia: [{ fecha: '2025-06-16', horaIngreso: null, horaSalida: '20:00' }, ...jornadaCompleta.slice(1)],
+    });
+    expect(l.advertencias.join(' ')).toMatch(/tiene salida sin ingreso/);
+    expect(l.asistencia.faltas).toBe(1); // sin ingreso en día contratado, sigue siendo falta
+  });
+
+  it('el descuento por falta nunca paga dinero, aunque el parámetro sea 0 o 1', () => {
+    const conDias = (dias: number) =>
+      liquidarPeriodo({
+        ...SEMANA,
+        sueldoPactado: 120,
+        asistencia: [
+          { fecha: '2025-06-16', horaIngreso: null, horaSalida: null },
+          ...jornadaCompleta.slice(1),
+        ],
+        parametros: { diasDescuentoPorFalta: dias },
+      }).lineas.find((x) => x.concepto === 'Faltas injustificadas')!.monto;
+    expect(conDias(0)).toBe(0); // no se convierte en un pago a favor
+    expect(conDias(1)).toBe(0); // la falta cuesta sólo el día que no vino
+    expect(conDias(3)).toBe(-80); // dos días de castigo además del día perdido
+  });
+});
+
 describe('escala salarial (RN-14)', () => {
   it('sugiere una tarifa, no la impone', () => {
     expect(sueldoSugerido(1, 165)).toBe(478.5); // el "sueldo recomendado" del Excel

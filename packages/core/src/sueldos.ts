@@ -63,6 +63,9 @@ export interface ParametrosSueldo {
    * bono es un premio semanal fijo y el colaborador no elige que su mes tenga 31 días
    * (decisión de Alexander, 13-ago-2026, spec §9.2).
    * `false`: la meta sale de las horas contratadas de cada tramo, que era la RN-12 original.
+   *
+   * Sólo afecta a la meta **sugerida**: una meta pactada ya es la misma todas las semanas por
+   * definición, así que con `metaSemanal` cargada este parámetro no hace nada.
    */
   metaSemanalFija: boolean;
   /** Porcentaje de comisión sobre la base (RN-13). */
@@ -285,6 +288,10 @@ function validarFecha(fecha: unknown, donde: string): string {
   if (typeof fecha !== 'string' || !RE_FECHA.test(fecha)) {
     throw new Error(`${donde}: fecha inválida "${String(fecha)}". Se espera exactamente YYYY-MM-DD.`);
   }
+  // El formato no alcanza: '2025-06-31' pasa la expresión regular y no existe. Según dónde caiga,
+  // esa fecha se descarta en silencio (una jornada perdida) o se paga de más (una venta que suma
+  // comisión). msDeFecha lanza si el ida y vuelta por el calendario no coincide.
+  msDeFecha(fecha);
   return fecha;
 }
 
@@ -680,9 +687,10 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       }
     }
     // RN-10: manda lo pactado en el contrato. Sin meta pactada, se sugiere una por horas.
+    // RN-10: `factorMeta` sólo descuenta la meta SUGERIDA. A una meta pactada y negociada con
+    // el colaborador no se le descuenta nada (spec §3.3).
     const horasDeLaMeta = p.metaSemanalFija ? horasSemanaTipo : horas;
-    const metaBase = p.metaSemanal ?? horasDeLaMeta * p.metaPorHora;
-    const meta = metaBase * p.factorMeta;
+    const meta = p.metaSemanal ?? horasDeLaMeta * p.metaPorHora * p.factorMeta;
     metaPeriodo += meta;
     const ventasSemana = ventasValidas
       .filter((v) => v.fecha >= t.desde && v.fecha <= t.hasta)
