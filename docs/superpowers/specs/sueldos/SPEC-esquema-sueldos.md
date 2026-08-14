@@ -83,7 +83,7 @@ Verificado contra las migraciones.
 | Helpers de RLS | `private.app_es_admin()`, `private.app_es_almacen()`, `private.app_sedes()` — movidos al schema `private` en `0037` | **Siempre con el prefijo `private.`**: sin él la migración falla |
 | Tabla `config` + `config-catalogo.ts` | `0058`, `apps/erp-web/lib/config-catalogo.ts` | Los 13 parámetros globales. El catálogo vive en código, no en la base |
 | Congelado por snapshot | `evaluaciones_mensuales.pesos_usados` (`0001:206`), `pagos.monto_base`/`ciclo_desde`/`ciclo_hasta` (`0057:243`) | El precedente exacto: se congela guardando el input, no recalculando |
-| Auditoría | trigger genérico `private.audit_log_trigger` de `0058` | Se engancha cada tabla nueva: 2 líneas SQL + 2 constantes en `auditoria-tipos.ts` |
+| Auditoría | trigger genérico `private.audit_log_trigger` de `0058` | Se engancha **cada una** de las tablas nuevas —las seis, incluido `sueldo_liquidacion_lineas`— más `asistencias`: 2 líneas SQL + 2 constantes en `auditoria-tipos.ts` |
 | `hoyPeru()` | `apps/erp-web/lib/fechas.ts:7` | Lo que se le inyecta al core. Nunca `new Date()` |
 | `mapaNombres()` / `app_directorio` | `apps/erp-web/lib/directorio` | Los nombres nunca salen de un join a `empleados`: la RLS devuelve una sola fila a un no-admin |
 | `getServerClient()` | `apps/erp-web/lib/supabase/server.ts` | Respeta RLS. **No** `lib/supabase.ts`, que es el singleton service_role |
@@ -118,14 +118,29 @@ Lo pactado con una persona para un periodo concreto. Un acuerdo por persona y pe
 | `fecha_inicio`, `fecha_fin` | date not null | `check (fecha_fin >= fecha_inicio)` |
 | `modalidad` | text not null default `'mensual'` | `check (modalidad in ('mensual','semanal'))` — ver la nota |
 | `sueldo_pactado` | numeric(12,2) not null | `check (sueldo_pactado >= 0)`. **Input manual**, no se deriva de `empleados.salario_base` |
-| `escala` | int null | `check (escala between 1 and 5)`. Sólo para la tarifa sugerida de RN-14 |
-| `parametros` | jsonb not null default `'{}'` | Overrides de este colaborador. §5 |
+| `escala` | int null | `check (escala is null or escala >= 1)`. Sólo para la tarifa sugerida de RN-14. **Sin techo**: `sueldos.ts:407-418` dice que la escala es un default editable, y fijar `between 1 and 5` obligaría a una migración para agregar la escala 6 (no-negociable 5) |
+| `almuerzo_habilitado` | boolean not null default `false` | El `almuerzoHabilitadoPorAdmin` de `EntradaLiquidacion` (`sueldos.ts:204`). Sin esta columna no hay dónde guardarlo, y quien trabaja medio turno pierde S/8 por día sin que el administrador pueda evitarlo |
+| `parametros` | jsonb not null default `'{}'` | Overrides de este colaborador. §5. Con **lista blanca de claves en la base**, ver abajo |
 | `estado` | text not null default `'borrador'` | `check (estado in ('borrador','vigente','liquidado'))` |
 | `creado_en`, `creado_por` | timestamptz, uuid | Quién lo pactó |
 
 - `unique (empleado_id, fecha_inicio)`
 - **Sin solapes**: `exclude using gist (empleado_id with =, daterange(fecha_inicio, fecha_fin, '[]') with &&)`. Requiere `btree_gist`.
 
+> **Las claves de `parametros` se validan en la base, no sólo en el motor.** `resolverParametros()`
+> **lanza** ante cualquier clave que no esté en `ParametrosSueldo` (`sueldos.ts:119-121`). Sin un
+> `check`, la base acepta `{"tolerancia_minutos": 15}` —snake_case, que es como está escrito todo
+> el SQL de este repo— el acuerdo se guarda bien, y después **toda liquidación de esa persona
+> corta con error** hasta que alguien encuentre el jsonb. El `check` exige que al quitarle las 14
+> claves conocidas no quede ninguna:
+>
+> ```sql
+> check (parametros - array['toleranciaMinutos','tardanzasLibres','penalidadTardanza',
+>   'valorAlmuerzo','horasMinimasAlmuerzo','valorCapacitacion','bonoMetaSemanal','metaSemanal',
+>   'factorMeta','metaSemanalFija','pctComision','montoMinimoComision','diasDescuentoPorFalta',
+>   'metaPorHora'] = '{}'::jsonb)
+> ```
+>
 > **`'diario'` se cae de la lista.** El borrador la incluía. Alexander confirmó el 14-ago-2026 que
 > **el contrato mínimo es de un mes**, aunque a la persona se la contrate sólo los domingos: por eso
 > se paga a fin de mes y no por día. Dejarla habilitada en la base abría un valor que el motor
@@ -176,12 +191,26 @@ alter table asistencias add column if not exists falta_justificada    boolean no
 alter table asistencias add column if not exists motivo_justificacion text;
 ```
 
-`condicion` con `check (condicion in ('sin_dato','trabajado','falta','descanso','licencia'))`.
+`condicion` con `check (condicion in ('sin_dato','trabajado','falta'))`.
 
 - **`sin_dato`** es el default y significa *nadie cargó nada*. La liquidación **corta con error**
   si un día contratado del periodo está así. Nunca se asume que no vino.
 - **`falta`** es una declaración explícita del administrador. Sólo eso alimenta RN-09.
 - Las 13 filas que existen hoy quedan en `sin_dato`, que es exactamente lo que son.
+
+> **`'descanso'` y `'licencia'` quedan fuera hasta que exista la regla.** El borrador las incluía.
+> El motor no las puede representar: `RegistroAsistencia` sólo distingue *hay `horaIngreso`* de *no
+> hay* (= falta), con `faltaJustificada` como único matiz. Un día contratado marcado `'licencia'`
+> tiene dos destinos y los dos son malos: si la RPC lo manda con el ingreso en null y sin
+> justificar, es una falta injustificada y **cuesta dos días de sueldo**; si lo omite, el motor
+> corta con *"Faltan N día(s) contratado(s)"*.
+>
+> Hoy no se pierde nada: el día de descanso semanal **no es un día contratado** —no tiene turno en
+> la plantilla— así que no necesita fila. La licencia sí va a hacer falta, y va a
+> `docs/pendientes-negocio.md` como pregunta para el administrador: *¿una licencia se paga, se
+> descuenta como falta justificada, o no cuenta como día contratado?* Agregar el valor después es
+> un `alter constraint`; agregarlo ahora sin la regla es descontarle dos días a alguien que estaba
+> de licencia médica.
 
 > **La regla que esto protege:** el motor exige que todo día contratado tenga su fila y que la
 > falta se **declare** (`SPEC-sistema-sueldos.md` §6). Generar filas automáticas con la hora en
@@ -212,11 +241,31 @@ Una sola tabla para los tres tipos de `SPEC-sistema-sueldos.md` §3.6, que tiene
 | `empleado_id` | uuid not null | |
 | `fecha` | date not null | |
 | `tipo` | text not null | `check (tipo in ('adelanto','reporte','bono_extra','capacitacion','almuerzo_entregado'))` |
-| `monto` | numeric(12,2) not null | `check (monto > 0)` — el signo lo pone la regla, no el dato |
+| `monto` | numeric(12,2) **null** | `check (monto is null or monto > 0)` — el signo lo pone la regla, no el dato. Obligatorio en los tres tipos de plata, **prohibido** en los dos de conteo |
+| `cantidad` | int not null default `1` | `check (cantidad > 0)`. Cuántas unidades registra la fila |
 | `motivo` | text not null | `check (length(trim(motivo)) > 0)` — sin motivo no se registra |
 | `liquidacion_id` | uuid null | Sello: qué liquidación lo consumió. Con sello, la fila es intocable |
 | `creado_en`, `creado_por` | timestamptz, uuid | |
 
+> **Dos tipos de fila con la misma forma y distinta unidad.** `adelanto`, `reporte` y `bono_extra`
+> son **plata**: el motor los suma como montos. `capacitacion` y `almuerzo_entregado` son
+> **conteos**: el motor recibe `personasCapacitadas` y `almuerzosEntregados` (`sueldos.ts:199-205`)
+> y los multiplica él mismo por `valorCapacitacion` y `valorAlmuerzo`. Meter las cinco en una
+> columna `monto not null` invita al error obvio —`sum(monto)` en vez de `sum(cantidad)`— y ese
+> error es caro: 10 almuerzos cargados a S/8 dan `almuerzosEntregados = 80`, y como
+> `almuerzosAPagar = max(0, diasConDerecho − entregados)`, la persona pierde **el reintegro de
+> todos los almuerzos** con una advertencia que se lee como cosmética.
+>
+> Por eso `monto` pasa a ser nullable y aparece `cantidad`, con un `check` que los hace excluyentes:
+>
+> ```sql
+> check (
+>   case when tipo in ('capacitacion','almuerzo_entregado')
+>        then monto is null           -- el valor sale de config, no de la fila
+>        else monto is not null end   -- adelanto/reporte/bono_extra: la fila ES el monto
+> )
+> ```
+>
 > **`monto > 0` no es un detalle.** El verificador encontró que un adelanto tipeado en negativo
 > invertía la línea: de descontar S/100 pasaba a sumar S/100. El motor ya lo rechaza; la base
 > también.
@@ -268,8 +317,7 @@ compartido, no hay timeout que pueda dejar a alguien sin liquidar.
 | Columna | Tipo | Notas |
 |---|---|---|
 | `id` | uuid pk | |
-| `acuerdo_id` | uuid not null | `references sueldo_acuerdos(id)` |
-| `empleado_id` | uuid not null | Desnormalizado a propósito: la RLS lo necesita sin join |
+| `acuerdo_id`, `empleado_id` | uuid not null | **Clave foránea compuesta** a `sueldo_acuerdos(id, empleado_id)`. Ver la nota |
 | `periodo_desde`, `periodo_hasta` | date not null | |
 | `estado` | text not null default `'borrador'` | `check (estado in ('borrador','cerrada','anulada'))` |
 | `entrada` | jsonb not null | La `EntradaLiquidacion` exacta que se le pasó al motor |
@@ -282,8 +330,28 @@ compartido, no hay timeout que pueda dejar a alguien sin liquidar.
 | `cerrada_en`, `cerrada_por` | timestamptz, uuid | |
 | `anulada_en`, `anulada_por`, `anulada_motivo` | timestamptz, uuid, text | El único cambio que admite una cerrada (§6). Sin motivo no se anula |
 
-- `unique (acuerdo_id)` — un acuerdo, una liquidación.
+- `unique (acuerdo_id) where estado <> 'anulada'` — un acuerdo, **una liquidación vigente**.
+- El periodo tiene que caer dentro del acuerdo, comprobado por trigger.
 
+> **`empleado_id` desnormalizado tiene que ser el del acuerdo, y la base lo garantiza.** Esa
+> columna es la que decide la RLS (`empleado_id = auth.uid()`), así que un uuid equivocado no es un
+> dato feo: **es el aislamiento 1 roto**. Con `acuerdo_id` de Ana y `empleado_id` de Beto, Beto lee
+> el sueldo pactado, la asistencia y las ventas de Ana, y Ana no ve la suya. Se cierra con una
+> `unique (id, empleado_id)` en `sueldo_acuerdos` y una FK compuesta desde la liquidación: la base
+> hace imposible la combinación, sin depender de que la RPC no se equivoque.
+>
+> **El `unique` va parcial, y esa palabra vale un mes de sueldo.** Con un `unique (acuerdo_id)`
+> total, anular y reemitir —que es el único camino que la spec §6 admite para corregir el pasado—
+> **es imposible**: otra liquidación sobre el mismo acuerdo choca con el unique, un acuerdo nuevo
+> para el mismo periodo choca con la restricción de solape, y borrar la anulada está bloqueado por
+> el `on delete restrict` de los movimientos que ya consumió. Callejón sin salida con el sueldo del
+> mes sin emitir.
+>
+> **El periodo dentro del acuerdo no es cosmético.** `horasContratadas` sale del periodo, y
+> `valorPorHora = sueldo / horasContratadas` es el divisor de **todo** el dinero del mes. Un tipeo
+> en `periodo_hasta` no lo detecta ningún `check` —es una comparación entre dos tablas— así que va
+> por trigger.
+>
 > **`valor_por_hora` va en `numeric(14,6)`, no en `(10,2)`.** El propio motor advierte que
 > redondearlo a 3,64 mueve el total unos S/0,06 (`sueldos.ts:19-22`). Es la única cifra del
 > sistema que no se redondea.
@@ -401,19 +469,57 @@ partes no congela nada:
 
 | Trigger sobre | Qué rechaza |
 |---|---|
-| `sueldo_liquidaciones` | Cualquier cambio con `estado = 'cerrada'`. **Única excepción**: pasar a `'anulada'` con motivo no vacío, sin tocar ninguna otra columna |
-| `sueldo_liquidacion_lineas` | Todo cambio o borrado cuya liquidación esté `cerrada`. Sin esto, el total queda intacto y el desglose que lo justifica se puede reescribir línea por línea |
-| `sueldo_movimientos`, `sueldo_ventas` | Todo cambio o borrado de una fila con `liquidacion_id` sellado. Sin esto, se cambia el monto de un adelanto ya cobrado y el recibo impreso deja de coincidir con la base |
+| `sueldo_liquidaciones` | Todo cambio o borrado con `estado in ('cerrada','anulada')`. **Única excepción**: pasar de `'cerrada'` a `'anulada'` con motivo y autor, sin tocar ninguna otra columna |
+| `sueldo_liquidacion_lineas` | Todo **alta**, cambio o borrado que toque una liquidación que ya no es `'borrador'` — mirando el estado de **origen y destino** |
+| `sueldo_movimientos`, `sueldo_ventas` | Todo cambio o borrado de una fila sellada contra una liquidación vigente, y todo sellado contra una liquidación que ya no es `'borrador'`. **Única excepción**: si la liquidación que la selló fue anulada, el sello se puede soltar — nada más de la fila cambia |
+
+**Cuatro reglas que el verificador tuvo que descubrir rompiéndolas** (14-ago-2026). Cada una es un
+camino real por el que un pago emitido cambiaba de valor:
+
+1. **`'anulada'` también es terminal.** Si el trigger sólo mira `'cerrada'`, alcanzan dos `UPDATE`:
+   se anula (permitido, es la excepción), y desde `'anulada'` la fila queda editable **entera** —
+   incluido volver a `'cerrada'` con otro total. El congelado se rompe completo, y de paso la
+   anulada se puede borrar y no queda rastro de que el pago existió.
+
+2. **El desglose se protege por origen y por destino, y también en el `insert`.** Mirar sólo
+   `new.liquidacion_id` deja *sacar* las líneas de una liquidación cerrada moviéndolas a un
+   borrador; y sin cubrir el `insert`, se le agregan líneas nuevas. Entre las dos, el desglose de
+   una cerrada se reescribe de punta a punta sin tocar la cabecera.
+
+3. **Sellar contra una liquidación ya cerrada es peor que editarla.** El trigger que mira sólo
+   `old.liquidacion_id` deja hacer `update sueldo_movimientos set liquidacion_id = <una cerrada>`.
+   Esa fila queda congelada para siempre apuntando a un snapshot que **nunca la incluyó**: no está
+   descontada en el mes cerrado y, como toda consulta de pendientes filtra `liquidacion_id is
+   null`, tampoco entra en el siguiente. **El adelanto no se descuenta nunca.**
+
+   > **Consecuencia para la `0069`:** `sueldo_liquidacion_cerrar()` tiene que **sellar primero y
+   > cerrar después**, en esa orden, dentro de la misma transacción. Al revés, el trigger la
+   > bloquea a ella misma. Y `sueldo_liquidacion_anular()` tiene que **anular primero y soltar los
+   > sellos después**, por el mismo motivo al revés.
+
+   > **Por qué anular suelta los sellos.** Si no lo hiciera, el adelanto que consumió la
+   > liquidación anulada quedaría marcado para siempre y **la reemisión no lo descontaría**: la
+   > persona cobraría de más exactamente el monto del adelanto. Soltar el sello es lo único que se
+   > le permite a una fila sellada, y sólo cuando su liquidación está `'anulada'`.
+
+4. **`truncate` no dispara ningún trigger `for each row` ni respeta RLS.** No es alcanzable desde
+   PostgREST, pero sí desde cualquier conexión SQL. Va un `before truncate ... for each statement`
+   en las cuatro tablas.
 
 > Es una pieza nueva para el repo y por eso se justifica acá y no se cuela en el código: sin ella,
 > un `PATCH` plano por PostgREST reescribe un pago ya emitido. Confiar el congelado a un
 > `estado = 'cerrada'` leído en la UI no es congelar.
 >
-> Los triggers son `security definer`: tienen que bloquear también al administrador y al
-> `service_role`, que son justamente quienes pueden escribir estas tablas.
+> **Los triggers no bloquean al administrador por ser `security definer`** — un trigger `before`
+> dispara para cualquier rol, con `security definer` o sin él, y eso es lo que hace que el
+> congelado alcance también al admin y al `service_role`. `security definer` está por otra razón,
+> mucho más chica: que `sueldo_linea_inmutable` pueda leer la cabecera sin quedar sujeto a la RLS
+> de `sueldo_liquidaciones`.
 
 **Corregir el pasado.** Si aparece un error en un periodo cerrado, no se toca: se anula
-(`estado = 'anulada'`, con motivo y autor) y se emite una liquidación nueva. El rastro queda.
+(`estado = 'anulada'`, con motivo y autor) y se emite una liquidación nueva sobre el mismo acuerdo
+—que el `unique` parcial de §4.6 permite— con los movimientos y ventas de la anulada ya liberados.
+El rastro queda: la anulada no se borra nunca.
 
 ---
 
@@ -463,7 +569,13 @@ Todas **`security invoker`** con `set search_path = public`: la RLS del actor de
 |---|---|
 | `sueldo_entrada(p_acuerdo uuid)` | Devuelve el `jsonb` con la `EntradaLiquidacion` armada: acuerdo, turnos, asistencia colapsada por día, ventas, movimientos y parámetros resueltos |
 | `sueldo_liquidacion_cerrar(p_liquidacion uuid, p_resultado jsonb)` | Valida el estado, escribe el snapshot y las líneas, sella los movimientos y ventas consumidos, pasa a `cerrada`. Todo en una transacción |
-| `sueldo_liquidacion_anular(p_liquidacion uuid, p_motivo text)` | Único camino para dejar sin efecto una cerrada |
+| `sueldo_liquidacion_anular(p_liquidacion uuid, p_motivo text)` | Único camino para dejar sin efecto una cerrada. Escribe motivo y autor, y **libera el sello** de los movimientos y ventas que había consumido, para que la reemisión los vuelva a tomar |
+
+**El orden dentro de `sueldo_liquidacion_cerrar()` no es libre:** escribir el snapshot y las
+líneas, **sellar** los movimientos y ventas, y **recién al final** pasar el estado a `'cerrada'`.
+Invertir los dos últimos pasos hace que el trigger del sello bloquee a la propia RPC. Y liberar el
+sello en `anular()` exige que la anulación pase el estado **antes** de tocar las filas selladas,
+por el mismo motivo al revés.
 
 **Cada una abre con un guard interno**, aunque sean invoker:
 
@@ -578,9 +690,43 @@ Sus escrituras fallan con 42501 y sus borrados quitan 0 filas, en silencio.
 | **Turno partido con hueco** | El colapso `min`/`max` pagaría el hueco. Hoy no existe ningún turno partido; si aparece, hay que decidir antes de liquidarlo |
 | **Horario que cambia a mitad de periodo** | El modelo obliga a cerrar el acuerdo y abrir otro. Es coherente con el congelado, pero parte el periodo en dos liquidaciones |
 | **Datos de personas vacíos** | `fecha_ingreso` en 1 de 18. La pantalla tiene que avisar, no inventar |
+| **Cómo se registra una licencia** | El `check` de `condicion` quedó en tres valores porque el motor no sabe representar una licencia. Hay que preguntarle al administrador si se paga, si se descuenta como falta justificada, o si directamente no cuenta como día contratado. Hasta entonces, una licencia no se puede cargar |
+| **Trabajo fuera del horario pactado (RN-17)** | El motor lo recibe aparte, en `horasFueraDeContrato` (`sueldos.ts:194`). El esquema no lo marca: se deriva de que el día no tenga turno en la plantilla. Hay que confirmar que ese criterio alcanza antes de escribir la RPC de la `0069` |
 | **Quién puede declarar una asistencia** | La escritura de `asistencias` ya es **sólo del administrador** (`asist_admin_write`, verificado en `pg_policies`: `private.app_es_admin()` en `using` y en `with check`), así que con `condicion` no se abre nada nuevo. Lo que queda por decidir es de negocio: si el encargado debe poder declarar la asistencia de su sede. Si la respuesta es sí, va por RPC con guard, nunca ampliando la policy |
 
 ---
 
-_Sale de seis lectores sobre el esquema vivo, tres diseños independientes y un adversario por
-diseño. Todo verificado contra las migraciones y contra la base. 14 de agosto de 2026._
+## 12. La ronda de verificación adversarial
+
+El subagente verificador revisó la primera versión de la `0068` **antes de aplicarla**. Encontró
+**diez defectos con consecuencia concreta**, seis de ellos en el congelado. Se dejan escritos porque
+el patrón se repite y porque explican por qué el SQL final es más largo de lo que parecía necesario.
+
+| Qué rompía | Cómo |
+|---|---|
+| **El congelado, entero** | `'anulada'` no era terminal: anular y volver a cerrar con otro total, en dos `UPDATE` |
+| **El aislamiento 1** | `empleado_id` desnormalizado sin FK compuesta: un uuid equivocado le muestra el sueldo de una persona a otra |
+| **El desglose** | El trigger miraba sólo el destino y no cubría el `insert`: las líneas de una cerrada se reescribían enteras |
+| **El adelanto que nunca se descuenta** | Sellar contra una liquidación ya cerrada dejaba la fila fuera del mes cerrado *y* del siguiente |
+| **La reemisión** | `unique (acuerdo_id)` total volvía imposible el único camino que la spec admite para corregir el pasado |
+| **El rastro** | Una anulada se podía borrar, y sus líneas se iban en cascada |
+| **Toda liquidación de una persona** | `parametros` sin lista blanca: una clave en snake_case y el motor corta para siempre |
+| **S/8 por día** | `almuerzoHabilitadoPorAdmin` no tenía dónde guardarse |
+| **El reintegro de almuerzos** | `capacitacion` y `almuerzo_entregado` son conteos, no montos, y compartían la columna `monto` |
+| **Dos días de sueldo** | `'licencia'` y `'descanso'` no los sabe representar el motor |
+
+Y tres cosas que el verificador **descartó** después de mirarlas, que también vale anotar: la
+resolución del opclass de `btree_gist` no depende del `search_path`; el `insert into config` no
+pisa nada porque `config.clave` es PK; y la duda sobre `NEW` en un trigger `before delete` no
+aplica — la base corre **PostgreSQL 17.6**, verificado con `select version()`.
+
+Lo que sí quedó mal escrito de mi parte era un comentario: decía que los triggers bloquean al
+administrador *porque* son `security definer`. Es falso como mecanismo —un trigger `before` dispara
+para cualquier rol— y corregirlo importa, porque el próximo que lo lea puede creer que el congelado
+depende de esa palabra.
+
+---
+
+_Sale de seis lectores sobre el esquema vivo, tres diseños independientes, un adversario por diseño
+y una ronda adversarial sobre el SQL ya escrito. Todo verificado contra las migraciones y contra la
+base. 14 de agosto de 2026._
