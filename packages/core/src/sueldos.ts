@@ -239,6 +239,7 @@ export interface Liquidacion {
     diasContratados: number;
     /** Sin redondear a propósito: es el divisor del que cuelga todo el dinero del periodo. */
     valorPorHora: number;
+    /** Sólo informativo (RN-04): ningún descuento cuelga de este promedio. */
     sueldoPorDia: number;
   };
   asistencia: {
@@ -541,6 +542,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   let tardanzasJustificadas = 0;
   let faltas = 0;
   let faltasJustificadas = 0;
+  let horasFaltadas = 0; // horas contratadas de los días que faltó SIN justificar (RN-09)
   let justificacionesHuerfanas = 0;
 
   for (const fecha of dias) {
@@ -588,6 +590,8 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       if (esFalta) faltasJustificadas += 1;
       else justificacionesHuerfanas += 1;
     }
+    // RN-09: el castigo se cobra sobre las horas del día que faltó, no sobre un día promedio.
+    if (esFalta && !reg?.faltaJustificada) horasFaltadas += horasContratadasDelDia;
   }
 
   if (justificacionesHuerfanas > 0) {
@@ -745,8 +749,14 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   // RN-09: `diasDescuentoPorFalta` son los días que la falta cuesta EN TOTAL. Se resta 1 porque
   // el día que no trabajó ya salió por RN-06 — el sueldo se paga por horas, así que no
   // presentarse ya vale un día sin necesidad de castigo. La falta justificada pierde sólo ese día.
+  //
+  // La unidad es EL DÍA QUE FALTÓ, no un día promedio (decisión del dueño, 14-ago-2026, spec
+  // §9.6): faltar a un sábado de 1 h cuesta dos sábados y faltar a un lunes de 11 h cuesta dos
+  // lunes. Con `sueldoPorDia` el castigo era plano en soles y sólo cuadraba con jornadas
+  // uniformes: en un horario de lunes de 11 h y sábados de 1 h, faltar al sábado costaba 10,3
+  // sábados de trabajo.
   const diasCastigoPorFalta = Math.max(0, p.diasDescuentoPorFalta - 1);
-  const descuentoFaltas = faltasInjustificadas * sueldoPorDia * diasCastigoPorFalta;
+  const descuentoFaltas = horasFaltadas * valorPorHora * diasCastigoPorFalta;
   const descuentoTardanzas = tardanzasInjustificadas * p.penalidadTardanza; // RN-08
 
   const lineas: LineaLiquidacion[] = [
@@ -784,7 +794,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     {
       grupo: 'descuento',
       concepto: 'Faltas injustificadas',
-      detalle: `${faltasInjustificadas} falta(s) × S/${r2(sueldoPorDia)} × ${diasCastigoPorFalta} día(s) de castigo (el día no trabajado ya salió por horas)`,
+      detalle: `${faltasInjustificadas} falta(s) que suman ${r2(horasFaltadas)} h × S/${valorPorHora.toFixed(4)} × ${diasCastigoPorFalta} día(s) de castigo (el día no trabajado ya salió por horas)`,
       monto: r2(-descuentoFaltas),
       regla: 'RN-09',
     },

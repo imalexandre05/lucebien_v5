@@ -627,6 +627,31 @@ describe('filos de los umbrales', () => {
     expect(l.asistencia.faltas).toBe(1); // sin ingreso en día contratado, sigue siendo falta
   });
 
+  it('el castigo por falta se cobra sobre el día real, no sobre el promedio (§9.6)', () => {
+    // Lunes de 11 h y sábado de 1 h: dos jornadas muy desiguales, valor de la hora S/10.
+    // Antes el castigo salía del día promedio (S/60) y faltar al sábado costaba S/70, es decir
+    // 7 sábados de trabajo. Ahora cuesta 2 sábados y faltar al lunes cuesta 2 lunes.
+    const desigual: TurnoContratado[] = [
+      { diaSemana: 1, horaInicio: '09:00', horaFin: '20:00' }, // lunes, 11 h
+      { diaSemana: 6, horaInicio: '09:00', horaFin: '10:00' }, // sábado, 1 h
+    ];
+    const costoDeLaFalta = (faltaAl: 'lunes' | 'sabado') => {
+      const l = liquidarPeriodo({
+        fechaInicio: '2025-06-16',
+        fechaFin: '2025-06-22',
+        sueldoPactado: 120, // 12 h contratadas → valorPorHora 10, sueldoPorDia 60
+        horario: desigual,
+        asistencia: [
+          { fecha: '2025-06-16', horaIngreso: faltaAl === 'lunes' ? null : '09:00', horaSalida: faltaAl === 'lunes' ? null : '20:00' },
+          { fecha: '2025-06-21', horaIngreso: faltaAl === 'sabado' ? null : '09:00', horaSalida: faltaAl === 'sabado' ? null : '10:00' },
+        ],
+      });
+      return Math.round((120 - l.total) * 100) / 100; // sin faltas cobraría los 120 completos
+    };
+    expect(costoDeLaFalta('sabado')).toBe(20); // 2 × (1 h × S/10)
+    expect(costoDeLaFalta('lunes')).toBe(220); // 2 × (11 h × S/10)
+  });
+
   it('el descuento por falta nunca paga dinero, aunque el parámetro sea 0 o 1', () => {
     const conDias = (dias: number) =>
       liquidarPeriodo({
