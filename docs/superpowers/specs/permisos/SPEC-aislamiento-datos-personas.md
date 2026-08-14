@@ -6,6 +6,12 @@ vez de algo escrito a fuego en el SQL.
 
 > Encontrados el 14-ago-2026 mapeando el esquema para la capa de datos de sueldos. **No son
 > defectos de ese diseño: estaban antes.** Verificados leyendo las migraciones, no otro documento.
+>
+> ✅ **APLICADA Y VERIFICADA contra `scilb` el 14-ago-2026.** Comprobado después de aplicar:
+> cero policies conservan `app_es_almacen()` sobre datos de personas, las tres usan el helper
+> nuevo, el cuerpo de `evaluacion_componentes` quedó en `private` con el envoltorio plpgsql
+> delante, `empleado_tiendas` pasó de 1 a 2 policies, y el módulo `datos_personas` tiene sus
+> 5 filas vacías listas para repartir.
 
 ---
 
