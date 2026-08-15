@@ -18,3 +18,10 @@ regla4|packages/core/src/estadisticas.ts
 # puede pasar la fecha), pero si se olvida hereda la zona del proceso. Además crm.ts es del
 # módulo comercial, hoy fuera de alcance.
 regla4|packages/core/src/crm.ts
+
+# ── regla3-rls-escritura: tabla con RLS y sin policy de escritura ──────────────────────────
+# audit_log — ÚNICA excepción legítima, y es a propósito. La 0058 lo dice explícito: no hay
+# policy de escritura para que el log quede de sólo-anexado incluso para un admin usando la API
+# REST directo. El único camino de escritura es el trigger, que corre security definer y bypassa
+# RLS. Esto NO es deuda: es el diseño. Se lista acá para que el guard no lo marque.
+regla3-rls-escritura|audit_log

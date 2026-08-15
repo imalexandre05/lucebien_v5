@@ -91,6 +91,55 @@ revisar "regla3-rls" "Regla 3 — sin políticas RLS abiertas sin justificar" \
   "Si es intencional, anotá '-- guard-ok' con el motivo en la misma línea." \
   "$(grep -rn "using *( *true *)" packages/db/migrations --include="*.sql" 2>/dev/null | grep -vi "service_role\|guard-ok" || true)"
 
+# ── Regla 3: toda tabla con RLS necesita policy de LECTURA y de ESCRITURA ──────────────────
+# Con RLS activa y sólo `select`, las escrituras fallan con 42501 y los borrados quitan cero
+# filas — EN SILENCIO: la pantalla dice que guardó y no guardó nada. Le pasó a `empleado_tiendas`
+# durante meses en producción, hasta la 0067.
+sin_escritura=""
+for tabla in $(grep -rhoiE "alter table +[a-z_]+ +enable row level security" packages/db/migrations \
+                 --include="*.sql" 2>/dev/null | awk '{print $3}' | sort -u); do
+  if ! grep -rliE "create policy +[a-z_]+ +on +${tabla} +for +(all|insert|update|delete)" \
+         packages/db/migrations --include="*.sql" >/dev/null 2>&1; then
+    sin_escritura="${sin_escritura}${tabla}:0: tiene RLS activa y ninguna policy de escritura"$'\n'
+  fi
+done
+revisar "regla3-rls-escritura" "Regla 3 — toda tabla con RLS tiene policy de escritura" \
+  "Agregá la policy de insert/update/delete, o justificá la excepción en el baseline." \
+  "$(printf '%s' "$sin_escritura")"
+
+# ── Números de migración únicos, MIRANDO TODAS LAS RAMAS ───────────────────────────────────
+# El número es la identidad de una migración. Mirar sólo el directorio de trabajo no alcanza: dos
+# ramas paralelas ven la misma "última" y las dos escriben la siguiente. El choque no aparece
+# hasta el merge, cuando una ya está aplicada en producción.
+#
+# Pasó de verdad el 14-ago-2026 entre feat/mi-talla-db y feat/sueldos-motor, con las cuatro
+# migraciones ya aplicadas. Por eso esto compara contra cada rama, local y remota.
+#
+# Prevención: bash tools/reservar-migracion.sh <slug>
+# Una sola pasada: se junta `número<TAB>nombre<TAB>dónde` de la copia de trabajo y de cada rama, y
+# después awk marca los números que tienen más de un nombre distinto. Con ~30 ramas y ~70
+# migraciones, hacerlo con grep anidados tarda minutos en Windows; así son segundos.
+listar_migraciones() {
+  ls packages/db/migrations 2>/dev/null | grep -E '^[0-9]{4}.*\.sql$' \
+    | awk '{printf "%s\t%s\t%s\n", substr($0,1,4), $0, "esta rama"}'
+  for ref in $(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes 2>/dev/null); do
+    git ls-tree --name-only "$ref" packages/db/migrations/ 2>/dev/null \
+      | sed 's|.*/||' | grep -E '^[0-9]{4}.*\.sql$' \
+      | awk -v r="$ref" '{printf "%s\t%s\t%s\n", substr($0,1,4), $0, r}'
+  done
+}
+
+choques=$(listar_migraciones | sort -u | awk -F'\t' '
+  { if ($1 in nombre && nombre[$1] != $2)
+      choque[$1] = nombre[$1] " (" donde[$1] ") contra " $2 " (" $3 ")";
+    nombre[$1] = $2; donde[$1] = $3 }
+  END { for (n in choque) printf "packages/db/migrations/%s:0: el número %s está tomado dos veces: %s\n", n, n, choque[n] }
+' | sort)
+
+revisar "migraciones-unicas" "Migraciones — números únicos en todas las ramas" \
+  "Renumerá con bash tools/reservar-migracion.sh la que se aplicó ÚLTIMA, no la primera." \
+  "$choques"
+
 # ── Regla 6 (Zone Guard): spec y código nunca en el mismo commit ───────────────────────────
 if [ "${CI:-}" = "true" ] && [ -n "${GITHUB_BASE_REF:-}" ]; then
   git fetch --quiet origin "$GITHUB_BASE_REF" 2>/dev/null || true

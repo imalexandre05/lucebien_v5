@@ -1,6 +1,6 @@
--- 0069_sueldos_rpc.sql — Las tres RPC del sistema de sueldos.
+-- 0073_sueldos_rpc.sql — Las tres RPC del sistema de sueldos.
 --
--- Implementa docs/superpowers/specs/sueldos/SPEC-esquema-sueldos.md §8. La 0068 dejó las tablas;
+-- Implementa docs/superpowers/specs/sueldos/SPEC-esquema-sueldos.md §8. La 0072 dejó las tablas;
 -- esta deja las tres operaciones: armar la entrada del motor, cerrar una liquidación y anularla.
 --
 -- ZONA CRÍTICA (no-negociable 1 y 3): esto arma y congela el pago de una persona real.
@@ -227,7 +227,7 @@ begin
     'ventas',        v_ventas,
     'almuerzoHabilitadoPorAdmin', a.almuerzo_habilitado,
     -- Los tres tipos de PLATA van como lista; los dos de CONTEO van como número. Es la distinción
-    -- que la 0068 hizo excluyente con sueldo_mov_unidad_chk.
+    -- que la 0072 hizo excluyente con sueldo_mov_unidad_chk.
     'adelantos',    private.sueldo_movimientos_lista(a.empleado_id, a.fecha_inicio, a.fecha_fin, 'adelanto'),
     'reportes',     private.sueldo_movimientos_lista(a.empleado_id, a.fecha_inicio, a.fecha_fin, 'reporte'),
     'bonosExtras',  private.sueldo_movimientos_lista(a.empleado_id, a.fecha_inicio, a.fecha_fin, 'bono_extra'),
@@ -288,7 +288,7 @@ comment on function sueldo_entrada(uuid) is
 --    influya en un pago.
 --
 --    ORDEN OBLIGATORIO, y no es libre: líneas → sellar → cerrar. Si cerrara primero, el trigger
---    sueldo_sellado_inmutable de la 0068 la bloquearía a ella misma, porque sólo se puede sellar
+--    sueldo_sellado_inmutable de la 0072 la bloquearía a ella misma, porque sólo se puede sellar
 --    contra una liquidación en 'borrador'.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create or replace function sueldo_liquidacion_cerrar(p_liquidacion uuid)

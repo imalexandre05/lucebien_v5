@@ -1,4 +1,4 @@
--- 0068_sueldos_esquema.sql — Capa de datos del sistema de sueldos.
+-- 0072_sueldos_esquema.sql — Capa de datos del sistema de sueldos.
 --
 -- Implementa docs/superpowers/specs/sueldos/SPEC-esquema-sueldos.md §4 (modelo), §5 (parámetros),
 -- §6 (congelado) y §7 (aislamiento). Es donde se guarda lo que calcula
@@ -9,7 +9,7 @@
 -- activa y con policy de lectura Y de escritura desde esta misma migración.
 --
 -- SIN RPC A PROPÓSITO. Las tres RPC de la spec §8 (sueldo_entrada, sueldo_liquidacion_cerrar,
--- sueldo_liquidacion_anular) van en la 0069, para que este diff se pueda revisar entero.
+-- sueldo_liquidacion_anular) van en la 0073, para que este diff se pueda revisar entero.
 --
 -- Idempotente: se puede reaplicar sin fallar. Cada `create` lleva su `if not exists` y cada
 -- restricción que no lo soporta va envuelta en un `do $$ ... $$` que consulta pg_constraint.
@@ -536,7 +536,7 @@ create trigger trg_sueldo_linea_inmutable before insert or update or delete on s
 --     y, como toda consulta de pendientes filtra `liquidacion_id is null`, tampoco entra al
 --     siguiente. El adelanto no se descuenta nunca y la persona cobra de más.
 --
---     ORDEN OBLIGATORIO PARA LA 0069: sueldo_liquidacion_cerrar() tiene que sellar PRIMERO y
+--     ORDEN OBLIGATORIO PARA LA 0073: sueldo_liquidacion_cerrar() tiene que sellar PRIMERO y
 --     cerrar DESPUÉS. Al revés, este trigger la bloquea a ella misma. Y anular() tiene que anular
 --     primero y soltar los sellos después, por el mismo motivo al revés.
 create or replace function private.sueldo_sellado_inmutable() returns trigger
