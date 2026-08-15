@@ -14,8 +14,11 @@ que dos secciones avancen en paralelo sin pisarse.**
 
 | Red | Cuándo salta | Qué cuesta |
 |---|---|---|
+| **Hook `migracion-reservada.sh`** | Al intentar escribir una migración sin reserva | Instantáneo. **Bloquea**, no avisa |
 | **`tools/guard-reglas.sh`** | Antes de commitear y en CI | Segundos |
 | **`tools/verificar-local.sh`** | Antes de commitear | ~1 minuto |
+| **`tools/probar-migracion.sh`** | Después de aplicar una migración | Segundos, contra la base |
+| **`pnpm --filter erp-web test:e2e`** | Después de desplegar | Un minuto, con la aplicación levantada |
 | **CI** (GitHub Actions) | En cada push y cada PR | Minutos, y ya commiteaste |
 | **Subagente `verificador`** | Antes de mergear algo de zona crítica | Caro, pero encuentra lo que ninguna máquina puede |
 
@@ -76,6 +79,75 @@ lo que el guard existe para impedir.
 
 ---
 
+### El hook que bloquea: `migracion-reservada.sh`
+
+Es la única red que **impide** en vez de avisar. Corre antes de cada `Write` o `Edit`, y si el
+archivo es una migración comprueba dos cosas:
+
+1. Que el número **no esté tomado por otra rama** — te dice cuál y con qué nombre.
+2. Que el archivo esté **commiteado**. Reservar sin commitear no reserva nada: la siguiente sección
+   no lo ve y va a elegir el mismo número.
+
+Cualquier archivo que no sea `packages/db/migrations/*.sql` pasa sin que el hook haga nada.
+
+> El guard ya detectaba el choque, pero lo detectaba **tarde**: con la migración ya escrita. El
+> hook lo detecta antes de la primera línea. Es la diferencia entre corregir un nombre y renumerar
+> una migración de 800 líneas que ya está aplicada.
+
+### Las pruebas de migración: `tools/probar-migracion.sh`
+
+Verificar una migración **no es mirar que las tablas existan**. Es intentar romper lo que promete.
+
+Cada migración de zona crítica tiene su archivo en `packages/db/pruebas/`. Monta un caso completo
+y después lo ataca. La de la `0072` tiene 18 pasos: crea contrato, horario, adelanto, liquidación
+y cierre, y después intenta editar el pago cerrado, agregarle líneas falsas, sacarle las que tiene,
+tocar un movimiento sellado, borrarla, revivirla, y reemitirla.
+
+**Se descartan solas.** Cada prueba termina lanzando una excepción con el resultado, y eso aborta
+la transacción: no queda ni una fila. El "error" final **es** la salida esperada.
+
+```bash
+bash tools/probar-migracion.sh 0072      # una
+bash tools/probar-migracion.sh           # todas
+```
+
+Con `psql` y `SUPABASE_DB_URL` las corre solo. Sin eso, imprime qué archivos pasarle al MCP de
+Supabase.
+
+### E2E: qué es y qué cubre hoy
+
+**Todo lo demás mira el código.** Los tests unitarios prueban funciones sueltas, el typecheck
+prueba que los tipos cierren, las pruebas de migración prueban la base. **Ninguno abre la
+aplicación.**
+
+Un E2E —*end to end*, de punta a punta— abre un navegador de verdad, entra a la pantalla, hace clic
+donde haría clic una persona, y comprueba lo que esa persona vería. Es la única red que atrapa
+*"compila, los tests pasan, y la pantalla está en blanco"*.
+
+```bash
+pnpm --filter erp-web dev            # en una terminal
+pnpm --filter erp-web test:e2e       # en otra
+
+E2E_URL=https://<preview>.vercel.app pnpm --filter erp-web test:e2e   # contra un despliegue
+```
+
+Hoy hay **tres pruebas de humo**, elegidas porque no necesitan sesión iniciada y por lo tanto se
+pueden correr de verdad:
+
+| Prueba | Qué atrapa |
+|---|---|
+| El login se dibuja | Que la aplicación levante y la pantalla tenga dónde escribir y qué apretar |
+| La página no quedó en blanco | Un error de JavaScript sin capturar: el HTML llega y no se ve nada |
+| `/empleados` sin sesión manda al login | **El no-negociable 3 desde afuera.** Si el middleware dejara de redirigir, cualquiera vería datos de personas sin estar logueado, y ningún test unitario lo notaría |
+
+**Lo que falta y por qué.** Probar un flujo real —entrar, liquidar un sueldo, cerrarlo— necesita
+dos cosas que no existen: un usuario de prueba con contraseña conocida, y **una base aparte**.
+Contra `scilb` un E2E escribiría datos reales, y borrarlos después no alcanza: el trigger de
+inmutabilidad impide borrar una liquidación cerrada, **a propósito**. Una rama de Supabase resuelve
+las dos cosas y es el próximo paso.
+
+---
+
 ## 2. Los tres agentes
 
 | Agente | Para qué | Cuándo |
@@ -88,6 +160,40 @@ El `verificador` no es una formalidad: el 14-ago-2026 encontró **diez defectos 
 concreta** en una migración que ya parecía terminada, seis de ellos en el congelado de las
 liquidaciones. Corría en una ventana propia, así que la sesión principal no pagó el costo de la
 búsqueda.
+
+### Lo que los agentes aprenden queda escrito
+
+Un agente empieza cada sesión **sin memoria**. Sin nada que lo guarde, el mismo error se comete de
+nuevo cada vez y la única defensa es que alguien se acuerde.
+
+**[`docs/aprendizajes.md`](aprendizajes.md)** es ese registro. Cada fila tiene tres columnas: qué
+se hizo mal, qué costó, y **cómo se detecta ahora**. La tercera es la que importa: un error anotado
+sin cómo detectarlo es una anécdota.
+
+- El `implementador` y el `verificador` lo leen como **paso 0**, la sección de su área.
+- El hook de cierre lo recuerda cuando hay código tocado sin documentar.
+- La regla de cierre de `CLAUDE.md` lo pide.
+
+**Y cuando el aprendizaje se puede convertir en una comprobación automática, se convierte.** Ese es
+el criterio que impide que el archivo se vuelva un cementerio de párrafos: de las 26 filas iniciales,
+9 ya tienen su regla en el guard o su hook. El archivo no es el objetivo — es la sala de espera de
+la próxima comprobación automática.
+
+### Qué afecta que dos `implementador` no se vean
+
+Corren en ventanas separadas. Ninguno ve el trabajo **sin commitear** del otro. Concretamente:
+
+| Riesgo | Qué lo tapa |
+|---|---|
+| Los dos eligen el mismo número de migración | El hook bloquea, y sólo ve reservas **commiteadas** — por eso el protocolo exige commitear la reserva antes de escribir |
+| Los dos editan el mismo archivo | Una sección, una rama, y **archivos distintos por sección**. Si dos secciones necesitan el mismo repo o la misma pantalla, no son dos secciones |
+| Los dos agregan filas al mismo documento | `merge=union` en los cuatro compartidos |
+| Los dos inventan el mismo default con distinto valor | Nada lo tapa hoy. Los dos lo anotan en `pendientes-negocio.md` y se ve al revisar |
+| Uno rompe algo que el otro usa | Nada lo tapa **hasta el merge**, donde CI corre typecheck y tests sobre las dos partes juntas |
+
+Las dos últimas filas son el límite real del paralelismo: **cuanto más se tocan dos secciones, menos
+sirve separarlas.** El reparto que funciona es por frontera de datos —sueldos, pipeline, evaluación—
+no por "vos hacé el backend y yo el frontend de lo mismo".
 
 ---
 
@@ -186,20 +292,29 @@ aprendido esté escrito**, porque el grafo de código se actualiza solo y la sem
 
 Escrito acá para que nadie lo descubra tarde:
 
-- **No hay tests de la base.** Las migraciones se verifican a mano, con escenarios dentro de una
-  transacción que se descarta. Funciona y encuentra cosas, pero no queda corriendo: si alguien
-  rompe un trigger dentro de tres meses, nadie se entera.
-- **No hay E2E.** CI corre guard, typecheck y tests unitarios. Nadie comprueba que una pantalla
-  cargue.
+- **Las pruebas de migración no corren en CI.** Existen y se pueden volver a correr, pero necesitan
+  credenciales de la base y CI no tiene secretos **a propósito** (así siempre es reproducible). Hoy
+  se corren a mano antes de mergear. Automatizarlas exige una rama de Supabase con su URL en los
+  secretos del repositorio.
+- **El E2E no prueba ningún flujo con sesión.** Sólo humo. Falta un usuario de prueba y una base
+  aparte; contra `scilb` escribiría datos reales que después no se pueden borrar, porque el trigger
+  de inmutabilidad lo impide a propósito.
 - **El `node_modules/` versionado sigue ahí, y es una mina.** `tools/verificar-local.sh` lo
   esquiva, no lo resuelve. Ya rompió dos cosas el mismo día: el `tsc` que no se encuentra, y un
-  `pnpm install --force` que borró el binario compilado de `better-sqlite3` y habría dejado el
-  sistema viejo sin arrancar. **Sacarlo del control de versiones** (`git rm -r --cached
-  node_modules`, que no borra nada del disco) es la solución de fondo, pero cambia lo que recibe
-  quien clone el repo para correr el Express viejo, así que es una decisión de Alexander y no se
-  toma de paso.
+  `pnpm install --force` que borró el binario compilado de `better-sqlite3`.
+
+  **Sacarlo del control de versiones** —`git rm -r --cached node_modules`, que no borra nada del
+  disco— es la solución de fondo. El sistema viejo **no corre en esta PC**: acá hay una copia para
+  analizarlo, y lo que la gente usa corre en otra máquina. Eso quita el motivo que había para no
+  hacerlo, pero deja uno nuevo y concreto: **cuando esa otra PC haga `git pull`, git le va a borrar
+  `node_modules/` del disco** y PM2 se queda sin dependencias. Se arregla corriendo `npm install`
+  ahí, pero hay que hacerlo **antes** de que nadie lo note. Es una decisión de Alexander con un
+  paso obligatorio, no un cambio que se hace de paso.
 - **Los agentes no comparten estado.** Dos `implementador` en paralelo no saben uno del otro; lo
-  único que los coordina es este protocolo y el guard.
+  único que los coordina es este protocolo, el hook y el guard. El detalle de qué tapa cada cosa
+  está en §2.
+- **Nada impide que dos secciones inventen el mismo default con distinto valor.** Los dos lo
+  anotan en `pendientes-negocio.md` y se ve al revisar, pero nadie avisa en el momento.
 
 ---
 
@@ -216,6 +331,9 @@ No alcanza con escribirlo. Cada afirmación de acá se verificó corriéndola:
 | `graphify-out/graph.json merge=graphify` sigue vivo | `git check-attr merge` sobre los cuatro archivos |
 | `reservar-migracion.sh` da el número libre | Creó la `0074` con su encabezado, sabiendo de la `0073` local y de la `0071` de otra rama |
 | `pnpm install --force` borra archivos del sistema viejo | Pasó: 43 archivos rastreados borrados, restaurados con `git checkout`, y `require('better-sqlite3')` vuelve a cargar |
+| El hook bloquea una migración sin reservar | Cinco casos probados: archivo que no es migración pasa · migración nueva sin reserva deniega · número de otra rama deniega **nombrando la rama** · reserva sin commitear deniega pidiendo el commit · migración commiteada pasa. Y la salida se validó con `JSON.parse`, porque la primera versión emitía JSON roto |
+| Las pruebas de migración guardadas siguen pasando | `0072` con sus 18 pasos y `0073` con sus 12, corridas contra `scilb`. Ninguna dejó filas |
+| El E2E compila y entra en el typecheck | `tsc --noEmit` sobre `apps/erp-web` incluye `e2e/**` y `playwright.config.ts` |
 
 ---
 
