@@ -1,3 +1,24 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 graphify-out/graph.json merge=graphify
+
+# Los scripts tienen que llegar con LF a CI, que corre en Linux: un .sh con CRLF falla con
+# "bad interpreter: /usr/bin/env bash^M".
+*.sh text eol=lf
+
+# ── Los tres documentos compartidos ─────────────────────────────────────────────────────────
+# Toda sección que trabaje en paralelo suma líneas a estos tres. Con el merge normal, dos ramas
+# que agregan una fila al final de la misma tabla producen un conflicto por cada fila, aunque las
+# dos filas sean independientes y las dos deban quedar.
+#
+# `merge=union` conserva LOS DOS lados en vez de marcar conflicto. Funciona bien acá porque los
+# tres son APPEND-ONLY: se suman filas y secciones, no se reescriben las de otro.
+#
+# EL PRECIO, y hay que conocerlo: si dos ramas editan LA MISMA línea, union deja las dos versiones
+# pegadas, sin marcador de conflicto y sin avisar. Por eso la regla del protocolo (docs/harness.md)
+# es: agregá al final de tu sección, nunca reescribas ni reordenes lo que ya estaba. Si de verdad
+# tenés que corregir una línea existente, hacelo en un commit propio que no toque nada más, y
+# revisá el resultado del merge a ojo.
+docs/pendientes-negocio.md  merge=union
+docs/mapa-verificado.md     merge=union
+docs/INDEX.md               merge=union
