@@ -121,7 +121,10 @@ export function resolverParametros(overrides?: Partial<ParametrosSueldo>): Param
     }
     // `metaSemanal` es el único que acepta null: significa "no hay meta pactada, sugerila".
     if (valor === undefined || (valor === null && clave !== 'metaSemanal')) continue;
-    (p as Record<string, unknown>)[clave] = valor;
+    // Doble aserción: `ParametrosSueldo` no tiene índice de string, así que TypeScript rechaza
+    // el cast directo. La clave ya se validó contra el objeto de defaults en la línea 119, que es
+    // la comprobación que de verdad importa acá.
+    (p as unknown as Record<string, unknown>)[clave] = valor;
   }
   for (const [clave, valor] of Object.entries(p)) {
     if (clave === 'metaSemanalFija') {
