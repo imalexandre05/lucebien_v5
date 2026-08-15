@@ -181,3 +181,9 @@ equivocar en la próxima sesión.
 
 Al cerrar: actualizá el documento que corresponda, sumá la línea en `docs/INDEX.md` si creaste uno
 nuevo, y anotá en `docs/pendientes-negocio.md` cualquier default que hayas tenido que inventar.
+
+**Si algo salió mal, sumá una fila a [docs/aprendizajes.md](docs/aprendizajes.md).** Cada fila de
+ese archivo la puso un error real: dice qué se hizo mal, qué costó y cómo se detecta ahora. Es lo
+que hace que un error se cometa **una vez** y no una por sesión. Si el aprendizaje se puede
+convertir en una comprobación automática —una regla del guard, un hook—, convertilo: vale más que
+un párrafo que alguien tiene que acordarse de leer.
