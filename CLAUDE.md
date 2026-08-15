@@ -107,8 +107,27 @@ Estas son las reglas que un agente rompe sin darse cuenta porque parecen detalle
 
 La tabla completa de qué zona exige qué está en **[docs/rigor-por-zona.md](docs/rigor-por-zona.md)**.
 
-Antes de mergear algo que toque una zona crítica, corré el subagente **verificador**
-(`.claude/agents/verificador.md`). Su objetivo es encontrar el fallo, no aprobar el cambio.
+**Antes de commitear, siempre:**
+
+```bash
+bash tools/verificar-local.sh    # guard de no-negociables + typecheck + tests. Es lo que corre CI
+```
+
+**Antes de escribir una migración, siempre:**
+
+```bash
+bash tools/reservar-migracion.sh <slug>   # mira TODAS las ramas y te da un número libre
+```
+
+Nunca elijas el número a mano. Dos ramas paralelas ven la misma "última" y las dos escriben la
+siguiente; el choque aparece en el merge, con una ya aplicada en producción. Ya pasó.
+
+Hay tres subagentes: **`explorador`** para ubicar sin gastar la ventana, **`implementador`** para
+ejecutar un cambio ya especificado, y **`verificador`** antes de mergear zona crítica — su objetivo
+es encontrar el fallo, no aprobar el cambio.
+
+El protocolo completo para trabajar en varias secciones a la vez está en
+**[docs/harness.md](docs/harness.md)**.
 
 ---
 
@@ -138,8 +157,9 @@ Antes de mergear algo que toque una zona crítica, corré el subagente **verific
 | Separar lógica genérica de lo específico | [docs/arquitectura-core-adapter.md](docs/arquitectura-core-adapter.md) |
 | Diseñar una pantalla | [docs/manual-de-marca.md](docs/manual-de-marca.md) |
 | Entender el sistema viejo antes de migrar algo | [docs/auditoria-legacy/](docs/auditoria-legacy/) |
+| Trabajar en paralelo con otra sección | [docs/harness.md](docs/harness.md) |
 
-Índice completo de los 55 documentos: **[docs/INDEX.md](docs/INDEX.md)**.
+Índice completo de los 56 documentos: **[docs/INDEX.md](docs/INDEX.md)**.
 
 ---
 

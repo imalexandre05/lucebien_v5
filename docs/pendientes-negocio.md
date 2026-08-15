@@ -433,7 +433,7 @@ S/8 el almuerzo · 12 h para ganarlo · S/25 la capacitación · S/30 el bono se
 meta 1,00 · 2% de comisión sobre boletas mayores a S/120 · una falta cuesta 2 días de sueldo en
 total · meta semanal pactada en el contrato (sin pactar, se sugiere por horas a S/45,4545).
 
-**Desde la migración `0068` (14-ago-2026) los 13 primeros son filas de `config`**, con las claves
+**Desde la migración `0072` (14-ago-2026) los 13 primeros son filas de `config`**, con las claves
 `sueldo_*`, así que el administrador los edita desde `/configuracion` en cuanto se sumen al
 catálogo de `config-catalogo.ts`. La meta semanal no va ahí: vive en el contrato, porque su
 "sin valor" significa *sugerila* y una fila de texto no puede decir eso. La tolerancia se puede

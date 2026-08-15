@@ -33,7 +33,7 @@ Verificado el 13-ago-2026 contra el proyecto Supabase `scilb` (`lszrvbfkgsdyvhyx
 
 | Dato | Valor |
 |---|---|
-| Migraciones aplicadas | **Las 69** (`0001`–`0069`). La `0067` (aislamiento), la `0068` (tablas de sueldos) y la `0069` (RPC de sueldos) se aplicaron y verificaron el 14-ago-2026 |
+| Migraciones aplicadas | **Hasta la `0073`**, contando dos ramas. En `feat/sueldos-motor`: `0067` (aislamiento), `0072` (tablas de sueldos) y `0073` (RPC de sueldos), las tres aplicadas y verificadas el 14-ago-2026. En `feat/mi-talla-db`: `0068`–`0071`, también aplicadas. **El número ya no dice el orden en que se aplicaron** — ver abajo |
 | Tablas | 53 |
 | Funciones en `public` | 53 |
 | Empleados | 18 |
@@ -54,6 +54,31 @@ Reportes totales:            1.078   (07-abr a 13-ago, 4 meses)
 **Nadie usa el ERP nuevo.** La gente sigue trabajando con el sistema Express + SQLite, que corre
 con PM2 en una PC de la empresa. Los 12 reportes diarios que aparecían en la base eran el cron de
 auto-cierre generando filas vacías (4 sedes × 3 turnos), todas las noches, desde abril.
+
+### 🔴 El número de migración dejó de significar "orden de aplicación"
+
+Encontrado el 14-ago-2026 al instalar el guard de números de migración, que fue lo primero que
+hizo apenas se escribió.
+
+Dos ramas paralelas —`feat/mi-talla-db` y `feat/sueldos-motor`— reservaron **los mismos números**,
+y las cuatro migraciones **ya estaban aplicadas en producción** cuando se descubrió:
+
+| Número | En `feat/mi-talla-db` | En `feat/sueldos-motor` |
+|---|---|---|
+| `0068` | `mi_talla_esquema` | `sueldos_esquema` ← renumerada a `0072` |
+| `0069` | `mi_talla_storage` | `sueldos_rpc` ← renumerada a `0073` |
+
+**Por qué no reventó:** las de sueldos se registraron en Supabase con el nombre sin número
+(`sueldos_esquema`, `sueldos_rpc`, `aislamiento_datos_personas`), así que el historial de
+`schema_migrations` no tuvo colisión de claves. Fue suerte, no diseño.
+
+El orden real de aplicación fue: mi-talla `0068`, `0069`, `0070` → aislamiento (`0067`) →
+mi-talla `0071` → sueldos `0072`, `0073`. **El número es un identificador único, no una fecha.**
+Con ramas en paralelo no puede ser las dos cosas.
+
+**Qué lo impide de acá en adelante:** `bash tools/reservar-migracion.sh <slug>` mira todas las
+ramas antes de darte un número, y el guard falla si dos ramas comparten uno. Ver
+[harness.md](harness.md).
 
 ---
 

@@ -181,7 +181,7 @@ Y con el administrador: los cuatro siguen devolviendo todo.
 3. **Correr el subagente verificador** antes de mergear: esto toca permisos y aislamiento, que es
    zona crítica según `docs/rigor-por-zona.md`.
 
-> **Esta migración se lleva el número `0067`**, así que la de sueldos pasa a ser la `0068`. Son
+> **Esta migración se lleva el número `0067`**, así que la de sueldos pasa a ser la `0072`. Son
 > independientes: ninguna toca las tablas de la otra.
 
 ---

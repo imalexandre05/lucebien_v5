@@ -4,20 +4,20 @@ Cómo se guarda lo que el motor de `packages/core/src/sueldos.ts` calcula: tabla
 congelado. Complementa a **[SPEC-sistema-sueldos.md](SPEC-sistema-sueldos.md)**, que define las
 reglas; esta define dónde viven los datos.
 
-> ✅ **La migración `0068` está APLICADA Y VERIFICADA contra `scilb` el 14-ago-2026.** Además de la
+> ✅ **La migración `0072` está APLICADA Y VERIFICADA contra `scilb` el 14-ago-2026.** Además de la
 > revisión estructural —6 tablas, 12 policies (6 de lectura y 6 de escritura), cero policies con
 > `app_es_almacen()`, 17 triggers, 13 claves de `config` y las 13 filas viejas de `asistencias` en
 > `sin_dato`— se corrió un escenario completo de **18 pasos** dentro de una transacción descartada:
 > acuerdo, turnos, adelanto, liquidación, cierre, y después catorce intentos de romper el congelado
 > y el aislamiento. Los 18 dieron el resultado esperado y no quedó ni una fila.
 >
-> **Estado:** aprobada, es la base de la migración `0068`. Sale de mapear el esquema vivo con seis
+> **Estado:** aprobada, es la base de la migración `0072`. Sale de mapear el esquema vivo con seis
 > lectores en paralelo, tres propuestas independientes de diseño y un adversario por propuesta
 > (14-ago-2026). Todo dato de "lo que ya existe" está verificado contra las migraciones y contra la
 > base, no contra otro documento.
 >
 > **Cambios sobre el borrador**, todos verificados contra `scilb` antes de escribir el SQL: sueldos
-> pasa de la `0067` a la `0068` (§3); `btree_gist` no está instalada y el tipo `timerange` no existe
+> pasa de la `0067` a la `0072` (§3); `btree_gist` no está instalada y el tipo `timerange` no existe
 > en Postgres, así que la migración los crea (§3); la modalidad `'diario'` se elimina porque el
 > contrato mínimo es de un mes (§4.1); el congelado necesita **tres** triggers y no uno (§6);
 > `asistencias` entra a la auditoría (§4.3); y las 13 claves de `config` quedan listadas con su
@@ -97,7 +97,7 @@ Verificado contra las migraciones.
 
 **La `0067` se la llevó el cierre de los agujeros de aislamiento
 ([SPEC-aislamiento-datos-personas.md](../permisos/SPEC-aislamiento-datos-personas.md), ya aplicada).
-Sueldos arranca en la `0068`.**
+Sueldos arranca en la `0072`.**
 
 **Dos piezas de Postgres que hay que crear antes de las tablas**, verificadas contra la base el
 14-ago-2026:
@@ -206,7 +206,7 @@ alter table asistencias add column if not exists motivo_justificacion text;
 - Las 13 filas que existen hoy quedan en `sin_dato`, que es exactamente lo que son.
 
 > ✅ **`'descanso'` y `'licencia'` NO hacen falta, y esa es la respuesta definitiva**
-> (Alexander, 14-ago-2026, después de aplicar la `0068`).
+> (Alexander, 14-ago-2026, después de aplicar la `0072`).
 >
 > Una licencia **es una falta que el administrador marca como justificada**. Sus palabras: *"se
 > justifican, y se evidencian con pruebas del colaborador, es un acuerdo entre el colaborador y
@@ -512,7 +512,7 @@ camino real por el que un pago emitido cambiaba de valor:
    descontada en el mes cerrado y, como toda consulta de pendientes filtra `liquidacion_id is
    null`, tampoco entra en el siguiente. **El adelanto no se descuenta nunca.**
 
-   > **Consecuencia para la `0069`:** `sueldo_liquidacion_cerrar()` tiene que **sellar primero y
+   > **Consecuencia para la `0073`:** `sueldo_liquidacion_cerrar()` tiene que **sellar primero y
    > cerrar después**, en esa orden, dentro de la misma transacción. Al revés, el trigger la
    > bloquea a ella misma. Y `sueldo_liquidacion_anular()` tiene que **anular primero y soltar los
    > sellos después**, por el mismo motivo al revés.
@@ -649,10 +649,10 @@ llama por `/rest/v1/rpc`.
 
 Cada paso deja el sistema en un estado usable. Ninguno depende de la API del otro sistema.
 
-1. ✅ **`0068`** — `btree_gist`, el tipo `timerange`, las cinco tablas, las columnas de
+1. ✅ **`0072`** — `btree_gist`, el tipo `timerange`, las cinco tablas, las columnas de
    `asistencias`, RLS, los triggers de auditoría y los tres triggers de inmutabilidad. Sembrar las
    13 claves de `config`. **Aplicada y verificada el 14-ago-2026.**
-2. ✅ **`0069`** — las tres RPC de §8, cada una con su guard, más el `check` de `'trabajado'`.
+2. ✅ **`0073`** — las tres RPC de §8, cada una con su guard, más el `check` de `'trabajado'`.
    **Aplicada y verificada el 14-ago-2026** con dos escenarios completos y una prueba de RLS como
    colaborador (ve cero filas de todo, la RPC lo rechaza, no puede escribirse un bono).
 3. ✅ **`config-catalogo.ts`** — las 13 entradas y la sección `'Sueldos'`. Hecho.
@@ -738,14 +738,14 @@ Sus escrituras fallan con 42501 y sus borrados quitan 0 filas, en silencio.
 | **Horario que cambia a mitad de periodo** | El modelo obliga a cerrar el acuerdo y abrir otro. Es coherente con el congelado, pero parte el periodo en dos liquidaciones |
 | **Datos de personas vacíos** | `fecha_ingreso` en 1 de 18. La pantalla tiene que avisar, no inventar |
 | **Cómo se registra una licencia** | El `check` de `condicion` quedó en tres valores porque el motor no sabe representar una licencia. Hay que preguntarle al administrador si se paga, si se descuenta como falta justificada, o si directamente no cuenta como día contratado. Hasta entonces, una licencia no se puede cargar |
-| **Trabajo fuera del horario pactado (RN-17)** | El motor lo recibe aparte, en `horasFueraDeContrato` (`sueldos.ts:194`). El esquema no lo marca: se deriva de que el día no tenga turno en la plantilla. Hay que confirmar que ese criterio alcanza antes de escribir la RPC de la `0069` |
+| **Trabajo fuera del horario pactado (RN-17)** | El motor lo recibe aparte, en `horasFueraDeContrato` (`sueldos.ts:194`). El esquema no lo marca: se deriva de que el día no tenga turno en la plantilla. Hay que confirmar que ese criterio alcanza antes de escribir la RPC de la `0073` |
 | **Quién puede declarar una asistencia** | La escritura de `asistencias` ya es **sólo del administrador** (`asist_admin_write`, verificado en `pg_policies`: `private.app_es_admin()` en `using` y en `with check`), así que con `condicion` no se abre nada nuevo. Lo que queda por decidir es de negocio: si el encargado debe poder declarar la asistencia de su sede. Si la respuesta es sí, va por RPC con guard, nunca ampliando la policy |
 
 ---
 
 ## 12. La ronda de verificación adversarial
 
-El subagente verificador revisó la primera versión de la `0068` **antes de aplicarla**. Encontró
+El subagente verificador revisó la primera versión de la `0072` **antes de aplicarla**. Encontró
 **diez defectos con consecuencia concreta**, seis de ellos en el congelado. Se dejan escritos porque
 el patrón se repite y porque explican por qué el SQL final es más largo de lo que parecía necesario.
 

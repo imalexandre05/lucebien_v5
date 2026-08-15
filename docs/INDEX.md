@@ -10,6 +10,7 @@
 | [mapa-verificado.md](mapa-verificado.md) | **El estado real del sistema**, verificado contra código y base. Alcance, adopción, decisiones tomadas, qué falta definir |
 | [rigor-por-zona.md](rigor-por-zona.md) | Cuánto proceso exige un cambio según dónde cae. La matriz zona → nivel de spec |
 | [pendientes-negocio.md](pendientes-negocio.md) | Parámetros sembrados con un default que nadie confirmó. Se lee antes de tocar cualquier regla de negocio |
+| [harness.md](harness.md) | **Cómo trabajar en varias secciones a la vez sin pisarse**: las cuatro redes de verificación, los tres agentes, el protocolo de paralelo y el ciclo completo |
 
 ## Negocio y procesos
 
@@ -29,7 +30,7 @@
 |---|---|
 | [superpowers/specs/sueldos/SPEC-sistema-sueldos.md](superpowers/specs/sueldos/SPEC-sistema-sueldos.md) | **Las reglas del sueldo**: modelo, RN-01 a RN-20, el caso de prueba y el registro de cada decisión del dueño (§9). Implementada en `packages/core/src/sueldos.ts` |
 | [superpowers/specs/permisos/SPEC-aislamiento-datos-personas.md](superpowers/specs/permisos/SPEC-aislamiento-datos-personas.md) | **Quién puede ver datos de otras personas**: cierra 3 agujeros vivos del no-negociable 3 y hace que la RLS respete la matriz de permisos que edita el administrador |
-| [superpowers/specs/sueldos/SPEC-esquema-sueldos.md](superpowers/specs/sueldos/SPEC-esquema-sueldos.md) | **Dónde se guardan**: tablas, RPC, RLS y congelado. ✅ Aplicada en la `0068`. Incluye los 3 bloqueantes, los 3 agujeros de aislamiento encontrados en producción y los 10 defectos que abrió el verificador antes de aplicar |
+| [superpowers/specs/sueldos/SPEC-esquema-sueldos.md](superpowers/specs/sueldos/SPEC-esquema-sueldos.md) | **Dónde se guardan**: tablas, RPC, RLS y congelado. ✅ Aplicada en la `0072`. Incluye los 3 bloqueantes, los 3 agujeros de aislamiento encontrados en producción y los 10 defectos que abrió el verificador antes de aplicar |
 
 ## Arquitectura
 
