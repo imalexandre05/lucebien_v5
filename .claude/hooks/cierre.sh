@@ -28,9 +28,9 @@ docs=$(printf '%s\n' "$cambios" | grep -cE '(^.{3}docs/|CLAUDE\.md$)')
 critico=$(printf '%s\n' "$cambios" | grep -cE 'packages/(core|db)/|lib/(auth|reauth|permisos-repo|pipeline-repo|evaluaciones-repo|reportes-repo|desempeno-repo|pagos-repo)\.ts|lib/supabase/admin\.ts|middleware\.ts')
 
 if [ "$critico" -gt 0 ]; then
-  aviso="ZONA CRITICA tocada ($codigo archivos de codigo, ningun documento actualizado). Antes de cerrar: anota en docs/pendientes-negocio.md cualquier default que hayas inventado, actualiza docs/mapa-verificado.md si cambio el estado del sistema, y corre el subagente verificador antes de mergear."
+  aviso="ZONA CRITICA tocada ($codigo archivos de codigo, ningun documento actualizado). Antes de cerrar: anota en docs/pendientes-negocio.md cualquier default que hayas inventado, actualiza docs/mapa-verificado.md si cambio el estado del sistema, y corre el subagente verificador antes de mergear. Si algo salio mal en el camino, suma la fila en docs/aprendizajes.md — es lo que hace que el error se cometa una vez y no una por sesion."
 else
-  aviso="$codigo archivos de codigo modificados y ningun documento actualizado. Si aprendiste algo que la proxima sesion necesita saber, escribilo ahora — el grafo se actualiza solo, la semantica no."
+  aviso="$codigo archivos de codigo modificados y ningun documento actualizado. Si aprendiste algo que la proxima sesion necesita saber, escribilo ahora — el grafo se actualiza solo, la semantica no. Si fue un error, va a docs/aprendizajes.md con las tres columnas: que se hizo mal, que costo, y como se detecta ahora."
 fi
 
 printf '{"systemMessage": "%s"}\n' "$aviso"

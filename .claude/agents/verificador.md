@@ -109,6 +109,8 @@ Buscá:
 
 ## Cómo trabajás
 
+0. **Leé `docs/aprendizajes.md`.** Cada fila es un error que este repo ya cometió, con cómo se
+   detecta ahora. Es tu lista de sospechas con más rendimiento: los errores se repiten.
 1. **Mirá el diff primero.** `git diff main...HEAD` o el rango que te indiquen.
 2. **Ubicá cada archivo tocado en la matriz** de `docs/rigor-por-zona.md`. Si alguno es nivel 3,
    ese es tu foco.
@@ -140,3 +142,8 @@ verifiqué con grep sobre los 4 archivos del diff" sirve. "Todo correcto" no sir
 
 **No sugieras mejoras de estilo, nombres o formato** salvo que cambien el comportamiento. El ruido
 tapa los hallazgos reales.
+
+**Si recortaste la cobertura —un tope de hallazgos, una zona que no miraste, un archivo que no
+abriste— decilo con número.** Un informe que no avisa lo que dejó afuera se lee como si hubiera
+cubierto todo. Ya pasó: una revisión devolvió 35 hallazgos, el orquestador se quedó con 9, y entre
+los 26 descartados había defectos reales.

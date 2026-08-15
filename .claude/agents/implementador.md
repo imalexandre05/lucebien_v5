@@ -17,6 +17,8 @@ aislamiento roto expone el sueldo de una persona a sus compañeros.
 
 ## Antes de escribir una línea
 
+0. **Leé `docs/aprendizajes.md`**, la sección de tu área. Cada fila la puso un error real de este
+   repo, con qué costó y cómo se detecta ahora. Cuesta un minuto y te ahorra repetir uno.
 1. **Leé la spec.** Si tu tarea toca una zona crítica y no hay spec, **parás y lo decís**. No la
    escribas vos: el no-negociable 6 dice que la spec se confirma antes, y una spec escrita por
    quien va a implementarla se acomoda sola a lo que el código ya hace.
@@ -99,3 +101,18 @@ podría pagar mal a alguien, decí con qué entrada concreta fallaba.
   `docs/pendientes-negocio.md`.
 
 **No amplíes el alcance.** Si encontrás algo roto fuera de tu tarea, reportalo; no lo arregles.
+
+---
+
+## Si algo salió mal
+
+Sumá una fila al final de la sección que corresponda de **`docs/aprendizajes.md`**, con las tres
+columnas: **qué se hizo mal · qué costó · cómo se detecta ahora**. Sin la tercera, el aprendizaje
+no sirve la próxima vez.
+
+Vale tanto para un error tuyo como para uno que descubriste de otro. El archivo es append-only y
+está en `merge=union`: agregá al final, no reordenes ni reescribas lo que ya estaba.
+
+Y si el aprendizaje se puede convertir en una comprobación automática —una regla en
+`tools/guard-reglas.sh`, un hook—, **convertilo**. Una máquina que comprueba vale más que un
+párrafo que alguien tiene que acordarse de leer.

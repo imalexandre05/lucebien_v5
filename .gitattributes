@@ -22,3 +22,4 @@ graphify-out/graph.json merge=graphify
 docs/pendientes-negocio.md  merge=union
 docs/mapa-verificado.md     merge=union
 docs/INDEX.md               merge=union
+docs/aprendizajes.md        merge=union

@@ -1,6 +1,19 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/migracion-reservada.sh\"",
+            "timeout": 30,
+            "statusMessage": "Comprobando la reserva de la migración..."
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [
