@@ -39,6 +39,25 @@ gente usa hoy.
 
 Si dice que no encuentra `typescript` o `vitest`: `pnpm install --force`.
 
+> ### ⚠️ `pnpm install --force` borra archivos del sistema viejo
+>
+> Comprobado el 14-ago-2026: el `--force` **eliminó 43 archivos rastreados** de
+> `node_modules/better-sqlite3` y `node_modules/jsonwebtoken`, incluido
+> `better_sqlite3.node`, el binario compilado sin el cual `server.js` **no arranca**. pnpm hace
+> su limpieza sin saber que ese directorio está bajo control de versiones.
+>
+> Después de cualquier `pnpm install`, siempre:
+>
+> ```bash
+> git status --short node_modules    # ¿hay borrados?
+> git checkout -- node_modules/      # devolvelos
+> node -e "require('better-sqlite3')" # que cargue de verdad
+> ```
+>
+> Es la misma raíz que el problema de `tsc`: un `node_modules/` versionado y un gestor de
+> paquetes moderno peleando por el mismo directorio. Mientras esa decisión no se tome a
+> propósito, esto hay que hacerlo a mano.
+
 ### Qué comprueba el guard
 
 | Regla | Qué busca |
@@ -172,11 +191,31 @@ Escrito acá para que nadie lo descubra tarde:
   rompe un trigger dentro de tres meses, nadie se entera.
 - **No hay E2E.** CI corre guard, typecheck y tests unitarios. Nadie comprueba que una pantalla
   cargue.
-- **El `node_modules/` versionado sigue ahí.** `tools/verificar-local.sh` lo esquiva, no lo
-  resuelve. Sacarlo del control de versiones es una decisión con consecuencias para el sistema
-  viejo, y hay que tomarla a propósito.
+- **El `node_modules/` versionado sigue ahí, y es una mina.** `tools/verificar-local.sh` lo
+  esquiva, no lo resuelve. Ya rompió dos cosas el mismo día: el `tsc` que no se encuentra, y un
+  `pnpm install --force` que borró el binario compilado de `better-sqlite3` y habría dejado el
+  sistema viejo sin arrancar. **Sacarlo del control de versiones** (`git rm -r --cached
+  node_modules`, que no borra nada del disco) es la solución de fondo, pero cambia lo que recibe
+  quien clone el repo para correr el Express viejo, así que es una decisión de Alexander y no se
+  toma de paso.
 - **Los agentes no comparten estado.** Dos `implementador` en paralelo no saben uno del otro; lo
   único que los coordina es este protocolo y el guard.
+
+---
+
+## 6. Qué se comprobó de este documento
+
+No alcanza con escribirlo. Cada afirmación de acá se verificó corriéndola:
+
+| Afirmación | Cómo se comprobó |
+|---|---|
+| El guard detecta números repetidos entre ramas | Encontró el choque real `0068`/`0069` entre `feat/mi-talla-db` y `feat/sueldos-motor`, y volvió a verde al renumerar. 9 segundos |
+| El guard detecta tablas con RLS sin escritura | Barrió las 73 migraciones; la única sin escritura es `audit_log`, que es a propósito |
+| `verificar-local.sh` corre lo mismo que CI | Encontró un error de tipos real en `sueldos.ts` que habría puesto CI en rojo. 331 tests en verde |
+| `merge=union` no produce conflicto | Dos ramas de prueba agregaron una fila cada una a `pendientes-negocio.md`: el merge pasó solo y quedaron las dos |
+| `graphify-out/graph.json merge=graphify` sigue vivo | `git check-attr merge` sobre los cuatro archivos |
+| `reservar-migracion.sh` da el número libre | Creó la `0074` con su encabezado, sabiendo de la `0073` local y de la `0071` de otra rama |
+| `pnpm install --force` borra archivos del sistema viejo | Pasó: 43 archivos rastreados borrados, restaurados con `git checkout`, y `require('better-sqlite3')` vuelve a cargar |
 
 ---
 
