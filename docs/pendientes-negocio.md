@@ -416,10 +416,14 @@ por las que rotó**, no las de la tienda.
 
 **Huecos que abrieron las respuestas del dueño del 13-ago-2026** (`docs/respuestas-dueno-2.md`):
 
-- **S4 quedó sin responder**: *"¿qué se le descuenta a alguien del sueldo?"*. Es la pregunta que
-  valida los descuentos que ya están implementados. Volver a preguntarla.
+- ✅ **S4 — RESPONDIDA el 14-ago-2026.** *"¿qué se le descuenta a alguien del sueldo?"*. La
+  respuesta está más arriba, en el bloque del verificador: una falta cuesta **2 días en total**, no
+  3. ~~Volver a preguntarla.~~ Lo que sigue abierto no es la pregunta sino el arreglo: **el motor
+  descuenta un día de más** y hay que corregir la spec antes que el código (Zone Guard).
 - **Modalidad "por día trabajado"** (S1): existe y la spec sólo contempla mensual y semanal.
-- **Garantía del adelanto** (S9): hace falta mínimo una semana trabajada ese mes. Sin implementar.
+- **Garantía del adelanto** (S9): hace falta mínimo una semana trabajada ese mes. **Especificada el
+  14-ago en `SPEC-esquema-sueldos.md`, todavía sin implementar**: `sueldos.ts` no la comprueba y
+  `sueldo_movimientos` acepta hoy cualquier adelanto.
 - **Sanciones revocables** (N2, N3): si la prenda perdida aparece, la sanción se revoca. Hoy un
   descuento sólo se registra, no se puede deshacer.
 - **¿La comisión va en este sistema o aparte?** (N1): el dueño dijo *"aparte"* pero la describió
@@ -435,8 +439,8 @@ meta 1,00 · 2% de comisión sobre boletas mayores a S/120 · una falta cuesta 2
 total · meta semanal pactada en el contrato (sin pactar, se sugiere por horas a S/45,4545).
 
 **Desde la migración `0072` (14-ago-2026) los 13 primeros son filas de `config`**, con las claves
-`sueldo_*`, así que el administrador los edita desde `/configuracion` en cuanto se sumen al
-catálogo de `config-catalogo.ts`. La meta semanal no va ahí: vive en el contrato, porque su
+`sueldo_*`, y desde el 14-ago están en `config-catalogo.ts`: **el administrador ya los edita desde
+`/configuracion`**. La meta semanal no va ahí: vive en el contrato, porque su
 "sin valor" significa *sugerila* y una fila de texto no puede decir eso. La tolerancia se puede
 pisar **por contrato**, como pidió Alexander.
 
