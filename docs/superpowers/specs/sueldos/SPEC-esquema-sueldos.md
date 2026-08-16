@@ -607,6 +607,15 @@ preview y el cierre, esa fila quedaría sellada **sin estar en el snapshot que s
 `cerrar()` recuenta y resuma contra la `entrada` guardada y **corta** si no coinciden. El
 administrador vuelve a calcular y cierra de nuevo.
 
+> **Deuda conocida: la comprobación cubre movimientos y ventas, no asistencias.** Hoy no importa,
+> porque las horas las carga la misma persona que calcula y cierra. Cuando el colector del
+> huellero empuje marcas cada pocos minutos, una que llegue entre el cálculo y el cierre va a
+> cambiar la realidad sin cambiar el snapshot, y la liquidación se congela con las horas viejas
+> sin que nadie se entere. Es la misma clase de error que esta comprobación existe para impedir.
+> Se arregla extendiendo la comparación a `entrada->'asistencia'` y
+> `entrada->'horasFueraDeContrato'` en la próxima migración de sueldos. Apareció al revisar la
+> spec del huellero (15-ago-2026).
+
 **Un dato faltante corta con un mensaje que dice qué falta.** `sueldo_entrada()` **no emite** las
 filas con `condicion = 'sin_dato'`: emitirlas con la hora en null las convertiría en faltas
 inventadas de dos días cada una. Pero tampoco las omite en silencio — antes de devolver nada,
@@ -656,11 +665,23 @@ Cada paso deja el sistema en un estado usable. Ninguno depende de la API del otr
    **Aplicada y verificada el 14-ago-2026** con dos escenarios completos y una prueba de RLS como
    colaborador (ve cero filas de todo, la RPC lo rechaza, no puede escribirse un bono).
 3. ✅ **`config-catalogo.ts`** — las 13 entradas y la sección `'Sueldos'`. Hecho.
-4. **`sueldos-repo.ts`** con `getServerClient()`. **No** `getAdminClient()`: serían siete archivos
-   y el no-negociable 3 lo prohíbe. ← **acá va lo siguiente**
+4. ✅ **`sueldos-repo.ts`** con `getServerClient()`. **No** `getAdminClient()`: serían siete
+   archivos y el no-negociable 3 lo prohíbe. **Hecho el 15-ago-2026.** Tres decisiones que
+   quedaron fijadas ahí y conviene no revisar en cada pantalla:
+   - **`crearBorrador(acuerdoId)` recibe un id y nada más.** Pide la entrada a la RPC y vuelve a
+     correr `liquidarPeriodo()` en el servidor. Si aceptara la liquidación ya calculada, bastaría
+     con manipular el formulario para escribir cualquier total en un pago.
+   - **Ninguna consulta filtra por empleado para aislar.** El aislamiento lo aplican las policies
+     de la 0072; los `.eq('empleado_id', …)` que hay son filtros de pantalla. Confundir las dos
+     cosas es cómo se termina publicando el sueldo de todos.
+   - **Los overrides se validan con `resolverParametros()` antes de escribir.** La base también
+     los rechaza, pero una clave en snake_case guardada con éxito rompería toda liquidación futura
+     de esa persona, y el mensaje de constraint no explica nada.
 5. **Pantalla del acuerdo**: pactar sueldo, horario y overrides. Sin esto no hay nada que liquidar
-   (B-01).
-6. **Pantalla de asistencia**: declarar la condición de cada día. Sin esto, B-02.
+   (B-01). ← **acá va lo siguiente**
+6. **Pantalla de asistencia**: declarar la condición de cada día. Sin esto, B-02. Necesita
+   extender `asistencias-repo.ts`, que hoy no conoce `condicion` ni las justificaciones: su
+   `crearAsistencia()` no puede declarar una falta.
 7. **Pantalla de liquidación**: preview en vivo con el core, cerrar, reimprimir.
 8. **Carga manual de ventas y movimientos.**
 9. **Recién después**, el colector de ventas cuando exista el contrato de API.
@@ -737,8 +758,9 @@ Sus escrituras fallan con 42501 y sus borrados quitan 0 filas, en silencio.
 | **Turno partido con hueco** | El colapso `min`/`max` pagaría el hueco. Hoy no existe ningún turno partido; si aparece, hay que decidir antes de liquidarlo |
 | **Horario que cambia a mitad de periodo** | El modelo obliga a cerrar el acuerdo y abrir otro. Es coherente con el congelado, pero parte el periodo en dos liquidaciones |
 | **Datos de personas vacíos** | `fecha_ingreso` en 1 de 18. La pantalla tiene que avisar, no inventar |
-| **Cómo se registra una licencia** | El `check` de `condicion` quedó en tres valores porque el motor no sabe representar una licencia. Hay que preguntarle al administrador si se paga, si se descuenta como falta justificada, o si directamente no cuenta como día contratado. Hasta entonces, una licencia no se puede cargar |
-| **Trabajo fuera del horario pactado (RN-17)** | El motor lo recibe aparte, en `horasFueraDeContrato` (`sueldos.ts:194`). El esquema no lo marca: se deriva de que el día no tenga turno en la plantilla. Hay que confirmar que ese criterio alcanza antes de escribir la RPC de la `0073` |
+| **Trabajo fuera del horario pactado (RN-17)** | El motor lo recibe aparte, en `horasFueraDeContrato` (`sueldos.ts:194`). El esquema no lo marca: se deriva de que el día no tenga turno en la plantilla. La `0073` ya lo implementa así; falta que el administrador confirme que ese criterio alcanza |
+| **El hueco largo del mediodía** 🆕 | Distinto del almuerzo, y aparece con el huellero. `min`/`max` le paga a quien se va dos horas por un trámite y vuelve. Hoy es invisible porque nadie lo carga. Las marcas crudas quedan guardadas, así que la decisión se puede aplicar hacia atrás — ver [la respuesta al huellero](../2026-08-15-huellero-respuesta-sueldos.md) |
+| **Los tres números de la tardanza** 🆕 | `sueldo_tolerancia_minutos`, `sueldo_tardanzas_libres` y `sueldo_penalidad_tardanza` se eligieron para un mundo donde la tardanza se cargaba a ojo. Con marcación real se aplican al minuto. Revisarlos con el dueño **antes** de la primera liquidación con datos del huellero, no después de que alguien se entere por su recibo |
 | **Quién puede declarar una asistencia** | La escritura de `asistencias` ya es **sólo del administrador** (`asist_admin_write`, verificado en `pg_policies`: `private.app_es_admin()` en `using` y en `with check`), así que con `condicion` no se abre nada nuevo. Lo que queda por decidir es de negocio: si el encargado debe poder declarar la asistencia de su sede. Si la respuesta es sí, va por RPC con guard, nunca ampliando la policy |
 
 ---

@@ -70,6 +70,8 @@ Cada línea de este archivo la puso un error real. **Ninguna es teoría.**
 |---|---|---|
 | Ponerle un tope a una revisión sin decirlo | Una revisión devolvió 35 hallazgos y el orquestador se quedó con 9. Los 26 descartados incluían defectos reales | Si un trabajo recorta la cobertura —top-N, sin reintento, muestreo— **se dice cuánto se dejó afuera** |
 | Dejar que quien implementa escriba la spec | Una spec escrita por quien va a implementarla se acomoda sola a lo que el código ya hace | El prompt del `implementador` se lo prohíbe: si falta la spec, para y lo dice |
+| Creerle a otra sesión el estado de las ramas | El aviso del huellero daba por libres cuatro números de migración que estaban tomados, y por libre uno que no lo estaba. Eran correctos para lo que esa sesión veía: la otra rama no está en su copia de trabajo | `bash tools/reservar-migracion.sh` mira todas las ramas, y el hook `PreToolUse` deniega escribir una migración con número ajeno |
+| Un guard que castiga la documentación | La regla del `getAdminClient()` miraba archivos, no líneas: marcó como violación un comentario que explicaba **por qué no** se usaba el cliente admin. El camino corto era borrar la explicación | La regla filtra líneas de comentario. Probado que una llamada real sigue cayendo, incluso con comentario al final de la línea |
 
 ---
 
