@@ -466,15 +466,17 @@ pisar **por contrato**, como pidió Alexander.
 
 ## Huellero Hikvision (spec del 15-ago-2026, sin implementar)
 
-- **`huellero_corte_turno` = `13:00`** — hora que separa el turno M del T al derivar una asistencia
-  desde las marcas de huella. Coincide con la frontera real del horario contratado
-  (09:00–13:00 + 13:00–20:00), así que no es un número inventado, pero nadie lo confirmó como
-  regla. Una marca a las 13:00 exactas cuenta como turno T. Editable desde `/configuracion`.
-- **El hueco del almuerzo, ahora sí va a aparecer.** El pendiente del turno partido ya estaba
-  anotado más arriba como hipotético; con el huellero deja de serlo. Si una persona marca al salir
-  a almorzar y al volver, el colapso `min(entrada)`/`max(salida)` paga el hueco. Hoy eso parece
-  correcto —el almuerzo es un beneficio que se paga (S/8, RN-11), no un descuento de horas— pero
-  **confirmarlo con el dueño antes de la primera liquidación con datos del huellero**.
+- ✅ **El almuerzo — RESUELTO el 15-ago-2026 por Alexander.** *"Los colaboradores almuerzan en la
+  misma empresa, no salen"*, y el almuerzo **se paga**: a los de tiempo completo se les agrega S/8
+  (RN-11), que es un ingreso y no un descuento de horas. El tiempo de almuerzo cuenta como
+  trabajado, que es justo lo que ya hace el colapso `min(entrada)`/`max(salida)` de la
+  liquidación. **El pendiente del turno partido anotado más arriba no se materializa por esta
+  vía**: sin salida al mediodía no hay hueco que pagar. Nada que cambiar en el motor.
+- ✅ **`huellero_corte_turno` — ELIMINADO, no llegó a existir.** El primer diseño partía las marcas
+  del día en turno M y T por una hora de corte. Con dos marcas por día (entrada 09:00, salida
+  20:00) cada turno se quedaba sin salida y la liquidación leía cero horas trabajadas. Se corrigió
+  a **una sola fila por día** antes de escribir código. El huellero no agrega ningún parámetro de
+  negocio y por lo tanto no inventa ningún default.
 - **Qué hacer cuando hay marcas en un día declarado como falta.** La derivación no toca esa fila
   por diseño, y el caso se muestra en la pantalla de administración para que decida una persona.
   Falta definir qué se espera que haga: ¿revertir la falta, ignorar las marcas, pedir explicación?

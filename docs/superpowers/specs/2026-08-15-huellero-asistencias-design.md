@@ -188,16 +188,12 @@ está marcada como ignorada, nunca ninguna de las dos.
 
 ### Configuración
 
-En la tabla `config`, editable desde `/configuracion`:
+**Ninguna.** Este proyecto no agrega parámetros de negocio, y por lo tanto no inventa ningún
+default.
 
-- `huellero_corte_turno` = `"13:00"` — hora que separa el turno M del T al derivar asistencias.
-  Una marca **anterior** al corte pertenece al turno M; una marca **igual o posterior** al corte
-  pertenece al turno T. Una marca exactamente a las 13:00 es turno T.
-
-El valor no es arbitrario: el horario contratado de LuceBien es 09:00–13:00 más 13:00–20:00, y
-las 13:00 son la frontera real entre ambos turnos (verificado en el comentario de
-`0073_sueldos_rpc.sql:159`). Aun así queda como fila de `config` editable, y se anota en
-`docs/pendientes-negocio.md` para que el dueño lo confirme.
+Una versión anterior de esta spec proponía un `huellero_corte_turno` de 13:00 para partir las
+marcas del día entre el turno M y el T. **Era un defecto**, y se explica en la sección 6 porque
+entender por qué estaba mal es lo que justifica el diseño actual.
 
 ### Checkpoint sin estado local
 
@@ -236,12 +232,35 @@ esa persona para reprocesar su histórico.
 
 1. Toma todas las marcas del empleado en esa fecha, convertidas a hora Perú con
    `at time zone 'America/Lima'`.
-2. Las parte en turno M y turno T según `huellero_corte_turno`.
-3. Por cada turno con marcas: `hora_entrada` = la primera, `hora_salida` = la última. Si hay una
-   sola marca, entrada queda con esa hora y salida en `null`.
+2. **Una sola fila por día.** `hora_entrada` = la marca más temprana del día, `hora_salida` = la
+   más tardía. Si hay una sola marca en todo el día, entrada queda con esa hora y salida en
+   `null`.
+3. Si ya existe alguna fila del día para ese empleado, se rellena esa (la de turno menor cuando
+   hay varias). Si no existe ninguna, se crea una con `turno = 'M'`.
 4. `minutos_tardanza = 0` siempre — el motor de sueldos no lee esa columna.
 5. `condicion = 'trabajado'` **solo si la marca dio una hora de entrada real**. Sin marcas, la
    fila no se crea y la condición sigue siendo `'sin_dato'`, que es exactamente lo que es.
+
+### Por qué una fila por día y no una por turno
+
+El primer diseño partía las marcas en turno M y turno T por una hora de corte configurable, y era
+un defecto capaz de pagar de menos. Queda escrito para que nadie lo reintroduzca.
+
+En LuceBien **nadie sale a almorzar**: los colaboradores almuerzan en el local. Eso significa que
+un día completo deja exactamente **dos marcas**: entrada por la mañana y salida por la noche.
+
+Con un corte a las 13:00, esas dos marcas caen en turnos distintos. El turno M se queda con la
+entrada de las 09:00 y **ninguna salida**; el turno T se queda con la salida de las 20:00 tomada
+como si fuera una entrada, y **ninguna salida** tampoco. La liquidación colapsa el día con
+`min(hora_entrada)` y `max(hora_salida)`, encuentra la salida en `null`, y `sueldos.ts:526` lo
+lee como "ingreso sin salida": **cero horas trabajadas**.
+
+Una persona que trabajó once horas habría cobrado cero.
+
+El grano correcto es el día, porque el día es el grano que usa la liquidación. La tabla conserva
+su clave `(empleado, fecha, turno)` intacta —los reportes la siguen usando— pero el huellero
+escribe una sola fila por día y deja que el colapso de la lectura haga lo suyo. Con dos marcas
+funciona, con cuatro también, y no hay ningún parámetro que ajustar.
 
 ### Las dos salvaguardas del sueldo
 
@@ -262,17 +281,23 @@ decisiones humanas, y el huellero no las toma.
 
 El índice único `(empleado_id, fecha, turno)` de la migración 0025 hace el resto.
 
-### El hueco del almuerzo
+### El almuerzo — resuelto, no pendiente
 
-La liquidación colapsa el día con `min(entrada)` y `max(salida)`. El horario real de LuceBien es
-09:00–13:00 más 13:00–20:00, contiguo, así que el colapso es exacto y el corte de turno por
-defecto a las 13:00 coincide con el horario contratado: no es un número inventado.
+**Confirmado por Alexander el 15-ago-2026: los colaboradores almuerzan dentro de la empresa, no
+salen.** No pasan por el huellero al mediodía.
 
-Pero si una persona marca al salir a almorzar y al volver, quedan cuatro marcas en el día y el
-colapso paga el hueco. Hoy eso es lo correcto — el almuerzo en LuceBien es un beneficio que se
-paga (S/8, RN-11), no un descuento de horas — pero la suposición hay que confirmarla con el dueño
-antes de la primera liquidación con datos del huellero. Queda anotado en
-`docs/pendientes-negocio.md`, que ya tenía registrado el caso del turno partido.
+Dos consecuencias, y las dos son buenas noticias:
+
+El hueco del almuerzo **no aparece en los datos**, porque no hay marcas de salida y regreso al
+mediodía. El pendiente que `docs/pendientes-negocio.md` tenía anotado sobre el turno partido no
+se materializa por esta vía.
+
+Y el almuerzo **se paga**: a los colaboradores de tiempo completo se les agrega S/8, que es un
+ingreso (RN-11), no un descuento de horas. El tiempo de almuerzo cuenta como trabajado. El
+colapso de la liquidación ya hace exactamente eso, así que no hay nada que cambiar en el motor.
+
+Si algún día alguien sí marca al salir y volver —un mandado, una excepción— el colapso `min`/`max`
+sigue dando el día completo, que es la respuesta correcta bajo esta regla.
 
 ### Fechas
 
@@ -391,16 +416,23 @@ cada persona: merecen el mismo trato que un sueldo. La RLS de `asistencias` no s
 última, y decidir si una fila existente puede tocarse. Recibe la hora de corte y las marcas como
 parámetros; no llama a `new Date()`. Casos cubiertos:
 
-1. Una sola marca en el día: entrada cargada, salida en `null`.
-2. Marcas en ambos turnos el mismo día: dos filas, M y T.
-3. Marca exactamente en el corte (12:59 contra 13:01).
+1. **El caso real de LuceBien**: dos marcas, 09:00 y 20:00. Una fila, entrada 09:00, salida
+   20:00, `condicion='trabajado'`. Este test es el que impide reintroducir la partición por turno,
+   que dejaba el día en cero horas.
+2. Una sola marca en el día: entrada cargada, salida en `null`.
+3. Cuatro marcas (alguien sí salió y volvió): una fila, de la primera a la última.
 4. Marcas fuera de orden cronológico en el lote.
 5. Marcas duplicadas al mismo segundo.
 6. Fila previa con `fuente='manual'` y horas cargadas: no se toca.
 7. Fila previa con `fuente='reporte'` y horas en `null`: se rellenan sin cambiar `fuente`.
 8. Fila previa con `condicion='falta'`: no se toca nada, ni siquiera horas vacías.
 9. Día sin ninguna marca: no se crea fila, la condición sigue en `'sin_dato'`.
-10. Marcas de almuerzo (cuatro marcas en el día): el colapso `min`/`max` da el día completo.
+10. Dos filas previas del día (turno M y T de reportes): se rellena una sola, la de turno menor.
+
+**Prueba de extremo a extremo, obligatoria antes de producción:** liquidar un periodo real con
+datos del huellero y comprobar que las horas pagadas coinciden con las horas trabajadas. El
+defecto de la partición por turno pasaba todos los tests unitarios de derivación y solo aparecía
+al liquidar.
 
 **RPC en SQL** verificada contra la base de desarrollo con un lote de marcas de prueba,
 comprobando en particular que una fila manual previa sobrevive intacta y que el reenvío del mismo
@@ -452,6 +484,8 @@ Alrededor de veinte minutos, con el README paso a paso.
 | `minutos_tardanza = 0` | Columna heredada que el motor de sueldos no lee. La tardanza la calcula el motor contra `sueldo_acuerdo_turnos`. |
 | Nunca tocar una fila con `condicion='falta'` | Una falta cuesta dos días de sueldo y la declara una persona. Que una marca la revierta sola sería un error silencioso en la cadena del sueldo. |
 | `condicion='trabajado'` solo con hora real | Es lo que hace visible la fila para la liquidación. Escribirla sin horas convertiría el día en una falta ante el motor. |
+| Una fila por día, sin corte de turno | Nadie sale a almorzar: un día completo deja dos marcas. Partirlas por turno dejaba ambas filas sin salida y liquidaba cero horas. El grano correcto es el que usa la liquidación. |
+| Cero parámetros de negocio nuevos | Al caer el corte de turno, no quedó ningún default que inventar. |
 | Solo Supabase, no el sistema viejo | El viejo está congelado y tocarlo exige pedido explícito. |
 | Histórico desde 2026-01-01 | Decisión del dueño del proyecto. |
 | Usuario dedicado en vez de service key | El radio de daño de un `.env` robado en una PC de almacén queda acotado a insertar marcas. |
