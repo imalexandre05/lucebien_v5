@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, History, Send, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, History, Send, FileSignature, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -46,6 +46,10 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },
       { label: 'Evaluaciones', href: '/evaluaciones', icon: Award, modulo: 'evaluaciones' },
       { label: 'Pagos', href: '/pagos', icon: Wallet, modulo: 'pagos' },
+      // Contratos de sueldo (spec de sueldos §9, paso 5). Módulo propio y no dentro de 'pagos':
+      // un contrato pacta el sueldo de una persona, así que quien puede verlo no es
+      // necesariamente quien registra un pago. La pantalla además se cierra sola a admin/dueño.
+      { label: 'Contratos', href: '/sueldos/acuerdos', icon: FileSignature, modulo: 'sueldos' },
       { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle, modulo: 'incidencias' },
       { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck, modulo: 'asistencias' },
       { label: 'Empleados', href: '/empleados', icon: Users, modulo: 'empleados' },

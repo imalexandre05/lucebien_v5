@@ -36,6 +36,7 @@ const GRUPOS: { seccion: string; modulos: { modulo: string; label: string }[] }[
       { modulo: 'asistencias', label: 'Asistencias' },
       { modulo: 'evaluaciones', label: 'Evaluaciones' },
       { modulo: 'pagos', label: 'Pagos' },
+      { modulo: 'sueldos', label: 'Contratos de sueldo' },
     ],
   },
   {
