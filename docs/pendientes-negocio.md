@@ -500,14 +500,32 @@ pisar **por contrato**, como pidió Alexander.
 - **Los 54 identificadores del equipo contra los 18 empleados activos.** Los que no correspondan a
   nadie se marcan como ignorados. Falta saber de quiénes son: ex-empleados, personal de otra
   empresa, pruebas. No bloquea, pero conviene saberlo antes de ignorar en masa.
-- ⚠️ **Días con entrada y sin marca de salida — magnitud POR MEDIR.** La primera medición
-  (15-ago-2026, "41% de las jornadas") **era inválida**: el script leía 30 de cada 100 marcas por
-  un defecto de paginación, así que muchas "salidas faltantes" eran marcas nunca leídas. Corregido
-  el defecto, hay que rehacer la medición sobre el histórico completo. Lo que **sí** es cierto
-  independientemente del número: un día con entrada y sin salida queda en `condicion='sin_dato'` y
-  **corta la liquidación del periodo entero** (`0073_sueldos_rpc.sql:128-145`). No hay arreglo por
-  software que no sea inventar una hora o comerle el día a la persona; el sistema lista esos días
-  para que el administrador los complete antes de liquidar.
+- ✅ **Días con entrada y sin marca de salida — MEDIDO el 15-ago-2026: 268 de 1.571 jornadas
+  (17%).** Ocho meses de histórico, 3.058 marcas, 23 personas. (Una primera estimación del 41% era
+  inválida por un defecto de paginación del script y quedó descartada.) **No está repartido
+  parejo**: la gente de turno fijo marca bien (YESSICA 8%, MARYLIN 4%, JAEROCK 3%, SHEYLA 4%) y el
+  problema se concentra en casos con explicación propia — GUILLERMO 100% porque solo abre las
+  puertas, JORDAN 48% porque entra y sale todo el día, ELTHOM 51% que es nuevo. **No es un
+  problema general de disciplina**, así que la conversación con el dueño es sobre tres personas,
+  no sobre toda la empresa. Un día sin salida queda en `condicion='sin_dato'` y corta la
+  liquidación del periodo (`0073_sueldos_rpc.sql:128-145`); el sistema los lista para que el
+  administrador los complete antes de liquidar.
+- 🔴 **El huellero reutiliza identificadores — comprobado.** El `00000013` marcó como **JAZMIN**
+  hasta el 28-ene-2026 08:45 y como **NICOL** desde las 20:46 de ese mismo día. Un mapeo sin
+  fechas le adjudicaría a NICOL los 27 días de JAZMIN, y el día del cambio juntaría la entrada de
+  una con la salida de la otra en una jornada de doce horas que no trabajó ninguna. Por eso
+  `huellero_mapeos` lleva `vigente_desde`/`vigente_hasta`. **Hay que preguntar al administrador si
+  hubo otras reasignaciones** que el histórico no alcance a mostrar.
+- **Jornadas implausibles que el colapso no puede resolver.** JORDAN tiene días de 00:22 a 23:01
+  (22,6 horas) y FERNANDO un día con dos marcas en el mismo minuto (0 horas). No son jornadas
+  reales. El sistema no las corrige —poner un tope sería inventar una regla— pero las lista aparte
+  para revisión. **Falta definir el rango de horas que se considera razonable** para esa alerta;
+  va como fila de `config`.
+- **Solo 23 de las 54 personas inscritas marcaron este año, y varias dejaron hace meses** (REMY en
+  mayo, MARITZA en abril, JEFFREY en febrero, ALEXANDER en mayo). El dato dice solo quién sigue
+  activo, así que el mapeo inicial no hay que adivinarlo: los que nunca aparecen o desaparecieron
+  hace tiempo son los candidatos a ignorar. Confirmar con el administrador antes de ignorar en
+  masa.
 - **ELTHOM (identificador 61) es personal nuevo y su acuerdo con el administrador no se conoce.**
   Marca entrada alrededor de las 09:35. Antes de mapearlo hay que saber qué se pactó con él: si es
   jornada completa, medio turno o algo por horas, porque de eso depende su `sueldo_acuerdo_turnos`

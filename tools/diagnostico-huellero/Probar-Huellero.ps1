@@ -459,8 +459,11 @@ if ($marcas.Count -gt 0) {
     $conFecha = @($conFecha)
 
     # Jornadas: una fila por persona-dia, como las escribira el colector.
+    # OJO con el @(): en PowerShell 5.1 un grupo de UN solo elemento no es un
+    # array y $g.Count queda vacio, no 1. Sin el @() las jornadas de una sola
+    # marca salian con la columna vacia y el conteo final daba 0%.
     $jornadas = $conFecha | Group-Object cod, dia | ForEach-Object {
-        $g = $_.Group | Sort-Object dt
+        $g = @($_.Group | Sort-Object dt)
         $ent = $g[0].dt
         $sal = $g[-1].dt
         $completa = ($g.Count -ge 2)
@@ -482,14 +485,17 @@ if ($marcas.Count -gt 0) {
 
     $porPersona = $conFecha | Group-Object cod | ForEach-Object {
         $dias = @($_.Group | Group-Object dia)
+        $orden = @($_.Group | Sort-Object dt)
+        $nombres = @($_.Group | Select-Object -ExpandProperty nombre -Unique)
         [pscustomobject]@{
-            cod          = $_.Group[0].cod
-            nombre       = $_.Group[0].nombre
-            marcas       = $_.Count
-            dias         = $dias.Count
-            dias_1_marca = @($dias | Where-Object { $_.Count -eq 1 }).Count
-            primer_dia   = ($_.Group | Sort-Object dt)[0].dia
-            ultimo_dia   = ($_.Group | Sort-Object dt)[-1].dia
+            cod           = $orden[0].cod
+            nombre        = $orden[-1].nombre       # el mas reciente, no el primero
+            otros_nombres = $(if ($nombres.Count -gt 1) { ($nombres -join ' / ') } else { '' })
+            marcas        = $_.Count
+            dias          = $dias.Count
+            dias_1_marca  = @($dias | Where-Object { $_.Count -eq 1 }).Count
+            primer_dia    = $orden[0].dia
+            ultimo_dia    = $orden[-1].dia
         }
     } | Sort-Object nombre
 
@@ -501,12 +507,25 @@ if ($marcas.Count -gt 0) {
     $porPersona | Format-Table -AutoSize | Out-String | Write-Host
 
     $totalJ = @($jornadas).Count
-    $totalU = @($jornadas | Where-Object { $_.marcas -eq 1 }).Count
+    $totalU = @($jornadas | Where-Object { $_.condicion -eq 'sin_dato' }).Count
     Write-Host ("       Jornadas (persona-dia): {0}" -f $totalJ)
     if ($totalJ -gt 0) {
         Write-Host ("       Con una sola marca:     {0}  ({1}%)" -f $totalU, [math]::Round(100*$totalU/$totalJ))
     }
-    Write-Host ("       Personas que marcaron:  {0} de 54 inscritas" -f @($porPersona).Count)
+    Write-Host ("       Personas que marcaron:  {0} de {1} inscritas" -f @($porPersona).Count, $personas.Count)
+
+    # Un mismo identificador con dos nombres = el numero se reasigno a otra
+    # persona. Mapearlo a un solo empleado le adjudicaria a uno las marcas del
+    # otro, y eso es sueldo mal pagado.
+    $reusados = @($porPersona | Where-Object { $_.otros_nombres })
+    if ($reusados.Count -gt 0) {
+        Write-Host ''
+        Write-Host '       ATENCION: identificadores usados por mas de una persona' -ForegroundColor Yellow
+        foreach ($r in $reusados) {
+            Write-Host ("         {0} -> {1}" -f $r.cod, $r.otros_nombres) -ForegroundColor Yellow
+        }
+        Write-Host '       El mapeo de estos tiene que tener fecha de vigencia.' -ForegroundColor Yellow
+    }
   } catch {
     Write-Host '       Fallo el resumen, pero las marcas ya estan guardadas.' -ForegroundColor Yellow
     Write-Host ("       {0}" -f $_.Exception.Message) -ForegroundColor DarkGray

@@ -81,16 +81,20 @@ Verificado contra la interfaz web del equipo el 2026-08-14:
 eventos es `POST /ISAPI/AccessControl/AcsEvent?format=json`, filtrando `major=5, minor=38`
 (autenticación por huella) y paginando con `searchResultPosition`.
 
-**Comprobado contra el equipo real el 15-ago-2026** con `tools/diagnostico-huellero`: responde,
-acepta digest, y devolvió 30 marcaciones de los últimos siete días con identificador, nombre,
-fecha con offset `-05:00` y número de serie del evento. El equipo contesta **XML** en
-`/ISAPI/System/deviceInfo` y **JSON** en `AcsEvent`, así que el colector tiene que aceptar los dos
-formatos y no asumir uno.
+**Histórico completo leído el 15-ago-2026** con `tools/diagnostico-huellero`: **3.058 marcaciones
+entre el 1 de enero y el 15 de agosto**, más las 54 personas inscritas. Cada evento trae
+identificador, nombre, fecha con offset `-05:00` y número de serie.
 
-El endpoint `/ISAPI/AccessControl/UserInfo/Search` cortó la conexión sin responder. No bloquea
-nada: cada evento de `AcsEvent` ya trae el nombre además del identificador, así que la lista para
-el mapeo se arma con las marcas. Queda pendiente resolverlo solo para poder listar también a
-quienes están inscritos pero nunca marcan.
+El equipo contesta **XML** en `/ISAPI/System/deviceInfo` y **JSON** en `AcsEvent`, así que el
+colector tiene que aceptar los dos formatos. Devuelve **como máximo 30 registros por página** sin
+importar cuántos se pidan, de modo que hay que paginar avanzando por la cantidad realmente
+devuelta y contrastando contra `totalMatches`. Consultar ocho meses de una vez es arriesgado: la
+lectura se trocea por mes.
+
+**De las 54 personas inscritas, solo 23 marcaron alguna vez este año**, y de esas varias dejaron
+de marcar hace meses (REMY en mayo, MARITZA en abril, JEFFREY en febrero). Los identificadores
+que nunca aparecen o que dejaron de aparecer hace tiempo son los candidatos a ignorar en el
+mapeo. El propio dato dice quién sigue activo, así que el mapeo inicial no hay que adivinarlo.
 
 Descartados: Hik-Connect no expone eventos por API pública; ISUP exigiría montar un servidor
 propio del protocolo; el SDK en el puerto 8000 es binario y propietario, e ISAPI cubre todo lo
@@ -198,17 +202,41 @@ la derivación.
 
 | Columna | Tipo | Nota |
 |---|---|---|
+| `id` | uuid pk | |
 | `dispositivo_id` | uuid not null references dispositivos_huellero | |
 | `employee_no` | text not null | |
 | `empleado_id` | uuid references empleados(id) | nulo si el identificador está ignorado |
 | `ignorado` | boolean not null default false | identificador que no es empleado de la empresa |
+| `vigente_desde` | date not null | primera fecha en que este identificador es de esta persona |
+| `vigente_hasta` | date | nulo = sigue vigente |
 | `creado_en` | timestamptz not null default now() | |
 
-Clave primaria `(dispositivo_id, employee_no)`. El mapeo es por dispositivo porque cada equipo
-numera a su gente de forma independiente.
+El mapeo es por dispositivo porque cada equipo numera a su gente de forma independiente.
 
 Restricción: `check (ignorado or empleado_id is not null)` — una fila o apunta a un empleado o
-está marcada como ignorada, nunca ninguna de las dos.
+está marcada como ignorada, nunca ninguna de las dos. Y un índice que impide dos mapeos vigentes
+a la vez para el mismo `(dispositivo_id, employee_no)` en fechas solapadas.
+
+### Por qué el mapeo lleva fechas de vigencia
+
+Porque **el equipo reutiliza los identificadores**, y está comprobado en los datos reales.
+
+El identificador `00000013` marcó como **JAZMIN** hasta el 28 de enero de 2026 a las 08:45, y
+como **NICOL** desde las 20:46 de ese mismo día. Hoy figura como NICOL en la lista de personas
+inscritas. Es el mismo número asignado a dos personas distintas.
+
+Un mapeo sin fechas le adjudicaría a NICOL los 27 días que trabajó JAZMIN. Y hay algo peor en el
+propio día del cambio: la derivación juntaría la entrada de JAZMIN (08:45) con la salida de NICOL
+(20:46) en una sola jornada de doce horas que no trabajó ninguna de las dos.
+
+Con vigencia, cada marca se resuelve contra el mapeo que estaba activo **en la fecha de la
+marca**, no contra el que está activo hoy. La pantalla de administración avisa cuando detecta un
+identificador con más de un nombre en el histórico, para que el administrador parta el mapeo en
+el punto correcto.
+
+El equipo ayuda sin saberlo: cada evento guarda el nombre que la persona tenía registrada en ese
+momento, así que el histórico conserva de quién era cada marca aunque el número se haya
+reasignado después.
 
 ### Configuración
 
@@ -292,22 +320,33 @@ para que alguien la mire.
 
 ### Los días sin marca de salida
 
-> ⚠️ **La primera medición de esto fue inválida y está retirada.** El 15-ago-2026 se reportó que
-> el 41% de las jornadas no tenía marca de salida, con una tabla por persona. Ese número salió de
-> una lectura incompleta: el script de diagnóstico pedía 100 registros por página, el equipo
-> devolvía 30, y el script avanzaba 100 igual — **se perdían 70 de cada 100 marcas**. Las
-> "salidas faltantes" eran en buena parte marcas que nunca se leyeron.
->
-> El defecto está corregido (`Read-Marcas` avanza por la cantidad devuelta y verifica contra
-> `totalMatches`), pero **la medición hay que rehacerla** sobre el histórico completo antes de
-> sacar cualquier conclusión sobre hábitos de marcación. Queda como recordatorio de que un dato
-> incompleto se parece mucho a un dato que dice algo.
+**Medido sobre el histórico completo: 268 de 1571 jornadas, el 17%.** Son ocho meses,
+3.058 marcas, 23 personas. (Una primera estimación del 41% quedó descartada: salió de una lectura
+incompleta por un defecto de paginación, ya corregido.)
 
-El fenómeno sí existe, aunque su magnitud esté por medir: **una jornada puede quedar con una sola
-marca**, y no siempre por olvido. Confirmado por Alexander: GUILLERMO (identificador 25) entra
-solo a abrir las puertas y marca igual, así que su marca única es correcta y no representa una
-jornada. Distinguir "no marcó la salida" de "no vino a trabajar una jornada" no lo puede hacer el
-sistema solo.
+El 17% no está repartido parejo, y ahí está lo interesante:
+
+| Persona | Identificador | Días | Sin salida | Qué es |
+|---|---|---|---|---|
+| GUILLERMO | 25 | 29 | **29 (100%)** | Solo abre las puertas — correcto, va ignorado |
+| ELTHOM | 61 | 45 | 23 (51%) | Personal nuevo, acuerdo por confirmar |
+| JORDAN | 2 | 96 | 46 (48%) | Entra y sale muchas veces al día |
+| MARITZA | 10 | 48 | 20 (42%) | |
+| REMY | 1 | 85 | 26 (31%) | Ya no marca desde mayo |
+| JANET | 52 | 182 | 19 (10%) | |
+| MARYLIN | 50 | 188 | 8 (4%) | |
+| YESSICA | 19 | 186 | 15 (8%) | |
+| JAEROCK | 40 | 68 | 2 (3%) | |
+| SHEYLA | 58 | 106 | 4 (4%) | |
+
+**La gente de turno fijo marca bien.** Yessica, Marylin, Jaerock y Sheyla, que son los que tienen
+horario estable, están entre el 3% y el 8%. El problema se concentra en unos pocos casos y cada
+uno tiene una explicación distinta: Guillermo no trabaja una jornada, Jordan entra y sale todo el
+día, Elthom es nuevo. No es un problema general de disciplina.
+
+Confirmado por Alexander: GUILLERMO entra solo a abrir las puertas y marca igual, así que sus 29
+marcas únicas son correctas y no representan jornadas. Distinguir "no marcó la salida" de "no vino
+a trabajar una jornada" no lo puede hacer el sistema solo.
 
 **Consecuencia sobre el sueldo, que sí es cierta pase lo que pase con el número:** un día con
 entrada y sin salida queda en `condicion='sin_dato'`, y `sueldo_entrada` corta la liquidación del
@@ -325,6 +364,24 @@ puso una persona.
 
 Y para los casos como el de GUILLERMO, la misma pantalla permite marcar el identificador como
 ignorado, de modo que sus marcas no generen jornadas que nadie va a completar nunca.
+
+### Jornadas implausibles: el colapso no siempre acierta
+
+El colapso de la primera a la última marca es correcto para quien entra, trabaja y sale. Para
+quien entra y sale varias veces al día, no.
+
+En los datos reales, JORDAN (identificador 2) tiene días con diez marcas repartidas entre las
+00:22 y las 23:01: el colapso le da **22,6 horas trabajadas**. Y FERNANDO tiene un día con dos
+marcas en el mismo minuto, que da **cero horas**.
+
+Ninguna de las dos cifras es una jornada. El diseño no las corrige —inventar un tope sería
+inventar una regla de negocio— pero **las marca**: la pantalla de administración lista aparte las
+jornadas fuera de un rango razonable para que el administrador las revise antes de liquidar. El
+rango es una fila de `config`, no un número en el código.
+
+Esto no contradice el colapso `min`/`max`: lo confirma como la lectura correcta *y* como una que
+necesita supervisión humana en los casos raros. Que sean raros importa: son un puñado de días
+sobre 1.571.
 
 ### La transición que sí hay que hacer
 
