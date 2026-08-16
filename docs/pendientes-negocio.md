@@ -323,14 +323,16 @@ está quemado en el código. **Ninguno está confirmado por el dueño.**
 
 **🔴 Lo más urgente que salió del verificador (spec §9.5):**
 
-- **Una falta cuesta TRES días de sueldo, no dos.** RN-09 descuenta 2 días, y RN-06 ya había
-  restado el día de horas que no trabajó. Con S/120 de sueldo y 3 días contratados, una sola falta
-  deja el pago del periodo en S/16.
-  **→ S4 respondida y precisada el 14-ago-2026.** Son **2 días en total**, no 3: *"si trabaja 3
-  días y cobra 40, y falta uno recibe 80 de dos días, pero al faltar un día se le quita de uno
-  más, entonces solo cobra 40"*. O sea, el día que no trabajó **más uno de castigo**. La falta
-  justificada pierde **1 día en total**: sólo el que no trabajó, sin castigo encima.
-  **El motor descuenta hoy un día de más.** Pendiente de arreglar con spec primero.
+- ✅ **Una falta cuesta 2 días, no 3 — ARREGLADO el 14-ago-2026, reconfirmado el 16-ago.** El
+  hallazgo original: RN-09 descontaba 2 días y RN-06 ya había restado el día que no trabajó, así
+  que costaba 3.
+  **S4 respondida y precisada:** *"si trabaja 3 días y cobra 40, y falta uno recibe 80 de dos días,
+  pero al faltar un día se le quita de uno más, entonces solo cobra 40"*. El día que no trabajó
+  **más uno de castigo**; la justificada pierde **sólo** el día que no vino.
+  **El motor ya lo hace así** (`diasCastigoPorFalta = max(0, diasDescuentoPorFalta − 1)`, y
+  `horasFaltadas` sólo acumula las faltas sin justificar), con test de los dos casos.
+  ~~Pendiente de arreglar.~~ **Esta línea quedó vieja dos días** y se leyó como si el error siguiera
+  vivo: verificar contra el código, no contra el documento.
 - **La meta semanal fija también aplica a periodos de menos de una semana.** Quien entra a mitad
   de semana tiene meta del periodo proporcional pero meta semanal completa: no puede cobrar el
   bono aunque venda bien.
@@ -466,6 +468,93 @@ pisar **por contrato**, como pidió Alexander.
 - **Quién declara la asistencia.** Hoy sólo el administrador (verificado en `pg_policies`). Falta
   decidir si el encargado debe poder declarar la de su sede; si la respuesta es sí, va por RPC con
   guard, nunca ampliando la policy.
+
+---
+
+## Respuestas de Alexander del 16-ago-2026
+
+Se contestaron 21 preguntas de una vez. Lo que sigue es qué cambia cada una. **Todo lo que toca
+una regla de cálculo entra por spec primero** (Zone Guard): acá queda registrado, no implementado.
+
+### Resueltas sin trabajo: el sistema ya hace lo que se pidió
+
+- ✅ **La falta injustificada cuesta 2 días y la justificada 1.** *"una falta injustificada vale por
+  dos días, una falta justificada solo descuenta un día"*. **El motor ya lo hace exactamente así**
+  y tiene test de los dos casos (`sueldos.test.ts`: «cuesta 2 días de sueldo» y «una falta
+  justificada cuesta 1 día»). `diasCastigoPorFalta = max(0, diasDescuentoPorFalta − 1)` da 1 día de
+  castigo, y el día que no vino ya salió por RN-06; `horasFaltadas` sólo acumula las faltas **sin**
+  justificar. ~~El motor descuenta un día de más.~~ **Esa afirmación era vieja**: se arregló el
+  14-ago y quedó anotada como pendiente igual.
+- ✅ **Modalidad «por día trabajado» — NO hace falta.** *"a veces hay personas que trabajan un día a
+  la semana (solo domingos, es el caso de Daniel) pero se le paga mensualmente"*. Eso es un
+  contrato **mensual** con un solo turno el domingo, que el modelo ya soporta. Pagar el mismo día
+  de trabajo *"sería algo poco común"*. Se cierra sin cambios.
+- ✅ **Sólo el administrador declara la asistencia.** Respuesta directa: *"no, solo admin"*. Es
+  exactamente lo que hace hoy la policy `asist_admin_write`. Se cierra.
+- ✅ **La comisión sí vive en este sistema.** *"la comisión se saca de las ventas, y el sistema de
+  ventas e inventario es un sistema aparte"*. O sea: la **regla** es de sueldos, el **dato** viene
+  de afuera. Es justo el diseño de `sueldo_ventas` (origen `'manual'` hoy, otro origen el día que
+  exista la API). Lo que el dueño llamó *"aparte"* era el sistema de ventas, no la comisión.
+- ✅ **Marcas en un día declarado como falta: se le pide explicación al colaborador.** Y una marca
+  vale como prueba de presencia: *"si marcó su huella aunque sea solo una vez, implica que estuvo
+  presente"*. También vale una foto como evidencia. En los dos casos **decide el administrador**, y
+  el huellero no revierte nada solo.
+- ✅ **Un contrato nuevo cuando cambia el horario a mitad de periodo.** *"claro, puede ser ese
+  flujo, que se haga otro contrato"*. Es lo que el modelo ya obliga.
+- ✅ **Los datos de las personas se cargan a mano.** No hace falta importarlos de ningún lado.
+- ✅ **Los 54 identificadores del huellero:** *"seguramente sean exempleados en su mayoría y una que
+  otra prueba"*. Se resuelve creando los usuarios en el sistema; los que no correspondan a nadie
+  quedan ignorados.
+
+### 🔴 Abren trabajo nuevo: cambian una regla de cálculo
+
+- **La comisión se activa cuando TODAS las semanas llegaron a su meta.** Textual: *"hay bonos por
+  semana completada y la comisión se activa cuando se llegan todas las semanas a la meta"*.
+  **El motor hoy hace otra cosa**: `metaAlcanzada = ventasTotal >= metaPeriodo` (`sueldos.ts:734`),
+  o sea compara el total del periodo contra la meta del periodo. Con 4 semanas de meta S/1.500,
+  quien venda 3.000 la primera semana y 1.000 en cada una de las otras llega a los 6.000 del mes
+  **sin haber cumplido tres semanas**, y hoy cobra comisión. Con la regla nueva, no.
+  **Cambia RN-13. Va por spec, con test, antes de tocar el motor.**
+- **El bono semanal se habilita por contrato.** *"los bonos de 30 soles deben ser editables, el
+  administrador decide si habilitarlo o no en el contrato"*. La parte de «editable» ya está
+  (`bonoMetaSemanal` es override por contrato, y ponerlo en 0 lo apaga). Falta decidir si alcanza
+  con el 0 o si el administrador quiere un interruptor explícito que diga «sin bono» — no es lo
+  mismo para quien lee el contrato.
+- **La meta sugerida no es una fórmula fija.** *"la meta sugerida sale sola después de calcular
+  varias cosas, no es como un parámetro predeterminado... depende la tienda, temporada, etc"*. Hoy
+  se sugiere con `horas × metaPorHora` (S/45,4545). **Esa sugerencia no representa lo que él
+  describe.** Hasta que se sepa de qué depende, conviene que la pantalla la muestre como lo que es:
+  una cuenta de referencia, no una meta propuesta.
+- **La escala salarial tiene que ser editable.** *"esas escalas pueden editarse también, a veces hay
+  personas de confianza o que regresan al negocio y tienen una escala mayor"*. Hoy
+  `ESCALAS_SUELDO_DEFAULT` vive en el core como constante. Hay que moverla a `config` o a su propia
+  tabla, editable desde `/configuracion`.
+- **Indicador de cuánto lleva ganado una persona, en tiempo real.** Pedido explícito: *"sería bueno
+  también que haya un indicador de cuánto ya se le pagaría al colaborador, contando horas, metas,
+  etc... permitiría ver el administrador cuánto máximo podría adelantarle y cuánto le cuesta cada
+  trabajador en tiempo real"*. El motor ya sabe calcularlo; falta la pantalla y decidir si el corte
+  es «hasta hoy» o «hasta el último día declarado».
+- **La garantía del adelanto es una SUGERENCIA, no un bloqueo.** *"debería ser una sugerencia que
+  mínimo debe pasar una semana para compensar el adelanto con el trabajo"*. Corrige lo que decía la
+  spec, que lo trataba como impedimento.
+- **Descuento por prenda perdida: se suspende, no se aplica de una.** *"lo que se hace en la vida
+  real es que dejan pasar el tiempo sin pagar hasta que se recupere la prenda o devuelve; cuando ya
+  se cree que se perdió totalmente se aplica el descuento"*. Y si ya se descontó y la prenda
+  aparece, *"podría en un siguiente sueldo devolverse esa suma"*. Hoy `sueldo_movimientos` no tiene
+  estado: un descuento se registra o no existe. Hace falta un flujo de **descuento en suspenso** →
+  aplicado o anulado. Sin diseñar.
+- **La justificación la escribe el colaborador.** *"se describe y justifica pero por parte del
+  colaborador, el admin también puede pero no sería lo ideal"*. Hoy sólo el administrador escribe
+  en `asistencias`. Un flujo donde el colaborador propone y el administrador aprueba **no existe** y
+  no se puede improvisar: escribir su propia justificación es escribir sobre su propio pago.
+
+### Preguntas que quedaron abiertas de vuelta
+
+- **Las semanas del periodo** — hace falta confirmar cómo se arman exactamente. Ver la lista de
+  preguntas en el hilo del 16-ago.
+- **Marcaje astuto (regla)** — Alexander pidió propuestas: *"plantea reglas para ello"*. Su
+  criterio: *"si alguien marca eso y solo es medio turno obviamente es falso, o tiene que
+  evidenciar que sí estuvo todo el día"*. Sin definir.
 
 ---
 

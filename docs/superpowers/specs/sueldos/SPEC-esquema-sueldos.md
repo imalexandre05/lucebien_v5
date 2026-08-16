@@ -703,9 +703,16 @@ Cada paso deja el sistema en un estado usable. Ninguno depende de la API del otr
    - **El botón de declarar varios días es una afirmación del administrador, no una inferencia.**
      Pide confirmación diciendo cuántos días toca y avisa que las faltas se corrigen después. La
      auditoría de la 0072 deja el rastro.
-7. **Pantalla de liquidación**: preview en vivo con el core, cerrar, reimprimir. ← **acá va lo
-   siguiente**
-8. **Carga manual de ventas y movimientos.**
+7. ✅ **Pantalla de liquidación** (`/sueldos/liquidaciones`): calcular, guardar borrador, cerrar,
+   anular y reimprimir. **Hecha el 16-ago-2026.** Lo que quedó decidido:
+   - **El preview es una Server Action, no una función del cliente.** El navegador pide «calculá el
+     contrato X» y recibe el resultado; nunca manda un total. Si el cliente calculara y después
+     mandara lo calculado, manipular el formulario alcanzaría para escribir cualquier pago.
+   - **El detalle congelado se lee del snapshot y no se recalcula.** Recalcular al abrir mostraría
+     un número distinto del que se pagó en cuanto alguien edite un parámetro de `/configuracion`.
+   - **`DATO` y `DESACTUALIZADA` tienen su propia explicación en pantalla.** Son los dos errores
+     que un administrador va a ver de verdad, y el mensaje crudo no dice qué hacer.
+8. **Carga manual de ventas y movimientos.** ← **acá va lo siguiente**
 9. **Recién después**, el colector de ventas cuando exista el contrato de API.
 
 ---
