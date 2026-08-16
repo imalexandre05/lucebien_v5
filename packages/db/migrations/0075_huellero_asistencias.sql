@@ -219,12 +219,10 @@ end $$;
 --    Función aparte y no interna a la ingesta, porque hay que poder invocarla sola: al crear un
 --    mapeo se llama una vez por cada fecha con marcas de esa persona.
 --
---    LAS DOS SALVAGUARDAS DEL SUELDO:
---      a) Nunca se toca una fila declarada 'falta'. Una falta cuesta dos días (RN-09) y la
---         declara una persona; que una huella la revierta sola sería el error silencioso que el
---         no-negociable 1 existe para impedir.
---      b) Nunca se pisa una hora ya cargada ni se cambia `fuente`. Lo que escribió el
---         administrador manda sobre la máquina.
+--    LAS TRES SALVAGUARDAS DEL SUELDO:
+--      a) Nunca se toca un día con una falta declarada — se mira el DÍA entero, no una fila.
+--      b) Nunca se pisa una hora ya cargada ni se cambia `fuente`.
+--      c) Nunca se declara 'trabajado' una jornada que no puede ser cierta.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create or replace function huellero_derivar_asistencia(p_empleado_id uuid, p_fecha date)
   returns void
@@ -233,21 +231,46 @@ create or replace function huellero_derivar_asistencia(p_empleado_id uuid, p_fec
   set search_path = public
 as $fn$
 declare
-  v_entrada time;
-  v_salida  time;
-  v_marcas  int;
-  v_nombres int;
-  v_fila    asistencias%rowtype;
+  v_entrada     time;
+  v_salida      time;
+  v_marcas      int;
+  v_nombres     int;
+  v_anonimas    int;
+  v_fila        asistencias%rowtype;
+  v_max_horas   numeric;
+  v_min_horas   numeric;
+  v_horas       numeric;
+  v_nueva_ent   time;
+  v_nueva_sal   time;
+  v_motivo      text := null;   -- si queda con texto, el día NO se declara trabajado
 begin
   if p_empleado_id is null or p_fecha is null then return; end if;
 
+  -- SALVAGUARDA (a). Se mira el DÍA, no una fila.
+  --
+  -- Antes se tomaba `order by turno limit 1` y sólo se comprobaba esa. Con el turno 'M' en
+  -- sin_dato (la fila que deja un reporte) y el turno 'T' declarado 'falta', se rellenaba la 'M'
+  -- y quedaba una fila 'trabajado' con horas contradiciendo la falta que declaró una persona.
+  -- Hoy `0073` la sigue cobrando como falta por su `bool_or`, así que el pago no cambiaba —pero
+  -- la garantía estaba rota, y la pantalla o cualquier export verían lo contrario.
+  if exists (
+    select 1 from asistencias a
+    where a.empleado_id = p_empleado_id and a.fecha = p_fecha and a.condicion = 'falta'
+  ) then
+    return;
+  end if;
+
   -- Las marcas del día, en hora Perú. El core nunca llama new Date() y acá tampoco se asume la
   -- zona del servidor: los cron de Supabase corren en UTC (no-negociable 4).
+  --
+  -- `nullif(btrim(...), '')` porque count(distinct) IGNORA los NULL: si una marca llegaba sin
+  -- nombre y la otra con nombre, el guard de reasignación contaba 1 y no disparaba.
   select count(*),
          min((m.marcada_en at time zone 'America/Lima')::time),
          max((m.marcada_en at time zone 'America/Lima')::time),
-         count(distinct m.nombre_equipo)
-    into v_marcas, v_entrada, v_salida, v_nombres
+         count(distinct nullif(btrim(m.nombre_equipo), '')),
+         count(*) filter (where nullif(btrim(m.nombre_equipo), '') is null)
+    into v_marcas, v_entrada, v_salida, v_nombres, v_anonimas
   from marcas_huellero m
   where m.empleado_id = p_empleado_id
     and (m.marcada_en at time zone 'America/Lima')::date = p_fecha;
@@ -262,11 +285,10 @@ begin
   -- Las dos marcas caen en la vigencia de JAZMIN y el colapso le daría una jornada de 12 horas
   -- que no trabajó.
   --
-  -- El nombre que el equipo guardó en cada evento delata el cambio. Cuando un mismo día trae dos
-  -- nombres distintos, NO se deriva nada: el día queda para que lo resuelva una persona, que es
-  -- la única que sabe quién trabajó cuánto. Es un día por reasignación, no un caso frecuente.
-  if v_nombres > 1 then
-    return;
+  -- Dispara con dos nombres distintos Y TAMBIÉN con mezcla de marcas con nombre y sin nombre:
+  -- una marca anónima puede ser de cualquiera de las dos personas.
+  if v_nombres > 1 or (v_nombres >= 1 and v_anonimas > 0) then
+    v_motivo := 'revisar: el identificador tiene más de un nombre este día (posible reasignación)';
   end if;
 
   -- Una sola marca no es una jornada: queda la entrada y la salida en null. La condición se
@@ -276,9 +298,34 @@ begin
     v_salida := null;
   end if;
 
-  -- ¿Ya hay fila para ese día? Puede haberla creado el administrador a mano o el envío de un
-  -- reporte (0030). Si hay varias (turno M y T), se completa la de turno menor: la liquidación
-  -- colapsa el día entero con min/max, así que alcanza con una.
+  -- SALVAGUARDA (c): jornadas que no pueden ser ciertas.
+  --
+  -- El colapso de primera a última marca falla con quien entra y sale muchas veces. En los datos
+  -- reales: JORDAN de 00:22 a 23:01 (22,6 h) y FERNANDO con dos marcas en el mismo minuto.
+  --
+  -- Declararlas 'trabajado' no es neutral, es plata:
+  --   · 22,6 h le suman 14,6 horas extra al pago (sueldos.ts:572 y :828).
+  --   · Entrada igual a salida hace que sueldos.ts:546-548 lance, y la liquidación del mes
+  --     entero de esa persona no se puede cerrar, con un error que ni menciona al huellero.
+  --
+  -- No se recorta la jornada —eso sería inventar una regla de negocio (no-negociable 5)— pero
+  -- tampoco se declara trabajada: se guardan las horas reales en 'sin_dato' con el motivo, y
+  -- decide una persona. Los límites son filas de `config`, editables.
+  if v_salida is not null then
+    select coalesce(nullif(btrim(c.valor), '')::numeric, 14) into v_max_horas
+      from config c where c.clave = 'huellero_jornada_max_horas';
+    select coalesce(nullif(btrim(c.valor), '')::numeric, 0.5) into v_min_horas
+      from config c where c.clave = 'huellero_jornada_min_horas';
+    v_max_horas := coalesce(v_max_horas, 14);
+    v_min_horas := coalesce(v_min_horas, 0.5);
+
+    v_horas := extract(epoch from (v_salida - v_entrada)) / 3600.0;
+    if v_horas > v_max_horas or v_horas < v_min_horas then
+      v_motivo := coalesce(v_motivo,
+        'revisar: la jornada derivada da ' || round(v_horas, 2) || ' h, fuera del rango esperado');
+    end if;
+  end if;
+
   select * into v_fila
   from asistencias a
   where a.empleado_id = p_empleado_id and a.fecha = p_fecha
@@ -292,42 +339,52 @@ begin
             0,                                  -- el motor no lee esta columna; la tardanza la
                                                 -- calcula contra sueldo_acuerdo_turnos
             'huellero',
-            case when v_salida is not null then 'trabajado' else 'sin_dato' end,
-            'auto: huellero')
+            case when v_salida is not null and v_motivo is null then 'trabajado' else 'sin_dato' end,
+            coalesce(v_motivo, 'auto: huellero'))
     on conflict (empleado_id, fecha, turno) do nothing;
-    return;
-  end if;
-
-  -- SALVAGUARDA (a): una falta declarada no se toca ni para rellenar horas vacías.
-  if v_fila.condicion = 'falta' then
     return;
   end if;
 
   -- SALVAGUARDA (b): sólo se rellenan las horas que estén en null. Nunca se pisa una hora
   -- cargada, nunca se cambia `fuente`, nunca se borra.
+  v_nueva_ent := coalesce(v_fila.hora_entrada, v_entrada);
+  v_nueva_sal := coalesce(v_fila.hora_salida,  v_salida);
+
+  -- Rellenar sin comparar dejaba la salida ANTES de la entrada: fila de turno 'T' con
+  -- hora_entrada 14:00 cargada a mano y marcas del huellero de la mañana (08:00 y 12:00) daba
+  -- 14:00 → 12:00 y la transición a 'trabajado' lo bendecía. `asistencias_trabajado_chk` lo
+  -- acepta, y después sueldos.ts:546-548 lanza y el mes no se liquida.
+  -- Si el relleno da una jornada al revés, se deja la fila como está.
+  if v_nueva_ent is not null and v_nueva_sal is not null and v_nueva_sal <= v_nueva_ent then
+    return;
+  end if;
+
   update asistencias a
-     set hora_entrada = coalesce(a.hora_entrada, v_entrada),
-         hora_salida  = coalesce(a.hora_salida,  v_salida),
+     set hora_entrada = v_nueva_ent,
+         hora_salida  = v_nueva_sal,
          -- La ÚNICA excepción a "no pisar otra fuente", y sin ella el proyecto no sirve: las
          -- filas que crea la 0030 al enviar un reporte nacen sin horas y en 'sin_dato', y la
          -- liquidación filtra por condicion <> 'sin_dato' (0073:180). Rellenarles las horas sin
          -- transicionar la condición dejaría el día invisible y el periodo bloqueado.
-         -- Sólo 'sin_dato' → 'trabajado', y sólo cuando quedan las DOS horas cargadas
-         -- (asistencias_trabajado_chk lo exige).
+         -- Sólo 'sin_dato' → 'trabajado', sólo con las DOS horas cargadas
+         -- (asistencias_trabajado_chk lo exige) y sólo si el día no quedó marcado para revisar.
          condicion = case
            when a.condicion = 'sin_dato'
-            and coalesce(a.hora_entrada, v_entrada) is not null
-            and coalesce(a.hora_salida,  v_salida)  is not null
+            and v_nueva_ent is not null
+            and v_nueva_sal is not null
+            and v_motivo is null
            then 'trabajado'
            else a.condicion
-         end
+         end,
+         obs = case when v_motivo is not null then v_motivo else a.obs end
    where a.id = v_fila.id;
 end;
 $fn$;
 
 comment on function huellero_derivar_asistencia(uuid, date) is
   'Marcas de un empleado en un día → una fila de asistencia. UNA por día, no una por turno.
-   Nunca toca una falta declarada ni pisa horas ya cargadas.';
+   No toca un día con falta declarada, no pisa horas cargadas, y no declara trabajada una
+   jornada imposible: la deja en sin_dato con el motivo para que la mire una persona.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 7) Ingesta: la única puerta de escritura del colector
@@ -350,9 +407,11 @@ declare
   v_emp        uuid;
   v_ts         timestamptz;
   v_fecha      date;
+  v_crudo      text;
   v_insertadas int := 0;
   v_dup        int := 0;
   v_sin_mapeo  int := 0;
+  v_rechazadas int := 0;
   v_n          int;
   v_afectados  jsonb := '{}'::jsonb;   -- claves "empleado|fecha" a derivar una sola vez
   k            text;
@@ -367,44 +426,72 @@ begin
 
   if p_marcas is not null and jsonb_typeof(p_marcas) = 'array' then
     for m in select * from jsonb_array_elements(p_marcas) loop
-      v_ts := (m->>'marcada_en')::timestamptz;
-      if v_ts is null or (m->>'evento_serial') is null or (m->>'employee_no') is null then
-        continue;   -- marca incompleta: se ignora en vez de tumbar el lote entero
-      end if;
-      v_fecha := (v_ts at time zone 'America/Lima')::date;
+      -- Una marca rota NO puede tumbar el lote entero.
+      --
+      -- Antes los casts estaban fuera de todo manejo de excepción: un `"time": ""` o un
+      -- serialNo no numérico abortaba la función completa, incluido el update de
+      -- ultima_sincronizacion. El colector volvía a pedir la misma ventana, se volvía a
+      -- envenenar, y la pantalla decía "el colector se cayó" mientras en realidad corría en
+      -- círculos contra un evento roto. Cada marca se procesa en su propio bloque.
+      begin
+        v_crudo := m->>'marcada_en';
 
-      -- El mapeo VIGENTE EN LA FECHA DE LA MARCA, no el de hoy. Sin esto, reasignar un
-      -- identificador le adjudicaría a la persona nueva los días de la anterior.
-      select mp.empleado_id into v_emp
-      from huellero_mapeos mp
-      where mp.dispositivo_id = p_dispositivo_id
-        and mp.employee_no    = (m->>'employee_no')
-        and not mp.ignorado
-        and mp.vigente_desde <= v_fecha
-        and (mp.vigente_hasta is null or mp.vigente_hasta >= v_fecha)
-      limit 1;
-
-      -- Sin mapeo NO se descarta: se guarda con empleado_id null y aparece en la cola de la
-      -- pantalla. Al crear el mapeo se reprocesa y las marcas viejas entran solas.
-      insert into marcas_huellero (dispositivo_id, employee_no, empleado_id, marcada_en,
-                                   evento_serial, nombre_equipo)
-      values (p_dispositivo_id, (m->>'employee_no'), v_emp, v_ts,
-              (m->>'evento_serial')::bigint, (m->>'nombre_equipo'))
-      on conflict (dispositivo_id, evento_serial) do nothing;
-
-      get diagnostics v_n = row_count;   -- row_count es un entero, no un booleano
-      if v_n > 0 then
-        v_insertadas := v_insertadas + 1;
-        if v_emp is null then
-          v_sin_mapeo := v_sin_mapeo + 1;
-        else
-          -- Se anota el par para derivar UNA vez al final: un lote trae muchas marcas del mismo
-          -- día y derivar por cada una haría el mismo trabajo N veces.
-          v_afectados := v_afectados || jsonb_build_object(v_emp::text || '|' || v_fecha::text, true);
+        if v_crudo is null or (m->>'evento_serial') is null or (m->>'employee_no') is null then
+          v_rechazadas := v_rechazadas + 1;
+          continue;
         end if;
-      else
-        v_dup := v_dup + 1;
-      end if;
+
+        -- Sin offset explícito, `::timestamptz` interpreta la cadena en la zona de la SESIÓN
+        -- (UTC en Supabase), no en hora Perú: una entrada de las 08:00 se guardaría como 03:00,
+        -- y una marca de las 00:22 caería en el día anterior partiendo la jornada en dos fechas.
+        -- El colector manda siempre con -05:00; si algo llega sin offset, se rechaza en vez de
+        -- adivinar (no-negociable 4).
+        if v_crudo !~ '(Z|[+-][0-9]{2}:?[0-9]{2})$' then
+          v_rechazadas := v_rechazadas + 1;
+          continue;
+        end if;
+
+        v_ts    := v_crudo::timestamptz;
+        v_fecha := (v_ts at time zone 'America/Lima')::date;
+
+        -- El mapeo VIGENTE EN LA FECHA DE LA MARCA, no el de hoy. Sin esto, reasignar un
+        -- identificador le adjudicaría a la persona nueva los días de la anterior.
+        select mp.empleado_id into v_emp
+        from huellero_mapeos mp
+        where mp.dispositivo_id = p_dispositivo_id
+          and mp.employee_no    = (m->>'employee_no')
+          and not mp.ignorado
+          and mp.vigente_desde <= v_fecha
+          and (mp.vigente_hasta is null or mp.vigente_hasta >= v_fecha)
+        limit 1;
+
+        -- Sin mapeo NO se descarta: se guarda con empleado_id null y aparece en la cola de la
+        -- pantalla. Al crear el mapeo se reprocesa y las marcas viejas entran solas.
+        insert into marcas_huellero (dispositivo_id, employee_no, empleado_id, marcada_en,
+                                     evento_serial, nombre_equipo)
+        values (p_dispositivo_id, (m->>'employee_no'), v_emp, v_ts,
+                (m->>'evento_serial')::bigint, (m->>'nombre_equipo'))
+        on conflict (dispositivo_id, evento_serial) do nothing;
+
+        get diagnostics v_n = row_count;   -- row_count es un entero, no un booleano
+        if v_n > 0 then
+          v_insertadas := v_insertadas + 1;
+          if v_emp is null then
+            v_sin_mapeo := v_sin_mapeo + 1;
+          else
+            -- Se anota el par para derivar UNA vez al final: un lote trae muchas marcas del
+            -- mismo día y derivar por cada una haría el mismo trabajo N veces. El `||` sobre
+            -- jsonb deduplica por clave.
+            v_afectados := v_afectados || jsonb_build_object(v_emp::text || '|' || v_fecha::text, true);
+          end if;
+        else
+          v_dup := v_dup + 1;
+        end if;
+
+      exception when others then
+        v_rechazadas := v_rechazadas + 1;
+        continue;
+      end;
     end loop;
   end if;
 
@@ -421,7 +508,8 @@ begin
   return jsonb_build_object(
     'insertadas', v_insertadas,
     'duplicadas', v_dup,
-    'sin_mapeo',  v_sin_mapeo);
+    'sin_mapeo',  v_sin_mapeo,
+    'rechazadas', v_rechazadas);
 end;
 $fn$;
 
@@ -434,11 +522,7 @@ $fn$;
 --    (dispositivo_id, evento_serial) absorbe el solape.
 --
 --    Hace falta una RPC porque `marcas_huellero` es sólo-administrador bajo RLS: las marcas
---    dicen a qué hora entra y sale cada persona. Esto devuelve UN timestamp y nada más, así que
---    el colector puede saber desde cuándo pedir sin poder leer los datos de nadie.
---
---    Devuelve null cuando no hay ninguna marca todavía; el colector arranca entonces desde la
---    fecha de inicio configurada en su .env.
+--    dicen a qué hora entra y sale cada persona. Esto devuelve UN timestamp y nada más.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create or replace function huellero_checkpoint(p_dispositivo_id uuid)
   returns timestamptz
@@ -467,11 +551,21 @@ comment on function huellero_checkpoint(uuid) is
    guardar estado local. Devuelve un timestamp y nada más: no expone datos de personas.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 8) Reprocesar al crear o corregir un mapeo
+-- 8) Reprocesar al crear, corregir o acortar un mapeo
 --
 --    Al mapear un identificador, sus marcas históricas ya están guardadas con empleado_id null.
---    Esto las re-resuelve y deriva las asistencias que correspondan. Sólo administrador: cambia
---    a quién se le paga qué día.
+--    Esto las re-resuelve y deriva las asistencias que correspondan.
+--
+--    LO QUE HACÍA MAL Y ERA DOBLE PAGO. Antes sólo asignaba el empleado DENTRO del rango nuevo.
+--    Las marcas que quedaban FUERA conservaban el empleado viejo y sus asistencias ya escritas
+--    no se revertían nunca. El caso concreto: el 00000013 mapeado a JAZMIN sin fecha de fin
+--    deriva 31 días de enero; al descubrirse la reasignación, el administrador acorta el mapeo
+--    al 28 (obligatorio, porque el índice de exclusión no deja crear el de NICOL si se solapan)
+--    y reprocesa. Los días 29, 30 y 31 seguían apuntando a JAZMIN. Después se crea el mapeo de
+--    NICOL y se reprocesa: NICOL cobra esos tres días **y JAZMIN también**.
+--
+--    Ahora se liberan las marcas que quedaron fuera del rango y se re-derivan sus fechas, de modo
+--    que la asistencia de quien ya no corresponde se limpia.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create or replace function huellero_reprocesar_mapeo(p_mapeo_id uuid)
   returns jsonb
@@ -480,9 +574,13 @@ create or replace function huellero_reprocesar_mapeo(p_mapeo_id uuid)
   set search_path = public
 as $fn$
 declare
-  v_map    huellero_mapeos%rowtype;
-  v_tocadas int := 0;
-  r        record;
+  v_map        huellero_mapeos%rowtype;
+  v_destino    uuid;
+  v_asignadas  int := 0;
+  v_liberadas  int := 0;
+  r            record;
+  v_fechas     jsonb := '{}'::jsonb;   -- "empleado|fecha" a re-derivar, deduplicado
+  k            text;
 begin
   if not private.app_es_admin() then
     raise exception 'PERMISO:sólo el administrador puede reprocesar un mapeo';
@@ -491,56 +589,155 @@ begin
   select * into v_map from huellero_mapeos where id = p_mapeo_id;
   if not found then raise exception 'DATO:el mapeo no existe'; end if;
 
+  -- Un mapeo ignorado NO asigna a nadie, aunque conserve el empleado_id.
+  --
+  -- El check de la tabla permite `ignorado = true` con `empleado_id` cargado, que es lo natural
+  -- cuando el administrador quiere dejar de contar un identificador sin borrar de quién era.
+  -- Antes se asignaba igual, y reprocesar le adjudicaba a esa persona todas las marcas —
+  -- exactamente lo contrario de lo que se pidió.
+  v_destino := case when v_map.ignorado then null else v_map.empleado_id end;
+
+  -- 1) Anotar las fechas que HOY tienen asistencia derivada por este identificador, antes de
+  --    mover nada: son las que hay que recalcular pase lo que pase.
+  for r in
+    select distinct mk.empleado_id as emp, (mk.marcada_en at time zone 'America/Lima')::date as fecha
+    from marcas_huellero mk
+    where mk.dispositivo_id = v_map.dispositivo_id
+      and mk.employee_no    = v_map.employee_no
+      and mk.empleado_id is not null
+  loop
+    v_fechas := v_fechas || jsonb_build_object(r.emp::text || '|' || r.fecha::text, true);
+  end loop;
+
+  -- 2) Liberar las marcas que quedan FUERA del rango de vigencia: dejan de pertenecer a nadie
+  --    hasta que otro mapeo las reclame.
   update marcas_huellero mk
-     set empleado_id = v_map.empleado_id
+     set empleado_id = null
+   where mk.dispositivo_id = v_map.dispositivo_id
+     and mk.employee_no    = v_map.employee_no
+     and (
+       (mk.marcada_en at time zone 'America/Lima')::date < v_map.vigente_desde
+       or (v_map.vigente_hasta is not null
+           and (mk.marcada_en at time zone 'America/Lima')::date > v_map.vigente_hasta)
+     );
+  get diagnostics v_liberadas = row_count;
+
+  -- 3) Asignar las de dentro del rango.
+  update marcas_huellero mk
+     set empleado_id = v_destino
    where mk.dispositivo_id = v_map.dispositivo_id
      and mk.employee_no    = v_map.employee_no
      and (mk.marcada_en at time zone 'America/Lima')::date >= v_map.vigente_desde
      and (v_map.vigente_hasta is null
           or (mk.marcada_en at time zone 'America/Lima')::date <= v_map.vigente_hasta);
-  get diagnostics v_tocadas = row_count;
+  get diagnostics v_asignadas = row_count;
 
-  if v_map.empleado_id is not null then
+  -- 4) Sumar las fechas que quedaron asignadas ahora.
+  if v_destino is not null then
     for r in
       select distinct (mk.marcada_en at time zone 'America/Lima')::date as fecha
       from marcas_huellero mk
-      where mk.empleado_id = v_map.empleado_id
+      where mk.empleado_id    = v_destino
         and mk.dispositivo_id = v_map.dispositivo_id
-        and mk.employee_no = v_map.employee_no
+        and mk.employee_no    = v_map.employee_no
     loop
-      perform huellero_derivar_asistencia(v_map.empleado_id, r.fecha);
+      v_fechas := v_fechas || jsonb_build_object(v_destino::text || '|' || r.fecha::text, true);
     end loop;
   end if;
 
-  return jsonb_build_object('marcas_reasignadas', v_tocadas);
+  -- 5) Recalcular todo lo tocado: lo que se asignó y lo que se liberó.
+  --
+  --    Primero limpiar y después derivar, en ese orden. `limpiar` sólo borra si el día quedó
+  --    sin ninguna marca —el caso de la persona a la que se le sacó el identificador— y
+  --    `derivar` sólo escribe si hay marcas. Sin el paso de limpieza, la asistencia de quien ya
+  --    no corresponde sobrevivía y se liquidaba igual.
+  for k in select jsonb_object_keys(v_fechas) loop
+    perform huellero_limpiar_dia_sin_marcas(
+      split_part(k, '|', 1)::uuid,
+      split_part(k, '|', 2)::date);
+    perform huellero_derivar_asistencia(
+      split_part(k, '|', 1)::uuid,
+      split_part(k, '|', 2)::date);
+  end loop;
+
+  return jsonb_build_object(
+    'marcas_asignadas', v_asignadas,
+    'marcas_liberadas', v_liberadas,
+    'dias_recalculados', (select count(*) from jsonb_object_keys(v_fechas)));
+end;
+$fn$;
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+-- 8 bis) Limpiar la asistencia de un día que se quedó sin marcas
+--
+--    Cuando `reprocesar` libera marcas, el día de la persona anterior queda con una asistencia
+--    escrita por el huellero que ya no corresponde a nadie. `huellero_derivar_asistencia` con
+--    cero marcas hacía `return` sin tocar nada, así que esa fila sobrevivía para siempre y se
+--    liquidaba.
+--
+--    Se limpia SÓLO lo que escribió el huellero: una fila 'manual' o 'reporte' la puso una
+--    persona o un reporte y no se toca ni acá.
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+create or replace function huellero_limpiar_dia_sin_marcas(p_empleado_id uuid, p_fecha date)
+  returns void
+  language plpgsql
+  security definer
+  set search_path = public
+as $fn$
+begin
+  if exists (
+    select 1 from marcas_huellero m
+    where m.empleado_id = p_empleado_id
+      and (m.marcada_en at time zone 'America/Lima')::date = p_fecha
+  ) then
+    return;   -- todavía tiene marcas: no hay nada que limpiar
+  end if;
+
+  delete from asistencias a
+  where a.empleado_id = p_empleado_id
+    and a.fecha = p_fecha
+    and a.fuente = 'huellero'
+    and a.condicion <> 'falta';
 end;
 $fn$;
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 9) Permisos de ejecución
---    Sin el revoke, cualquier anónimo llama la función por /rest/v1/rpc.
+--
+--    `revoke from public, anon` NO ALCANZA. Verificado contra la base: las default privileges de
+--    Supabase conceden `execute` DIRECTO a `anon`, `authenticated` y `service_role` sobre toda
+--    función nueva de `public` (pg_default_acl para postgres y supabase_admin). Quitar el
+--    privilegio de PUBLIC no toca un grant directo a `authenticated`.
+--
+--    Sin el revoke explícito, `huellero_derivar_asistencia` —que es security definer y no tiene
+--    guard porque se llega a ella desde funciones que sí lo tienen— quedaba llamable por
+--    cualquier empleado logueado vía /rest/v1/rpc, escribiendo asistencias de terceros por
+--    encima de la RLS de la 0025. Es el mismo agujero que la 0067 cerró (P-02).
+--
+--    Precedente del repo: 0021:83, 0042:97 y 0067:115 revocan `from public, anon, authenticated`.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
-revoke execute on function huellero_registrar_marcas(uuid, jsonb)  from public, anon;
-revoke execute on function huellero_derivar_asistencia(uuid, date) from public, anon;
-revoke execute on function huellero_reprocesar_mapeo(uuid)         from public, anon;
-revoke execute on function huellero_checkpoint(uuid)               from public, anon;
+revoke execute on function huellero_registrar_marcas(uuid, jsonb)          from public, anon;
+revoke execute on function huellero_checkpoint(uuid)                       from public, anon;
+revoke execute on function huellero_reprocesar_mapeo(uuid)                 from public, anon;
+
+-- Las dos internas: se llega a ellas desde las de arriba, que tienen portero. Nadie las llama
+-- por HTTP.
+revoke execute on function huellero_derivar_asistencia(uuid, date)         from public, anon, authenticated;
+revoke execute on function huellero_limpiar_dia_sin_marcas(uuid, date)     from public, anon, authenticated;
 
 grant execute on function huellero_registrar_marcas(uuid, jsonb)  to authenticated;
-grant execute on function huellero_reprocesar_mapeo(uuid)         to authenticated;
 grant execute on function huellero_checkpoint(uuid)               to authenticated;
--- huellero_derivar_asistencia NO se concede: es interna. Se llega a ella por las dos de arriba,
--- que tienen guard. Concederla sería dejar que cualquiera recalcule la asistencia de cualquiera.
+grant execute on function huellero_reprocesar_mapeo(uuid)         to authenticated;
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 10) Parámetro de negocio — el único que agrega este proyecto
+-- 10) Los dos parámetros de negocio que agrega este proyecto
 --
---     Sirve para AVISAR, no para corregir. En los datos reales hay jornadas que el colapso
---     min/max no puede resolver: JORDAN tiene días de 00:22 a 23:01 (22,6 h) porque entra y sale
---     muchas veces, y FERNANDO un día con dos marcas en el mismo minuto (0 h). Ninguna es una
---     jornada. Poner un tope que las recorte sería inventar una regla de negocio (no-negociable
---     5), así que sólo se listan para que las revise una persona.
+--     Los LEE `huellero_derivar_asistencia`: una jornada fuera de este rango no se declara
+--     'trabajado', se guarda en 'sin_dato' con el motivo en `obs` para que la mire una persona.
+--     No recortan nada — recortar sería inventar una regla (no-negociable 5).
 --
---     DEFAULT PROVISIONAL, anotado en docs/pendientes-negocio.md: nadie confirmó estos números.
+--     DEFAULTS PROVISIONALES: nadie confirmó estos números. Anotados en
+--     docs/pendientes-negocio.md, sección del huellero.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 insert into config (clave, valor)
 values ('huellero_jornada_max_horas', '14')

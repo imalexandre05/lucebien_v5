@@ -29,12 +29,14 @@ export interface MarcaHuellero {
   nombreEquipo?: string | null;
 }
 
-/** La fila de `asistencias` que ya existe para ese empleado y ese día, si la hay. */
+/** Una fila de `asistencias` que ya existe para ese empleado y ese día. */
 export interface AsistenciaExistente {
   fuente: string;
   condicion: 'sin_dato' | 'trabajado' | 'falta';
   horaEntrada: string | null;
   horaSalida: string | null;
+  /** 'M' o 'T'. Se completa la de turno menor, igual que la RPC. */
+  turno?: string;
 }
 
 /** Qué hacer con la asistencia del día. */
@@ -45,23 +47,50 @@ export type DecisionHuellero =
       horaEntrada: string | null;
       horaSalida: string | null;
       condicion: 'sin_dato' | 'trabajado';
+      /** Presente cuando el día se escribe pero NO se declara trabajado. */
+      revisar?: MotivoRevisar;
     };
+
+/** Los límites de una jornada creíble. Llegan desde `config`, nunca hardcodeados. */
+export interface LimitesJornada {
+  minHoras: number;
+  maxHoras: number;
+}
+
+export const LIMITES_JORNADA_DEFAULT: LimitesJornada = { minHoras: 0.5, maxHoras: 14 };
 
 export type MotivoNoHacerNada =
   /** No hay marcas: el día no existe para el huellero y no se inventa. */
   | 'sin_marcas'
   /**
-   * Las marcas del día traen más de un nombre: el identificador cambió de dueño a mitad de
-   * día. Sólo una persona sabe quién trabajó cuánto.
-   */
-  | 'identificador_reasignado'
-  /**
-   * El administrador declaró falta. Cuesta dos días de sueldo (RN-09) y la decidió una
-   * persona: ninguna huella la revierte sola.
+   * El administrador declaró falta en ALGUNA fila del día. Cuesta dos días de sueldo (RN-09) y
+   * la decidió una persona: ninguna huella la revierte sola.
    */
   | 'falta_declarada'
   /** La fila ya está completa y no hay nada que rellenar. */
-  | 'sin_cambios';
+  | 'sin_cambios'
+  /**
+   * Rellenar dejaría la salida antes que la entrada. Pasa con una fila de turno 'T' que tiene
+   * la entrada cargada a mano (14:00) y marcas del huellero sólo de la mañana: quedaría
+   * 14:00 → 12:00, la transición a `trabajado` lo bendeciría, y después `sueldos.ts:546-548`
+   * lanza y el mes entero no se puede liquidar.
+   */
+  | 'orden_invertido';
+
+/** Por qué un día quedó escrito pero SIN declararse trabajado. Va a `obs` para que se vea. */
+export type MotivoRevisar =
+  /**
+   * Las marcas del día traen más de un nombre, o mezclan marcas con nombre y sin nombre: el
+   * identificador cambió de dueño a mitad de día. Sólo una persona sabe quién trabajó cuánto.
+   */
+  | 'identificador_reasignado'
+  /**
+   * La jornada derivada no puede ser cierta. En los datos reales: JORDAN de 00:22 a 23:01
+   * (22,6 h) y FERNANDO con dos marcas en el mismo minuto. Declararlas trabajadas no es
+   * neutral: la primera paga 14,6 horas que nadie trabajó y la segunda impide cerrar la
+   * liquidación del mes.
+   */
+  | 'jornada_implausible';
 
 const RE_HORA = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
@@ -92,49 +121,82 @@ function validarHora(hora: string, donde: string): string {
  */
 export function decidirAsistencia(
   marcas: MarcaHuellero[],
-  existente: AsistenciaExistente | null,
+  /**
+   * TODAS las filas de `asistencias` del empleado ese día, no una.
+   *
+   * Antes recibía una sola —la de turno menor— y sólo sobre esa se comprobaba la falta. Con el
+   * turno 'M' en `sin_dato` (la fila que deja un reporte) y el turno 'T' declarado `falta`, se
+   * rellenaba la 'M' y quedaba una fila `trabajado` con horas contradiciendo la falta que
+   * declaró una persona.
+   */
+  existentes: AsistenciaExistente[],
+  limites: LimitesJornada = LIMITES_JORNADA_DEFAULT,
 ): DecisionHuellero {
   if (marcas.length === 0) {
     return { accion: 'no_hacer_nada', motivo: 'sin_marcas' };
   }
 
+  // La falta se mira sobre el DÍA entero.
+  if (existentes.some((e) => e.condicion === 'falta')) {
+    return { accion: 'no_hacer_nada', motivo: 'falta_declarada' };
+  }
+
   // El día en que un identificador cambia de dueño. La vigencia del mapeo es por fecha, pero la
   // reasignación puede ocurrir a mitad de día: el 00000013 marcó como JAZMIN a las 08:45 del
-  // 28-ene-2026 y como NICOL a las 20:46 de ese mismo día. Colapsar esas dos marcas daría una
-  // jornada de doce horas que no trabajó ninguna de las dos.
+  // 28-ene-2026 y como NICOL a las 20:46 de ese mismo día.
+  //
+  // Dispara con dos nombres distintos Y TAMBIÉN con mezcla de marcas con nombre y sin nombre:
+  // una marca anónima puede ser de cualquiera de las dos personas, y el equipo omite el nombre
+  // en varios tipos de evento.
   const nombres = new Set(
     marcas.map((m) => (m.nombreEquipo ?? '').trim()).filter((n) => n.length > 0),
   );
-  if (nombres.size > 1) {
-    return { accion: 'no_hacer_nada', motivo: 'identificador_reasignado' };
-  }
+  const anonimas = marcas.filter((m) => (m.nombreEquipo ?? '').trim().length === 0).length;
+  let revisar: MotivoRevisar | undefined =
+    nombres.size > 1 || (nombres.size >= 1 && anonimas > 0)
+      ? 'identificador_reasignado'
+      : undefined;
 
   const horas = marcas.map((m) => validarHora(m.hora, 'Marca')).sort();
   const entrada = horas[0];
   // Una sola marca no es una jornada: no se inventa la salida.
   const salida = horas.length >= 2 ? horas[horas.length - 1] : null;
 
+  // Una jornada que no puede ser cierta no se declara trabajada. No se recorta —eso sería
+  // inventar una regla (no-negociable 5)— pero tampoco se paga a ciegas.
+  if (revisar === undefined && salida !== null && jornadaImplausible(entrada, salida, limites)) {
+    revisar = 'jornada_implausible';
+  }
+
+  const existente = filaAEditar(existentes);
+
   if (existente === null) {
     return {
       accion: 'crear',
       horaEntrada: entrada,
       horaSalida: salida,
-      condicion: salida !== null ? 'trabajado' : 'sin_dato',
+      condicion: salida !== null && revisar === undefined ? 'trabajado' : 'sin_dato',
+      ...(revisar !== undefined ? { revisar } : {}),
     };
-  }
-
-  // Una falta declarada no se toca ni para rellenar horas vacías.
-  if (existente.condicion === 'falta') {
-    return { accion: 'no_hacer_nada', motivo: 'falta_declarada' };
   }
 
   // Sólo se rellena lo que está vacío.
   const nuevaEntrada = existente.horaEntrada ?? entrada;
   const nuevaSalida = existente.horaSalida ?? salida;
 
+  // Rellenar sin comparar dejaba la salida antes que la entrada.
+  if (nuevaEntrada !== null && nuevaSalida !== null && nuevaSalida <= nuevaEntrada) {
+    return { accion: 'no_hacer_nada', motivo: 'orden_invertido' };
+  }
+
+  // Acá `condicion` ya no puede ser 'falta': si alguna fila del día lo era, se retornó arriba.
+  const condicionActual = existente.condicion as 'sin_dato' | 'trabajado';
+
   const completa = nuevaEntrada !== null && nuevaSalida !== null;
   const nuevaCondicion: 'sin_dato' | 'trabajado' =
-    existente.condicion === 'sin_dato' && completa ? 'trabajado' : existente.condicion;
+    condicionActual === 'sin_dato' && completa && revisar === undefined
+      ? 'trabajado'
+      : condicionActual;
 
   const sinCambios =
     nuevaEntrada === existente.horaEntrada &&
@@ -150,7 +212,14 @@ export function decidirAsistencia(
     horaEntrada: nuevaEntrada,
     horaSalida: nuevaSalida,
     condicion: nuevaCondicion,
+    ...(revisar !== undefined ? { revisar } : {}),
   };
+}
+
+/** La fila del día que se completa: la de turno menor, igual que hace la RPC. */
+function filaAEditar(existentes: AsistenciaExistente[]): AsistenciaExistente | null {
+  if (existentes.length === 0) return null;
+  return [...existentes].sort((a, b) => (a.turno ?? '').localeCompare(b.turno ?? ''))[0];
 }
 
 /**

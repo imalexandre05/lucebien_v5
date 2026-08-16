@@ -16,7 +16,7 @@ const marcas = (horas: string[], nombre = 'YESSICA'): MarcaHuellero[] =>
 describe('decidirAsistencia — el caso normal', () => {
   // El caso real de LuceBien: nadie sale a almorzar, así que un día completo deja DOS marcas.
   it('dos marcas dan una jornada trabajada', () => {
-    const d = decidirAsistencia(marcas(['08:00', '14:00']), null);
+    const d = decidirAsistencia(marcas(['08:00', '14:00']), []);
     expect(d).toEqual({
       accion: 'crear',
       horaEntrada: '08:00',
@@ -29,29 +29,29 @@ describe('decidirAsistencia — el caso normal', () => {
   // la marca de las 08:00 caía en el turno M y la de las 14:00 en el T, los dos quedaban sin
   // salida, y la liquidación leía cero horas. Sobre los datos reales rompía 8 de cada 10 días.
   it('no parte el día aunque las marcas caigan a distinto lado del mediodía', () => {
-    const d = decidirAsistencia(marcas(['08:00', '20:00']), null);
+    const d = decidirAsistencia(marcas(['08:00', '20:00']), []);
     expect(d).toMatchObject({ horaEntrada: '08:00', horaSalida: '20:00', condicion: 'trabajado' });
   });
 
   it('el turno tarde también da una sola jornada', () => {
-    const d = decidirAsistencia(marcas(['14:05', '21:09'], 'JANET'), null);
+    const d = decidirAsistencia(marcas(['14:05', '21:09'], 'JANET'), []);
     expect(d).toMatchObject({ horaEntrada: '14:05', horaSalida: '21:09', condicion: 'trabajado' });
   });
 
   it('ordena las marcas: el lote puede venir desordenado', () => {
-    const d = decidirAsistencia(marcas(['20:00', '08:00', '14:00']), null);
+    const d = decidirAsistencia(marcas(['20:00', '08:00', '14:00']), []);
     expect(d).toMatchObject({ horaEntrada: '08:00', horaSalida: '20:00' });
   });
 
   // Si alguien sí sale a almorzar, el colapso sigue dando el día completo. Es lo correcto bajo
   // la regla confirmada: el almuerzo se paga.
   it('cuatro marcas dan de la primera a la última', () => {
-    const d = decidirAsistencia(marcas(['08:00', '13:00', '14:00', '20:00']), null);
+    const d = decidirAsistencia(marcas(['08:00', '13:00', '14:00', '20:00']), []);
     expect(d).toMatchObject({ horaEntrada: '08:00', horaSalida: '20:00' });
   });
 
   it('marcas duplicadas al mismo minuto no rompen nada', () => {
-    const d = decidirAsistencia(marcas(['08:00', '08:00', '14:00']), null);
+    const d = decidirAsistencia(marcas(['08:00', '08:00', '14:00']), []);
     expect(d).toMatchObject({ horaEntrada: '08:00', horaSalida: '14:00' });
   });
 });
@@ -60,7 +60,7 @@ describe('decidirAsistencia — la jornada a medias', () => {
   // Sin este comportamiento la RPC violaría asistencias_trabajado_chk (0073) durante toda la
   // jornada: entre la marca de entrada y la de salida pasan once horas.
   it('una sola marca deja la entrada y NO declara trabajado', () => {
-    const d = decidirAsistencia(marcas(['09:35'], 'ELTHOM'), null);
+    const d = decidirAsistencia(marcas(['09:35'], 'ELTHOM'), []);
     expect(d).toEqual({
       accion: 'crear',
       horaEntrada: '09:35',
@@ -70,7 +70,7 @@ describe('decidirAsistencia — la jornada a medias', () => {
   });
 
   it('sin marcas no se inventa nada', () => {
-    expect(decidirAsistencia([], null)).toEqual({
+    expect(decidirAsistencia([], [])).toEqual({
       accion: 'no_hacer_nada',
       motivo: 'sin_marcas',
     });
@@ -87,7 +87,7 @@ describe('decidirAsistencia — las salvaguardas del sueldo', () => {
 
   // Una falta cuesta dos días de sueldo (RN-09) y la declaró una persona.
   it('una falta declarada no se toca ni con marcas ese día', () => {
-    expect(decidirAsistencia(marcas(['08:00', '20:00']), falta)).toEqual({
+    expect(decidirAsistencia(marcas(['08:00', '20:00']), [falta])).toEqual({
       accion: 'no_hacer_nada',
       motivo: 'falta_declarada',
     });
@@ -100,7 +100,7 @@ describe('decidirAsistencia — las salvaguardas del sueldo', () => {
       horaEntrada: '09:00',
       horaSalida: '18:00',
     };
-    expect(decidirAsistencia(marcas(['07:00', '22:00']), manual)).toEqual({
+    expect(decidirAsistencia(marcas(['07:00', '22:00']), [manual])).toEqual({
       accion: 'no_hacer_nada',
       motivo: 'sin_cambios',
     });
@@ -113,7 +113,7 @@ describe('decidirAsistencia — las salvaguardas del sueldo', () => {
       horaEntrada: '09:00',
       horaSalida: null,
     };
-    const d = decidirAsistencia(marcas(['07:30', '18:30']), aMedias);
+    const d = decidirAsistencia(marcas(['07:30', '18:30']), [aMedias]);
     expect(d).toEqual({
       accion: 'actualizar',
       horaEntrada: '09:00', // la cargada a mano gana
@@ -132,7 +132,7 @@ describe('decidirAsistencia — las salvaguardas del sueldo', () => {
       horaEntrada: null,
       horaSalida: null,
     };
-    const d = decidirAsistencia(marcas(['14:05', '21:00']), reporte);
+    const d = decidirAsistencia(marcas(['14:05', '21:00']), [reporte]);
     expect(d).toEqual({
       accion: 'actualizar',
       horaEntrada: '14:05',
@@ -148,7 +148,7 @@ describe('decidirAsistencia — las salvaguardas del sueldo', () => {
       horaEntrada: null,
       horaSalida: null,
     };
-    const d = decidirAsistencia(marcas(['14:05']), reporte);
+    const d = decidirAsistencia(marcas(['14:05']), [reporte]);
     expect(d).toMatchObject({ horaSalida: null, condicion: 'sin_dato' });
   });
 
@@ -158,7 +158,7 @@ describe('decidirAsistencia — las salvaguardas del sueldo', () => {
       { fuente: 'manual', condicion: 'sin_dato', horaEntrada: '08:00', horaSalida: null },
     ];
     for (const existente of casos) {
-      const d = decidirAsistencia(marcas(['09:00']), existente);
+      const d = decidirAsistencia(marcas(['09:00']), [existente]);
       if (d.accion !== 'no_hacer_nada' && d.condicion === 'trabajado') {
         expect(d.horaEntrada).not.toBeNull();
         expect(d.horaSalida).not.toBeNull();
@@ -170,27 +170,113 @@ describe('decidirAsistencia — las salvaguardas del sueldo', () => {
 describe('decidirAsistencia — el identificador que cambió de dueño', () => {
   // Caso real: el 00000013 marcó como JAZMIN a las 08:45 del 28-ene-2026 y como NICOL a las
   // 20:46 del mismo día. Colapsarlas daría doce horas que no trabajó ninguna de las dos.
-  it('no deriva nada cuando el día trae dos nombres distintos', () => {
+  it('guarda las horas pero NO declara trabajado cuando el día trae dos nombres', () => {
     const mixtas: MarcaHuellero[] = [
       { fecha: '2026-01-28', hora: '08:45', nombreEquipo: 'JAZMIN' },
       { fecha: '2026-01-28', hora: '20:46', nombreEquipo: 'NICOL' },
     ];
-    expect(decidirAsistencia(mixtas, null)).toEqual({
-      accion: 'no_hacer_nada',
-      motivo: 'identificador_reasignado',
+    expect(decidirAsistencia(mixtas, [])).toEqual({
+      accion: 'crear',
+      horaEntrada: '08:45',
+      horaSalida: '20:46',
+      condicion: 'sin_dato',
+      revisar: 'identificador_reasignado',
     });
   });
 
-  it('el mismo nombre repetido no dispara la alerta', () => {
-    expect(decidirAsistencia(marcas(['08:00', '20:00'], 'JAZMIN'), null).accion).toBe('crear');
+  // El equipo omite el nombre en varios tipos de evento. Si una marca viene sin nombre y la
+  // otra con nombre, la anónima puede ser de cualquiera de las dos personas: hay que revisar
+  // igual. Antes esto pasaba desapercibido porque contar nombres distintos ignora los vacíos.
+  it('mezcla de marca con nombre y marca sin nombre también manda a revisar', () => {
+    const mixtas: MarcaHuellero[] = [
+      { fecha: '2026-01-28', hora: '08:45', nombreEquipo: null },
+      { fecha: '2026-01-28', hora: '20:46', nombreEquipo: 'NICOL' },
+    ];
+    const d = decidirAsistencia(mixtas, []);
+    expect(d).toMatchObject({ condicion: 'sin_dato', revisar: 'identificador_reasignado' });
   });
 
-  it('marcas sin nombre no disparan la alerta', () => {
+  it('el mismo nombre repetido no dispara la alerta', () => {
+    const d = decidirAsistencia(marcas(['08:00', '20:00'], 'JAZMIN'), []);
+    expect(d).toMatchObject({ accion: 'crear', condicion: 'trabajado' });
+  });
+
+  it('todas las marcas sin nombre no disparan la alerta', () => {
     const sinNombre: MarcaHuellero[] = [
       { fecha: '2026-08-12', hora: '08:00', nombreEquipo: null },
       { fecha: '2026-08-12', hora: '14:00' },
     ];
-    expect(decidirAsistencia(sinNombre, null).accion).toBe('crear');
+    expect(decidirAsistencia(sinNombre, [])).toMatchObject({ condicion: 'trabajado' });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// Los seis fallos que encontró el subagente verificador el 15-ago-2026. Cada test fija uno.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+describe('decidirAsistencia — lo que encontró el verificador', () => {
+  const limites = { minHoras: 0.5, maxHoras: 14 };
+
+  // Declararla trabajada le pagaría 14,6 horas que nadie trabajó (sueldos.ts:572 y :828).
+  it('la jornada de 22,6 horas se guarda pero no se declara trabajada', () => {
+    const d = decidirAsistencia(marcas(['00:22', '23:01'], 'JORDAN'), [], limites);
+    expect(d).toMatchObject({
+      horaEntrada: '00:22',
+      horaSalida: '23:01',
+      condicion: 'sin_dato',
+      revisar: 'jornada_implausible',
+    });
+  });
+
+  // Entrada igual a salida hace que sueldos.ts:546-548 lance y el mes entero de esa persona no
+  // se pueda liquidar, con un error que ni menciona al huellero.
+  it('la jornada de cero horas tampoco se declara trabajada', () => {
+    const d = decidirAsistencia(marcas(['21:02', '21:02'], 'FERNANDO'), [], limites);
+    expect(d).toMatchObject({ condicion: 'sin_dato', revisar: 'jornada_implausible' });
+  });
+
+  // Fila de turno 'T' con la entrada cargada a mano y marcas del huellero de la mañana: el
+  // relleno dejaba 14:00 → 12:00, la transición lo declaraba trabajado, y la liquidación
+  // reventaba.
+  it('no rellena si dejaría la salida antes que la entrada', () => {
+    const conEntrada: AsistenciaExistente = {
+      fuente: 'manual',
+      condicion: 'sin_dato',
+      horaEntrada: '14:00',
+      horaSalida: null,
+      turno: 'T',
+    };
+    expect(decidirAsistencia(marcas(['08:00', '12:00']), [conEntrada])).toEqual({
+      accion: 'no_hacer_nada',
+      motivo: 'orden_invertido',
+    });
+  });
+
+  // Antes se miraba sólo la fila de turno menor: con 'M' en sin_dato y 'T' en falta, se
+  // rellenaba la 'M' y quedaba una fila trabajada contradiciendo la falta declarada.
+  it('una falta en CUALQUIER turno del día protege el día entero', () => {
+    const delDia: AsistenciaExistente[] = [
+      { fuente: 'reporte', condicion: 'sin_dato', horaEntrada: null, horaSalida: null, turno: 'M' },
+      { fuente: 'manual', condicion: 'falta', horaEntrada: null, horaSalida: null, turno: 'T' },
+    ];
+    expect(decidirAsistencia(marcas(['08:00', '20:00']), delDia)).toEqual({
+      accion: 'no_hacer_nada',
+      motivo: 'falta_declarada',
+    });
+  });
+
+  it('y también al revés: la falta en el turno menor', () => {
+    const delDia: AsistenciaExistente[] = [
+      { fuente: 'manual', condicion: 'falta', horaEntrada: null, horaSalida: null, turno: 'M' },
+      { fuente: 'reporte', condicion: 'sin_dato', horaEntrada: null, horaSalida: null, turno: 'T' },
+    ];
+    expect(decidirAsistencia(marcas(['08:00', '20:00']), delDia)).toMatchObject({
+      motivo: 'falta_declarada',
+    });
+  });
+
+  it('los límites llegan de config: con un máximo distinto, cambia el veredicto', () => {
+    const holgado = decidirAsistencia(marcas(['00:22', '23:01']), [], { minHoras: 0, maxHoras: 24 });
+    expect(holgado).toMatchObject({ condicion: 'trabajado' });
   });
 });
 
@@ -258,35 +344,45 @@ describe('decidirAsistencia — jornadas reales del equipo', () => {
     horas.map((hora) => ({ fecha, hora, nombreEquipo: nombre }));
 
   it('JANET, turno tarde del 2 de enero', () => {
-    const d = decidirAsistencia(real('2026-01-02', ['14:01', '21:09'], 'JANET'), null);
+    const d = decidirAsistencia(real('2026-01-02', ['14:01', '21:09'], 'JANET'), []);
     expect(d).toMatchObject({ horaEntrada: '14:01', horaSalida: '21:09', condicion: 'trabajado' });
     expect(horasEntre('14:01', '21:09')).toBeCloseTo(7.13, 2);
   });
 
   it('YESSICA, el 2 de enero marcó sólo la entrada', () => {
-    const d = decidirAsistencia(real('2026-01-02', ['08:53'], 'YESSICA'), null);
+    const d = decidirAsistencia(real('2026-01-02', ['08:53'], 'YESSICA'), []);
     expect(d).toMatchObject({ horaEntrada: '08:53', horaSalida: null, condicion: 'sin_dato' });
   });
 
   it('SHEYLA, jornada larga del 12 de agosto', () => {
-    const d = decidirAsistencia(real('2026-08-12', ['07:55', '18:35'], 'SHEYLA'), null);
+    const d = decidirAsistencia(real('2026-08-12', ['07:55', '18:35'], 'SHEYLA'), []);
     expect(d).toMatchObject({ horaEntrada: '07:55', horaSalida: '18:35', condicion: 'trabajado' });
   });
 
   // Las dos que el colapso no puede resolver. Se derivan igual —no inventamos nada— pero
   // jornadaImplausible las manda a revisión.
-  it('FERNANDO, dos marcas en el mismo minuto: se deriva, y se marca para revisar', () => {
-    const d = decidirAsistencia(real('2026-01-08', ['21:02', '21:02'], 'FERNANDO'), null);
-    expect(d).toMatchObject({ horaEntrada: '21:02', horaSalida: '21:02', condicion: 'trabajado' });
+  it('FERNANDO, dos marcas en el mismo minuto: se guarda pero no se declara trabajado', () => {
+    const d = decidirAsistencia(real('2026-01-08', ['21:02', '21:02'], 'FERNANDO'), []);
+    expect(d).toMatchObject({
+      horaEntrada: '21:02',
+      horaSalida: '21:02',
+      condicion: 'sin_dato',
+      revisar: 'jornada_implausible',
+    });
     expect(jornadaImplausible('21:02', '21:02', { minHoras: 0.5, maxHoras: 14 })).toBe(true);
   });
 
-  it('JORDAN, cinco marcas entre las 00:22 y las 23:01: se deriva, y se marca para revisar', () => {
+  it('JORDAN, cinco marcas entre las 00:22 y las 23:01: se guarda pero no se declara trabajado', () => {
     const d = decidirAsistencia(
       real('2026-01-26', ['00:22', '08:12', '08:26', '20:44', '23:01'], 'JORDAN'),
-      null,
+      [],
     );
-    expect(d).toMatchObject({ horaEntrada: '00:22', horaSalida: '23:01' });
+    expect(d).toMatchObject({
+      horaEntrada: '00:22',
+      horaSalida: '23:01',
+      condicion: 'sin_dato',
+      revisar: 'jornada_implausible',
+    });
     expect(jornadaImplausible('00:22', '23:01', { minHoras: 0.5, maxHoras: 14 })).toBe(true);
   });
 
@@ -294,7 +390,7 @@ describe('decidirAsistencia — jornadas reales del equipo', () => {
   // es una jornada. Por eso su identificador va ignorado en el mapeo — pero si no lo estuviera,
   // el sistema al menos no inventa una salida.
   it('GUILLERMO, una marca por día los 29 días', () => {
-    const d = decidirAsistencia(real('2026-08-12', ['08:16'], 'GUILLERMO'), null);
+    const d = decidirAsistencia(real('2026-08-12', ['08:16'], 'GUILLERMO'), []);
     expect(d).toMatchObject({ horaSalida: null, condicion: 'sin_dato' });
   });
 });
