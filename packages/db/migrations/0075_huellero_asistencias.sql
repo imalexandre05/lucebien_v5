@@ -426,6 +426,47 @@ end;
 $fn$;
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
+-- 7 bis) Checkpoint: desde cuándo tiene que pedir el colector
+--
+--    El colector NO guarda archivo de progreso: le pregunta a la base cuál fue la última marca
+--    de su dispositivo y pide desde ahí menos 10 minutos de solape. Si la PC del almacén se
+--    reinstala desde cero, no se pierde ni se duplica nada — el índice único
+--    (dispositivo_id, evento_serial) absorbe el solape.
+--
+--    Hace falta una RPC porque `marcas_huellero` es sólo-administrador bajo RLS: las marcas
+--    dicen a qué hora entra y sale cada persona. Esto devuelve UN timestamp y nada más, así que
+--    el colector puede saber desde cuándo pedir sin poder leer los datos de nadie.
+--
+--    Devuelve null cuando no hay ninguna marca todavía; el colector arranca entonces desde la
+--    fecha de inicio configurada en su .env.
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+create or replace function huellero_checkpoint(p_dispositivo_id uuid)
+  returns timestamptz
+  language plpgsql
+  stable
+  security definer
+  set search_path = public
+as $fn$
+declare
+  v_ultima timestamptz;
+begin
+  if not (private.app_es_colector_huellero() or private.app_es_admin()) then
+    raise exception 'PERMISO:sólo un colector registrado o el administrador puede leer el checkpoint';
+  end if;
+
+  select max(m.marcada_en) into v_ultima
+  from marcas_huellero m
+  where m.dispositivo_id = p_dispositivo_id;
+
+  return v_ultima;
+end;
+$fn$;
+
+comment on function huellero_checkpoint(uuid) is
+  'Última marca registrada de un dispositivo. El colector la usa como punto de partida en vez de
+   guardar estado local. Devuelve un timestamp y nada más: no expone datos de personas.';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 8) Reprocesar al crear o corregir un mapeo
 --
 --    Al mapear un identificador, sus marcas históricas ya están guardadas con empleado_id null.
@@ -482,9 +523,11 @@ $fn$;
 revoke execute on function huellero_registrar_marcas(uuid, jsonb)  from public, anon;
 revoke execute on function huellero_derivar_asistencia(uuid, date) from public, anon;
 revoke execute on function huellero_reprocesar_mapeo(uuid)         from public, anon;
+revoke execute on function huellero_checkpoint(uuid)               from public, anon;
 
 grant execute on function huellero_registrar_marcas(uuid, jsonb)  to authenticated;
 grant execute on function huellero_reprocesar_mapeo(uuid)         to authenticated;
+grant execute on function huellero_checkpoint(uuid)               to authenticated;
 -- huellero_derivar_asistencia NO se concede: es interna. Se llega a ella por las dos de arriba,
 -- que tienen guard. Concederla sería dejar que cualquiera recalcule la asistencia de cualquiera.
 
