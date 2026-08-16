@@ -480,8 +480,16 @@ pisar **por contrato**, como pidió Alexander.
 - ✅ **`huellero_corte_turno` — ELIMINADO, no llegó a existir.** El primer diseño partía las marcas
   del día en turno M y T por una hora de corte. Con dos marcas por día (entrada 09:00, salida
   20:00) cada turno se quedaba sin salida y la liquidación leía cero horas trabajadas. Se corrigió
-  a **una sola fila por día** antes de escribir código. El huellero no agrega ningún parámetro de
-  negocio y por lo tanto no inventa ningún default.
+  a **una sola fila por día** antes de escribir código.
+- ⚠️ **`huellero_jornada_max_horas` = 14 y `huellero_jornada_min_horas` = 0.5 — DEFAULTS SIN
+  CONFIRMAR.** (Corrige una afirmación anterior de este mismo documento que decía que el huellero
+  no agregaba ningún parámetro: sí agrega estos dos, sembrados por la migración `0075`.) Una
+  jornada derivada fuera de ese rango **no se declara `trabajado`**: se guardan las horas reales
+  en `sin_dato` con el motivo en `obs`, para que la revise una persona. No recortan nada —recortar
+  sería inventar una regla—, sólo deciden qué se paga solo y qué necesita una mirada. Los números
+  salieron de los datos: las jornadas normales van de 4 a 13 horas, y las que se salen son las de
+  JORDAN (22,6 h) y FERNANDO (0 h). **Confirmar con el dueño**, sobre todo el mínimo: media hora
+  puede ser poco si hay gente que trabaja por horas.
 - **Qué hacer cuando hay marcas en un día declarado como falta.** La derivación no toca esa fila
   por diseño, y el caso se muestra en la pantalla de administración para que decida una persona.
   Falta definir qué se espera que haga: ¿revertir la falta, ignorar las marcas, pedir explicación?
