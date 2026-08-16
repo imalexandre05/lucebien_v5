@@ -317,7 +317,15 @@ huellero.** Se anota acá para que quede el rastro de por qué apareció.
 | Regla 4 (no pisar otra `fuente`) | Correcta, **pero** falta la transición de `condicion` (choque B) |
 | Regla 5 (`'trabajado'` con entrada real) | **Choca con `asistencias_trabajado_chk`** (choque A) |
 | Almuerzo | **Resuelto por `f51e5c0`**: nadie sale a almorzar, no hay hueco. Queda abierto sólo el hueco largo por trámite |
-| Numeración | 0068–0074 tomadas. **La libre es 0075.** Usar el script, hay hook que bloquea |
+| ¿M y T como medias jornadas? | **No**, comprobado en los tres lugares. El grano del día manda también en el motor |
+| Etiqueta de la fila del día | Usar `turno = 'C'` («Día completo»), no `'M'`: el vocabulario ya existe en el core y en la pantalla |
+| Turno partido | Cerrado por el lado del huellero. **Abierto por el del contrato**: la 0072 permite un horario con hueco, y eso lo decide la pantalla del acuerdo. Trabajo nuestro |
+| Numeración | 0068–0074 tomadas. **La libre es 0075**, no la 0074. Usar el script; hay hook que bloquea |
 
 Los choques A y B se arreglan dentro de la spec del huellero. **No hace falta ningún cambio en el
 esquema ni en el motor de sueldos**, que era la premisa del aviso y sigue en pie.
+
+> **Los dos choques siguen abiertos.** El segundo aviso repite las cinco reglas sin cambios y dice
+> «no les pido ningún cambio». De acuerdo en que no hay nada que cambiar **de este lado** — pero la
+> regla 5, tal como está escrita, no se va a poder ejecutar contra la base. Conviene resolverlo en
+> la spec del huellero antes de escribir el colector, no después.
