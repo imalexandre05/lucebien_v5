@@ -23,20 +23,25 @@ powershell -ExecutionPolicy Bypass -File .\Probar-Huellero.ps1
 
 Pide la contraseña y hace el resto. Tarda menos de un minuto.
 
-Si el equipo tiene otra dirección, o hace falta mirar más días atrás:
+Para traer el histórico desde una fecha concreta — por ejemplo todo el año:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\Probar-Huellero.ps1 -Ip 192.168.1.221 -DiasAtras 30
+powershell -ExecutionPolicy Bypass -File .\Probar-Huellero.ps1 -Desde 2026-01-01
 ```
+
+Con muchos meses puede tardar varios minutos: va mostrando el avance. Si el equipo tiene otra
+dirección, agregar `-Ip 192.168.1.221`.
 
 ## Qué deja
 
-Dos archivos al lado del script:
+Tres archivos al lado del script:
 
-- `huellero-personas.csv` — identificador y nombre de cada persona inscrita en el equipo.
-- `huellero-marcas.csv` — las marcaciones del rango consultado.
+- `huellero-marcas.csv` — todas las marcaciones del rango, con identificador, nombre, fecha y hora.
+- `huellero-resumen.csv` — una fila por persona: cuántas marcas, cuántos días y en cuántos de esos
+  días hay una sola marca (o sea, entrada sin salida).
+- `huellero-personas.csv` — la lista de inscritos, si el equipo la entrega.
 
-Los dos van para Alexander.
+Los tres van para Alexander.
 
 ## Qué contraseña pide
 

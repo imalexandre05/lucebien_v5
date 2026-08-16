@@ -500,21 +500,28 @@ pisar **por contrato**, como pidió Alexander.
 - **Los 54 identificadores del equipo contra los 18 empleados activos.** Los que no correspondan a
   nadie se marcan como ignorados. Falta saber de quiénes son: ex-empleados, personal de otra
   empresa, pruebas. No bloquea, pero conviene saberlo antes de ignorar en masa.
-- 🔴 **Cuatro de cada diez días no tienen marca de salida — lo más urgente de esta lista.**
-  Verificado con las marcaciones reales del 15-ago-2026: de 17 jornadas de 7 personas, 7 quedaron
-  con una sola marca. ELTHOM (identificador 61) entra ~09:35 todos los días y **nunca** marca la
-  salida; GUILLERMO (25), JANET (52) y MARYLIN (50) también tienen días incompletos. Un día sin
-  salida queda en `condicion='sin_dato'` y **corta la liquidación del periodo entero**
-  (`0073_sueldos_rpc.sql:128-145`): con este nivel de marcación, el sueldo de ELTHOM no se podría
-  calcular ningún mes. No hay arreglo por software que no sea inventar una hora o comerle el día a
-  la persona. **Es un cambio de hábito y hay que planteárselo al dueño antes de encender el
-  colector**, o el sistema no automatiza nada: solo cambia dónde se carga el dato a mano.
-- **Quiénes son ELTHOM (61) y GUILLERMO (25).** Aparecen marcando en almacén pero con patrón raro
-  —ELTHOM siempre a las 09:35 y sin salida, GUILLERMO una sola vez—. Antes de mapearlos a un
-  empleado conviene confirmar si son personal de planilla, gente de paso o proveedores.
-- **Solo 7 personas marcan, de 18 empleados.** Es coherente con que haya un solo huellero y esté
-  en almacén, pero confirma que **el huellero cubre almacén, no la empresa**. Las otras tres sedes
-  siguen con carga manual hasta que tengan su propio equipo.
+- ⚠️ **Días con entrada y sin marca de salida — magnitud POR MEDIR.** La primera medición
+  (15-ago-2026, "41% de las jornadas") **era inválida**: el script leía 30 de cada 100 marcas por
+  un defecto de paginación, así que muchas "salidas faltantes" eran marcas nunca leídas. Corregido
+  el defecto, hay que rehacer la medición sobre el histórico completo. Lo que **sí** es cierto
+  independientemente del número: un día con entrada y sin salida queda en `condicion='sin_dato'` y
+  **corta la liquidación del periodo entero** (`0073_sueldos_rpc.sql:128-145`). No hay arreglo por
+  software que no sea inventar una hora o comerle el día a la persona; el sistema lista esos días
+  para que el administrador los complete antes de liquidar.
+- **ELTHOM (identificador 61) es personal nuevo y su acuerdo con el administrador no se conoce.**
+  Marca entrada alrededor de las 09:35. Antes de mapearlo hay que saber qué se pactó con él: si es
+  jornada completa, medio turno o algo por horas, porque de eso depende su `sueldo_acuerdo_turnos`
+  y por lo tanto su tardanza y su liquidación.
+- ✅ **GUILLERMO (identificador 25) — RESUELTO el 15-ago-2026 por Alexander.** *"Solo entra para
+  abrir las puertas pero igual marca su huella"*. Su marca única **no es una jornada incompleta**,
+  es correcta. Se marca su identificador como ignorado en la pantalla del huellero, para que no
+  genere días de asistencia que nadie va a completar. Confirmar antes si además tiene jornada
+  propia en algún momento.
+- **Todos deberían marcar, y no todos aparecen.** Alexander confirma que el huellero **cubre a la
+  empresa en general**, no solo al almacén, y que se supone que todos marcan. En la primera
+  lectura aparecieron 7 personas de 18. Parte de la diferencia la explica el defecto de
+  paginación; el resto hay que averiguarlo con el histórico completo: si hay gente que no marca
+  nunca, esa es una conversación con el dueño antes de encender el colector.
 - **Los turnos reales no son los que asume el comentario de la `0073`.** Ese comentario habla de
   09:00–13:00 + 13:00–20:00 como si todos hicieran jornada completa. Lo observado: turno de mañana
   ~08:00–14:00 (YESSICA, JAEROCK), turno de tarde ~14:00–20:00 (JANET, MARYLIN) y jornada larga

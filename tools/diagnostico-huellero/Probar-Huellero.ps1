@@ -29,6 +29,8 @@ param(
     [string] $Ip = '192.168.1.220',
     [string] $Usuario = 'admin',
     [int]    $DiasAtras = 7,
+    [string] $Desde,              # fecha exacta 'AAAA-MM-DD'; tiene prioridad sobre -DiasAtras
+    [int]    $TopeEventos = 60000,
     [switch] $UsarHttp
 )
 
@@ -41,9 +43,17 @@ Write-Host '======================================================' -ForegroundC
 Write-Host ' LUCEBIEN - Diagnostico del huellero' -ForegroundColor White
 Write-Host '======================================================' -ForegroundColor DarkGray
 Write-Host ''
+$hasta = Get-Date
+if ($Desde) {
+    try { $fechaDesde = [datetime]::ParseExact($Desde, 'yyyy-MM-dd', $null) }
+    catch { Write-Host " Fecha invalida: '$Desde'. Usar formato AAAA-MM-DD." -ForegroundColor Red; exit 1 }
+} else {
+    $fechaDesde = $hasta.AddDays(-$DiasAtras)
+}
+
 Write-Host " Equipo:  $Ip"
 Write-Host " Usuario: $Usuario"
-Write-Host " Rango:   ultimos $DiasAtras dia(s)"
+Write-Host (" Rango:   {0} a {1}" -f $fechaDesde.ToString('yyyy-MM-dd'), $hasta.ToString('yyyy-MM-dd'))
 Write-Host ''
 
 # ── Contraseña ─────────────────────────────────────────────────────────────
@@ -283,39 +293,51 @@ try {
 # ═══════════════════════════════════════════════════════════════════════════
 # PASO 3 — Los eventos de marcacion (lo que leera el colector)
 # ═══════════════════════════════════════════════════════════════════════════
-Write-Host " [3/3] Leyendo marcaciones de los ultimos $DiasAtras dia(s)..." -ForegroundColor Cyan
+Write-Host ' [3/3] Leyendo marcaciones...' -ForegroundColor Cyan
 
-$hasta = Get-Date
-$desde = $hasta.AddDays(-$DiasAtras)
+$desde = $fechaDesde
 $fmt = 'yyyy-MM-ddTHH:mm:ss-05:00'   # hora Peru, offset explicito
 
 $marcas = @()
-$posicion = 0
 $errorMarcas = $null
 
-try {
+# ── Paginacion ────────────────────────────────────────────────────────────
+# El equipo devuelve como maximo ~30 registros por pagina aunque se le pidan
+# 100. Hay que avanzar por la cantidad REALMENTE devuelta, no por la pedida:
+# avanzar de 100 en 100 cuando devuelve 30 saltea 70 registros por pagina.
+# Ese fue el bug que hizo leer 30 marcas cuando habia muchas mas.
+function Read-Marcas {
+    param([bool] $ConFiltro = $true)
+
+    $acumulado = @()
+    $posicion = 0
+    $total = $null
+
     do {
         $cond = @{
             searchID             = 'lucebien-diag'
             searchResultPosition = $posicion
-            maxResults           = 100
-            major                = 5
-            minor                = 38
+            maxResults           = 30
             startTime            = $desde.ToString($fmt)
             endTime              = $hasta.ToString($fmt)
         }
-        $cuerpo = @{ AcsEventCond = $cond } | ConvertTo-Json -Depth 5 -Compress
+        if ($ConFiltro) { $cond.major = 5; $cond.minor = 38 }
 
+        $cuerpo = @{ AcsEventCond = $cond } | ConvertTo-Json -Depth 5 -Compress
         $texto = Invoke-Isapi -Ruta '/ISAPI/AccessControl/AcsEvent?format=json' -Cuerpo $cuerpo -Metodo 'POST'
         $r = ConvertFrom-Isapi -Texto $texto -Etiqueta 'AcsEvent'
 
         $bloque = $r.Datos.AcsEvent
-        $lista  = $bloque.InfoList
-        $estado = $bloque.responseStatusStrg
+        $lista  = @($bloque.InfoList | Where-Object { $null -ne $_ })
+        $estado = "$($bloque.responseStatusStrg)"
+
+        if ($null -eq $total -and $bloque.totalMatches) {
+            $total = [int] $bloque.totalMatches
+            Write-Host "       El equipo reporta $total evento(s) en el rango." -ForegroundColor Gray
+        }
 
         foreach ($e in $lista) {
-            if ($null -eq $e) { continue }
-            $marcas += [pscustomobject]@{
+            $acumulado += [pscustomobject]@{
                 fecha_hora  = "$($e.time)"
                 employee_no = "$($e.employeeNoString)"
                 nombre      = "$($e.name)"
@@ -323,10 +345,27 @@ try {
             }
         }
 
-        $posicion += 100
-        $hayMas = ($estado -eq 'MORE')
-    } while ($hayMas -and $posicion -lt 3000)
+        $devueltos = $lista.Count
+        if ($devueltos -eq 0) { break }
 
+        $posicion += $devueltos            # <-- avanzar por lo devuelto, no por lo pedido
+
+        if ($acumulado.Count -gt 0 -and ($acumulado.Count % 300) -lt $devueltos) {
+            Write-Host "       ...$($acumulado.Count) leidas" -ForegroundColor DarkGray
+        }
+
+        $hayMas = ($estado -eq 'MORE')
+        if (-not $hayMas -and $total -and $posicion -lt $total) { $hayMas = $true }
+    } while ($hayMas -and $posicion -lt $TopeEventos)
+
+    if ($posicion -ge $TopeEventos) {
+        Write-Host "       Tope de $TopeEventos alcanzado: puede faltar historico." -ForegroundColor Yellow
+    }
+    return ,$acumulado
+}
+
+try {
+    $marcas = Read-Marcas -ConFiltro $true
     Write-Host "       $($marcas.Count) marcacion(es) leidas." -ForegroundColor Green
 } catch {
     $errorMarcas = $_.Exception.Message
@@ -340,31 +379,50 @@ if ($marcas.Count -eq 0 -and $errorMarcas) {
     Write-Host ''
     Write-Host '       Reintentando sin filtro de tipo de evento...' -ForegroundColor Cyan
     try {
-        $cond = @{
-            searchID             = 'lucebien-diag2'
-            searchResultPosition = 0
-            maxResults           = 50
-            startTime            = $desde.ToString($fmt)
-            endTime              = $hasta.ToString($fmt)
-        }
-        $cuerpo = @{ AcsEventCond = $cond } | ConvertTo-Json -Depth 5 -Compress
-        $texto = Invoke-Isapi -Ruta '/ISAPI/AccessControl/AcsEvent?format=json' -Cuerpo $cuerpo -Metodo 'POST'
-        $r = ConvertFrom-Isapi -Texto $texto -Etiqueta 'AcsEvent-sin-filtro'
-
-        foreach ($e in $r.Datos.AcsEvent.InfoList) {
-            if ($null -eq $e) { continue }
-            $marcas += [pscustomobject]@{
-                fecha_hora  = "$($e.time)"
-                employee_no = "$($e.employeeNoString)"
-                nombre      = "$($e.name)"
-                serial      = "$($e.serialNo)"
-            }
-        }
+        $marcas = Read-Marcas -ConFiltro $false
         Write-Host "       $($marcas.Count) evento(s) leidos sin filtro." -ForegroundColor Green
     } catch {
         Write-Host '       Tampoco funciono sin filtro.' -ForegroundColor Red
         Mostrar-Error $_.Exception.Message
     }
+}
+
+# ── Resumen por persona y por dia ─────────────────────────────────────────
+# Lo que de verdad hace falta saber: quien marca, y si marca la salida.
+if ($marcas.Count -gt 0) {
+    $conFecha = foreach ($x in $marcas) {
+        $d = $null
+        if ([datetime]::TryParse($x.fecha_hora, [ref] $d)) {
+            [pscustomobject]@{ nombre = $x.nombre; cod = $x.employee_no; dia = $d.ToString('yyyy-MM-dd'); dt = $d }
+        }
+    }
+
+    $porPersona = $conFecha | Group-Object cod | ForEach-Object {
+        $dias = @($_.Group | Group-Object dia)
+        $sinSalida = @($dias | Where-Object { $_.Count -eq 1 }).Count
+        [pscustomobject]@{
+            cod          = $_.Name
+            nombre       = $_.Group[0].nombre
+            marcas       = $_.Count
+            dias         = $dias.Count
+            dias_1_marca = $sinSalida
+        }
+    } | Sort-Object nombre
+
+    Write-Host ''
+    Write-Host '       Resumen por persona:' -ForegroundColor Cyan
+    $porPersona | Format-Table -AutoSize | Out-String | Write-Host
+
+    $rutaResumen = Join-Path $PSScriptRoot 'huellero-resumen.csv'
+    $porPersona | Export-Csv -Path $rutaResumen -NoTypeInformation -Encoding UTF8
+    Write-Host '       Resumen exportado a: huellero-resumen.csv' -ForegroundColor Green
+
+    $totalDias = @($conFecha | Group-Object cod, dia).Count
+    $totalUna  = @($conFecha | Group-Object cod, dia | Where-Object { $_.Count -eq 1 }).Count
+    Write-Host ''
+    Write-Host ("       Jornadas (persona-dia): {0}" -f $totalDias)
+    Write-Host ("       Con una sola marca:     {0}" -f $totalUna)
+    Write-Host '       (el primer y ultimo dia del rango salen incompletos por el corte de hora)' -ForegroundColor DarkGray
 }
 
 if ($marcas.Count -gt 0) {

@@ -290,43 +290,41 @@ en curso se registra sin problema. Y trae un efecto lateral bueno: un día que q
 entra en la liquidación (`0073_sueldos_rpc.sql:180`) y `sueldo_entrada` corta nombrando la fecha,
 para que alguien la mire.
 
-### El problema real: cuatro de cada diez días no tienen marca de salida
+### Los días sin marca de salida
 
-Esto no es una hipótesis. En los datos reales del 15-ago-2026, sobre 17 jornadas completas de 7
-personas, **7 quedaron con una sola marca**: la persona registró su llegada y se fue sin volver a
-marcar.
+> ⚠️ **La primera medición de esto fue inválida y está retirada.** El 15-ago-2026 se reportó que
+> el 41% de las jornadas no tenía marca de salida, con una tabla por persona. Ese número salió de
+> una lectura incompleta: el script de diagnóstico pedía 100 registros por página, el equipo
+> devolvía 30, y el script avanzaba 100 igual — **se perdían 70 de cada 100 marcas**. Las
+> "salidas faltantes" eran en buena parte marcas que nunca se leyeron.
+>
+> El defecto está corregido (`Read-Marcas` avanza por la cantidad devuelta y verifica contra
+> `totalMatches`), pero **la medición hay que rehacerla** sobre el histórico completo antes de
+> sacar cualquier conclusión sobre hábitos de marcación. Queda como recordatorio de que un dato
+> incompleto se parece mucho a un dato que dice algo.
 
-| Persona | Identificador | Días con marca | Días sin salida |
-|---|---|---|---|
-| ELTHOM | 61 | 3 | **3** |
-| GUILLERMO | 25 | 1 | **1** |
-| JANET | 52 | 3 | 2 |
-| MARYLIN | 50 | 2 | 1 |
-| JAEROCK | 40 | 3 | 0 |
-| SHEYLA | 58 | 2 | 0 |
-| YESSICA | 19 | 3 | 0 |
+El fenómeno sí existe, aunque su magnitud esté por medir: **una jornada puede quedar con una sola
+marca**, y no siempre por olvido. Confirmado por Alexander: GUILLERMO (identificador 25) entra
+solo a abrir las puertas y marca igual, así que su marca única es correcta y no representa una
+jornada. Distinguir "no marcó la salida" de "no vino a trabajar una jornada" no lo puede hacer el
+sistema solo.
 
-ELTHOM entra todos los días alrededor de las 09:35 y **nunca** marca la salida.
+**Consecuencia sobre el sueldo, que sí es cierta pase lo que pase con el número:** un día con
+entrada y sin salida queda en `condicion='sin_dato'`, y `sueldo_entrada` corta la liquidación del
+periodo entero nombrando cada fecha sin declarar (`0073_sueldos_rpc.sql:128-145`).
 
-**Consecuencia directa sobre el sueldo:** esos días quedan en `condicion='sin_dato'`, y
-`sueldo_entrada` corta la liquidación del periodo entero nombrando cada fecha sin declarar
-(`0073_sueldos_rpc.sql:128-145`). Con este nivel de marcación, **la liquidación de ELTHOM no se
-podría calcular ningún mes**.
+La alternativa sería peor. Si el sistema inventara una hora de salida estaría inventando plata, y
+si marcara el día como trabajado con la salida en `null`, la liquidación colapsaría ese día a cero
+horas y le comería el día entero a la persona. El corte ruidoso es el comportamiento correcto.
 
-Y la alternativa es peor: si el sistema inventara una hora de salida, o marcara el día como
-trabajado con la salida en `null`, la liquidación colapsaría ese día a cero horas y le comería el
-día entero a la persona. El corte ruidoso es el comportamiento correcto.
+**Lo que hace el diseño:** no inventa nada y hace el problema visible temprano. La pantalla de
+administración lista los días con entrada y sin salida, con nombre y fecha, para que el
+administrador complete la hora a mano **antes** de liquidar, no cuando la liquidación se niegue a
+correr. Completarla deja la fila con `fuente='manual'`, que es lo que corresponde: esa hora la
+puso una persona.
 
-**Lo que hace el diseño:** no inventa nada, y hace el problema visible temprano. La pantalla de
-administración muestra los días con entrada y sin salida como lista de pendientes, con el nombre
-y la fecha, para que el administrador complete la hora a mano **antes** de liquidar, no cuando la
-liquidación se niegue a correr. Completarla a mano deja la fila con `fuente='manual'`, que es
-exactamente lo que corresponde: esa hora la puso una persona.
-
-**Lo que el diseño no puede resolver, y es lo que de verdad importa:** que la gente marque al
-salir. Es un cambio de hábito, no de software. Conviene arrancar con el huellero informando esto
-al dueño, porque si nadie marca la salida el sistema no automatiza nada — solo cambia dónde se
-carga el dato a mano.
+Y para los casos como el de GUILLERMO, la misma pantalla permite marcar el identificador como
+ignorado, de modo que sus marcas no generen jornadas que nadie va a completar nunca.
 
 ### La transición que sí hay que hacer
 
@@ -366,11 +364,22 @@ su clave `(empleado, fecha, turno)` intacta —los reportes la siguen usando— 
 escribe una sola fila por día y deja que el colapso de la lectura haga lo suyo. Con dos marcas
 funciona, con cuatro también, y no hay ningún parámetro que ajustar.
 
-**Comprobado contra las 30 marcaciones reales del 15-ago-2026.** De los diez días con entrada y
-salida registradas, el corte de las 13:00 habría roto **ocho**: gente que entra a las 08:00 y sale
-a las 14:00 deja una marca de cada lado del corte, y los dos turnos quedan sin salida. Ocho
-jornadas completas liquidadas en cero horas. Los dos días que se habrían salvado son de personas
-de turno tarde, cuyas dos marcas caen del mismo lado por casualidad.
+**Comprobado contra marcaciones reales del 15-ago-2026.** De los diez días con entrada y salida
+registradas en esa muestra, el corte de las 13:00 habría roto **ocho**: quien entra a las 08:00 y
+sale a las 14:00 deja una marca de cada lado del corte, y los dos turnos quedan sin salida. Ocho
+jornadas completas liquidadas en cero horas. Los dos días que se salvaban eran de personas de
+turno tarde, cuyas dos marcas caen del mismo lado por casualidad.
+
+La muestra era incompleta por un defecto de paginación del script de diagnóstico, pero eso no
+debilita la conclusión: **la partición por turno rompe cada vez que las dos marcas del día caen a
+distinto lado del corte**, y eso pasa con todo el turno de mañana. Más datos solo agregan más
+casos rotos.
+
+Turnos observados, que tampoco coinciden con lo que asume el comentario de
+`0073_sueldos_rpc.sql:159` (09:00–13:00 más 13:00–20:00 para todos): turno de mañana ~08:00–14:00,
+turno de tarde ~14:00–20:00, y jornada larga ~08:00–19:00. Importa para `sueldo_acuerdo_turnos`:
+si a alguien de turno mañana se le carga un horario contratado que empieza a las 09:00, la
+tardanza sale mal.
 
 ### Las dos salvaguardas del sueldo
 
