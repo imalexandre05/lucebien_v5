@@ -11,6 +11,8 @@ export type Asistencia = {
   horaSalida: string | null;
   minutosTardanza: number;
   fuente: string;
+  /** 'sin_dato' | 'trabajado' | 'falta'. Decide si el día entra en la liquidación. */
+  condicion: string;
   obs: string | null;
 };
 
@@ -23,6 +25,7 @@ type Row = {
   hora_salida: string | null;
   minutos_tardanza: number | null;
   fuente: string;
+  condicion: string | null;
   obs: string | null;
 };
 
@@ -48,6 +51,7 @@ export async function listarAsistencias(): Promise<Asistencia[]> {
     horaSalida: r.hora_salida,
     minutosTardanza: Number(r.minutos_tardanza ?? 0),
     fuente: r.fuente,
+    condicion: r.condicion ?? 'sin_dato',
     obs: r.obs,
   }));
 }
@@ -62,6 +66,13 @@ export async function crearAsistencia(p: {
   obs: string;
 }): Promise<void> {
   const sb = getServerClient();
+
+  // OJO: esto NO declara la condición del día, y por lo tanto no lo hace liquidable. Para eso
+  // está `declararDia()` más abajo, que además valida y no pisa `fuente`.
+  //
+  // No se agrega `condicion` acá a propósito: es un `upsert`, así que escribiría la columna en
+  // filas que ya existen y podría revertir una falta declarada por una persona sin que quien
+  // usa el formulario se entere. Registrar y declarar son dos actos distintos.
   const { error } = await sb.from('asistencias').upsert(
     {
       empleado_id: p.empleadoId,

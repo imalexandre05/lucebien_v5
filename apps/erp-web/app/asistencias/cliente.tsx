@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Trash2, Filter } from 'lucide-react';
+import Link from 'next/link';
+import { Plus, Trash2, Filter, Fingerprint } from 'lucide-react';
 import { TURNO_LABEL } from '@scilb/core';
 import { accionCrearAsistencia, accionEliminarAsistencia } from './actions';
 import type { Asistencia } from '../../lib/asistencias-repo';
@@ -18,6 +19,20 @@ import { hoyPeru } from '../../lib/fechas';
 type Emp = { id: string; nombre: string };
 
 const FUENTE_TONE: Record<string, Tone> = { manual: 'gray', reporte: 'navy', huellero: 'green' };
+
+// La condición decide si el día ENTRA en la liquidación: `sueldo_entrada` filtra los 'sin_dato'
+// (0073_sueldos_rpc.sql:180). Un día a medias no es un detalle cosmético — bloquea el cálculo
+// del mes entero hasta que alguien lo complete.
+const CONDICION_TONE: Record<string, Tone> = {
+  trabajado: 'green',
+  sin_dato: 'amber',
+  falta: 'red',
+};
+const CONDICION_LABEL: Record<string, string> = {
+  trabajado: 'Completo',
+  sin_dato: 'A medias',
+  falta: 'Falta',
+};
 const TURNOS = ['M', 'T', 'C'];
 const OPC_TURNO: Opcion[] = TURNOS.map((t) => ({ value: t, label: TURNO_LABEL[t as 'M' | 'T' | 'C'] }));
 const OPC_FILTRO_TURNO: Opcion[] = [{ value: '', label: 'Todos los turnos' }, ...OPC_TURNO];
@@ -62,12 +77,17 @@ export function AsistenciasCliente({
     });
   }, [asistencias, q, fFecha, fTurno, fFuente]);
 
+  // `minutosTardanza` es una columna HEREDADA y ya no se muestra. La liquidación no la lee:
+  // calcula la tardanza comparando la hora de entrada contra el horario contratado
+  // (sueldos.ts:572-577). Y el huellero la deja siempre en 0, así que la pantalla mostraba
+  // "0 min de tardanza" al lado de una entrada de las 09:05. Es preferible no decir nada a
+  // decir algo falso.
   const resumen = useMemo(
     () => ({
       total: filtradas.length,
-      aTiempo: filtradas.filter((a) => a.minutosTardanza <= 0).length,
-      conTardanza: filtradas.filter((a) => a.minutosTardanza > 0).length,
-      minutos: filtradas.reduce((s, a) => s + a.minutosTardanza, 0),
+      declarados: filtradas.filter((a) => a.condicion === 'trabajado').length,
+      aMedias: filtradas.filter((a) => a.condicion === 'sin_dato').length,
+      faltas: filtradas.filter((a) => a.condicion === 'falta').length,
     }),
     [filtradas],
   );
@@ -112,9 +132,9 @@ export function AsistenciasCliente({
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatBox index={0} label="Registros" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="A tiempo" valor={resumen.aTiempo} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={2} label="Con tardanza" valor={resumen.conTardanza} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox index={3} label="Min. tardanza" valor={resumen.minutos} tone="border-line bg-white text-muted" />
+        <StatBox index={1} label="Días completos" valor={resumen.declarados} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
+        <StatBox index={2} label="A medias" valor={resumen.aMedias} tone="border-amber-200 bg-amber-50 text-amber-700" />
+        <StatBox index={3} label="Faltas" valor={resumen.faltas} tone="border-line bg-white text-muted" />
       </div>
 
       {/* Filtros + acción */}
@@ -138,14 +158,23 @@ export function AsistenciasCliente({
             <option value="huellero">Huellero</option>
           </select>
           {esAdmin && (
-            <button
-              type="button"
-              onClick={() => setAbierto((v) => !v)}
-              className={cn(buttonVariants({ variant: abierto ? 'outline' : 'primary' }), 'ml-auto')}
-            >
-              <Plus className="h-4 w-4" strokeWidth={2} />
-              {abierto ? 'Cerrar' : 'Registrar asistencia'}
-            </button>
+            <div className="ml-auto flex items-center gap-2">
+              <Link
+                href="/asistencias/huellero"
+                className={cn(buttonVariants({ variant: 'outline' }))}
+              >
+                <Fingerprint className="h-4 w-4" strokeWidth={2} />
+                Huellero
+              </Link>
+              <button
+                type="button"
+                onClick={() => setAbierto((v) => !v)}
+                className={cn(buttonVariants({ variant: abierto ? 'outline' : 'primary' }))}
+              >
+                <Plus className="h-4 w-4" strokeWidth={2} />
+                {abierto ? 'Cerrar' : 'Registrar asistencia'}
+              </button>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -215,7 +244,7 @@ export function AsistenciasCliente({
                 <TH>Turno</TH>
                 <TH>Entrada</TH>
                 <TH>Salida</TH>
-                <TH className="text-right">Tardanza</TH>
+                <TH>Estado</TH>
                 <TH>Fuente</TH>
                 {esAdmin && <TH className="pr-5" />}
               </TR>
@@ -233,19 +262,10 @@ export function AsistenciasCliente({
                   </TD>
                   <TD className="font-mono text-xs">{a.horaEntrada ?? '—'}</TD>
                   <TD className="font-mono text-xs">{a.horaSalida ?? '—'}</TD>
-                  <TD className="text-right">
-                    {a.minutosTardanza > 0 ? (
-                      <span
-                        className={cn(
-                          'rounded-full px-2 py-0.5 font-mono text-xs font-medium tabular-nums',
-                          a.minutosTardanza > 15 ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700',
-                        )}
-                      >
-                        {a.minutosTardanza} min
-                      </span>
-                    ) : (
-                      <span className="text-muted">—</span>
-                    )}
+                  <TD>
+                    <Badge tone={CONDICION_TONE[a.condicion] ?? 'gray'}>
+                      {CONDICION_LABEL[a.condicion] ?? a.condicion}
+                    </Badge>
                   </TD>
                   <TD>
                     <Badge tone={FUENTE_TONE[a.fuente] ?? 'gray'}>{a.fuente}</Badge>
