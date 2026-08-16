@@ -234,6 +234,16 @@ marca**, no contra el que está activo hoy. La pantalla de administración avisa
 identificador con más de un nombre en el histórico, para que el administrador parta el mapeo en
 el punto correcto.
 
+**El día exacto del cambio necesita una protección más**, porque la vigencia es por fecha y la
+reasignación ocurrió a mitad de día: las dos marcas del 28 de enero caen en la vigencia de JAZMIN
+y el colapso le daría una jornada de 08:45 a 20:46 que no trabajó.
+
+La delata el nombre que el equipo guardó en cada evento. **Cuando las marcas de un mismo día
+traen dos nombres distintos, la derivación no escribe nada** y el día queda para que lo resuelva
+una persona, que es la única que sabe quién trabajó cuánto. Es un día por reasignación, no un
+caso frecuente. Verificado contra la base: con las dos marcas del 28 de enero, la función no crea
+ninguna fila.
+
 El equipo ayuda sin saberlo: cada evento guarda el nombre que la persona tenía registrada en ese
 momento, así que el histórico conserva de quién era cada marca aunque el número se haya
 reasignado después.
@@ -647,6 +657,24 @@ parámetros; no llama a `new Date()`. Casos cubiertos:
 datos del huellero y comprobar que las horas pagadas coinciden con las horas trabajadas. El
 defecto de la partición por turno pasaba todos los tests unitarios de derivación y solo aparecía
 al liquidar.
+
+### Verificado contra la base real (15-ago-2026)
+
+La migración 0075 se ejecutó dentro de una transacción con `rollback` sobre la base de
+producción, sin dejar rastro, y estos siete casos dieron el resultado esperado:
+
+| Caso | Resultado |
+|---|---|
+| Dos marcas, 08:00 y 14:00 | Una fila `trabajado`, 08:00–14:00, fuente `huellero` |
+| Una sola marca a las 09:35 | Entrada cargada, salida `null`, condición `sin_dato` — no viola `asistencias_trabajado_chk` |
+| Día declarado `falta` con marcas | La fila queda **intacta**: sin horas, fuente `manual`, condición `falta` |
+| Fila de reporte sin horas | Horas rellenadas, condición pasa a `trabajado`, `fuente` sigue siendo `reporte` |
+| Horas ya cargadas a mano (09:00–18:00) con marcas 07:00 y 22:00 | **No se pisan**: quedan 09:00–18:00, fuente `manual` |
+| Día de reasignación (dos nombres) | No se crea ninguna fila |
+| Vigencia del mapeo en cuatro fechas | 27 y 28 de enero a JAZMIN, 29 de enero y 4 de abril a NICOL |
+
+El esquema completo compila, incluida la restricción de exclusión que impide dos mapeos
+solapados para el mismo identificador (`btree_gist` ya está instalada en la base).
 
 **RPC en SQL** verificada contra la base de desarrollo con un lote de marcas de prueba,
 comprobando en particular que una fila manual previa sobrevive intacta y que el reenvío del mismo
