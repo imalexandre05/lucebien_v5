@@ -50,6 +50,9 @@ const NAV: { section: string; items: Item[] }[] = [
       // un contrato pacta el sueldo de una persona, así que quien puede verlo no es
       // necesariamente quien registra un pago. La pantalla además se cierra sola a admin/dueño.
       { label: 'Contratos', href: '/sueldos/acuerdos', icon: FileSignature, modulo: 'sueldos' },
+      // Declarar la condición de cada día del periodo. Módulo 'sueldos' y no 'asistencias': la
+      // pantalla de /asistencias consulta registros sueltos; ésta declara lo que se va a pagar.
+      { label: 'Declarar asistencia', href: '/sueldos/asistencia', icon: CalendarCheck, modulo: 'sueldos' },
       { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle, modulo: 'incidencias' },
       { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck, modulo: 'asistencias' },
       { label: 'Empleados', href: '/empleados', icon: Users, modulo: 'empleados' },
