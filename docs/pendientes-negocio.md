@@ -412,6 +412,7 @@ por las que rotó**, no las de la tienda.
 | Redondeo | Cada línea del desglose a 2 decimales; los totales suman líneas ya redondeadas | Así el desglose que se le enseña al colaborador suma exactamente el total. `valorPorHora` es la única cifra sin redondear: llevarla a 3,64 movería el total unos S/0,06 |
 | Comparación de meta semanal | `ventas > meta`, estricto | Es lo que dice RN-12. Empatar la meta no la cumple |
 | Justificaciones | Por día (`tardanzaJustificada` en el registro), no por contador | El Excel sólo guarda el número total. Por día es lo que pide PEND-06 y deja rastro de qué día y por qué |
+| Hueco entre turnos del mismo día, al **pactar** el contrato | La pantalla **avisa**, no bloquea (15-ago-2026) | Un horario `09:00–13:00` + `15:00–20:00` es insertable: la 0072 impide que dos turnos se pisen, no que dejen hueco. Y la liquidación paga de la primera entrada a la última salida, así que ese hueco se paga. Rechazarlo sería inventar una regla que nadie decidió; callarlo sería que alguien pacte un horario sin saber qué va a pagar. **Distinto del hueco del almuerzo, que ya está resuelto** — este entra por el contrato, no por las marcas, así que la respuesta del dueño sobre el huellero no lo cubre |
 
 **Huecos que abrieron las respuestas del dueño del 13-ago-2026** (`docs/respuestas-dueno-2.md`):
 

@@ -677,11 +677,22 @@ Cada paso deja el sistema en un estado usable. Ninguno depende de la API del otr
    - **Los overrides se validan con `resolverParametros()` antes de escribir.** La base también
      los rechaza, pero una clave en snake_case guardada con éxito rompería toda liquidación futura
      de esa persona, y el mensaje de constraint no explica nada.
-5. **Pantalla del acuerdo**: pactar sueldo, horario y overrides. Sin esto no hay nada que liquidar
-   (B-01). ← **acá va lo siguiente**
+5. ✅ **Pantalla del acuerdo** (`/sueldos/acuerdos`): pactar sueldo, periodo, modalidad, escala,
+   horario semanal y overrides. Resuelve **B-01**. **Hecha el 15-ago-2026.** Lo que quedó decidido
+   ahí:
+   - **La vista previa usa las funciones del core, no una cuenta propia.** Las horas del periodo
+     salen de `resumirHorario()` + `diasDelPeriodo()`, las mismas que va a usar la liquidación. Una
+     cuenta paralela se separaría de la real sin que nadie lo note, y lo notaría el colaborador.
+   - **El hueco entre turnos del mismo día avisa, no bloquea.** Ver el porqué en
+     `docs/pendientes-negocio.md`. Rechazarlo sería inventar una regla de negocio.
+   - **Sólo admin/dueño, tres puertas:** la pantalla, la Server Action y las policies. La RLS deja
+     que cada persona lea su propio contrato, pero qué mostrarle es una decisión sin tomar, así que
+     la pantalla no la adivina.
+   - **Módulo de permisos propio, `'sueldos'`**, no dentro de `'pagos'`: quien puede ver un
+     contrato no es necesariamente quien registra un pago.
 6. **Pantalla de asistencia**: declarar la condición de cada día. Sin esto, B-02. Necesita
    extender `asistencias-repo.ts`, que hoy no conoce `condicion` ni las justificaciones: su
-   `crearAsistencia()` no puede declarar una falta.
+   `crearAsistencia()` no puede declarar una falta. ← **acá va lo siguiente**
 7. **Pantalla de liquidación**: preview en vivo con el core, cerrar, reimprimir.
 8. **Carga manual de ventas y movimientos.**
 9. **Recién después**, el colector de ventas cuando exista el contrato de API.
