@@ -100,11 +100,33 @@ revisar "regla3-rls" "Regla 3 — sin políticas RLS abiertas sin justificar" \
 # Con RLS activa y sólo `select`, las escrituras fallan con 42501 y los borrados quitan cero
 # filas — EN SILENCIO: la pantalla dice que guardó y no guardó nada. Le pasó a `empleado_tiendas`
 # durante meses en producción, hasta la 0067.
+#
+# DOS FORMAS DE ESCRIBIR LA MISMA POLICY. La mayoría de las migraciones la escribe literal
+# (`create policy x on tabla for all ...`). La 0075 la crea en un bucle con `execute format(...)`
+# sobre un `array[...]` de tablas, y ahí el nombre de la tabla nunca aparece pegado a
+# `create policy`. Buscar sólo el texto literal marcaba esas cuatro tablas como desprotegidas
+# teniendo la policy puesta.
+#
+# Cuatro rojos permanentes son peores que ninguna regla: enseñan a ignorarla, y ésta existe
+# porque `empleado_tiendas` estuvo meses fallando en silencio en producción.
+#
+# Se acepta la forma dinámica sólo si el MISMO archivo nombra la tabla y crea una policy dinámica
+# de escritura (`create policy %I ... for all|insert|update|delete`). No alcanza con que el archivo
+# tenga un `format` cualquiera.
+tiene_policy_escritura() {
+  local tabla="$1"
+  grep -rliE "create policy +[a-z_]+ +on +${tabla} +for +(all|insert|update|delete)" \
+    packages/db/migrations --include="*.sql" >/dev/null 2>&1 && return 0
+  for archivo in $(grep -rl "'${tabla}'" packages/db/migrations --include="*.sql" 2>/dev/null); do
+    grep -qiE "create policy +%I[a-z_]* +on +%I +for +(all|insert|update|delete)" "$archivo" && return 0
+  done
+  return 1
+}
+
 sin_escritura=""
 for tabla in $(grep -rhoiE "alter table +[a-z_]+ +enable row level security" packages/db/migrations \
                  --include="*.sql" 2>/dev/null | awk '{print $3}' | sort -u); do
-  if ! grep -rliE "create policy +[a-z_]+ +on +${tabla} +for +(all|insert|update|delete)" \
-         packages/db/migrations --include="*.sql" >/dev/null 2>&1; then
+  if ! tiene_policy_escritura "$tabla"; then
     sin_escritura="${sin_escritura}${tabla}:0: tiene RLS activa y ninguna policy de escritura"$'\n'
   fi
 done
