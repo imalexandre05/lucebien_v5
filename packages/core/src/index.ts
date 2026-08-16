@@ -22,3 +22,4 @@ export * from './valores360';
 export * from './competencias';
 export * from './pagos';
 export * from './sueldos';
+export * from './huellero';
