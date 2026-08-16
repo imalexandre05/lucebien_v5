@@ -113,7 +113,7 @@ function Invoke-Isapi {
     $peticion = [System.Net.HttpWebRequest]::Create($url)
     $peticion.Method = $Metodo
     $peticion.Credentials = $cache
-    $peticion.Timeout = 30000
+    $peticion.Timeout = 60000
     $peticion.UserAgent = 'LuceBien-Diagnostico/1.0'
 
     if ($Cuerpo) {
@@ -127,7 +127,16 @@ function Invoke-Isapi {
 
     try {
         $respuesta = $peticion.GetResponse()
-        $lector = New-Object System.IO.StreamReader($respuesta.GetResponseStream(), [System.Text.Encoding]::UTF8)
+
+        # El equipo no siempre declara UTF-8. Forzarlo convierte "CESAR" en
+        # "CÃSAR" cuando en realidad mandó Latin-1. Se respeta lo que declare y
+        # se cae a UTF-8 solo si no dice nada.
+        $codificacion = [System.Text.Encoding]::UTF8
+        if ($respuesta.CharacterSet) {
+            try { $codificacion = [System.Text.Encoding]::GetEncoding($respuesta.CharacterSet) } catch { }
+        }
+
+        $lector = New-Object System.IO.StreamReader($respuesta.GetResponseStream(), $codificacion)
         $texto = $lector.ReadToEnd()
         $lector.Close()
         $respuesta.Close()
@@ -295,7 +304,9 @@ try {
 # ═══════════════════════════════════════════════════════════════════════════
 Write-Host ' [3/3] Leyendo marcaciones...' -ForegroundColor Cyan
 
-$desde = $fechaDesde
+# OJO: no reasignar a $desde. El parametro se llama [string] $Desde y PowerShell
+# no distingue mayusculas en nombres de variable: asignarle un DateTime lo
+# convierte de vuelta a texto, y despues .ToString($fmt) revienta.
 $fmt = 'yyyy-MM-ddTHH:mm:ss-05:00'   # hora Peru, offset explicito
 
 $marcas = @()
@@ -306,8 +317,13 @@ $errorMarcas = $null
 # 100. Hay que avanzar por la cantidad REALMENTE devuelta, no por la pedida:
 # avanzar de 100 en 100 cuando devuelve 30 saltea 70 registros por pagina.
 # Ese fue el bug que hizo leer 30 marcas cuando habia muchas mas.
-function Read-Marcas {
-    param([bool] $ConFiltro = $true)
+function Read-Tramo {
+    param(
+        [datetime] $Inicio,
+        [datetime] $Fin,
+        [bool] $ConFiltro = $true,
+        [string] $Etiqueta = 'tramo'
+    )
 
     $acumulado = @()
     $posicion = 0
@@ -315,11 +331,11 @@ function Read-Marcas {
 
     do {
         $cond = @{
-            searchID             = 'lucebien-diag'
+            searchID             = "lb-$Etiqueta"
             searchResultPosition = $posicion
             maxResults           = 30
-            startTime            = $desde.ToString($fmt)
-            endTime              = $hasta.ToString($fmt)
+            startTime            = $Inicio.ToString($fmt)
+            endTime              = $Fin.ToString($fmt)
         }
         if ($ConFiltro) { $cond.major = 5; $cond.minor = 38 }
 
@@ -331,10 +347,7 @@ function Read-Marcas {
         $lista  = @($bloque.InfoList | Where-Object { $null -ne $_ })
         $estado = "$($bloque.responseStatusStrg)"
 
-        if ($null -eq $total -and $bloque.totalMatches) {
-            $total = [int] $bloque.totalMatches
-            Write-Host "       El equipo reporta $total evento(s) en el rango." -ForegroundColor Gray
-        }
+        if ($null -eq $total -and $bloque.totalMatches) { $total = [int] $bloque.totalMatches }
 
         foreach ($e in $lista) {
             $acumulado += [pscustomobject]@{
@@ -348,20 +361,57 @@ function Read-Marcas {
         $devueltos = $lista.Count
         if ($devueltos -eq 0) { break }
 
-        $posicion += $devueltos            # <-- avanzar por lo devuelto, no por lo pedido
-
-        if ($acumulado.Count -gt 0 -and ($acumulado.Count % 300) -lt $devueltos) {
-            Write-Host "       ...$($acumulado.Count) leidas" -ForegroundColor DarkGray
-        }
+        $posicion += $devueltos            # avanzar por lo devuelto, no por lo pedido
 
         $hayMas = ($estado -eq 'MORE')
         if (-not $hayMas -and $total -and $posicion -lt $total) { $hayMas = $true }
     } while ($hayMas -and $posicion -lt $TopeEventos)
 
-    if ($posicion -ge $TopeEventos) {
-        Write-Host "       Tope de $TopeEventos alcanzado: puede faltar historico." -ForegroundColor Yellow
-    }
     return ,$acumulado
+}
+
+# Se trocea por mes: un rango de varios meses en una sola consulta puede pasarse
+# del tiempo de espera o del limite de busqueda del equipo. Ademas asi se ve el
+# avance y, si un mes falla, no se pierden los demas.
+function Read-Marcas {
+    param([bool] $ConFiltro = $true)
+
+    $todo = @()
+    $cursor = $fechaDesde
+    $i = 0
+
+    while ($cursor -lt $hasta) {
+        $finTramo = $cursor.AddMonths(1)
+        if ($finTramo -gt $hasta) { $finTramo = $hasta }
+        $i++
+
+        $tramo = Read-Tramo -Inicio $cursor -Fin $finTramo -ConFiltro $ConFiltro -Etiqueta "t$i"
+        $todo += $tramo
+
+        Write-Host ("       {0}  ->  {1,5} marcas   (acumulado {2})" -f `
+            $cursor.ToString('yyyy-MM'), @($tramo).Count, $todo.Count) -ForegroundColor DarkGray
+
+        $cursor = $finTramo
+    }
+
+    # Los extremos de cada tramo pueden repetir el evento que cae justo en el
+    # limite. El serial identifica al evento, asi que se deduplica por ahi
+    # (es el mismo criterio que usara el colector con su indice unico).
+    $vistos = @{}
+    $unicos = @()
+    foreach ($m in $todo) {
+        $k = "$($m.serial)"
+        if ($k -and $vistos.ContainsKey($k)) { continue }
+        if ($k) { $vistos[$k] = $true }
+        $unicos += $m
+    }
+
+    $repes = $todo.Count - $unicos.Count
+    if ($repes -gt 0) {
+        Write-Host "       $repes evento(s) repetido(s) en los limites de tramo, descartados." -ForegroundColor DarkGray
+    }
+
+    return ,$unicos
 }
 
 try {
@@ -432,8 +482,11 @@ if ($marcas.Count -gt 0) {
     Write-Host ''
     $marcas | Select-Object -Last 10 | Format-Table -AutoSize | Out-String | Write-Host
 } else {
-    Write-Host '       Sin marcaciones en el rango. Probar con mas dias:' -ForegroundColor Yellow
-    Write-Host '         .\Probar-Huellero.ps1 -DiasAtras 30' -ForegroundColor Gray
+    Write-Host '       Sin marcaciones en el rango consultado.' -ForegroundColor Yellow
+    if (-not $Desde) {
+        Write-Host '       Probar con un rango mayor:' -ForegroundColor Yellow
+        Write-Host '         .\Probar-Huellero.ps1 -Desde 2026-01-01' -ForegroundColor Gray
+    }
 }
 
 # ═══════════════════════════════════════════════════════════════════════════
