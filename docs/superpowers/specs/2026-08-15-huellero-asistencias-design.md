@@ -1,7 +1,10 @@
 # SPEC — Integración huellero Hikvision → asistencias
 
 > **Fecha:** 2026-08-15
-> **Estado:** diseño aprobado, sin implementar
+> **Estado:** migración `0075` y `packages/core/src/huellero.ts` escritos y probados.
+> **Sin aplicar a la base todavía.** Falta: el verificador, las pantallas del ERP (§8) y la
+> instalación del colector en la PC del almacén (§11). El colector en sí ya está construido en
+> `tools/colector-huellero/`.
 > **Zona de rigor:** crítica (la tabla `asistencias` alimenta la cadena del sueldo)
 > **Autor del diseño:** sesión de brainstorming con Alexander Flores
 
