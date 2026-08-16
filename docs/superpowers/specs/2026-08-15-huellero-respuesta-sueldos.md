@@ -6,6 +6,11 @@ Fecha: 2026-08-15 · Rama: `feat/sueldos-motor` · Responde a
 Todo lo de acá está verificado contra el código y contra la base, no contra la spec de sueldos
 (no-negociable 7). Cada afirmación lleva archivo y línea.
 
+> **Revisado contra la spec del huellero después del commit `f51e5c0`** («nadie sale a almorzar»,
+> una fila por día en vez de dos por turno). Ese cambio **resuelve la pregunta 2** y **agrava el
+> choque A**. Los dos choques siguen en pie tal como están escritos abajo; lo que cambió está
+> marcado en cada sección.
+
 ---
 
 ## 1. ¿Alguna de las cinco reglas choca con el motor?
@@ -33,6 +38,12 @@ que la restricción rechaza. **La RPC va a fallar con violación de check.**
 Y no es un borde: es el estado normal de la jornada. Entre que una persona marca su entrada y
 marca su salida pasan once horas, y en todo ese rato cada corrida del colector va a intentar
 escribir esa fila. Todos los días, con todas las personas.
+
+> **Con el cambio a una fila por día esto empeora.** Antes el turno M se cerraba a las 13:00 y la
+> ventana rota duraba unas horas. Ahora, si nadie sale a almorzar, **hay una sola marca desde las
+> 09:00 hasta las 20:00**: la fila del día es exactamente la fila que la restricción rechaza,
+> durante toda la jornada laboral. La derivación va a fallar en cada corrida del colector hasta
+> que la persona marque la salida.
 
 **Por qué existe la restricción.** Sin ella, `sueldo_entrada` puede colapsar un día a
 `horaIngreso='09:00', horaSalida=null`. El motor no explota —lo trata como 0 horas y avisa
@@ -108,6 +119,17 @@ tardanza calculada.
   para decidir si perdona la tardanza o la falta; que las mueva una máquina sería regalar plata o
   quitarla sin que nadie firme.
 
+### Un caso que crea la fila-por-día, comprobado: no choca
+
+Con una fila por día, el huellero rellena «la de turno menor» y puede tocar una fila distinta de
+la que el administrador declaró. El caso feo es: el administrador declara `'falta'` en la fila del
+turno T, y el huellero escribe horas y `'trabajado'` en la del turno M del mismo día.
+
+**El motor resuelve bien esa combinación.** `sueldo_entrada` agrupa por fecha y usa
+`bool_or(condicion = 'falta')` (`0073_sueldos_rpc.sql:169`): si cualquier fila del día dice falta,
+el día entero sale con `horaIngreso` en null y se cobra como falta, sin importar las horas de la
+otra fila. La declaración humana gana, que es lo que la regla 2 busca.
+
 ### Una consecuencia operativa que no es un choque, pero conviene decirla
 
 Con carga manual, nadie carga tardanzas de tres minutos. Con marcación real sí van a aparecer, y
@@ -123,6 +145,14 @@ persona se entere por su recibo sería la peor manera.
 ---
 
 ## 2. El hueco del almuerzo
+
+> **Resuelto mientras se escribía esto.** El commit `f51e5c0` trae la confirmación de Alexander de
+> que **nadie sale a almorzar**: se almuerza en el local, y un día completo deja dos marcas, no
+> cuatro. El hueco del almuerzo no existe, así que no hay nada que decidir sobre él.
+>
+> Lo de abajo se conserva porque el argumento sigue haciendo falta para el caso que **sí** queda
+> abierto (el hueco largo del final), y porque explica por qué el `min`/`max` no se toca ni aunque
+> aparezcan cuatro marcas alguna vez.
 
 **Coincidimos en la conclusión: el colapso `min`/`max` se queda como está.** Pero el argumento de
 la spec del huellero no es el más fuerte, y conviene cambiarlo antes de llevárselo al dueño.
@@ -220,7 +250,7 @@ huellero.** Se anota acá para que quede el rastro de por qué apareció.
 | Regla 3 (no tocar justificaciones) | Correcta |
 | Regla 4 (no pisar otra `fuente`) | Correcta, **pero** falta la transición de `condicion` (choque B) |
 | Regla 5 (`'trabajado'` con entrada real) | **Choca con `asistencias_trabajado_chk`** (choque A) |
-| Almuerzo | Coincidimos. Cambiar el argumento; separar el hueco largo para el dueño |
+| Almuerzo | **Resuelto por `f51e5c0`**: nadie sale a almorzar, no hay hueco. Queda abierto sólo el hueco largo por trámite |
 | Numeración | 0068–0074 tomadas. **La libre es 0075.** Usar el script, hay hook que bloquea |
 
 Los choques A y B se arreglan dentro de la spec del huellero. **No hace falta ningún cambio en el
