@@ -32,6 +32,7 @@
 | [superpowers/specs/sueldos/SPEC-sistema-sueldos.md](superpowers/specs/sueldos/SPEC-sistema-sueldos.md) | **Las reglas del sueldo**: modelo, RN-01 a RN-20, el caso de prueba y el registro de cada decisión del dueño (§9). Implementada en `packages/core/src/sueldos.ts` |
 | [superpowers/specs/permisos/SPEC-aislamiento-datos-personas.md](superpowers/specs/permisos/SPEC-aislamiento-datos-personas.md) | **Quién puede ver datos de otras personas**: cierra 3 agujeros vivos del no-negociable 3 y hace que la RLS respete la matriz de permisos que edita el administrador |
 | [superpowers/specs/sueldos/SPEC-esquema-sueldos.md](superpowers/specs/sueldos/SPEC-esquema-sueldos.md) | **Dónde se guardan**: tablas, RPC, RLS y congelado. ✅ Aplicada en la `0072`. Incluye los 3 bloqueantes, los 3 agujeros de aislamiento encontrados en producción y los 10 defectos que abrió el verificador antes de aplicar |
+| [superpowers/specs/2026-08-15-huellero-asistencias-design.md](superpowers/specs/2026-08-15-huellero-asistencias-design.md) | **La hora real de entrada y salida**: colector que lee el huellero Hikvision del almacén por ISAPI y llena `asistencias`. Diseñada, sin implementar. Alimenta la liquidación, así que trae las dos salvaguardas que protegen lo que declaró el administrador |
 
 ## Arquitectura
 

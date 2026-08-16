@@ -464,4 +464,24 @@ pisar **por contrato**, como pidió Alexander.
 
 ---
 
+## Huellero Hikvision (spec del 15-ago-2026, sin implementar)
+
+- **`huellero_corte_turno` = `13:00`** — hora que separa el turno M del T al derivar una asistencia
+  desde las marcas de huella. Coincide con la frontera real del horario contratado
+  (09:00–13:00 + 13:00–20:00), así que no es un número inventado, pero nadie lo confirmó como
+  regla. Una marca a las 13:00 exactas cuenta como turno T. Editable desde `/configuracion`.
+- **El hueco del almuerzo, ahora sí va a aparecer.** El pendiente del turno partido ya estaba
+  anotado más arriba como hipotético; con el huellero deja de serlo. Si una persona marca al salir
+  a almorzar y al volver, el colapso `min(entrada)`/`max(salida)` paga el hueco. Hoy eso parece
+  correcto —el almuerzo es un beneficio que se paga (S/8, RN-11), no un descuento de horas— pero
+  **confirmarlo con el dueño antes de la primera liquidación con datos del huellero**.
+- **Qué hacer cuando hay marcas en un día declarado como falta.** La derivación no toca esa fila
+  por diseño, y el caso se muestra en la pantalla de administración para que decida una persona.
+  Falta definir qué se espera que haga: ¿revertir la falta, ignorar las marcas, pedir explicación?
+- **Los 54 identificadores del equipo contra los 18 empleados activos.** Los que no correspondan a
+  nadie se marcan como ignorados. Falta saber de quiénes son: ex-empleados, personal de otra
+  empresa, pruebas. No bloquea, pero conviene saberlo antes de ignorar en masa.
+
+---
+
 _Agregar aquí, por fase, cualquier parámetro nuevo que se sembró con un default sin confirmar._
