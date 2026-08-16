@@ -690,10 +690,21 @@ Cada paso deja el sistema en un estado usable. Ninguno depende de la API del otr
      la pantalla no la adivina.
    - **Módulo de permisos propio, `'sueldos'`**, no dentro de `'pagos'`: quien puede ver un
      contrato no es necesariamente quien registra un pago.
-6. **Pantalla de asistencia**: declarar la condición de cada día. Sin esto, B-02. Necesita
-   extender `asistencias-repo.ts`, que hoy no conoce `condicion` ni las justificaciones: su
-   `crearAsistencia()` no puede declarar una falta. ← **acá va lo siguiente**
-7. **Pantalla de liquidación**: preview en vivo con el core, cerrar, reimprimir.
+6. ✅ **Pantalla de asistencia** (`/sueldos/asistencia`): declarar la condición de cada día del
+   periodo de un contrato. Resuelve **B-02**. **Hecha el 15-ago-2026.** Lo que quedó decidido:
+   - **Trabaja sobre el periodo de un contrato, no sobre registros sueltos.** `/asistencias` sigue
+     existiendo para consultar; ésta muestra los días que faltan declarar, que es lo único que
+     impide liquidar.
+   - **`declararDia()` no usa `upsert`.** Un `upsert` pisa `fuente` en una fila que ya existía
+     —creada por el envío de un reporte, o mañana por el huellero— y borra de dónde salió el dato.
+     Busca primero y actualiza sólo las columnas de la declaración.
+   - **Se declara con `turno = 'C'`** («Día completo», vocabulario que ya existe en `TURNO_LABEL`).
+     Que haya además filas `'M'` o `'T'` del mismo día no rompe nada: el motor agrupa por fecha.
+   - **El botón de declarar varios días es una afirmación del administrador, no una inferencia.**
+     Pide confirmación diciendo cuántos días toca y avisa que las faltas se corrigen después. La
+     auditoría de la 0072 deja el rastro.
+7. **Pantalla de liquidación**: preview en vivo con el core, cerrar, reimprimir. ← **acá va lo
+   siguiente**
 8. **Carga manual de ventas y movimientos.**
 9. **Recién después**, el colector de ventas cuando exista el contrato de API.
 
