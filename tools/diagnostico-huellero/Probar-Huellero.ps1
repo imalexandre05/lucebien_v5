@@ -437,50 +437,86 @@ if ($marcas.Count -eq 0 -and $errorMarcas) {
     }
 }
 
-# ── Resumen por persona y por dia ─────────────────────────────────────────
-# Lo que de verdad hace falta saber: quien marca, y si marca la salida.
-if ($marcas.Count -gt 0) {
-    $conFecha = foreach ($x in $marcas) {
-        $d = $null
-        if ([datetime]::TryParse($x.fecha_hora, [ref] $d)) {
-            [pscustomobject]@{ nombre = $x.nombre; cod = $x.employee_no; dia = $d.ToString('yyyy-MM-dd'); dt = $d }
-        }
-    }
-
-    $porPersona = $conFecha | Group-Object cod | ForEach-Object {
-        $dias = @($_.Group | Group-Object dia)
-        $sinSalida = @($dias | Where-Object { $_.Count -eq 1 }).Count
-        [pscustomobject]@{
-            cod          = $_.Name
-            nombre       = $_.Group[0].nombre
-            marcas       = $_.Count
-            dias         = $dias.Count
-            dias_1_marca = $sinSalida
-        }
-    } | Sort-Object nombre
-
-    Write-Host ''
-    Write-Host '       Resumen por persona:' -ForegroundColor Cyan
-    $porPersona | Format-Table -AutoSize | Out-String | Write-Host
-
-    $rutaResumen = Join-Path $PSScriptRoot 'huellero-resumen.csv'
-    $porPersona | Export-Csv -Path $rutaResumen -NoTypeInformation -Encoding UTF8
-    Write-Host '       Resumen exportado a: huellero-resumen.csv' -ForegroundColor Green
-
-    $totalDias = @($conFecha | Group-Object cod, dia).Count
-    $totalUna  = @($conFecha | Group-Object cod, dia | Where-Object { $_.Count -eq 1 }).Count
-    Write-Host ''
-    Write-Host ("       Jornadas (persona-dia): {0}" -f $totalDias)
-    Write-Host ("       Con una sola marca:     {0}" -f $totalUna)
-    Write-Host '       (el primer y ultimo dia del rango salen incompletos por el corte de hora)' -ForegroundColor DarkGray
-}
-
+# ══════════════════════════════════════════════════════════════════════════
+# El dato crudo se guarda ANTES de analizarlo. Un error en el resumen no puede
+# costar la lectura entera: la primera version fallaba al resumir y se perdian
+# las 3058 marcas que ya estaban leidas.
+# ══════════════════════════════════════════════════════════════════════════
 if ($marcas.Count -gt 0) {
     $rutaMarcas = Join-Path $PSScriptRoot 'huellero-marcas.csv'
     $marcas | Export-Csv -Path $rutaMarcas -NoTypeInformation -Encoding UTF8
-    Write-Host '       Exportadas a: huellero-marcas.csv' -ForegroundColor Green
+    Write-Host "       Guardadas $($marcas.Count) en: huellero-marcas.csv" -ForegroundColor Green
+}
+
+# ── Resumen por persona y jornadas derivadas ──────────────────────────────
+if ($marcas.Count -gt 0) {
+  try {
+    $conFecha = foreach ($x in $marcas) {
+        try   { $d = [datetime]::Parse($x.fecha_hora) }
+        catch { continue }
+        [pscustomobject]@{ nombre = $x.nombre; cod = $x.employee_no; dia = $d.ToString('yyyy-MM-dd'); dt = $d }
+    }
+    $conFecha = @($conFecha)
+
+    # Jornadas: una fila por persona-dia, como las escribira el colector.
+    $jornadas = $conFecha | Group-Object cod, dia | ForEach-Object {
+        $g = $_.Group | Sort-Object dt
+        $ent = $g[0].dt
+        $sal = $g[-1].dt
+        $completa = ($g.Count -ge 2)
+        [pscustomobject]@{
+            cod        = $g[0].cod
+            nombre     = $g[0].nombre
+            dia        = $g[0].dia
+            marcas     = $g.Count
+            entrada    = $ent.ToString('HH:mm')
+            salida     = $(if ($completa) { $sal.ToString('HH:mm') } else { '' })
+            horas      = $(if ($completa) { [math]::Round(($sal - $ent).TotalHours, 2) } else { '' })
+            condicion  = $(if ($completa) { 'trabajado' } else { 'sin_dato' })
+        }
+    } | Sort-Object dia, nombre
+
+    $rutaJornadas = Join-Path $PSScriptRoot 'huellero-jornadas.csv'
+    $jornadas | Export-Csv -Path $rutaJornadas -NoTypeInformation -Encoding UTF8
+    Write-Host "       Derivadas $(@($jornadas).Count) jornadas en: huellero-jornadas.csv" -ForegroundColor Green
+
+    $porPersona = $conFecha | Group-Object cod | ForEach-Object {
+        $dias = @($_.Group | Group-Object dia)
+        [pscustomobject]@{
+            cod          = $_.Group[0].cod
+            nombre       = $_.Group[0].nombre
+            marcas       = $_.Count
+            dias         = $dias.Count
+            dias_1_marca = @($dias | Where-Object { $_.Count -eq 1 }).Count
+            primer_dia   = ($_.Group | Sort-Object dt)[0].dia
+            ultimo_dia   = ($_.Group | Sort-Object dt)[-1].dia
+        }
+    } | Sort-Object nombre
+
+    $rutaResumen = Join-Path $PSScriptRoot 'huellero-resumen.csv'
+    $porPersona | Export-Csv -Path $rutaResumen -NoTypeInformation -Encoding UTF8
+    Write-Host '       Resumen por persona en: huellero-resumen.csv' -ForegroundColor Green
+
     Write-Host ''
-    $marcas | Select-Object -Last 10 | Format-Table -AutoSize | Out-String | Write-Host
+    $porPersona | Format-Table -AutoSize | Out-String | Write-Host
+
+    $totalJ = @($jornadas).Count
+    $totalU = @($jornadas | Where-Object { $_.marcas -eq 1 }).Count
+    Write-Host ("       Jornadas (persona-dia): {0}" -f $totalJ)
+    if ($totalJ -gt 0) {
+        Write-Host ("       Con una sola marca:     {0}  ({1}%)" -f $totalU, [math]::Round(100*$totalU/$totalJ))
+    }
+    Write-Host ("       Personas que marcaron:  {0} de 54 inscritas" -f @($porPersona).Count)
+  } catch {
+    Write-Host '       Fallo el resumen, pero las marcas ya estan guardadas.' -ForegroundColor Yellow
+    Write-Host ("       {0}" -f $_.Exception.Message) -ForegroundColor DarkGray
+  }
+}
+
+if ($marcas.Count -gt 0) {
+    Write-Host ''
+    Write-Host '       Ultimas marcaciones leidas:' -ForegroundColor Gray
+    $marcas | Select-Object -Last 5 | Format-Table -AutoSize | Out-String | Write-Host
 } else {
     Write-Host '       Sin marcaciones en el rango consultado.' -ForegroundColor Yellow
     if (-not $Desde) {
