@@ -1,0 +1,227 @@
+# Respuesta desde la sesión de sueldos al aviso del huellero
+
+Fecha: 2026-08-15 · Rama: `feat/sueldos-motor` · Responde a
+[2026-08-15-huellero-asistencias-design.md](2026-08-15-huellero-asistencias-design.md)
+
+Todo lo de acá está verificado contra el código y contra la base, no contra la spec de sueldos
+(no-negociable 7). Cada afirmación lleva archivo y línea.
+
+---
+
+## 1. ¿Alguna de las cinco reglas choca con el motor?
+
+**Sí: la regla 5 choca de frente, y no en un caso raro sino todos los días.**
+
+### Choque A — `condicion='trabajado'` con salida en null es imposible (bloqueante)
+
+La migración 0073 agregó una restricción que la spec del huellero no contempla:
+
+```sql
+-- packages/db/migrations/0073_sueldos_rpc.sql:26-29
+alter table asistencias add constraint asistencias_trabajado_chk
+  check (condicion <> 'trabajado' or (hora_entrada is not null and hora_salida is not null));
+```
+
+La spec del huellero, en cambio, dice (§ derivación, pasos 3 y 5):
+
+> «Si hay una sola marca, entrada queda con esa hora y salida en `null`.»
+> «`condicion = 'trabajado'` **solo si la marca dio una hora de entrada real**.»
+
+Las dos frases juntas producen `(condicion='trabajado', hora_entrada=09:00, hora_salida=null)`,
+que la restricción rechaza. **La RPC va a fallar con violación de check.**
+
+Y no es un borde: es el estado normal de la jornada. Entre que una persona marca su entrada y
+marca su salida pasan once horas, y en todo ese rato cada corrida del colector va a intentar
+escribir esa fila. Todos los días, con todas las personas.
+
+**Por qué existe la restricción.** Sin ella, `sueldo_entrada` puede colapsar un día a
+`horaIngreso='09:00', horaSalida=null`. El motor no explota —lo trata como 0 horas y avisa
+(`packages/core/src/sueldos.ts:520-527`)— pero esa advertencia se pierde entre otras y a la
+persona se le come el día entero más el almuerzo. La restricción convierte ese error silencioso
+en un error ruidoso en el momento de escribir.
+
+**Arreglo, y es chico:** la fila se escribe con `condicion='sin_dato'` mientras haya una sola
+marca, y recién pasa a `'trabajado'` cuando llegan las dos. La restricción solo se activa cuando
+`condicion='trabajado'`, así que una fila `'sin_dato'` **sí** puede llevar `hora_entrada` cargada
+y `hora_salida` en null. No hay que cambiar nada del esquema: alcanza con mover el paso 5 de la
+spec del huellero.
+
+Efecto lateral bueno: un día que quedó a medias no entra en la liquidación (queda `'sin_dato'`,
+`0073_sueldos_rpc.sql:180`) y `sueldo_entrada` corta nombrando la fecha. Alguien lo mira. Que es
+exactamente lo que la 0072 quiso proteger.
+
+### Choque B — rellenar horas sin tocar `condicion` no desbloquea nada (bloqueante en la práctica)
+
+La regla 4 dice que en filas con `fuente` distinta de `'huellero'` solo se rellenan las horas en
+null. Pero la migración 0030 ya crea filas de asistencia sola, al enviar un reporte:
+
+```sql
+-- packages/db/migrations/0030_reportes_asistencia.sql:20-24
+insert into asistencias (empleado_id, fecha, turno, minutos_tardanza, fuente, obs)
+values (v_enc, v_fecha, v_turno, 0, 'reporte', 'auto: encargado del reporte ' || p_reporte_id)
+```
+
+Esa fila nace **sin horas** y con `condicion` en su default, `'sin_dato'`. Si el huellero le
+rellena las horas pero deja la condición como está, el día sigue siendo invisible para la
+liquidación, porque `sueldo_entrada` filtra:
+
+```sql
+-- packages/db/migrations/0073_sueldos_rpc.sql:180
+and s.condicion <> 'sin_dato'
+```
+
+Resultado: hay horas reales en la fila, y aun así la liquidación se niega a calcularse diciendo
+que falta declarar ese día. En las sedes donde se envían reportes —todas— eso es la mayoría de
+los días.
+
+Esto no lo empeora el huellero: hoy esas filas ya bloquean. Pero el huellero es lo único que va a
+tener el dato para arreglarlo, y no arreglarlo por respetar la regla 4 deja el bloqueo puesto.
+
+**Arreglo:** rellenar horas y, cuando quedan las dos cargadas, pasar `condicion` de `'sin_dato'`
+a `'trabajado'`. Solo esa transición, y nunca sobre `'falta'` (que la regla 2 ya protege).
+`fuente` se puede seguir dejando intacta: al motor no le importa quién cargó, le importa que esté
+declarado.
+
+### Choque C — `minutos_tardanza` en 0 se ve mal en la pantalla vieja (menor)
+
+La regla 1 es correcta para el motor: la liquidación nunca lee esa columna, calcula la tardanza
+contra `sueldo_acuerdo_turnos` con la tolerancia configurada (`sueldos.ts:572-577`). Pero la
+pantalla de asistencia sí la lee y la muestra:
+
+```ts
+// apps/erp-web/lib/asistencias-repo.ts:49
+minutosTardanza: Number(r.minutos_tardanza ?? 0),
+```
+
+Va a mostrar «0 min de tardanza» al lado de una entrada de las 09:05. No afecta ni un sol de la
+liquidación —son dos cálculos distintos y el que paga es el del motor—, pero alguien lo va a
+reportar como bug. Conviene que la pantalla deje de mostrar esa columna, o que muestre la
+tardanza calculada.
+
+### Las reglas 2 y 3 no chocan: están bien y además tienen red
+
+- **Regla 2 (no tocar `'falta'`)** coincide con lo que ya hace el motor: si el día está declarado
+  como falta, `sueldo_entrada` manda `horaIngreso` en null **aunque haya horas cargadas**
+  (`0073_sueldos_rpc.sql:188-190`). O sea que aunque el huellero rellenara una falta por error, la
+  liquidación la seguiría cobrando como falta. Doble protección, y está bien que sea doble.
+- **Regla 3 (no tocar las justificaciones)** es correcta. Son las tres columnas que el motor lee
+  para decidir si perdona la tardanza o la falta; que las mueva una máquina sería regalar plata o
+  quitarla sin que nadie firme.
+
+### Una consecuencia operativa que no es un choque, pero conviene decirla
+
+Con carga manual, nadie carga tardanzas de tres minutos. Con marcación real sí van a aparecer, y
+la cuenta de tardanzas del periodo va a subir. El motor las cobra según los parámetros
+configurables (`sueldo_tolerancia_minutos`, `sueldo_tardanzas_libres`,
+`sueldo_penalidad_tardanza`), todos editables desde `/configuracion`.
+
+**Antes de la primera liquidación con datos del huellero conviene revisar esos tres números con
+el dueño.** No porque estén mal, sino porque fueron elegidos para un mundo donde la tardanza se
+cargaba a ojo, y van a empezar a aplicarse a un mundo donde se mide al minuto. Que la primera
+persona se entere por su recibo sería la peor manera.
+
+---
+
+## 2. El hueco del almuerzo
+
+**Coincidimos en la conclusión: el colapso `min`/`max` se queda como está.** Pero el argumento de
+la spec del huellero no es el más fuerte, y conviene cambiarlo antes de llevárselo al dueño.
+
+El argumento de la spec es «el almuerzo es un beneficio (S/8, RN-11), no un descuento de horas».
+Es cierto, pero mezcla dos cosas: si el almuerzo se paga como beneficio, y si la hora en que la
+persona almuerza se paga como hora trabajada. Son decisiones distintas.
+
+**El argumento que no necesita inventar ninguna regla:** con el horario real de LuceBien
+(09:00–13:00 + 13:00–20:00) el almuerzo cae **dentro** de las once horas contratadas. Hoy, con
+carga manual, esa persona cobra once horas. Si con el huellero se sumaran los tramos en vez de
+tomar `min`/`max`, cobraría diez. **Sumar tramos le bajaría el sueldo a alguien por empezar a
+marcar, sin que nadie haya cambiado ninguna regla.** El `min`/`max` no es una decisión nueva: es
+lo único que conserva el resultado de hoy.
+
+Por no-negociable 5, eso importa: cambiar el colapso sería inventar una regla de negocio; dejarlo
+es no inventar ninguna.
+
+**Lo que sí necesita decisión del dueño es otro caso, y no es el almuerzo.** Es la persona que se
+va dos horas al mediodía por un trámite y vuelve. `min`/`max` le paga esas dos horas. Ese caso hoy
+es invisible —nadie lo carga— y el huellero lo va a volver visible por primera vez. Conviene
+plantearlo así al dueño, separado del almuerzo: *«¿el hueco del mediodía se paga siempre, o solo
+hasta cierta cantidad de minutos?»*.
+
+Y acá la spec del huellero ya hizo lo correcto sin proponérselo: **guarda las marcas crudas en
+`marcas_huellero`**. Eso significa que si el dueño decide dentro de tres meses que el hueco largo
+no se paga, la regla se puede aplicar hacia atrás, porque las cuatro marcas siguen ahí. Si el
+colector solo guardara entrada y salida, esa decisión sería irrecuperable. Vale la pena que la
+spec diga eso explícitamente: es una razón de peso para la tabla cruda, más allá de la
+auditoría.
+
+---
+
+## 3. Numeración de migraciones
+
+**La información del aviso está equivocada en las dos puntas.** 0068 a 0071 **no** están libres, y
+0074 **ya está tomada**. Todas por `feat/mi-talla-db`:
+
+| Número | Archivo | Rama |
+|---|---|---|
+| 0068 | `0068_mi_talla_esquema.sql` | `feat/mi-talla-db` |
+| 0069 | `0069_mi_talla_storage.sql` | `feat/mi-talla-db` |
+| 0070 | `0070_mi_talla_endurecimiento.sql` | `feat/mi-talla-db` |
+| 0071 | `0071_mi_talla_flag_vision.sql` | `feat/mi-talla-db` |
+| 0072 | `0072_sueldos_esquema.sql` | `feat/sueldos-motor` (aplicada) |
+| 0073 | `0073_sueldos_rpc.sql` | `feat/sueldos-motor` (aplicada) |
+| 0074 | `0074_catalogo_publico.sql` | `feat/mi-talla-db` |
+
+**La próxima libre es 0075.** Del lado de sueldos no hay nada reservado más adelante; si se
+necesita una (ver §4) se reserva con el script y se avisa acá.
+
+El error es entendible: `feat/mi-talla-db` no está en la copia de trabajo de esta rama, así que
+`ls packages/db/migrations/` no las muestra. Por eso el número **nunca se elige mirando la
+carpeta**:
+
+```bash
+bash tools/reservar-migracion.sh huellero_marcas
+```
+
+Ese script mira todas las ramas, locales y remotas, no solo la copia de trabajo. Y desde hace unos
+días hay un hook `PreToolUse` (`.claude/hooks/migracion-reservada.sh`) que **deniega la escritura**
+de una migración cuyo número esté tomado por otra rama o que no haya sido reservada y commiteada.
+O sea: si se intenta escribir `0074_huellero_*.sql`, Claude no va a poder, y el mensaje va a decir
+qué archivo y qué rama la tienen.
+
+---
+
+## 4. Un hueco del lado del motor que el huellero destapa (nuestro, no de ustedes)
+
+No lo preguntaron, pero aparece por lo que trae el huellero y corresponde decirlo.
+
+`sueldo_liquidacion_cerrar` tiene una comprobación de carrera: si entre que se calculó la entrada
+y se cierra la liquidación aparece un adelanto, una venta o un almuerzo, el cierre se niega
+(`0073_sueldos_rpc.sql:50-63`). Esa comprobación **cubre movimientos y ventas, pero no
+asistencias**.
+
+Hoy no importa: las horas las carga una persona, y esa misma persona calcula y cierra. Con el
+colector empujando marcas cada pocos minutos, una marca que llegue entre el cálculo y el cierre
+cambia la realidad pero no cambia el snapshot congelado, y la liquidación se cierra —congelada
+para siempre, por diseño— con las horas viejas. Nadie se entera.
+
+Es exactamente la clase de error que la comprobación de movimientos existe para impedir. Queda
+como trabajo de la sesión de sueldos, en la próxima migración que necesitemos: extender la
+comparación a `entrada->'asistencia'` y `entrada->'horasFueraDeContrato'`. **No requiere nada del
+huellero.** Se anota acá para que quede el rastro de por qué apareció.
+
+---
+
+## Resumen
+
+| Punto | Respuesta |
+|---|---|
+| Regla 1 (`minutos_tardanza` en 0) | Correcta para el motor. Arreglar la pantalla vieja (choque C) |
+| Regla 2 (no tocar `'falta'`) | Correcta, y el motor la refuerza por su cuenta |
+| Regla 3 (no tocar justificaciones) | Correcta |
+| Regla 4 (no pisar otra `fuente`) | Correcta, **pero** falta la transición de `condicion` (choque B) |
+| Regla 5 (`'trabajado'` con entrada real) | **Choca con `asistencias_trabajado_chk`** (choque A) |
+| Almuerzo | Coincidimos. Cambiar el argumento; separar el hueco largo para el dueño |
+| Numeración | 0068–0074 tomadas. **La libre es 0075.** Usar el script, hay hook que bloquea |
+
+Los choques A y B se arreglan dentro de la spec del huellero. **No hace falta ningún cambio en el
+esquema ni en el motor de sueldos**, que era la premisa del aviso y sigue en pie.
