@@ -129,9 +129,22 @@ Supabase. Nada más.
 
 ## 5. Modelo de datos
 
-Una sola migración nueva, **0074** (0068–0071 están libres pero 0072 y 0073 ya existen en la rama
-de sueldos; se toma el siguiente número libre al final para no colisionar). Idempotente, como
-todas.
+Una sola migración nueva, idempotente como todas.
+
+**El número no se elige mirando la carpeta.** Una versión anterior de esta spec decía que 0068 a
+0071 estaban libres y reservaba la 0074: las dos cosas eran falsas. Esos cinco números los tiene
+`feat/mi-talla-db`, que no está en la copia de trabajo de esta rama, así que un `ls` de
+`packages/db/migrations/` no los muestra. **La primera libre es la 0075**, y se confirma al
+implementar con:
+
+```bash
+bash tools/reservar-migracion.sh huellero_marcas
+```
+
+Ese script mira todas las ramas, locales y remotas. Además hay un hook `PreToolUse`
+(`.claude/hooks/migracion-reservada.sh`) que deniega la escritura de una migración cuyo número
+esté tomado por otra rama o que no haya sido reservada: si alguien intenta escribir un número
+ocupado, el hook lo frena y dice qué archivo y qué rama lo tienen.
 
 ### `dispositivos_huellero`
 
@@ -238,8 +251,50 @@ esa persona para reprocesar su histórico.
 3. Si ya existe alguna fila del día para ese empleado, se rellena esa (la de turno menor cuando
    hay varias). Si no existe ninguna, se crea una con `turno = 'M'`.
 4. `minutos_tardanza = 0` siempre — el motor de sueldos no lee esa columna.
-5. `condicion = 'trabajado'` **solo si la marca dio una hora de entrada real**. Sin marcas, la
-   fila no se crea y la condición sigue siendo `'sin_dato'`, que es exactamente lo que es.
+5. `condicion = 'trabajado'` **solo cuando la fila tiene entrada y salida, las dos cargadas**.
+   Con una sola marca la fila se escribe con `condicion = 'sin_dato'` y la hora de entrada puesta.
+
+### Por qué la condición espera a la segunda marca
+
+La migración 0073 agregó una restricción que la primera versión de esta spec no contemplaba
+(`0073_sueldos_rpc.sql:26-29`):
+
+```sql
+alter table asistencias add constraint asistencias_trabajado_chk
+  check (condicion <> 'trabajado' or (hora_entrada is not null and hora_salida is not null));
+```
+
+Escribir `'trabajado'` apenas hay hora de entrada la viola, y no en un caso raro: entre que una
+persona marca su entrada a las 09:00 y marca su salida a las 20:00 pasan once horas, y en todas
+esas corridas el colector intentaría escribir esa fila. **La RPC habría fallado todos los días,
+con todas las personas.**
+
+La restricción existe por una buena razón: sin ella, la liquidación colapsaría el día a
+`horaIngreso='09:00', horaSalida=null`, que `sueldos.ts:520-527` lee como cero horas. La persona
+perdería el día completo y la advertencia se perdería entre otras. La restricción convierte ese
+error silencioso en un error ruidoso en el momento de escribir.
+
+Una fila `'sin_dato'` sí puede llevar hora de entrada con la salida en `null`, así que la jornada
+en curso se registra sin problema. Y trae un efecto lateral bueno: un día que quedó a medias no
+entra en la liquidación (`0073_sueldos_rpc.sql:180`) y `sueldo_entrada` corta nombrando la fecha,
+para que alguien la mire.
+
+### La transición que sí hay que hacer
+
+La regla de no pisar otras fuentes tiene una excepción necesaria, y es una sola: **cuando la fila
+queda con las dos horas cargadas, `condicion` pasa de `'sin_dato'` a `'trabajado'`**.
+
+Sin esa transición el proyecto no sirve para nada en la práctica. La migración 0030 ya crea filas
+de asistencia sola al enviar un reporte (`0030_reportes_asistencia.sql:20-24`), y esas filas nacen
+sin horas y con `condicion` en su default `'sin_dato'`. Si el huellero les rellenara las horas
+pero dejara la condición intacta, el día seguiría siendo invisible para la liquidación, que filtra
+por `condicion <> 'sin_dato'`. Habría horas reales en la fila y la liquidación se negaría a
+calcularse diciendo que falta declarar ese día. En las sedes donde se envían reportes —todas— eso
+sería la mayoría de los días.
+
+La transición es solo esa: `'sin_dato'` → `'trabajado'`, y **nunca** sobre una fila `'falta'`.
+`fuente` se sigue dejando intacta: al motor no le importa quién cargó el dato, le importa que
+esté declarado.
 
 ### Por qué una fila por día y no una por turno
 
@@ -267,7 +322,8 @@ funciona, con cuatro también, y no hay ningún parámetro que ajustar.
 **Primera: no se pisa lo declarado.** Si ya existe fila para `(empleado_id, fecha, turno)` con
 `fuente` distinta de `'huellero'`, la función solo rellena las horas que estén en `null`. Nunca
 sobreescribe una hora cargada, nunca cambia `fuente`, nunca borra. Lo que escribió el
-administrador a mano y lo que dejó el envío de un reporte mandan sobre la máquina.
+administrador a mano y lo que dejó el envío de un reporte mandan sobre la máquina. La única
+excepción es la transición de `condicion` descrita arriba, sin la cual el dato queda invisible.
 
 **Segunda: no se toca una falta.** Si la fila tiene `condicion = 'falta'`, la derivación **no
 hace nada**, ni siquiera rellenar horas vacías. Una falta es una declaración del administrador,
@@ -293,11 +349,28 @@ mediodía. El pendiente que `docs/pendientes-negocio.md` tenía anotado sobre el
 se materializa por esta vía.
 
 Y el almuerzo **se paga**: a los colaboradores de tiempo completo se les agrega S/8, que es un
-ingreso (RN-11), no un descuento de horas. El tiempo de almuerzo cuenta como trabajado. El
-colapso de la liquidación ya hace exactamente eso, así que no hay nada que cambiar en el motor.
+ingreso (RN-11), no un descuento de horas.
 
-Si algún día alguien sí marca al salir y volver —un mandado, una excepción— el colapso `min`/`max`
-sigue dando el día completo, que es la respuesta correcta bajo esta regla.
+**El argumento que de verdad sostiene el colapso `min`/`max`** no es ese, sin embargo, y conviene
+tenerlo claro antes de llevárselo al dueño. Con el horario real de LuceBien —09:00 a 13:00 más
+13:00 a 20:00— el almuerzo cae **dentro** de las once horas contratadas. Hoy, con carga manual,
+esa persona cobra once horas. Si al empezar a marcar se sumaran los tramos en vez de tomar la
+primera y la última marca, cobraría diez. **Sumar tramos le bajaría el sueldo a alguien por el
+solo hecho de empezar a marcar, sin que nadie haya cambiado ninguna regla.**
+
+Por el no-negociable #5 eso importa: cambiar el colapso sería inventar una regla de negocio;
+dejarlo es no inventar ninguna.
+
+**Lo que sí queda abierto es otro caso, y no es el almuerzo:** la persona que se va dos horas al
+mediodía por un trámite y vuelve. El colapso le paga esas dos horas. Hoy ese caso es invisible
+porque nadie lo carga, y el huellero lo va a volver visible por primera vez. Va a
+`docs/pendientes-negocio.md` como pregunta separada para el dueño: *¿el hueco del mediodía se paga
+siempre, o solo hasta cierta cantidad de minutos?*
+
+Y acá la tabla de marcas crudas gana una segunda razón de ser, más fuerte que la auditoría: si el
+dueño decide dentro de tres meses que el hueco largo no se paga, **la regla se puede aplicar hacia
+atrás**, porque las cuatro marcas siguen guardadas. Si el colector solo guardara entrada y salida,
+esa decisión sería irrecuperable.
 
 ### Fechas
 
@@ -360,8 +433,15 @@ valores vacíos y se verifica el `.gitignore` antes de commitear.
 
 ### `/asistencias` (existente)
 
-Cambios mínimos: un distintivo de origen en cada fila (manual, reporte, huellero) y filtro por
-fecha. El registro manual sigue funcionando exactamente igual.
+Un distintivo de origen en cada fila (manual, reporte, huellero) y filtro por fecha. El registro
+manual sigue funcionando exactamente igual.
+
+**Y se deja de mostrar la columna de minutos de tardanza.** Hoy la pantalla la lee de la tabla
+(`asistencias-repo.ts:49`), donde el huellero la deja siempre en 0. Mostraría "0 min de tardanza"
+al lado de una entrada de las 09:05, lo cual es falso a la vista aunque no afecte ni un sol de la
+liquidación: la tardanza que se paga la calcula el motor contra el horario contratado, y son dos
+cálculos distintos. O se quita la columna, o se muestra la tardanza calculada por el motor. Nunca
+la columna cruda.
 
 ### `/asistencias/huellero` (nueva, solo administrador)
 
@@ -428,6 +508,12 @@ parámetros; no llama a `new Date()`. Casos cubiertos:
 8. Fila previa con `condicion='falta'`: no se toca nada, ni siquiera horas vacías.
 9. Día sin ninguna marca: no se crea fila, la condición sigue en `'sin_dato'`.
 10. Dos filas previas del día (turno M y T de reportes): se rellena una sola, la de turno menor.
+11. **Jornada en curso**: una sola marca a las 09:00, fila con entrada cargada y
+    `condicion='sin_dato'`. No viola `asistencias_trabajado_chk`. Este test es el que impide que
+    la RPC falle once horas por día.
+12. **Llega la segunda marca**: la fila pasa a `condicion='trabajado'` con las dos horas.
+13. Fila de reporte sin horas: se rellenan y la condición transiciona, de modo que el día deja de
+    ser invisible para la liquidación.
 
 **Prueba de extremo a extremo, obligatoria antes de producción:** liquidar un periodo real con
 datos del huellero y comprobar que las horas pagadas coinciden con las horas trabajadas. El
@@ -483,7 +569,8 @@ Alrededor de veinte minutos, con el README paso a paso.
 | Mapeo explícito en vez de asumir que el ID del equipo es el `cod` | No coinciden. Verificado. |
 | `minutos_tardanza = 0` | Columna heredada que el motor de sueldos no lee. La tardanza la calcula el motor contra `sueldo_acuerdo_turnos`. |
 | Nunca tocar una fila con `condicion='falta'` | Una falta cuesta dos días de sueldo y la declara una persona. Que una marca la revierta sola sería un error silencioso en la cadena del sueldo. |
-| `condicion='trabajado'` solo con hora real | Es lo que hace visible la fila para la liquidación. Escribirla sin horas convertiría el día en una falta ante el motor. |
+| `condicion='trabajado'` solo con entrada **y** salida | Lo exige `asistencias_trabajado_chk` (0073). Escribirla con una sola marca haría fallar la RPC durante toda la jornada. |
+| Transicionar `condicion` aunque `fuente` sea de otro | Sin eso, una fila de reporte con horas reales sigue invisible para la liquidación y bloquea el cálculo del periodo. |
 | Una fila por día, sin corte de turno | Nadie sale a almorzar: un día completo deja dos marcas. Partirlas por turno dejaba ambas filas sin salida y liquidaba cero horas. El grano correcto es el que usa la liquidación. |
 | Cero parámetros de negocio nuevos | Al caer el corte de turno, no quedó ningún default que inventar. |
 | Solo Supabase, no el sistema viejo | El viejo está congelado y tocarlo exige pedido explícito. |

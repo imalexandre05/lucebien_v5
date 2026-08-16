@@ -480,6 +480,18 @@ pisar **por contrato**, como pidió Alexander.
 - **Qué hacer cuando hay marcas en un día declarado como falta.** La derivación no toca esa fila
   por diseño, y el caso se muestra en la pantalla de administración para que decida una persona.
   Falta definir qué se espera que haga: ¿revertir la falta, ignorar las marcas, pedir explicación?
+- **El hueco largo del mediodía — PREGUNTA ABIERTA PARA EL DUEÑO.** No confundir con el almuerzo,
+  que ya está resuelto. Es la persona que se va dos horas por un trámite y vuelve. El colapso
+  `min(entrada)`/`max(salida)` le paga esas dos horas. Hoy el caso es invisible porque nadie lo
+  carga; el huellero lo va a volver visible por primera vez. **¿El hueco del mediodía se paga
+  siempre, o solo hasta cierta cantidad de minutos?** Se puede decidir después sin perder nada: las
+  marcas crudas quedan guardadas en `marcas_huellero`, así que la regla se aplica hacia atrás.
+- **Los tres parámetros de tardanza, antes de la primera liquidación con datos del huellero.**
+  `sueldo_tolerancia_minutos`, `sueldo_tardanzas_libres` y `sueldo_penalidad_tardanza` se eligieron
+  para un mundo donde la tardanza se cargaba a ojo y nadie anotaba tres minutos. Van a empezar a
+  aplicarse a un mundo donde se mide al minuto, y la cuenta de tardanzas del periodo va a subir.
+  No están mal; hay que revisarlos con el dueño. **Que la primera persona se entere por su recibo
+  sería la peor manera.**
 - **Los 54 identificadores del equipo contra los 18 empleados activos.** Los que no correspondan a
   nadie se marcan como ignorados. Falta saber de quiénes son: ex-empleados, personal de otra
   empresa, pruebas. No bloquea, pero conviene saberlo antes de ignorar en masa.

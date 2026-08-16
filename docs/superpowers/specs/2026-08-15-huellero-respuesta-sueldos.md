@@ -119,6 +119,49 @@ tardanza calculada.
   para decidir si perdona la tardanza o la falta; que las mueva una máquina sería regalar plata o
   quitarla sin que nadie firme.
 
+### Lo que pidieron revisar: ¿el motor supone que M y T son medias jornadas separables?
+
+**No. Comprobado en los tres lugares donde podría estar esa suposición.**
+
+- **El colapso de la lectura** agrupa por fecha, no por turno (`0073_sueldos_rpc.sql:163-180`). El
+  turno ni siquiera aparece en el `group by`.
+- **La tardanza** se compara contra `inicioMin`, que `resumirHorario()` define como *«hora de
+  entrada del primer turno»* del día, después de ordenar (`sueldos.ts:371-395`). Un solo tramo
+  continuo se compara contra las 09:00, no contra las 13:00. Si el motor hubiera tomado el turno T
+  por separado, una persona que entra a las 09:00 saldría tarde todos los días.
+- **Las horas contratadas** se suman por día, y el core **rechaza** dos turnos del mismo día que se
+  pisen: con el horario real de LuceBien, tipear un solo turno 09:00–20:00 en lugar de los dos
+  contiguos hundiría el valor de la hora de todo el periodo a menos de la mitad.
+
+Así que el grano del día manda en el motor, igual que en el huellero. Coincidimos.
+
+### Pero la PANTALLA sí tiene vocabulario de turno, y hay una etiqueta mejor que `'M'`
+
+La spec del huellero crea la fila del día con `turno = 'M'`. La columna es `text` con los tres
+valores `M | T | C` (`0001_init.sql:216`), y el core ya los nombra:
+
+```ts
+// packages/core/src/reportes.ts:7-11
+export const TURNO_LABEL: Record<TurnoReporte, string> = {
+  M: 'Mañana',
+  T: 'Tarde',
+  C: 'Día completo',
+};
+```
+
+`'C'` ya significa exactamente lo que es esa fila. Con `'M'`, la pantalla de asistencias
+(`app/asistencias/cliente.tsx:232`) va a mostrar una insignia **«Mañana»** sobre una fila que va de
+las 09:00 a las 20:00, y el filtro «Mañana» va a listar días completos. No afecta un sol de la
+liquidación —el motor no mira el turno—, pero es la clase de detalle que hace que un administrador
+deje de confiar en la pantalla.
+
+Sugerencia: crear la fila nueva con `turno = 'C'`. Es un carácter y usa vocabulario que ya existe.
+
+Un detalle más de la regla de la fila-por-día: *«se rellena la de turno menor cuando hay varias»*.
+Sobre `text`, «menor» es orden alfabético, y da `'C' < 'M' < 'T'`. Justo elige la fila de día
+completo, que es la correcta — pero por casualidad. Conviene escribir el criterio explícito en vez
+de apoyarse en eso.
+
 ### Un caso que crea la fila-por-día, comprobado: no choca
 
 Con una fila por día, el huellero rellena «la de turno menor» y puede tocar una fila distinta de
@@ -177,6 +220,22 @@ es invisible —nadie lo carga— y el huellero lo va a volver visible por prime
 plantearlo así al dueño, separado del almuerzo: *«¿el hueco del mediodía se paga siempre, o solo
 hasta cierta cantidad de minutos?»*.
 
+### El pendiente del turno partido cierra por el lado del dato, no por el del contrato
+
+La corrección del huellero da por cerrado el pendiente del turno partido. **Por su lado es
+correcto**, y el argumento es bueno: sin marcas de salida y regreso al mediodía, el hueco no se
+materializa.
+
+Pero el hueco tiene dos puertas y esa es una sola. La otra es el **contrato**: la restricción
+`sueldo_turnos_sin_solape` de la 0072 impide que dos turnos del mismo día **se pisen**, y nada
+más. Un horario `09:00–13:00` + `15:00–20:00` —con dos horas de hueco— es perfectamente
+insertable, y ahí el colapso `min`/`max` sí paga el hueco, sin que el huellero tenga nada que ver.
+
+Hoy no existe ningún contrato así. Pero la pantalla del acuerdo (paso 5 del orden de
+implementación) es justamente la que va a permitir tipearlos, así que el pendiente **se queda
+abierto del lado de sueldos** hasta que esa pantalla decida qué hacer: rechazar el hueco, avisar,
+o aceptarlo con la regla escrita. Es trabajo nuestro, no del huellero.
+
 Y acá la spec del huellero ya hizo lo correcto sin proponérselo: **guarda las marcas crudas en
 `marcas_huellero`**. Eso significa que si el dueño decide dentro de tres meses que el hueco largo
 no se paga, la regla se puede aplicar hacia atrás, porque las cuatro marcas siguen ahí. Si el
@@ -203,6 +262,13 @@ auditoría.
 
 **La próxima libre es 0075.** Del lado de sueldos no hay nada reservado más adelante; si se
 necesita una (ver §4) se reserva con el script y se avisa acá.
+
+> **Repetido el 15-ago porque el segundo aviso volvió a decir «el huellero planea usar la 0074».**
+> Vuelto a comprobar en ese momento: `0074_catalogo_publico.sql` existe en `feat/mi-talla-db`, y
+> `tools/reservar-migracion.sh` sigue diciendo *«última reservada: 0074 — en otra rama»*. Escribir
+> la `0074` deja dos migraciones distintas con el mismo número, y el choque no aparece hasta el
+> merge, con una de las dos ya aplicada en producción. Ya pasó el 14-ago entre estas mismas dos
+> ramas.
 
 El error es entendible: `feat/mi-talla-db` no está en la copia de trabajo de esta rama, así que
 `ls packages/db/migrations/` no las muestra. Por eso el número **nunca se elige mirando la
