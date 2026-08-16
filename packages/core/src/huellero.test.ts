@@ -247,6 +247,58 @@ describe('jornadaImplausible — avisar, no corregir', () => {
   });
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+// Casos sacados del histórico real leído del equipo el 15-ago-2026 (3.058 marcas, 1.571
+// jornadas). No son inventados: cada uno es una fila de huellero-jornadas.csv. Sirven para que
+// la lógica quede contrastada contra lo que la gente hace de verdad, no contra lo que uno supone
+// que hace.
+// ═══════════════════════════════════════════════════════════════════════════════════════════
+describe('decidirAsistencia — jornadas reales del equipo', () => {
+  const real = (fecha: string, horas: string[], nombre: string): MarcaHuellero[] =>
+    horas.map((hora) => ({ fecha, hora, nombreEquipo: nombre }));
+
+  it('JANET, turno tarde del 2 de enero', () => {
+    const d = decidirAsistencia(real('2026-01-02', ['14:01', '21:09'], 'JANET'), null);
+    expect(d).toMatchObject({ horaEntrada: '14:01', horaSalida: '21:09', condicion: 'trabajado' });
+    expect(horasEntre('14:01', '21:09')).toBeCloseTo(7.13, 2);
+  });
+
+  it('YESSICA, el 2 de enero marcó sólo la entrada', () => {
+    const d = decidirAsistencia(real('2026-01-02', ['08:53'], 'YESSICA'), null);
+    expect(d).toMatchObject({ horaEntrada: '08:53', horaSalida: null, condicion: 'sin_dato' });
+  });
+
+  it('SHEYLA, jornada larga del 12 de agosto', () => {
+    const d = decidirAsistencia(real('2026-08-12', ['07:55', '18:35'], 'SHEYLA'), null);
+    expect(d).toMatchObject({ horaEntrada: '07:55', horaSalida: '18:35', condicion: 'trabajado' });
+  });
+
+  // Las dos que el colapso no puede resolver. Se derivan igual —no inventamos nada— pero
+  // jornadaImplausible las manda a revisión.
+  it('FERNANDO, dos marcas en el mismo minuto: se deriva, y se marca para revisar', () => {
+    const d = decidirAsistencia(real('2026-01-08', ['21:02', '21:02'], 'FERNANDO'), null);
+    expect(d).toMatchObject({ horaEntrada: '21:02', horaSalida: '21:02', condicion: 'trabajado' });
+    expect(jornadaImplausible('21:02', '21:02', { minHoras: 0.5, maxHoras: 14 })).toBe(true);
+  });
+
+  it('JORDAN, cinco marcas entre las 00:22 y las 23:01: se deriva, y se marca para revisar', () => {
+    const d = decidirAsistencia(
+      real('2026-01-26', ['00:22', '08:12', '08:26', '20:44', '23:01'], 'JORDAN'),
+      null,
+    );
+    expect(d).toMatchObject({ horaEntrada: '00:22', horaSalida: '23:01' });
+    expect(jornadaImplausible('00:22', '23:01', { minHoras: 0.5, maxHoras: 14 })).toBe(true);
+  });
+
+  // GUILLERMO entra sólo a abrir las puertas: sus 29 días tienen una marca cada uno y ninguno
+  // es una jornada. Por eso su identificador va ignorado en el mapeo — pero si no lo estuviera,
+  // el sistema al menos no inventa una salida.
+  it('GUILLERMO, una marca por día los 29 días', () => {
+    const d = decidirAsistencia(real('2026-08-12', ['08:16'], 'GUILLERMO'), null);
+    expect(d).toMatchObject({ horaSalida: null, condicion: 'sin_dato' });
+  });
+});
+
 describe('horasEntre', () => {
   it('calcula horas decimales', () => {
     expect(horasEntre('08:00', '14:00')).toBe(6);
