@@ -500,6 +500,27 @@ pisar **por contrato**, como pidió Alexander.
 - **Los 54 identificadores del equipo contra los 18 empleados activos.** Los que no correspondan a
   nadie se marcan como ignorados. Falta saber de quiénes son: ex-empleados, personal de otra
   empresa, pruebas. No bloquea, pero conviene saberlo antes de ignorar en masa.
+- 🔴 **Cuatro de cada diez días no tienen marca de salida — lo más urgente de esta lista.**
+  Verificado con las marcaciones reales del 15-ago-2026: de 17 jornadas de 7 personas, 7 quedaron
+  con una sola marca. ELTHOM (identificador 61) entra ~09:35 todos los días y **nunca** marca la
+  salida; GUILLERMO (25), JANET (52) y MARYLIN (50) también tienen días incompletos. Un día sin
+  salida queda en `condicion='sin_dato'` y **corta la liquidación del periodo entero**
+  (`0073_sueldos_rpc.sql:128-145`): con este nivel de marcación, el sueldo de ELTHOM no se podría
+  calcular ningún mes. No hay arreglo por software que no sea inventar una hora o comerle el día a
+  la persona. **Es un cambio de hábito y hay que planteárselo al dueño antes de encender el
+  colector**, o el sistema no automatiza nada: solo cambia dónde se carga el dato a mano.
+- **Quiénes son ELTHOM (61) y GUILLERMO (25).** Aparecen marcando en almacén pero con patrón raro
+  —ELTHOM siempre a las 09:35 y sin salida, GUILLERMO una sola vez—. Antes de mapearlos a un
+  empleado conviene confirmar si son personal de planilla, gente de paso o proveedores.
+- **Solo 7 personas marcan, de 18 empleados.** Es coherente con que haya un solo huellero y esté
+  en almacén, pero confirma que **el huellero cubre almacén, no la empresa**. Las otras tres sedes
+  siguen con carga manual hasta que tengan su propio equipo.
+- **Los turnos reales no son los que asume el comentario de la `0073`.** Ese comentario habla de
+  09:00–13:00 + 13:00–20:00 como si todos hicieran jornada completa. Lo observado: turno de mañana
+  ~08:00–14:00 (YESSICA, JAEROCK), turno de tarde ~14:00–20:00 (JANET, MARYLIN) y jornada larga
+  ~08:00–19:00 (SHEYLA). Importa para `sueldo_acuerdo_turnos`: si a alguien de turno mañana se le
+  carga un horario contratado que empieza 09:00, la tardanza sale mal. Revisar los acuerdos contra
+  estos horarios antes de la primera liquidación.
 
 ---
 

@@ -81,6 +81,17 @@ Verificado contra la interfaz web del equipo el 2026-08-14:
 eventos es `POST /ISAPI/AccessControl/AcsEvent?format=json`, filtrando `major=5, minor=38`
 (autenticación por huella) y paginando con `searchResultPosition`.
 
+**Comprobado contra el equipo real el 15-ago-2026** con `tools/diagnostico-huellero`: responde,
+acepta digest, y devolvió 30 marcaciones de los últimos siete días con identificador, nombre,
+fecha con offset `-05:00` y número de serie del evento. El equipo contesta **XML** en
+`/ISAPI/System/deviceInfo` y **JSON** en `AcsEvent`, así que el colector tiene que aceptar los dos
+formatos y no asumir uno.
+
+El endpoint `/ISAPI/AccessControl/UserInfo/Search` cortó la conexión sin responder. No bloquea
+nada: cada evento de `AcsEvent` ya trae el nombre además del identificador, así que la lista para
+el mapeo se arma con las marcas. Queda pendiente resolverlo solo para poder listar también a
+quienes están inscritos pero nunca marcan.
+
 Descartados: Hik-Connect no expone eventos por API pública; ISUP exigiría montar un servidor
 propio del protocolo; el SDK en el puerto 8000 es binario y propietario, e ISAPI cubre todo lo
 que hace falta.
@@ -279,6 +290,44 @@ en curso se registra sin problema. Y trae un efecto lateral bueno: un día que q
 entra en la liquidación (`0073_sueldos_rpc.sql:180`) y `sueldo_entrada` corta nombrando la fecha,
 para que alguien la mire.
 
+### El problema real: cuatro de cada diez días no tienen marca de salida
+
+Esto no es una hipótesis. En los datos reales del 15-ago-2026, sobre 17 jornadas completas de 7
+personas, **7 quedaron con una sola marca**: la persona registró su llegada y se fue sin volver a
+marcar.
+
+| Persona | Identificador | Días con marca | Días sin salida |
+|---|---|---|---|
+| ELTHOM | 61 | 3 | **3** |
+| GUILLERMO | 25 | 1 | **1** |
+| JANET | 52 | 3 | 2 |
+| MARYLIN | 50 | 2 | 1 |
+| JAEROCK | 40 | 3 | 0 |
+| SHEYLA | 58 | 2 | 0 |
+| YESSICA | 19 | 3 | 0 |
+
+ELTHOM entra todos los días alrededor de las 09:35 y **nunca** marca la salida.
+
+**Consecuencia directa sobre el sueldo:** esos días quedan en `condicion='sin_dato'`, y
+`sueldo_entrada` corta la liquidación del periodo entero nombrando cada fecha sin declarar
+(`0073_sueldos_rpc.sql:128-145`). Con este nivel de marcación, **la liquidación de ELTHOM no se
+podría calcular ningún mes**.
+
+Y la alternativa es peor: si el sistema inventara una hora de salida, o marcara el día como
+trabajado con la salida en `null`, la liquidación colapsaría ese día a cero horas y le comería el
+día entero a la persona. El corte ruidoso es el comportamiento correcto.
+
+**Lo que hace el diseño:** no inventa nada, y hace el problema visible temprano. La pantalla de
+administración muestra los días con entrada y sin salida como lista de pendientes, con el nombre
+y la fecha, para que el administrador complete la hora a mano **antes** de liquidar, no cuando la
+liquidación se niegue a correr. Completarla a mano deja la fila con `fuente='manual'`, que es
+exactamente lo que corresponde: esa hora la puso una persona.
+
+**Lo que el diseño no puede resolver, y es lo que de verdad importa:** que la gente marque al
+salir. Es un cambio de hábito, no de software. Conviene arrancar con el huellero informando esto
+al dueño, porque si nadie marca la salida el sistema no automatiza nada — solo cambia dónde se
+carga el dato a mano.
+
 ### La transición que sí hay que hacer
 
 La regla de no pisar otras fuentes tiene una excepción necesaria, y es una sola: **cuando la fila
@@ -316,6 +365,12 @@ El grano correcto es el día, porque el día es el grano que usa la liquidación
 su clave `(empleado, fecha, turno)` intacta —los reportes la siguen usando— pero el huellero
 escribe una sola fila por día y deja que el colapso de la lectura haga lo suyo. Con dos marcas
 funciona, con cuatro también, y no hay ningún parámetro que ajustar.
+
+**Comprobado contra las 30 marcaciones reales del 15-ago-2026.** De los diez días con entrada y
+salida registradas, el corte de las 13:00 habría roto **ocho**: gente que entra a las 08:00 y sale
+a las 14:00 deja una marca de cada lado del corte, y los dos turnos quedan sin salida. Ocho
+jornadas completas liquidadas en cero horas. Los dos días que se habrían salvado son de personas
+de turno tarde, cuyas dos marcas caen del mismo lado por casualidad.
 
 ### Las dos salvaguardas del sueldo
 
@@ -450,6 +505,13 @@ Una sola pantalla con tres partes:
 **Estado del equipo.** Nombre, sede, IP y "última sincronización hace X minutos" con indicador
 verde o rojo. Con un solo huellero es una tarjeta; con varios, una lista. Botón para dar de alta
 un equipo nuevo con nombre, sede e IP.
+
+**Días sin marca de salida.** La lista de pendientes más importante de la pantalla, porque cada
+fila es una liquidación que se va a bloquear. Muestra nombre, fecha y hora de entrada, con un
+campo para escribir la hora de salida. Completarla escribe la fila con `fuente='manual'` — la
+puso una persona, y así queda registrado. Con los datos de agosto de 2026 esta lista tendría
+cuatro de cada diez días, así que no es un caso de borde: es el uso principal de la pantalla
+hasta que el hábito de marcar la salida se asiente.
 
 **Cola de marcas sin asignar.** Agrupadas por `employee_no`, mostrando el nombre que trae el
 equipo, cuántas marcas acumula y desde cuándo. Cada fila lleva un selector de empleado; al
