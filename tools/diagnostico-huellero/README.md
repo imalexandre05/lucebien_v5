@@ -38,12 +38,26 @@ Dos archivos al lado del script:
 
 Los dos van para Alexander.
 
+## Qué contraseña pide
+
+La del **equipo**: la misma con la que se entra a `https://192.168.1.220` desde el navegador,
+usuario `admin`. No es la cuenta de Hik-Connect (la app del celular, con correo), que este
+proyecto no usa.
+
+Importante: **no probar contraseñas al azar.** El equipo bloquea el acceso por unos minutos tras
+varios intentos fallidos.
+
 ## Si algo falla
 
-**"No se pudo conectar"** — comprobar que la PC llega al equipo con `ping 192.168.1.220`. Si el
-ping responde pero el script no, agregar `-UsarHttp` al final del comando.
+**"No se llegó al equipo"** — comprobar que la PC llega con `ping 192.168.1.220`. Si el ping
+responde pero el script no, repetir agregando `-UsarHttp` al final del comando.
 
-**Error 401** — la contraseña no es la correcta. Es la misma de la web del equipo.
+**"La clave no fue aceptada" (401)** — no es la contraseña correcta, o el equipo está bloqueado
+por intentos previos. Esperar unos minutos antes de reintentar.
+
+**Dice "Conectado" pero después falla** — la conexión y la clave están bien; el problema es leer
+la respuesta. El script guarda lo que devolvió el equipo en `respuesta-cruda.txt`. Mandar ese
+archivo a Alexander.
 
 **Cero marcaciones** — el rango se quedó corto. Repetir con `-DiasAtras 30`.
 
