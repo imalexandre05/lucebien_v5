@@ -68,7 +68,12 @@ revisar "regla4" "Regla 4 — el core no llama new Date()" \
 # ── Regla 3: getAdminClient() bypassa RLS y está restringido ───────────────────────────────
 permitidos="lib/auth.ts lib/reauth.ts lib/sedes-repo.ts lib/empleados-repo.ts lib/dispositivos-repo.ts lib/supabase/admin.ts"
 intrusos=""
-for archivo in $(grep -rl "getAdminClient" apps/erp-web --include="*.ts" --include="*.tsx" 2>/dev/null | sed 's|^apps/erp-web/||' | sort || true); do
+# Se miran las líneas, no los archivos, y se descartan los comentarios: un archivo que EXPLICA por
+# qué NO usa el cliente admin es justamente lo que se quiere que exista. Marcarlo como violación
+# enseña a no escribir esa explicación, que es lo contrario de lo que persigue el no-negociable 3.
+# El descarte es sólo de líneas que arrancan con //, * o /* — una llamada real con un comentario
+# al final de la línea sigue cayendo.
+for archivo in $(grep -rn "getAdminClient" apps/erp-web --include="*.ts" --include="*.tsx" 2>/dev/null | sin_comentarios | cut -d: -f1 | sed 's|^apps/erp-web/||' | sort -u || true); do
   case " $permitidos " in
     *" $archivo "*) ;;
     *) intrusos="${intrusos}${archivo}:0: usa getAdminClient() sin estar en la lista permitida"$'\n' ;;

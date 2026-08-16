@@ -21,6 +21,19 @@
 // `valorPorHora` es la única cifra que NO se redondea — redondearla a 3.64 movería el total del
 // caso de prueba unos S/0.06.
 
+/**
+ * Qué versión del motor produjo un número. Se guarda en `sueldo_liquidaciones.motor_version`
+ * junto al resultado congelado.
+ *
+ * Vive acá y no en el repo de datos porque identifica a ESTE archivo: si el marcador estuviera
+ * del otro lado, cambiar una regla de acá y olvidarse de allá dejaría liquidaciones firmadas con
+ * una versión que no las calculó — y el sello serviría para lo contrario de lo que existe.
+ *
+ * **Se sube la fecha cada vez que cambia una regla de cálculo.** No cuando cambia un comentario
+ * ni un tipo: cuando cambia un número que le llega a alguien.
+ */
+export const MOTOR_VERSION = '2026-08-14';
+
 // ── Parámetros configurables (spec §3.3) ────────────────────────────────────────────────────
 // Ninguno va quemado en el código: son los defaults, editables desde /configuracion.
 export interface ParametrosSueldo {
