@@ -8,6 +8,8 @@ import {
   cerrarMapeo,
   borrarMapeo,
   reprocesarMapeo,
+  reprocesarIdentificador,
+  estadoDelDia,
 } from '../../../lib/huellero-repo';
 import { declararDia } from '../../../lib/asistencias-repo';
 
@@ -93,8 +95,8 @@ export async function accionMapear(input: {
     return {
       ok: true,
       mensaje: input.ignorado
-        ? `Identificador ignorado. Se liberaron ${r.marcasLiberadas} marcas.`
-        : `Mapeado. ${r.marcasAsignadas} marcas asignadas y ${r.diasRecalculados} días recalculados.`,
+        ? `Identificador ignorado. Se movieron ${r.marcasMovidas} marcas y se recalcularon ${r.diasRecalculados} días.`
+        : `Mapeado. ${r.marcasMovidas} marcas reasignadas y ${r.diasRecalculados} días recalculados.`,
     };
   } catch (e) {
     return fallo(e);
@@ -124,7 +126,7 @@ export async function accionCerrarMapeo(input: {
     return {
       ok: true,
       mensaje:
-        `Mapeo cerrado el ${input.vigenteHasta}. Se liberaron ${r.marcasLiberadas} marcas y se ` +
+        `Mapeo cerrado el ${input.vigenteHasta}. Se movieron ${r.marcasMovidas} marcas y se ` +
         `recalcularon ${r.diasRecalculados} días.`,
     };
   } catch (e) {
@@ -132,16 +134,38 @@ export async function accionCerrarMapeo(input: {
   }
 }
 
-export async function accionBorrarMapeo(mapeoId: string): Promise<Resultado> {
+/**
+ * Borra un mapeo y vuelve a resolver el identificador contra los mapeos que queden.
+ *
+ * El orden importa y estaba al revés. Reprocesar ANTES de borrar no libera nada: la
+ * re-resolución asigna las marcas según los mapeos vigentes, y el que se va a borrar todavía lo
+ * está. Después el borrado dejaba las marcas apuntando a esa persona, con sus asistencias
+ * derivadas intactas y liquidándose, mientras el identificador figuraba como libre en la cola.
+ * El administrador lo volvía a asignar y los mismos días quedaban cobrados por dos personas —
+ * con un mensaje que decía "sus marcas vuelven a la cola", que era falso.
+ *
+ * Ahora se borra primero y se re-resuelve después, contra el estado nuevo. Por eso hace falta la
+ * variante por identificador: una vez borrado el mapeo ya no hay id al que apuntar.
+ */
+export async function accionBorrarMapeo(input: {
+  mapeoId: string;
+  dispositivoId: string;
+  employeeNo: string;
+}): Promise<Resultado> {
   try {
     if (!(await soloAdmin())) return { ok: false, error: 'Solo administrador' };
-    // Se reprocesa ANTES de borrar: después de borrar la fila ya no hay a qué apuntar, y las
-    // marcas quedarían asignadas a alguien que dejó de tener mapeo.
-    await reprocesarMapeo(mapeoId).catch(() => undefined);
-    await borrarMapeo(mapeoId);
+
+    await borrarMapeo(input.mapeoId);
+    const r = await reprocesarIdentificador(input.dispositivoId, input.employeeNo);
+
     revalidatePath('/asistencias/huellero');
     revalidatePath('/asistencias');
-    return { ok: true, mensaje: 'Mapeo borrado. Sus marcas vuelven a la cola.' };
+    return {
+      ok: true,
+      mensaje:
+        `Mapeo borrado. Se recalcularon ${r.diasRecalculados} días y las marcas que quedaron ` +
+        'sin mapeo vuelven a la cola.',
+    };
   } catch (e) {
     return fallo(e);
   }
@@ -163,6 +187,8 @@ export async function accionCompletarDia(input: {
   turno: string;
   horaEntrada: string;
   horaSalida: string;
+  /** El administrador vio el motivo y decidió igual. Sin esto, un día marcado no se declara. */
+  confirmaRevision?: boolean;
 }): Promise<Resultado> {
   try {
     if (!(await soloAdmin())) return { ok: false, error: 'Solo administrador' };
@@ -171,6 +197,32 @@ export async function accionCompletarDia(input: {
     }
     if (input.horaSalida <= input.horaEntrada) {
       return { ok: false, error: 'La salida tiene que ser posterior a la entrada' };
+    }
+
+    // Las dos salvaguardas que el SQL ya aplica, repetidas acá porque `declararDia` escribe
+    // directo y no pasa por la derivación.
+    const estado = await estadoDelDia(input.empleadoId, input.fecha);
+
+    // Una falta en CUALQUIER turno del día. Si se declarara igual, la liquidación seguiría
+    // cobrando el día como falta —`bool_or` en 0073:169, dos días de sueldo— mientras la
+    // pantalla lo muestra resuelto.
+    if (estado.tieneFalta) {
+      return {
+        ok: false,
+        error:
+          'Ese día tiene una falta declarada. Si la persona sí vino, primero hay que quitar la ' +
+          'falta desde Asistencias.',
+      };
+    }
+
+    // Un día marcado para revisar trae las horas cargadas, así que un clic lo declararía sin
+    // que nadie lea el motivo. El caso real: el identificador cambió de dueño ese día y las dos
+    // horas son de personas distintas.
+    if (estado.motivoRevision && !input.confirmaRevision) {
+      return {
+        ok: false,
+        error: `Este día está marcado para revisar (${estado.motivoRevision}). Revisá las horas antes de darlo por trabajado.`,
+      };
     }
 
     await declararDia({

@@ -174,11 +174,19 @@ export async function listarSinAsignar(): Promise<SinAsignar[]> {
  */
 export async function listarDiasPendientes(desde?: string): Promise<DiaPendiente[]> {
   const sb = getServerClient();
+
+  // El filtro NO puede ser sólo `condicion = 'sin_dato'`. La derivación transiciona únicamente
+  // de 'sin_dato' a 'trabajado': si la fila YA estaba trabajada cuando llegó la marca que la
+  // manda a revisar, se le escribe el motivo pero la condición no cambia. Ese día quedaba
+  // invisible acá y se liquidaba igual — la bandera escrita donde nadie la lee.
+  //
+  // Pasa de verdad: llegan 08:45 y 13:00 con el mismo nombre (fila 'trabajado') y en el lote de
+  // la noche llega 20:46 con otro nombre.
   let q = sb
     .from('asistencias')
     .select('id, empleado_id, fecha, turno, hora_entrada, hora_salida, condicion, fuente, obs')
-    .eq('condicion', 'sin_dato')
     .not('hora_entrada', 'is', null)
+    .or('condicion.eq.sin_dato,obs.ilike.%revisar:%')
     .order('fecha', { ascending: false })
     .limit(400);
   if (desde) q = q.gte('fecha', desde);
@@ -278,8 +286,7 @@ export async function borrarMapeo(id: string): Promise<void> {
  * conserva días que ya no le corresponden.
  */
 export async function reprocesarMapeo(mapeoId: string): Promise<{
-  marcasAsignadas: number;
-  marcasLiberadas: number;
+  marcasMovidas: number;
   diasRecalculados: number;
 }> {
   const sb = getServerClient();
@@ -287,9 +294,60 @@ export async function reprocesarMapeo(mapeoId: string): Promise<{
   if (error) throw new Error(traducir(error.message));
   const r = (data ?? {}) as Record<string, number>;
   return {
-    marcasAsignadas: Number(r.marcas_asignadas ?? 0),
-    marcasLiberadas: Number(r.marcas_liberadas ?? 0),
+    marcasMovidas: Number(r.marcas_movidas ?? 0),
     diasRecalculados: Number(r.dias_recalculados ?? 0),
+  };
+}
+
+/**
+ * Vuelve a resolver un identificador contra los mapeos que existan.
+ *
+ * Hace falta como variante de `reprocesarMapeo` para después de BORRAR un mapeo: en ese momento
+ * ya no hay id al que apuntar, y sin esto las marcas quedarían asignadas a la persona del mapeo
+ * borrado, con sus asistencias liquidándose.
+ */
+export async function reprocesarIdentificador(
+  dispositivoId: string,
+  employeeNo: string,
+): Promise<{ marcasMovidas: number; diasRecalculados: number }> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('huellero_reprocesar_identificador', {
+    p_dispositivo_id: dispositivoId,
+    p_employee_no: employeeNo,
+  });
+  if (error) throw new Error(traducir(error.message));
+  const r = (data ?? {}) as Record<string, number>;
+  return {
+    marcasMovidas: Number(r.marcas_movidas ?? 0),
+    diasRecalculados: Number(r.dias_recalculados ?? 0),
+  };
+}
+
+/**
+ * Qué hay declarado ese día, para las salvaguardas de la aplicación.
+ *
+ * Mira TODAS las filas del día, no una: una falta puede estar en el turno T mientras el huellero
+ * escribió en el M.
+ */
+export async function estadoDelDia(
+  empleadoId: string,
+  fecha: string,
+): Promise<{ tieneFalta: boolean; motivoRevision: string | null }> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('asistencias')
+    .select('condicion, obs')
+    .eq('empleado_id', empleadoId)
+    .eq('fecha', fecha);
+  if (error) throw new Error(error.message);
+
+  const filas = (data as { condicion: string; obs: string | null }[]) ?? [];
+  const conRevision = filas.find((f) => (f.obs ?? '').includes('revisar:'));
+  return {
+    tieneFalta: filas.some((f) => f.condicion === 'falta'),
+    motivoRevision: conRevision
+      ? (/revisar:\s*([^·]+)/.exec(conRevision.obs ?? '')?.[1]?.trim() ?? 'sin detalle')
+      : null,
   };
 }
 

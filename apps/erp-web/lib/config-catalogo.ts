@@ -400,6 +400,32 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '45.45454545454545',
     min: 0,
   },
+
+  // ── Huellero (migración 0075) ─────────────────────────────────────────────────────────────
+  // Van tipados a propósito. Sin catálogo aparecen como "Personalizados" con input de texto
+  // libre, y la derivación los castea a numeric: un "12,5" escrito con coma hacía fallar cada
+  // ciclo del colector, sin que entrara ninguna marca y con la pantalla culpando al equipo.
+  {
+    clave: 'huellero_jornada_max_horas',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Jornada máxima creíble (horas)',
+    descripcion:
+      'Una jornada derivada del huellero que dure más que esto NO se da por trabajada: se guardan las horas reales y el día queda para que lo revise una persona. No recorta nada. Existe porque quien entra y sale muchas veces al día deja una primera y una última marca que no son su jornada — hay días reales de 22 horas.',
+    tipo: 'numero',
+    default: '14',
+    min: 1,
+    step: 1,
+  },
+  {
+    clave: 'huellero_jornada_min_horas',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Jornada mínima creíble (horas)',
+    descripcion:
+      'Lo mismo por abajo. Dos marcas en el mismo minuto dan una jornada de cero horas, y declararla trabajada impide cerrar la liquidación de esa persona en todo el mes. Confirmar el valor si hay gente que trabaja por horas sueltas.',
+    tipo: 'numero',
+    default: '0.5',
+    min: 0,
+  },
 ];
 
 export const CONFIG_CATALOGO_MAP: Map<string, ConfigCatalogoItem> = new Map(CONFIG_CATALOGO.map((i) => [i.clave, i]));

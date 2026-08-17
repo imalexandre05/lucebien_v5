@@ -222,5 +222,47 @@ begin
   if n = 1 then r := r || '16=ok ';
   else r := r || format('16-BORRA-MANUAL=FALLA(%s) ', n); end if;
 
+  -- ── 17) Mapear a la segunda persona NO puede borrar los días de la primera ─────────────
+  -- El hueco del caso 11: allí no había marcas DENTRO del rango del mapeo viejo, que es la
+  -- condición que disparaba la destrucción. Acá sí las hay.
+  insert into huellero_mapeos(dispositivo_id, employee_no, empleado_id, vigente_desde, vigente_hasta)
+    values (disp, '906', eC, '2099-04-01', '2099-04-28');
+  insert into marcas_huellero(dispositivo_id, employee_no, empleado_id, marcada_en, evento_serial, nombre_equipo)
+    values (disp,'906',eC,'2099-04-15T08:00:00-05:00',900030,'P'),
+           (disp,'906',eC,'2099-04-15T18:00:00-05:00',900031,'P'),
+           (disp,'906',null,'2099-05-02T08:00:00-05:00',900032,'Q'),
+           (disp,'906',null,'2099-05-02T18:00:00-05:00',900033,'Q');
+  perform huellero_derivar_asistencia(eC, '2099-04-15');
+
+  insert into huellero_mapeos(dispositivo_id, employee_no, empleado_id, vigente_desde)
+    values (disp, '906', eD, '2099-04-29');
+  perform huellero_reresolver_identificador(disp, '906');
+
+  select count(*) into n from asistencias where empleado_id=eC and fecha='2099-04-15';
+  if n = 1 then r := r || '17a=ok ';
+  else r := r || format('17a-BORRA-A-LA-PRIMERA=FALLA(%s) ', n); end if;
+
+  select count(*) into n from asistencias where empleado_id=eD and fecha='2099-05-02';
+  if n = 1 then r := r || '17b=ok ';
+  else r := r || format('17b-NO-ASIGNA-A-LA-SEGUNDA=FALLA(%s) ', n); end if;
+
+  -- ── 18) Lo que el huellero escribió en una fila AJENA se revierte ───────────────────────
+  -- Sin esto, un mapeo mal puesto y después corregido dejaba a la primera persona con días
+  -- 'trabajado' llenos con las horas de la segunda: doble pago por la puerta de 'reporte'.
+  insert into asistencias(empleado_id, fecha, turno, fuente, condicion, obs)
+    values (eE,'2099-06-01','T','reporte','sin_dato','auto: trabajador del reporte R-1');
+  insert into marcas_huellero(dispositivo_id, employee_no, empleado_id, marcada_en, evento_serial, nombre_equipo)
+    values (disp,'907',eE,'2099-06-01T14:00:00-05:00',900040,'Z'),
+           (disp,'907',eE,'2099-06-01T21:00:00-05:00',900041,'Z');
+  perform huellero_derivar_asistencia(eE, '2099-06-01');
+
+  delete from marcas_huellero where evento_serial in (900040, 900041);
+  perform huellero_limpiar_dia_sin_marcas(eE, '2099-06-01');
+
+  select condicion, hora_entrada, obs into cond, ent, obs
+    from asistencias where empleado_id=eE and fecha='2099-06-01';
+  if cond = 'sin_dato' and ent is null and obs = 'auto: trabajador del reporte R-1' then r := r || '18=ok ';
+  else r := r || format('18-NO-REVIERTE-AJENA=FALLA(%s %s %s) ', cond, ent, obs); end if;
+
   raise exception 'RESULTADO %', r;
 end $$;

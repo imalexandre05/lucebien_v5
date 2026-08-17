@@ -524,7 +524,15 @@ function MapeosVigentes({
                     <Button
                       variant="ghost"
                       disabled={pending}
-                      onClick={() => correr(() => accionBorrarMapeo(m.id))}
+                      onClick={() =>
+                        correr(() =>
+                          accionBorrarMapeo({
+                            mapeoId: m.id,
+                            dispositivoId: m.dispositivoId,
+                            employeeNo: m.employeeNo,
+                          }),
+                        )
+                      }
                       title="Sus marcas vuelven a la cola"
                     >
                       <Trash2 className="h-4 w-4" />

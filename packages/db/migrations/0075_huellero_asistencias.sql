@@ -376,7 +376,18 @@ begin
            then 'trabajado'
            else a.condicion
          end,
-         obs = case when v_motivo is not null then v_motivo else a.obs end
+         -- El sello [huellero] es lo que permite revertir después: marca que estas horas las
+         -- puso la máquina en una fila que no es suya. Sin él no habría forma de distinguirlas
+         -- de las que cargó una persona, y un mapeo corregido dejaría días cobrados de más.
+         --
+         -- Se CONCATENA, no se pisa: el 'auto: encargado del reporte <id>' que escribe la 0030
+         -- es el único vínculo entre esa asistencia y el reporte que la creó.
+         obs = nullif(btrim(concat_ws(' · ',
+                 nullif(a.obs, ''),
+                 case when a.fuente <> 'huellero'
+                       and (a.hora_entrada is null or a.hora_salida is null)
+                      then '[huellero]' end,
+                 v_motivo)), '')
    where a.id = v_fila.id;
 end;
 $fn$;
@@ -495,10 +506,21 @@ begin
     end loop;
   end if;
 
+  -- Cada derivación en su propio bloque. El manejo de excepción de arriba cubría sólo el
+  -- parseo y el insert: una excepción acá abortaba la transacción entera, se perdían las marcas
+  -- ya insertadas y `ultima_sincronizacion` no llegaba a escribirse. El colector volvía a pedir
+  -- la misma ventana y se envenenaba igual, con la pantalla culpando al equipo.
+  --
+  -- Hay un camino real: la derivación lee `huellero_jornada_max_horas` de `config` y lo castea a
+  -- numeric. Si alguien escribe "12,5" desde /configuracion, revienta.
   for k in select jsonb_object_keys(v_afectados) loop
-    perform huellero_derivar_asistencia(
-      split_part(k, '|', 1)::uuid,
-      split_part(k, '|', 2)::date);
+    begin
+      perform huellero_derivar_asistencia(
+        split_part(k, '|', 1)::uuid,
+        split_part(k, '|', 2)::date);
+    exception when others then
+      v_rechazadas := v_rechazadas + 1;
+    end;
   end loop;
 
   -- Se marca vivo aunque el lote venga vacío: un ciclo sin marcas sigue siendo señal de que el
@@ -551,106 +573,93 @@ comment on function huellero_checkpoint(uuid) is
    guardar estado local. Devuelve un timestamp y nada más: no expone datos de personas.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 8) Reprocesar al crear, corregir o acortar un mapeo
---
---    Al mapear un identificador, sus marcas históricas ya están guardadas con empleado_id null.
---    Esto las re-resuelve y deriva las asistencias que correspondan.
---
---    LO QUE HACÍA MAL Y ERA DOBLE PAGO. Antes sólo asignaba el empleado DENTRO del rango nuevo.
---    Las marcas que quedaban FUERA conservaban el empleado viejo y sus asistencias ya escritas
---    no se revertían nunca. El caso concreto: el 00000013 mapeado a JAZMIN sin fecha de fin
---    deriva 31 días de enero; al descubrirse la reasignación, el administrador acorta el mapeo
---    al 28 (obligatorio, porque el índice de exclusión no deja crear el de NICOL si se solapan)
---    y reprocesa. Los días 29, 30 y 31 seguían apuntando a JAZMIN. Después se crea el mapeo de
---    NICOL y se reprocesa: NICOL cobra esos tres días **y JAZMIN también**.
---
---    Ahora se liberan las marcas que quedaron fuera del rango y se re-derivan sus fechas, de modo
---    que la asistencia de quien ya no corresponde se limpia.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
-create or replace function huellero_reprocesar_mapeo(p_mapeo_id uuid)
-  returns jsonb
+-- 8) Re-resolver un identificador contra TODOS sus mapeos
+--
+--    Ésta es la operación de fondo, y la que arregla el error de diseño de la versión anterior.
+--
+--    LO QUE HACÍA MAL. Reprocesar liberaba las marcas que caían fuera del rango del mapeo que se
+--    estaba tocando, sin mirar si otro mapeo del mismo identificador las cubría. Con el flujo que
+--    la propia §5 documenta —cerrar el mapeo de JAZMIN al 28-ene y crear el de NICOL desde el
+--    29— reprocesar el de NICOL liberaba TODAS las marcas de enero, y como después se limpiaban
+--    los días sin marcas, **borraba las 28 asistencias de JAZMIN**. Su mes dejaba de poder
+--    liquidarse y sus marcas volvían a la cola de "sin asignar" pese a tener mapeo válido.
+--
+--    Liberar por diferencia con UN rango es incorrecto por construcción. Lo correcto es
+--    re-resolver cada marca contra la tabla entera de mapeos, que es lo que hace esto: cada
+--    marca termina apuntando a quien le corresponde POR SU FECHA, sin importar desde qué mapeo
+--    se disparó el reproceso.
+--
+--    Recalcula las asistencias de todas las fechas tocadas, antes y después del movimiento.
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+create or replace function huellero_reresolver_identificador(
+  p_dispositivo_id uuid,
+  p_employee_no text
+) returns jsonb
   language plpgsql
   security definer
   set search_path = public
 as $fn$
 declare
-  v_map        huellero_mapeos%rowtype;
-  v_destino    uuid;
-  v_asignadas  int := 0;
-  v_liberadas  int := 0;
-  r            record;
-  v_fechas     jsonb := '{}'::jsonb;   -- "empleado|fecha" a re-derivar, deduplicado
-  k            text;
+  v_movidas int := 0;
+  v_fechas  jsonb := '{}'::jsonb;   -- "empleado|fecha" a recalcular, deduplicado
+  r         record;
+  k         text;
 begin
-  if not private.app_es_admin() then
-    raise exception 'PERMISO:sólo el administrador puede reprocesar un mapeo';
-  end if;
-
-  select * into v_map from huellero_mapeos where id = p_mapeo_id;
-  if not found then raise exception 'DATO:el mapeo no existe'; end if;
-
-  -- Un mapeo ignorado NO asigna a nadie, aunque conserve el empleado_id.
-  --
-  -- El check de la tabla permite `ignorado = true` con `empleado_id` cargado, que es lo natural
-  -- cuando el administrador quiere dejar de contar un identificador sin borrar de quién era.
-  -- Antes se asignaba igual, y reprocesar le adjudicaba a esa persona todas las marcas —
-  -- exactamente lo contrario de lo que se pidió.
-  v_destino := case when v_map.ignorado then null else v_map.empleado_id end;
-
-  -- 1) Anotar las fechas que HOY tienen asistencia derivada por este identificador, antes de
-  --    mover nada: son las que hay que recalcular pase lo que pase.
+  -- 1) Las fechas que HOY tienen dueño: hay que recalcularlas pase lo que pase, porque la marca
+  --    puede estar por cambiar de persona o quedarse sin ninguna.
   for r in
     select distinct mk.empleado_id as emp, (mk.marcada_en at time zone 'America/Lima')::date as fecha
     from marcas_huellero mk
-    where mk.dispositivo_id = v_map.dispositivo_id
-      and mk.employee_no    = v_map.employee_no
+    where mk.dispositivo_id = p_dispositivo_id
+      and mk.employee_no    = p_employee_no
       and mk.empleado_id is not null
   loop
     v_fechas := v_fechas || jsonb_build_object(r.emp::text || '|' || r.fecha::text, true);
   end loop;
 
-  -- 2) Liberar las marcas que quedan FUERA del rango de vigencia: dejan de pertenecer a nadie
-  --    hasta que otro mapeo las reclame.
+  -- 2) Re-resolver TODAS las marcas del identificador contra la tabla de mapeos. Una marca sin
+  --    mapeo vigente en su fecha —o cubierta por uno ignorado— queda en null y vuelve a la cola.
   update marcas_huellero mk
-     set empleado_id = null
-   where mk.dispositivo_id = v_map.dispositivo_id
-     and mk.employee_no    = v_map.employee_no
-     and (
-       (mk.marcada_en at time zone 'America/Lima')::date < v_map.vigente_desde
-       or (v_map.vigente_hasta is not null
-           and (mk.marcada_en at time zone 'America/Lima')::date > v_map.vigente_hasta)
+     set empleado_id = (
+       select mp.empleado_id
+       from huellero_mapeos mp
+       where mp.dispositivo_id = mk.dispositivo_id
+         and mp.employee_no    = mk.employee_no
+         and not mp.ignorado
+         and (mk.marcada_en at time zone 'America/Lima')::date >= mp.vigente_desde
+         and ((mk.marcada_en at time zone 'America/Lima')::date <= mp.vigente_hasta
+              or mp.vigente_hasta is null)
+       limit 1
+     )
+   where mk.dispositivo_id = p_dispositivo_id
+     and mk.employee_no    = p_employee_no
+     and mk.empleado_id is distinct from (
+       select mp.empleado_id
+       from huellero_mapeos mp
+       where mp.dispositivo_id = mk.dispositivo_id
+         and mp.employee_no    = mk.employee_no
+         and not mp.ignorado
+         and (mk.marcada_en at time zone 'America/Lima')::date >= mp.vigente_desde
+         and ((mk.marcada_en at time zone 'America/Lima')::date <= mp.vigente_hasta
+              or mp.vigente_hasta is null)
+       limit 1
      );
-  get diagnostics v_liberadas = row_count;
+  get diagnostics v_movidas = row_count;
 
-  -- 3) Asignar las de dentro del rango.
-  update marcas_huellero mk
-     set empleado_id = v_destino
-   where mk.dispositivo_id = v_map.dispositivo_id
-     and mk.employee_no    = v_map.employee_no
-     and (mk.marcada_en at time zone 'America/Lima')::date >= v_map.vigente_desde
-     and (v_map.vigente_hasta is null
-          or (mk.marcada_en at time zone 'America/Lima')::date <= v_map.vigente_hasta);
-  get diagnostics v_asignadas = row_count;
+  -- 3) Las fechas que quedaron con dueño después del movimiento.
+  for r in
+    select distinct mk.empleado_id as emp, (mk.marcada_en at time zone 'America/Lima')::date as fecha
+    from marcas_huellero mk
+    where mk.dispositivo_id = p_dispositivo_id
+      and mk.employee_no    = p_employee_no
+      and mk.empleado_id is not null
+  loop
+    v_fechas := v_fechas || jsonb_build_object(r.emp::text || '|' || r.fecha::text, true);
+  end loop;
 
-  -- 4) Sumar las fechas que quedaron asignadas ahora.
-  if v_destino is not null then
-    for r in
-      select distinct (mk.marcada_en at time zone 'America/Lima')::date as fecha
-      from marcas_huellero mk
-      where mk.empleado_id    = v_destino
-        and mk.dispositivo_id = v_map.dispositivo_id
-        and mk.employee_no    = v_map.employee_no
-    loop
-      v_fechas := v_fechas || jsonb_build_object(v_destino::text || '|' || r.fecha::text, true);
-    end loop;
-  end if;
-
-  -- 5) Recalcular todo lo tocado: lo que se asignó y lo que se liberó.
-  --
-  --    Primero limpiar y después derivar, en ese orden. `limpiar` sólo borra si el día quedó
-  --    sin ninguna marca —el caso de la persona a la que se le sacó el identificador— y
-  --    `derivar` sólo escribe si hay marcas. Sin el paso de limpieza, la asistencia de quien ya
-  --    no corresponde sobrevivía y se liquidaba igual.
+  -- 4) Recalcular. Primero limpiar y después derivar: `limpiar` revierte lo que el huellero
+  --    había escrito en un día que se quedó sin marcas, y `derivar` sólo escribe si hay.
   for k in select jsonb_object_keys(v_fechas) loop
     perform huellero_limpiar_dia_sin_marcas(
       split_part(k, '|', 1)::uuid,
@@ -661,22 +670,81 @@ begin
   end loop;
 
   return jsonb_build_object(
-    'marcas_asignadas', v_asignadas,
-    'marcas_liberadas', v_liberadas,
+    'marcas_movidas',    v_movidas,
     'dias_recalculados', (select count(*) from jsonb_object_keys(v_fechas)));
 end;
 $fn$;
 
+comment on function huellero_reresolver_identificador(uuid, text) is
+  'Vuelve a resolver todas las marcas de un identificador contra la tabla de mapeos y recalcula
+   las asistencias afectadas. Es la operación correcta después de crear, cerrar, ignorar o borrar
+   un mapeo: no depende del rango de uno solo.';
+
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 8 bis) Limpiar la asistencia de un día que se quedó sin marcas
+-- 8 bis) Reprocesar un mapeo — la puerta que usa la pantalla
 --
---    Cuando `reprocesar` libera marcas, el día de la persona anterior queda con una asistencia
---    escrita por el huellero que ya no corresponde a nadie. `huellero_derivar_asistencia` con
---    cero marcas hacía `return` sin tocar nada, así que esa fila sobrevivía para siempre y se
---    liquidaba.
+--    Delega en la re-resolución completa. Se conserva porque la pantalla tiene el id del mapeo a
+--    mano y no el par (dispositivo, identificador), y porque el guard de administrador va acá.
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+create or replace function huellero_reprocesar_mapeo(p_mapeo_id uuid)
+  returns jsonb
+  language plpgsql
+  security definer
+  set search_path = public
+as $fn$
+declare
+  v_map huellero_mapeos%rowtype;
+begin
+  if not private.app_es_admin() then
+    raise exception 'PERMISO:sólo el administrador puede reprocesar un mapeo';
+  end if;
+
+  select * into v_map from huellero_mapeos where id = p_mapeo_id;
+  if not found then raise exception 'DATO:el mapeo no existe'; end if;
+
+  return huellero_reresolver_identificador(v_map.dispositivo_id, v_map.employee_no);
+end;
+$fn$;
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+-- 8 ter) Re-resolver por identificador, para después de BORRAR un mapeo
 --
---    Se limpia SÓLO lo que escribió el huellero: una fila 'manual' o 'reporte' la puso una
---    persona o un reporte y no se toca ni acá.
+--    Cuando se borra un mapeo ya no hay id al que apuntar, así que la pantalla necesita poder
+--    pedir la re-resolución por el par (dispositivo, identificador). Sin esto, borrar un mapeo
+--    dejaba las marcas asignadas a la persona anterior y sus asistencias liquidándose, mientras
+--    el identificador figuraba como libre: los mismos días terminaban cobrados dos veces.
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+create or replace function huellero_reprocesar_identificador(
+  p_dispositivo_id uuid,
+  p_employee_no text
+) returns jsonb
+  language plpgsql
+  security definer
+  set search_path = public
+as $fn$
+begin
+  if not private.app_es_admin() then
+    raise exception 'PERMISO:sólo el administrador puede reprocesar un identificador';
+  end if;
+  return huellero_reresolver_identificador(p_dispositivo_id, p_employee_no);
+end;
+$fn$;
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+-- 8 quater) Revertir lo que el huellero escribió en un día que se quedó sin marcas
+--
+--    LO QUE FALTABA. La versión anterior sólo borraba filas con `fuente='huellero'`. Pero la
+--    derivación también escribe en filas AJENAS: rellena las horas de una fila que dejó un
+--    reporte (0030) y la pasa de 'sin_dato' a 'trabajado'. Esas escrituras no se revertían nunca,
+--    así que un mapeo mal puesto y después corregido dejaba a la primera persona con días
+--    'trabajado' llenos con las horas de la segunda. Doble pago por la puerta de 'reporte'.
+--
+--    Para poder revertir hace falta saber qué horas puso el huellero. Se marca en `obs` con el
+--    sello de abajo, que la derivación agrega al rellenar una fila ajena. Es la única forma de
+--    distinguirlas sin agregar una columna a `asistencias`.
+--
+--    Nunca se toca una fila 'falta', y nunca se borra una fila que puso una persona: sólo se le
+--    quitan las horas que había puesto la máquina.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create or replace function huellero_limpiar_dia_sin_marcas(p_empleado_id uuid, p_fecha date)
   returns void
@@ -685,21 +753,45 @@ create or replace function huellero_limpiar_dia_sin_marcas(p_empleado_id uuid, p
   set search_path = public
 as $fn$
 begin
+  if p_empleado_id is null or p_fecha is null then return; end if;
+
   if exists (
     select 1 from marcas_huellero m
     where m.empleado_id = p_empleado_id
       and (m.marcada_en at time zone 'America/Lima')::date = p_fecha
   ) then
-    return;   -- todavía tiene marcas: no hay nada que limpiar
+    return;   -- todavía tiene marcas: no hay nada que revertir
   end if;
 
+  -- La fila la creó el huellero: se va entera.
   delete from asistencias a
   where a.empleado_id = p_empleado_id
     and a.fecha = p_fecha
     and a.fuente = 'huellero'
     and a.condicion <> 'falta';
+
+  -- La fila es de otra fuente pero el huellero le puso las horas: se le quitan y vuelve a
+  -- 'sin_dato', que es como estaba antes de que la máquina la tocara.
+  update asistencias a
+     set hora_entrada = null,
+         hora_salida  = null,
+         condicion    = 'sin_dato',
+         -- Se quita el sello Y el separador que lo precede, si no queda un ' ·' colgando.
+         obs          = nullif(btrim(regexp_replace(coalesce(a.obs, ''),
+                          '\s*·\s*\[huellero\]|\[huellero\]\s*·\s*|\[huellero\]', '', 'g'),
+                          ' ·'), '')
+   where a.empleado_id = p_empleado_id
+     and a.fecha = p_fecha
+     and a.fuente <> 'huellero'
+     and a.condicion <> 'falta'
+     and coalesce(a.obs, '') like '%[huellero]%';
 end;
 $fn$;
+
+comment on function huellero_limpiar_dia_sin_marcas(uuid, date) is
+  'Revierte lo que el huellero escribió en un día que se quedó sin marcas: borra su propia fila y
+   le quita las horas a las filas ajenas que había rellenado. Nunca toca una falta ni borra una
+   fila que puso una persona.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 9) Permisos de ejecución
@@ -722,8 +814,14 @@ revoke execute on function huellero_reprocesar_mapeo(uuid)                 from 
 
 -- Las dos internas: se llega a ellas desde las de arriba, que tienen portero. Nadie las llama
 -- por HTTP.
-revoke execute on function huellero_derivar_asistencia(uuid, date)         from public, anon, authenticated;
-revoke execute on function huellero_limpiar_dia_sin_marcas(uuid, date)     from public, anon, authenticated;
+revoke execute on function huellero_derivar_asistencia(uuid, date)          from public, anon, authenticated;
+revoke execute on function huellero_limpiar_dia_sin_marcas(uuid, date)      from public, anon, authenticated;
+revoke execute on function huellero_reresolver_identificador(uuid, text)    from public, anon, authenticated;
+
+-- Ésta SÍ la llama la pantalla (al borrar un mapeo ya no hay id al que apuntar), y lleva su
+-- propio guard de administrador adentro.
+revoke execute on function huellero_reprocesar_identificador(uuid, text)    from public, anon;
+grant  execute on function huellero_reprocesar_identificador(uuid, text)    to authenticated;
 
 grant execute on function huellero_registrar_marcas(uuid, jsonb)  to authenticated;
 grant execute on function huellero_checkpoint(uuid)               to authenticated;
