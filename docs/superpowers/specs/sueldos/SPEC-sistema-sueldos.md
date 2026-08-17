@@ -212,6 +212,10 @@ administrador. Ningún descuento cuelga de este número.
 **RN-05 — Horas trabajadas por día.**
 `hora_salida − hora_ingreso`. Si alguno es `null`, es 0.
 
+> 🔄 **Cambia — ver [SPEC-cambios-reglas-2026-08-17.md](SPEC-cambios-reglas-2026-08-17.md) C-01.**
+> Pasa a ser la **suma de los tramos continuos** del día: una pausa (salir y volver) no se paga.
+> Escrita, sin implementar.
+
 **RN-06 — Diferencia de horas.**
 `horas_trabajadas − horas_contratadas_de_ese_dia_semana`.
 
@@ -316,6 +320,11 @@ la meta del mes (confirmado por el dueño, 14-ago-2026).
 Para el caso contrario (meta proporcional a los días de cada tramo) existe el parámetro
 `meta_semanal_fija = false`, apagado por defecto.
 
+> 🔄 **Se invierte — ver [SPEC-cambios-reglas-2026-08-17.md](SPEC-cambios-reglas-2026-08-17.md)
+> C-02.** Alexander confirmó el 16-ago-2026 que la semana larga **sí** sube su meta: el default de
+> `meta_semanal_fija` pasa a `false`. La lógica ya existe en las dos direcciones; cambia cuál es la
+> de fábrica. Son S/30 por persona por mes en el caso de prueba. Escrito, sin implementar.
+
 > Corrección: la fórmula actual `COUNTIF(Z20:AC20,">U7")` compara contra el texto "U7" en vez
 > de contra la celda, así que siempre da 0. Hoy el administrador lo compensa escribiendo el
 > número a mano — y en el archivo v20 escribió 3 cuando las cuatro semanas superaron la meta.
@@ -386,6 +395,10 @@ Nunca puede ser negativo.
 **RN-17 — Horas fuera de contrato.**
 Bloque de registro separado para trabajo puntual que no forma parte del horario. Se valora con
 `valor_por_hora` y entra como ingreso.
+
+> 🔄 **Se amplía — ver [SPEC-cambios-reglas-2026-08-17.md](SPEC-cambios-reglas-2026-08-17.md)
+> C-03.** Nuevo parámetro `factor_hora_fuera_contrato`, default `1`: con el default nada cambia, y
+> permite pactar esa hora a otro precio. Escrito, sin implementar.
 
 **Validación obligatoria:** una misma fecha no puede aparecer a la vez en la asistencia normal
 con horas positivas y en este bloque. Hoy nada lo impide y se pagaría dos veces.
