@@ -60,14 +60,36 @@ const deFila = (f: AsistenciaDia): Borrador => ({
 const hhmm = (min: number): string =>
   `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
 
+const minutosDeHHMM = (t: string): number => {
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+
+/**
+ * Regla A del marcaje astuto (SPEC-cambios-reglas-2026-08-17 C-05).
+ *
+ * **No acusa a nadie y no descuenta nada.** Marca el día para que una persona lo mire. El caso que
+ * busca es el de quien marca a las 9 de la mañana, se va, y vuelve a marcar a las 8 de la noche:
+ * el sistema paga por horas, así que un día así cobra la jornada entera sin haberla trabajado.
+ *
+ * El margen es editable porque quedarse un rato de más es normal — con 60 minutos la señal sería
+ * puro ruido y se aprendería a ignorarla, que es exactamente lo que hace inútil a una alerta.
+ */
+function excedeMargen(horasDeclaradas: number, horasContratadas: number, margenMinutos: number): boolean {
+  if (horasContratadas <= 0 || horasDeclaradas <= 0) return false;
+  return (horasDeclaradas - horasContratadas) * 60 > margenMinutos;
+}
+
 export function AsistenciaCliente({
   acuerdos,
   acuerdo,
   filas,
+  margenMinutos,
 }: {
   acuerdos: AcuerdoSueldo[];
   acuerdo: AcuerdoSueldo;
   filas: AsistenciaDia[];
+  margenMinutos: number;
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -255,6 +277,11 @@ export function AsistenciaCliente({
               {calendario.map((d) => {
                 const b = borradores[d.fecha] ?? vacio();
                 const contratado = d.horasContratadas > 0;
+                const horasDeclaradas =
+                  b.condicion === 'trabajado' && b.horaEntrada && b.horaSalida
+                    ? (minutosDeHHMM(b.horaSalida) - minutosDeHHMM(b.horaEntrada)) / 60
+                    : 0;
+                const paraRevisar = excedeMargen(horasDeclaradas, d.horasContratadas, margenMinutos);
                 return (
                   <TR key={d.fecha} className={contratado ? undefined : 'opacity-60'}>
                     <TD className="whitespace-nowrap">
@@ -271,6 +298,11 @@ export function AsistenciaCliente({
                     </TD>
                     <TD className="whitespace-nowrap text-sm text-muted">
                       {contratado ? `${d.entradaContrato} · ${d.horasContratadas} h` : 'fuera de contrato'}
+                      {paraRevisar && (
+                        <Badge tone="amber" className="ml-2">
+                          revisar: {(horasDeclaradas - d.horasContratadas).toFixed(1)} h de más
+                        </Badge>
+                      )}
                     </TD>
                     <TD>
                       <Select

@@ -400,6 +400,21 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '45.45454545454545',
     min: 0,
   },
+  {
+    // Regla A del marcaje astuto (SPEC-cambios-reglas-2026-08-17 C-05). Es una señal de gestión,
+    // no un descuento: marca el día para que una persona lo mire. Va acá y no quemado en la
+    // pantalla porque el umbral depende de cómo trabaja cada equipo — Alexander avisó que quedarse
+    // dos horas terminando pendientes es normal, y con 60 minutos la señal sería puro ruido.
+    clave: 'sueldo_margen_horas_dia_minutos',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Margen antes de marcar un día para revisión (minutos)',
+    descripcion:
+      'Si un día declara más horas que las contratadas por encima de este margen, la pantalla de asistencia lo marca para revisión. No descuenta ni acusa: sólo avisa. Con 0 se marca cualquier exceso; subilo si quedarse un rato de más es lo normal en tu equipo.',
+    tipo: 'numero',
+    default: '120',
+    min: 0,
+    step: 15,
+  },
 
   // ── Huellero (migración 0075) ─────────────────────────────────────────────────────────────
   // Van tipados a propósito. Sin catálogo aparecen como "Personalizados" con input de texto

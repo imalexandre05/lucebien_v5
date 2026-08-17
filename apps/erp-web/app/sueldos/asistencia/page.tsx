@@ -2,6 +2,7 @@ import { CalendarCheck, Lock } from 'lucide-react';
 import { getSesion } from '../../../lib/auth';
 import { listarAcuerdos } from '../../../lib/sueldos-repo';
 import { listarAsistenciasPeriodo } from '../../../lib/asistencias-repo';
+import { leerConfigMap } from '../../../lib/config-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card } from '../../../components/ui/card';
 import { EmptyState } from '../../../components/ui/empty-state';
@@ -59,7 +60,17 @@ export default async function AsistenciaSueldosPage({
   }
 
   const elegido = acuerdos.find((a) => a.id === searchParams.acuerdo) ?? acuerdos[0];
-  const filas = await listarAsistenciasPeriodo(elegido.empleadoId, elegido.fechaInicio, elegido.fechaFin);
+  const [filas, config] = await Promise.all([
+    listarAsistenciasPeriodo(elegido.empleadoId, elegido.fechaInicio, elegido.fechaFin),
+    leerConfigMap(),
+  ]);
+
+  // Regla A del marcaje astuto (SPEC-cambios-reglas-2026-08-17 C-05). Editable desde
+  // /configuracion: el umbral depende de cómo trabaja cada equipo. `Number('')` es 0 y es finito,
+  // así que una fila vacía marcaría cualquier exceso de un minuto — por eso se comprueba el vacío
+  // antes de convertir, igual que hace la RPC con los parámetros del sueldo.
+  const crudo = config.sueldo_margen_horas_dia_minutos;
+  const margen = crudo == null || crudo.trim() === '' ? 120 : Number(crudo);
 
   return (
     <div>
@@ -67,7 +78,12 @@ export default async function AsistenciaSueldosPage({
         title="Declarar asistencia"
         subtitle="Qué pasó cada día del periodo. Un día sin declarar no es una falta: es un dato que falta, y frena la liquidación."
       />
-      <AsistenciaCliente acuerdos={acuerdos} acuerdo={elegido} filas={filas} />
+      <AsistenciaCliente
+        acuerdos={acuerdos}
+        acuerdo={elegido}
+        filas={filas}
+        margenMinutos={Number.isFinite(margen) ? margen : 120}
+      />
     </div>
   );
 }
