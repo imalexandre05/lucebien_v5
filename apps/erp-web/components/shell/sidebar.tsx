@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, History, Send, FileSignature, Receipt, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, History, Send, FileSignature, Receipt, HandCoins, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -54,6 +54,7 @@ const NAV: { section: string; items: Item[] }[] = [
       // pantalla de /asistencias consulta registros sueltos; ésta declara lo que se va a pagar.
       { label: 'Declarar asistencia', href: '/sueldos/asistencia', icon: CalendarCheck, modulo: 'sueldos' },
       { label: 'Liquidaciones', href: '/sueldos/liquidaciones', icon: Receipt, modulo: 'sueldos' },
+      { label: 'Adelantos y ventas', href: '/sueldos/movimientos', icon: HandCoins, modulo: 'sueldos' },
       { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle, modulo: 'incidencias' },
       { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck, modulo: 'asistencias' },
       { label: 'Empleados', href: '/empleados', icon: Users, modulo: 'empleados' },
