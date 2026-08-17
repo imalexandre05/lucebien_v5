@@ -712,7 +712,15 @@ Cada paso deja el sistema en un estado usable. Ninguno depende de la API del otr
      un número distinto del que se pagó en cuanto alguien edite un parámetro de `/configuracion`.
    - **`DATO` y `DESACTUALIZADA` tienen su propia explicación en pantalla.** Son los dos errores
      que un administrador va a ver de verdad, y el mensaje crudo no dice qué hacer.
-8. **Carga manual de ventas y movimientos.** ← **acá va lo siguiente**
+8. ✅ **Carga manual de ventas y movimientos** (`/sueldos/movimientos`). **Hecha el 17-ago-2026.**
+   Con esto la cadena funciona de punta a punta sin la API del otro sistema. El formulario cambia
+   de unidad según el tipo (plata o conteo), avisa que el monto va siempre en positivo, y deja las
+   ventas sin vendedor en una cola con selector en la misma fila. Lo ya liquidado muestra un
+   candado en vez del botón de borrar.
+
+**Los ocho pasos están hechos.** Lo que sigue no es este orden sino
+[SPEC-cambios-reglas-2026-08-17.md](SPEC-cambios-reglas-2026-08-17.md): C-02, C-03 y sobre todo
+C-01, que cambia cómo se cuentan las horas.
 9. **Recién después**, el colector de ventas cuando exista el contrato de API.
 
 ---
