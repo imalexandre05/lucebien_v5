@@ -129,8 +129,12 @@ create table if not exists marcas_huellero (
 
 -- Idempotencia total: el colector puede reenviar el mismo lote las veces que sea. Es lo que
 -- permite que el checkpoint pida siempre 10 minutos de solape sin duplicar nada.
+-- La hora va en la clave. Los Hikvision REINICIAN el contador de eventos al resetear el equipo
+-- o al borrar su log: sin la hora, todos los eventos nuevos volverían a 1..N y colisionarían con
+-- los de meses atrás. Se contarían como duplicados, no entraría ni una marca, el colector
+-- figuraría vivo y nadie se enteraría hasta cerrar el mes.
 create unique index if not exists uq_marca_dispositivo_serial
-  on marcas_huellero(dispositivo_id, evento_serial);
+  on marcas_huellero(dispositivo_id, evento_serial, marcada_en);
 
 -- Para el checkpoint: "¿cuál fue la última marca de este equipo?"
 create index if not exists idx_marcas_checkpoint
@@ -147,6 +151,33 @@ create index if not exists idx_marcas_sin_mapeo
 comment on column marcas_huellero.nombre_equipo is
   'El nombre que el equipo tenía registrado para ese identificador EN EL MOMENTO de la marca. Es
    lo que permite detectar que un número se reasignó a otra persona.';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+-- 3 bis) Qué hora de una asistencia la puso la máquina
+--
+--    POR QUÉ NO ALCANZA CON `fuente`. Una fila puede tener la entrada del huellero y la salida
+--    cargada a mano, y `fuente` es una sola columna: no puede decir las dos cosas. El primer
+--    intento fue sellar `obs` con un texto, y era frágil de verdad — el formulario de
+--    `/asistencias` escribe `obs` y `fuente` en cada guardado, así que bastaba con que alguien
+--    ajustara ese día desde la pantalla normal para borrar el rastro. Después, al corregir un
+--    mapeo, la reversión ya no reconocía la fila y el día quedaba cobrado por dos personas.
+--
+--    Con estas dos columnas la reversión sabe exactamente qué anular y qué respetar: se le
+--    quitan a la fila SÓLO las horas que escribió la máquina, y las que puso una persona se
+--    quedan donde están.
+--
+--    Se ponen en false apenas una persona escribe esa hora: a partir de ahí el dato es suyo.
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+alter table asistencias add column if not exists huellero_puso_entrada boolean not null default false;
+alter table asistencias add column if not exists huellero_puso_salida  boolean not null default false;
+
+comment on column asistencias.huellero_puso_entrada is
+  'La hora de entrada la escribió el huellero, no una persona. Sirve para poder revertirla si esa
+   marca deja de pertenecer a este empleado (mapeo corregido). Si alguien la edita a mano, pasa a
+   false y la máquina ya no la toca.';
+comment on column asistencias.huellero_puso_salida is
+  'Lo mismo para la hora de salida. Son dos columnas y no una porque un día puede tener la
+   entrada del huellero y la salida cargada a mano.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 4) Quién puede empujar marcas
@@ -334,21 +365,31 @@ begin
 
   if not found then
     insert into asistencias (empleado_id, fecha, turno, hora_entrada, hora_salida,
-                             minutos_tardanza, fuente, condicion, obs)
+                             minutos_tardanza, fuente, condicion, obs,
+                             huellero_puso_entrada, huellero_puso_salida)
     values (p_empleado_id, p_fecha, 'M', v_entrada, v_salida,
             0,                                  -- el motor no lee esta columna; la tardanza la
                                                 -- calcula contra sueldo_acuerdo_turnos
             'huellero',
             case when v_salida is not null and v_motivo is null then 'trabajado' else 'sin_dato' end,
-            coalesce(v_motivo, 'auto: huellero'))
+            coalesce(v_motivo, 'auto: huellero'),
+            v_entrada is not null, v_salida is not null)
     on conflict (empleado_id, fecha, turno) do nothing;
     return;
   end if;
 
   -- SALVAGUARDA (b): sólo se rellenan las horas que estén en null. Nunca se pisa una hora
-  -- cargada, nunca se cambia `fuente`, nunca se borra.
-  v_nueva_ent := coalesce(v_fila.hora_entrada, v_entrada);
-  v_nueva_sal := coalesce(v_fila.hora_salida,  v_salida);
+  -- cargada por una persona, nunca se cambia `fuente`, nunca se borra.
+  --
+  -- Pero las horas que puso la PROPIA máquina sí se recalculan. Si no, una re-resolución parcial
+  -- del día dejaba una hora vieja pegada: con dos identificadores mapeados a la misma persona,
+  -- corregir uno movía su marca pero el `coalesce` conservaba la salida de las 20:00 que ya
+  -- estaba escrita, y esa hora era de otra persona. El día quedaba de 12 horas para una y el
+  -- mismo tramo cobrado por la otra.
+  v_nueva_ent := case when v_fila.huellero_puso_entrada then v_entrada
+                      else coalesce(v_fila.hora_entrada, v_entrada) end;
+  v_nueva_sal := case when v_fila.huellero_puso_salida  then v_salida
+                      else coalesce(v_fila.hora_salida,  v_salida)  end;
 
   -- Rellenar sin comparar dejaba la salida ANTES de la entrada: fila de turno 'T' con
   -- hora_entrada 14:00 cargada a mano y marcas del huellero de la mañana (08:00 y 12:00) daba
@@ -362,6 +403,10 @@ begin
   update asistencias a
      set hora_entrada = v_nueva_ent,
          hora_salida  = v_nueva_sal,
+         -- Se marca SÓLO la hora que estaba vacía y que esta pasada acaba de llenar. La que ya
+         -- estaba sigue siendo de quien la puso, y su bandera no se toca.
+         huellero_puso_entrada = (a.huellero_puso_entrada or a.hora_entrada is null) and v_nueva_ent is not null,
+         huellero_puso_salida  = (a.huellero_puso_salida  or a.hora_salida  is null) and v_nueva_sal is not null,
          -- La ÚNICA excepción a "no pisar otra fuente", y sin ella el proyecto no sirve: las
          -- filas que crea la 0030 al enviar un reporte nacen sin horas y en 'sin_dato', y la
          -- liquidación filtra por condicion <> 'sin_dato' (0073:180). Rellenarles las horas sin
@@ -376,18 +421,16 @@ begin
            then 'trabajado'
            else a.condicion
          end,
-         -- El sello [huellero] es lo que permite revertir después: marca que estas horas las
-         -- puso la máquina en una fila que no es suya. Sin él no habría forma de distinguirlas
-         -- de las que cargó una persona, y un mapeo corregido dejaría días cobrados de más.
+         -- El motivo se CONCATENA, no pisa: el 'auto: encargado del reporte <id>' que escribe
+         -- la 0030 es el único vínculo entre esa fila y el reporte que la creó.
          --
-         -- Se CONCATENA, no se pisa: el 'auto: encargado del reporte <id>' que escribe la 0030
-         -- es el único vínculo entre esa asistencia y el reporte que la creó.
-         obs = nullif(btrim(concat_ws(' · ',
-                 nullif(a.obs, ''),
-                 case when a.fuente <> 'huellero'
-                       and (a.hora_entrada is null or a.hora_salida is null)
-                      then '[huellero]' end,
-                 v_motivo)), '')
+         -- Y no se repite: re-derivar el mismo día muchas veces agregaba el mismo texto una vez
+         -- por pasada, hasta llenar la columna.
+         obs = case
+           when v_motivo is null then a.obs
+           when coalesce(a.obs, '') like '%' || v_motivo || '%' then a.obs
+           else nullif(btrim(concat_ws(' · ', nullif(a.obs, ''), v_motivo)), '')
+         end
    where a.id = v_fila.id;
 end;
 $fn$;
@@ -423,6 +466,7 @@ declare
   v_dup        int := 0;
   v_sin_mapeo  int := 0;
   v_rechazadas int := 0;
+  v_fallidas   int := 0;   -- derivaciones que fallaron: NO es lo mismo que una marca rota
   v_n          int;
   v_afectados  jsonb := '{}'::jsonb;   -- claves "empleado|fecha" a derivar una sola vez
   k            text;
@@ -482,7 +526,7 @@ begin
                                      evento_serial, nombre_equipo)
         values (p_dispositivo_id, (m->>'employee_no'), v_emp, v_ts,
                 (m->>'evento_serial')::bigint, (m->>'nombre_equipo'))
-        on conflict (dispositivo_id, evento_serial) do nothing;
+        on conflict (dispositivo_id, evento_serial, marcada_en) do nothing;
 
         get diagnostics v_n = row_count;   -- row_count es un entero, no un booleano
         if v_n > 0 then
@@ -519,7 +563,7 @@ begin
         split_part(k, '|', 1)::uuid,
         split_part(k, '|', 2)::date);
     exception when others then
-      v_rechazadas := v_rechazadas + 1;
+      v_fallidas := v_fallidas + 1;
     end;
   end loop;
 
@@ -531,7 +575,11 @@ begin
     'insertadas', v_insertadas,
     'duplicadas', v_dup,
     'sin_mapeo',  v_sin_mapeo,
-    'rechazadas', v_rechazadas);
+    'rechazadas', v_rechazadas,
+    -- Si esto es mayor que cero, las marcas entraron pero NINGUNA asistencia se creó. La
+    -- pantalla lo muestra: sin este contador, `insertadas` seguía subiendo y todo parecía bien
+    -- mientras la liquidación se quedaba sin un solo día declarado.
+    'derivaciones_fallidas', v_fallidas);
 end;
 $fn$;
 
@@ -770,21 +818,30 @@ begin
     and a.fuente = 'huellero'
     and a.condicion <> 'falta';
 
-  -- La fila es de otra fuente pero el huellero le puso las horas: se le quitan y vuelve a
-  -- 'sin_dato', que es como estaba antes de que la máquina la tocara.
+  -- La fila es de otra fuente y el huellero le puso alguna hora: se le quitan SÓLO ésas.
+  --
+  -- Antes se anulaban las dos, y eso borraba dato humano: una fila con la entrada cargada a mano
+  -- y la salida puesta por la máquina perdía también la entrada, y el día quedaba sin nada.
   update asistencias a
-     set hora_entrada = null,
-         hora_salida  = null,
-         condicion    = 'sin_dato',
-         -- Se quita el sello Y el separador que lo precede, si no queda un ' ·' colgando.
-         obs          = nullif(btrim(regexp_replace(coalesce(a.obs, ''),
-                          '\s*·\s*\[huellero\]|\[huellero\]\s*·\s*|\[huellero\]', '', 'g'),
-                          ' ·'), '')
+     set hora_entrada = case when a.huellero_puso_entrada then null else a.hora_entrada end,
+         hora_salida  = case when a.huellero_puso_salida  then null else a.hora_salida  end,
+         huellero_puso_entrada = false,
+         huellero_puso_salida  = false,
+         -- Si se le quita una hora, el día deja de estar completo. Se vuelve a 'sin_dato', que
+         -- es lo que hace que la liquidación corte nombrando la fecha en vez de pagarla mal.
+         condicion = case
+           when (case when a.huellero_puso_entrada then null else a.hora_entrada end) is not null
+            and (case when a.huellero_puso_salida  then null else a.hora_salida  end) is not null
+           then a.condicion
+           else 'sin_dato'
+         end,
+         obs = nullif(btrim(regexp_replace(coalesce(a.obs, ''),
+                 '\s*·\s*revisar:[^·]*|revisar:[^·]*·\s*|revisar:[^·]*', '', 'g'), ' ·'), '')
    where a.empleado_id = p_empleado_id
      and a.fecha = p_fecha
      and a.fuente <> 'huellero'
      and a.condicion <> 'falta'
-     and coalesce(a.obs, '') like '%[huellero]%';
+     and (a.huellero_puso_entrada or a.huellero_puso_salida);
 end;
 $fn$;
 
@@ -792,6 +849,42 @@ comment on function huellero_limpiar_dia_sin_marcas(uuid, date) is
   'Revierte lo que el huellero escribió en un día que se quedó sin marcas: borra su propia fila y
    le quita las horas a las filas ajenas que había rellenado. Nunca toca una falta ni borra una
    fila que puso una persona.';
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+-- 8 quinquies) Borrar un mapeo, en UNA transacción
+--
+--    Borrar y re-resolver eran dos viajes distintos a la base desde la aplicación. Si el primero
+--    commiteaba y el segundo fallaba —un tiempo de espera agotado, la sesión vencida, la red—,
+--    quedaba el peor estado posible: el mapeo borrado, las marcas todavía apuntando a la persona
+--    anterior, y sus asistencias liquidándose. El identificador figuraba libre en la cola, se
+--    volvía a asignar, y los mismos días terminaban cobrados por dos personas.
+--
+--    Acá las dos cosas pasan o no pasan juntas.
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+create or replace function huellero_borrar_mapeo(p_mapeo_id uuid)
+  returns jsonb
+  language plpgsql
+  security definer
+  set search_path = public
+as $fn$
+declare
+  v_disp uuid;
+  v_emp  text;
+begin
+  if not private.app_es_admin() then
+    raise exception 'PERMISO:sólo el administrador puede borrar un mapeo';
+  end if;
+
+  select dispositivo_id, employee_no into v_disp, v_emp
+  from huellero_mapeos where id = p_mapeo_id;
+  if not found then raise exception 'DATO:el mapeo no existe'; end if;
+
+  delete from huellero_mapeos where id = p_mapeo_id;
+
+  -- Con el mapeo ya borrado: cada marca se resuelve contra los que quedan.
+  return huellero_reresolver_identificador(v_disp, v_emp);
+end;
+$fn$;
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 9) Permisos de ejecución
@@ -821,7 +914,9 @@ revoke execute on function huellero_reresolver_identificador(uuid, text)    from
 -- Ésta SÍ la llama la pantalla (al borrar un mapeo ya no hay id al que apuntar), y lleva su
 -- propio guard de administrador adentro.
 revoke execute on function huellero_reprocesar_identificador(uuid, text)    from public, anon;
+revoke execute on function huellero_borrar_mapeo(uuid)                      from public, anon;
 grant  execute on function huellero_reprocesar_identificador(uuid, text)    to authenticated;
+grant  execute on function huellero_borrar_mapeo(uuid)                      to authenticated;
 
 grant execute on function huellero_registrar_marcas(uuid, jsonb)  to authenticated;
 grant execute on function huellero_checkpoint(uuid)               to authenticated;

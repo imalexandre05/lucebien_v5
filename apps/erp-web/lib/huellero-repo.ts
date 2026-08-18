@@ -133,11 +133,26 @@ export async function listarSinAsignar(): Promise<SinAsignar[]> {
     .order('marcada_en');
   if (error) throw new Error(error.message);
 
+  // Las marcas de un identificador IGNORADO también quedan sin empleado, así que sin esto el
+  // identificador que se decidió no contar seguía apareciendo como pendiente para siempre,
+  // mezclado con los que de verdad faltan asignar.
+  const { data: ign, error: eIgn } = await sb
+    .from('huellero_mapeos')
+    .select('dispositivo_id, employee_no')
+    .eq('ignorado', true);
+  if (eIgn) throw new Error(eIgn.message);
+  const ignorados = new Set(
+    ((ign as { dispositivo_id: string; employee_no: string }[]) ?? []).map(
+      (m) => `${m.dispositivo_id}::${m.employee_no}`,
+    ),
+  );
+
   const grupos = new Map<string, SinAsignar>();
   for (const fila of (data as Record<string, unknown>[]) ?? []) {
     const dispositivoId = fila.dispositivo_id as string;
     const employeeNo = fila.employee_no as string;
     const clave = `${dispositivoId}::${employeeNo}`;
+    if (ignorados.has(clave)) continue;
     const cuando = String(fila.marcada_en ?? '');
     const nombre = String(fila.nombre_equipo ?? '').trim();
 
@@ -182,11 +197,14 @@ export async function listarDiasPendientes(desde?: string): Promise<DiaPendiente
   //
   // Pasa de verdad: llegan 08:45 y 13:00 con el mismo nombre (fila 'trabajado') y en el lote de
   // la noche llega 20:46 con otro nombre.
+  //
+  // Y NO se filtra por `hora_entrada is not null`: una fila revertida al corregir un mapeo queda
+  // sin horas y con el motivo puesto. Bloquea la liquidación igual, así que tiene que verse en
+  // la pantalla que existe justamente para mostrarla.
   let q = sb
     .from('asistencias')
     .select('id, empleado_id, fecha, turno, hora_entrada, hora_salida, condicion, fuente, obs')
-    .not('hora_entrada', 'is', null)
-    .or('condicion.eq.sin_dato,obs.ilike.%revisar:%')
+    .or('and(condicion.eq.sin_dato,hora_entrada.not.is.null),obs.ilike.%revisar:%')
     .order('fecha', { ascending: false })
     .limit(400);
   if (desde) q = q.gte('fecha', desde);
@@ -272,10 +290,19 @@ export async function cerrarMapeo(id: string, vigenteHasta: string): Promise<voi
   if (error) throw new Error(error.message);
 }
 
-export async function borrarMapeo(id: string): Promise<void> {
+/**
+ * Borra un mapeo y re-resuelve el identificador, en UNA transacción.
+ *
+ * Eran dos viajes a la base. Si el borrado commiteaba y la re-resolución fallaba —un tiempo de
+ * espera agotado, la red—, quedaba el peor estado: mapeo borrado, marcas todavía apuntando a la
+ * persona anterior, y sus asistencias liquidándose mientras el identificador figuraba libre.
+ */
+export async function borrarMapeo(id: string): Promise<{ diasRecalculados: number }> {
   const sb = getServerClient();
-  const { error } = await sb.from('huellero_mapeos').delete().eq('id', id);
-  if (error) throw new Error(error.message);
+  const { data, error } = await sb.rpc('huellero_borrar_mapeo', { p_mapeo_id: id });
+  if (error) throw new Error(traducir(error.message));
+  const r = (data ?? {}) as Record<string, number>;
+  return { diasRecalculados: Number(r.dias_recalculados ?? 0) };
 }
 
 /**

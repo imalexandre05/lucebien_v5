@@ -155,8 +155,7 @@ export async function accionBorrarMapeo(input: {
   try {
     if (!(await soloAdmin())) return { ok: false, error: 'Solo administrador' };
 
-    await borrarMapeo(input.mapeoId);
-    const r = await reprocesarIdentificador(input.dispositivoId, input.employeeNo);
+    const r = await borrarMapeo(input.mapeoId);
 
     revalidatePath('/asistencias/huellero');
     revalidatePath('/asistencias');

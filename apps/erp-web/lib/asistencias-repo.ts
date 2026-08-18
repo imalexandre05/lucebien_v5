@@ -73,19 +73,49 @@ export async function crearAsistencia(p: {
   // No se agrega `condicion` acá a propósito: es un `upsert`, así que escribiría la columna en
   // filas que ya existen y podría revertir una falta declarada por una persona sin que quien
   // usa el formulario se entere. Registrar y declarar son dos actos distintos.
-  const { error } = await sb.from('asistencias').upsert(
-    {
-      empleado_id: p.empleadoId,
-      fecha: p.fecha,
-      turno: p.turno,
-      hora_entrada: p.horaEntrada || null,
-      hora_salida: p.horaSalida || null,
-      minutos_tardanza: p.minutosTardanza,
-      fuente: 'manual',
-      obs: p.obs || null,
-    },
-    { onConflict: 'empleado_id,fecha,turno' },
-  );
+  //
+  // Y tampoco puede ser un `upsert` a secas. Escribía `fuente='manual'` y `obs` sobre la fila
+  // que ya existía, y con eso borraba el rastro de qué había puesto el huellero: al corregir
+  // después un mapeo, la reversión no reconocía la fila y el día quedaba cobrado por dos
+  // personas. Ahora se busca primero y, si existe, se actualizan sólo las horas — igual que
+  // hace `declararDia`.
+  const { data: existente, error: eBuscar } = await sb
+    .from('asistencias')
+    .select('id')
+    .eq('empleado_id', p.empleadoId)
+    .eq('fecha', p.fecha)
+    .eq('turno', p.turno)
+    .maybeSingle();
+  if (eBuscar) throw new Error(eBuscar.message);
+
+  if (existente) {
+    // Las horas pasan a ser de quien las escribió acá: se bajan las banderas del huellero para
+    // que la reversión no se las lleve.
+    const { error } = await sb
+      .from('asistencias')
+      .update({
+        hora_entrada: p.horaEntrada || null,
+        hora_salida: p.horaSalida || null,
+        minutos_tardanza: p.minutosTardanza,
+        ...(p.horaEntrada ? { huellero_puso_entrada: false } : {}),
+        ...(p.horaSalida ? { huellero_puso_salida: false } : {}),
+        ...(p.obs ? { obs: p.obs } : {}),
+      })
+      .eq('id', (existente as { id: string }).id);
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  const { error } = await sb.from('asistencias').insert({
+    empleado_id: p.empleadoId,
+    fecha: p.fecha,
+    turno: p.turno,
+    hora_entrada: p.horaEntrada || null,
+    hora_salida: p.horaSalida || null,
+    minutos_tardanza: p.minutosTardanza,
+    fuente: 'manual',
+    obs: p.obs || null,
+  });
   if (error) throw new Error(error.message);
 }
 
