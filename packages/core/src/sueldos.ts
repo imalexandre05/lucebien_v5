@@ -104,6 +104,19 @@ export interface ParametrosSueldo {
    * en vez de 7.500,00.
    */
   metaPorHora: number;
+  /**
+   * Multiplica el valor de la hora **sólo** en las horas fuera de contrato (RN-17). Default `1`:
+   * esa hora vale lo mismo que cualquier otra, que es como se paga hoy. Con `1.5` se paga un 50%
+   * más y con `0.8` menos.
+   *
+   * Es un factor y no un monto por dos razones: un monto quedaría desactualizado cada vez que
+   * cambie el sueldo pactado, y un factor se lee de un vistazo («la hora extra vale una vez y
+   * media»). Como los otros trece, se puede pactar por contrato con quien acordó venir un día más.
+   *
+   * No toca RN-06 ni RN-07: la diferencia de horas de un día **contratado** se sigue pagando a
+   * `valorPorHora` pelado. Esto es sólo el bloque de trabajo puntual fuera del horario.
+   */
+  factorHoraFueraContrato: number;
 }
 
 export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
@@ -121,6 +134,7 @@ export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
   montoMinimoComision: 120,
   diasDescuentoPorFalta: 2,
   metaPorHora: 1500 / 33,
+  factorHoraFueraContrato: 1,
 };
 
 /**
@@ -807,8 +821,13 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     {
       grupo: 'ingreso',
       concepto: 'Horas fuera de contrato',
-      detalle: `${r2(horasFuera)} h × S/${valorPorHora.toFixed(4)}`,
-      monto: r2(horasFuera * valorPorHora),
+      // El factor sólo se nombra en el detalle cuando no es 1, para que la boleta de la persona
+      // que cobra la hora al precio de siempre no cargue con un "× 1" que no explica nada.
+      detalle:
+        p.factorHoraFueraContrato === 1
+          ? `${r2(horasFuera)} h × S/${valorPorHora.toFixed(4)}`
+          : `${r2(horasFuera)} h × S/${valorPorHora.toFixed(4)} × ${p.factorHoraFueraContrato} (factor pactado)`,
+      monto: r2(horasFuera * valorPorHora * p.factorHoraFueraContrato),
       regla: 'RN-17',
     },
     {

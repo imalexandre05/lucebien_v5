@@ -717,6 +717,8 @@ describe('escala salarial (RN-14)', () => {
   });
 });
 
+const r2mas = (a: number, b: number) => Math.round((a + b) * 100) / 100;
+
 describe('parámetros configurables (spec §3.3)', () => {
   it('ninguna cifra está quemada: cambiar la penalidad cambia el descuento', () => {
     const conPenalidad10 = liquidarPeriodo({ ...GOLDEN, parametros: { penalidadTardanza: 10 } });
@@ -726,6 +728,37 @@ describe('parámetros configurables (spec §3.3)', () => {
   it('sin tardanzas libres, las 10 tardanzas menos las 4 justificadas se descuentan', () => {
     const sinLibres = liquidarPeriodo({ ...GOLDEN, parametros: { tardanzasLibres: 0 } });
     expect(sinLibres.asistencia.tardanzasInjustificadas).toBe(6);
+  });
+
+  it('factorHoraFueraContrato: el default no cambia nada y el override sí (C-03, RN-17)', () => {
+    // El default es 1 a propósito: ninguna liquidación existente cambia de monto al agregar el
+    // parámetro. Si esto se rompe, alguien le movió la plata a todos sin querer.
+    expect(PARAMETROS_SUELDO_DEFAULT.factorHoraFueraContrato).toBe(1);
+    const linea = (x: ReturnType<typeof liquidarPeriodo>) =>
+      x.lineas.find((y) => y.concepto === 'Horas fuera de contrato')!;
+
+    const base = liquidarPeriodo(GOLDEN);
+    expect(linea(base).monto).toBe(21.82); // 6 h × 3.6364
+    expect(linea(base).detalle).not.toMatch(/factor/);
+
+    const conFactor = liquidarPeriodo({ ...GOLDEN, parametros: { factorHoraFueraContrato: 1.5 } });
+    expect(linea(conFactor).monto).toBe(32.73);
+    expect(linea(conFactor).detalle).toMatch(/× 1.5 \(factor pactado\)/);
+    expect(conFactor.total).toBe(r2mas(base.total, 10.91));
+
+    // Un factor 0 es una decisión válida: "ese día vino, se le registra, no se le paga aparte".
+    const sinPago = liquidarPeriodo({ ...GOLDEN, parametros: { factorHoraFueraContrato: 0 } });
+    expect(linea(sinPago).monto).toBe(0);
+  });
+
+  it('factorHoraFueraContrato no toca la diferencia de horas de un día contratado (RN-06)', () => {
+    // RN-17 y RN-07 se pagan las dos por hora, y es fácil confundirlas. El factor es sólo de
+    // RN-17: si esto se rompe, cada hora de más de un día normal se paga al precio de la extra.
+    const conFactor = liquidarPeriodo({ ...GOLDEN, parametros: { factorHoraFueraContrato: 3 } });
+    const dif = (x: ReturnType<typeof liquidarPeriodo>) =>
+      x.lineas.find((y) => y.concepto === 'Diferencia de horas')!.monto;
+    expect(dif(conFactor)).toBe(dif(liquidarPeriodo(GOLDEN)));
+    expect(dif(conFactor)).toBe(54.48);
   });
 
   // Las dos direcciones, explícitas, para que el día que alguien vuelva a invertir el default se

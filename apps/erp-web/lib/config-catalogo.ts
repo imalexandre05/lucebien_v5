@@ -253,7 +253,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   },
 
   // ── Sueldos (packages/core/src/sueldos.ts::PARAMETROS_SUELDO_DEFAULT, migración 0068) ───────
-  // Son 13 de los 14 parámetros del motor. `metaSemanal` NO está acá a propósito: es
+  // Son 14 de los 15 parámetros del motor. `metaSemanal` NO está acá a propósito: es
   // `number | null` y el null significa "no hay meta pactada, sugerila", cosa que una fila de
   // texto no puede expresar. Vive en el contrato (sueldo_acuerdos.parametros).
   //
@@ -399,6 +399,20 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     tipo: 'numero',
     default: '45.45454545454545',
     min: 0,
+  },
+  {
+    // RN-17 ampliada (SPEC-cambios-reglas-2026-08-17 C-03). Default 1: con el default ninguna
+    // liquidación existente cambia de monto. Es factor y no monto porque un monto quedaría viejo
+    // cada vez que cambie el sueldo pactado.
+    clave: 'sueldo_factor_hora_fuera_contrato',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Factor de la hora fuera de contrato',
+    descripcion:
+      'Multiplica el valor de la hora SÓLO en el bloque de horas fuera de contrato: trabajo puntual en un día que la persona no tenía contratado. Con 1 se paga igual que cualquier otra hora, que es lo habitual; con 1,5 se paga un 50% más. No toca la diferencia de horas de un día normal. Se puede pactar distinto por contrato.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    step: 0.1,
   },
   {
     // Regla A del marcaje astuto (SPEC-cambios-reglas-2026-08-17 C-05). Es una señal de gestión,
