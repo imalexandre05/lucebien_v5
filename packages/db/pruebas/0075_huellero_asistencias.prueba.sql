@@ -11,12 +11,14 @@
 --
 -- Todo `ok` = la migración cumple. Cualquier `FALLA` = una promesa que no se cumple.
 
+-- Las variables llevan el prefijo `v_` cuando comparten nombre con una columna: sin eso,
+-- `select condicion, obs into cond, obs` es ambiguo y PL/pgSQL corta con 42702.
 do $$
 declare
   disp uuid;
   eA uuid; eB uuid; eC uuid; eD uuid; eE uuid;
   map1 uuid; map2 uuid;
-  cond text; ent time; sal time; obs text; n int;
+  cond text; ent time; sal time; v_obs text; n int;
   r text := '';
 begin
   -- Cinco personas cualesquiera. La prueba no toca sus datos: sólo usa sus id.
@@ -81,10 +83,10 @@ begin
     values (disp,'903',eD,'2099-01-07T14:05:00-05:00',900006,'D'),
            (disp,'903',eD,'2099-01-07T21:00:00-05:00',900007,'D');
   perform huellero_derivar_asistencia(eD, '2099-01-07');
-  select condicion, fuente into cond, obs
+  select condicion, fuente into cond, v_obs
     from asistencias where empleado_id=eD and fecha='2099-01-07' and turno='T';
-  if cond = 'trabajado' and obs = 'reporte' then r := r || '4=ok ';
-  else r := r || format('4-TRANSICION-REPORTE=FALLA(%s %s) ', cond, obs); end if;
+  if cond = 'trabajado' and v_obs = 'reporte' then r := r || '4=ok ';
+  else r := r || format('4-TRANSICION-REPORTE=FALLA(%s %s) ', cond, v_obs); end if;
 
   -- ── 5) Las horas cargadas a mano no se pisan ────────────────────────────────────────────
   insert into asistencias(empleado_id, fecha, turno, hora_entrada, hora_salida, fuente, condicion)
@@ -120,10 +122,10 @@ begin
     values (disp,'900',eA,'2099-01-10T00:22:00-05:00',900012,'A'),
            (disp,'900',eA,'2099-01-10T23:01:00-05:00',900013,'A');
   perform huellero_derivar_asistencia(eA, '2099-01-10');
-  select condicion, obs into cond, obs
+  select condicion, obs into cond, v_obs
     from asistencias where empleado_id=eA and fecha='2099-01-10';
-  if cond = 'sin_dato' and obs like 'revisar:%' then r := r || '7=ok ';
-  else r := r || format('7-JORNADA-22H=FALLA(%s %s) ', cond, obs); end if;
+  if cond = 'sin_dato' and v_obs like 'revisar:%' then r := r || '7=ok ';
+  else r := r || format('7-JORNADA-22H=FALLA(%s %s) ', cond, v_obs); end if;
 
   -- ── 8) Dos marcas en el mismo minuto tampoco ────────────────────────────────────────────
   -- FERNANDO: entrada = salida hace que sueldos.ts:546-548 lance y el mes entero se trabe.
@@ -259,10 +261,10 @@ begin
   delete from marcas_huellero where evento_serial in (900040, 900041);
   perform huellero_limpiar_dia_sin_marcas(eE, '2099-06-01');
 
-  select condicion, hora_entrada, obs into cond, ent, obs
+  select condicion, hora_entrada, obs into cond, ent, v_obs
     from asistencias where empleado_id=eE and fecha='2099-06-01';
-  if cond = 'sin_dato' and ent is null and obs = 'auto: trabajador del reporte R-1' then r := r || '18=ok ';
-  else r := r || format('18-NO-REVIERTE-AJENA=FALLA(%s %s %s) ', cond, ent, obs); end if;
+  if cond = 'sin_dato' and ent is null and v_obs = 'auto: trabajador del reporte R-1' then r := r || '18=ok ';
+  else r := r || format('18-NO-REVIERTE-AJENA=FALLA(%s %s %s) ', cond, ent, v_obs); end if;
 
   -- ── 19) La pausa no se paga: cuatro marcas dan DOS tramos ──────────────────────────────
   -- C-01 (migración 0078). Si alguien sale y vuelve el mismo día, el rato de afuera no cuenta.
