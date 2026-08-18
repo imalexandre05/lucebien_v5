@@ -121,7 +121,7 @@ Lo pactado con el colaborador para un periodo concreto.
 | `meta_semanal` | decimal \| null | **Lo pactado en el contrato** (RN-10). Null = usar la sugerencia por horas |
 | `factor_meta` | decimal | Por defecto 1.00. Se aplica **sólo a la meta sugerida**, nunca a la pactada: el 0.85 del Excel existía para hacer alcanzable una meta derivada de una fórmula |
 | `meta_por_hora` | decimal | Por defecto 1500/33 = S/45,4545. Sólo se usa para **sugerir** una meta cuando no hay pactada (RN-10) |
-| `meta_semanal_fija` | bool | Por defecto `true`: la meta es igual todas las semanas (RN-12, §9.2) |
+| `meta_semanal_fija` | bool | Por defecto `false` desde el 17-ago-2026: la semana que absorbe días sobrantes sube su meta (RN-12, §9.2, C-02). En `true` la meta es igual todas las semanas |
 | `pct_comision` | decimal | Por defecto 0.02 |
 | `monto_minimo_comision` | decimal | Por defecto 120.00 |
 | `dias_descuento_por_falta` | int | Por defecto 2. Son los días que la falta cuesta **en total** (RN-09) |
@@ -306,10 +306,12 @@ El periodo se divide en semanas de 7 días desde `fecha_inicio`.
 
 - **La última semana absorbe los días sobrantes.** Si el periodo tiene 31 días, la semana 4
   cubre los días 22 a 31, no solo hasta el 28. Ninguna venta queda fuera de una semana.
-- La meta es **la misma todas las semanas**: la pactada de RN-10. Una semana que absorbe días
-  sobrantes **no** sube su meta — el bono es un premio semanal fijo y el colaborador no elige
-  que su mes tenga 31 días (decisión de Alexander, 13-ago-2026 — ver §9.2). Sin meta pactada, la
-  sugerencia sale del horario de una semana tipo, no de cuántos días cayeron en ese tramo.
+- Sin meta pactada, la meta sugerida sale de **las horas contratadas de cada tramo**: una semana
+  que absorbe los días sobrantes del mes **sí** sube su meta (Alexander, 16-ago-2026 — ver §9.2 y
+  C-02). Con `meta_semanal_fija = true` vuelve a salir del horario de una semana tipo y es igual
+  todas las semanas, que fue el default entre el 13 y el 17-ago-2026.
+- Una meta **pactada** en el contrato es la misma todas las semanas por definición: sobre ella
+  este parámetro no hace nada.
 - Una semana se considera cumplida si `ventas_de_la_semana > meta_semanal`.
 - `bono_metas = semanas_cumplidas × bono_meta_semanal`, con `bono_meta_semanal` = S/30 editable.
 
@@ -317,13 +319,14 @@ El bono semanal y la comisión de RN-13 son **dos premios distintos por dos meta
 uno que reemplazó al otro: el bono se gana semana a semana, la comisión se desbloquea al llegar a
 la meta del mes (confirmado por el dueño, 14-ago-2026).
 
-Para el caso contrario (meta proporcional a los días de cada tramo) existe el parámetro
-`meta_semanal_fija = false`, apagado por defecto.
+Para el caso contrario (meta igual todas las semanas) existe el parámetro
+`meta_semanal_fija = true`, apagado por defecto.
 
-> 🔄 **Se invierte — ver [SPEC-cambios-reglas-2026-08-17.md](SPEC-cambios-reglas-2026-08-17.md)
-> C-02.** Alexander confirmó el 16-ago-2026 que la semana larga **sí** sube su meta: el default de
-> `meta_semanal_fija` pasa a `false`. La lógica ya existe en las dos direcciones; cambia cuál es la
-> de fábrica. Son S/30 por persona por mes en el caso de prueba. Escrito, sin implementar.
+> ✅ **Invertido el 17-ago-2026 — ver [SPEC-cambios-reglas-2026-08-17.md](SPEC-cambios-reglas-2026-08-17.md)
+> C-02.** El default de `meta_semanal_fija` pasó de `true` a `false`. La lógica ya existía en las
+> dos direcciones; cambió cuál es la de fábrica. **Cuesta S/76,40 en el caso de prueba**, no S/30:
+> la meta del mes es la suma de las semanales (RN-11), así que subir la de la semana larga sube
+> también la del mes y, en este caso, apaga la comisión entera. Implementado.
 
 > Corrección: la fórmula actual `COUNTIF(Z20:AC20,">U7")` compara contra el texto "U7" en vez
 > de contra la celda, así que siempre da 0. Hoy el administrador lo compensa escribiendo el
@@ -478,9 +481,9 @@ Datos reales del archivo `13.-NOMBRE_2026_MES_VERSIÓN 20.0.xlsx`, con las regla
 | Diferencia de horas | +14.9833 h | RN-06 |
 | Tardanzas | **10** — el jueves sin horario no cuenta | RN-08 |
 | Tardanzas injustificadas | **3** (10 − 3 libres − 4 justificadas) | RN-08 |
-| Meta semanal sugerida | 1,500.00, **igual las cuatro semanas** | RN-10, RN-12 |
-| Meta del periodo | **6,000.00** (4 semanas × 1,500) | RN-11 |
-| Semanas cumplidas | **4** | RN-12 |
+| Meta semanal sugerida | 1,500 las tres primeras y **3,000 la cuarta**, que dura 10 días | RN-10, RN-12 |
+| Meta del periodo | **7,500.00** (1,500 × 3 + 3,000) | RN-11 |
+| Semanas cumplidas | **3** — la cuarta vendió 1,800 contra una meta de 3,000 | RN-12 |
 | Días de tiempo completo | **0** por horas (ninguno llega a 12 h) — el administrador tenía habilitados sus almuerzos, así que cuentan los **16** días trabajados | RN-15 |
 
 ### Liquidación esperada
@@ -488,28 +491,32 @@ Datos reales del archivo `13.-NOMBRE_2026_MES_VERSIÓN 20.0.xlsx`, con las regla
 | Línea | Monto |
 |---|---|
 | Sueldo | 600.00 |
-| Comisión 2% | **46.40** (ventas 7,200 ≥ meta 6,000, sobre S/2,320 en boletas grandes) |
-| Bono metas semanales | **120.00** (4 × 30) |
+| Comisión 2% | **0.00** — las ventas del mes (7,200) no llegan a la meta del mes (7,500). Con `meta_semanal_fija = true` serían 46.40 |
+| Bono metas semanales | **90.00** (3 × 30) |
 | Almuerzos | **64.00** (16 días − 8 entregados = 8 × 8) |
 | Horas fuera de contrato | 21.82 |
-| **Ingresos** | **852.22** |
+| **Ingresos** | **775.82** |
 | Faltas | 0.00 |
 | Adelantos | −190.00 |
 | **Descuentos** | **−190.00** |
 | Diferencia de horas | +54.48 |
 | Capacitaciones | +50.00 |
 | **Ajustes** | **+104.48** |
-| **Subtotal** | **766.70** |
+| **Subtotal** | **690.30** |
 | Tardanzas (3 × 5) | **−15.00** |
 | Reportes | −20.00 |
 | Bonos extras | +20.00 |
-| **TOTAL A PAGAR** | **S/751.70** |
+| **TOTAL A PAGAR** | **S/675.30** |
 
-> El archivo Excel actual arroja **S/804.70** para estos mismos datos. Los S/53.00 de diferencia
-> son tres correcciones: almuerzos contados sobre el calendario en vez de sobre días trabajados
-> (−88.00), una meta semanal que el admin no reconoció porque la fórmula estaba rota (+30.00) y
-> una tardanza contada en un día sin horario (+5.00). La comisión de S/46.40 que el Excel pagaba
-> resulta correcta: con la meta pactada de S/1.500 semanales, el mes sí la alcanza.
+> El archivo Excel actual arroja **S/804.70** para estos mismos datos. Los S/129.40 de diferencia
+> son cuatro correcciones: almuerzos contados sobre el calendario en vez de sobre días trabajados
+> (−88.00), una meta semanal que el admin no reconoció porque la fórmula estaba rota (+30.00),
+> una tardanza contada en un día sin horario (+5.00) y la meta proporcional de la semana larga
+> (−76.40 = bono −30.00 y comisión −46.40, C-02 del 17-ago-2026).
+>
+> Las tres primeras son errores del Excel. **La cuarta no es un error de nadie**: es una regla que
+> cambió. Hasta el 17-ago el total esperado de este caso era S/751.70 y sigue siendo reproducible
+> con `meta_semanal_fija = true`.
 >
 > **El Excel es una plantilla de referencia**, no la planilla real de nadie. Sirve para validar
 > que el motor recorre bien el flujo, no para tomar sus montos como verdad.
@@ -685,12 +692,21 @@ Había tres salidas posibles, todas decisiones del dueño y no técnicas:
 | **B** ✅ — La meta semanal es fija: horas de la plantilla semanal × meta_por_hora × factor, sin importar cuántos días absorba el tramo | Simple de explicar y estable mes a mes | S/120 |
 | **C** — Los días sobrantes forman una 5ta semana con su propia meta proporcional | Lo más justo si casi todos los meses sobran días, pero agrega una semana parcial cada mes y nadie lo pidió | S/90 + posible 5ta |
 
-**Decidido por Alexander (13-ago-2026, en conversación — ⚠️ pendiente de confirmar con el dueño,
-ver §9.5 V-03): opción B.** El bono es un premio semanal fijo de S/30 y el colaborador no elige
-que su mes tenga 31 días. RN-12 se reescribió en consecuencia.
+**Decidido el 13-ago-2026: opción B.** El bono es un premio semanal fijo de S/30 y el colaborador
+no elige que su mes tenga 31 días. RN-12 se reescribió en consecuencia.
 
-La opción A sigue disponible sin tocar código: `meta_semanal_fija = false` calcula la meta sobre
-las horas contratadas de cada tramo. La opción C exigiría cambiar `tramosSemanales()`.
+**Revertido el 16/17-ago-2026: vuelve la opción A.** Preguntado de nuevo —*«si dura 10 días en vez
+de 7, ¿su meta sigue siendo S/1.500 o sube proporcionalmente?»*— Alexander respondió **«exacto,
+sube»**. El default de `meta_semanal_fija` pasó a `false` (C-02). El razonamiento del 13-ago sigue
+en pie; simplemente no es el que se eligió, y la conducta anterior sigue a un clic en
+/configuracion.
+
+Lo que la tabla de arriba no decía y conviene tener a la vista: la opción A no cuesta sólo los
+S/30 del bono. Como la meta del mes es la suma de las semanales (RN-11), sube también el umbral de
+la comisión — en este caso de prueba lo sube de 6.000 a 7.500 y las ventas de 7.200 dejan de
+alcanzarlo, así que se pierden además los S/46,40 de comisión. **S/76,40 en total.**
+
+La opción C exigiría cambiar `tramosSemanales()` y nadie la pidió.
 
 ### 9.4 — Lo que confirmó y lo que cambió el dueño (13-ago-2026)
 

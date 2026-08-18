@@ -105,9 +105,29 @@ nadie lo lea dentro de seis meses como si siempre hubiera sido así. El razonami
 —*"el colaborador no elige que su mes tenga 31 días"*— sigue siendo válido; simplemente no es el
 que se eligió.
 
-**Impacto medido en el caso de prueba de la spec (§9.2):** con meta fija, 4 semanas cumplidas y
-bono S/120. Con meta proporcional, la semana larga pide más y son **3 semanas cumplidas, bono
-S/90**. Treinta soles por persona por mes.
+**Impacto medido en el caso de prueba de la spec (§9.2): S/76,40, no S/30.** Esta cifra se
+corrigió el 17-ago después de correr el motor con el default invertido; la estimación anterior
+miraba sólo el bono y se quedaba corta a la mitad.
+
+| | Meta fija (hasta el 17-ago) | Meta proporcional (nuevo default) |
+|---|---|---|
+| Metas de las 4 semanas | 1.500 · 1.500 · 1.500 · 1.500 | 1.500 · 1.500 · 1.500 · **3.000** |
+| Semanas cumplidas | 4 | **3** |
+| Bono semanal | S/120 | **S/90** |
+| Meta del **mes** (RN-11 = suma de las semanales) | 6.000 | **7.500** |
+| ¿Ventas 7.200 alcanzan la meta del mes? | sí | **no** |
+| Comisión (RN-13) | S/46,40 | **S/0** |
+| **Total a pagar** | S/751,70 | **S/675,30** |
+
+**La consecuencia que no era obvia:** subir la meta de la semana larga sube también la meta del
+**mes**, porque RN-11 la define como la suma de las semanales. En este caso de prueba eso deja las
+ventas por debajo del umbral y **apaga la comisión entera**. O sea: el cambio no cuesta un bono
+semanal, cuesta el bono **y** la comisión.
+
+No es un error del cambio —es exactamente lo que pidió Alexander, y una meta más alta que no se
+alcanza es justamente lo que significa no alcanzarla— pero conviene que esté escrito antes de que
+aparezca en la primera planilla real. Si la intención era subir la exigencia de la semana larga
+**sin** mover la meta del mes, eso es otro cambio y necesita su propia decisión.
 
 ---
 
