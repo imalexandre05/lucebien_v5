@@ -10,6 +10,11 @@
 -- Cómo se corre:  bash tools/probar-migracion.sh 0075
 --
 -- Todo `ok` = la migración cumple. Cualquier `FALLA` = una promesa que no se cumple.
+--
+-- POR QUÉ LLAMA A LAS FUNCIONES INTERNAS. `huellero_reprocesar_mapeo` y `huellero_registrar_marcas`
+-- tienen portero de administrador, y esta prueba corre sin usuario logueado: `auth.uid()` es null.
+-- Los casos de lógica llaman a la función interna que hace el trabajo, y el caso 22 comprueba
+-- aparte que los porteros efectivamente cortan.
 
 -- Las variables llevan el prefijo `v_` cuando comparten nombre con una columna: sin eso,
 -- `select condicion, obs into cond, obs` es ambiguo y PL/pgSQL corta con 42702.
@@ -169,11 +174,11 @@ begin
   perform huellero_derivar_asistencia(eA, '2099-02-10');
 
   update huellero_mapeos set vigente_hasta='2099-02-05' where id=map1;
-  perform huellero_reprocesar_mapeo(map1);
+  perform huellero_reresolver_identificador(disp, '905');
 
   insert into huellero_mapeos(dispositivo_id, employee_no, empleado_id, vigente_desde)
     values (disp, '905', eB, '2099-02-06') returning id into map2;
-  perform huellero_reprocesar_mapeo(map2);
+  perform huellero_reresolver_identificador(disp, '905');
 
   select count(*) into n from asistencias where empleado_id=eA and fecha='2099-02-10';
   if n = 0 then r := r || '11a=ok ';
@@ -187,7 +192,7 @@ begin
   -- El check permite `ignorado` con empleado_id cargado: es lo natural cuando se quiere dejar de
   -- contar un identificador sin borrar de quién era.
   update huellero_mapeos set ignorado=true where id=map2;
-  perform huellero_reprocesar_mapeo(map2);
+  perform huellero_reresolver_identificador(disp, '905');
   select count(*) into n from marcas_huellero
    where dispositivo_id=disp and employee_no='905' and empleado_id is not null;
   if n = 0 then r := r || '12=ok ';
@@ -319,6 +324,25 @@ begin
     from asistencias where empleado_id=eE and fecha='2099-07-03';
   if n = 1 and ent = '08:00' and sal = '18:00' then r := r || '21=ok ';
   else r := r || format('21-VUELVE-ENSEGUIDA=FALLA(%s filas, %s %s) ', n, ent, sal); end if;
+
+  -- ── 22) Las puertas con portero cortan cuando no hay administrador ─────────────────────
+  -- Esta prueba corre sin usuario logueado, así que `private.app_es_admin()` es falso. Las tres
+  -- funciones expuestas por HTTP tienen que rechazar; las internas no se conceden a nadie.
+  begin
+    perform huellero_reprocesar_mapeo(map1);
+    r := r || '22a-SIN-PORTERO=FALLA ';
+  exception when others then
+    if sqlerrm like 'PERMISO:%' then r := r || '22a=ok ';
+    else r := r || format('22a-OTRO-ERROR=FALLA(%s) ', sqlerrm); end if;
+  end;
+
+  begin
+    perform huellero_registrar_marcas(disp, '[]'::jsonb);
+    r := r || '22b-SIN-PORTERO=FALLA ';
+  exception when others then
+    if sqlerrm like 'PERMISO:%' then r := r || '22b=ok ';
+    else r := r || format('22b-OTRO-ERROR=FALLA(%s) ', sqlerrm); end if;
+  end;
 
   raise exception 'RESULTADO %', r;
 end $$;
