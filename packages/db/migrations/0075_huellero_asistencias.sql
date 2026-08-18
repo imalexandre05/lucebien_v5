@@ -280,6 +280,8 @@ declare
   v_nueva_ent   time;
   v_nueva_sal   time;
   m             record;
+  v_filas       uuid[];    -- las filas que YA existen ese día, por turno
+  v_turnos      text[];
   v_abierto     time := null;   -- entrada del tramo que se está armando
   v_ultimo      time := null;   -- última marca vista
 begin
@@ -388,10 +390,28 @@ begin
   v_max_horas := coalesce(v_max_horas, 14);
   v_min_horas := coalesce(v_min_horas, 0.5);
 
+  -- Las filas que ya existen ese día, en orden de turno.
+  --
+  -- POR QUÉ NO SE ELIGE EL TURNO POR NÚMERO DE TRAMO. Lo primero que se hizo fue mandar el tramo
+  -- 1 al turno 'M' y el 2 al 'T', y eso rompía el caso más común: la fila que deja el envío de un
+  -- reporte (0030) suele estar en turno 'T'. La derivación buscaba una fila 'M', no la
+  -- encontraba, creaba otra, y la del reporte se quedaba en 'sin_dato' bloqueando la liquidación
+  -- del mes — que es exactamente lo que la transición de condición existe para evitar.
+  --
+  -- Cada tramo va a la fila que le toca por orden. Da igual cómo se llame su turno: la
+  -- liquidación agrupa por fecha y suma los tramos, no mira el nombre.
+  select array_agg(a.id order by a.turno), array_agg(a.turno order by a.turno)
+    into v_filas, v_turnos
+  from asistencias a
+  where a.empleado_id = p_empleado_id and a.fecha = p_fecha;
+
   for v_i in 1..v_n_tramos loop
     v_ent   := v_tramos[v_i][1];
     v_sal   := v_tramos[v_i][2];
-    v_turno := case when v_i = 1 then 'M' else 'T' end;
+
+    -- El turno sólo se elige al CREAR una fila nueva; si ya hay una, se respeta el suyo.
+    v_turno := coalesce(v_turnos[v_i],
+                        case when 'M' = any(coalesce(v_turnos, array[]::text[])) then 'T' else 'M' end);
 
     -- SALVAGUARDA (c): un tramo que no puede ser cierto se guarda con sus horas reales pero NO se
     -- declara trabajado. Se evalúa por tramo, que es lo que ahora se paga.
@@ -403,9 +423,13 @@ begin
       end if;
     end if;
 
-    select * into v_fila
-    from asistencias a
-    where a.empleado_id = p_empleado_id and a.fecha = p_fecha and a.turno = v_turno;
+    if v_filas is not null and array_length(v_filas, 1) >= v_i then
+      select * into v_fila from asistencias a where a.id = v_filas[v_i];
+    else
+      select * into v_fila
+      from asistencias a
+      where a.empleado_id = p_empleado_id and a.fecha = p_fecha and a.turno = v_turno;
+    end if;
 
     if not found then
       insert into asistencias (empleado_id, fecha, turno, hora_entrada, hora_salida,
