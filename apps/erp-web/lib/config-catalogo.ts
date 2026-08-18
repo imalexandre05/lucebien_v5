@@ -330,7 +330,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     seccion: SECCION_SUELDOS,
     etiqueta: 'Bono por semana con la meta cumplida (S/)',
     descripcion:
-      'Soles que gana la persona por cada semana del periodo en la que llegó a su meta de venta. Es un premio semanal fijo: una semana más larga no sube la meta.',
+      'Soles que gana la persona por cada semana del periodo en la que llegó a su meta de venta. Es un premio semanal fijo, pero la meta no: una semana más larga pide más, salvo que se encienda «Meta semanal fija».',
     tipo: 'numero',
     default: '30',
     min: 0,
@@ -352,9 +352,9 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     seccion: SECCION_SUELDOS,
     etiqueta: 'Meta semanal fija',
     descripcion:
-      'Encendido: la meta es la misma todas las semanas y sale de la plantilla semanal completa. Una semana que absorbe los días sobrantes del mes NO sube su meta — la persona no elige que el mes tenga 31 días. Apagado: la meta sale de las horas contratadas de cada tramo.',
+      'Apagado (default): la meta sale de las horas contratadas de cada tramo, así que la semana que absorbe los días sobrantes del mes SÍ sube su meta. Ojo: la meta del mes es la suma de las semanales, así que eso sube también el umbral de la comisión. Encendido: la meta es la misma todas las semanas y sale de la plantilla semanal completa, así una persona no paga que su mes tenga 31 días. Sólo afecta a la meta sugerida: sobre una meta pactada en el contrato no hace nada.',
     tipo: 'booleano',
-    default: 'true',
+    default: 'false',
   },
   {
     clave: 'sueldo_pct_comision',

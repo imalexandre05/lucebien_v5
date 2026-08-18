@@ -128,12 +128,15 @@ describe('golden test — spec §5', () => {
 
   it('ventas y meta del periodo (RN-10, RN-11, RN-13)', () => {
     expect(l.ventas.total).toBe(7200);
-    // Sin meta pactada, se sugiere por horas: 33 h × S/45.4545 = S/1.500 por semana.
-    // La del periodo es la suma de las cuatro, no un cálculo aparte.
-    expect(l.ventas.metaPeriodo).toBe(6000);
+    // Sin meta pactada, se sugiere por horas: 33 h × S/45.4545 = S/1.500 por semana, y la semana
+    // que absorbe los días sobrantes pide el doble (C-02). La del periodo es la suma de las
+    // cuatro, no un cálculo aparte.
+    expect(l.ventas.metaPeriodo).toBe(7500);
     expect(l.ventas.baseComision).toBe(2320);
-    expect(l.ventas.metaAlcanzada).toBe(true);
-    expect(linea('Comisión').monto).toBe(46.4);
+    // Las ventas del mes (7.200) NO llegan a la meta del mes (7.500), así que no hay comisión.
+    // La base se calcula igual: es el dato del que saldría la comisión si la meta se alcanzara.
+    expect(l.ventas.metaAlcanzada).toBe(false);
+    expect(linea('Comisión').monto).toBe(0);
   });
 
   it('la meta pactada del contrato manda sobre la sugerida (RN-10)', () => {
@@ -191,31 +194,61 @@ describe('golden test — spec §5', () => {
     expect(linea('Descuento por tardanzas').monto).toBe(-15);
   });
 
-  it('§9.2 — la semana larga absorbe días pero NO sube su meta (RN-12)', () => {
+  it('§9.2 — la semana larga absorbe días y SÍ sube su meta (RN-12, C-02)', () => {
     expect(l.ventas.semanas).toHaveLength(4);
     const [, , , s4] = l.ventas.semanas;
-    // Las cuatro metas son iguales aunque la semana 4 dure 10 días y tenga 6 días contratados.
-    expect(l.ventas.semanas.map((s) => s.meta)).toEqual([1500, 1500, 1500, 1500]);
+    // La semana 4 dura 10 días y tiene 6 días contratados en vez de 3, así que su meta es el
+    // doble. Hasta el 17-ago-2026 las cuatro metas eran iguales — ver el test de más abajo.
+    expect(l.ventas.semanas.map((s) => s.meta)).toEqual([1500, 1500, 1500, 3000]);
     expect(s4.dias).toBe(10);
     expect(s4.diasContratados).toBe(6);
-    expect(s4.cumplida).toBe(true); // vendió 1.800 > 1.500
-    expect(l.ventas.semanasCumplidas).toBe(4);
-    expect(linea('Bono por metas semanales').monto).toBe(120);
+    expect(s4.cumplida).toBe(false); // vendió 1.800, y ahora la meta de esa semana son 3.000
+    expect(l.ventas.semanasCumplidas).toBe(3);
+    expect(linea('Bono por metas semanales').monto).toBe(90);
   });
 
-  it('el bono semanal y la comisión se cobran los dos (RN-12 y RN-13)', () => {
+  // El caso completo del default anterior, para que la conducta que el administrador puede volver
+  // a encender siga cubierta y para que se vea de un vistazo qué cuesta el cambio.
+  it('metaSemanalFija:true reproduce el caso de la spec §5 hasta el 17-ago-2026', () => {
+    const fija = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanalFija: true } });
+    expect(fija.ventas.semanas.map((s) => s.meta)).toEqual([1500, 1500, 1500, 1500]);
+    expect(fija.ventas.semanasCumplidas).toBe(4);
+    expect(fija.ventas.metaPeriodo).toBe(6000);
+    expect(fija.ventas.metaAlcanzada).toBe(true);
+    expect(fija.lineas.find((x) => x.concepto === 'Bono por metas semanales')!.monto).toBe(120);
+    expect(fija.lineas.find((x) => x.concepto.startsWith('Comisión'))!.monto).toBe(46.4);
+    expect(fija.total).toBe(751.7);
+  });
+
+  // Lo que la spec no había previsto y sólo aparece corriendo el motor: como la meta del mes es
+  // la SUMA de las semanales (RN-11), subir la de la semana larga sube también el umbral de la
+  // comisión. Acá lo sube de 6.000 a 7.500 y las mismas 7.200 de venta dejan de alcanzarlo.
+  // El cambio no cuesta S/30 de bono: cuesta S/76.40 entre bono y comisión.
+  it('C-02 sube la meta del MES, no sólo la de la semana larga', () => {
+    const fija = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanalFija: true } });
+    expect(fija.ventas.metaPeriodo).toBe(6000);
+    expect(l.ventas.metaPeriodo).toBe(7500);
+    expect(fija.total - l.total).toBeCloseTo(76.4, 2);
+  });
+
+  it('el bono semanal y la comisión son premios distintos (RN-12 y RN-13)', () => {
     // Son premios distintos por metas distintas: el bono se gana semana a semana, la comisión
-    // se desbloquea al llegar a la meta del mes. Uno no reemplaza al otro.
-    expect(linea('Bono por metas semanales').monto).toBe(120);
-    expect(linea('Comisión').monto).toBe(46.4);
+    // se desbloquea al llegar a la meta del mes. Uno no reemplaza al otro, y por eso acá se
+    // cobran 3 bonos semanales sin una sola comisión.
+    expect(linea('Bono por metas semanales').monto).toBe(90);
+    expect(linea('Comisión').monto).toBe(0);
+    // Con meta pactada baja (S/1.000 por semana) se cobran los dos a la vez.
+    const conMeta = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanal: 1000 } });
+    expect(conMeta.lineas.find((x) => x.concepto === 'Bono por metas semanales')!.monto).toBe(120);
+    expect(conMeta.lineas.find((x) => x.concepto.startsWith('Comisión'))!.monto).toBe(46.4);
   });
 
   it('total del periodo', () => {
-    expect(l.ingresos).toBe(852.22);
+    expect(l.ingresos).toBe(775.82);
     expect(l.descuentos).toBe(-190);
     expect(l.ajustes).toBe(104.48);
-    expect(l.subtotal).toBe(766.7);
-    expect(l.total).toBe(751.7);
+    expect(l.subtotal).toBe(690.3);
+    expect(l.total).toBe(675.3);
   });
 });
 
@@ -238,7 +271,7 @@ describe('datos incompletos (hallazgos del verificador)', () => {
     expect(p.penalidadTardanza).toBe(PARAMETROS_SUELDO_DEFAULT.penalidadTardanza);
     expect(p.valorAlmuerzo).toBe(PARAMETROS_SUELDO_DEFAULT.valorAlmuerzo);
     const l = liquidarPeriodo({ ...GOLDEN, parametros: { penalidadTardanza: undefined } });
-    expect(l.total).toBe(751.7);
+    expect(l.total).toBe(675.3);
   });
 
   it('un parámetro con basura adentro corta el cálculo', () => {
@@ -278,7 +311,7 @@ describe('datos incompletos (hallazgos del verificador)', () => {
     expect(l.asistencia.tardanzasJustificadas).toBe(0);
     expect(l.asistencia.tardanzasInjustificadas).toBe(7);
     expect(l.advertencias.join(' ')).toMatch(/4 justificación\(es\) cayeron en días/);
-    expect(l.total).toBe(731.7);
+    expect(l.total).toBe(655.3);
   });
 
   it('un ingreso sin salida avisa', () => {
@@ -289,7 +322,7 @@ describe('datos incompletos (hallazgos del verificador)', () => {
     });
     expect(l.advertencias.join(' ')).toMatch(/2025-06-30: tiene ingreso sin salida/);
     expect(l.asistencia.faltas).toBe(0); // marcó entrada, no es falta
-    expect(l.total).toBe(704.37);
+    expect(l.total).toBe(627.97);
   });
 
   it('horas fuera de contrato de otro periodo no se pagan, y las repetidas cortan', () => {
@@ -302,7 +335,7 @@ describe('datos incompletos (hallazgos del verificador)', () => {
       ],
     });
     expect(l.asistencia.horasFueraDeContrato).toBe(6);
-    expect(l.total).toBe(751.7);
+    expect(l.total).toBe(675.3);
     expect(l.advertencias.join(' ')).toMatch(/fuera del periodo y no se pagaron/);
 
     expect(() =>
@@ -695,10 +728,19 @@ describe('parámetros configurables (spec §3.3)', () => {
     expect(sinLibres.asistencia.tardanzasInjustificadas).toBe(6);
   });
 
-  it('metaSemanalFija:false vuelve a la RN-12 original (opción A de la spec §9.2)', () => {
+  // Las dos direcciones, explícitas, para que el día que alguien vuelva a invertir el default se
+  // le rompa una sola línea y no ocho.
+  it('metaSemanalFija se comporta en las dos direcciones y el default es false', () => {
+    expect(PARAMETROS_SUELDO_DEFAULT.metaSemanalFija).toBe(false);
+
     const proporcional = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanalFija: false } });
     expect(proporcional.ventas.semanas.map((s) => s.meta)).toEqual([1500, 1500, 1500, 3000]);
     expect(proporcional.ventas.semanasCumplidas).toBe(3);
     expect(proporcional.total).toBe(675.3);
+
+    const fija = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanalFija: true } });
+    expect(fija.ventas.semanas.map((s) => s.meta)).toEqual([1500, 1500, 1500, 1500]);
+    expect(fija.ventas.semanasCumplidas).toBe(4);
+    expect(fija.total).toBe(751.7);
   });
 });

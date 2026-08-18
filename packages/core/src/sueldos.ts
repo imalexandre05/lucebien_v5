@@ -32,7 +32,7 @@
  * **Se sube la fecha cada vez que cambia una regla de cálculo.** No cuando cambia un comentario
  * ni un tipo: cuando cambia un número que le llega a alguien.
  */
-export const MOTOR_VERSION = '2026-08-14';
+export const MOTOR_VERSION = '2026-08-17';
 
 // ── Parámetros configurables (spec §3.3) ────────────────────────────────────────────────────
 // Ninguno va quemado en el código: son los defaults, editables desde /configuracion.
@@ -71,11 +71,15 @@ export interface ParametrosSueldo {
    */
   factorMeta: number;
   /**
-   * `true` (default): la meta semanal es la misma todas las semanas y sale de la plantilla
-   * semanal completa. Una semana que absorbe los días sobrantes del mes NO sube su meta — el
-   * bono es un premio semanal fijo y el colaborador no elige que su mes tenga 31 días
-   * (decisión de Alexander, 13-ago-2026, spec §9.2).
-   * `false`: la meta sale de las horas contratadas de cada tramo, que era la RN-12 original.
+   * `false` (default desde el 17-ago-2026): la meta sale de las horas contratadas de cada tramo,
+   * así que una semana que absorbe los días sobrantes del mes **sube su meta**. Es la RN-12
+   * original, y es lo que Alexander confirmó el 16-ago-2026: *"exacto, sube"*.
+   * `true`: la meta es la misma todas las semanas y sale de la plantilla semanal completa.
+   *
+   * **El default se invirtió, no se descubrió.** Hasta el 17-ago valía `true`, por la decisión
+   * del 13-ago de que el bono es un premio semanal fijo y nadie elige que su mes tenga 31 días
+   * (spec §9.2). Ese razonamiento sigue en pie; simplemente no es el que se eligió. Quien quiera
+   * la conducta anterior la enciende desde /configuracion, sin tocar código.
    *
    * Sólo afecta a la meta **sugerida**: una meta pactada ya es la misma todas las semanas por
    * definición, así que con `metaSemanal` cargada este parámetro no hace nada.
@@ -112,7 +116,7 @@ export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
   bonoMetaSemanal: 30,
   metaSemanal: null,
   factorMeta: 1,
-  metaSemanalFija: true,
+  metaSemanalFija: false,
   pctComision: 0.02,
   montoMinimoComision: 120,
   diasDescuentoPorFalta: 2,
