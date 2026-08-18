@@ -1,7 +1,20 @@
 # Cambios a las reglas del sueldo — 17-ago-2026
 
-**Estado:** spec escrita, **sin implementar**. Este documento existe para que el código venga
-después y en un commit aparte (Zone Guard, no-negociable 6).
+**Estado al 17-ago-2026:** C-02, C-03 y C-05 (regla A) **implementados**; C-01 pendiente de una
+confirmación. Este documento se escribió antes que el código y en commits aparte (Zone Guard,
+no-negociable 6).
+
+| | Qué es | Estado |
+|---|---|---|
+| C-01 🔴 | Las pausas no se pagan | **Pendiente** — falta confirmar `pausaMinimaMinutos` y el camino A |
+| C-02 🟠 | La semana larga sube su meta | ✅ Implementado — core, catálogo y migración 0076 |
+| C-03 🟡 | Factor de la hora fuera de contrato | ✅ Implementado — core, catálogo y migración 0077 |
+| C-04 ✅ | RN-13 no cambia | Nada que hacer |
+| C-05 🟡 | Marcaje astuto, regla A | ✅ Implementada en pantalla. Reglas B y C sin implementar |
+
+**Ninguna de las dos migraciones está aplicada todavía**, y su prueba
+(`packages/db/pruebas/0077_factor_hora_fuera_contrato.prueba.sql`) está escrita pero **sin correr**:
+la sesión que las escribió no tenía acceso a la base.
 
 Origen: las respuestas de Alexander del 16 y 17-ago-2026. Cada cambio dice qué hace el motor hoy,
 qué tiene que hacer, y qué cuesta si se implementa mal.
@@ -96,7 +109,7 @@ también la opción de que suba proporcionalmente»**.
 
 ### Qué cambia
 
-**Sólo el default: `metaSemanalFija` pasa de `true` a `false`.** El parámetro ya existe, ya es
+**Sólo el default: `metaSemanalFija` pasa de `true` a `false`.** ✅ Implementado (migración 0076). El parámetro ya existe, ya es
 editable y ya está implementado en las dos direcciones (`sueldos.ts:712`), así que no hay lógica
 nueva. Lo que cambia es cuál de las dos conductas es la de fábrica.
 
@@ -145,8 +158,10 @@ sueldo pactado entre las horas contratadas (`sueldos.ts:805-808`).
 
 ### Qué cambia
 
-**Nuevo parámetro `factorHoraFueraContrato`, default `1`.** Multiplica `valorPorHora` sólo en la
-línea de RN-17. Con `1` el resultado es idéntico al de hoy, así que ninguna liquidación existente
+**Nuevo parámetro `factorHoraFueraContrato`, default `1`.** ✅ Implementado. Multiplica
+`valorPorHora` sólo en la línea de RN-17, y el detalle de la boleta sólo nombra el factor cuando
+no es 1 — quien cobra la hora al precio de siempre no tiene por qué cargar con un «× 1» que no
+explica nada. Con `1` el resultado es idéntico al de hoy, así que ninguna liquidación existente
 cambia; con `1.5` esa hora se paga un 50% más, y con `0.8` menos.
 
 Se elige un **factor** y no un monto por dos razones: el monto quedaría desactualizado cada vez que
@@ -222,17 +237,17 @@ Las otras dos quedan planteadas, sin implementar:
 ## Lo que falta confirmar antes de codear
 
 1. **`pausaMinimaMinutos` = 15?** Cuántos minutos entre una salida y la entrada siguiente cuentan
-   como pausa de verdad. Debajo de eso son dos marcas del mismo momento.
-2. **`margenHorasDiaMinutos` = 120?** El umbral de la regla A, dado que quedarse dos horas es
-   normal.
+   como pausa de verdad. Debajo de eso son dos marcas del mismo momento. **Bloquea a C-01.**
+2. ~~**`margenHorasDiaMinutos` = 120?**~~ Sembrado en 120 el 17-ago y editable desde
+   /configuración; deja de ser un bloqueo.
 3. **Camino A para los tramos** (una fila de `asistencias` por tramo continuo). Afecta a la spec del
-   huellero, así que hay que avisarles antes de que escriban la derivación.
+   huellero, así que hay que avisarles antes de que escriban la derivación. **Bloquea a C-01.**
 
 ---
 
 ## Orden de implementación
 
-1. **C-05 regla A** — pantalla, sin tocar el motor. No depende de nada.
-2. **C-02** — cambiar un default, con el test que cubra las dos direcciones.
-3. **C-03** — parámetro nuevo, línea de RN-17 multiplicada, default que no cambia nada.
-4. **C-01** — lo último y lo más grande: core, RPC, migración y coordinación con el huellero.
+1. ✅ **C-05 regla A** — pantalla, sin tocar el motor. No depende de nada.
+2. ✅ **C-02** — cambiar un default, con el test que cubre las dos direcciones.
+3. ✅ **C-03** — parámetro nuevo, línea de RN-17 multiplicada, default que no cambia nada.
+4. ⏳ **C-01** — lo último y lo más grande: core, RPC, migración y coordinación con el huellero.

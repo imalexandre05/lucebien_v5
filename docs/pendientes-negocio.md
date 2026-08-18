@@ -344,9 +344,13 @@ está quemado en el código. **Ninguno está confirmado por el dueño.**
 1. **¿Un día trabajado sin horario contratado puede generar tardanza?** → **No.** Textual:
    *"solo afecta en cuántas horas trabajó y eso en su pago del día"*. Ese día entra por la
    diferencia de horas (RN-06) y por nada más. RN-08 ya lo decía; se corrigió el caso de prueba.
-2. **¿La semana que absorbe los días sobrantes del mes sube su meta?** → **No.** La meta semanal
-   es fija: horas de la plantilla semanal × meta_por_hora × factor, igual todas las semanas.
-   RN-12 se reescribió. La otra opción sigue disponible con `metaSemanalFija: false`.
+2. **¿La semana que absorbe los días sobrantes del mes sube su meta?** → ~~**No**~~ → **SÍ,
+   revertido el 16/17-ago-2026.** Preguntado de nuevo, Alexander respondió **«exacto, sube»**. El
+   default de `metaSemanalFija` pasó a `false` (migración 0076, C-02). La conducta anterior sigue
+   a un clic en /configuración → Sueldos → «Meta semanal fija».
+   **Cuesta S/76,40 en el caso de prueba, no S/30:** la meta del mes es la suma de las semanales,
+   así que subir la de la semana larga sube también el umbral de la comisión, y en ese caso la
+   apaga entera. Sigue pendiente de confirmar con el dueño.
 
 Con ambas, el caso de prueba daba **S/705.30**; con las reglas del 14-ago quedó en **S/751.70**. Los S/700.30 que declaraba la spec original no
 correspondían a ninguna combinación coherente de reglas: mezclaban la tardanza del Excel con la
@@ -643,6 +647,23 @@ una regla de cálculo entra por spec primero** (Zone Guard): acá queda registra
   ~08:00–19:00 (SHEYLA). Importa para `sueldo_acuerdo_turnos`: si a alguien de turno mañana se le
   carga un horario contratado que empieza 09:00, la tardanza sale mal. Revisar los acuerdos contra
   estos horarios antes de la primera liquidación.
+
+---
+
+## Defaults sembrados el 17-ago-2026 (SPEC-cambios-reglas-2026-08-17)
+
+Los tres son **elegidos, no confirmados**. Ninguno sale de una regla que alguien haya dicho: salen
+de reproducir la conducta acordada sin inventar un número. Todos editables desde /configuración.
+
+| Parámetro | Default | Por qué ese, y qué pasa si está mal |
+|---|---|---|
+| `sueldo_meta_semanal_fija` | `false` (C-02) | Es la conducta que Alexander pidió. Si estuviera mal, la semana larga volvería a pedir la meta de siempre y se pagarían S/76,40 más por persona por mes |
+| `sueldo_factor_hora_fuera_contrato` | `1` (C-03) | El único default que **no cambia ningún monto**: con 1 la hora fuera de contrato vale lo mismo que hoy. Elegido así a propósito para que agregar el parámetro no le mueva la plata a nadie |
+| `sueldo_margen_horas_dia_minutos` | `120` (C-05 regla A) | Alexander avisó que quedarse dos horas terminando pendientes es normal. Con 60 la señal sonaría todos los días y se aprendería a ignorar. **No descuenta nada**: marca el día para que alguien lo mire |
+
+**Falta confirmar con Alexander:** `pausaMinimaMinutos` para C-01 (propuesto 15) — cuántos minutos
+entre una salida y la entrada siguiente cuentan como pausa de verdad. Sin umbral, dos marcas
+seguidas por error (09:00 y 09:02) parten el día y le descuentan dos minutos a alguien.
 
 ---
 
