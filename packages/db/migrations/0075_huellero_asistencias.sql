@@ -262,28 +262,32 @@ create or replace function huellero_derivar_asistencia(p_empleado_id uuid, p_fec
   set search_path = public
 as $fn$
 declare
-  v_entrada     time;
-  v_salida      time;
   v_marcas      int;
   v_nombres     int;
   v_anonimas    int;
-  v_fila        asistencias%rowtype;
+  v_pausa_min   numeric;
   v_max_horas   numeric;
   v_min_horas   numeric;
+  v_motivo      text := null;
+  v_tramos      time[][];
+  v_ent         time;
+  v_sal         time;
   v_horas       numeric;
+  v_n_tramos    int;
+  v_turno       text;
+  v_i           int;
+  v_fila        asistencias%rowtype;
   v_nueva_ent   time;
   v_nueva_sal   time;
-  v_motivo      text := null;   -- si queda con texto, el día NO se declara trabajado
+  m             record;
+  v_abierto     time := null;   -- entrada del tramo que se está armando
+  v_ultimo      time := null;   -- última marca vista
 begin
   if p_empleado_id is null or p_fecha is null then return; end if;
 
-  -- SALVAGUARDA (a). Se mira el DÍA, no una fila.
+  -- SALVAGUARDA (a): una falta declarada protege el DÍA entero, no una fila.
   --
-  -- Antes se tomaba `order by turno limit 1` y sólo se comprobaba esa. Con el turno 'M' en
-  -- sin_dato (la fila que deja un reporte) y el turno 'T' declarado 'falta', se rellenaba la 'M'
-  -- y quedaba una fila 'trabajado' con horas contradiciendo la falta que declaró una persona.
-  -- Hoy `0073` la sigue cobrando como falta por su `bool_or`, así que el pago no cambiaba —pero
-  -- la garantía estaba rota, y la pantalla o cualquier export verían lo contrario.
+  -- Cuesta dos días de sueldo (RN-09) y la decidió una persona: ninguna huella la revierte sola.
   if exists (
     select 1 from asistencias a
     where a.empleado_id = p_empleado_id and a.fecha = p_fecha and a.condicion = 'falta'
@@ -291,147 +295,168 @@ begin
     return;
   end if;
 
-  -- Las marcas del día, en hora Perú. El core nunca llama new Date() y acá tampoco se asume la
-  -- zona del servidor: los cron de Supabase corren en UTC (no-negociable 4).
-  --
-  -- `nullif(btrim(...), '')` porque count(distinct) IGNORA los NULL: si una marca llegaba sin
-  -- nombre y la otra con nombre, el guard de reasignación contaba 1 y no disparaba.
   select count(*),
-         min((m.marcada_en at time zone 'America/Lima')::time),
-         max((m.marcada_en at time zone 'America/Lima')::time),
-         count(distinct nullif(btrim(m.nombre_equipo), '')),
-         count(*) filter (where nullif(btrim(m.nombre_equipo), '') is null)
-    into v_marcas, v_entrada, v_salida, v_nombres, v_anonimas
-  from marcas_huellero m
-  where m.empleado_id = p_empleado_id
-    and (m.marcada_en at time zone 'America/Lima')::date = p_fecha;
+         count(distinct nullif(btrim(m2.nombre_equipo), '')),
+         count(*) filter (where nullif(btrim(m2.nombre_equipo), '') is null)
+    into v_marcas, v_nombres, v_anonimas
+  from marcas_huellero m2
+  where m2.empleado_id = p_empleado_id
+    and (m2.marcada_en at time zone 'America/Lima')::date = p_fecha;
 
-  -- Sin marcas no se inventa nada: el día no existe para el huellero.
   if v_marcas = 0 then return; end if;
 
-  -- El día en que un identificador cambia de dueño.
-  --
-  -- La vigencia del mapeo es por FECHA, pero la reasignación puede ocurrir a mitad de día: el
-  -- 00000013 marcó como JAZMIN a las 08:45 del 28-ene y como NICOL a las 20:46 de ese mismo día.
-  -- Las dos marcas caen en la vigencia de JAZMIN y el colapso le daría una jornada de 12 horas
-  -- que no trabajó.
-  --
-  -- Dispara con dos nombres distintos Y TAMBIÉN con mezcla de marcas con nombre y sin nombre:
-  -- una marca anónima puede ser de cualquiera de las dos personas.
+  -- El día en que un identificador cambia de dueño. Dispara con dos nombres distintos y también
+  -- con mezcla de marcas con nombre y sin nombre: una anónima puede ser de cualquiera de las dos
+  -- personas, y el equipo omite el nombre en varios tipos de evento.
   if v_nombres > 1 or (v_nombres >= 1 and v_anonimas > 0) then
     v_motivo := 'revisar: el identificador tiene más de un nombre este día (posible reasignación)';
   end if;
 
-  -- Una sola marca no es una jornada: queda la entrada y la salida en null. La condición se
-  -- mantiene en 'sin_dato', que es lo que asistencias_trabajado_chk (0073) exige y además hace
-  -- que la liquidación corte nombrando la fecha en vez de cobrarla como 0 horas.
-  if v_marcas = 1 then
-    v_salida := null;
-  end if;
+  -- ── Emparejar las marcas en TRAMOS ────────────────────────────────────────────────────────
+  --
+  -- Las pausas dejaron de pagarse (C-01, migración 0078): si alguien marca su salida y vuelve el
+  -- mismo día, el rato de afuera no cuenta como trabajado. Para que eso valga también para el
+  -- huellero hay que emitir un tramo por par de marcas en vez de colapsar el día con
+  -- min(entrada)/max(salida) — lo pide la propia 0078 en su encabezado.
+  --
+  -- Confirmado con Alexander el 17-ago-2026: "si alguien marca su salida y vuelve a habilitarlo
+  -- el mismo día se cuentan nuevamente las horas; no es que el sistema castigue, sencillamente
+  -- no cuenta esas horas como trabajadas".
+  --
+  -- Las marcas alternan entrada/salida en orden. Un hueco más corto que `pausaMinimaMinutos` NO
+  -- es una salida: es alguien que apoyó el dedo dos veces, y sin fusionarlo se le descontarían
+  -- minutos todos los días.
+  select coalesce(nullif(btrim(c.valor), '')::numeric, 15) into v_pausa_min
+    from config c where c.clave = 'sueldo_pausa_minima_minutos';
+  v_pausa_min := coalesce(v_pausa_min, 15);
 
-  -- SALVAGUARDA (c): jornadas que no pueden ser ciertas.
-  --
-  -- El colapso de primera a última marca falla con quien entra y sale muchas veces. En los datos
-  -- reales: JORDAN de 00:22 a 23:01 (22,6 h) y FERNANDO con dos marcas en el mismo minuto.
-  --
-  -- Declararlas 'trabajado' no es neutral, es plata:
-  --   · 22,6 h le suman 14,6 horas extra al pago (sueldos.ts:572 y :828).
-  --   · Entrada igual a salida hace que sueldos.ts:546-548 lance, y la liquidación del mes
-  --     entero de esa persona no se puede cerrar, con un error que ni menciona al huellero.
-  --
-  -- No se recorta la jornada —eso sería inventar una regla de negocio (no-negociable 5)— pero
-  -- tampoco se declara trabajada: se guardan las horas reales en 'sin_dato' con el motivo, y
-  -- decide una persona. Los límites son filas de `config`, editables.
-  if v_salida is not null then
-    select coalesce(nullif(btrim(c.valor), '')::numeric, 14) into v_max_horas
-      from config c where c.clave = 'huellero_jornada_max_horas';
-    select coalesce(nullif(btrim(c.valor), '')::numeric, 0.5) into v_min_horas
-      from config c where c.clave = 'huellero_jornada_min_horas';
-    v_max_horas := coalesce(v_max_horas, 14);
-    v_min_horas := coalesce(v_min_horas, 0.5);
-
-    v_horas := extract(epoch from (v_salida - v_entrada)) / 3600.0;
-    if v_horas > v_max_horas or v_horas < v_min_horas then
-      v_motivo := coalesce(v_motivo,
-        'revisar: la jornada derivada da ' || round(v_horas, 2) || ' h, fuera del rango esperado');
+  v_tramos := array[]::time[][];
+  for m in
+    select (mk.marcada_en at time zone 'America/Lima')::time as h
+    from marcas_huellero mk
+    where mk.empleado_id = p_empleado_id
+      and (mk.marcada_en at time zone 'America/Lima')::date = p_fecha
+    order by mk.marcada_en
+  loop
+    if v_abierto is null then
+      v_abierto := m.h;                        -- abre un tramo
+    elsif v_ultimo is null then
+      -- El tramo está abierto y llega otra marca. Si viene pegada a la entrada NO es la salida:
+      -- es la misma persona apoyando el dedo dos veces. Ignorarla evita partir el día en un
+      -- tramo de dos minutos más otro sin cerrar, que era lo que pasaba.
+      if extract(epoch from (m.h - v_abierto)) / 60.0 >= v_pausa_min then
+        v_ultimo := m.h;                       -- lo cierra, por ahora
+      end if;
+    else
+      -- Hay un tramo cerrado y llega otra marca: ¿lo reabre o empieza uno nuevo?
+      if extract(epoch from (m.h - v_ultimo)) / 60.0 < v_pausa_min then
+        -- Volvió enseguida: esa salida no fue una salida. Se descarta el cierre y el tramo
+        -- vuelve a quedar abierto, esperando la salida de verdad. Extender el cierre en vez de
+        -- reabrir partía mal el día: con 08:00, 13:00, 13:05 y 18:00 daba 08:00-13:05 más un
+        -- tramo suelto a las 18:00, en vez de la jornada continua que fue.
+        v_ultimo := null;
+      else
+        v_tramos := v_tramos || array[array[v_abierto, v_ultimo]];
+        v_abierto := m.h;
+        v_ultimo  := null;
+      end if;
     end if;
+  end loop;
+
+  if v_abierto is not null then
+    -- El último tramo puede quedar sin cerrar: es la persona que entró y no marcó al irse.
+    v_tramos := v_tramos || array[array[v_abierto, v_ultimo]];
   end if;
 
-  select * into v_fila
-  from asistencias a
-  where a.empleado_id = p_empleado_id and a.fecha = p_fecha
-  order by a.turno
-  limit 1;
+  v_n_tramos := coalesce(array_length(v_tramos, 1), 0);
+  if v_n_tramos = 0 then return; end if;
 
-  if not found then
-    insert into asistencias (empleado_id, fecha, turno, hora_entrada, hora_salida,
-                             minutos_tardanza, fuente, condicion, obs,
-                             huellero_puso_entrada, huellero_puso_salida)
-    values (p_empleado_id, p_fecha, 'M', v_entrada, v_salida,
-            0,                                  -- el motor no lee esta columna; la tardanza la
-                                                -- calcula contra sueldo_acuerdo_turnos
-            'huellero',
-            case when v_salida is not null and v_motivo is null then 'trabajado' else 'sin_dato' end,
-            coalesce(v_motivo, 'auto: huellero'),
-            v_entrada is not null, v_salida is not null)
-    on conflict (empleado_id, fecha, turno) do nothing;
-    return;
+  -- Más de dos tramos no se puede representar: la clave de la tabla es (empleado, fecha, turno) y
+  -- los turnos del sistema son M y T. Con los datos reales no ocurre —quienes marcaban muchas
+  -- veces al día son el administrador y su familia, que van ignorados y no cobran— pero si
+  -- ocurriera se guardan los dos primeros y el día queda marcado para que lo mire una persona.
+  if v_n_tramos > 2 then
+    v_motivo := coalesce(v_motivo,
+      'revisar: el día tiene ' || v_n_tramos || ' tramos y sólo se pueden guardar dos');
+    v_n_tramos := 2;
   end if;
 
-  -- SALVAGUARDA (b): sólo se rellenan las horas que estén en null. Nunca se pisa una hora
-  -- cargada por una persona, nunca se cambia `fuente`, nunca se borra.
-  --
-  -- Pero las horas que puso la PROPIA máquina sí se recalculan. Si no, una re-resolución parcial
-  -- del día dejaba una hora vieja pegada: con dos identificadores mapeados a la misma persona,
-  -- corregir uno movía su marca pero el `coalesce` conservaba la salida de las 20:00 que ya
-  -- estaba escrita, y esa hora era de otra persona. El día quedaba de 12 horas para una y el
-  -- mismo tramo cobrado por la otra.
-  v_nueva_ent := case when v_fila.huellero_puso_entrada then v_entrada
-                      else coalesce(v_fila.hora_entrada, v_entrada) end;
-  v_nueva_sal := case when v_fila.huellero_puso_salida  then v_salida
-                      else coalesce(v_fila.hora_salida,  v_salida)  end;
+  select coalesce(nullif(btrim(c.valor), '')::numeric, 14) into v_max_horas
+    from config c where c.clave = 'huellero_jornada_max_horas';
+  select coalesce(nullif(btrim(c.valor), '')::numeric, 0.5) into v_min_horas
+    from config c where c.clave = 'huellero_jornada_min_horas';
+  v_max_horas := coalesce(v_max_horas, 14);
+  v_min_horas := coalesce(v_min_horas, 0.5);
 
-  -- Rellenar sin comparar dejaba la salida ANTES de la entrada: fila de turno 'T' con
-  -- hora_entrada 14:00 cargada a mano y marcas del huellero de la mañana (08:00 y 12:00) daba
-  -- 14:00 → 12:00 y la transición a 'trabajado' lo bendecía. `asistencias_trabajado_chk` lo
-  -- acepta, y después sueldos.ts:546-548 lanza y el mes no se liquida.
-  -- Si el relleno da una jornada al revés, se deja la fila como está.
-  if v_nueva_ent is not null and v_nueva_sal is not null and v_nueva_sal <= v_nueva_ent then
-    return;
-  end if;
+  for v_i in 1..v_n_tramos loop
+    v_ent   := v_tramos[v_i][1];
+    v_sal   := v_tramos[v_i][2];
+    v_turno := case when v_i = 1 then 'M' else 'T' end;
 
-  update asistencias a
-     set hora_entrada = v_nueva_ent,
-         hora_salida  = v_nueva_sal,
-         -- Se marca SÓLO la hora que estaba vacía y que esta pasada acaba de llenar. La que ya
-         -- estaba sigue siendo de quien la puso, y su bandera no se toca.
-         huellero_puso_entrada = (a.huellero_puso_entrada or a.hora_entrada is null) and v_nueva_ent is not null,
-         huellero_puso_salida  = (a.huellero_puso_salida  or a.hora_salida  is null) and v_nueva_sal is not null,
-         -- La ÚNICA excepción a "no pisar otra fuente", y sin ella el proyecto no sirve: las
-         -- filas que crea la 0030 al enviar un reporte nacen sin horas y en 'sin_dato', y la
-         -- liquidación filtra por condicion <> 'sin_dato' (0073:180). Rellenarles las horas sin
-         -- transicionar la condición dejaría el día invisible y el periodo bloqueado.
-         -- Sólo 'sin_dato' → 'trabajado', sólo con las DOS horas cargadas
-         -- (asistencias_trabajado_chk lo exige) y sólo si el día no quedó marcado para revisar.
-         condicion = case
-           when a.condicion = 'sin_dato'
-            and v_nueva_ent is not null
-            and v_nueva_sal is not null
-            and v_motivo is null
-           then 'trabajado'
-           else a.condicion
-         end,
-         -- El motivo se CONCATENA, no pisa: el 'auto: encargado del reporte <id>' que escribe
-         -- la 0030 es el único vínculo entre esa fila y el reporte que la creó.
-         --
-         -- Y no se repite: re-derivar el mismo día muchas veces agregaba el mismo texto una vez
-         -- por pasada, hasta llenar la columna.
-         obs = case
-           when v_motivo is null then a.obs
-           when coalesce(a.obs, '') like '%' || v_motivo || '%' then a.obs
-           else nullif(btrim(concat_ws(' · ', nullif(a.obs, ''), v_motivo)), '')
-         end
-   where a.id = v_fila.id;
+    -- SALVAGUARDA (c): un tramo que no puede ser cierto se guarda con sus horas reales pero NO se
+    -- declara trabajado. Se evalúa por tramo, que es lo que ahora se paga.
+    if v_sal is not null then
+      v_horas := extract(epoch from (v_sal - v_ent)) / 3600.0;
+      if v_horas > v_max_horas or v_horas < v_min_horas then
+        v_motivo := coalesce(v_motivo,
+          'revisar: un tramo da ' || round(v_horas, 2) || ' h, fuera del rango esperado');
+      end if;
+    end if;
+
+    select * into v_fila
+    from asistencias a
+    where a.empleado_id = p_empleado_id and a.fecha = p_fecha and a.turno = v_turno;
+
+    if not found then
+      insert into asistencias (empleado_id, fecha, turno, hora_entrada, hora_salida,
+                               minutos_tardanza, fuente, condicion, obs,
+                               huellero_puso_entrada, huellero_puso_salida)
+      values (p_empleado_id, p_fecha, v_turno, v_ent, v_sal,
+              0,                          -- el motor calcula la tardanza contra el horario
+              'huellero',
+              case when v_sal is not null and v_motivo is null then 'trabajado' else 'sin_dato' end,
+              coalesce(v_motivo, 'auto: huellero'),
+              v_ent is not null, v_sal is not null)
+      on conflict (empleado_id, fecha, turno) do nothing;
+      continue;
+    end if;
+
+    -- SALVAGUARDA (b): sólo se rellena lo que está vacío. Las horas que puso la propia máquina sí
+    -- se recalculan: si no, una re-resolución parcial dejaba pegada una hora que ya era de otra
+    -- persona.
+    v_nueva_ent := case when v_fila.huellero_puso_entrada then v_ent
+                        else coalesce(v_fila.hora_entrada, v_ent) end;
+    v_nueva_sal := case when v_fila.huellero_puso_salida  then v_sal
+                        else coalesce(v_fila.hora_salida,  v_sal)  end;
+
+    -- Rellenar no puede dejar la salida antes que la entrada: la liquidación después no cierra.
+    if v_nueva_ent is not null and v_nueva_sal is not null and v_nueva_sal <= v_nueva_ent then
+      continue;
+    end if;
+
+    update asistencias a
+       set hora_entrada = v_nueva_ent,
+           hora_salida  = v_nueva_sal,
+           huellero_puso_entrada = (a.huellero_puso_entrada or a.hora_entrada is null) and v_nueva_ent is not null,
+           huellero_puso_salida  = (a.huellero_puso_salida  or a.hora_salida  is null) and v_nueva_sal is not null,
+           -- Única excepción a "no pisar otra fuente", y sin ella el proyecto no sirve: la fila
+           -- que deja un reporte nace sin horas y en 'sin_dato', y la liquidación filtra los
+           -- 'sin_dato'. Rellenarla sin transicionar dejaría el periodo bloqueado.
+           condicion = case
+             when a.condicion = 'sin_dato'
+              and v_nueva_ent is not null and v_nueva_sal is not null and v_motivo is null
+             then 'trabajado'
+             else a.condicion
+           end,
+           -- El motivo se concatena y no se repite: re-derivar el mismo día muchas veces agregaba
+           -- el mismo texto una vez por pasada.
+           obs = case
+             when v_motivo is null then a.obs
+             when coalesce(a.obs, '') like '%' || v_motivo || '%' then a.obs
+             else nullif(btrim(concat_ws(' · ', nullif(a.obs, ''), v_motivo)), '')
+           end
+     where a.id = v_fila.id;
+  end loop;
 end;
 $fn$;
 

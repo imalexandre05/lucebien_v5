@@ -627,6 +627,19 @@ una regla de cálculo entra por spec primero** (Zone Guard): acá queda registra
   activo, así que el mapeo inicial no hay que adivinarlo: los que nunca aparecen o desaparecieron
   hace tiempo son los candidatos a ignorar. Confirmar con el administrador antes de ignorar en
   masa.
+- ✅ **JORDAN (identificador 2) y REMY (1) — RESUELTO el 17-ago-2026 por Alexander.** *"Es el
+  admin, a veces marca por marcar, lo mismo con Remy; son personas parte de la familia y siempre
+  marcan sin saber. No lo tomes en cuenta, a ellos no se les paga."* Sus identificadores van
+  **ignorados** en el mapeo. Eso explica de paso los dos patrones que no cerraban: los días de 22
+  horas y el 48% de marcas sueltas eran suyos.
+- ✅ **La salida que vuelve el mismo día — RESUELTO el 17-ago-2026 por Alexander.** *"Si alguien
+  marca su salida y vuelve a habilitarlo el mismo día se cuentan nuevamente las horas; no es que
+  el sistema castigue, sencillamente no cuenta esas horas como trabajadas."* El huellero emite un
+  tramo por par de marcas y el hueco no se paga, alineado con C-01 y la migración `0078`. En la
+  práctica casi no ocurre: nadie marca "por un rato", la salida es la salida.
+- ✅ **`sueldo_pausa_minima_minutos` = 15 — CONFIRMADO el 17-ago-2026** ("suena razonable"). Es el
+  umbral que separa "se fue" de "apoyó el dedo dos veces". Sin él, dos marcas seguidas partirían
+  el día y descontarían minutos todos los días.
 - **ELTHOM (identificador 61) es personal nuevo y su acuerdo con el administrador no se conoce.**
   Marca entrada alrededor de las 09:35. Antes de mapearlo hay que saber qué se pactó con él: si es
   jornada completa, medio turno o algo por horas, porque de eso depende su `sueldo_acuerdo_turnos`
