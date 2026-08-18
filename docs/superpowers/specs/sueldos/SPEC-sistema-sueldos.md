@@ -121,6 +121,8 @@ Lo pactado con el colaborador para un periodo concreto.
 | `meta_semanal` | decimal \| null | **Lo pactado en el contrato** (RN-10). Null = usar la sugerencia por horas |
 | `factor_meta` | decimal | Por defecto 1.00. Se aplica **sólo a la meta sugerida**, nunca a la pactada: el 0.85 del Excel existía para hacer alcanzable una meta derivada de una fórmula |
 | `meta_por_hora` | decimal | Por defecto 1500/33 = S/45,4545. Sólo se usa para **sugerir** una meta cuando no hay pactada (RN-10) |
+| `pausa_minima_minutos` | int | Por defecto 15 desde el 17-ago-2026 (RN-05, C-01): minutos a partir de los cuales un hueco cuenta como pausa y no se paga. Con 0 se descuenta cualquier hueco |
+| `factor_hora_fuera_contrato` | decimal | Por defecto 1.00 desde el 17-ago-2026 (RN-17, C-03): multiplica el valor de la hora sólo en el bloque de trabajo fuera del horario |
 | `meta_semanal_fija` | bool | Por defecto `false` desde el 17-ago-2026: la semana que absorbe días sobrantes sube su meta (RN-12, §9.2, C-02). En `true` la meta es igual todas las semanas |
 | `pct_comision` | decimal | Por defecto 0.02 |
 | `monto_minimo_comision` | decimal | Por defecto 120.00 |
@@ -210,11 +212,19 @@ administrador. Ningún descuento cuelga de este número.
 ### Asistencia
 
 **RN-05 — Horas trabajadas por día.**
-`hora_salida − hora_ingreso`. Si alguno es `null`, es 0.
+La **suma de los tramos continuos** del día: `Σ (salida_del_tramo − entrada_del_tramo)`. Un día
+con un solo tramo se comporta como la resta de siempre. Una pausa —salir y volver— **no se paga**.
 
-> 🔄 **Cambia — ver [SPEC-cambios-reglas-2026-08-17.md](SPEC-cambios-reglas-2026-08-17.md) C-01.**
-> Pasa a ser la **suma de los tramos continuos** del día: una pausa (salir y volver) no se paga.
-> Escrita, sin implementar.
+Cada fila de `asistencias` de esa fecha es un tramo; la clave `(empleado_id, fecha, turno)` ya lo
+permitía desde la `0001`. Antes de fusionar se ordenan y se unen los que se pisan o los separados
+por menos de `pausa_minima_minutos` (default 15): sin ese paso, dos filas que se pisan pagarían de
+más y dos marcas del mismo momento pagarían de menos.
+
+La **tardanza (RN-08) se mide contra el primer ingreso del día**, no contra el regreso de la pausa.
+
+> ✅ **Cambió el 17-ago-2026 — ver [SPEC-cambios-reglas-2026-08-17.md](SPEC-cambios-reglas-2026-08-17.md)
+> C-01.** Hasta entonces era `hora_salida − hora_ingreso` de punta a punta. Implementado en la
+> migración 0078.
 
 **RN-06 — Diferencia de horas.**
 `horas_trabajadas − horas_contratadas_de_ese_dia_semana`.
@@ -399,9 +409,9 @@ Nunca puede ser negativo.
 Bloque de registro separado para trabajo puntual que no forma parte del horario. Se valora con
 `valor_por_hora` y entra como ingreso.
 
-> 🔄 **Se amplía — ver [SPEC-cambios-reglas-2026-08-17.md](SPEC-cambios-reglas-2026-08-17.md)
-> C-03.** Nuevo parámetro `factor_hora_fuera_contrato`, default `1`: con el default nada cambia, y
-> permite pactar esa hora a otro precio. Escrito, sin implementar.
+> ✅ **Ampliada el 17-ago-2026 — ver [SPEC-cambios-reglas-2026-08-17.md](SPEC-cambios-reglas-2026-08-17.md)
+> C-03.** Parámetro `factor_hora_fuera_contrato`, default `1`: con el default nada cambia, y
+> permite pactar esa hora a otro precio. Implementado en la migración 0077.
 
 **Validación obligatoria:** una misma fecha no puede aparecer a la vez en la asistencia normal
 con horas positivas y en este bloque. Hoy nada lo impide y se pagaría dos veces.

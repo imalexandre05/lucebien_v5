@@ -1,20 +1,26 @@
 # Cambios a las reglas del sueldo — 17-ago-2026
 
-**Estado al 17-ago-2026:** C-02, C-03 y C-05 (regla A) **implementados**; C-01 pendiente de una
-confirmación. Este documento se escribió antes que el código y en commits aparte (Zone Guard,
+**Estado al 17-ago-2026:** los cinco cambios **cerrados**. C-01 quedó implementado con
+`pausaMinimaMinutos = 15` como default elegido; si Alexander dice otro número se cambia desde
+/configuración, sin tocar código. Este documento se escribió antes que el código y en commits aparte (Zone Guard,
 no-negociable 6).
 
 | | Qué es | Estado |
 |---|---|---|
-| C-01 🔴 | Las pausas no se pagan | **Pendiente** — falta confirmar `pausaMinimaMinutos` y el camino A |
+| C-01 🔴 | Las pausas no se pagan | ✅ Implementado — core, RPC y migración 0078. Falta que el huellero empareje, y que la pantalla de asistencia sepa declarar un día con pausa |
 | C-02 🟠 | La semana larga sube su meta | ✅ Implementado — core, catálogo y migración 0076 |
 | C-03 🟡 | Factor de la hora fuera de contrato | ✅ Implementado — core, catálogo y migración 0077 |
 | C-04 ✅ | RN-13 no cambia | Nada que hacer |
 | C-05 🟡 | Marcaje astuto, regla A | ✅ Implementada en pantalla. Reglas B y C sin implementar |
 
-**Ninguna de las dos migraciones está aplicada todavía**, y su prueba
-(`packages/db/pruebas/0077_factor_hora_fuera_contrato.prueba.sql`) está escrita pero **sin correr**:
-la sesión que las escribió no tenía acceso a la base.
+**Ninguna de las tres migraciones (0076, 0077, 0078) está aplicada todavía**, y sus pruebas están
+escritas pero **sin correr**: la sesión que las escribió no tenía acceso a la base. Antes de
+aplicar nada:
+
+```bash
+bash tools/probar-migracion.sh 0077
+bash tools/probar-migracion.sh 0078
+```
 
 Origen: las respuestas de Alexander del 16 y 17-ago-2026. Cada cambio dice qué hace el motor hoy,
 qué tiene que hacer, y qué cuesta si se implementa mal.
@@ -287,12 +293,24 @@ Las otras dos quedan planteadas, sin implementar:
 
 ## Lo que falta confirmar antes de codear
 
-1. **`pausaMinimaMinutos` = 15?** Cuántos minutos entre una salida y la entrada siguiente cuentan
-   como pausa de verdad. Debajo de eso son dos marcas del mismo momento. **Bloquea a C-01.**
-2. ~~**`margenHorasDiaMinutos` = 120?**~~ Sembrado en 120 el 17-ago y editable desde
-   /configuración; deja de ser un bloqueo.
-3. **Camino A para los tramos** (una fila de `asistencias` por tramo continuo). Afecta a la spec del
-   huellero, así que hay que avisarles antes de que escriban la derivación. **Bloquea a C-01.**
+Ninguno bloquea ya: los tres se sembraron como default editable en vez de esperar la respuesta.
+Lo que sigue abierto es si el número elegido es el que Alexander quiere.
+
+1. **`pausaMinimaMinutos` = 15?** Sembrado. Cuántos minutos entre una salida y la entrada siguiente
+   cuentan como pausa de verdad. Debajo de eso son dos marcas del mismo momento.
+2. **`margenHorasDiaMinutos` = 120?** Sembrado. El umbral de la regla A.
+3. **Camino A para los tramos.** Tomado. **Hay que avisarle a la sesión del huellero**: su
+   `huellero_derivar_asistencia` escribe una fila por día y tiene que pasar a escribir una por par
+   de marcas. Mientras no lo haga, C-01 no ocurre para los días que vengan del huellero.
+
+## Lo que quedó sin hacer
+
+- **La pantalla de declarar asistencia no sabe declarar un día con pausa.** Escribe una fila por
+  día, así que un día cargado a mano es siempre un tramo único. La tabla lo soporta —la clave
+  incluye `turno`— y `declararDia()` ya acepta un turno distinto: falta la interfaz. Hoy el único
+  que puede producir un día con pausa es el huellero, y todavía no empareja.
+- **Reglas B y C del marcaje astuto** (C-05), y el contraste visual entre horario contratado y
+  horario real.
 
 ---
 
@@ -301,4 +319,4 @@ Las otras dos quedan planteadas, sin implementar:
 1. ✅ **C-05 regla A** — pantalla, sin tocar el motor. No depende de nada.
 2. ✅ **C-02** — cambiar un default, con el test que cubre las dos direcciones.
 3. ✅ **C-03** — parámetro nuevo, línea de RN-17 multiplicada, default que no cambia nada.
-4. ⏳ **C-01** — lo último y lo más grande: core, RPC, migración y coordinación con el huellero.
+4. ✅ **C-01** — core, RPC y migración 0078. La coordinación con el huellero sigue pendiente.
