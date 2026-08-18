@@ -264,5 +264,59 @@ begin
   if cond = 'sin_dato' and ent is null and obs = 'auto: trabajador del reporte R-1' then r := r || '18=ok ';
   else r := r || format('18-NO-REVIERTE-AJENA=FALLA(%s %s %s) ', cond, ent, obs); end if;
 
+  -- ── 19) La pausa no se paga: cuatro marcas dan DOS tramos ──────────────────────────────
+  -- C-01 (migración 0078). Si alguien sale y vuelve el mismo día, el rato de afuera no cuenta.
+  insert into huellero_mapeos(dispositivo_id, employee_no, empleado_id, vigente_desde)
+    values (disp, '908', eB, '2099-07-01');
+  insert into marcas_huellero(dispositivo_id, employee_no, empleado_id, marcada_en, evento_serial, nombre_equipo)
+    values (disp,'908',eB,'2099-07-01T08:00:00-05:00',900050,'W'),
+           (disp,'908',eB,'2099-07-01T11:00:00-05:00',900051,'W'),
+           (disp,'908',eB,'2099-07-01T13:00:00-05:00',900052,'W'),
+           (disp,'908',eB,'2099-07-01T18:00:00-05:00',900053,'W');
+  perform huellero_derivar_asistencia(eB, '2099-07-01');
+
+  select count(*) into n from asistencias where empleado_id=eB and fecha='2099-07-01';
+  if n = 2 then r := r || '19a=ok ';
+  else r := r || format('19a-NO-PARTE-EN-TRAMOS=FALLA(%s filas) ', n); end if;
+
+  select hora_entrada, hora_salida into ent, sal
+    from asistencias where empleado_id=eB and fecha='2099-07-01' and turno='M';
+  if ent = '08:00' and sal = '11:00' then r := r || '19b=ok ';
+  else r := r || format('19b-TRAMO-1=FALLA(%s %s) ', ent, sal); end if;
+
+  select hora_entrada, hora_salida into ent, sal
+    from asistencias where empleado_id=eB and fecha='2099-07-01' and turno='T';
+  if ent = '13:00' and sal = '18:00' then r := r || '19c=ok ';
+  else r := r || format('19c-TRAMO-2=FALLA(%s %s) ', ent, sal); end if;
+
+  -- ── 20) Apoyar el dedo dos veces NO parte el día ───────────────────────────────────────
+  -- Sin el umbral de pausa se le descontarían dos minutos a alguien todos los días.
+  insert into huellero_mapeos(dispositivo_id, employee_no, empleado_id, vigente_desde)
+    values (disp, '909', eD, '2099-07-01');
+  insert into marcas_huellero(dispositivo_id, employee_no, empleado_id, marcada_en, evento_serial, nombre_equipo)
+    values (disp,'909',eD,'2099-07-02T08:00:00-05:00',900060,'V'),
+           (disp,'909',eD,'2099-07-02T08:02:00-05:00',900061,'V'),
+           (disp,'909',eD,'2099-07-02T14:00:00-05:00',900062,'V');
+  perform huellero_derivar_asistencia(eD, '2099-07-02');
+  select count(*), max(hora_entrada), max(hora_salida) into n, ent, sal
+    from asistencias where empleado_id=eD and fecha='2099-07-02';
+  if n = 1 and ent = '08:00' and sal = '14:00' then r := r || '20=ok ';
+  else r := r || format('20-DEDO-REPETIDO=FALLA(%s filas, %s %s) ', n, ent, sal); end if;
+
+  -- ── 21) Volver a los cinco minutos no es una salida ────────────────────────────────────
+  -- Extender el cierre en vez de reabrir el tramo daba 08:00-13:05 más un tramo suelto.
+  insert into huellero_mapeos(dispositivo_id, employee_no, empleado_id, vigente_desde)
+    values (disp, '910', eE, '2099-07-01');
+  insert into marcas_huellero(dispositivo_id, employee_no, empleado_id, marcada_en, evento_serial, nombre_equipo)
+    values (disp,'910',eE,'2099-07-03T08:00:00-05:00',900070,'U'),
+           (disp,'910',eE,'2099-07-03T13:00:00-05:00',900071,'U'),
+           (disp,'910',eE,'2099-07-03T13:05:00-05:00',900072,'U'),
+           (disp,'910',eE,'2099-07-03T18:00:00-05:00',900073,'U');
+  perform huellero_derivar_asistencia(eE, '2099-07-03');
+  select count(*), max(hora_entrada), max(hora_salida) into n, ent, sal
+    from asistencias where empleado_id=eE and fecha='2099-07-03';
+  if n = 1 and ent = '08:00' and sal = '18:00' then r := r || '21=ok ';
+  else r := r || format('21-VUELVE-ENSEGUIDA=FALLA(%s filas, %s %s) ', n, ent, sal); end if;
+
   raise exception 'RESULTADO %', r;
 end $$;
