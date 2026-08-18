@@ -141,10 +141,12 @@ function analizar(b: Borrador): {
 
     const avisos: string[] = [];
 
-    // El hueco entre turnos del mismo día. La liquidación colapsa de la PRIMERA entrada a la
-    // ÚLTIMA salida, así que un hueco se paga. No se bloquea —sería inventar una regla de negocio
-    // que nadie decidió (no-negociable 5)— pero tampoco se calla: quien pacta el horario tiene que
-    // saber qué va a pagar.
+    // El hueco entre turnos del mismo día. Desde C-01 la liquidación suma los TRAMOS, así que el
+    // hueco NO se paga: las horas contratadas de ese día tampoco lo incluyen. No se bloquea
+    // —sería inventar una regla de negocio que nadie decidió (no-negociable 5)— pero tampoco se
+    // calla: quien pacta el horario tiene que saber qué va a pagar.
+    //
+    // Este aviso decía lo contrario hasta el 17-ago-2026, y era cierto entonces.
     for (let dia = 1; dia <= 7; dia++) {
       const delDia = b.turnos.filter((t) => t.diaSemana === dia).sort((x, y) => minutos(x.horaInicio) - minutos(y.horaInicio));
       for (let i = 1; i < delDia.length; i++) {
@@ -152,7 +154,7 @@ function analizar(b: Borrador): {
         if (hueco > 0) {
           avisos.push(
             `${DIAS[dia - 1]}: hay ${hueco} minutos de hueco entre ${delDia[i - 1].horaFin} y ${delDia[i].horaInicio}. ` +
-              `La liquidación paga de la primera entrada a la última salida, así que ese hueco se paga.`,
+              `Ese hueco no se paga: la liquidación suma los tramos trabajados y descuenta las pausas.`,
           );
         }
       }

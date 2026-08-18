@@ -117,6 +117,18 @@ export interface ParametrosSueldo {
    * `valorPorHora` pelado. Esto es sólo el bloque de trabajo puntual fuera del horario.
    */
   factorHoraFueraContrato: number;
+  /**
+   * Minutos entre la salida de un tramo y la entrada del siguiente a partir de los cuales eso
+   * cuenta como **pausa de verdad** y no se paga (RN-05, C-01). Por debajo del umbral los dos
+   * tramos se fusionan y el hueco se paga.
+   *
+   * Existe porque sin umbral dos marcas del mismo momento —09:00 y 09:02, el clásico «no sonó,
+   * marco de nuevo»— parten el día en dos tramos y le descuentan dos minutos a alguien todos los
+   * días. **Default 15: elegido, no confirmado** (ver docs/pendientes-negocio.md).
+   *
+   * Con `0` cualquier hueco, por chico que sea, se descuenta.
+   */
+  pausaMinimaMinutos: number;
 }
 
 export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
@@ -135,6 +147,7 @@ export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
   diasDescuentoPorFalta: 2,
   metaPorHora: 1500 / 33,
   factorHoraFueraContrato: 1,
+  pausaMinimaMinutos: 15,
 };
 
 /**
@@ -188,6 +201,15 @@ export interface TurnoContratado {
 }
 
 /**
+ * Un pedazo continuo del día: entró, trabajó, salió (RN-05, C-01). Un día sin pausas tiene uno
+ * solo; uno con pausa tiene tantos como veces volvió.
+ */
+export interface TramoTrabajado {
+  ingreso?: string | null;
+  salida?: string | null;
+}
+
+/**
  * Un día del periodo (spec §3.4). **Todo día contratado tiene que tener el suyo**, trabajado o
  * no: una falta se declara con `horaIngreso: null`, no se deduce de que falte la fila.
  */
@@ -195,6 +217,15 @@ export interface RegistroAsistencia {
   fecha: string;
   horaIngreso?: string | null;
   horaSalida?: string | null;
+  /**
+   * Los tramos continuos del día (RN-05, C-01). Cuando viene, **manda sobre el par
+   * `horaIngreso`/`horaSalida`** y las pausas entre tramos no se pagan. Cuando no viene, el par
+   * de arriba se trata como un único tramo y el día se comporta exactamente como siempre.
+   *
+   * `horaIngreso` sigue siendo el ingreso del **primer** tramo y es el que mide la tardanza: una
+   * pausa no hace que alguien llegue tarde dos veces.
+   */
+  tramos?: TramoTrabajado[];
   /** Marca del administrador: esta tardanza no se descuenta (PEND-06 pide además el motivo). */
   tardanzaJustificada?: boolean;
   faltaJustificada?: boolean;
@@ -380,6 +411,21 @@ const r2 = (n: number): number => {
   return v === 0 ? 0 : v;
 };
 
+/**
+ * La hora a la que la persona llegó ese día: el ingreso del primer tramo (RN-08 con C-01).
+ *
+ * Se mira `horaIngreso` primero porque es lo que emite la RPC y lo que carga el administrador a
+ * mano; los `tramos` son el respaldo para una fila que venga sólo con ellos. Devuelve `null`
+ * cuando no hay ningún ingreso, que es como se declara una falta.
+ */
+function primerIngreso(r: RegistroAsistencia): string | null {
+  if (r.horaIngreso != null && r.horaIngreso !== '') return r.horaIngreso;
+  for (const t of r.tramos ?? []) {
+    if (t.ingreso != null && t.ingreso !== '') return t.ingreso;
+  }
+  return null;
+}
+
 /** Recorta una lista larga para que un mensaje de error siga siendo legible. */
 const primeros = (xs: string[], n = 5): string =>
   xs.length <= n ? xs.join(', ') : `${xs.slice(0, n).join(', ')} … (+${xs.length - n} más)`;
@@ -547,24 +593,87 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     );
   }
 
+  /**
+   * RN-05 (C-01): las horas del día son la **suma de los tramos continuos**, no la resta entre la
+   * primera entrada y la última salida. Una pausa —salir y volver— no se paga.
+   *
+   * Los cuatro pasos, y ninguno es decorativo:
+   *
+   * 1. Sin `tramos`, el par `horaIngreso`/`horaSalida` **es** el único tramo. Un día normal pasa
+   *    por acá y sale con el mismo número de siempre.
+   * 2. Un tramo con un solo lado vale 0 y avisa. Es el error de marcación más común —marcó la
+   *    entrada y se fue sin marcar la salida— y pasarlo en silencio le come el día y el almuerzo.
+   * 3. Se ordenan y se **fusionan** los que se pisan o los separados por menos de
+   *    `pausaMinimaMinutos`. Este paso evita dos errores opuestos: sumar a ciegas dos filas que se
+   *    pisan (una cargada a mano 09:00-20:00 y otra dejada por un reporte 13:00-20:00) daría 18
+   *    horas de un día de 11 y **pagaría de más**; y no fusionar lo pegado convierte dos marcas a
+   *    las 09:00 y 09:02 en una pausa de dos minutos que **paga de menos**.
+   * 4. Se suman las duraciones.
+   */
   const horasDelRegistro = (r: RegistroAsistencia, donde: string): number => {
-    const tieneIngreso = r.horaIngreso != null && r.horaIngreso !== '';
-    const tieneSalida = r.horaSalida != null && r.horaSalida !== '';
-    if (tieneIngreso !== tieneSalida) {
-      // El error de marcación más común: marcó la entrada y se fue sin marcar la salida. RN-05
-      // dice que eso vale 0 horas, pero pasar por acá sin avisar le come el día y el almuerzo.
+    const crudos: TramoTrabajado[] =
+      r.tramos && r.tramos.length > 0 ? r.tramos : [{ ingreso: r.horaIngreso, salida: r.horaSalida }];
+
+    // Paso 1 y 2: a minutos, descartando los que tienen un solo lado.
+    const intervalos: { ini: number; fin: number }[] = [];
+    let mancos = 0;
+    let ultimoManco: 'ingreso sin salida' | 'salida sin ingreso' = 'ingreso sin salida';
+    for (const t of crudos) {
+      const tieneIngreso = t.ingreso != null && t.ingreso !== '';
+      const tieneSalida = t.salida != null && t.salida !== '';
+      if (tieneIngreso !== tieneSalida) {
+        mancos += 1;
+        ultimoManco = tieneIngreso ? 'ingreso sin salida' : 'salida sin ingreso';
+        continue;
+      }
+      if (!tieneIngreso) continue; // RN-05: ninguno de los dos lados = 0 horas, sin aviso
+      const ini = minutosDeHora(t.ingreso, `${donde} ${r.fecha}`);
+      const fin = minutosDeHora(t.salida, `${donde} ${r.fecha}`);
+      if (fin <= ini) {
+        throw new Error(`${donde} ${r.fecha}: la salida (${t.salida}) no es posterior al ingreso (${t.ingreso}).`);
+      }
+      intervalos.push({ ini, fin });
+    }
+    if (mancos > 0) {
       advertencias.push(
-        `${donde} ${r.fecha}: tiene ${tieneIngreso ? 'ingreso sin salida' : 'salida sin ingreso'}. Cuenta como 0 horas.`,
+        mancos === 1
+          ? `${donde} ${r.fecha}: tiene ${ultimoManco}. Cuenta como 0 horas.`
+          : `${donde} ${r.fecha}: tiene ${mancos} tramo(s) con un solo lado (entrada sin salida o al revés). Cuentan como 0 horas.`,
       );
-      return 0;
     }
-    if (!tieneIngreso) return 0; // RN-05
-    const ini = minutosDeHora(r.horaIngreso, `${donde} ${r.fecha}`);
-    const fin = minutosDeHora(r.horaSalida, `${donde} ${r.fecha}`);
-    if (fin <= ini) {
-      throw new Error(`${donde} ${r.fecha}: la salida (${r.horaSalida}) no es posterior al ingreso (${r.horaIngreso}).`);
+    if (intervalos.length === 0) return 0; // RN-05
+
+    // Paso 3: ordenar y fusionar. `pausaMinimaMinutos` es lo que separa "se fue" de "marcó dos
+    // veces"; con 0, cualquier hueco se descuenta.
+    intervalos.sort((a2, b2) => a2.ini - b2.ini);
+    const umbral = p.pausaMinimaMinutos;
+    const unidos: { ini: number; fin: number }[] = [intervalos[0]];
+    let pausasDescontadas = 0;
+    let minutosDePausa = 0;
+    for (let i = 1; i < intervalos.length; i += 1) {
+      const actual = intervalos[i];
+      const previo = unidos[unidos.length - 1];
+      const hueco = actual.ini - previo.fin;
+      if (hueco < umbral) {
+        // Se pisan o están pegados: un solo tramo. `Math.max` importa cuando uno está contenido
+        // dentro del otro — sin él, la fila más corta acortaría a la más larga.
+        previo.fin = Math.max(previo.fin, actual.fin);
+      } else {
+        pausasDescontadas += 1;
+        minutosDePausa += hueco;
+        unidos.push({ ...actual });
+      }
     }
-    return (fin - ini) / 60;
+    if (pausasDescontadas > 0) {
+      // Se avisa siempre, aunque sea correcto: es plata que alguien esperaba cobrar y que no va a
+      // ver en el desglose, porque el desglose muestra horas y no huecos.
+      advertencias.push(
+        `${donde} ${r.fecha}: ${pausasDescontadas} pausa(s) que suman ${r2(minutosDePausa)} minuto(s) no se pagan (RN-05).`,
+      );
+    }
+
+    // Paso 4.
+    return unidos.reduce((suma, t) => suma + (t.fin - t.ini), 0) / 60;
   };
 
   const trabajadas = new Map<string, number>();
@@ -600,12 +709,15 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     let esTardanza = false;
     let esFalta = false;
     if (horasContratadasDelDia > 0) {
-      if (!reg || reg.horaIngreso == null || reg.horaIngreso === '') {
+      // El ingreso del PRIMER tramo (C-01). Una pausa no hace que alguien llegue tarde dos veces,
+      // y una fila que traiga sólo `tramos` no puede leerse como falta por no traer `horaIngreso`.
+      const ingreso = reg ? primerIngreso(reg) : null;
+      if (ingreso == null) {
         esFalta = true; // RN-09
       } else {
         // RN-08: el límite se deriva del horario del día + la tolerancia, no es un texto fijo.
         const limite = (contratado as DiaContratado).inicioMin + p.toleranciaMinutos;
-        esTardanza = minutosDeHora(reg.horaIngreso, `Asistencia ${fecha}`) > limite;
+        esTardanza = minutosDeHora(ingreso, `Asistencia ${fecha}`) > limite;
       }
     }
     // Un día sin horario contratado no genera ni tardanza ni falta (RN-08 / RN-09).

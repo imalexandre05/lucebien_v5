@@ -253,7 +253,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   },
 
   // ── Sueldos (packages/core/src/sueldos.ts::PARAMETROS_SUELDO_DEFAULT, migración 0068) ───────
-  // Son 14 de los 15 parámetros del motor. `metaSemanal` NO está acá a propósito: es
+  // Son 15 de los 16 parámetros del motor. `metaSemanal` NO está acá a propósito: es
   // `number | null` y el null significa "no hay meta pactada, sugerila", cosa que una fila de
   // texto no puede expresar. Vive en el contrato (sueldo_acuerdos.parametros).
   //
@@ -413,6 +413,19 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '1',
     min: 0,
     step: 0.1,
+  },
+  {
+    // RN-05 con tramos (SPEC-cambios-reglas-2026-08-17 C-01). Sin umbral, dos marcas del mismo
+    // momento parten el día en dos tramos y le descuentan minutos a alguien todos los días.
+    clave: 'sueldo_pausa_minima_minutos',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Minutos para que un hueco cuente como pausa',
+    descripcion:
+      'Si alguien sale y vuelve, ese hueco no se paga. Este es el mínimo para considerarlo una pausa de verdad: por debajo se entiende que son dos marcas del mismo momento —el clásico «no sonó, marco de nuevo»— y no se descuenta nada. Con 0 se descuenta cualquier hueco, por chico que sea.',
+    tipo: 'numero',
+    default: '15',
+    min: 0,
+    step: 5,
   },
   {
     // Regla A del marcaje astuto (SPEC-cambios-reglas-2026-08-17 C-05). Es una señal de gestión,

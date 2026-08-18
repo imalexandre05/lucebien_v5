@@ -717,6 +717,184 @@ describe('escala salarial (RN-14)', () => {
   });
 });
 
+// ── RN-05 con tramos: las pausas no se pagan (C-01) ────────────────────────────────────────
+// Se arma un periodo mínimo —un solo lunes contratado— para que cada caso hable de una sola cosa
+// y el número esperado se pueda comprobar de cabeza.
+
+describe('RN-05 — suma de tramos continuos (C-01)', () => {
+  // Lunes 2025-06-16, 09:00-20:00 = 11 h contratadas. Sueldo 11 → valorPorHora exactamente 1.
+  // El martes entra al periodo sin horario contratado: sirve para RN-17 y no genera falta.
+  const UN_LUNES: EntradaLiquidacion = {
+    fechaInicio: '2025-06-16',
+    fechaFin: '2025-06-17',
+    sueldoPactado: 11,
+    horario: [{ diaSemana: 1, turno: 1, horaInicio: '09:00', horaFin: '20:00' }],
+    asistencia: [{ fecha: '2025-06-16', horaIngreso: '09:00', horaSalida: '20:00' }],
+  };
+
+  // Arma el día como lo emite la RPC: los tramos MÁS el par de punta a punta, que es lo que
+  // conserva la compatibilidad con el snapshot viejo. Que los dos convivan es justamente lo que
+  // hay que probar — si el motor se quedara con el par, C-01 no ocurriría.
+  const conTramos = (tramos: { ingreso?: string | null; salida?: string | null }[], parametros = {}) =>
+    liquidarPeriodo({
+      ...UN_LUNES,
+      asistencia: [
+        {
+          fecha: '2025-06-16',
+          horaIngreso: tramos[0]?.ingreso ?? null,
+          horaSalida: tramos[tramos.length - 1]?.salida ?? null,
+          tramos,
+        },
+      ],
+      parametros,
+    });
+
+  // El periodo mínimo no tiene ventas, así que siempre trae el aviso de "ninguna venta". Lo que
+  // interesa es que no aparezca ninguno de RN-05.
+  const avisosDeTramos = (l: ReturnType<typeof liquidarPeriodo>) =>
+    l.advertencias.filter((a) => /pausa|tramo|sin salida|sin ingreso/.test(a));
+
+  it('un día sin tramos se comporta exactamente como antes', () => {
+    expect(liquidarPeriodo(UN_LUNES).asistencia.horasTrabajadas).toBe(11);
+    expect(avisosDeTramos(liquidarPeriodo(UN_LUNES))).toEqual([]);
+  });
+
+  it('dos tramos contiguos dan lo mismo que la resta de punta a punta', () => {
+    // El horario real de LuceBien: 09:00-13:00 + 13:00-20:00, sin hueco. C-01 no le cambia nada,
+    // y ése es el caso de todos los días de todo el mundo hoy.
+    const l = conTramos([
+      { ingreso: '09:00', salida: '13:00' },
+      { ingreso: '13:00', salida: '20:00' },
+    ]);
+    expect(l.asistencia.horasTrabajadas).toBe(11);
+    expect(avisosDeTramos(l)).toEqual([]);
+  });
+
+  it('una pausa de verdad NO se paga y avisa', () => {
+    // Salió a las 13:00 y volvió a las 15:00: son 9 horas trabajadas, no 11.
+    const l = conTramos([
+      { ingreso: '09:00', salida: '13:00' },
+      { ingreso: '15:00', salida: '20:00' },
+    ]);
+    expect(l.asistencia.horasTrabajadas).toBe(9);
+    expect(l.asistencia.diferenciaHoras).toBe(-2);
+    expect(l.advertencias.join(' ')).toMatch(/1 pausa\(s\) que suman 120 minuto\(s\) no se pagan/);
+  });
+
+  it('dos marcas del mismo momento no son una pausa', () => {
+    // "No sonó, marco de nuevo". Sin el umbral, un hueco de 2 minutos se descuenta todos los días
+    // a quien tenga el dedo seco.
+    const l = conTramos([
+      { ingreso: '09:00', salida: '12:58' },
+      { ingreso: '13:00', salida: '20:00' },
+    ]);
+    expect(l.asistencia.horasTrabajadas).toBe(11);
+    expect(avisosDeTramos(l)).toEqual([]);
+  });
+
+  it('con pausaMinimaMinutos en 0, cualquier hueco se descuenta', () => {
+    const l = conTramos(
+      [
+        { ingreso: '09:00', salida: '12:58' },
+        { ingreso: '13:00', salida: '20:00' },
+      ],
+      { pausaMinimaMinutos: 0 },
+    );
+    expect(l.asistencia.horasTrabajadas).toBe(10.97); // las horas se reportan a 2 decimales
+  });
+
+  it('dos tramos que se pisan no pagan dos veces', () => {
+    // La regresión que una suma ingenua habría metido: una fila cargada a mano de punta a punta
+    // más otra que dejó un reporte. Sumadas a ciegas dan 18 h de un día de 11.
+    const l = conTramos([
+      { ingreso: '09:00', salida: '20:00' },
+      { ingreso: '13:00', salida: '20:00' },
+    ]);
+    expect(l.asistencia.horasTrabajadas).toBe(11);
+  });
+
+  it('un tramo contenido dentro de otro no acorta el día', () => {
+    // Sin el Math.max de la fusión, el tramo corto le comía 4 horas al largo.
+    const l = conTramos([
+      { ingreso: '09:00', salida: '20:00' },
+      { ingreso: '10:00', salida: '16:00' },
+    ]);
+    expect(l.asistencia.horasTrabajadas).toBe(11);
+  });
+
+  it('los tramos llegan desordenados y se ordenan solos', () => {
+    const l = conTramos([
+      { ingreso: '15:00', salida: '20:00' },
+      { ingreso: '09:00', salida: '13:00' },
+    ]);
+    expect(l.asistencia.horasTrabajadas).toBe(9);
+  });
+
+  it('un tramo con un solo lado vale 0 y avisa, sin tirar abajo los demás', () => {
+    const l = conTramos([
+      { ingreso: '09:00', salida: '13:00' },
+      { ingreso: '15:00', salida: null }, // se fue sin marcar
+    ]);
+    expect(l.asistencia.horasTrabajadas).toBe(4);
+    expect(l.advertencias.join(' ')).toMatch(/ingreso sin salida/);
+  });
+
+  it('la tardanza se mide contra el primer tramo, no contra el regreso de la pausa', () => {
+    // Volver de almorzar a las 15:00 no es llegar tarde. Si esto se rompe, cada pausa genera una
+    // tardanza y se descuentan S/5 por almorzar.
+    const l = conTramos([
+      { ingreso: '09:00', salida: '13:00' },
+      { ingreso: '15:00', salida: '20:00' },
+    ]);
+    expect(l.asistencia.tardanzas).toBe(0);
+
+    const tarde = conTramos([
+      { ingreso: '09:30', salida: '13:00' },
+      { ingreso: '15:00', salida: '20:00' },
+    ]);
+    expect(tarde.asistencia.tardanzas).toBe(1);
+  });
+
+  it('una fila que trae SÓLO tramos no se lee como falta', () => {
+    // La RPC emite horaIngreso además de los tramos, pero nada obliga a que otro llamador lo haga.
+    // Sin el respaldo, esa fila costaría dos días de sueldo por RN-09.
+    const l = liquidarPeriodo({
+      ...UN_LUNES,
+      asistencia: [
+        {
+          fecha: '2025-06-16',
+          tramos: [
+            { ingreso: '09:00', salida: '13:00' },
+            { ingreso: '15:00', salida: '20:00' },
+          ],
+        },
+      ],
+    });
+    expect(l.asistencia.faltas).toBe(0);
+    expect(l.asistencia.horasTrabajadas).toBe(9);
+  });
+
+  it('las horas fuera de contrato también suman tramos (RN-17)', () => {
+    const l = liquidarPeriodo({
+      ...UN_LUNES,
+      horasFueraDeContrato: [
+        {
+          fecha: '2025-06-17', // martes: dentro del periodo y sin horario contratado
+          tramos: [
+            { ingreso: '08:00', salida: '10:00' },
+            { ingreso: '14:00', salida: '16:00' },
+          ],
+        },
+      ],
+    });
+    expect(l.asistencia.horasFueraDeContrato).toBe(4); // no 8
+  });
+
+  it('el default de pausaMinimaMinutos es 15', () => {
+    expect(PARAMETROS_SUELDO_DEFAULT.pausaMinimaMinutos).toBe(15);
+  });
+});
+
 const r2mas = (a: number, b: number) => Math.round((a + b) * 100) / 100;
 
 describe('parámetros configurables (spec §3.3)', () => {

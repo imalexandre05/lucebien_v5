@@ -112,9 +112,14 @@ export type CondicionDia = 'sin_dato' | 'trabajado' | 'falta';
  * El turno con el que se declara un día completo. `'C'` ya significa «Día completo» en
  * `TURNO_LABEL` del core y en la pantalla de asistencias, así que no se inventa vocabulario.
  *
- * Que existan además filas `'M'` o `'T'` del mismo día no rompe nada: `sueldo_entrada` agrupa por
- * fecha y colapsa con `min(entrada)`/`max(salida)`, y si CUALQUIER fila del día dice `'falta'`,
- * el día entero se cobra como falta.
+ * Que existan además filas `'M'` o `'T'` del mismo día no rompe nada, pero desde C-01 significan
+ * otra cosa: `sueldo_entrada` agrupa por fecha y emite **una fila = un tramo continuo**, y el
+ * motor los suma descontando las pausas (RN-05). Antes las colapsaba con `min`/`max` y el hueco
+ * del medio se pagaba. Si CUALQUIER fila del día dice `'falta'`, el día entero se cobra como falta.
+ *
+ * **Lo que esta pantalla todavía no hace:** declarar un día con pausa. Escribe una sola fila por
+ * día, así que un día cargado a mano es siempre un tramo único. Quien puede producir varios tramos
+ * hoy es el huellero, emparejando marcas. Anotado en docs/pendientes-negocio.md.
  */
 export const TURNO_DIA_COMPLETO = 'C';
 
