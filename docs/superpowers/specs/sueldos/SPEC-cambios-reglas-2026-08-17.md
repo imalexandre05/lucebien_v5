@@ -92,6 +92,57 @@ en la spec y **no ocurre** — que es peor que no haberlo escrito.
 
 ---
 
+### Decisiones de implementación (17-ago-2026)
+
+**Camino A, confirmado.** Y con una sorpresa que conviene decir de entrada: **la tabla ya lo
+soporta**. `asistencias` tiene clave `(empleado_id, fecha, turno)` desde la `0001`, así que un día
+con dos filas —una de turno `M` y otra de turno `T`— ya es representable hoy. Lo que colapsa el día
+no es el esquema, es **la lectura**: `sueldo_entrada` hace `min(hora_entrada)` / `max(hora_salida)`
+(`0073:167-168`). Camino A no necesita tabla nueva ni columna nueva: necesita cambiar esa
+agregación por una suma y que quien escribe deje de colapsar.
+
+**La fusión de tramos vive en el core, en un solo lugar.** No en la RPC ni en el colector. Ésa es
+la única forma de que un día cargado a mano por el administrador y un día derivado del huellero se
+paguen exactamente igual. El algoritmo, en orden:
+
+1. Se arma la lista de tramos del día. Sin `tramos`, el par `horaIngreso`/`horaSalida` **es** un
+   tramo: un día de una sola entrada y una sola salida se comporta igual que siempre.
+2. Un tramo con un solo lado (entrada sin salida) sigue valiendo 0 y sigue avisando, como hoy.
+3. Se ordenan por hora de ingreso.
+4. **Se fusionan** los que se pisan o los separados por menos de `pausaMinimaMinutos`.
+5. Se suman las duraciones.
+
+**El paso 4 no es un detalle, es la parte que evita cobrar de menos y de más a la vez.** Fusionar
+lo que se pisa protege de un caso real: si una fila quedó con 09:00–20:00 (cargada a mano) y otra
+con 13:00–20:00 (dejada por un reporte), sumar a ciegas da 18 horas de un día de 11. Con `min`/`max`
+eso daba 11 y estaba bien; una suma ingenua sería una **regresión que paga de más**. Y fusionar lo
+que está pegado protege del caso contrario: dos marcas a las 09:00 y 09:02 no son una pausa de dos
+minutos.
+
+**`pausaMinimaMinutos`, default 15 — elegido, no confirmado.** Es el umbral que separa «se fue» de
+«marcó dos veces». Queda editable desde /configuración como todos los demás, y anotado en
+`docs/pendientes-negocio.md`. **Si Alexander dice otro número, se cambia ahí y no en el código.**
+
+**La tardanza se sigue midiendo contra el primer ingreso del día** (RN-08). Una pausa no vuelve a
+generar tardanza: quien salió a las 13:00 y volvió 13:40 no llegó tarde dos veces, trabajó menos.
+
+### Lo que esto le cambia a la sesión del huellero
+
+Su `huellero_derivar_asistencia` escribe hoy **una fila por día**, con la primera entrada y la
+última salida (`0075:212`). Con camino A tiene que escribir **una fila por par de marcas**, cada
+una con su propio `turno` para no chocar contra `uq_asistencia_emp_fecha_turno`.
+
+Vale decir por qué su diseño de una fila por día era razonable y aun así hay que cambiarlo: lo que
+estaba mal en su **primer** diseño no era la fila por tramo, era **partir el día por una hora de
+corte fija** —eso dejaba los dos turnos sin salida cuando alguien cruzaba el corte. Emparejar
+marcas de a dos no tiene ese problema, porque el corte lo pone la marca y no el reloj del sistema.
+
+Mientras no lo cambien, el motor los lee igual y sin romperse: una fila por día es un tramo, y un
+tramo se suma solo. **Simplemente no descuenta la pausa** — o sea, C-01 no ocurre para los días que
+vengan del huellero hasta que ellos emparejen.
+
+---
+
 ## C-02 🟠 La semana que absorbe días sobrantes sube su meta (invierte RN-12)
 
 ### Qué dice hoy
