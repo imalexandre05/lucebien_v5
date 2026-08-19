@@ -1,10 +1,11 @@
 # SPEC — Integración huellero Hikvision → asistencias
 
 > **Fecha:** 2026-08-15
-> **Estado:** migración `0075` y `packages/core/src/huellero.ts` escritos y probados.
-> **Sin aplicar a la base todavía.** Falta: el verificador, las pantallas del ERP (§8) y la
-> instalación del colector en la PC del almacén (§11). El colector en sí ya está construido en
-> `tools/colector-huellero/`.
+> **Estado (17-ago-2026): migración `0075` APLICADA y verificada en producción.** Tres pasadas
+> del verificador, 27 fallos corregidos, 27 casos de prueba en verde. Las pantallas del ERP
+> (§8) y el colector (`tools/colector-huellero/`) están construidos.
+> **Falta:** crear el usuario del colector en Supabase e instalarlo en la PC del almacén (§11).
+> Ver el estado detallado al final de este documento.
 > **Zona de rigor:** crítica (la tabla `asistencias` alimenta la cadena del sueldo)
 > **Autor del diseño:** sesión de brainstorming con Alexander Flores
 
@@ -781,9 +782,16 @@ Tres pasadas adversariales encontraron **27 fallos**, todos corregidos. Los que 
 
 ### Lo que falta
 
-1. **El colector** (`tools/colector-huellero/`). No existe todavía. El contrato con la base está
-   cerrado y probado; falta el programa que corre en la computadora del almacén.
-2. **El usuario del colector** en Supabase, y su registro en `huellero_colectores`.
+1. **El usuario del colector** en Supabase, y su registro en `huellero_colectores`. Sin eso el
+   colector no puede escribir: `huellero_registrar_marcas` exige
+   `private.app_es_colector_huellero()`.
+2. **Instalar el colector** en la computadora del almacén. Ya está construido en
+   `tools/colector-huellero/` (commit `c203897`) y usa el contrato correcto: `huellero_checkpoint`
+   para el punto de partida y `huellero_registrar_marcas` para empujar. Un detalle a revisar antes
+   de encenderlo: `lib/isapi.js:314` deduplica localmente sólo por `evento_serial`, y la unicidad
+   de la base pasó a ser `(dispositivo, serial, marcada_en)` porque los Hikvision reinician el
+   contador al resetearse. Si eso llegara a pasar, la dedup local descartaría marcas legítimas
+   antes de enviarlas.
 3. **`packages/core/src/huellero.ts` quedó desactualizado.** Sus 40 tests pasan, pero refleja el
    modelo viejo de una fila por día. No afecta el funcionamiento —quien manda es el SQL— pero
    deja de servir para lo que existe: probar las reglas sin una base delante.
