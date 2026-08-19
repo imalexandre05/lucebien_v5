@@ -111,8 +111,8 @@ async function sincronizar(supabase, cfg, equipo) {
   await asegurarSesion(supabase, cfg.credenciales);
 
   const checkpoint = await obtenerCheckpoint(supabase, equipo.dispositivoId);
-  // Diez minutos de solape a propósito: la RPC es idempotente por (dispositivo, serial), así que
-  // repetir no cuesta nada y cubre cualquier marca que haya entrado al equipo con retraso.
+  // Diez minutos de solape a propósito: la RPC es idempotente por (dispositivo, serial, instante),
+  // así que repetir no cuesta nada y cubre cualquier marca que haya entrado al equipo con retraso.
   const desde = checkpoint ? new Date(checkpoint.getTime() - cfg.solapeMs) : cfg.inicioHistorico;
   const hasta = new Date();
 

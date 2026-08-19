@@ -55,7 +55,7 @@ export async function asegurarSesion(supabase, { correo, contrasena }) {
 // ── Checkpoint ─────────────────────────────────────────────────────────────────────────────
 // Sin estado local a propósito: el punto de partida se le pregunta a la base. Si la PC se
 // reinstala desde cero no se pierde ni se duplica nada, porque el índice único
-// (dispositivo_id, evento_serial) absorbe el solape.
+// (dispositivo_id, evento_serial, marcada_en) absorbe el solape.
 //
 // `marcas_huellero` es sólo-administrador bajo RLS, así que el colector NO la consulta: usa la
 // RPC de lectura. Si esa RPC todavía no existe, se avisa por su nombre en vez de fallar con un

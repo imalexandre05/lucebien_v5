@@ -308,11 +308,17 @@ export function crearClienteIsapi({
 
         const tramo = await leerTramo({ inicio: cursor, fin: finTramo, etiqueta: `t${i}` });
 
-        // Los extremos de cada tramo repiten el evento que cae justo en el límite. El serial
-        // identifica al evento — mismo criterio que el índice único de la base.
+        // Los extremos de cada tramo repiten el evento que cae justo en el límite. Se descarta
+        // por serial MÁS instante, que es exactamente la clave del índice único de la base
+        // (uq_marca_dispositivo_serial). Deduplicar sólo por serial sería más estricto que la
+        // base y tiraría marcas legítimas: los Hikvision reinician el contador al resetearse, y
+        // entonces un serial viejo vuelve a aparecer con una fecha nueva. La base la aceptaría
+        // y el colector nunca se la mandaría.
         for (const m of tramo) {
-          if (!Number.isFinite(m.evento_serial) || vistos.has(m.evento_serial)) continue;
-          vistos.add(m.evento_serial);
+          if (!Number.isFinite(m.evento_serial)) continue;
+          const clave = `${m.evento_serial}|${m.marcada_en}`;
+          if (vistos.has(clave)) continue;
+          vistos.add(clave);
           marcas.push(m);
         }
 
