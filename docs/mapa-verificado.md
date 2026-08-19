@@ -338,4 +338,31 @@ Los tres son nivel 3 en la matriz de rigor: exigen spec antes de tocarlos.
 
 ---
 
-_Verificado contra código y base de datos. Última actualización: 13 de agosto de 2026._
+## 9. El huellero, en producción desde el 18-ago-2026
+
+Verificado el 18-ago-2026 consultando la base, no leyendo un log.
+
+| Dato | Valor |
+|---|---|
+| Migración | `0075` aplicada: `dispositivos_huellero`, `marcas_huellero`, `huellero_mapeos`, `huellero_colectores` |
+| Colector | `tools/colector-huellero/`, corriendo en la PC del almacén (distinta de la del sistema viejo) |
+| Marcas ingeridas | 3.084, del 2-ene al 18-ago-2026, 23 identificadores, 222 días |
+| Asistencias derivadas | **0** — no hay ningún mapeo cargado todavía |
+| Autenticación | usuario propio de Supabase (`colector-almacen@lucebien.local`) registrado en `huellero_colectores`. **Sin service key** |
+| Pantalla | `/asistencias/huellero`, construida |
+
+**Lo que falta para que esto llegue al sueldo:** mapear los 23 identificadores del equipo a los 18
+empleados. Sin mapeo, las marcas se guardan con `empleado_id` en `null` y no derivan ninguna
+asistencia — la cadena del sueldo no se entera de que existen.
+
+**Antes de liquidar un periodo con datos del huellero**, la spec exige una prueba de extremo a
+extremo: comparar las horas pagadas contra las horas marcadas. El defecto de la partición por
+turno pasaba todos los tests unitarios y sólo aparecía al liquidar.
+
+Detalle completo en
+[docs/superpowers/specs/2026-08-15-huellero-asistencias-design.md](superpowers/specs/2026-08-15-huellero-asistencias-design.md) §13.
+
+
+---
+
+_Verificado contra código y base de datos. Última actualización: 18 de agosto de 2026 (§9; el resto, 13 de agosto)._

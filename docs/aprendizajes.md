@@ -33,6 +33,7 @@ Cada línea de este archivo la puso un error real. **Ninguna es teoría.**
 | Tratar `'anulada'` como un estado cualquiera | Dos `UPDATE` alcanzaban para romper el congelado entero: anular (permitido) y desde ahí reescribir todo, incluido volver a `'cerrada'` con otro total | Los estados terminales se comparan con `to_jsonb(new) - <campos permitidos>`, así cualquier columna futura queda protegida sola |
 | Contar sólo una parte de lo que se sella | El cierre sellaba los cinco tipos de movimiento pero la comprobación anti-carrera contaba tres: un almuerzo cargado entre el cálculo y el cierre se sellaba sin estar en el pago | Se comparan los cinco. Salió de leer los números que devolvía la propia prueba, no de revisar el código |
 | Verificar una migración mirando que las tablas existan | Eso comprueba que corrió, no que **funcione**. Los diez defectos del congelado habrían pasado esa revisión | Verificar es **intentar romper lo que la migración promete**, en una transacción que se descarta |
+| Deduplicar en el cliente con una clave más estricta que la de la base | El colector descartaba por `evento_serial` solo, pero el índice único es `(dispositivo_id, evento_serial, marcada_en)`. Un Hikvision reinicia el contador al resetearse: ese serial repetido con fecha nueva es una marca legítima que la base habría aceptado y el colector nunca le habría mandado | La clave de deduplicación del cliente se copia del índice de la base, verificada con `pg_indexes`, no del recuerdo de cómo era |
 
 ## El motor de sueldos y la lógica de negocio
 

@@ -4,7 +4,9 @@
 > **Estado (17-ago-2026): migración `0075` APLICADA y verificada en producción.** Tres pasadas
 > del verificador, 27 fallos corregidos, 27 casos de prueba en verde. Las pantallas del ERP
 > (§8) y el colector (`tools/colector-huellero/`) están construidos.
-> **Falta:** crear el usuario del colector en Supabase e instalarlo en la PC del almacén (§11).
+> **El colector está EN PRODUCCIÓN desde el 18-ago-2026**, corriendo en la PC del almacén con
+> 3.084 marcas históricas ya ingeridas. **Falta:** mapear los 23 identificadores a empleados —
+> hasta que eso ocurra las marcas se guardan pero no derivan ninguna asistencia. Ver §13.
 > Ver el estado detallado al final de este documento.
 > **Zona de rigor:** crítica (la tabla `asistencias` alimenta la cadena del sueldo)
 > **Autor del diseño:** sesión de brainstorming con Alexander Flores
@@ -801,3 +803,56 @@ Tres pasadas adversariales encontraron **27 fallos**, todos corregidos. Los que 
 5. **Los tres pendientes con el dueño**, en `docs/pendientes-negocio.md`: los parámetros de
    tardanza, los horarios contratados de cada persona, y qué hacer con los días sin marca de
    salida.
+
+---
+
+## 13. Primera corrida en producción — verificado el 18-ago-2026
+
+El colector corrió contra el equipo real desde la PC del almacén. Todo lo de esta sección está
+comprobado consultando la base, no leyendo el log del colector.
+
+| Dato | Valor |
+|---|---|
+| Marcas ingeridas | **3.084** |
+| Identificadores distintos | 23 |
+| Rango | 2-ene-2026 a 18-ago-2026 |
+| Días con marcas | 222 |
+| Carga histórica | ~40 segundos, ocho tramos mensuales, 16 lotes |
+| Asistencias derivadas | **0** — todavía no hay ningún mapeo |
+
+Las cero asistencias son el comportamiento correcto: sin mapeo no hay `empleado_id`, y sin
+`empleado_id` la derivación no corre. Nada de esto toca la cadena del sueldo hasta que una persona
+diga qué identificador es quién.
+
+### Lo que la primera corrida confirmó, y no era seguro hasta tenerlo
+
+- **La idempotencia funciona en producción.** El segundo ciclo leyó 2 marcas por el solape de diez
+  minutos y las dos volvieron como duplicadas: `0 nuevas, 2 repetidas`.
+- **La codificación del equipo se lee bien.** "CÉSAR" llegó con tilde. Mal resuelto habría llegado
+  "CÃSAR", y el nombre que guarda el equipo es justamente lo que delata una reasignación.
+- **La reasignación de identificadores existe en los datos reales.** El `00000013` tiene dos
+  nombres en el histórico (JAZMIN y NICOL). Su mapeo necesita fecha de vigencia, como anticipa §5.
+- **`ultima_sincronizacion` no se marca viva con el equipo caído.** Comprobado antes de viajar al
+  almacén: desde otra red el colector inició sesión y leyó el checkpoint, falló al alcanzar el
+  equipo, y la columna quedó en `null`. El indicador mide la cadena entera, no si el proceso corre.
+
+### Quién sigue activo, según el propio dato
+
+El mapeo inicial no hay que adivinarlo — las fechas de última marca lo dicen:
+
+- **Activos al 18-ago:** MARYLIN (50), YESSICA (19), JANET (52), SHEYLA (58), JAEROCK (40),
+  ELTHOM (61), DANIEL (56), JESUS (59).
+- **Dejaron de marcar:** REMY (1) y ALEXANDER (43) en mayo, CÉSAR (55) en julio, MARITZA (10) en
+  abril, JEFFREY (27) en febrero, NATALY (46) con seis días de enero.
+- **GUILLERMO (25)** marca una sola vez por día: abre las puertas, no cumple jornada. Va ignorado,
+  confirmado por Alexander.
+
+### Detalles operativos de la PC del almacén
+
+Node 20 funciona, pero `@supabase/supabase-js` ya exige Node 22 y lo avisa en cada arranque: esa
+PC tiene que migrar antes de que alguien vuelva a correr `npm install` ahí, o bajará una versión
+que no levanta.
+
+El arranque automático lo da `pm2-windows-startup`, que engancha al **inicio de sesión de Windows,
+no al encendido**. Si la PC queda en la pantalla de contraseña, el colector no arranca. Se
+comprueba reiniciando y mirando `pm2 list` sin tocar nada.
