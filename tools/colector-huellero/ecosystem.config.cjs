@@ -1,11 +1,12 @@
 // Configuración de PM2 para la PC del almacén.
 //
-// Se usa con `pm2 start ecosystem.config.js` desde esta misma carpeta. El README explica el
+// Se usa con `pm2 start ecosystem.config.cjs` desde esta misma carpeta. El README explica el
 // arranque automático de Windows, que es lo que hace que la PC se pueda apagar sola sin que nadie
 // tenga que acordarse de levantar el colector.
 //
-// Este archivo se lee como CommonJS aunque el paquete sea de tipo module: por eso la extensión
-// .cjs no hace falta, PM2 lo evalúa él mismo.
+// La extensión .cjs NO es opcional. PM2 lee este archivo con require(), y el package.json declara
+// "type": "module": con extensión .js, Node 22 lo trata como módulo ES y falla con
+// "module is not defined in ES module scope". Pasó en la PC del almacén el 18-ago-2026.
 module.exports = {
   apps: [
     {
