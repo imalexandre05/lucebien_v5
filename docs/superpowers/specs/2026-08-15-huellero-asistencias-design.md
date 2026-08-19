@@ -735,3 +735,61 @@ Alrededor de veinte minutos, con el README paso a paso.
 | Solo Supabase, no el sistema viejo | El viejo está congelado y tocarlo exige pedido explícito. |
 | Histórico desde 2026-01-01 | Decisión del dueño del proyecto. |
 | Usuario dedicado en vez de service key | El radio de daño de un `.env` robado en una PC de almacén queda acotado a insertar marcas. |
+
+---
+
+## Estado al 17 de agosto de 2026
+
+**La migración `0075` está APLICADA y verificada en producción.** Cuatro tablas, nueve funciones,
+dos columnas nuevas en `asistencias` y dos parámetros de configuración. Las 13 filas de
+asistencias que existían quedaron intactas, y hay una copia en `asistencias_respaldo_0075` (el
+plan gratuito de Supabase no incluye backups programados). Para deshacerla:
+`packages/db/pruebas/0075_revertir.sql`.
+
+La prueba `packages/db/pruebas/0075_huellero_asistencias.prueba.sql` cubre 27 casos y pasa. Se
+corre con `bash tools/probar-migracion.sh 0075`, o pegándola en el editor de SQL: termina
+lanzando un error `P0001` cuyo mensaje **es** el resultado.
+
+### Lo que cambió respecto al diseño original
+
+**El huellero emite TRAMOS, no una fila por día.** Mientras esto se construía, la sesión de
+sueldos implementó C-01 (migración `0078`): las pausas dejaron de pagarse. Para que eso valga
+también acá, la derivación empareja las marcas de a dos y escribe una fila por par. Con dos
+marcas —el caso normal, porque nadie sale a almorzar— sigue siendo un solo tramo y nada cambia.
+
+Confirmado por Alexander el 17-ago-2026: *"si alguien marca su salida y vuelve a habilitarlo el
+mismo día se cuentan nuevamente las horas; no es que el sistema castigue, sencillamente no cuenta
+esas horas como trabajadas"*.
+
+El umbral que separa "se fue" de "apoyó el dedo dos veces" es `sueldo_pausa_minima_minutos`, 15
+minutos, confirmado.
+
+**JORDAN (identificador 2) y REMY (1) van ignorados.** Son el administrador y su familia: marcan
+sin trabajar y no cobran. Eso explica los dos patrones que no cerraban en los datos —los días de
+22 horas y casi la mitad de las marcas sueltas eran suyos.
+
+### Los tres verificadores
+
+Tres pasadas adversariales encontraron **27 fallos**, todos corregidos. Los que más pesaban:
+
+| Qué pasaba | Cómo se arregló |
+|---|---|
+| `revoke from public, anon` no cerraba nada: Supabase concede `execute` a `authenticated` por defecto, y la función interna quedaba llamable por cualquier empleado logueado | `revoke ... from authenticated` explícito |
+| Al mapear a la segunda persona se borraban las asistencias de la primera | Re-resolver cada marca contra la tabla entera de mapeos, no por diferencia con un rango |
+| Sellar el origen dentro de `obs` era frágil: el formulario normal lo borraba en cada guardado | Dos columnas propias, `huellero_puso_entrada` y `huellero_puso_salida` |
+| Con tramos, el primer tramo iba siempre a turno 'M', así que dejaba de completar la fila que deja un reporte (turno 'T') y bloqueaba la liquidación del mes | Los tramos se emparejan con las filas que ya existen, en orden |
+
+### Lo que falta
+
+1. **El colector** (`tools/colector-huellero/`). No existe todavía. El contrato con la base está
+   cerrado y probado; falta el programa que corre en la computadora del almacén.
+2. **El usuario del colector** en Supabase, y su registro en `huellero_colectores`.
+3. **`packages/core/src/huellero.ts` quedó desactualizado.** Sus 40 tests pasan, pero refleja el
+   modelo viejo de una fila por día. No afecta el funcionamiento —quien manda es el SQL— pero
+   deja de servir para lo que existe: probar las reglas sin una base delante.
+4. **Cerrar el motivo `revisar:` al resolver un día.** `declararDia` no toca `obs`, así que un día
+   ya resuelto sigue apareciendo marcado y, con el tope de 400 filas del listado, puede empujar
+   fuera a los pendientes más viejos.
+5. **Los tres pendientes con el dueño**, en `docs/pendientes-negocio.md`: los parámetros de
+   tardanza, los horarios contratados de cada persona, y qué hacer con los días sin marca de
+   salida.
