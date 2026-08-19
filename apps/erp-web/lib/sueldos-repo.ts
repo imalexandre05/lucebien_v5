@@ -299,12 +299,11 @@ export async function cambiarEstadoAcuerdo(id: string, estado: EstadoAcuerdo): P
 
 // ── Movimientos: adelantos, descuentos, bonos, capacitaciones, almuerzos ─────────────────────
 
-export type TipoMovimiento = 'adelanto' | 'reporte' | 'bono_extra' | 'capacitacion' | 'almuerzo_entregado';
-
-/** Los dos tipos que se cargan como CONTEO. El resto son plata. Espeja `sueldo_mov_unidad_chk`. */
-export const TIPOS_CONTEO: readonly TipoMovimiento[] = ['capacitacion', 'almuerzo_entregado'];
-
-export const esConteo = (tipo: TipoMovimiento): boolean => TIPOS_CONTEO.includes(tipo);
+// Viven en `sueldos-tipos.ts` porque una pantalla de navegador necesita `esConteo`, y desde acá
+// no se puede: este módulo trae el cliente de servidor. Se reexportan para no romper a quien ya
+// los importaba de acá.
+import { TIPOS_CONTEO, esConteo, type TipoMovimiento } from './sueldos-tipos';
+export { TIPOS_CONTEO, esConteo, type TipoMovimiento };
 
 export type MovimientoSueldo = {
   id: string;

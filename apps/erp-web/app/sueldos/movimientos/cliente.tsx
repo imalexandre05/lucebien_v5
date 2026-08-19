@@ -8,7 +8,8 @@ import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input, Label, Select } from '../../../components/ui/form';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
-import { esConteo, type MovimientoSueldo, type TipoMovimiento, type VentaSueldo } from '../../../lib/sueldos-repo';
+import { esConteo, type TipoMovimiento } from '../../../lib/sueldos-tipos';
+import type { MovimientoSueldo, VentaSueldo } from '../../../lib/sueldos-repo';
 import {
   accionAsignarVendedor,
   accionCrearMovimiento,
