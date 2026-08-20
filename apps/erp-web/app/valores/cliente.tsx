@@ -107,19 +107,19 @@ export function ValoresCliente({
         </div>
       )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Compañeros" valor={companeros.length} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox index={0} label="Compañeros" valor={companeros.length} tone="navy" />
         <StatBox
           index={1}
           label="Pendientes"
           valor={pendientes}
           tone={pendientes > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}
         />
-        <StatBox index={2} label="Recibidas (yo)" valor={miResumen.recibidas} tone="border-line bg-white text-muted" />
+        <StatBox index={2} label="Recibidas (yo)" valor={miResumen.recibidas} tone="neutro" />
         <StatBox
           index={3}
           label="Mi nota /20"
           valor={miResumen.nota20 != null ? miResumen.nota20.toFixed(1) : '—'}
-          tone="border-gold/30 bg-gold/10 text-[#7a6e0e]"
+          tone="gold"
         />
       </div>
 
@@ -202,13 +202,13 @@ export function ValoresCliente({
         ) : seguimiento ? (
           <>
             <div className="grid grid-cols-3 gap-3">
-              <StatBox index={0} label="Empleados" valor={seguimiento.totalEmpleados} tone="border-navy/15 bg-navy/5 text-navy" />
-              <StatBox index={1} label="Evaluaciones" valor={seguimiento.totalEvaluaciones} tone="border-line bg-white text-muted" />
+              <StatBox index={0} label="Empleados" valor={seguimiento.totalEmpleados} tone="navy" />
+              <StatBox index={1} label="Evaluaciones" valor={seguimiento.totalEvaluaciones} tone="neutro" />
               <StatBox
                 index={2}
                 label="Cumplimiento"
                 valor={`${Math.round(seguimiento.cumplimientoGlobal * 100)}%`}
-                tone="border-gold/30 bg-gold/10 text-[#7a6e0e]"
+                tone="gold"
               />
             </div>
             <Card>

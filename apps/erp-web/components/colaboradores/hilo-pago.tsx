@@ -24,7 +24,7 @@ const TONO = {
     linea: 'bg-gold',
   },
   corte: {
-    circulo: 'border-amber-500 bg-white text-amber-700 ring-4 ring-amber-500/15',
+    circulo: 'border-aviso bg-white text-aviso-deep ring-4 ring-aviso/20',
     linea: 'bg-line',
   },
   pendiente: {
@@ -72,7 +72,7 @@ export function HiloPago({
             aria-hidden
             className={cn(
               'h-1.5 w-6 rounded-full transition-colors duration-200',
-              est[i] === 'listo' ? 'bg-gold' : est[i] === 'corte' ? 'bg-amber-500' : 'bg-line',
+              est[i] === 'listo' ? 'bg-gold' : est[i] === 'corte' ? 'bg-aviso' : 'bg-line',
             )}
           />
         ))}
@@ -117,7 +117,7 @@ export function HiloPago({
                 className={cn(
                   // top-5 y no top-4: el contenedor de cada paso tiene py-1, así que el centro
                   // del círculo de 32px cae a 20px del borde. Cuatro pixeles de más se ven.
-                  'absolute left-[-50%] top-5 h-0.5 w-full origin-left animate-drawX motion-reduce:animate-none',
+                  'absolute left-[-50%] top-5 h-0.5 w-full origin-left animate-draw-x motion-reduce:animate-none',
                   TONO[est[i - 1] === 'listo' && e !== 'pendiente' ? 'listo' : e].linea,
                 )}
                 style={{ animationDelay: `${i * 80}ms`, animationDuration: '400ms' }}

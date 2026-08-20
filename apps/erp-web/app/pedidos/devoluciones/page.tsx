@@ -38,7 +38,7 @@ export default async function DevolucionesPage() {
   const NIVEL_CLS = {
     vencido: 'bg-red-50 text-red-700',
     hoy: 'bg-amber-50 text-amber-700',
-    proximo: 'bg-gold/20 text-[#7a6e0e]',
+    proximo: 'bg-gold/20 text-gold-deep',
     futuro: 'bg-ink/10 text-muted',
   } as const;
   const alerta = (dias: number) => {
@@ -60,9 +60,9 @@ export default async function DevolucionesPage() {
       />
 
       <div className="mb-4 grid grid-cols-3 gap-3">
-        <StatBox index={0} label="Vencidos" valor={vencidos} tone="border-red-200 bg-red-50 text-red-700" />
-        <StatBox index={1} label="Hoy" valor={deHoy} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox index={2} label="Próximos (3d)" valor={proximos} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox index={0} label="Vencidos" valor={vencidos} tone="error" />
+        <StatBox index={1} label="Hoy" valor={deHoy} tone="aviso" />
+        <StatBox index={2} label="Próximos (3d)" valor={proximos} tone="gold" />
       </div>
 
       <Card>

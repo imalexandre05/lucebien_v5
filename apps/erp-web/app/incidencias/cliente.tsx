@@ -135,11 +135,11 @@ export function IncidenciasCliente({
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-        <StatBox index={0} label="Incidencias" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Alto" valor={resumen.alto} tone="border-red-200 bg-red-50 text-red-700" />
-        <StatBox index={2} label="Medio" valor={resumen.medio} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="border-line bg-white text-muted" />
-        <StatBox index={4} label="Puntos" valor={resumen.puntos} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox index={0} label="Incidencias" valor={resumen.total} tone="navy" />
+        <StatBox index={1} label="Alto" valor={resumen.alto} tone="error" />
+        <StatBox index={2} label="Medio" valor={resumen.medio} tone="aviso" />
+        <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="neutro" />
+        <StatBox index={4} label="Puntos" valor={resumen.puntos} tone="gold" />
       </div>
 
       {/* Filtros + acción */}

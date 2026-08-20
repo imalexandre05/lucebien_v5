@@ -7,9 +7,18 @@
   --navy: #2e3e6e;
   --navy-deep: #1b2440;
   --gold: #b8a515;
+  --gold-deep: #8a7c10;
   --paper: #f6f4ef;
   --ink: #20283f;
   --line: #e6e0d4;
+
+  /* Semánticos del manual de marca §6. Espejo de tailwind.config.ts: los dos archivos se editan
+     juntos, si no uno de los dos empieza a mentir. Acá sólo van los que hacen falta fuera de las
+     clases de Tailwind (CSS suelto, scrollbars, print). */
+  --exito: #2d9e6b;
+  --aviso: #e08c1a;
+  --error: #c94040;
+  --info: #3a7fc1;
 }
 
 @layer base {

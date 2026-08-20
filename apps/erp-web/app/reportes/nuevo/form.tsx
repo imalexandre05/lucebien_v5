@@ -853,7 +853,7 @@ export function NuevoReporteForm({
               )}
               <span className="rounded-full bg-gold/15 px-3 py-1 text-xs text-muted">
                 Total{' '}
-                <span className="font-mono text-base font-bold tabular-nums text-[#7a6e0e]">{totalPts}</span>{' '}
+                <span className="font-mono text-base font-bold tabular-nums text-gold-deep">{totalPts}</span>{' '}
                 pts
               </span>
               {/* Tarea 5: cuenta regresiva del turno — ámbar a ≤30 min, como avisaba el header.js

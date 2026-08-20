@@ -81,14 +81,14 @@ export default async function ResumenColaboradorPage({
           index={0}
           label="Reportes enviados"
           valor={estado.reportes}
-          tone="border-navy/15 bg-navy/5 text-navy"
+          tone="navy"
           icon={ClipboardList}
         />
         <StatBox
           index={1}
           label="Puntos de pipeline"
           valor={estado.puntosPipeline}
-          tone="border-gold/30 bg-gold/10 text-[#7a6e0e]"
+          tone="gold"
           icon={Shirt}
         />
         <StatBox
@@ -97,14 +97,14 @@ export default async function ResumenColaboradorPage({
           valor={soles(extrasTotal)}
           sub={`${desempeno.extras.length} en el período`}
           size="md"
-          tone="border-emerald-200 bg-emerald-50 text-emerald-700"
+          tone="exito"
           icon={Coins}
         />
         <StatBox
           index={3}
           label="Incidencias"
           valor={estado.incidencias}
-          tone={estado.incidencias > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-line bg-white text-muted'}
+          tone={estado.incidencias > 0 ? 'aviso' : 'neutro'}
           icon={AlertTriangle}
         />
       </div>

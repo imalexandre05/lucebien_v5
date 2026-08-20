@@ -611,7 +611,7 @@ export function LayoutMap({
         </ul>
         <div className="mt-2 flex items-center justify-between rounded-lg border border-gold/40 bg-gold/10 px-3 py-2">
           <span className="text-sm font-semibold text-navy">Limpieza</span>
-          <span className="font-mono text-sm font-bold tabular-nums text-[#7a6e0e]">
+          <span className="font-mono text-sm font-bold tabular-nums text-gold-deep">
             {r1(ganados)}/{r1(totalPts)}
           </span>
         </div>

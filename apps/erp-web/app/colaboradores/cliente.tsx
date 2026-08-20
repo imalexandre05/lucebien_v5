@@ -132,7 +132,7 @@ export function ListaColaboradores({
             <li key={c.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
               <Link
                 href={`/colaboradores/${c.id}?${query}`}
-                className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 outline-none transition-colors duration-150 hover:bg-paper/70 focus-visible:bg-paper/70 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/60 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
+                className="group grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 outline-none transition-colors duration-150 hover:bg-paper/70 focus-visible:bg-paper/70 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/60 active:bg-line/50 active:duration-75 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
               >
                 <Avatar nombre={c.nombre} iniciales={c.iniciales} />
 
@@ -149,7 +149,7 @@ export function ListaColaboradores({
                   <span
                     className={cn(
                       'text-xs',
-                      corte ? 'font-medium text-amber-700' : 'text-emerald-700',
+                      corte ? 'font-medium text-aviso-deep' : 'text-exito-deep',
                     )}
                   >
                     {corte ? corte.titulo : 'Listo para pagar'}
@@ -163,7 +163,12 @@ export function ListaColaboradores({
                   <span className="block text-[11px] text-muted">nota /20</span>
                 </div>
 
-                <ChevronRight className="hidden h-4 w-4 text-muted sm:block" aria-hidden />
+                {/* La flecha se acerca al pasar: dice "esto lleva a algún lado" sin ocupar texto.
+                    Sólo transform, y se queda quieta con prefers-reduced-motion. */}
+                <ChevronRight
+                  className="hidden h-4 w-4 text-muted transition-transform duration-200 ease-out-expo group-hover:translate-x-0.5 group-hover:text-navy motion-reduce:transform-none sm:block"
+                  aria-hidden
+                />
               </Link>
             </li>
           ))}

@@ -11,7 +11,7 @@ import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 
 const SEG: Record<SegmentoCliente, { label: string; cls: string }> = {
-  vip: { label: 'VIP', cls: 'bg-gold/20 text-[#7a6e0e]' },
+  vip: { label: 'VIP', cls: 'bg-gold/20 text-gold-deep' },
   recurrente: { label: 'Recurrente', cls: 'bg-navy/10 text-navy' },
   nuevo: { label: 'Nuevo', cls: 'bg-ink/10 text-muted' },
 };
@@ -42,10 +42,10 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Clientes" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="VIP" valor={resumen.vip} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-        <StatBox index={2} label="Recurrentes" valor={resumen.recurrentes} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={3} label="A reactivar" valor={resumen.seguir} tone="border-amber-200 bg-amber-50 text-amber-700" />
+        <StatBox index={0} label="Clientes" valor={resumen.total} tone="navy" />
+        <StatBox index={1} label="VIP" valor={resumen.vip} tone="gold" />
+        <StatBox index={2} label="Recurrentes" valor={resumen.recurrentes} tone="navy" />
+        <StatBox index={3} label="A reactivar" valor={resumen.seguir} tone="aviso" />
       </div>
 
       <Card>

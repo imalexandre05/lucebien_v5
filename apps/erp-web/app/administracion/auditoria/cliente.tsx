@@ -67,10 +67,10 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Mostrando" valor={kpis.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Creados" valor={kpis.creados} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={2} label="Editados" valor={kpis.editados} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-        <StatBox index={3} label="Eliminados" valor={kpis.eliminados} tone="border-red-200 bg-red-50 text-red-700" />
+        <StatBox index={0} label="Mostrando" valor={kpis.total} tone="navy" />
+        <StatBox index={1} label="Creados" valor={kpis.creados} tone="exito" />
+        <StatBox index={2} label="Editados" valor={kpis.editados} tone="gold" />
+        <StatBox index={3} label="Eliminados" valor={kpis.eliminados} tone="error" />
       </div>
 
       <Card>

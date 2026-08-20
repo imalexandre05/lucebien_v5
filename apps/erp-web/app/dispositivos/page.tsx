@@ -54,10 +54,10 @@ export default async function DispositivosPage() {
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Equipos" valor={disp.length} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Aprobados" valor={n('aprobado')} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={2} label="Pendientes" valor={n('pendiente')} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox index={3} label="Bloqueados" valor={n('rechazado') + n('revocado')} tone="border-line bg-white text-muted" />
+        <StatBox index={0} label="Equipos" valor={disp.length} tone="navy" />
+        <StatBox index={1} label="Aprobados" valor={n('aprobado')} tone="exito" />
+        <StatBox index={2} label="Pendientes" valor={n('pendiente')} tone="aviso" />
+        <StatBox index={3} label="Bloqueados" valor={n('rechazado') + n('revocado')} tone="neutro" />
       </div>
 
       <Card>

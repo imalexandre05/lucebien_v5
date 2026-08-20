@@ -17,8 +17,8 @@ import { StatBox } from '../../components/ui/stat-box';
 import { cn } from '../../lib/cn';
 
 const ROL: Record<string, { label: string; cls: string }> = {
-  admin: { label: 'Administrador', cls: 'bg-gold/20 text-[#7a6e0e]' },
-  dueno: { label: 'Dueño/a', cls: 'bg-gold/20 text-[#7a6e0e]' },
+  admin: { label: 'Administrador', cls: 'bg-gold/20 text-gold-deep' },
+  dueno: { label: 'Dueño/a', cls: 'bg-gold/20 text-gold-deep' },
   encargado_tienda: { label: 'Encargado Tienda', cls: 'bg-emerald-600/10 text-emerald-700' },
   encargado_almacen: { label: 'Enc. Almacén', cls: 'bg-emerald-600/10 text-emerald-700' },
   confeccionista: { label: 'Confeccionista', cls: 'bg-violet-50 text-violet-700' },
@@ -142,10 +142,10 @@ export function EmpleadosCliente({
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Colaboradores" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Activos" valor={resumen.activos} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={2} label="Suspendidos" valor={resumen.suspendidos} tone="border-line bg-white text-muted" />
-        <StatBox index={3} label="Encargados" valor={resumen.encargados} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox index={0} label="Colaboradores" valor={resumen.total} tone="navy" />
+        <StatBox index={1} label="Activos" valor={resumen.activos} tone="exito" />
+        <StatBox index={2} label="Suspendidos" valor={resumen.suspendidos} tone="neutro" />
+        <StatBox index={3} label="Encargados" valor={resumen.encargados} tone="gold" />
       </div>
 
       {/* Filtros + nuevo colaborador */}
@@ -236,7 +236,7 @@ export function EmpleadosCliente({
                         {puede(matrizPermisos, e.rol as Rol, 'pos_cobro', 'ver', e.rolCod) && (
                           <span
                             title="Este rol tiene el permiso de cajero (opera caja)"
-                            className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-medium text-[#7a6e0e]"
+                            className="inline-flex items-center gap-1 rounded-full bg-gold/15 px-2 py-0.5 text-[10px] font-medium text-gold-deep"
                           >
                             <Wallet className="h-3 w-3" strokeWidth={2} /> Opera caja
                           </span>

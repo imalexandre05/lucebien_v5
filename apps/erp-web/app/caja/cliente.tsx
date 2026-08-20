@@ -176,10 +176,10 @@ export function CajaCliente({
       {/* Resumen del día */}
       {resumen && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <StatBox size="md" index={0} label="Ingresos" valor={soles(resumen.ingresos)} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-          <StatBox size="md" index={1} label="Egresos" valor={soles(resumen.egresos)} tone="border-red-200 bg-red-50 text-red-700" />
-          <StatBox size="md" index={2} label="Neto" valor={soles(resumen.neto)} tone="border-navy/15 bg-navy/5 text-navy" />
-          <StatBox size="md" index={3} label="Efectivo esperado" valor={soles(resumen.efectivoEsperado)} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+          <StatBox size="md" index={0} label="Ingresos" valor={soles(resumen.ingresos)} tone="exito" />
+          <StatBox size="md" index={1} label="Egresos" valor={soles(resumen.egresos)} tone="error" />
+          <StatBox size="md" index={2} label="Neto" valor={soles(resumen.neto)} tone="navy" />
+          <StatBox size="md" index={3} label="Efectivo esperado" valor={soles(resumen.efectivoEsperado)} tone="gold" />
         </div>
       )}
 

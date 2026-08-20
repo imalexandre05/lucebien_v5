@@ -131,10 +131,10 @@ export function AsistenciasCliente({
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Registros" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Días completos" valor={resumen.declarados} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={2} label="A medias" valor={resumen.aMedias} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox index={3} label="Faltas" valor={resumen.faltas} tone="border-line bg-white text-muted" />
+        <StatBox index={0} label="Registros" valor={resumen.total} tone="navy" />
+        <StatBox index={1} label="Días completos" valor={resumen.declarados} tone="exito" />
+        <StatBox index={2} label="A medias" valor={resumen.aMedias} tone="aviso" />
+        <StatBox index={3} label="Faltas" valor={resumen.faltas} tone="neutro" />
       </div>
 
       {/* Filtros + acción */}

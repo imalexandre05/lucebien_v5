@@ -51,7 +51,7 @@ const OPC_FILTRO_ESTADO: Opcion<FiltroEstado>[] = (Object.keys(ESTADO_FILTRO_LAB
 function Puntaje({ r }: { r: Reporte }) {
   if (!r.evaluado) return <span className="text-muted">—</span>;
   const p = r.puntajeEval ?? r.puntaje;
-  const cls = p >= 85 ? 'bg-emerald-600/10 text-emerald-700' : p >= 60 ? 'bg-gold/20 text-[#7a6e0e]' : 'bg-red-50 text-red-700';
+  const cls = p >= 85 ? 'bg-emerald-600/10 text-emerald-700' : p >= 60 ? 'bg-gold/20 text-gold-deep' : 'bg-red-50 text-red-700';
   return <span className={cn('rounded-full px-2.5 py-0.5 font-mono text-xs font-bold tabular-nums', cls)}>{p}%</span>;
 }
 

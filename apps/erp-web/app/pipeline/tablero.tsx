@@ -406,7 +406,7 @@ export function TableroPipeline({
             <span key={r.nombre} className="inline-flex items-center gap-1.5 rounded-full bg-navy/5 px-2.5 py-1 text-xs">
               <span className="font-mono text-[10px] text-slate-400">#{i + 1}</span>
               <span className="font-medium text-navy">{r.nombre}</span>
-              <span className="font-mono font-bold tabular-nums text-[#7a6e0e]">{r.total}</span>
+              <span className="font-mono font-bold tabular-nums text-gold-deep">{r.total}</span>
             </span>
           ))}
         </div>

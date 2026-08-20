@@ -8,11 +8,33 @@ const config: Config = {
     extend: {
       colors: {
         navy: { DEFAULT: '#2e3e6e', dark: '#26335a', deep: '#1b2440' },
-        gold: { DEFAULT: '#b8a515', soft: '#c9b84a' },
+        // `soft` es el oro luminoso del manual (§6, "Gold Claro"), no el apagado que había antes:
+        // se usa en hover, y un hover que baja la saturación se siente como que algo se apagó.
+        // `deep` es el "Gold Oscuro" del manual, el único gold que se puede leer como texto sobre
+        // fondo claro. Reemplaza al #7a6e0e que estaba escrito a mano en veinte lugares.
+        gold: { DEFAULT: '#b8a515', soft: '#d4bf1e', deep: '#8a7c10' },
         paper: '#f6f4ef',
         ink: '#20283f',
         line: '#e6e0d4',
         muted: '#807a6c',
+
+        // ── Semánticos ────────────────────────────────────────────────────────────────────
+        //
+        // Salen del manual de marca §6 y NO de la paleta por defecto de Tailwind. Hasta ahora el
+        // ERP usaba emerald/amber/red sueltos —seiscientas apariciones en 67 archivos— y eso tenía
+        // dos costos: los verdes y ámbares de Tailwind son fríos al lado del navy y del oro, y
+        // cada pantalla elegía su propio tono, así que "correcto" no se veía igual en dos lugares.
+        //
+        // Cuatro pasos por familia, y cada uno tiene un trabajo:
+        //   soft → fondo del aviso            line → su borde
+        //   DEFAULT → el punto, la barra, el relleno      deep → el texto encima de `soft`
+        //
+        // `deep` sobre `soft` pasa 4.5:1 en las cuatro familias; DEFAULT es para superficie, no
+        // para texto largo.
+        exito: { soft: '#eaf6f0', line: '#bfe3d1', DEFAULT: '#2d9e6b', deep: '#1d6b48' },
+        aviso: { soft: '#fdf3e3', line: '#f5d9a8', DEFAULT: '#e08c1a', deep: '#95590a' },
+        error: { soft: '#fcecec', line: '#f2c3c3', DEFAULT: '#c94040', deep: '#992d2d' },
+        info: { soft: '#eaf2fa', line: '#bcd7ee', DEFAULT: '#3a7fc1', deep: '#255a8f' },
       },
       fontFamily: {
         display: ['Cormorant Garamond', 'serif'],

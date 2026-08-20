@@ -124,10 +124,10 @@ export function PagosCliente({
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox size="md" index={0} label="Registros" valor={String(resumen.total)} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox size="md" index={1} label="Pagado" valor={soles(resumen.pagado)} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox size="md" index={2} label="Pendiente" valor={soles(resumen.pendiente)} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox size="md" index={3} label="Anulados" valor={String(resumen.anulados)} tone="border-line bg-white text-muted" />
+        <StatBox size="md" index={0} label="Registros" valor={String(resumen.total)} tone="navy" />
+        <StatBox size="md" index={1} label="Pagado" valor={soles(resumen.pagado)} tone="exito" />
+        <StatBox size="md" index={2} label="Pendiente" valor={soles(resumen.pendiente)} tone="aviso" />
+        <StatBox size="md" index={3} label="Anulados" valor={String(resumen.anulados)} tone="neutro" />
       </div>
 
       {/* Filtros + acción */}

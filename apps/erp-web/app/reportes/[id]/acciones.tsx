@@ -135,7 +135,7 @@ export function EvaluarPanel({
         <h2 className="flex items-center gap-2 text-xl font-semibold text-navy">
           <Star className="h-5 w-5 text-gold" strokeWidth={2} /> Evaluar reporte
         </h2>
-        <span className="rounded-full bg-gold/15 px-3 py-1 font-mono text-base font-bold tabular-nums text-[#7a6e0e]">
+        <span className="rounded-full bg-gold/15 px-3 py-1 font-mono text-base font-bold tabular-nums text-gold-deep">
           {puntaje}%
         </span>
       </div>

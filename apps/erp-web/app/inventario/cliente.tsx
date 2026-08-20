@@ -340,7 +340,7 @@ export function InventarioCliente({
                             tonoEstado(a.estado) === 'green' && 'bg-emerald-50 text-emerald-700',
                             tonoEstado(a.estado) === 'amber' && 'bg-amber-50 text-amber-700',
                             tonoEstado(a.estado) === 'navy' && 'bg-navy/10 text-navy',
-                            tonoEstado(a.estado) === 'gold' && 'bg-gold/20 text-[#7a6e0e]',
+                            tonoEstado(a.estado) === 'gold' && 'bg-gold/20 text-gold-deep',
                             tonoEstado(a.estado) === 'red' && 'bg-red-500/15 text-red-700',
                             tonoEstado(a.estado) === 'gray' && 'bg-slate-100 text-slate-600',
                           )}

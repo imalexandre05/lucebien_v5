@@ -183,7 +183,7 @@ export function NuevaCompraForm({
           <div className="flex items-center justify-between border-t border-line pt-4">
             <span className="text-sm text-muted">
               Total de la compra:{' '}
-              <span className="font-mono text-lg font-semibold tabular-nums text-[#7a6e0e]">{soles(total)}</span>
+              <span className="font-mono text-lg font-semibold tabular-nums text-gold-deep">{soles(total)}</span>
             </span>
             <Button
               type="button"

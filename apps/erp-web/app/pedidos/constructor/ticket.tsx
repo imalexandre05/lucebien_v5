@@ -74,7 +74,7 @@ export function Ticket({
 
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold uppercase tracking-wide text-navy">Total</span>
-        <span className="font-mono text-2xl font-bold tabular-nums text-[#7a6e0e]" data-testid="ticket-total">
+        <span className="font-mono text-2xl font-bold tabular-nums text-gold-deep" data-testid="ticket-total">
           {soles(total)}
         </span>
       </div>

@@ -118,7 +118,7 @@ export default async function ValoresColaboradorPage({
                     </div>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line/60">
                       <div
-                        className="h-full origin-left animate-drawX rounded-full bg-navy motion-reduce:animate-none"
+                        className="h-full origin-left animate-draw-x rounded-full bg-navy motion-reduce:animate-none"
                         style={{ width: `${pct}%`, animationDuration: '450ms' }}
                       />
                     </div>

@@ -338,10 +338,10 @@ export function EvaluacionesCliente({
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Evaluaciones" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Promedio" valor={resumen.promedio} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-        <StatBox index={2} label="Excelente" valor={resumen.excelente} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="border-line bg-white text-muted" />
+        <StatBox index={0} label="Evaluaciones" valor={resumen.total} tone="navy" />
+        <StatBox index={1} label="Promedio" valor={resumen.promedio} tone="gold" />
+        <StatBox index={2} label="Excelente" valor={resumen.excelente} tone="exito" />
+        <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="neutro" />
       </div>
 
       {/* Filtros + acción */}

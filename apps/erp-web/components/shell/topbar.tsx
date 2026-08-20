@@ -83,7 +83,7 @@ export async function Topbar() {
         {sesion && <NotificacionesBell notificaciones={notificaciones} />}
         {sesion && <SedePopover sedeActual={sede} sedes={sedesDisponibles} />}
         {rol && (
-          <span className="hidden rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-[#7a6e0e] md:inline">
+          <span className="hidden rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-gold-deep md:inline">
             {ROL_LABEL[rol] ?? rol}
           </span>
         )}

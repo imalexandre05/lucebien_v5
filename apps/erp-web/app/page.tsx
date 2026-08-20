@@ -371,7 +371,7 @@ export default async function Dashboard() {
                         <div
                           className={cn(
                             'animate-rise font-mono text-lg font-semibold tabular-nums',
-                            n === 0 ? 'text-muted/60' : esListo ? 'text-[#7a6e0e]' : 'text-navy',
+                            n === 0 ? 'text-muted/60' : esListo ? 'text-gold-deep' : 'text-navy',
                           )}
                           style={{ animationDelay: `${i * 45}ms` }}
                         >
@@ -542,7 +542,7 @@ export default async function Dashboard() {
                       <span
                         className={cn(
                           'font-mono text-sm font-bold tabular-nums',
-                          i === 0 ? 'text-[#7a6e0e]' : 'text-navy',
+                          i === 0 ? 'text-gold-deep' : 'text-navy',
                         )}
                       >
                         {r.total}
@@ -624,7 +624,7 @@ function PuntajePill({ puntaje }: { puntaje: number }) {
     puntaje >= 85
       ? 'bg-emerald-600/10 text-emerald-700'
       : puntaje >= 60
-        ? 'bg-gold/20 text-[#7a6e0e]'
+        ? 'bg-gold/20 text-gold-deep'
         : 'bg-red-500/15 text-red-700';
   return (
     <span className={cn('rounded-full px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums', cls)}>
