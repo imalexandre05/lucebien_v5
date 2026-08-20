@@ -59,6 +59,7 @@
 | Documento | Qué contiene |
 |---|---|
 | [manual-de-marca.md](manual-de-marca.md) | Colores, tipografías y criterio estético. Navy `#2e3e6e` · gold `#b8a515` |
+| [sistema-de-diseno.md](sistema-de-diseno.md) | **Cómo viven la marca y el criterio dentro del código**: los tokens semánticos, el presupuesto de movimiento, el área tocable de 44px y los componentes compartidos. Se lee antes de pintar cualquier cosa: sin esto el camino corto es escribir `bg-emerald-600` y agregar el cuarto verde del sistema |
 | [brief-fable-ui.md](brief-fable-ui.md) | Elevación visual del ERP: dashboard, shell móvil, login, estados |
 | [prompts-design/](prompts-design/) | 8 documentos: identidad, color y tipografía, componentes, materiales físicos, redes, uniformes |
 

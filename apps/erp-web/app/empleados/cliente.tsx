@@ -17,14 +17,19 @@ import { StatBox } from '../../components/ui/stat-box';
 import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
+// Un rol es IDENTIDAD, no estado: por eso usa los categóricos y no los semánticos.
+//
+// Los encargados estaban pintados con el verde de éxito, y verde ya quiere decir "correcto" en
+// todo el resto del sistema. Un encargado no es un acierto. Pasan al navy, que es el color del
+// mando y además el institucional.
 const ROL: Record<string, { label: string; cls: string }> = {
   admin: { label: 'Administrador', cls: 'bg-gold/20 text-gold-deep' },
   dueno: { label: 'Dueño/a', cls: 'bg-gold/20 text-gold-deep' },
-  encargado_tienda: { label: 'Encargado Tienda', cls: 'bg-exito/10 text-exito-deep' },
-  encargado_almacen: { label: 'Enc. Almacén', cls: 'bg-exito/10 text-exito-deep' },
-  confeccionista: { label: 'Confeccionista', cls: 'bg-violet-50 text-violet-700' },
-  ventas_junior: { label: 'Ventas Jr.', cls: 'bg-sky-50 text-sky-700' },
-  ventas_junior_2: { label: 'Ventas Jr. 2', cls: 'bg-sky-50 text-sky-700' },
+  encargado_tienda: { label: 'Encargado Tienda', cls: 'bg-navy/10 text-navy' },
+  encargado_almacen: { label: 'Enc. Almacén', cls: 'bg-navy/10 text-navy' },
+  confeccionista: { label: 'Confeccionista', cls: 'bg-cat-lila-soft text-cat-lila-deep' },
+  ventas_junior: { label: 'Ventas Jr.', cls: 'bg-cat-mar-soft text-cat-mar-deep' },
+  ventas_junior_2: { label: 'Ventas Jr. 2', cls: 'bg-cat-mar-soft text-cat-mar-deep' },
 };
 
 const OPC_FILTRO_ESTADO: Opcion[] = [

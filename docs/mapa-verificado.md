@@ -17,9 +17,11 @@ sueldos, evaluación de desempeño, pipeline de prendas.
 **Lo que NO hace:** dinero, ventas, POS, inventario comercial, clientes. Eso queda a cargo de otro
 programador en un sistema aparte.
 
-**Frontera:** sin definir. El otro sistema estaría en `tuxedo.psk.com.pe:8055` (puerto por defecto
-de Directus). *Sin verificar:* ese dominio no resuelve públicamente — es interno a la red de la
-empresa o la dirección está mal.
+**Frontera:** sin definir. El otro sistema está en `tuxedo.spk.com.pe:8055` (verificado el
+14-ago-2026: el dominio resuelve a `190.238.42.198`, IP de ISP peruano, pero el host no responde
+desde fuera — ni ping ni puertos 80/8055; probablemente apagado o detrás de firewall). El puerto
+8055 es el default de Directus, aunque la documentación previa dice ASP.NET Core; sin confirmar
+hasta poder alcanzar el servidor. Sirve `/login` sobre HTTP plano, sin TLS.
 
 **Excepción que se conserva:** el envío de prendas de tienda a almacén sigue en este sistema aunque
 llegue el otro, porque le sirve al administrador para mapear el trabajo de las personas. Se

@@ -155,7 +155,7 @@ El protocolo completo para trabajar en varias secciones a la vez está en
 | Decidir cuánto rigor aplica a un cambio | [docs/rigor-por-zona.md](docs/rigor-por-zona.md) |
 | Trabajar en el pipeline o la evaluación | [docs/hoja-de-ruta-sistema.md](docs/hoja-de-ruta-sistema.md) |
 | Separar lógica genérica de lo específico | [docs/arquitectura-core-adapter.md](docs/arquitectura-core-adapter.md) |
-| Diseñar una pantalla | [docs/manual-de-marca.md](docs/manual-de-marca.md) |
+| Diseñar una pantalla | [docs/sistema-de-diseno.md](docs/sistema-de-diseno.md) — y [docs/manual-de-marca.md](docs/manual-de-marca.md) para la marca |
 | Entender el sistema viejo antes de migrar algo | [docs/auditoria-legacy/](docs/auditoria-legacy/) |
 | Trabajar en paralelo con otra sección | [docs/harness.md](docs/harness.md) |
 

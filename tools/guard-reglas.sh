@@ -134,6 +134,23 @@ revisar "regla3-rls-escritura" "Regla 3 — toda tabla con RLS tiene policy de e
   "Agregá la policy de insert/update/delete, o justificá la excepción en el baseline." \
   "$(printf '%s' "$sin_escritura")"
 
+# -- Diseno: la paleta por defecto de Tailwind no se usa ------------------------------------
+# Los verdes y ambares de Tailwind son frios al lado del navy y del oro, y sin tokens cada pantalla
+# elige el suyo: el 20-ago-2026 habia tres verdes distintos diciendo lo mismo en 67 archivos.
+# El sistema tiene semanticos (exito/aviso/error/info), categoricos (cat-*) y neutros.
+# Ver docs/sistema-de-diseno.md seccion 2.
+#
+# EL PATRON NO LLEVA \b, Y NO ES DESCUIDO. Escrito desde un script, esa secuencia se convirtio una
+# vez en un caracter de retroceso: el patron dejo de coincidir con nada y la regla paso en verde sin
+# mirar un solo archivo. Se exige en cambio que antes del nombre NO haya una letra, que es lo que
+# hace falta de verdad: sin eso, "slate-" encuentra el "-slate-" de "translate-".
+PALETA_TW="emerald|amber|red|rose|slate|sky|violet|indigo|purple|teal|lime|orange|fuchsia|cyan|yellow|green|blue|pink|stone|zinc|neutral|gray"
+hits_diseno=$(grep -rnE "(^|[^a-zA-Z])($PALETA_TW)-[0-9]{2,3}" \
+  apps/erp-web/app apps/erp-web/components --include="*.tsx" 2>/dev/null | sin_comentarios || true)
+revisar "diseno" "Diseno -- sin colores por defecto de Tailwind" \
+  "Usa un token: exito/aviso/error/info para estado, cat-* para identidad, paper/line/muted/ink para gris." \
+  "$hits_diseno"
+
 # ── Números de migración únicos, MIRANDO TODAS LAS RAMAS ───────────────────────────────────
 # El número es la identidad de una migración. Mirar sólo el directorio de trabajo no alcanza: dos
 # ramas paralelas ven la misma "última" y las dos escriben la siguiente. El choque no aparece

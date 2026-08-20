@@ -83,11 +83,12 @@ const TABS: { k: string; label: string; href?: string; pronto?: boolean }[] = [
   { k: 'metricas', label: 'Métricas', href: '/pipeline/metricas' },
 ];
 
-// Tono del pill de tipo de lavado.
+// Tono del pill de tipo de lavado. Es una categoría, no un estado: el lavado en seco no es una
+// advertencia. Por eso los tres salen de los categóricos y del neutro, y ninguno del semántico.
 const tipoLavadoCls = (t: string): string => {
   const v = t.toLowerCase();
-  if (v.includes('seco')) return 'bg-aviso-soft text-aviso-deep';
-  if (v.includes('espec')) return 'bg-violet-50 text-violet-700';
+  if (v.includes('seco')) return 'bg-cat-arcilla-soft text-cat-arcilla-deep';
+  if (v.includes('espec')) return 'bg-cat-lila-soft text-cat-lila-deep';
   return 'bg-paper text-muted';
 };
 

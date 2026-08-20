@@ -36,6 +36,24 @@ const config: Config = {
         aviso: { soft: '#fdf3e3', line: '#f5d9a8', DEFAULT: '#e08c1a', deep: '#95590a' },
         error: { soft: '#fcecec', line: '#f2c3c3', DEFAULT: '#c94040', deep: '#992d2d' },
         info: { soft: '#eaf2fa', line: '#bcd7ee', DEFAULT: '#3a7fc1', deep: '#255a8f' },
+
+        // ── Categóricos ───────────────────────────────────────────────────────────────────
+        //
+        // IDENTIDAD, NUNCA ESTADO. Distinguen cosas que conviven —un rol, un tipo de lavado— y no
+        // dicen si algo está bien o mal. Van agrupados bajo `cat` justamente para que no se
+        // confundan: `bg-cat-lila-soft` no se escribe por accidente creyendo que avisa algo.
+        //
+        // POR QUÉ HACEN FALTA. Sin ellos, los chips de rol terminaban pintados con el verde de
+        // éxito, y verde ya quiere decir "correcto". Un encargado no es un acierto.
+        //
+        // Tres hues, elegidos para convivir con el navy y el oro sin competirles: un lila que
+        // continúa el azul del navy, una arcilla cálida hermana del oro, y un mar lo bastante
+        // verdoso como para no confundirse con el azul de `info`.
+        cat: {
+          lila: { soft: '#f2eef9', line: '#d7cbee', DEFAULT: '#6f5aa8', deep: '#4e3d7d' },
+          arcilla: { soft: '#fbeee9', line: '#f0cfc1', DEFAULT: '#b5643f', deep: '#8a462a' },
+          mar: { soft: '#e8f3f4', line: '#c0dee1', DEFAULT: '#2f7f88', deep: '#1e5a61' },
+        },
       },
       fontFamily: {
         display: ['Cormorant Garamond', 'serif'],
