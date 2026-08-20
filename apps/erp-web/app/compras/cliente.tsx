@@ -8,6 +8,7 @@ import { recibirCompraAction, anularCompraAction } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 const soles = (n: number) => `S/ ${new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
@@ -44,7 +45,7 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
 
   return (
     <div className="space-y-4">
-      {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+      {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       <Card>
         <CardContent className="overflow-x-auto px-0 pb-0">
           <Table>

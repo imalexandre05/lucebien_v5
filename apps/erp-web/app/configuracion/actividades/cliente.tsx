@@ -19,6 +19,7 @@ import { Badge, type Tone } from '../../../components/ui/badge';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -638,7 +639,7 @@ export function ActividadesCliente({
             </>
           )}
 
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setModal(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
@@ -663,7 +664,7 @@ export function ActividadesCliente({
             <span className="font-medium text-ink">{eliminar?.nombre}</span> ({eliminar?.cod}) se quita
             del catálogo de esta sede. Los reportes ya enviados no cambian.
           </p>
-          {error && <p className="mt-3 rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+          {error && <Aviso tono="error" className="mt-3">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setEliminar(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
@@ -701,7 +702,7 @@ export function ActividadesCliente({
               ))}
             </select>
           </div>
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setDuplicarAbierto(false)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

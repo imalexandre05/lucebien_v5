@@ -12,6 +12,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { MetodoPagoBotones } from '../../components/ui/metodo-pago-botones';
 import { MontoInput } from '../../components/ui/monto-input';
 import { EmptyState } from '../../components/ui/empty-state';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 const TIPO_TONE: Record<TipoPedido, Tone> = { alquiler: 'navy', venta: 'gold', servicio: 'green', confeccion: 'amber', mixto: 'gray' };
@@ -119,7 +120,7 @@ export function PedidosPendientes({
           <Chip label="Del día" count={delDia.length} active={filtro === 'delDia'} onClick={() => toggleFiltro('delDia')} testId="filtro-del-dia" />
         </div>
 
-        {error && <p className="mb-2 rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+        {error && <Aviso tono="error" className="mb-2 text-sm">{error}</Aviso>}
 
         <div className="overflow-x-auto">
           <Table>

@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 type ActEval = { cod: string; nombre: string; cat: string | null; peso: number; calificacion: number | null };
@@ -215,7 +216,7 @@ export function EvaluarPanel({
         </CardContent>
       </Card>
 
-      {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+      {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
 
       <Button
         type="button"
@@ -295,7 +296,7 @@ export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean 
               ? 'El reporte vuelve a quedar pendiente de evaluación.'
               : 'Se borran sus actividades, trabajadores y extras. Esta acción no se puede deshacer.'}
           </p>
-          {error && <p className="mt-3 rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+          {error && <Aviso tono="error" className="mt-3">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={cerrar} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

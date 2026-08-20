@@ -16,6 +16,7 @@ import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../../components/ui/opcion-botones';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -247,7 +248,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
             </div>
           </div>
           <p className="text-xs text-muted">Gravedad y puntos son solo el valor sugerido al elegir este tipo — quien registra la incidencia los puede ajustar.</p>
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setModal(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
@@ -272,7 +273,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
             <span className="font-medium text-ink">{eliminar?.tipo}</span> se quita del catálogo. Las incidencias que ya se registraron
             con este tipo no cambian (el campo tipo sigue siendo texto libre).
           </p>
-          {error && <p className="mt-3 rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+          {error && <Aviso tono="error" className="mt-3">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setEliminar(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

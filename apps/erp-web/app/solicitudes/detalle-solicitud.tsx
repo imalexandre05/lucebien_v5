@@ -19,6 +19,7 @@ import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 type Emp = { id: string; nombre: string; sedeCod: string | null };
@@ -431,7 +432,7 @@ function Contenido({
           </div>
         )}
 
-        {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>
       <ModalFooter className="flex-wrap justify-start gap-2">
         {esPendiente && esGestor && !rechazando && (

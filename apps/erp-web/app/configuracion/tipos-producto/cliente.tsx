@@ -15,6 +15,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -261,7 +262,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
               </div>
             )}
           </div>
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setModal(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
@@ -286,7 +287,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
             <span className="font-medium text-ink">{eliminar?.nombre}</span> se quita del catálogo. Los
             activos que ya usan este tipo como texto libre no cambian (el campo tipo sigue siendo libre).
           </p>
-          {error && <p className="mt-3 rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+          {error && <Aviso tono="error" className="mt-3">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setEliminar(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

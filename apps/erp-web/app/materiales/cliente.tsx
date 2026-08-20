@@ -11,6 +11,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 const fieldCls =
@@ -293,7 +294,7 @@ function MaterialModal({
           <input type="checkbox" checked={form.activo} onChange={(e) => set('activo', e.target.checked)} />
           Material activo
         </label>
-        {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
@@ -348,7 +349,7 @@ function AjusteModal({ material, onClose, onSaved }: { material: Material; onClo
         <p className="rounded-md bg-navy/5 px-3 py-2 text-sm text-navy">
           Stock resultante: <span className="font-mono font-semibold tabular-nums">{nfmt(resultante)}</span> {material.unidad}
         </p>
-        {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>

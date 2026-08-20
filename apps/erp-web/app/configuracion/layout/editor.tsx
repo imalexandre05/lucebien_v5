@@ -13,6 +13,7 @@ import { LIENZO_W, LIENZO_H, formaZona, texturaZona } from '../../reportes/layou
 import { Card, CardContent } from '../../../components/ui/card';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -663,7 +664,7 @@ export function LayoutEditor({
               ))}
             </select>
           </div>
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setClonarAbierto(false)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

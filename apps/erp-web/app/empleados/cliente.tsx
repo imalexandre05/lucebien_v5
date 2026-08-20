@@ -14,6 +14,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { StatBox } from '../../components/ui/stat-box';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 const ROL: Record<string, { label: string; cls: string }> = {
@@ -627,7 +628,7 @@ function EditarModal({
                 {posCobroPending ? 'Guardando…' : operaCaja ? 'Sí, opera caja' : 'No opera caja'}
               </button>
             </div>
-            {posCobroError && <p className="mt-2 rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{posCobroError}</p>}
+            {posCobroError && <Aviso tono="error" className="mt-2">{posCobroError}</Aviso>}
           </div>
         )}
         {esAdminODueno && (
@@ -660,7 +661,7 @@ function EditarModal({
             className={cn(fieldCls, 'w-full')}
           />
         </div>
-        {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
 
         <div className="border-t border-line/60 pt-3">
           <label className="mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted">
@@ -812,7 +813,7 @@ function CrearModal({
             className={cn(fieldCls, 'w-full')}
           />
         </div>
-        {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>

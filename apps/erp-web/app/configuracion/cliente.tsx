@@ -10,6 +10,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { Badge } from '../../components/ui/badge';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 const fieldCls =
@@ -407,7 +408,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
               onChange={(v) => setForm((f) => ({ ...f, valor: v }))}
             />
           </div>
-          {errorModal && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{errorModal}</p>}
+          {errorModal && <Aviso tono="error">{errorModal}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setModalNuevo(false)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

@@ -13,6 +13,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../../components/ui/opcion-botones';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -175,7 +176,7 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
                 : 'Punto de venta: pedidos y caja, sin pipeline propio.'}
             </p>
           </div>
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setModal(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

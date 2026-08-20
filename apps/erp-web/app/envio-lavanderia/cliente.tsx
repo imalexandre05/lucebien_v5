@@ -10,6 +10,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { EmptyState } from '../../components/ui/empty-state';
 import { PersonaPicker } from '../../components/ui/persona-picker';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 // Mismo vocabulario que /pipeline/registrar (no inventar valores nuevos).
@@ -280,7 +281,7 @@ export function EnvioLavanderiaCliente({
             </div>
           </div>
 
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
           {ok && <p className="rounded-md bg-exito-soft px-3 py-2 text-sm text-exito-deep">{ok}</p>}
 
           <Button type="button" onClick={enviar} disabled={!puedeEnviar} pending={pending} className="w-full justify-center py-2.5">

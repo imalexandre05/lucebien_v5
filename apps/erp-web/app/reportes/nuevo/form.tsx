@@ -12,6 +12,7 @@ import { LayoutMap } from '../layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { Aviso } from '../../../components/ui/form';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
 import { cn } from '../../../lib/cn';
 
@@ -207,6 +208,24 @@ export function NuevoReporteForm({
 
   const totalPts = Math.round((actPts + limpiezaPts.got) * 10) / 10;
   const puedeEnviar = Boolean(turno) && !conflicto && !pendienteAnterior && encargadoSel.length === 1 && !pending;
+
+  // POR QUÉ ESTÁ GRIS EL BOTÓN.
+  //
+  // Antes el aviso cubría un solo caso —falta el encargado— y encima era `hidden sm:inline`, así
+  // que en el celular quedaba un botón apagado sin ninguna explicación. La mitad del equipo llena
+  // este formulario de pie y con el teléfono: ahí es donde más falta hacía.
+  //
+  // El orden es el de resolución, no el de la condición: primero el turno, porque sin turno no hay
+  // nada que revisar después.
+  const motivoBloqueo = !turno
+    ? 'Elige el turno para poder enviar.'
+    : pendienteAnterior
+      ? 'Hay un reporte anterior sin cerrar. Ciérralo primero.'
+      : conflicto
+        ? 'Ya existe un reporte para este turno.'
+        : encargadoSel.length !== 1
+          ? 'Selecciona al encargado del turno, que es quien lo firma.'
+          : null;
 
   // Tarea 6: el encargado SIEMPRE cuenta como colaborador (el RPC lo agrega a
   // reporte_trabajadores aunque no esté en el picker de "Colaboradores del turno") — el contador
@@ -812,19 +831,34 @@ export function NuevoReporteForm({
           </div>
 
           {/* ── Resumen + Envío: barra fija abajo, siempre a la vista ── */}
-          <div className="sticky bottom-0 z-20 rounded-t-xl border border-line bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
+          <div className="sticky bottom-0 z-20 overflow-hidden rounded-t-xl border border-line bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
+            {/* EL PROGRESO DEL TURNO, EN EL BORDE DE LA BARRA.
+                El contador "12/30" ya estaba, pero un número hay que leerlo; una línea que avanza
+                se ve sin mirar. Va acá y no en una tarjeta aparte porque la barra es lo único que
+                está siempre en pantalla mientras se completa el formulario.
+                Es `aria-hidden` a propósito: el mismo dato ya está escrito abajo en texto, y
+                anunciarlo dos veces sólo alarga la lectura. */}
+            <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-line/70">
+              <div
+                className="h-full origin-left bg-gold transition-transform duration-200 ease-out-expo"
+                style={{ transform: `scaleX(${cat.length ? actDone / cat.length : 0})` }}
+              />
+            </div>
             {error && (
-              <p className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">
-                <span>{error}</span>
+              <Aviso tono="error" className="mb-2 text-sm">
+                {error}
                 {bloqueoId && (
-                  <Link
-                    href={`/reportes/${bloqueoId}`}
-                    className="font-medium underline underline-offset-2 hover:text-error-deep"
-                  >
-                    Ver ese reporte
-                  </Link>
+                  <>
+                    {' '}
+                    <Link
+                      href={`/reportes/${bloqueoId}`}
+                      className="font-medium underline underline-offset-2"
+                    >
+                      Ver ese reporte
+                    </Link>
+                  </>
                 )}
-              </p>
+              </Aviso>
             )}
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <span className="text-xs text-muted">
@@ -874,10 +908,11 @@ export function NuevoReporteForm({
                 </span>
               )}
               <div className="ml-auto flex items-center gap-3">
-                <span className="hidden text-xs text-muted sm:inline">
-                  {encargadoSel.length === 1
-                    ? 'Se guarda automáticamente mientras lo completas.'
-                    : 'Selecciona al encargado del turno para poder enviar.'}
+                <span
+                  id="motivo-envio"
+                  className={cn('text-xs', motivoBloqueo ? 'font-medium text-aviso-deep' : 'text-muted')}
+                >
+                  {motivoBloqueo ?? 'Se guarda automáticamente mientras lo completas.'}
                 </span>
                 <Button
                   type="button"
@@ -885,6 +920,7 @@ export function NuevoReporteForm({
                   onClick={submit}
                   disabled={!puedeEnviar}
                   pending={pending}
+                  aria-describedby="motivo-envio"
                   className="px-6 py-2.5"
                 >
                   {!pending && <Send className="h-4 w-4" strokeWidth={2} />}

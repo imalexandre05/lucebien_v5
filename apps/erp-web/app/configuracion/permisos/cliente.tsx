@@ -8,6 +8,7 @@ import type { RolDerivado } from '../../../lib/roles-repo';
 import { accionGuardarPermisos, accionCrearRol, accionActualizarRol } from './actions';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 // Roles base editables (admin/dueno siempre ven todo por mecanismo, no tienen fila en la matriz
@@ -332,7 +333,7 @@ function RolesDerivados({ roles, onCambio }: { roles: RolDerivado[]; onCambio: (
                 ))}
               </div>
             </div>
-            {error && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
+            {error && <Aviso tono="error">{error}</Aviso>}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setAbierto(false)} className={buttonVariants({ variant: 'outline' })}>
                 Cancelar

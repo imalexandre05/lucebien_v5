@@ -13,6 +13,7 @@ import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { MetodoPagoBotones } from '../../components/ui/metodo-pago-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { Modal as SharedModal, ModalBody, ModalFooter } from '../../components/ui/modal';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 type Resumen = {
@@ -324,7 +325,7 @@ export function CajaCliente({
           {/* Sin selector de "tipo de cobro": lo deriva pedido_cobrar solo (adelanto/saldo/completo
               según cuánto queda por cobrar) — mismo criterio que el ticket de /pedidos, así los dos
               puntos de entrada producen exactamente el mismo asiento (Fase 10, punto 2). */}
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
         </Modal>
       )}
 
@@ -364,7 +365,7 @@ export function CajaCliente({
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción</label>
             <input value={eDesc} onChange={(e) => setEDesc(e.target.value)} placeholder="En qué se usó…" className={fieldCls} />
           </div>
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
         </Modal>
       )}
 
@@ -401,7 +402,7 @@ export function CajaCliente({
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción (cliente / prenda)</label>
             <input value={gDesc} onChange={(e) => setGDesc(e.target.value)} placeholder="Ej. Juan Pérez · terno negro" className={fieldCls} />
           </div>
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
         </Modal>
       )}
 
@@ -435,7 +436,7 @@ export function CajaCliente({
             <span>Diferencia</span>
             <span className="font-mono font-semibold">{soles(montoCierre - resumen.efectivoEsperado)}</span>
           </div>
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
         </Modal>
       )}
     </div>

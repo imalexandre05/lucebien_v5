@@ -8,6 +8,7 @@ import { totalCompra } from '@scilb/core';
 import { crearCompraAction } from '../actions';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -178,7 +179,7 @@ export function NuevaCompraForm({
 
           <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Observación (opcional)" className={cn(fieldCls, 'w-full')} />
 
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
 
           <div className="flex items-center justify-between border-t border-line pt-4">
             <span className="text-sm text-muted">

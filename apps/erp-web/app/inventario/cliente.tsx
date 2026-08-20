@@ -21,6 +21,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { EmptyState } from '../../components/ui/empty-state';
 import { OpcionBotones } from '../../components/ui/opcion-botones';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 // Fase 7: 8 estados de ciclo completo (antes solo 4). TONE/LABEL como funciones con fallback en
@@ -607,7 +608,7 @@ export function InventarioCliente({
                 )}
               </div>
 
-              {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+              {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
             </ModalBody>
             <ModalFooter>
               <button type="button" onClick={cerrarModal} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

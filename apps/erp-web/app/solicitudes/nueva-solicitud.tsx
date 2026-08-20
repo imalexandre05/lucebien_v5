@@ -18,6 +18,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { OpcionBotones } from '../../components/ui/opcion-botones';
 import { Badge } from '../../components/ui/badge';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 // Formulario de alta (Fase 11). Portado de suAdd/suFields/suEnviar en public/js/solicitudes.js —
@@ -388,7 +389,7 @@ export function NuevaSolicitudModal({
           {items.length === 0 && <p className="rounded-md border border-dashed border-line px-3 py-6 text-center text-sm text-muted">Agrega una prenda o un artículo.</p>}
         </div>
 
-        {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={cerrar} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

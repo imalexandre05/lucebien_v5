@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -134,7 +135,7 @@ export function AccesoriosCliente({
 
             <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Observación (opcional)" className={cn(fieldCls, 'w-full')} />
 
-            {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+            {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
 
             <Button type="button" onClick={enviar} pending={pending} className="w-full justify-center py-2.5">
               {!pending && <Send className="h-4 w-4" strokeWidth={2} />}
