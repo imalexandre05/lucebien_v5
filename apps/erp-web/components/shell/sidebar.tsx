@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, CalendarCheck, Award, Wallet, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, History, Send, FileSignature, Receipt, HandCoins, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, History, Send, Receipt, UsersRound, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -10,7 +10,18 @@ import { Logo } from '../brand/logo';
 // `modulo` es la clave que evalúa puede(matriz, rol, modulo, 'ver') — un solo mecanismo de gating
 // (antes había un flag `admin` aparte para 3 ítems; ahora todo pasa por la misma matriz, admin/dueno
 // siempre pasan por el mecanismo del core, el resto según lo que el admin configuró en /configuracion/permisos).
-type Item = { label: string; href: string; icon: LucideIcon; modulo: string };
+type Item = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  modulo: string;
+  /**
+   * Módulos alternativos que también abren esta entrada. Existe por el módulo de colaboradores,
+   * que reemplazó seis entradas con permisos distintos: con `modulo` a secas, un rol que sólo veía
+   * 'sueldos' habría perdido el acceso que tenía. Adentro cada sección conserva el suyo.
+   */
+  modulosAlternos?: string[];
+};
 
 const NAV: { section: string; items: Item[] }[] = [
   {
@@ -42,21 +53,28 @@ const NAV: { section: string; items: Item[] }[] = [
     // lista, es el formulario operativo (arriba, en "Interno").
     section: 'Administración',
     items: [
+      // UN MÓDULO EN LUGAR DE SEIS. Evaluaciones, Pagos, Contratos, Declarar asistencia,
+      // Adelantos y ventas, y Asistencias eran seis entradas distintas para la misma pregunta:
+      // "¿qué pasa con esta persona en este período?". Ahora se entra por la persona y se navega
+      // por secciones adentro (app/colaboradores). Las rutas viejas siguen funcionando —nada se
+      // borró— pero salen del menú para que la respuesta sea una sola.
+      //
+      // El permiso no cambia: el módulo se abre con cualquiera de los que ya gobernaban esas
+      // pantallas, y cada sección de adentro conserva el suyo (lib/colaboradores-secciones.ts).
+      {
+        label: 'Colaboradores',
+        href: '/colaboradores',
+        icon: UsersRound,
+        modulo: 'evaluaciones',
+        modulosAlternos: ['pagos', 'sueldos'],
+      },
       { label: 'Historial de reportes', href: '/administracion/reportes', icon: Files, modulo: 'reportes_admin' },
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },
-      { label: 'Evaluaciones', href: '/evaluaciones', icon: Award, modulo: 'evaluaciones' },
-      { label: 'Pagos', href: '/pagos', icon: Wallet, modulo: 'pagos' },
-      // Contratos de sueldo (spec de sueldos §9, paso 5). Módulo propio y no dentro de 'pagos':
-      // un contrato pacta el sueldo de una persona, así que quien puede verlo no es
-      // necesariamente quien registra un pago. La pantalla además se cierra sola a admin/dueño.
-      { label: 'Contratos', href: '/sueldos/acuerdos', icon: FileSignature, modulo: 'sueldos' },
-      // Declarar la condición de cada día del periodo. Módulo 'sueldos' y no 'asistencias': la
-      // pantalla de /asistencias consulta registros sueltos; ésta declara lo que se va a pagar.
-      { label: 'Declarar asistencia', href: '/sueldos/asistencia', icon: CalendarCheck, modulo: 'sueldos' },
+      // Sigue afuera del módulo A PROPÓSITO: la liquidación trabaja sobre un contrato entero y no
+      // sobre un rango libre de fechas, que es el grano del módulo. Mudarla sin resolver esa
+      // diferencia sería mover el problema. Anotado en la spec del módulo.
       { label: 'Liquidaciones', href: '/sueldos/liquidaciones', icon: Receipt, modulo: 'sueldos' },
-      { label: 'Adelantos y ventas', href: '/sueldos/movimientos', icon: HandCoins, modulo: 'sueldos' },
       { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle, modulo: 'incidencias' },
-      { label: 'Asistencias', href: '/asistencias', icon: CalendarCheck, modulo: 'asistencias' },
       { label: 'Empleados', href: '/empleados', icon: Users, modulo: 'empleados' },
       { label: 'Dispositivos', href: '/dispositivos', icon: Laptop, modulo: 'dispositivos' },
       // Fase 13 tarea 4: sin filas propias en permisos_modulos (mismo criterio que empleados/
@@ -118,9 +136,12 @@ export function SidebarNav({
         // Si el filtro de permisos deja la sección vacía, no se renderiza ni el encabezado
         // (Fase 3) — antes quedaba un título "Administración" o "Comercial" huérfano, sin ítems
         // debajo, para roles que no ven ninguno de sus módulos.
-        const items = group.items.filter(
-          (it) => puede(matriz, rol, it.modulo, 'ver', rolCod) && permiteModuloPerfil(it.modulo, perfilSede),
-        );
+        const items = group.items.filter((it) => {
+          const candidatos = [it.modulo, ...(it.modulosAlternos ?? [])];
+          return candidatos.some(
+            (m) => puede(matriz, rol, m, 'ver', rolCod) && permiteModuloPerfil(m, perfilSede),
+          );
+        });
         if (items.length === 0) return null;
         return (
           <div key={group.section}>
