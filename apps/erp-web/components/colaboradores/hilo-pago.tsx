@@ -81,7 +81,10 @@ export function HiloPago({
   }
 
   return (
-    <ol className={cn('flex items-start', className)}>
+    // En pantalla chica cinco pasos con etiqueta no entran: el hilo scrollea en su propia caja en
+    // vez de apretujar las palabras hasta partirlas. La página no scrollea de costado.
+    <div className="-mx-1 overflow-x-auto px-1">
+      <ol className={cn('flex min-w-[34rem] items-start', className)}>
       {pasos.map((paso, i) => {
         const e = est[i];
         const href = hrefDe?.(paso);
@@ -112,7 +115,9 @@ export function HiloPago({
               <span
                 aria-hidden
                 className={cn(
-                  'absolute left-[-50%] top-4 h-0.5 w-full origin-left animate-drawX motion-reduce:animate-none',
+                  // top-5 y no top-4: el contenedor de cada paso tiene py-1, así que el centro
+                  // del círculo de 32px cae a 20px del borde. Cuatro pixeles de más se ven.
+                  'absolute left-[-50%] top-5 h-0.5 w-full origin-left animate-drawX motion-reduce:animate-none',
                   TONO[est[i - 1] === 'listo' && e !== 'pendiente' ? 'listo' : e].linea,
                 )}
                 style={{ animationDelay: `${i * 80}ms`, animationDuration: '400ms' }}
@@ -131,6 +136,7 @@ export function HiloPago({
           </li>
         );
       })}
-    </ol>
+      </ol>
+    </div>
   );
 }

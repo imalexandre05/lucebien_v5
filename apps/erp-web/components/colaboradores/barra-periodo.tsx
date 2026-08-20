@@ -14,8 +14,12 @@ import { cn } from '../../lib/cn';
 // elegís una vez y todo lo de abajo habla de ese período. Cuando cada pantalla trae su propio par
 // de fechas, cambiar de pantalla es volver a empezar.
 //
-// El período viaja en la URL (lib/periodo.ts), así que este componente sólo la reescribe. Eso hace
-// que atrás/adelante del navegador funcionen y que un enlace conserve lo que se está mirando.
+// El período viaja en la URL (lib/periodo.ts), así que este componente sólo la reescribe, y un
+// enlace conserva lo que se está mirando.
+//
+// Se usa `replace` y NO `push` a propósito: un input de fecha dispara un cambio por cada tecla, y
+// con `push` el botón de atrás quedaría lleno de estados intermedios que nadie eligió. El precio
+// es que atrás no deshace un cambio de período; los presets están para eso.
 
 const campo =
   'rounded-md border border-line bg-white px-2.5 py-1.5 font-mono text-sm text-navy outline-none transition-colors duration-150 focus:border-gold';

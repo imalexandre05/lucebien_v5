@@ -53,7 +53,6 @@ export function ListaColaboradores({
   colaboradores: Colaborador[];
   estado: Record<string, EstadoPeriodo>;
   periodo: Periodo;
-  modulosVisibles: string[];
 }) {
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState<Filtro>('pendientes');

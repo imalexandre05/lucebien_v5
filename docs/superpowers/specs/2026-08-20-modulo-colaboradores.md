@@ -47,8 +47,9 @@ una sola vez, arriba; secciones abajo— y nada de su estética.
 
 Un layout de App Router no recibe `searchParams`, así que la barra lo lee del navegador
 (`useSearchParams`) y cada página lo lee del servidor con la misma función (`lib/periodo.ts`). Eso
-hace que atrás y adelante del navegador funcionen, que un enlace conserve lo que se está mirando, y
-que no haya dos lugares donde el período pueda desincronizarse.
+hace que un enlace conserve lo que se está mirando y que no haya dos lugares donde el período pueda
+desincronizarse. La barra reescribe con `replace` y no con `push`: un input de fecha dispara un
+cambio por tecla, y el historial quedaría lleno de estados intermedios que nadie eligió.
 
 Presets: **Mes actual**, **Mes anterior** y **Ciclo personal** —el ciclo aniversario, que sale de
 `calcularCiclo()` del core recibiendo `hoyPeru()` desde la UI, nunca `new Date()` (no-negociable 4).

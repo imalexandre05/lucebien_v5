@@ -66,7 +66,6 @@ export default async function ColaboradoresPage({
         colaboradores={colaboradores}
         estado={Object.fromEntries(estado)}
         periodo={periodo}
-        modulosVisibles={visibles}
       />
     </div>
   );
