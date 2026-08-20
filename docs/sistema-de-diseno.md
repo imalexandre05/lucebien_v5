@@ -244,7 +244,9 @@ Es parte del diseño, no un acabado.
    tokens pero no la revisión de flujo. Son código muerto para el alcance actual, así que no urge.
 2. **Modo oscuro.** El manual lo describe para el ERP (§11) y el sistema hoy es claro. No hay tokens
    duales.
-3. **Los estados vacíos** no están auditados: `EmptyState` existe y se usa, pero nadie contó cuántas
-   pantallas todavía muestran un hueco sin nombre.
+3. **Los estados vacíos de las pantallas comerciales.** Los del alcance actual se auditaron el
+   20-ago-2026 y están convertidos; quedan sin tocar los de caja, compras, materiales, proveedores e
+   inventario, que son código muerto. Cuando un hueco se convierte, la regla es que diga **de dónde
+   sale** lo que falta, no sólo que no hay nada.
 4. **Nada de esto tiene test.** Un cambio de token no rompe ningún test porque no hay ninguno que
    mire la interfaz. La red hoy es el `next build` y el typecheck.
