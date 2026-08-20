@@ -680,4 +680,33 @@ seguidas por error (09:00 y 09:02) parten el día y le descuentan dos minutos a 
 
 ---
 
+## Preguntas abiertas del 20-ago-2026
+
+### `sueldo_pausa_minima_minutos` existe en la base recién desde la 0079
+
+Verificado contra producción: la fila **no existía**. La `0078` la inserta, pero esa migración no
+está aplicada, así que el umbral corría por el default de quince minutos escrito dentro de la
+función — es decir, hardcodeado y no editable, contra el no-negociable 5. La `0079` lo inserta con
+`on conflict do nothing` para que exista aunque la `0078` nunca llegue.
+
+Sigue **sin confirmar** el valor. Quince es la propuesta; el efecto de moverlo se ve en dos lugares:
+qué cuenta como pausa (C-01) y con qué hora se cierra un tramo reabierto (regla 1 de la `0079`).
+
+### Con qué hora cierra un tramo reabierto — **resuelto el 20-ago-2026**
+
+Confirmado por Alexander: **con la última marca**. Si el hueco es más corto que la pausa mínima, por
+definición no fue una pausa, así que las dos marcas son del mismo tramo y la última es su final.
+Medido sobre el histórico: 38 días afectados, 1,7 minutos de separación promedio. La diferencia
+contra la lectura alternativa está acotada por arriba al valor de la pausa mínima.
+
+### La liquidación dentro del módulo de colaboradores
+
+El módulo trabaja sobre un rango libre de fechas; `sueldo_liquidaciones` trabaja sobre **un contrato
+entero**. Antes de mudar la liquidación adentro del módulo hay que decidir qué se muestra cuando el
+período elegido no coincide con ningún contrato: ¿el contrato que más se solapa, nada, o se recorta
+el período al contrato? Es una decisión de negocio, no de pantalla. Mientras tanto Liquidaciones
+sigue siendo una entrada propia del menú.
+
+---
+
 _Agregar aquí, por fase, cualquier parámetro nuevo que se sembró con un default sin confirmar._
