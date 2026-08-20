@@ -78,7 +78,7 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
               <span className="text-navy">{m.diasSinComprar == null ? '—' : `hace ${m.diasSinComprar} d`}</span>
             </div>
             {m.seguir && (
-              <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-700">
+              <p className="mt-1 rounded bg-aviso-soft px-2 py-1 text-[11px] text-aviso-deep">
                 Cliente inactivo — conviene reactivar.
               </p>
             )}

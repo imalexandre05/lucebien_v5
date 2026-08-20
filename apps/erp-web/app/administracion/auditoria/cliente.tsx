@@ -215,10 +215,10 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                         {cambios.map((c) => (
                           <TR key={c.campo}>
                             <TD className="pl-3 font-mono text-xs text-navy">{c.campo}</TD>
-                            <TD className="max-w-[220px] truncate text-xs text-red-700" title={valorLegible(c.antes)}>
+                            <TD className="max-w-[220px] truncate text-xs text-error-deep" title={valorLegible(c.antes)}>
                               {valorLegible(c.antes)}
                             </TD>
-                            <TD className="max-w-[220px] truncate text-xs text-emerald-700" title={valorLegible(c.despues)}>
+                            <TD className="max-w-[220px] truncate text-xs text-exito-deep" title={valorLegible(c.despues)}>
                               {valorLegible(c.despues)}
                             </TD>
                           </TR>

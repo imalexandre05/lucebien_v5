@@ -66,7 +66,7 @@ const ETAPA_LABEL: Record<string, string> = {
 
 const KPI_TONE = 'border-line bg-white text-navy shadow-card';
 // Semáforo (Fase 6 tarea 3): mismo tile, solo cambia de tono cuando el valor amerita atención.
-const KPI_TONE_AMBER = 'border-amber-200 bg-amber-50 text-amber-900 shadow-card';
+const KPI_TONE_AMBER = 'border-aviso-line bg-aviso-soft text-aviso-deep shadow-card';
 
 // Badge de estado por color (Fase 6 tarea 1) — icono circular de la fila de "Actividad reciente"
 // y Badge de texto comparten la misma paleta para que se lean como el mismo estado.
@@ -77,9 +77,9 @@ const ESTADO_ACTIVIDAD_TONE: Record<EstadoActividad, Tone> = {
   sin_actividad: 'gray',
 };
 const ICONO_ESTADO_CLS: Record<EstadoActividad, string> = {
-  ok: 'bg-emerald-600/10 text-emerald-700',
-  por_evaluar: 'bg-amber-500/15 text-amber-700',
-  no_enviado: 'bg-red-500/15 text-red-700',
+  ok: 'bg-exito/10 text-exito-deep',
+  por_evaluar: 'bg-aviso/15 text-aviso-deep',
+  no_enviado: 'bg-error/15 text-error-deep',
   sin_actividad: 'bg-ink/10 text-muted',
 };
 // Cobertura de turnos (tarea 2): verde = cubierto, rojo = falta (no_enviado o sin_reportar),
@@ -622,10 +622,10 @@ export default async function Dashboard() {
 function PuntajePill({ puntaje }: { puntaje: number }) {
   const cls =
     puntaje >= 85
-      ? 'bg-emerald-600/10 text-emerald-700'
+      ? 'bg-exito/10 text-exito-deep'
       : puntaje >= 60
         ? 'bg-gold/20 text-gold-deep'
-        : 'bg-red-500/15 text-red-700';
+        : 'bg-error/15 text-error-deep';
   return (
     <span className={cn('rounded-full px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums', cls)}>
       {puntaje}%

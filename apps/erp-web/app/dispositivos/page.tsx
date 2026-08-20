@@ -121,7 +121,7 @@ export default async function DispositivosPage() {
                       {d.estado !== 'aprobado' && (
                         <form action={accionAprobar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition-colors duration-150 hover:bg-emerald-100 active:scale-[0.97]">
+                          <button className="inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1 text-xs font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
                             <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2} /> Aprobar
                           </button>
                         </form>
@@ -137,7 +137,7 @@ export default async function DispositivosPage() {
                       {d.estado === 'aprobado' && (
                         <form action={accionRevocar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 transition-colors duration-150 hover:bg-red-100 active:scale-[0.97]">
+                          <button className="inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1 text-xs font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
                             <Ban className="h-3.5 w-3.5" strokeWidth={2} /> Revocar
                           </button>
                         </form>

@@ -192,7 +192,7 @@ export function LineasPanel({
                   onClick={() => onUpdate(l.key, { esCortesia: !l.esCortesia })}
                   className={cn(
                     'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                    l.esCortesia ? 'border-emerald-600 bg-emerald-600/10 text-emerald-700' : 'border-line text-muted hover:border-gold',
+                    l.esCortesia ? 'border-exito bg-exito/10 text-exito-deep' : 'border-line text-muted hover:border-gold',
                   )}
                 >
                   {l.esCortesia ? 'Sí' : 'No'}
@@ -203,7 +203,7 @@ export function LineasPanel({
                   type="button"
                   data-testid="linea-quitar"
                   onClick={() => onRemove(l.key)}
-                  className="text-muted transition-colors hover:text-red-600"
+                  className="text-muted transition-colors hover:text-error"
                   aria-label="Quitar línea"
                 >
                   <X className="h-4 w-4" strokeWidth={2} />

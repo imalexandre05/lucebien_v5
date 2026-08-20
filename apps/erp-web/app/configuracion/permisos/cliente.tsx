@@ -160,8 +160,8 @@ export function PermisosCliente({
             <span className="font-mono text-xs">{totalActivos}</span> activadas.
           </p>
           <div className="ml-auto flex items-center gap-3">
-            {guardado && <span className="text-xs font-medium text-emerald-700">Guardado ✓</span>}
-            {error && <span className="text-xs text-red-600">{error}</span>}
+            {guardado && <span className="text-xs font-medium text-exito-deep">Guardado ✓</span>}
+            {error && <span className="text-xs text-error">{error}</span>}
             <Button type="button" onClick={guardar} pending={pending}>
               {!pending && <Save className="h-4 w-4" strokeWidth={2} />}
               {pending ? 'Guardando…' : 'Guardar cambios'}
@@ -207,7 +207,7 @@ export function PermisosCliente({
                                   className={cn(
                                     'flex h-6 w-6 items-center justify-center rounded border text-[10px] font-bold transition-colors duration-150 active:scale-95',
                                     on
-                                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                      ? 'border-exito bg-exito-soft text-exito-deep'
                                       : 'border-line bg-white text-muted/50 hover:border-gold/50',
                                   )}
                                 >
@@ -332,7 +332,7 @@ function RolesDerivados({ roles, onCambio }: { roles: RolDerivado[]; onCambio: (
                 ))}
               </div>
             </div>
-            {error && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+            {error && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
             <div className="flex justify-end gap-2">
               <button type="button" onClick={() => setAbierto(false)} className={buttonVariants({ variant: 'outline' })}>
                 Cancelar

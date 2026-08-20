@@ -145,8 +145,8 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                         className={cn(
                           'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
                           t.activo
-                            ? 'border-line text-muted hover:border-red-300 hover:text-red-600'
-                            : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+                            ? 'border-line text-muted hover:border-error-line hover:text-error'
+                            : 'border-exito-line bg-exito-soft text-exito-deep hover:bg-exito-soft',
                         )}
                       >
                         {t.activo ? 'Deshab.' : 'Activar'}
@@ -165,7 +165,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                           type="button"
                           onClick={() => setEliminar(t)}
                           aria-label={`Eliminar ${t.nombre}`}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-red-50 hover:text-red-600"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
                         >
                           <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                         </button>
@@ -253,7 +253,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                 {form.atributosSugeridos.map((k) => (
                   <span key={k} className="inline-flex items-center gap-1 rounded-full bg-navy/5 px-2.5 py-1 text-xs text-navy">
                     {k}
-                    <button type="button" onClick={() => quitarClave(k)} aria-label={`Quitar ${k}`} className="text-muted hover:text-red-600">
+                    <button type="button" onClick={() => quitarClave(k)} aria-label={`Quitar ${k}`} className="text-muted hover:text-error">
                       <X className="h-3 w-3" strokeWidth={2.5} />
                     </button>
                   </span>
@@ -261,7 +261,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
               </div>
             )}
           </div>
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setModal(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
@@ -279,20 +279,20 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
         onClose={() => !pending && setEliminar(null)}
         size="sm"
         title="¿Eliminar tipo?"
-        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" strokeWidth={2} aria-hidden />}
+        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody>
           <p className="text-sm leading-relaxed text-muted">
             <span className="font-medium text-ink">{eliminar?.nombre}</span> se quita del catálogo. Los
             activos que ya usan este tipo como texto libre no cambian (el campo tipo sigue siendo libre).
           </p>
-          {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+          {error && <p className="mt-3 rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setEliminar(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </button>
-          <Button type="button" onClick={confirmarEliminar} pending={pending} className="bg-red-600 hover:bg-red-700">
+          <Button type="button" onClick={confirmarEliminar} pending={pending} className="bg-error hover:bg-error-deep">
             {pending ? 'Eliminando…' : 'Sí, eliminar'}
           </Button>
         </ModalFooter>

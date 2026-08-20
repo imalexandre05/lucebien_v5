@@ -241,7 +241,7 @@ export function AsistenciaCliente({
       </Card>
 
       {sinDeclarar.length > 0 && (
-        <p className="mb-4 flex gap-2 rounded-md bg-amber-500/10 px-3 py-2 text-sm text-amber-800">
+        <p className="mb-4 flex gap-2 rounded-md bg-aviso/10 px-3 py-2 text-sm text-aviso-deep">
           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
           <span>
             Quedan {sinDeclarar.length} día(s) contratados sin declarar. La liquidación no se va a
@@ -251,7 +251,7 @@ export function AsistenciaCliente({
         </p>
       )}
 
-      {error && <p className="mb-4 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="mb-4 rounded-md bg-error/10 px-3 py-2 text-sm text-error-deep">{error}</p>}
 
       <Card>
         <CardHeader>

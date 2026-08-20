@@ -10,8 +10,8 @@ import { marcarLeidaAction, marcarTodasLeidasAction } from '../../app/notificaci
 import { cn } from '../../lib/cn';
 
 const SEV_ICON: Record<Notificacion['severidad'], { icon: typeof Info; cls: string }> = {
-  critica: { icon: ShieldAlert, cls: 'text-red-600' },
-  warn: { icon: AlertTriangle, cls: 'text-amber-600' },
+  critica: { icon: ShieldAlert, cls: 'text-error' },
+  warn: { icon: AlertTriangle, cls: 'text-aviso' },
   info: { icon: Info, cls: 'text-navy' },
 };
 
@@ -125,7 +125,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
       >
         <Bell className="h-4 w-4" strokeWidth={1.75} />
         {noLeidas > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold leading-none text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white">
             {noLeidas > 99 ? '99+' : noLeidas}
           </span>
         )}

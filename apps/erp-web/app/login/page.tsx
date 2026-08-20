@@ -44,7 +44,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
           <div aria-hidden className="h-0.5 bg-gradient-to-r from-gold via-gold/50 to-line" />
           <CardContent className="pt-6">
             {searchParams.error && (
-              <p role="alert" className="mb-4 animate-rise rounded-md bg-amber-500/15 px-3 py-2 text-xs text-amber-700">
+              <p role="alert" className="mb-4 animate-rise rounded-md bg-aviso/15 px-3 py-2 text-xs text-aviso-deep">
                 {searchParams.error === 'credenciales'
                   ? loginV2
                     ? 'Usuario o contraseña incorrectos.'

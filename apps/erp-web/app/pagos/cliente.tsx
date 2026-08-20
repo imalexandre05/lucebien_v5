@@ -217,7 +217,7 @@ export function PagosCliente({
                 </div>
               </div>
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-error">{error}</p>}
             <Button type="button" onClick={registrar} disabled={!empleadoId} pending={pending}>
               {pending ? 'Registrando…' : `Registrar · ${soles(monto)}`}
             </Button>
@@ -254,7 +254,7 @@ export function PagosCliente({
                         <FileText className="h-4 w-4" strokeWidth={1.75} />
                       </Link>
                       {esAdmin && (
-                        <button type="button" onClick={() => eliminar(p.id)} className="text-muted transition-colors hover:text-red-600" aria-label="Eliminar">
+                        <button type="button" onClick={() => eliminar(p.id)} className="text-muted transition-colors hover:text-error" aria-label="Eliminar">
                           <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                         </button>
                       )}

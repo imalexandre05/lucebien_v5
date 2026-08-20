@@ -107,7 +107,7 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
                     <TD className="font-mono text-xs text-muted">
                       {c.ultimoPedido ?? '—'}
                       {c.seguir && (
-                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-aviso-soft px-1.5 py-0.5 text-[10px] font-medium text-aviso-deep">
                           <RefreshCw className="h-2.5 w-2.5" strokeWidth={2.5} /> reactivar
                         </span>
                       )}
@@ -121,7 +121,7 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
                     <TD className="pr-5 text-right">
                       <form action={eliminarCliente}>
                         <input type="hidden" name="id" value={c.id} />
-                        <button className="cursor-pointer text-xs text-muted transition-colors duration-150 hover:text-red-600">
+                        <button className="cursor-pointer text-xs text-muted transition-colors duration-150 hover:text-error">
                           Eliminar
                         </button>
                       </form>

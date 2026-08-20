@@ -68,7 +68,7 @@ function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; con
                   <TD>{l.concepto}</TD>
                   <TD className="text-sm text-muted">{l.detalle}</TD>
                   <TD className="text-xs text-muted">{l.regla}</TD>
-                  <TD className={`text-right tabular-nums ${l.monto < 0 ? 'text-red-700' : ''}`}>
+                  <TD className={`text-right tabular-nums ${l.monto < 0 ? 'text-error-deep' : ''}`}>
                     {soles(l.monto)}
                   </TD>
                 </TR>
@@ -207,7 +207,7 @@ export function LiquidacionesCliente({
       </Card>
 
       {error && (
-        <div className="mb-5 rounded-md bg-red-500/10 px-4 py-3 text-sm text-red-700">
+        <div className="mb-5 rounded-md bg-error/10 px-4 py-3 text-sm text-error-deep">
           <p>{error}</p>
           {codigo === 'DATO' && (
             <p className="mt-1 text-xs">
@@ -253,9 +253,9 @@ export function LiquidacionesCliente({
             </div>
 
             {liq.advertencias.length > 0 && (
-              <div className="rounded-md bg-amber-500/10 px-3 py-2">
+              <div className="rounded-md bg-aviso/10 px-3 py-2">
                 {liq.advertencias.map((a) => (
-                  <p key={a} className="flex gap-2 text-sm text-amber-800">
+                  <p key={a} className="flex gap-2 text-sm text-aviso-deep">
                     <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
                     {a}
                   </p>
@@ -357,9 +357,9 @@ export function LiquidacionesCliente({
               </p>
               <Desglose lineas={detalle.lineas.length > 0 ? detalle.lineas : detalle.resultado.lineas} />
               {detalle.resultado.advertencias.length > 0 && (
-                <div className="mt-3 rounded-md bg-amber-500/10 px-3 py-2">
+                <div className="mt-3 rounded-md bg-aviso/10 px-3 py-2">
                   {detalle.resultado.advertencias.map((a) => (
-                    <p key={a} className="text-sm text-amber-800">
+                    <p key={a} className="text-sm text-aviso-deep">
                       {a}
                     </p>
                   ))}

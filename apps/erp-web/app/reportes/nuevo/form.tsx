@@ -69,7 +69,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
       onClick={onClick}
       className={cn(
         'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-150 ease-out-expo',
-        on ? 'bg-emerald-600' : 'bg-line',
+        on ? 'bg-exito' : 'bg-line',
       )}
     >
       <span
@@ -439,7 +439,7 @@ export function NuevoReporteForm({
               </>
             ) : (
               <>
-                <ClipboardCheck className="h-10 w-10 text-emerald-600" strokeWidth={1.5} />
+                <ClipboardCheck className="h-10 w-10 text-exito" strokeWidth={1.5} />
                 <div>
                   <p className="text-lg font-semibold text-navy">
                     {yaEnviado.estadoEnvio === 'no_enviado' ? 'Este turno se cerró automáticamente' : 'Este turno ya se envió'}
@@ -466,7 +466,7 @@ export function NuevoReporteForm({
       {turno && !cargando && !yaEnviado && conflicto && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <Clock className="h-10 w-10 text-amber-500" strokeWidth={1.5} />
+            <Clock className="h-10 w-10 text-aviso" strokeWidth={1.5} />
             <div>
               <p className="text-lg font-semibold text-navy">Este horario ya está cubierto</p>
               <p className="mt-1 text-sm text-muted">
@@ -487,7 +487,7 @@ export function NuevoReporteForm({
       {turno && !cargando && !yaEnviado && !conflicto && pendienteAnterior && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <ClipboardCheck className="h-10 w-10 text-amber-500" strokeWidth={1.5} />
+            <ClipboardCheck className="h-10 w-10 text-aviso" strokeWidth={1.5} />
             <div>
               <p className="text-lg font-semibold text-navy">Hay un reporte anterior pendiente de evaluación</p>
               <p className="mt-1 text-sm text-muted">
@@ -655,10 +655,10 @@ export function NuevoReporteForm({
                                 'rounded-md border-2 px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
                                 inc.nivel === n
                                   ? n === 'Alto'
-                                    ? 'border-red-500 bg-red-50 text-red-700'
+                                    ? 'border-error bg-error-soft text-error-deep'
                                     : n === 'Medio'
-                                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                                      : 'border-slate-400 bg-slate-100 text-slate-700'
+                                      ? 'border-aviso bg-aviso-soft text-aviso-deep'
+                                      : 'border-muted bg-paper text-ink'
                                   : 'border-line bg-white text-muted hover:border-gold/60',
                               )}
                             >
@@ -669,7 +669,7 @@ export function NuevoReporteForm({
                         <button
                           type="button"
                           onClick={() => setIncidencias((p) => p.filter((_, j) => j !== i))}
-                          className="ml-auto text-muted transition-colors hover:text-red-600"
+                          className="ml-auto text-muted transition-colors hover:text-error"
                           aria-label="Quitar"
                         >
                           <Trash2 className="h-4 w-4" strokeWidth={1.75} />
@@ -720,7 +720,7 @@ export function NuevoReporteForm({
                               className={cn(
                                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
                                 enLista
-                                  ? 'border-emerald-600 bg-emerald-600/10 text-emerald-700'
+                                  ? 'border-exito bg-exito/10 text-exito-deep'
                                   : 'border-line bg-white text-navy hover:border-gold/70',
                               )}
                             >
@@ -790,7 +790,7 @@ export function NuevoReporteForm({
                       <button
                         type="button"
                         onClick={() => quitarExtra(i)}
-                        className="text-muted transition-colors hover:text-red-600"
+                        className="text-muted transition-colors hover:text-error"
                         aria-label="Quitar"
                       >
                         <Trash2 className="h-4 w-4" strokeWidth={1.75} />
@@ -814,12 +814,12 @@ export function NuevoReporteForm({
           {/* ── Resumen + Envío: barra fija abajo, siempre a la vista ── */}
           <div className="sticky bottom-0 z-20 rounded-t-xl border border-line bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
             {error && (
-              <p className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+              <p className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">
                 <span>{error}</span>
                 {bloqueoId && (
                   <Link
                     href={`/reportes/${bloqueoId}`}
-                    className="font-medium underline underline-offset-2 hover:text-red-800"
+                    className="font-medium underline underline-offset-2 hover:text-error-deep"
                   >
                     Ver ese reporte
                   </Link>
@@ -829,7 +829,7 @@ export function NuevoReporteForm({
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <span className="text-xs text-muted">
                 Limpieza{' '}
-                <span className="font-mono text-sm font-bold tabular-nums text-emerald-700">
+                <span className="font-mono text-sm font-bold tabular-nums text-exito-deep">
                   {limpiezaPts.got}
                 </span>
                 <span className="font-mono text-[11px] text-muted">/{limpiezaPts.tot}</span>
@@ -863,9 +863,9 @@ export function NuevoReporteForm({
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-xs font-medium tabular-nums',
                     minutosRestantes <= 0
-                      ? 'bg-red-50 text-red-700'
+                      ? 'bg-error-soft text-error-deep'
                       : minutosRestantes <= 30
-                        ? 'bg-amber-100 text-amber-800'
+                        ? 'bg-aviso-soft text-aviso-deep'
                         : 'bg-navy/5 text-muted',
                   )}
                 >

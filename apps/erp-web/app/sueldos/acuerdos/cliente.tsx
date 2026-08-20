@@ -320,7 +320,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
       </Card>
 
       {error && !abierto && (
-        <p className="mt-3 rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="mt-3 rounded-md bg-error/10 px-3 py-2 text-sm text-error-deep">{error}</p>
       )}
 
       <Modal
@@ -471,7 +471,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
           {/* ── Vista previa ────────────────────────────────────────────────────────────── */}
           <div className="rounded-md border border-line bg-paper px-4 py-3">
             {analisis.error ? (
-              <p className="text-sm text-red-700">{analisis.error}</p>
+              <p className="text-sm text-error-deep">{analisis.error}</p>
             ) : (
               <>
                 <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
@@ -506,7 +506,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
             )}
 
             {analisis.avisos.map((a) => (
-              <p key={a} className="mt-2 flex gap-2 text-xs text-amber-700">
+              <p key={a} className="mt-2 flex gap-2 text-xs text-aviso-deep">
                 <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
                 {a}
               </p>
@@ -549,7 +549,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
             </div>
           </details>
 
-          {error && <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && <p className="rounded-md bg-error/10 px-3 py-2 text-sm text-error-deep">{error}</p>}
         </ModalBody>
 
         <ModalFooter>

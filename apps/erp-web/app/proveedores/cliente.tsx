@@ -226,7 +226,7 @@ function ProveedorModal({
           <input type="checkbox" checked={form.activo} onChange={(e) => set('activo', e.target.checked)} />
           Proveedor activo
         </label>
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>

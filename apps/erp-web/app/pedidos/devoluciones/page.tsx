@@ -36,8 +36,8 @@ export default async function DevolucionesPage() {
   const proximos = items.filter((i) => nivelDevolucion(i.dias) === 'proximo').length;
 
   const NIVEL_CLS = {
-    vencido: 'bg-red-50 text-red-700',
-    hoy: 'bg-amber-50 text-amber-700',
+    vencido: 'bg-error-soft text-error-deep',
+    hoy: 'bg-aviso-soft text-aviso-deep',
     proximo: 'bg-gold/20 text-gold-deep',
     futuro: 'bg-ink/10 text-muted',
   } as const;
@@ -82,7 +82,7 @@ export default async function DevolucionesPage() {
               {items.map((p) => {
                 const a = alerta(p.dias);
                 return (
-                  <TR key={p.id} className={cn(p.dias < 0 && 'bg-red-50/40')}>
+                  <TR key={p.id} className={cn(p.dias < 0 && 'bg-error-soft/40')}>
                     <TD className="pl-5">
                       <Link href={`/pedidos/${p.id}`} className="font-medium text-navy transition-colors hover:text-gold">
                         {p.clienteNombre ?? '—'}

@@ -44,7 +44,7 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
 
   return (
     <div className="space-y-4">
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
       <Card>
         <CardContent className="overflow-x-auto px-0 pb-0">
           <Table>
@@ -82,7 +82,7 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
                             type="button"
                             disabled={pending}
                             onClick={() => recibir(c)}
-                            className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 active:scale-[.97]"
+                            className="inline-flex items-center gap-1 rounded-md bg-exito px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
                           >
                             <PackageCheck className="h-3.5 w-3.5" strokeWidth={2.5} /> Recibir
                           </button>
@@ -92,13 +92,13 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
                             type="button"
                             disabled={pending}
                             onClick={() => anular(c)}
-                            className="inline-flex items-center gap-1 rounded-md border border-red-200 px-2 py-1 text-xs text-red-700 transition hover:bg-red-50"
+                            className="inline-flex items-center gap-1 rounded-md border border-error-line px-2 py-1 text-xs text-error-deep transition hover:bg-error-soft"
                           >
                             <Ban className="h-3.5 w-3.5" strokeWidth={2} /> Anular
                           </button>
                         )}
                         {c.estado === 'recibida' && (
-                          <span className="inline-flex items-center gap-1 text-xs text-emerald-700">
+                          <span className="inline-flex items-center gap-1 text-xs text-exito-deep">
                             <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> en stock
                           </span>
                         )}

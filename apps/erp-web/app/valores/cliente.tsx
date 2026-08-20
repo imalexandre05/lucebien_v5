@@ -101,7 +101,7 @@ export function ValoresCliente({
   return (
     <div className="space-y-4">
       {avisoVentanaCerrada && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="flex items-start gap-2.5 rounded-lg border border-aviso-line bg-aviso-soft px-4 py-3 text-sm text-aviso-deep">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
           <p>{avisoVentanaCerrada}</p>
         </div>
@@ -112,7 +112,7 @@ export function ValoresCliente({
           index={1}
           label="Pendientes"
           valor={pendientes}
-          tone={pendientes > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}
+          tone={pendientes > 0 ? 'border-aviso-line bg-aviso-soft text-aviso-deep' : 'border-exito-line bg-exito-soft text-exito-deep'}
         />
         <StatBox index={2} label="Recibidas (yo)" valor={miResumen.recibidas} tone="neutro" />
         <StatBox
@@ -276,7 +276,7 @@ export function ValoresCliente({
               <OpcionBotones opciones={OPC_LIKERT} value={String(puntaje[key])} onChange={(v) => setPuntaje((p) => ({ ...p, [key]: Number(v) }))} ariaLabel={label} />
             </div>
           ))}
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-error">{error}</p>}
         </ModalBody>
         <ModalFooter>
           <Button type="button" variant="outline" onClick={() => setAbierto(null)}>

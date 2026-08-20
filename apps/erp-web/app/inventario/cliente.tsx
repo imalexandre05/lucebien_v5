@@ -281,11 +281,11 @@ export function InventarioCliente({
                 const bloqueo = a.estado === 'disponible' ? activoBloqueadoPor(activos, a.id) : null;
                 const padre = a.activoPadreId ? porId.get(a.activoPadreId) : null;
                 return (
-                  <TR key={a.id} className={cn(bloqueo && 'bg-amber-50/40')}>
+                  <TR key={a.id} className={cn(bloqueo && 'bg-aviso-soft/40')}>
                     <TD className="pl-5">
                       <div className="flex items-center gap-1 font-mono font-medium text-navy">
                         {a.codigo}
-                        {a.publicable && <Globe className="h-3 w-3 text-emerald-600" strokeWidth={2} aria-label="Publicable en la web" />}
+                        {a.publicable && <Globe className="h-3 w-3 text-exito" strokeWidth={2} aria-label="Publicable en la web" />}
                       </div>
                       {(PIEZA_LABEL[a.pieza] || padre) && (
                         <div className="text-[10px] text-muted">
@@ -337,12 +337,12 @@ export function InventarioCliente({
                           disabled={pending}
                           className={cn(
                             'rounded-full border-0 px-2.5 py-1 text-xs font-medium outline-none',
-                            tonoEstado(a.estado) === 'green' && 'bg-emerald-50 text-emerald-700',
-                            tonoEstado(a.estado) === 'amber' && 'bg-amber-50 text-amber-700',
+                            tonoEstado(a.estado) === 'green' && 'bg-exito-soft text-exito-deep',
+                            tonoEstado(a.estado) === 'amber' && 'bg-aviso-soft text-aviso-deep',
                             tonoEstado(a.estado) === 'navy' && 'bg-navy/10 text-navy',
                             tonoEstado(a.estado) === 'gold' && 'bg-gold/20 text-gold-deep',
-                            tonoEstado(a.estado) === 'red' && 'bg-red-500/15 text-red-700',
-                            tonoEstado(a.estado) === 'gray' && 'bg-slate-100 text-slate-600',
+                            tonoEstado(a.estado) === 'red' && 'bg-error/15 text-error-deep',
+                            tonoEstado(a.estado) === 'gray' && 'bg-paper text-muted',
                           )}
                         >
                           {ESTADOS_ACTIVO.map((e) => (
@@ -353,7 +353,7 @@ export function InventarioCliente({
                         </select>
                       )}
                       {bloqueo && (
-                        <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-amber-700" title={`Bloqueado por ${bloqueo.codigo} (${labelEstado(bloqueo.estado)})`}>
+                        <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-aviso-deep" title={`Bloqueado por ${bloqueo.codigo} (${labelEstado(bloqueo.estado)})`}>
                           <Lock className="h-2.5 w-2.5" strokeWidth={2.5} /> Ocupado por {bloqueo.codigo}
                         </div>
                       )}
@@ -413,7 +413,7 @@ export function InventarioCliente({
                           onClick={() => eliminar(a.id)}
                           aria-label="Dar de baja"
                           title="Dar de baja"
-                          className="rounded-md p-1.5 text-muted transition-colors hover:bg-red-50 hover:text-red-600"
+                          className="rounded-md p-1.5 text-muted transition-colors hover:bg-error-soft hover:text-error"
                         >
                           <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
                         </button>
@@ -582,7 +582,7 @@ export function InventarioCliente({
                           placeholder="Valor (ej. lana)"
                           className={cn(fieldCls, 'flex-1')}
                         />
-                        <button type="button" onClick={() => quitarAtributo(clave)} className="shrink-0 text-muted transition-colors hover:text-red-600" aria-label="Quitar atributo">
+                        <button type="button" onClick={() => quitarAtributo(clave)} className="shrink-0 text-muted transition-colors hover:text-error" aria-label="Quitar atributo">
                           <X className="h-4 w-4" strokeWidth={2} />
                         </button>
                       </div>
@@ -607,7 +607,7 @@ export function InventarioCliente({
                 )}
               </div>
 
-              {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+              {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
             </ModalBody>
             <ModalFooter>
               <button type="button" onClick={cerrarModal} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

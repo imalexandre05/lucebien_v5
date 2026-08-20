@@ -226,7 +226,7 @@ export function AsistenciasCliente({
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Observación</label>
               <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Opcional" className={cn(fieldCls, 'w-full')} />
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-error">{error}</p>}
             <Button type="button" onClick={registrar} disabled={!empleadoId} pending={pending}>
               {pending ? 'Registrando…' : 'Registrar'}
             </Button>
@@ -272,7 +272,7 @@ export function AsistenciasCliente({
                   </TD>
                   {esAdmin && (
                     <TD className="pr-5 text-right">
-                      <button type="button" onClick={() => eliminar(a.id)} className="text-muted transition-colors hover:text-red-600" aria-label="Eliminar">
+                      <button type="button" onClick={() => eliminar(a.id)} className="text-muted transition-colors hover:text-error" aria-label="Eliminar">
                         <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                       </button>
                     </TD>

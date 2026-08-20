@@ -19,7 +19,7 @@ const TALLAS = ['XS', 'S', 'M', 'L', 'XL', '2XL', '4', '6', '8', '10', '12', '14
 const LAVADOS = ['normal', 'seco', 'especializado'];
 
 const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-slate-400 focus:border-navy focus:outline-none';
+  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-muted focus:border-navy focus:outline-none';
 
 export function RegistrarForm({ sedes }: { sedes: string[] }) {
   const [pending, startTransition] = useTransition();
@@ -151,7 +151,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
             </label>
 
             {error && (
-              <p className="col-span-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 sm:col-span-3">{error}</p>
+              <p className="col-span-2 rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep sm:col-span-3">{error}</p>
             )}
 
             <div className="col-span-2 sm:col-span-3">
@@ -175,7 +175,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
           {registradas.map((c, i) => (
             <span
               key={`${c}-${i}`}
-              className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 font-mono text-[11px] font-medium text-emerald-700"
+              className="inline-flex items-center gap-1 rounded bg-exito-soft px-1.5 py-0.5 font-mono text-[11px] font-medium text-exito-deep"
             >
               <Check className="h-2.5 w-2.5" strokeWidth={3} /> {c}
             </span>

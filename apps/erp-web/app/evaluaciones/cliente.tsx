@@ -516,7 +516,7 @@ export function EvaluacionesCliente({
               </div>
             </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-error">{error}</p>}
             <div className="flex items-center gap-3">
               <Button type="button" onClick={guardar} disabled={!empleadoId || !ciclo} pending={pending}>
                 {pending ? 'Guardando…' : `Guardar · ${nota.toFixed(2)}`}
@@ -543,7 +543,7 @@ export function EvaluacionesCliente({
             </p>
 
             {pagoId ? (
-              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
+              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-exito-line bg-exito-soft px-3 py-2.5 text-sm text-exito-deep">
                 <FileText className="h-4 w-4 shrink-0" strokeWidth={1.75} />
                 Pago registrado.
                 <Link href={`/pagos/${pagoId}/comprobante`} className="font-medium underline underline-offset-2">
@@ -581,7 +581,7 @@ export function EvaluacionesCliente({
                   </div>
                 </div>
 
-                {pagoError && <p className="text-sm text-red-600">{pagoError}</p>}
+                {pagoError && <p className="text-sm text-error">{pagoError}</p>}
                 <Button type="button" onClick={registrarPago} pending={pagoPending}>
                   {pagoPending ? 'Registrando…' : `Registrar pago · ${soles(montoSugerido)}`}
                 </Button>

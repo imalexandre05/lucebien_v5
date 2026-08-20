@@ -99,7 +99,7 @@ export function Ticket({
       )}
 
       {sinCaja && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800" data-testid="banner-sin-caja">
+        <div className="rounded-md border border-aviso-line bg-aviso-soft p-3 text-xs text-aviso-deep" data-testid="banner-sin-caja">
           <p className="font-medium">La caja de {sede} está cerrada.</p>
           <p className="mt-0.5 mb-2">Ábrela aquí mismo para poder cobrar o registrar la garantía.</p>
           <div className="flex items-center gap-2">
@@ -110,7 +110,7 @@ export function Ticket({
               value={montoApertura || ''}
               onChange={(e) => setMontoApertura(Number(e.target.value) || 0)}
               placeholder="Monto de apertura"
-              className="w-32 rounded-md border border-amber-300 bg-white px-2 py-1 text-right font-mono text-xs outline-none"
+              className="w-32 rounded-md border border-aviso-line bg-white px-2 py-1 text-right font-mono text-xs outline-none"
             />
             <Button type="button" variant="outline" pending={abriendoCaja} onClick={() => onAbrirCaja(montoApertura)} data-testid="abrir-caja-inline">
               Abrir caja
@@ -120,7 +120,7 @@ export function Ticket({
       )}
 
       {error && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700" data-testid="ticket-error">
+        <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep" data-testid="ticket-error">
           {error}
         </p>
       )}

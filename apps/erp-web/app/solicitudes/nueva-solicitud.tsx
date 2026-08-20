@@ -164,7 +164,7 @@ function FilaPrenda({
     <div className="rounded-lg border border-line bg-paper/50 p-3">
       <div className="mb-2 flex items-center justify-between">
         <Badge tone="navy">Prenda</Badge>
-        <button type="button" onClick={onRemove} aria-label="Quitar ítem" className="text-muted transition-colors hover:text-red-600">
+        <button type="button" onClick={onRemove} aria-label="Quitar ítem" className="text-muted transition-colors hover:text-error">
           <X className="h-4 w-4" strokeWidth={2} />
         </button>
       </div>
@@ -248,7 +248,7 @@ function FilaArticulo({
     <div className="rounded-lg border border-line bg-paper/50 p-3">
       <div className="mb-2 flex items-center justify-between">
         <Badge tone="gold">Artículo</Badge>
-        <button type="button" onClick={onRemove} aria-label="Quitar ítem" className="text-muted transition-colors hover:text-red-600">
+        <button type="button" onClick={onRemove} aria-label="Quitar ítem" className="text-muted transition-colors hover:text-error">
           <X className="h-4 w-4" strokeWidth={2} />
         </button>
       </div>
@@ -388,7 +388,7 @@ export function NuevaSolicitudModal({
           {items.length === 0 && <p className="rounded-md border border-dashed border-line px-3 py-6 text-center text-sm text-muted">Agrega una prenda o un artículo.</p>}
         </div>
 
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={cerrar} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

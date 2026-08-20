@@ -13,7 +13,7 @@ import { Button } from '../../../components/ui/button';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-slate-400 focus:border-navy focus:outline-none';
+  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-muted focus:border-navy focus:outline-none';
 
 const fecha = (iso: string | null) => (iso ? iso.slice(0, 10) : '—');
 
@@ -116,7 +116,7 @@ export function AccesoriosCliente({
                   <button
                     type="button"
                     onClick={() => setFilas((p) => (p.length > 1 ? p.filter((_, j) => j !== i) : p))}
-                    className="text-muted transition-colors hover:text-red-600"
+                    className="text-muted transition-colors hover:text-error"
                     aria-label="Quitar fila"
                   >
                     <Trash2 className="h-4 w-4" strokeWidth={1.75} />
@@ -134,7 +134,7 @@ export function AccesoriosCliente({
 
             <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Observación (opcional)" className={cn(fieldCls, 'w-full')} />
 
-            {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+            {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
 
             <Button type="button" onClick={enviar} pending={pending} className="w-full justify-center py-2.5">
               {!pending && <Send className="h-4 w-4" strokeWidth={2} />}
@@ -188,7 +188,7 @@ export function AccesoriosCliente({
                             type="button"
                             disabled={pending}
                             onClick={() => confirmar(e.id)}
-                            className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-emerald-700 active:scale-[.97]"
+                            className="inline-flex items-center gap-1 rounded-md bg-exito px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={3} /> Confirmar recibido
                           </button>
@@ -222,7 +222,7 @@ export function AccesoriosCliente({
                         <TD className="pl-5 font-mono text-xs text-muted">{fecha(e.fecha)}</TD>
                         <TD className="font-mono text-sm text-navy">{e.sedeDestinoCod}</TD>
                         <TD className="text-sm text-ink">{e.items.map((i) => `${i.cantidad}× ${i.tipo}`).join(' · ')}</TD>
-                        <TD className="pr-5 font-mono text-xs text-emerald-700">{fecha(e.fechaValidado)}</TD>
+                        <TD className="pr-5 font-mono text-xs text-exito-deep">{fecha(e.fechaValidado)}</TD>
                       </TR>
                     ))}
                   </TBody>

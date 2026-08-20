@@ -137,7 +137,7 @@ export function EnvioLavanderiaCliente({
   }
 
   const fieldCls =
-    'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-slate-400 focus:border-navy focus:outline-none';
+    'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-muted focus:border-navy focus:outline-none';
 
   return (
     <div className="space-y-5">
@@ -224,7 +224,7 @@ export function EnvioLavanderiaCliente({
                     <button
                       type="button"
                       onClick={() => quitarItem(i)}
-                      className="ml-auto text-muted transition-colors hover:text-red-600"
+                      className="ml-auto text-muted transition-colors hover:text-error"
                       aria-label="Quitar"
                     >
                       <X className="h-4 w-4" strokeWidth={2} />
@@ -280,8 +280,8 @@ export function EnvioLavanderiaCliente({
             </div>
           </div>
 
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-          {ok && <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{ok}</p>}
+          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+          {ok && <p className="rounded-md bg-exito-soft px-3 py-2 text-sm text-exito-deep">{ok}</p>}
 
           <Button type="button" onClick={enviar} disabled={!puedeEnviar} pending={pending} className="w-full justify-center py-2.5">
             {!pending && <Send className="h-4 w-4" strokeWidth={2} />}
@@ -336,7 +336,7 @@ export function EnvioLavanderiaCliente({
                         </Button>
                       )}
                       {l.estado === 'Devuelto-Observado' && (
-                        <span className="inline-flex items-center gap-1 text-xs text-red-700">
+                        <span className="inline-flex items-center gap-1 text-xs text-error-deep">
                           <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Con observación
                         </span>
                       )}

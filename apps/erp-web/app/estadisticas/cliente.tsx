@@ -20,8 +20,8 @@ const diaCorto = (iso: string) => {
 };
 
 const NIVEL_TONE: Record<string, string> = {
-  grave: 'text-red-600',
-  moderada: 'text-amber-600',
+  grave: 'text-error',
+  moderada: 'text-aviso',
   leve: 'text-muted',
 };
 
@@ -120,7 +120,7 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                 <div key={r.fecha} className="flex items-center gap-3">
                   <span className="w-12 shrink-0 font-mono text-xs text-muted">{diaCorto(r.fecha)}</span>
                   <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
-                    <div className="h-full rounded bg-emerald-500/70" style={{ width: `${Math.max(3, Math.round((r.ingresos / ingresosMax) * 100))}%` }} />
+                    <div className="h-full rounded bg-exito/70" style={{ width: `${Math.max(3, Math.round((r.ingresos / ingresosMax) * 100))}%` }} />
                   </div>
                   <span className="w-24 text-right font-mono text-xs tabular-nums text-navy">{soles(r.ingresos)}</span>
                 </div>

@@ -86,9 +86,9 @@ const TABS: { k: string; label: string; href?: string; pronto?: boolean }[] = [
 // Tono del pill de tipo de lavado.
 const tipoLavadoCls = (t: string): string => {
   const v = t.toLowerCase();
-  if (v.includes('seco')) return 'bg-amber-50 text-amber-700';
+  if (v.includes('seco')) return 'bg-aviso-soft text-aviso-deep';
   if (v.includes('espec')) return 'bg-violet-50 text-violet-700';
-  return 'bg-slate-100 text-slate-600';
+  return 'bg-paper text-muted';
 };
 
 type Handlers = {
@@ -276,7 +276,7 @@ export function TableroPipeline({
         </div>
         <div className="flex items-center gap-5">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> En vivo
+            <span className="h-1.5 w-1.5 rounded-full bg-exito" /> En vivo
           </span>
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-wide text-paper/50">Sesión</div>
@@ -315,7 +315,7 @@ export function TableroPipeline({
         )}
         <div className="ml-auto flex items-center gap-2 pb-1.5">
           <span className="rounded-full bg-navy/5 px-2.5 py-1 text-xs font-medium text-navy">{enProceso} en proceso</span>
-          <span className="rounded-full bg-emerald-600/10 px-2.5 py-1 text-xs font-medium text-emerald-700">{enviados} enviados</span>
+          <span className="rounded-full bg-exito/10 px-2.5 py-1 text-xs font-medium text-exito-deep">{enviados} enviados</span>
         </div>
       </div>
 
@@ -332,13 +332,13 @@ export function TableroPipeline({
           <Chip key={t} on={tipoF === t} onClick={() => setTipoF(t)}>{t}</Chip>
         ))}
         <div className="relative ml-auto">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por código, color o tipo…"
-            className="w-64 rounded-md border border-line bg-white py-1.5 pl-8 pr-3 text-sm text-navy placeholder:text-slate-400 focus:border-navy focus:outline-none"
+            className="w-64 rounded-md border border-line bg-white py-1.5 pl-8 pr-3 text-sm text-navy placeholder:text-muted focus:border-navy focus:outline-none"
           />
         </div>
       </div>
@@ -399,12 +399,12 @@ export function TableroPipeline({
       {/* ── Ranking del día ── */}
       {ranking.length > 0 && (
         <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-lg border border-line bg-white p-3">
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
             <Trophy className="h-4 w-4 text-gold" strokeWidth={2} /> Puntos de hoy
           </span>
           {ranking.map((r, i) => (
             <span key={r.nombre} className="inline-flex items-center gap-1.5 rounded-full bg-navy/5 px-2.5 py-1 text-xs">
-              <span className="font-mono text-[10px] text-slate-400">#{i + 1}</span>
+              <span className="font-mono text-[10px] text-muted">#{i + 1}</span>
               <span className="font-medium text-navy">{r.nombre}</span>
               <span className="font-mono font-bold tabular-nums text-gold-deep">{r.total}</span>
             </span>
@@ -458,7 +458,7 @@ export function TableroPipeline({
                   />
                 ))}
                 {items.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-line py-5 text-center text-xs text-slate-400">
+                  <div className="rounded-lg border border-dashed border-line py-5 text-center text-xs text-muted">
                     {ql || sedeF || tipoF ? 'sin coincidencias' : '— vacío —'}
                   </div>
                 )}
@@ -475,7 +475,7 @@ export function TableroPipeline({
             toast.tono === 'gold'
               ? 'bg-gold text-navy'
               : toast.tono === 'warn'
-                ? 'bg-amber-600 text-white'
+                ? 'bg-aviso text-white'
                 : 'bg-navy text-white'
           }`}
           role="status"
@@ -586,7 +586,7 @@ function Tarjeta({
             }}
             aria-label="Dividir en saco + pantalón"
             title="Dividir en saco + pantalón"
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-300 transition-colors hover:bg-navy/5 hover:text-navy"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-line transition-colors hover:bg-navy/5 hover:text-navy"
           >
             <Split className="h-3 w-3" strokeWidth={2.5} />
           </button>
@@ -600,7 +600,7 @@ function Tarjeta({
             }}
             aria-label="Deshacer división"
             title="Deshacer división (vuelve a ser una sola prenda)"
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-300 transition-colors hover:bg-navy/5 hover:text-navy"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-line transition-colors hover:bg-navy/5 hover:text-navy"
           >
             <Combine className="h-3 w-3" strokeWidth={2.5} />
           </button>
@@ -622,7 +622,7 @@ function Tarjeta({
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-1">
         <span className="rounded bg-navy/5 px-1.5 py-0.5 font-mono text-[10px] text-navy">{p.sedeOrigenCod}</span>
-        {Boolean(meta) && <span className="truncate text-[11px] leading-tight text-slate-500">{meta}</span>}
+        {Boolean(meta) && <span className="truncate text-[11px] leading-tight text-muted">{meta}</span>}
       </div>
       {(Boolean(p.tipoLavado) || Boolean(p.necesitaCompostura) || Boolean(p.aprobada)) && (
         <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -632,17 +632,17 @@ function Tarjeta({
             </span>
           )}
           {Boolean(p.necesitaCompostura) && (
-            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">compostura</span>
+            <span className="rounded bg-aviso-soft px-1.5 py-0.5 text-[10px] font-medium text-aviso-deep">compostura</span>
           )}
           {Boolean(p.aprobada) && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+            <span className="inline-flex items-center gap-0.5 rounded bg-exito-soft px-1.5 py-0.5 text-[10px] font-medium text-exito-deep">
               <Check className="h-2.5 w-2.5" strokeWidth={3} /> ok
             </span>
           )}
         </div>
       )}
       {Boolean(p.obsCalidad) && (
-        <div className="mt-1 flex items-start gap-1 rounded bg-red-50 px-2 py-1 text-[11px] text-red-700">
+        <div className="mt-1 flex items-start gap-1 rounded bg-error-soft px-2 py-1 text-[11px] text-error-deep">
           <AlertTriangle className="mt-px h-3 w-3 shrink-0" strokeWidth={2.5} /> {p.obsCalidad}
         </div>
       )}
@@ -684,7 +684,7 @@ function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
       </select>
       <button
         onClick={() => h.rechazar(p.id, destino)}
-        className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 active:scale-[.98]"
+        className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-error-line bg-error-soft px-2 py-1.5 text-xs font-medium text-error-deep transition hover:bg-error-soft active:scale-[.98]"
       >
         <Undo2 className="h-3.5 w-3.5" strokeWidth={2.5} /> Rechazar
       </button>

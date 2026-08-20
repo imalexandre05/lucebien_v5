@@ -124,7 +124,7 @@ export function CajaCliente({
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Monto de apertura (efectivo inicial)</label>
             <input type="number" step="0.5" data-testid="monto-apertura" value={montoApertura} onChange={(e) => setMontoApertura(Number(e.target.value))} className={fieldCls} />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-error">{error}</p>}
           <Button
             type="button"
             data-testid="abrir-caja"
@@ -147,7 +147,7 @@ export function CajaCliente({
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
         <div>
           <div className="inline-flex items-center gap-2 text-xl font-semibold leading-none">
-            <span className="h-2 w-2 rounded-full bg-emerald-400" /> Caja abierta · {sesion.sedeCod}
+            <span className="h-2 w-2 rounded-full bg-exito" /> Caja abierta · {sesion.sedeCod}
           </div>
           <div className="mt-1 font-mono text-[11px] text-paper/60">
             Apertura {soles(sesion.montoApertura)} · {sesion.aperturaAt.slice(0, 16).replace('T', ' ')}
@@ -263,7 +263,7 @@ export function CajaCliente({
                   <TD className="capitalize">{m.categoria.replace(/_/g, ' ')}{m.cobroTipo ? ` · ${m.cobroTipo}` : ''}</TD>
                   <TD className="capitalize">{m.metodo ?? '—'}</TD>
                   <TD className="text-sm text-muted">{m.registradoPorNombre ?? '—'}</TD>
-                  <TD className={cn('pr-5 text-right font-mono font-semibold tabular-nums', m.tipo === 'ingreso' ? 'text-emerald-700' : 'text-red-700')}>
+                  <TD className={cn('pr-5 text-right font-mono font-semibold tabular-nums', m.tipo === 'ingreso' ? 'text-exito-deep' : 'text-error-deep')}>
                     {m.tipo === 'ingreso' ? '+' : '−'} {soles(m.monto)}
                   </TD>
                 </TR>
@@ -324,7 +324,7 @@ export function CajaCliente({
           {/* Sin selector de "tipo de cobro": lo deriva pedido_cobrar solo (adelanto/saldo/completo
               según cuánto queda por cobrar) — mismo criterio que el ticket de /pedidos, así los dos
               puntos de entrada producen exactamente el mismo asiento (Fase 10, punto 2). */}
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
         </Modal>
       )}
 
@@ -364,7 +364,7 @@ export function CajaCliente({
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción</label>
             <input value={eDesc} onChange={(e) => setEDesc(e.target.value)} placeholder="En qué se usó…" className={fieldCls} />
           </div>
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
         </Modal>
       )}
 
@@ -401,7 +401,7 @@ export function CajaCliente({
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción (cliente / prenda)</label>
             <input value={gDesc} onChange={(e) => setGDesc(e.target.value)} placeholder="Ej. Juan Pérez · terno negro" className={fieldCls} />
           </div>
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
         </Modal>
       )}
 
@@ -431,11 +431,11 @@ export function CajaCliente({
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Efectivo contado (arqueo)</label>
             <input type="number" step="0.5" data-testid="monto-cierre" value={montoCierre} onChange={(e) => setMontoCierre(Number(e.target.value))} className={fieldCls} />
           </div>
-          <div className={cn('flex justify-between rounded-md px-3 py-2 text-sm', Math.abs(montoCierre - resumen.efectivoEsperado) < 0.01 ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700')}>
+          <div className={cn('flex justify-between rounded-md px-3 py-2 text-sm', Math.abs(montoCierre - resumen.efectivoEsperado) < 0.01 ? 'bg-exito-soft text-exito-deep' : 'bg-aviso-soft text-aviso-deep')}>
             <span>Diferencia</span>
             <span className="font-mono font-semibold">{soles(montoCierre - resumen.efectivoEsperado)}</span>
           </div>
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
         </Modal>
       )}
     </div>

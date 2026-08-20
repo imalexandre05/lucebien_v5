@@ -105,7 +105,7 @@ export function ClientePanel({
             >
               Editar todo <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', editar && 'rotate-180')} strokeWidth={2} />
             </button>
-            <button type="button" onClick={quitar} className="text-muted transition-colors hover:text-red-600" aria-label="Quitar cliente">
+            <button type="button" onClick={quitar} className="text-muted transition-colors hover:text-error" aria-label="Quitar cliente">
               <X className="h-4 w-4" strokeWidth={2} />
             </button>
           </div>

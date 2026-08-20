@@ -19,8 +19,8 @@ import { cn } from '../../lib/cn';
 const ROL: Record<string, { label: string; cls: string }> = {
   admin: { label: 'Administrador', cls: 'bg-gold/20 text-gold-deep' },
   dueno: { label: 'Dueño/a', cls: 'bg-gold/20 text-gold-deep' },
-  encargado_tienda: { label: 'Encargado Tienda', cls: 'bg-emerald-600/10 text-emerald-700' },
-  encargado_almacen: { label: 'Enc. Almacén', cls: 'bg-emerald-600/10 text-emerald-700' },
+  encargado_tienda: { label: 'Encargado Tienda', cls: 'bg-exito/10 text-exito-deep' },
+  encargado_almacen: { label: 'Enc. Almacén', cls: 'bg-exito/10 text-exito-deep' },
   confeccionista: { label: 'Confeccionista', cls: 'bg-violet-50 text-violet-700' },
   ventas_junior: { label: 'Ventas Jr.', cls: 'bg-sky-50 text-sky-700' },
   ventas_junior_2: { label: 'Ventas Jr. 2', cls: 'bg-sky-50 text-sky-700' },
@@ -245,12 +245,12 @@ export function EmpleadosCliente({
                     </TD>
                     <TD>
                       {e.activo ? (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Activo
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-exito-deep">
+                          <span className="h-1.5 w-1.5 rounded-full bg-exito" /> Activo
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-xs font-medium text-muted">
-                          <span className="h-1.5 w-1.5 rounded-full bg-slate-400" /> Suspendido
+                          <span className="h-1.5 w-1.5 rounded-full bg-muted" /> Suspendido
                         </span>
                       )}
                     </TD>
@@ -271,8 +271,8 @@ export function EmpleadosCliente({
                           className={cn(
                             'inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs transition',
                             e.activo
-                              ? 'border-red-200 text-red-700 hover:bg-red-50'
-                              : 'border-emerald-200 text-emerald-700 hover:bg-emerald-50',
+                              ? 'border-error-line text-error-deep hover:bg-error-soft'
+                              : 'border-exito-line text-exito-deep hover:bg-exito-soft',
                           )}
                         >
                           {e.activo ? (
@@ -621,13 +621,13 @@ function EditarModal({
                 aria-pressed={operaCaja}
                 className={cn(
                   'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                  operaCaja ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-line bg-white text-muted hover:border-gold/60',
+                  operaCaja ? 'border-exito bg-exito-soft text-exito-deep' : 'border-line bg-white text-muted hover:border-gold/60',
                 )}
               >
                 {posCobroPending ? 'Guardando…' : operaCaja ? 'Sí, opera caja' : 'No opera caja'}
               </button>
             </div>
-            {posCobroError && <p className="mt-2 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{posCobroError}</p>}
+            {posCobroError && <p className="mt-2 rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{posCobroError}</p>}
           </div>
         )}
         {esAdminODueno && (
@@ -660,7 +660,7 @@ function EditarModal({
             className={cn(fieldCls, 'w-full')}
           />
         </div>
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
 
         <div className="border-t border-line/60 pt-3">
           <label className="mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted">
@@ -684,8 +684,8 @@ function EditarModal({
               {passPending ? 'Guardando…' : 'Asignar'}
             </Button>
           </div>
-          {passOk && <p className="mt-1.5 text-xs font-medium text-emerald-700">Contraseña actualizada ✓</p>}
-          {passError && <p className="mt-1.5 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{passError}</p>}
+          {passOk && <p className="mt-1.5 text-xs font-medium text-exito-deep">Contraseña actualizada ✓</p>}
+          {passError && <p className="mt-1.5 rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{passError}</p>}
         </div>
       </ModalBody>
       <ModalFooter>
@@ -812,7 +812,7 @@ function CrearModal({
             className={cn(fieldCls, 'w-full')}
           />
         </div>
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>

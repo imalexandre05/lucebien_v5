@@ -11,8 +11,8 @@ import { Badge } from '../../components/ui/badge';
 import { cn } from '../../lib/cn';
 
 const SEV: Record<Notificacion['severidad'], { icon: typeof Info; cls: string; tone: 'gray' | 'amber' | 'navy'; label: string }> = {
-  critica: { icon: ShieldAlert, cls: 'text-red-600', tone: 'amber', label: 'Crítica' },
-  warn: { icon: AlertTriangle, cls: 'text-amber-600', tone: 'amber', label: 'Aviso' },
+  critica: { icon: ShieldAlert, cls: 'text-error', tone: 'amber', label: 'Crítica' },
+  warn: { icon: AlertTriangle, cls: 'text-aviso', tone: 'amber', label: 'Aviso' },
   info: { icon: Info, cls: 'text-navy', tone: 'navy', label: 'Info' },
 };
 

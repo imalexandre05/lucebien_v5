@@ -330,7 +330,7 @@ export function LayoutEditor({
         <p
           className={cn(
             'flex animate-fade items-center gap-1.5 rounded-md px-3 py-2 text-sm',
-            error ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700',
+            error ? 'bg-error-soft text-error-deep' : 'bg-exito-soft text-exito-deep',
           )}
         >
           {okMsg && <Check className="h-4 w-4" strokeWidth={2.5} />} {error || okMsg}
@@ -340,7 +340,7 @@ export function LayoutEditor({
       {/* Fase 5 tarea 2: aviso de solapes (no bloquea — el mapa de limpieza los resuelve con el
           desplegable de "zonas ocultas aquí"). Solo pares NO explicados por nivel=sobre+sobreCod. */}
       {solapesInesperados.length > 0 && (
-        <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <div className="flex items-start gap-2 rounded-md border border-aviso-line bg-aviso-soft px-3 py-2 text-xs text-aviso-deep">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
           <p>
             <span className="font-semibold">{solapesInesperados.length} solape(s) sin declarar:</span>{' '}
@@ -408,7 +408,7 @@ export function LayoutEditor({
                   <span
                     className={cn(
                       'pointer-events-none px-0.5 font-mono text-[7px] font-semibold leading-none',
-                      esArea ? 'text-slate-500' : 'text-white',
+                      esArea ? 'text-muted' : 'text-white',
                     )}
                     style={esArea ? undefined : { textShadow: '0 0 2px rgba(0,0,0,.3)' }}
                   >
@@ -455,7 +455,7 @@ export function LayoutEditor({
                     <button type="button" onClick={() => duplicarZona(sel.key)} aria-label="Duplicar zona" title="Duplicar zona" className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-navy/5 hover:text-navy">
                       <CopyPlus className="h-4 w-4" strokeWidth={1.75} />
                     </button>
-                    <button type="button" onClick={() => eliminarZona(sel.key)} aria-label="Eliminar zona" title="Eliminar zona" className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-red-50 hover:text-red-600">
+                    <button type="button" onClick={() => eliminarZona(sel.key)} aria-label="Eliminar zona" title="Eliminar zona" className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-error-soft hover:text-error">
                       <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                     </button>
                   </div>
@@ -644,7 +644,7 @@ export function LayoutEditor({
         onClose={() => !pending && setClonarAbierto(false)}
         size="sm"
         title={`Clonar layout hacia ${sede}`}
-        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" strokeWidth={2} aria-hidden />}
+        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody className="space-y-3">
           <p className="text-sm leading-relaxed text-muted">
@@ -663,7 +663,7 @@ export function LayoutEditor({
               ))}
             </select>
           </div>
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">{error}</p>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setClonarAbierto(false)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

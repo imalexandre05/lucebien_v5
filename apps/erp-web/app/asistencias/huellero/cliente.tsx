@@ -78,12 +78,12 @@ export function HuelleroCliente({
   return (
     <div className="space-y-6">
       {Boolean(error) && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-md border border-error-line bg-error-soft px-3 py-2 text-sm text-error-deep">
           {error}
         </div>
       )}
       {Boolean(aviso) && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <div className="rounded-md border border-exito-line bg-exito-soft px-3 py-2 text-sm text-exito-deep">
           {aviso}
         </div>
       )}
@@ -178,7 +178,7 @@ function Equipos({
                       : `Última señal hace ${d.minutosDesdeSync} min`}
                   </p>
                   {caido && (
-                    <p className="mt-2 text-xs text-red-700">
+                    <p className="mt-2 text-xs text-error-deep">
                       El colector no da señales. Revisá que la computadora del almacén esté
                       encendida y con internet.
                     </p>
@@ -255,7 +255,7 @@ function ColaSinAsignar({
                   <TD>
                     {s.nombresEquipo.join(', ') || <span className="text-muted">sin nombre</span>}
                     {reasignado && (
-                      <p className="mt-1 flex items-center gap-1 text-xs text-amber-700">
+                      <p className="mt-1 flex items-center gap-1 text-xs text-aviso-deep">
                         <AlertTriangle className="h-3 w-3" />
                         El equipo usó este número para más de una persona: asignalo por tramos de
                         fecha, uno por cada una.
@@ -434,7 +434,7 @@ function DiasARevisar({ dias }: { dias: DiaPendiente[] }) {
                 <TD>{d.fecha}</TD>
                 <TD className="font-mono text-xs">{d.horaEntrada ?? '—'}</TD>
                 <TD className="font-mono text-xs">{d.horaSalida ?? '—'}</TD>
-                <TD className="text-xs text-amber-700">{(d.obs ?? '').replace(/^revisar:\s*/, '')}</TD>
+                <TD className="text-xs text-aviso-deep">{(d.obs ?? '').replace(/^revisar:\s*/, '')}</TD>
               </TR>
             ))}
           </TBody>

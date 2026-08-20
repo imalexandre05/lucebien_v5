@@ -23,10 +23,10 @@ const fieldCls =
 function NivelPill({ nivel }: { nivel: string }) {
   const cls =
     nivel === 'Alto'
-      ? 'bg-red-50 text-red-700'
+      ? 'bg-error-soft text-error-deep'
       : nivel === 'Medio'
-        ? 'bg-amber-50 text-amber-700'
-        : 'bg-slate-100 text-slate-600';
+        ? 'bg-aviso-soft text-aviso-deep'
+        : 'bg-paper text-muted';
   return <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', cls)}>{nivel}</span>;
 }
 
@@ -225,10 +225,10 @@ export function IncidenciasCliente({
                       'rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors duration-150',
                       nivel === n
                         ? n === 'Alto'
-                          ? 'border-red-500 bg-red-50 text-red-700'
+                          ? 'border-error bg-error-soft text-error-deep'
                           : n === 'Medio'
-                            ? 'border-amber-500 bg-amber-50 text-amber-700'
-                            : 'border-slate-400 bg-slate-100 text-slate-700'
+                            ? 'border-aviso bg-aviso-soft text-aviso-deep'
+                            : 'border-muted bg-paper text-ink'
                         : 'border-line bg-white text-muted hover:border-gold/60',
                     )}
                   >
@@ -241,7 +241,7 @@ export function IncidenciasCliente({
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción</label>
               <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Qué pasó…" className={cn(fieldCls, 'w-full')} />
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-error">{error}</p>}
             <Button type="button" onClick={registrar} disabled={!tipo} pending={pending}>
               {pending ? 'Registrando…' : 'Registrar incidencia'}
             </Button>
@@ -292,7 +292,7 @@ export function IncidenciasCliente({
                   <TD className="text-right font-mono tabular-nums">{i.puntosPenalidad || '—'}</TD>
                   {esAdmin && (
                     <TD className="pr-5 text-right">
-                      <button type="button" onClick={() => eliminar(i.id)} className="text-muted transition-colors hover:text-red-600" aria-label="Eliminar">
+                      <button type="button" onClick={() => eliminar(i.id)} className="text-muted transition-colors hover:text-error" aria-label="Eliminar">
                         <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                       </button>
                     </TD>
