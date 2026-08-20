@@ -14,6 +14,7 @@ import { Badge, type Tone } from '../../../components/ui/badge';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { Aviso } from '../../../components/ui/form';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
+import { EmptyState } from '../../../components/ui/empty-state';
 import { cn } from '../../../lib/cn';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
@@ -566,7 +567,14 @@ export function NuevoReporteForm({
               </CardHeader>
               <CardContent className={cn('space-y-1.5', zonas.length > 0 && 'max-h-[640px] overflow-y-auto')}>
                 {cat.length === 0 && (
-                  <p className="py-6 text-center text-sm text-muted">No hay actividades configuradas para este turno.</p>
+                  // Sin actividades el turno no se puede reportar, y el formulario quedaba como un
+                  // hueco mudo: la persona no tenia forma de saber si estaba roto o si faltaba algo.
+                  // No se enlaza a Configuracion porque quien llena esto casi nunca es admin y el
+                  // enlace lo dejaria contra una puerta cerrada.
+                  <EmptyState icon={ClipboardCheck} titulo="Este turno no tiene actividades cargadas" compacto>
+                    No es un error del formulario: falta configurarlas. El administrador las carga en
+                    Configuración › Actividades, por sede y por turno.
+                  </EmptyState>
                 )}
                 {cat.map((a) => {
                   const on = Boolean(done[a.cod]);

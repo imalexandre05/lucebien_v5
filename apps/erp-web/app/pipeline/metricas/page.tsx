@@ -5,6 +5,7 @@ import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { StatBox } from '../../../components/ui/stat-box';
+import { EmptyState } from '../../../components/ui/empty-state';
 
 const ETAPAS: Record<string, string> = {
   recepcion: 'Recepción',
@@ -105,7 +106,10 @@ export default async function MetricasPage() {
             </CardHeader>
             <CardContent className="overflow-x-auto px-0 pb-0">
               {ranking.length === 0 ? (
-                <p className="px-5 pb-5 text-sm text-muted">Aún no hay puntos registrados hoy.</p>
+                <EmptyState icon={Trophy} titulo="Todavía no se registraron puntos hoy" compacto>
+                  Los puntos salen de avanzar prendas en el pipeline: cada pasada suma los suyos al
+                  operario que la hizo.
+                </EmptyState>
               ) : (
                 <Table>
                   <THead>

@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, Package, Plus, Send, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, Package, PackageCheck, Plus, Send, Trash2 } from 'lucide-react';
 import type { EnvioAccesorios } from '../../../lib/accesorios-repo';
 import { crearRemesaAccesorios, confirmarRemesaAccesorios } from './actions';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -11,6 +11,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Aviso } from '../../../components/ui/form';
+import { EmptyState } from '../../../components/ui/empty-state';
 import { cn } from '../../../lib/cn';
 
 const fieldCls =
@@ -157,7 +158,10 @@ export function AccesoriosCliente({
             </CardHeader>
             <CardContent className="overflow-x-auto px-0 pb-0">
               {pendientes.length === 0 ? (
-                <p className="px-5 pb-5 text-sm text-muted">No hay remesas pendientes.</p>
+                <EmptyState icon={PackageCheck} titulo="Sin remesas pendientes" compacto>
+                  Cuando una tienda envíe accesorios a granel, la remesa aparece acá esperando que
+                  el almacén la reciba.
+                </EmptyState>
               ) : (
                 <Table>
                   <THead>

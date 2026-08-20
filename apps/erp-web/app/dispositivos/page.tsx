@@ -1,4 +1,4 @@
-import { ShieldCheck, ShieldX, Ban } from 'lucide-react';
+import { ShieldCheck, ShieldX, Ban, Laptop } from 'lucide-react';
 import { getSesion } from '../../lib/auth';
 import { listarDispositivos, type Dispositivo } from '../../lib/dispositivos-repo';
 import { listarSedes } from '../../lib/sedes-repo';
@@ -8,6 +8,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { StatBox } from '../../components/ui/stat-box';
 import { buttonVariants } from '../../components/ui/button';
+import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
 import { accionAprobar, accionRechazar, accionRevocar, accionCambiarSede } from './actions';
 
@@ -148,8 +149,11 @@ export default async function DispositivosPage() {
               ))}
               {disp.length === 0 && (
                 <TR>
-                  <TD colSpan={7} className="px-5 py-10 text-center text-muted">
-                    Aún no hay equipos registrados. Cada equipo aparece aquí la primera vez que entra.
+                  <TD colSpan={7} className="p-0">
+                    <EmptyState icon={Laptop} titulo="Todavía no entró ningún equipo">
+                      Cada computadora o teléfono aparece acá la primera vez que alguien abre el ERP
+                      desde él. No hay nada que registrar a mano.
+                    </EmptyState>
                   </TD>
                 </TR>
               )}
