@@ -8,6 +8,9 @@
 > 3.084 marcas históricas ya ingeridas. **Falta:** mapear los 23 identificadores a empleados —
 > hasta que eso ocurra las marcas se guardan pero no derivan ninguna asistencia. Ver §13.
 > Ver el estado detallado al final de este documento.
+> **Corrección (20-ago-2026):** el emparejado dejaba tramos sin cerrar y el `update` escribía
+> `null` sobre horas ya derivadas, abortando 15 días contra `asistencias_trabajado_chk`. Tres
+> reglas nuevas y la migración `0079`. Ver «El defecto del emparejado» más abajo.
 > **Zona de rigor:** crítica (la tabla `asistencias` alimenta la cadena del sueldo)
 > **Autor del diseño:** sesión de brainstorming con Alexander Flores
 
@@ -766,6 +769,71 @@ esas horas como trabajadas"*.
 
 El umbral que separa "se fue" de "apoyó el dedo dos veces" es `sueldo_pausa_minima_minutos`, 15
 minutos, confirmado.
+
+### El defecto del emparejado, y las tres reglas que lo cierran (20-ago-2026)
+
+**Qué pasó.** Al derivar las 3.084 marcas reales, 15 días abortaron con:
+
+```
+new row for relation "asistencias" violates check constraint "asistencias_trabajado_chk"
+```
+
+**Causa raíz, verificada contra la función desplegada en producción, no contra el archivo.** El
+emparejado puede *reabrir* un tramo ya cerrado: cuando una marca llega antes de que se cumpla la
+pausa mínima, el cierre se descarta (`v_ultimo := null`) y el tramo queda esperando la salida de
+verdad. Si esa salida no llega —la marca descartada era la última del día— el tramo termina
+abierto y `v_sal` queda en `null`.
+
+Ese `null` viaja al `update`. Como la fila la había escrito la propia máquina
+(`huellero_puso_salida = true`), la salvaguarda de no pisar horas cargadas no aplica: el `update`
+escribe `hora_salida = null` sobre una fila que sigue en `condicion = 'trabajado'`. La restricción
+`asistencias_trabajado_chk` aborta la transacción, y con ella el lote entero del colector.
+
+Caso vivo al 20-ago-2026: Jaerock, 2026-08-19, marcas `08:10:41 · 14:05:33 · 14:15:39`. La tercera
+cae diez minutos después de la segunda, menos que la pausa mínima de quince. La fila en base está
+en `'trabajado'` con salida `14:05:33`; la próxima derivación de ese día aborta.
+
+**Precisión sobre el alcance, contra lo que se reportó primero.** La hora que cargó una persona
+**no** se borra: en esa fila `huellero_puso_salida` es `false` y el `coalesce` la protege. Lo que
+se pierde es la hora que había derivado la máquina. Hoy la restricción lo convierte en un aborto
+ruidoso; sobre una fila `'sin_dato'` no se dispararía y el borrado pasaría en silencio.
+
+**Regla 1 — un tramo reabierto que se queda sin cierre se cierra con la última marca.**
+
+Confirmado por Alexander el 20-ago-2026. Si el hueco es más corto que la pausa mínima, por
+definición no fue una pausa: las dos marcas pertenecen al mismo tramo y la última es su final.
+Descartarla convertía una jornada completa en `'sin_dato'` y cortaba la liquidación del período
+entero.
+
+Medido sobre el histórico: **38 días afectados**, con una separación promedio de **1,7 minutos**
+entre esas dos marcas. La diferencia contra la lectura alternativa —cerrar con la primera marca de
+cierre— está acotada por arriba al valor de la pausa mínima, que es editable.
+
+**Regla 2 — ninguna escritura puede dejar en `null` una hora que ya estaba cargada.**
+
+El `update` escribe `coalesce(valor_nuevo, valor_actual)`. Recalcular la hora que puso la máquina
+sigue permitido —hace falta cuando un identificador cambia de dueño— pero recalcularla *a nada* no:
+borra un hecho real sin aportar ninguno.
+
+**Regla 3 — la condición nunca queda inconsistente con sus horas.**
+
+Si una fila `'trabajado'` fuera a quedar sin sus dos horas, la derivación la baja a `'sin_dato'`
+con el motivo escrito en `obs`, en vez de dejar que se entere la restricción. La restricción se
+queda como red de seguridad, no como mecanismo de control.
+
+### Deriva de despliegue detectada el 20-ago-2026
+
+Verificado contra la base de producción, no contra los archivos: **las migraciones `0076`, `0077`
+y `0078` no están aplicadas.** La `0075` sí, y en su forma editada —la que ya emite tramos.
+
+Consecuencias que importan para leer esta spec:
+
+- `sueldo_entrada` todavía colapsa el día con `min`/`max`: C-01 (las pausas no se pagan) **no está
+  vigente**, aunque el huellero ya escriba tramos.
+- `config.sueldo_pausa_minima_minutos` no existe en la base, así que el umbral corre por el default
+  de quince minutos escrito en el código. Contra el no-negociable 5, el parámetro tiene que existir
+  como fila editable: la migración `0079` lo inserta con `on conflict do nothing`, para que quede
+  aunque la `0078` nunca se aplique.
 
 **JORDAN (identificador 2) y REMY (1) van ignorados.** Son el administrador y su familia: marcan
 sin trabajar y no cobran. Eso explica los dos patrones que no cerraban en los datos —los días de
