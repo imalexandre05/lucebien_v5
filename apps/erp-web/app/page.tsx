@@ -109,18 +109,34 @@ export default async function Dashboard() {
   // consultas pesadas del panel gerencial. Fallback seguro: si la matriz falla, no ve el
   // dashboard (solo admin/dueno pasan siempre, por el mecanismo de puede()).
   const sesionPrevia = await getSesion();
+  let matriz: MatrizPermisos = {};
   if (sesionPrevia) {
-    let matrizPrevia: MatrizPermisos = {};
     try {
-      matrizPrevia = await leerMatrizPermisos();
+      matriz = await leerMatrizPermisos();
     } catch {
-      matrizPrevia = {};
+      matriz = {};
     }
-    if (!puede(matrizPrevia, sesionPrevia.usuario.rol, 'dashboard', 'ver', sesionPrevia.usuario.rolCod)) {
+    if (!puede(matriz, sesionPrevia.usuario.rol, 'dashboard', 'ver', sesionPrevia.usuario.rolCod)) {
       redirect('/reportes/nuevo');
     }
   }
 
+  // QUIEN VE EL BLOQUE COMERCIAL. Hasta ahora lo veía todo el mundo: el encargado del taller
+  // abría el ERP y lo primero completo que encontraba eran pedidos de venta, cobros pendientes y
+  // garantías, cuatro cifras sobre las que no puede hacer nada — y si tocaba una, la pantalla de
+  // destino lo rebotaba por permiso.
+  //
+  // Se gatea con los mismos módulos que gobiernan esas pantallas. No se borra nada: quien ya los
+  // veía los sigue viendo.
+  const verComercial =
+    !!sesionPrevia &&
+    ['pedidos', 'caja', 'finanzas'].some((m) =>
+      puede(matriz, sesionPrevia.usuario.rol, m, 'ver', sesionPrevia.usuario.rolCod),
+    );
+
+  // Y las tres consultas que sólo alimentan ese bloque no se pagan si no se va a mostrar.
+  // `pedidosRepo.listar()` en particular trae TODOS los pedidos con sus líneas: era la consulta
+  // más cara del dashboard, y la corría también quien nunca la iba a ver.
   const [sesion, pasadas, reportes, incidencias, ranking, finHoy, pedidos, pendientes, garantias, sedes, config] =
     await Promise.all([
       getSesion(),
@@ -128,10 +144,21 @@ export default async function Dashboard() {
       listarReportes(),
       listarIncidencias(),
       rankingHoy(),
-      resumenFinanciero(hoyPeru(), hoyPeru()),
-      pedidosRepo.listar(),
-      cobrosPendientes(),
-      totalGarantias(),
+      verComercial
+        ? resumenFinanciero(hoyPeru(), hoyPeru())
+        : Promise.resolve({
+            ingresos: 0,
+            egresos: 0,
+            neto: 0,
+            efectivo: 0,
+            yape: 0,
+            transferencia: 0,
+            ingresosCat: {},
+            egresosCat: {},
+          }),
+      verComercial ? pedidosRepo.listar() : Promise.resolve([]),
+      verComercial ? cobrosPendientes() : Promise.resolve([]),
+      verComercial ? totalGarantias() : Promise.resolve(0),
       listarSedes().catch(() => []),
       leerConfigMap().catch(() => ({}) as Record<string, string>),
     ]);
@@ -283,7 +310,12 @@ export default async function Dashboard() {
       {/* ── KPIs del día ── */}
       <section aria-label="Indicadores del día">
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Interno</div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-4 sm:grid-cols-2',
+            verComercial ? 'lg:grid-cols-4' : 'lg:grid-cols-3',
+          )}
+        >
           <StatBox
             index={0}
             size="xl"
@@ -306,17 +338,24 @@ export default async function Dashboard() {
             valor={<CountUp value={porEvaluar} delayMs={60} />}
             sub={`${enviadosHoy} enviado(s) hoy`}
           />
-          <StatBox
-            index={2}
-            size="xl"
-            align="left"
-            icon={Banknote}
-            href="/caja"
-            tone={KPI_TONE}
-            label="Caja del día"
-            valor={<CountUp value={finHoy.ingresos} prefix="S/ " delayMs={120} />}
-            sub={`neto ${soles(finHoy.neto)} · ${soles(finHoy.egresos)} egresos`}
-          />
+          {/* La caja está en la fila "Interno" por herencia, no por criterio: el dinero quedó
+              fuera del alcance de este sistema el 13-ago-2026. Mientras siga acá, al menos se
+              muestra sólo a quien puede abrirla — antes, el encargado del taller veía la cifra y
+              al tocarla la pantalla lo rebotaba por permiso. Moverla al bloque Comercial es una
+              decisión de Alexander, anotada en el resumen de la sesión. */}
+          {verComercial && (
+            <StatBox
+              index={2}
+              size="xl"
+              align="left"
+              icon={Banknote}
+              href="/caja"
+              tone={KPI_TONE}
+              label="Caja del día"
+              valor={<CountUp value={finHoy.ingresos} prefix="S/ " delayMs={120} />}
+              sub={`neto ${soles(finHoy.neto)} · ${soles(finHoy.egresos)} egresos`}
+            />
+          )}
           <StatBox
             index={3}
             size="xl"
@@ -563,6 +602,7 @@ export default async function Dashboard() {
       </div>
 
       {/* ── Comercial ── */}
+      {verComercial && (
       <section className="mt-6" aria-label="Indicadores comerciales">
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Comercial</div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -612,6 +652,7 @@ export default async function Dashboard() {
           />
         </div>
       </section>
+      )}
     </div>
   );
 }
