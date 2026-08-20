@@ -12,7 +12,7 @@ export const Card = ({
       interactive &&
         // Levanta al pasar y CEDE al presionar. Sin el estado presionado el click no devuelve
         // nada y la tarjeta se siente como un dibujo; con él, como algo que se puede tocar.
-        'cursor-pointer transition-[transform,box-shadow] duration-200 ease-out-expo hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 active:shadow-card active:duration-75',
+        'cursor-pointer transition-[transform,box-shadow] duration-200 ease-out-expo hover-fine:-translate-y-0.5 hover:shadow-lift active:translate-y-0 active:shadow-card active:duration-75',
       className,
     )}
     {...p}

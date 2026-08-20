@@ -158,7 +158,7 @@ export function SidebarNav({
                       href={it.href}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-[background-color,color,transform] duration-150 ease-out-expo hover:translate-x-0.5',
+                        'group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-[background-color,color,transform] duration-150 ease-out-expo hover-fine:translate-x-0.5',
                         active ? 'bg-white/10 text-paper' : 'text-paper/60 hover:bg-white/5 hover:text-paper',
                       )}
                     >
@@ -212,7 +212,7 @@ export function Sidebar({
       <Link
         href="/"
         aria-label="Ir al inicio"
-        className="flex items-center border-b border-white/10 px-5 py-6 transition-transform duration-150 ease-out-expo hover:translate-x-0.5 active:scale-[0.98]"
+        className="flex items-center border-b border-white/10 px-5 py-6 transition-transform duration-150 ease-out-expo hover-fine:translate-x-0.5 active:scale-[0.98]"
       >
         <Logo tone="onDark" size="md" />
       </Link>

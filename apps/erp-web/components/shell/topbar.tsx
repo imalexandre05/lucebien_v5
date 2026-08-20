@@ -92,7 +92,7 @@ export async function Topbar() {
             href="/mi-desempeno"
             title="Mi desempeño"
             aria-label="Mi desempeño"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-navy text-xs font-semibold text-paper outline-none transition-transform duration-150 hover:scale-105 focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-95"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-navy text-xs font-semibold text-paper outline-none transition-transform duration-150 hover-fine:scale-105 focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-95"
           >
             {iniciales(nombre)}
           </Link>

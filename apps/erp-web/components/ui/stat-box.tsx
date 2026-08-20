@@ -58,7 +58,7 @@ export function StatBox({
         'animate-rise rounded-xl border p-4',
         align === 'center' ? 'text-center' : 'text-left',
         href &&
-          'h-full transition-[transform,box-shadow] duration-200 ease-out-expo hover:-translate-y-0.5 hover:shadow-lift active:translate-y-0 active:shadow-card active:duration-75',
+          'h-full transition-[transform,box-shadow] duration-200 ease-out-expo hover-fine:-translate-y-0.5 hover:shadow-lift active:translate-y-0 active:shadow-card active:duration-75',
         colores,
         className,
       )}

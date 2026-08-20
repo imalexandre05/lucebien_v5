@@ -166,7 +166,7 @@ export function ListaColaboradores({
                 {/* La flecha se acerca al pasar: dice "esto lleva a algún lado" sin ocupar texto.
                     Sólo transform, y se queda quieta con prefers-reduced-motion. */}
                 <ChevronRight
-                  className="hidden h-4 w-4 text-muted transition-transform duration-200 ease-out-expo group-hover:translate-x-0.5 group-hover:text-navy motion-reduce:transform-none sm:block"
+                  className="hidden h-4 w-4 text-muted transition-transform duration-200 ease-out-expo group-hover-fine:translate-x-0.5 group-hover:text-navy motion-reduce:transform-none sm:block"
                   aria-hidden
                 />
               </Link>

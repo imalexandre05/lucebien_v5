@@ -71,14 +71,24 @@
   }
 }
 
-/* Motion accesible: reduce movimiento, conserva legibilidad (Emil + a11y). */
+/* Movimiento reducido: MENOS movimiento, no cero interfaz.
+ *
+ * La versión anterior ponía TODAS las transiciones en 0.01ms, y con eso también se llevaba puestos
+ * el color y la opacidad. Eso es pasarse de largo: quien pide menos movimiento no pide que la
+ * interfaz deje de responder. Una fila que se ilumina al pasar sigue diciendo algo, y quitarla deja
+ * el sistema mudo justo para quien más necesita señales claras.
+ *
+ * Lo que se va es el desplazamiento; lo que se queda es todo lo que no se mueve. Las animaciones de
+ * keyframes terminan al instante y, como todas llevan `both` o `backwards`, aterrizan en su estado
+ * final sin pasar por el recorrido. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-property: opacity, color, background-color, border-color, box-shadow, fill, stroke !important;
+    transition-duration: 120ms !important;
   }
 }
 

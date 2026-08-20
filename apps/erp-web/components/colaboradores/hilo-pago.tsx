@@ -120,7 +120,9 @@ export function HiloPago({
                   'absolute left-[-50%] top-5 h-0.5 w-full origin-left animate-draw-x motion-reduce:animate-none',
                   TONO[est[i - 1] === 'listo' && e !== 'pendiente' ? 'listo' : e].linea,
                 )}
-                style={{ animationDelay: `${i * 80}ms`, animationDuration: '400ms' }}
+                // Escalonado de 60ms: el hilo se lee como que avanza, no como que aparece de
+                // golpe. La duración la pone la clase (260ms), dentro del presupuesto.
+                style={{ animationDelay: `${i * 60}ms` }}
               />
             )}
             {href ? (

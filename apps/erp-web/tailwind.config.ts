@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+import plugin from 'tailwindcss/plugin';
 
 // Paleta "Atelier formal": navy dominante, oro como acento, papel cálido, tinta.
 // NUNCA #0A1628 ni #C8A24B (deprecados).
@@ -85,21 +86,43 @@ const config: Config = {
           '50%': { opacity: '0.55' },
         },
       },
+      // DURACIONES. Una animación de interfaz se queda por debajo de 300ms: a partir de ahí deja
+      // de sentirse como respuesta y empieza a sentirse como espera. Las que había —rise 360,
+      // grow-y 480, draw-x 700— estaban arriba de ese techo sin ninguna razón que las sostenga.
+      // La curva es la misma de siempre, que ya era la correcta (ease-out fuerte).
       animation: {
-        rise: 'rise 360ms cubic-bezier(0.23, 1, 0.32, 1) both',
+        rise: 'rise 280ms cubic-bezier(0.23, 1, 0.32, 1) both',
         // `backwards` (no forwards): no deja transform tras terminar → no rompe sticky/fixed hijos.
-        'page-enter': 'rise 380ms cubic-bezier(0.23, 1, 0.32, 1) backwards',
-        fade: 'fade 300ms ease-out both',
+        'page-enter': 'rise 300ms cubic-bezier(0.23, 1, 0.32, 1) backwards',
+        // El ease-out del navegador es demasiado flojo para leerse como intención. Misma curva
+        // que el resto del sistema.
+        fade: 'fade 220ms cubic-bezier(0.23, 1, 0.32, 1) both',
         'scale-in': 'scaleIn 240ms cubic-bezier(0.23, 1, 0.32, 1) both',
-        shimmer: 'shimmer 1.4s infinite',
+        // Movimiento constante: lineal. Con una curva, el barrido acelera y frena, y un
+        // esqueleto que titubea parece que se colgó.
+        shimmer: 'shimmer 1.4s linear infinite',
         'pulse-soft': 'pulseSoft 1.6s ease-in-out infinite',
-        'grow-y': 'growY 480ms cubic-bezier(0.23, 1, 0.32, 1) both',
+        'grow-y': 'growY 280ms cubic-bezier(0.23, 1, 0.32, 1) both',
         'drawer-in': 'slideInLeft 240ms cubic-bezier(0.23, 1, 0.32, 1) both',
-        'draw-x': 'drawX 700ms cubic-bezier(0.23, 1, 0.32, 1) 150ms both',
+        'draw-x': 'drawX 260ms cubic-bezier(0.23, 1, 0.32, 1) 120ms both',
       },
     },
   },
-  plugins: [],
+  plugins: [
+    // `hover-fine:` — hover SÓLO donde hay un puntero de verdad.
+    //
+    // En una pantalla táctil, tocar dispara un :hover que se queda pegado hasta el próximo toque
+    // en otro lado. Con un color eso se nota poco; con un transform la tarjeta queda levantada y
+    // el sistema parece roto. En LuceBien la mitad del uso es de pie y con el celular, así que no
+    // es un caso de borde.
+    //
+    // Se usa sólo para MOVIMIENTO. Los hovers de color se dejan sin gatear: un color pegado no
+    // engaña a nadie y en un híbrido —una laptop táctil— se pierde la señal si se gatea de más.
+    plugin(({ addVariant }) => {
+      addVariant('hover-fine', '@media (hover: hover) and (pointer: fine) { &:hover }');
+      addVariant('group-hover-fine', '@media (hover: hover) and (pointer: fine) { :merge(.group):hover & }');
+    }),
+  ],
 };
 
 export default config;
