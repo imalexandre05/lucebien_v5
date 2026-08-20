@@ -552,7 +552,7 @@ export function InventarioCliente({
                   <label className="text-xs uppercase tracking-wide text-muted">
                     Atributos (tela, forro, cuello… lo que corresponda a este tipo)
                   </label>
-                  <button type="button" onClick={agregarAtributo} className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors hover:border-gold">
+                  <button type="button" onClick={agregarAtributo} className="toque inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors hover:border-gold">
                     <Plus className="h-3 w-3" strokeWidth={2.5} /> Agregar
                   </button>
                 </div>

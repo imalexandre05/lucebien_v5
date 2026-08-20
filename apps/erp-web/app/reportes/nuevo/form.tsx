@@ -822,7 +822,7 @@ export function NuevoReporteForm({
               <button
                 type="button"
                 onClick={agregarExtraLibre}
-                className="inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
+                className="toque inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
               >
                 <HelpCircle className="h-3.5 w-3.5" strokeWidth={2} /> Otra actividad (sin catálogo)
               </button>

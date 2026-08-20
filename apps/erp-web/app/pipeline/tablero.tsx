@@ -491,7 +491,7 @@ export function TableroPipeline({
           {toast.undo && (
             <button
               onClick={toast.undo}
-              className="inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-xs font-medium transition hover:bg-white/30"
+              className="toque inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-xs font-medium transition hover:bg-white/30"
             >
               <Undo2 className="h-3 w-3" strokeWidth={2.5} /> Deshacer
             </button>

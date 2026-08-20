@@ -177,7 +177,7 @@ export function PedidosPendientes({
                         {p.items.some((i) => i.tipo === 'alquiler') && (
                           <Link
                             href={`/pedidos/${p.id}/contrato`}
-                            className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-navy transition-colors hover:border-gold"
+                            className="toque inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-navy transition-colors hover:border-gold"
                           >
                             <FileText className="h-3.5 w-3.5" strokeWidth={2} /> Contrato
                           </Link>

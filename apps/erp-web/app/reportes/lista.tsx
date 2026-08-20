@@ -148,7 +148,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                     <TD className="pl-5">
                       <Link
                         href={`/reportes/${r.id}`}
-                        className="inline-block rounded-md bg-navy px-2.5 py-1 font-mono text-xs font-medium text-paper transition-colors duration-150 hover:bg-navy-dark"
+                        className="toque inline-block rounded-md bg-navy px-2.5 py-1 font-mono text-xs font-medium text-paper transition-colors duration-150 hover:bg-navy-dark"
                       >
                         {r.id}
                       </Link>

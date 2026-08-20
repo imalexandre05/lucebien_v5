@@ -26,8 +26,16 @@ export function NavSecciones({
   const secciones = SECCIONES.filter((s) => visibles.includes(s.clave));
 
   return (
-    <nav aria-label="Secciones del colaborador" className="-mx-1 overflow-x-auto">
-      <ul className="flex min-w-max items-center gap-1 border-b border-line px-1">
+    // El degradado del borde derecho es la única señal de que hay más pestañas a la derecha. En
+    // escritorio entran las siete y no hace falta; en un celular, sin él, alguien puede usar el
+    // módulo semanas sin enterarse de que Contrato existe.
+    <div className="relative">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-paper to-transparent sm:hidden"
+      />
+      <nav aria-label="Secciones del colaborador" className="-mx-1 overflow-x-auto">
+        <ul className="flex min-w-max items-center gap-1 border-b border-line px-1">
         {secciones.map((s) => {
           const href = s.segmento ? `${base}/${s.segmento}` : base;
           const activa = s.segmento ? pathname.startsWith(href) : pathname === base;
@@ -57,7 +65,8 @@ export function NavSecciones({
             </li>
           );
         })}
-      </ul>
-    </nav>
+        </ul>
+      </nav>
+    </div>
   );
 }

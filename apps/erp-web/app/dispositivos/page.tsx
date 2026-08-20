@@ -121,7 +121,7 @@ export default async function DispositivosPage() {
                       {d.estado !== 'aprobado' && (
                         <form action={accionAprobar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1 text-xs font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
+                          <button className="toque inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1 text-xs font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
                             <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2} /> Aprobar
                           </button>
                         </form>
@@ -129,7 +129,7 @@ export default async function DispositivosPage() {
                       {d.estado === 'pendiente' && (
                         <form action={accionRechazar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-xs font-medium text-muted transition-colors duration-150 hover:border-gold hover:text-navy active:scale-[0.97]">
+                          <button className="toque inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-xs font-medium text-muted transition-colors duration-150 hover:border-gold hover:text-navy active:scale-[0.97]">
                             <ShieldX className="h-3.5 w-3.5" strokeWidth={2} /> Rechazar
                           </button>
                         </form>
@@ -137,7 +137,7 @@ export default async function DispositivosPage() {
                       {d.estado === 'aprobado' && (
                         <form action={accionRevocar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1 text-xs font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
+                          <button className="toque inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1 text-xs font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
                             <Ban className="h-3.5 w-3.5" strokeWidth={2} /> Revocar
                           </button>
                         </form>

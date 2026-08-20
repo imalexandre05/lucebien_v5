@@ -105,7 +105,7 @@ export function NotificacionesCliente({ notificaciones, esAdmin }: { notificacio
                 type="button"
                 onClick={marcarTodas}
                 disabled={pending}
-                className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition hover:border-gold"
+                className="toque inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition hover:border-gold"
               >
                 <CheckCheck className="h-3.5 w-3.5" strokeWidth={2} /> Marcar todas
               </button>

@@ -133,7 +133,7 @@ export function LineasPanel({
           type="button"
           onClick={agregarManual}
           disabled={!manualDesc.trim()}
-          className="inline-flex items-center gap-1 rounded-md border border-navy/25 px-3 py-1.5 text-xs font-medium text-navy transition-colors hover:bg-navy/5 disabled:cursor-not-allowed disabled:opacity-50"
+          className="toque inline-flex items-center gap-1 rounded-md border border-navy/25 px-3 py-1.5 text-xs font-medium text-navy transition-colors hover:bg-navy/5 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
         </button>

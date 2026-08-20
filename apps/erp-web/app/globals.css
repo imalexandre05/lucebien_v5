@@ -64,6 +64,37 @@
 }
 
 @layer components {
+  /* `toque` — área tocable de verdad sin engordar el diseño.
+   *
+   * EL PROBLEMA. El ERP es denso a propósito: tablas con acciones chicas por fila, botones de
+   * `px-2 py-1 text-xs` que miden unos 24px de alto. Con un mouse se aciertan; con el pulgar, no.
+   * Y la mitad del equipo llena esto de pie y con el celular.
+   *
+   * LA SALIDA. Un ::after invisible que estira el área a 44px de alto, centrado sobre el control.
+   * El botón se ve exactamente igual — la densidad que se pidió no se toca — y el dedo tiene dónde
+   * caer.
+   *
+   * Sólo alto, nunca ancho. Dos botones lado a lado con un hueco chico se pisarían las áreas y el
+   * segundo se comería los toques del primero. Vertical es además donde de verdad se falla: en una
+   * tabla, las filas están apiladas.
+   *
+   * Sólo con puntero grueso. En escritorio, áreas invisibles de 44px sobre controles de 24
+   * empezarían a taparse entre sí y a robar clicks a lo que tienen al lado. */
+  @media (pointer: coarse) {
+    .toque {
+      position: relative;
+    }
+    .toque::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 44px;
+      transform: translateY(-50%);
+    }
+  }
+
   /* Hairline dorada: el divisor-firma del "atelier". */
   .gold-rule {
     height: 2px;

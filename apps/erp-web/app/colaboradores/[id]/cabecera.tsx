@@ -43,7 +43,7 @@ export function CabeceraColaborador({
     <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
       <Link
         href={query ? `/colaboradores?${query}` : '/colaboradores'}
-        className="inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/60"
+        className="toque inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/60"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
         Todos

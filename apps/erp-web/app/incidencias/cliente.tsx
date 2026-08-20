@@ -281,7 +281,7 @@ export function IncidenciasCliente({
                     {i.origen === 'reporte' && i.reporteId ? (
                       <Link
                         href={`/reportes/${i.reporteId}`}
-                        className="inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 font-mono text-[11px] text-navy transition hover:bg-navy/10"
+                        className="toque inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 font-mono text-[11px] text-navy transition hover:bg-navy/10"
                       >
                         reporte
                       </Link>
