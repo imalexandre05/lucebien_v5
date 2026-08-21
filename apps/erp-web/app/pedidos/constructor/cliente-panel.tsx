@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { campoCls } from '../../../components/ui/form';
 import { Search, UserPlus, X, ChevronDown } from 'lucide-react';
 import { cn } from '../../../lib/cn';
 
 export type ClienteSel = { id?: string; nombre: string; dni: string; telefono: string };
 export type ClienteOpcion = { id: string; nombre: string; dni: string; telefono: string };
 
-const fieldCls =
-  'w-full rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = cn(campoCls, 'w-full py-2');
 
 // ① CLIENTE — buscar por nombre/DNI/teléfono → chip + "Editar todo" inline, o "+ Cliente nuevo"
 // en el mismo panel (sin modal). El picker en sí no escribe nada: solo arma `value`, que viaja

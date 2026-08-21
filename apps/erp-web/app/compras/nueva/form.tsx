@@ -8,11 +8,10 @@ import { totalCompra } from '@scilb/core';
 import { crearCompraAction } from '../actions';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
-import { Aviso } from '../../../components/ui/form';
+import { Aviso, campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-muted focus:border-navy focus:outline-none';
+const fieldCls = campoCls;
 
 const soles = (n: number) => `S/ ${new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
 

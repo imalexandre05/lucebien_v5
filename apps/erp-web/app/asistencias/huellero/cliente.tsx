@@ -22,12 +22,12 @@ import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { EmptyState } from '../../../components/ui/empty-state';
+import { campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 type Emp = { id: string; nombre: string };
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 // Seis ciclos de cinco minutos. Antes de eso, un reinicio de la PC no debería alarmar a nadie.
 const MINUTOS_PARA_ALARMA = 30;

@@ -11,10 +11,10 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { Modal, ModalBody } from '../../../components/ui/modal';
 import { OpcionBotones, type Opcion } from '../../../components/ui/opcion-botones';
 import { StatBox } from '../../../components/ui/stat-box';
+import { campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 const OPC_TABLA: Opcion[] = [{ value: '', label: 'Todas' }, ...TABLAS_AUDITADAS.map((t) => ({ value: t, label: TABLA_LABEL[t] }))];
 const OPC_OPERACION: Opcion[] = [

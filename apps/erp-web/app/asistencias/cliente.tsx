@@ -13,6 +13,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
+import { campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
 
@@ -36,8 +37,7 @@ const CONDICION_LABEL: Record<string, string> = {
 const TURNOS = ['M', 'T', 'C'];
 const OPC_TURNO: Opcion[] = TURNOS.map((t) => ({ value: t, label: TURNO_LABEL[t as 'M' | 'T' | 'C'] }));
 const OPC_FILTRO_TURNO: Opcion[] = [{ value: '', label: 'Todos los turnos' }, ...OPC_TURNO];
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 export function AsistenciasCliente({
   asistencias,

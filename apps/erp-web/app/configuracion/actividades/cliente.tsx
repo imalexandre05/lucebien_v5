@@ -19,11 +19,10 @@ import { Badge, type Tone } from '../../../components/ui/badge';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Button, buttonVariants } from '../../../components/ui/button';
-import { Aviso } from '../../../components/ui/form';
+import { Aviso, campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 const CAT_LABEL: Record<string, string> = { PO: 'Primer Orden', SO: '2° Orden', IND: 'Indispensable', EXT: 'Extra' };
 const CAT_TONE: Record<string, Tone> = { PO: 'navy', SO: 'gold', IND: 'green', EXT: 'gray' };

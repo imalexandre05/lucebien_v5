@@ -11,14 +11,14 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
+import { campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 type Emp = { id: string; nombre: string };
 
 const NIVELES = ['Alto', 'Medio', 'Bajo'];
 const OPC_FILTRO_NIVEL: Opcion[] = [{ value: '', label: 'Todos los niveles' }, ...NIVELES.map((n) => ({ value: n, label: n }))];
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 function NivelPill({ nivel }: { nivel: string }) {
   const cls =

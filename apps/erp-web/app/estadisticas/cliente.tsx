@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { StatBox } from '../../components/ui/stat-box';
 import { Badge } from '../../components/ui/badge';
+import { campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
-const fieldCls = 'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold';
+const fieldCls = campoCls;
 const soles = (n: number) => `S/ ${new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
 const entero = (n: number) => new Intl.NumberFormat('es-PE').format(Math.round(n));
 const diaCorto = (iso: string) => {

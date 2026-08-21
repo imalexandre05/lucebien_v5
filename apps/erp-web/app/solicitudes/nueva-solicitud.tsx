@@ -18,7 +18,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { OpcionBotones } from '../../components/ui/opcion-botones';
 import { Badge } from '../../components/ui/badge';
-import { Aviso } from '../../components/ui/form';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 // Formulario de alta (Fase 11). Portado de suAdd/suFields/suEnviar en public/js/solicitudes.js —
@@ -26,8 +26,7 @@ import { cn } from '../../lib/cn';
 // los primitivos del ERP nuevo. `mtela`+`mprenda` del catálogo viejo se combinan en el único campo
 // `modelo` de solicitud_items (la migración 0056 no separa columnas para cada uno — el sistema
 // viejo hacía exactamente lo mismo en suEnviar: `item.modelo=[mt,mp].filter(Boolean).join(' | ')`).
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = cn(campoCls, 'py-2');
 
 const OPC_URGENCIA = URGENCIAS_SOLICITUD.map((u) => ({ value: u, label: URGENCIA_LABEL[u] }));
 

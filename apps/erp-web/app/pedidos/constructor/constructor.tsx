@@ -13,6 +13,8 @@ import { Ticket } from './ticket';
 import { accionCrearPedidoConstructor } from '../actions';
 import { accionAbrirCaja } from '../../caja/actions';
 import { Card, CardContent } from '../../../components/ui/card';
+import { campoCls } from '../../../components/ui/form';
+import { cn } from '../../../lib/cn';
 
 export type LineaLocal = {
   key: string;
@@ -33,8 +35,7 @@ export type LineaLocal = {
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-const fieldCls =
-  'w-full rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = cn(campoCls, 'w-full py-2');
 
 // Constructor de pedidos (Fase 9): una sola pantalla, sin modal, teclado-first. Orquesta el estado
 // del pedido en construcción y lo entrega COMPLETO a pedido_crear (una transacción — Fase 8): el

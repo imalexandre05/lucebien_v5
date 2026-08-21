@@ -13,7 +13,7 @@ import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { MetodoPagoBotones } from '../../components/ui/metodo-pago-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { Modal as SharedModal, ModalBody, ModalFooter } from '../../components/ui/modal';
-import { Aviso } from '../../components/ui/form';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 type Resumen = {
@@ -32,8 +32,7 @@ const OPC_CATEGORIA_EGRESO: Opcion<'gasto' | 'devolucion_garantia' | 'otro'>[] =
   { value: 'otro', label: 'Otro' },
 ];
 const soles = (n: number) => `S/ ${n.toFixed(2)}`;
-const fieldCls =
-  'w-full rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = cn(campoCls, 'w-full py-2');
 
 // Adapter sobre el Modal compartido: conserva la API local (title/children/footer) y hereda
 // Escape, bloqueo de scroll, foco al abrir, blur y a11y — sin tocar los 4 modales que lo usan.

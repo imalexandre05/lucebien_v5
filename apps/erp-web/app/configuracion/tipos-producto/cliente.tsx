@@ -15,11 +15,10 @@ import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Button, buttonVariants } from '../../../components/ui/button';
-import { Aviso } from '../../../components/ui/form';
+import { Aviso, campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 type Form = { cod: string; nombre: string; prefijo: string; atributosSugeridos: string[] };
 const VACIO: Form = { cod: '', nombre: '', prefijo: '', atributosSugeridos: [] };

@@ -10,7 +10,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { EmptyState } from '../../components/ui/empty-state';
 import { PersonaPicker } from '../../components/ui/persona-picker';
-import { Aviso } from '../../components/ui/form';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 // Mismo vocabulario que /pipeline/registrar (no inventar valores nuevos).
@@ -147,8 +147,7 @@ export function EnvioLavanderiaCliente({
     });
   }
 
-  const fieldCls =
-    'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-muted focus:border-navy focus:outline-none';
+  const fieldCls = campoCls;
 
   return (
     <div className="space-y-5">

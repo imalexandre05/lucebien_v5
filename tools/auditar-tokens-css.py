@@ -38,7 +38,13 @@ def escapado(clase):
 
 faltan = []
 for clase in sorted(usos):
-    if ('.' + escapado(clase)) in css:
+    esc = escapado(clase)
+    # Presente como clase suelta (.bg-exito-soft) o como final de una con variante
+    # (.hover\:bg-gold-soft). Sin la segunda comprobacion, toda utilidad que solo se use con
+    # variante se reporta como faltante: cinco falsos positivos en la primera version, y una
+    # herramienta que grita en falso se deja de leer.
+    barra = chr(92)
+    if ('.' + esc) in css or (barra + ':' + esc) in css:
         continue
     faltan.append(clase)
 

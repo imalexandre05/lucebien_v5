@@ -17,14 +17,33 @@ import { cn } from '../../lib/cn';
 //
 // El estado de error se pinta desde `aria-invalid`, no desde una prop propia. Así la marca visual y
 // la que anuncia el lector de pantalla son EL MISMO dato: no se pueden desincronizar.
-const fieldBase =
-  'w-full rounded-md border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-muted/70 ' +
+// LA BASE, SIN TAMAÑO. Todo lo que hace que un campo se comporte: respuesta al pasar el mouse,
+// foco, deshabilitado y error. El relleno va aparte porque el ERP usa dos densidades y las dos son
+// correctas.
+export const campoBase =
+  'rounded-md border border-line bg-white text-sm text-navy placeholder:text-muted/70 ' +
   'transition-[border-color,box-shadow,background-color] duration-150 ease-out-expo ' +
   'hover:border-navy/25 ' +
   'focus:border-navy/40 focus:outline-none focus:ring-2 focus:ring-gold/30 ' +
   'disabled:cursor-not-allowed disabled:border-line disabled:bg-paper disabled:text-muted ' +
   'aria-[invalid=true]:border-error aria-[invalid=true]:bg-error-soft/50 ' +
   'aria-[invalid=true]:focus:ring-error/25';
+
+/**
+ * El campo denso: filtros, celdas de tabla, barras de herramientas.
+ *
+ * POR QUÉ SE EXPORTA UNA CADENA Y NO SÓLO EL COMPONENTE. Veintisiete pantallas declaraban su propio
+ * `fieldCls` sobre un `<input>` crudo —seis variantes casi iguales del mismo string— porque el
+ * componente `Input` trae `w-full` y un relleno de formulario que no sirve dentro de una tabla.
+ * Mientras eso siguiera así, todo lo que se agregara al componente no llegaba a la mayoría de los
+ * campos del sistema: es la razón por la que el estado de error no tenía consumidores.
+ *
+ * Con la cadena exportada, esos `<input>` crudos se quedan como están y aun así heredan el
+ * comportamiento. Es el camino corto hacia lo correcto, que es el único que se recorre solo.
+ */
+export const campoCls = cn(campoBase, 'px-2.5 py-1.5');
+
+const fieldBase = cn(campoBase, 'w-full px-3 py-2');
 
 export const Input = ({ className, ...p }: InputHTMLAttributes<HTMLInputElement>) => (
   <input className={cn(fieldBase, className)} {...p} />

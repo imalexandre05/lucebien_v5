@@ -12,7 +12,7 @@ import { LayoutMap } from '../layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { Button, buttonVariants } from '../../../components/ui/button';
-import { Aviso } from '../../../components/ui/form';
+import { Aviso, campoCls } from '../../../components/ui/form';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { cn } from '../../../lib/cn';
@@ -32,8 +32,7 @@ const TURNOS: { v: TurnoReporte; label: string; sub: string; icon: typeof Sun }[
   { v: 'C', label: 'Completo', sub: 'Todo el día', icon: Clock },
 ];
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = cn(campoCls, 'py-2');
 
 // Pill de categoría de la actividad (espeja PRIMER ORDEN / 2° ORDEN / INDISPENSABLE del viejo).
 function catTone(cat: string | null): Tone {

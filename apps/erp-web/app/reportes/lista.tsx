@@ -14,6 +14,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
+import { campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 const ESTADO_TONE: Record<EstadoReporte, Tone> = {
@@ -34,8 +35,7 @@ const ESTADO_FILTRO_LABEL: Record<FiltroEstado, string> = {
   todos: 'Todos',
 };
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 const OPC_FILTRO_TURNO: Opcion[] = [
   { value: '', label: 'Todos los turnos' },

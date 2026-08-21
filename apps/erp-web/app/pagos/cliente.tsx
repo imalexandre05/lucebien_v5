@@ -13,6 +13,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
+import { campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
 
@@ -32,8 +33,7 @@ const OPC_FILTRO_ESTADO: Opcion[] = [
   ...OPC_ESTADO_PAGO,
   { value: 'anulado', label: 'Anulado' },
 ];
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 
 export function PagosCliente({

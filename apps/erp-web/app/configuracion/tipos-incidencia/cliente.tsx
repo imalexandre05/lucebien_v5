@@ -16,11 +16,10 @@ import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../../components/ui/opcion-botones';
-import { Aviso } from '../../../components/ui/form';
+import { Aviso, campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 // Mismo orden/colores que /incidencias/cliente.tsx (NIVELES) para que la gravedad se vea igual
 // en el catálogo y en el formulario que lo consume.

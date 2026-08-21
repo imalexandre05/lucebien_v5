@@ -14,7 +14,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { StatBox } from '../../components/ui/stat-box';
-import { Aviso } from '../../components/ui/form';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 // Un rol es IDENTIDAD, no estado: por eso usa los categóricos y no los semánticos.
@@ -39,8 +39,7 @@ const OPC_FILTRO_ESTADO: Opcion[] = [
 ];
 const rolInfo = (r: string) => ROL[r] ?? { label: r.replace(/_/g, ' '), cls: 'bg-ink/10 text-muted' };
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 function iniciales(e: { nombre: string; iniciales: string | null }): string {
   if (e.iniciales) return e.iniciales.slice(0, 2).toUpperCase();

@@ -26,6 +26,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
+import { campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
 
@@ -83,8 +84,7 @@ const TRAMO_TONE: Record<TramoEval, Tone> = {
   bajo: 'gray',
 };
 const TRAMOS: TramoEval[] = ['excelente', 'bueno', 'mejorar', 'bajo'];
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold disabled:cursor-not-allowed disabled:opacity-60';
+const fieldCls = campoCls;
 const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 
 const OPC_METODO_PAGO: Opcion[] = [

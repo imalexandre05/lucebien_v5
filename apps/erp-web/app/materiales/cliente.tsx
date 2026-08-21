@@ -11,11 +11,10 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
-import { Aviso } from '../../components/ui/form';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 const nfmt = (n: number) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(n);
 

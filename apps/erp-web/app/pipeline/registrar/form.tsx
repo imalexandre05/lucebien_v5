@@ -6,6 +6,7 @@ import { ArrowLeft, Check, PackagePlus } from 'lucide-react';
 import { registrarPrenda } from '../actions';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
+import { campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 // Mismos vocabularios que usa el tablero (no inventar valores nuevos).
@@ -18,8 +19,7 @@ const COLORES = [
 const TALLAS = ['XS', 'S', 'M', 'L', 'XL', '2XL', '4', '6', '8', '10', '12', '14', '16'];
 const LAVADOS = ['normal', 'seco', 'especializado'];
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-muted focus:border-navy focus:outline-none';
+const fieldCls = campoCls;
 
 export function RegistrarForm({ sedes }: { sedes: string[] }) {
   const [pending, startTransition] = useTransition();
