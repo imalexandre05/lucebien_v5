@@ -4,17 +4,17 @@
 --  Pegá TODO este archivo en el editor SQL de Supabase y dale Run.
 --
 --  VA A TERMINAR EN ROJO, Y ESO ES LO CORRECTO. La prueba termina a propósito con una excepción,
---  y esa excepción hace que Postgres deshaga todo lo de esta corrida — incluido el cambio de
---  función. Probaste el código nuevo contra los datos reales y no quedó nada.
---
---  Lo que importa es el texto del error. Buscá la palabra RESULTADO:
+--  y esa excepción hace que Postgres deshaga todo lo de esta corrida. Buscá la palabra RESULTADO:
 --
 --      ERROR: RESULTADO 1=ok 2=ok 3=ok ...
 --
---  · Todos dicen «ok»  → seguí con el archivo de aplicar.
+--  · Todos dicen «ok»  → seguí con 7-aplicar-0078.sql.
 --  · Alguno dice FALLA → pará. Copiá la línea entera y mandámela.
+--
+--  NOTA: esta prueba le presta la identidad de un administrador a la transacción, porque
+--  `sueldo_entrada()` sólo deja liquidar al administrador y el editor SQL corre sin usuario
+--  logueado. El préstamo dura lo que dura la transacción y se deshace con ella.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
-
 
 -- 0078_tramos_asistencia_pausas.sql — las pausas dejan de pagarse (RN-05).
 --
@@ -315,6 +315,25 @@ declare
   p      jsonb;
   r      text := '';
 begin
+  -- PRESTAR LA IDENTIDAD DE UN ADMINISTRADOR, SÓLO PARA ESTA TRANSACCIÓN.
+  --
+  -- `sueldo_entrada()` tiene portero: sólo el administrador puede liquidar. Eso está bien y es lo
+  -- que protege el sueldo. Pero el editor SQL de Supabase corre sin usuario logueado —`auth.uid()`
+  -- devuelve null— así que la prueba moría con «PERMISO: sólo el administrador puede liquidar»
+  -- antes de comprobar una sola cosa.
+  --
+  -- `is_local = true` ata el préstamo a esta transacción: la excepción con la que termina el bloque
+  -- lo deshace junto con todo lo demás. No queda ninguna conexión del pool con identidad prestada,
+  -- que es lo único que haría de esto un problema de seguridad y no una comodidad de prueba.
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'sub',
+      (select id::text from empleados where rol in ('admin', 'dueno') order by id limit 1)
+    )::text,
+    true
+  );
+
   select id into emp from empleados order by id limit 1;
 
   -- Un acuerdo de un solo lunes, con el turno partido de LuceBien.

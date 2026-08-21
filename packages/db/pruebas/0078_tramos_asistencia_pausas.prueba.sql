@@ -25,6 +25,25 @@ declare
   p      jsonb;
   r      text := '';
 begin
+  -- PRESTAR LA IDENTIDAD DE UN ADMINISTRADOR, SÓLO PARA ESTA TRANSACCIÓN.
+  --
+  -- `sueldo_entrada()` tiene portero: sólo el administrador puede liquidar. Eso está bien y es lo
+  -- que protege el sueldo. Pero el editor SQL de Supabase corre sin usuario logueado —`auth.uid()`
+  -- devuelve null— así que la prueba moría con «PERMISO: sólo el administrador puede liquidar»
+  -- antes de comprobar una sola cosa.
+  --
+  -- `is_local = true` ata el préstamo a esta transacción: la excepción con la que termina el bloque
+  -- lo deshace junto con todo lo demás. No queda ninguna conexión del pool con identidad prestada,
+  -- que es lo único que haría de esto un problema de seguridad y no una comodidad de prueba.
+  perform set_config(
+    'request.jwt.claims',
+    json_build_object(
+      'sub',
+      (select id::text from empleados where rol in ('admin', 'dueno') order by id limit 1)
+    )::text,
+    true
+  );
+
   select id into emp from empleados order by id limit 1;
 
   -- Un acuerdo de un solo lunes, con el turno partido de LuceBien.
