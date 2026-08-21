@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, Package, Contact, ShoppingBag, ClipboardList, ClipboardCheck, Files, AlertTriangle, Banknote, LineChart, BarChart3, Settings, Laptop, Truck, Boxes, ShoppingCart, Bell, PackagePlus, HeartHandshake, History, Send, Receipt, UsersRound, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Users, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, Receipt, UsersRound, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -83,32 +83,16 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Configuración', href: '/configuracion', icon: Settings, modulo: 'configuracion' },
     ],
   },
-  {
-    // POS (Fase 9): Pedidos + Caja agrupados — es el mismo mostrador, un pedido nuevo y un cobro
-    // son parte del mismo flujo de atención al cliente.
-    section: 'POS',
-    items: [
-      { label: 'Pedidos', href: '/pedidos', icon: ShoppingBag, modulo: 'pedidos' },
-      { label: 'Caja', href: '/caja', icon: Banknote, modulo: 'caja' },
-    ],
-  },
-  {
-    section: 'Comercial',
-    items: [
-      { label: 'Inventario', href: '/inventario', icon: Package, modulo: 'inventario' },
-      { label: 'Clientes', href: '/clientes', icon: Contact, modulo: 'clientes' },
-      { label: 'Finanzas', href: '/finanzas', icon: LineChart, modulo: 'finanzas' },
-      { label: 'Estadísticas', href: '/estadisticas', icon: BarChart3, modulo: 'estadisticas' },
-    ],
-  },
-  {
-    section: 'Abastecimiento',
-    items: [
-      { label: 'Proveedores', href: '/proveedores', icon: Truck, modulo: 'proveedores' },
-      { label: 'Materiales', href: '/materiales', icon: Boxes, modulo: 'materiales' },
-      { label: 'Compras', href: '/compras', icon: ShoppingCart, modulo: 'compras' },
-    ],
-  },
+  // ── LO COMERCIAL SALIÓ DEL MENÚ (20-ago-2026, decisión de Alexander) ───────────────────────
+  //
+  // POS (Pedidos, Caja), Comercial (Inventario, Clientes, Finanzas, Estadísticas) y Abastecimiento
+  // (Proveedores, Materiales, Compras) ya no se muestran. Dinero, ventas, POS e inventario los va
+  // a manejar otro programador en un sistema aparte; este ERP quedó en control interno: procesos,
+  // recursos humanos, sueldos, evaluación y el pipeline de prendas.
+  //
+  // SE OCULTAN, NO SE BORRAN. Las nueve rutas siguen existiendo y funcionando si alguien escribe
+  // la dirección: hay datos vivos detrás y el traspaso al otro sistema todavía no ocurrió. Borrar
+  // el código sería una decisión distinta, y de un solo sentido.
 ];
 
 // Listado de navegación (compartido entre la sidebar de escritorio y el drawer móvil). Filtra por

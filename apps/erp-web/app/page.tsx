@@ -6,10 +6,6 @@ import {
   ClipboardCheck,
   ClipboardList,
   AlertTriangle,
-  Banknote,
-  ShoppingBag,
-  TrendingUp,
-  Coins,
   Trophy,
   Activity,
   LayoutGrid,
@@ -26,15 +22,12 @@ import {
   type EstadoCobertura,
   minutosHastaCierre,
   TURNO_LABEL,
-  totalPorTipoLinea,
   puede,
   type MatrizPermisos,
 } from '@scilb/core';
 import { listarPasadas, rankingHoy } from '../lib/pipeline-repo';
 import { listarReportes } from '../lib/reportes-repo';
 import { listarIncidencias } from '../lib/incidencias-repo';
-import { resumenFinanciero, cobrosPendientes, totalGarantias } from '../lib/caja-repo';
-import { pedidosRepo } from '../lib/pedidos-repo';
 import { getSesion } from '../lib/auth';
 import { listarSedes } from '../lib/sedes-repo';
 import { leerMatrizPermisos } from '../lib/permisos-repo';
@@ -121,47 +114,21 @@ export default async function Dashboard() {
     }
   }
 
-  // QUIEN VE EL BLOQUE COMERCIAL. Hasta ahora lo veía todo el mundo: el encargado del taller
-  // abría el ERP y lo primero completo que encontraba eran pedidos de venta, cobros pendientes y
-  // garantías, cuatro cifras sobre las que no puede hacer nada — y si tocaba una, la pantalla de
-  // destino lo rebotaba por permiso.
+  // EL DASHBOARD YA NO MIRA DINERO (20-ago-2026, decisión de Alexander).
   //
-  // Se gatea con los mismos módulos que gobiernan esas pantallas. No se borra nada: quien ya los
-  // veía los sigue viendo.
-  const verComercial =
-    !!sesionPrevia &&
-    ['pedidos', 'caja', 'finanzas'].some((m) =>
-      puede(matriz, sesionPrevia.usuario.rol, m, 'ver', sesionPrevia.usuario.rolCod),
-    );
-
-  // Y las tres consultas que sólo alimentan ese bloque no se pagan si no se va a mostrar.
-  // `pedidosRepo.listar()` en particular trae TODOS los pedidos con sus líneas: era la consulta
-  // más cara del dashboard, y la corría también quien nunca la iba a ver.
-  const [sesion, pasadas, reportes, incidencias, ranking, finHoy, pedidos, pendientes, garantias, sedes, config] =
-    await Promise.all([
-      getSesion(),
-      listarPasadas(),
-      listarReportes(),
-      listarIncidencias(),
-      rankingHoy(),
-      verComercial
-        ? resumenFinanciero(hoyPeru(), hoyPeru())
-        : Promise.resolve({
-            ingresos: 0,
-            egresos: 0,
-            neto: 0,
-            efectivo: 0,
-            yape: 0,
-            transferencia: 0,
-            ingresosCat: {},
-            egresosCat: {},
-          }),
-      verComercial ? pedidosRepo.listar() : Promise.resolve([]),
-      verComercial ? cobrosPendientes() : Promise.resolve([]),
-      verComercial ? totalGarantias() : Promise.resolve(0),
-      listarSedes().catch(() => []),
-      leerConfigMap().catch(() => ({}) as Record<string, string>),
-    ]);
+  // Pedidos, caja, cobros pendientes y garantías salieron del panel junto con todo el módulo
+  // comercial: lo va a manejar otro programador en un sistema aparte. Con eso se van también las
+  // cuatro consultas que sólo los alimentaban — `pedidosRepo.listar()` traía TODOS los pedidos con
+  // sus líneas y era, de lejos, la más cara de esta pantalla.
+  const [sesion, pasadas, reportes, incidencias, ranking, sedes, config] = await Promise.all([
+    getSesion(),
+    listarPasadas(),
+    listarReportes(),
+    listarIncidencias(),
+    rankingHoy(),
+    listarSedes().catch(() => []),
+    leerConfigMap().catch(() => ({}) as Record<string, string>),
+  ]);
   const SEDE_NOMBRE = Object.fromEntries(sedes.map((s) => [s.cod, s.nombre]));
 
   const hoy = hoyPeru();
@@ -200,14 +167,6 @@ export default async function Dashboard() {
     0,
   );
 
-  const soles = (n: number) => `S/ ${n.toFixed(2)}`;
-  // Fase 9 (hallazgo de la F8): agrupar por `pedido.tipo` (cabecera) perdía los pedidos 'mixto'
-  // por completo — un alquiler + una venta en la misma visita no cae en ningún grupo. La fuente
-  // correcta es la LÍNEA (`pedido_items.tipo`), vía el helper puro y testeado del core.
-  const porTipoLinea = totalPorTipoLinea(pedidos.flatMap((p) => p.items));
-  const totalVentas = porTipoLinea.venta;
-  const totalAlquiler = porTipoLinea.alquiler;
-  const saldoPendiente = pendientes.reduce((s, p) => s + p.saldo, 0);
 
   // Distribución del pipeline por etapa (flujo de 9 pasos).
   const porEtapa = new Map<string, number>();
@@ -310,12 +269,7 @@ export default async function Dashboard() {
       {/* ── KPIs del día ── */}
       <section aria-label="Indicadores del día">
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Interno</div>
-        <div
-          className={cn(
-            'grid grid-cols-1 gap-4 sm:grid-cols-2',
-            verComercial ? 'lg:grid-cols-4' : 'lg:grid-cols-3',
-          )}
-        >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatBox
             index={0}
             size="xl"
@@ -338,24 +292,6 @@ export default async function Dashboard() {
             valor={<CountUp value={porEvaluar} delayMs={60} />}
             sub={`${enviadosHoy} enviado(s) hoy`}
           />
-          {/* La caja está en la fila "Interno" por herencia, no por criterio: el dinero quedó
-              fuera del alcance de este sistema el 13-ago-2026. Mientras siga acá, al menos se
-              muestra sólo a quien puede abrirla — antes, el encargado del taller veía la cifra y
-              al tocarla la pantalla lo rebotaba por permiso. Moverla al bloque Comercial es una
-              decisión de Alexander, anotada en el resumen de la sesión. */}
-          {verComercial && (
-            <StatBox
-              index={2}
-              size="xl"
-              align="left"
-              icon={Banknote}
-              href="/caja"
-              tone={KPI_TONE}
-              label="Caja del día"
-              valor={<CountUp value={finHoy.ingresos} prefix="S/ " delayMs={120} />}
-              sub={`neto ${soles(finHoy.neto)} · ${soles(finHoy.egresos)} egresos`}
-            />
-          )}
           <StatBox
             index={3}
             size="xl"
@@ -601,58 +537,6 @@ export default async function Dashboard() {
         </Card>
       </div>
 
-      {/* ── Comercial ── */}
-      {verComercial && (
-      <section className="mt-6" aria-label="Indicadores comerciales">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Comercial</div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatBox
-            index={0}
-            size="md"
-            align="left"
-            icon={ShoppingBag}
-            href="/pedidos"
-            tone={KPI_TONE}
-            label="Total ventas"
-            valor={<CountUp value={totalVentas} prefix="S/ " decimals={2} />}
-            sub="pedidos de venta"
-          />
-          <StatBox
-            index={1}
-            size="md"
-            align="left"
-            icon={TrendingUp}
-            href="/pedidos"
-            tone={KPI_TONE}
-            label="Total alquiler"
-            valor={<CountUp value={totalAlquiler} prefix="S/ " decimals={2} delayMs={60} />}
-            sub="pedidos de alquiler"
-          />
-          <StatBox
-            index={2}
-            size="md"
-            align="left"
-            icon={Banknote}
-            href="/caja"
-            tone={KPI_TONE}
-            label="Cobros pendientes"
-            valor={<CountUp value={saldoPendiente} prefix="S/ " decimals={2} delayMs={120} />}
-            sub={`${pendientes.length} pedido(s)`}
-          />
-          <StatBox
-            index={3}
-            size="md"
-            align="left"
-            icon={Coins}
-            href="/caja"
-            tone={KPI_TONE}
-            label="Garantías"
-            valor={<CountUp value={garantias} prefix="S/ " decimals={2} delayMs={180} />}
-            sub="depósitos vigentes"
-          />
-        </div>
-      </section>
-      )}
     </div>
   );
 }

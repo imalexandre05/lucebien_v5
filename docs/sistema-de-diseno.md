@@ -354,8 +354,9 @@ Es parte del diseño, no un acabado.
    la deuda está contada y no puede crecer. No se barrieron a ciegas a propósito: a diferencia del
    barrido de color, éste reestructura cadenas de clases y puede mover relleno y ancho, y hace
    falta mirar una pantalla renderizada para darlo por bueno.
-3. **Modo oscuro.** El manual lo describe para el ERP (§11) y el sistema hoy es claro. No hay tokens
-   duales.
+3. **Modo oscuro: descartado por ahora** (20-ago-2026). El manual lo describe para el ERP (§11) y
+   el sistema es claro. No hay tokens duales y no se van a agregar hasta que el ERP esté en uso
+   real: con 4,4% de adopción, el problema no es de qué color es.
 4. **Los estados vacíos de las pantallas comerciales.** Los del alcance actual se auditaron el
    20-ago-2026 y están convertidos; quedan sin tocar los de caja, compras, materiales, proveedores e
    inventario, que son código muerto. Cuando un hueco se convierte, la regla es que diga **de dónde

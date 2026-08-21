@@ -699,7 +699,7 @@ definición no fue una pausa, así que las dos marcas son del mismo tramo y la �
 Medido sobre el histórico: 38 días afectados, 1,7 minutos de separación promedio. La diferencia
 contra la lectura alternativa está acotada por arriba al valor de la pausa mínima.
 
-### Valores 360° ya no se puede enviar a medio contestar — **confirmar con Alexander**
+### Valores 360° ya no se puede enviar a medio contestar — **resuelto el 20-ago-2026**
 
 Hasta el 20-ago-2026 los seis valores del peer review arrancaban en 3, así que abrir la ficha de un
 compañero y tocar Guardar mandaba seis treses. Dos consecuencias, y las dos llegan a la nota: se
@@ -712,9 +712,12 @@ default inventado no es inventar una regla. Pero **sí cambia cuántas evaluacio
 antes despachaba una ficha de un toque ahora tiene que contestar seis. Si la participación baja, la
 nota de Valores queda con menos datos y eso también se nota en la evaluación mensual.
 
-Lo que hay que confirmar: si se prefiere exigir las seis (más señal, menos volumen) o volver a
-permitir el envío parcial. El atajo «Todos a N» sigue disponible para quien de verdad puntúa igual
-en todo.
+**Confirmado por Alexander: se queda exigiendo las seis.** El atajo «Todos a N» sigue disponible
+para quien de verdad puntúa igual en todo.
+
+Lo que conviene mirar a fin de mes: cuántas evaluaciones llegaron contra el mes anterior. Si la
+participación cae mucho, la nota queda con menos datos y hay que decidir de nuevo — pero esa es una
+comparación, no una suposición.
 
 ### La liquidación dentro del módulo de colaboradores
 
@@ -727,3 +730,13 @@ sigue siendo una entrada propia del menú.
 ---
 
 _Agregar aquí, por fase, cualquier parámetro nuevo que se sembró con un default sin confirmar._
+
+---
+
+## Decisiones del 20-ago-2026
+
+| Decisión | Qué se hizo |
+|---|---|
+| **Valores 360° exige las seis respuestas** | Se queda. Revisar la participación a fin de mes |
+| **Todo el módulo comercial sale del menú** | Pedidos, Caja, Inventario, Clientes, Finanzas, Estadísticas, Proveedores, Materiales y Compras. Las rutas siguen vivas: se ocultan, no se borran, porque hay datos detrás y el traspaso al otro sistema todavía no ocurrió |
+| **Modo oscuro: no por ahora** | La adopción del ERP es 4,4%; el problema es que la gente lo use, no de qué color es |
