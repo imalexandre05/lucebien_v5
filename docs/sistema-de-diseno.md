@@ -209,6 +209,7 @@ nacieron de encontrar la misma pieza copiada en nueve pantallas.
 | `Aviso` | El mensaje de una operación. `tono` `error` `aviso` `exito` `info` |
 | `EmptyState` | El hueco con nombre: ícono, título y qué hacer |
 | `Skeleton` · `SkeletonStat` · `SkeletonCard` · `SkeletonPagina` | Siluetas de carga |
+| `DialogoConfirmar` + `useConfirmacion` | La confirmación de algo irreversible. Reemplaza a `window.confirm()` |
 | `Modal` · `Spinner` · `PersonaPicker` · `ActivoPicker` · `MontoInput` · `OpcionBotones` | Piezas de formulario y diálogo |
 
 ### Detalles que no son obvios
@@ -271,6 +272,43 @@ Es peor que el `window.alert()` que había antes, porque el alert al menos se ve
 El patrón: un `errorAccion` propio, arriba de todo y siempre a la vista. Está en asistencias,
 incidencias, pagos, empleados y los dos catálogos de configuración.
 
+### Confirmar algo irreversible
+
+`window.confirm()` bloquea la página, no se puede escribir en el idioma ni el tono del sistema, y en
+el celular se lee como una advertencia del navegador y no de LuceBien. Son justo los diálogos que
+preceden a lo que no tiene vuelta atrás — cerrar una liquidación, anular un pago, suspender a una
+persona—, así que el aviso más importante del sistema no puede ser el único que parece venir de
+afuera.
+
+```tsx
+const conf = useConfirmacion();
+…
+onClick={() => conf.pedir({
+  titulo: `¿Cerrar la liquidación de ${nombre} por ${soles(total)}?`,
+  detalle: 'Una vez cerrada no se puede modificar. Sólo anular, con motivo, y queda registrado.',
+  confirmarLabel: 'Cerrar liquidación',
+  alConfirmar: () => …,
+})}
+…
+<DialogoConfirmar {...conf.props} pending={pendiente} error={error} />
+```
+
+Cuatro reglas de escritura, y todas salen de lo que el nativo no dejaba hacer:
+
+1. **El dato que decide va en el título.** El monto de la liquidación, el nombre de la persona, la
+   cantidad de días. No enterrado en el cuerpo.
+2. **El detalle dice la consecuencia**, no repite el título.
+3. **El botón dice qué hace** —«Eliminar», «Anular», «Declarar»— y nunca «Aceptar».
+4. **El tono separa lo irreversible de lo que sólo conviene mirar dos veces.** Reactivar a alguien
+   no es lo mismo que suspenderlo: `peligro` es rojo, `aviso` es ámbar.
+
+El error del intento se muestra **dentro** del diálogo: cerrarlo para leerlo lo haría desaparecer. Y
+mientras la acción corre, el diálogo queda abierto con su botón en pendiente, así que nadie vuelve a
+tocar.
+
+**Dónde no va.** Dentro de otro modal. Apilar diálogos es peor que el `confirm()`; ahí corresponde
+confirmación en línea, en el mismo panel.
+
 ### Un control deshabilitado dice por qué
 
 Un botón gris sin explicación se lee como que el sistema falló. Y el ERP se usa de pie y con el
@@ -316,11 +354,10 @@ Es parte del diseño, no un acabado.
    20-ago-2026 y están convertidos; quedan sin tocar los de caja, compras, materiales, proveedores e
    inventario, que son código muerto. Cuando un hueco se convierte, la regla es que diga **de dónde
    sale** lo que falta, no sólo que no hay nada.
-4. **Catorce `window.confirm()`.** Bloquean la página, no se pueden estilar y en el celular se
-   leen como una advertencia del navegador, no del sistema — y son justo los diálogos que preceden
-   a lo irreversible: eliminar una asistencia, anular un pago, suspender a una persona. Hay
-   precedente propio de cómo hacerlo bien en `reportes/[id]/acciones.tsx`, que ya los reemplazó por
-   un modal. Falta convertir el resto y sacar el patrón a una pieza compartida.
+4. **Seis `window.confirm()` sin convertir.** Cuatro son del módulo comercial (código muerto).
+   Uno —deshacer, en el detalle de solicitud— vive dentro de un modal, y ahí corresponde
+   confirmación en línea, no un diálogo apilado. El de `configuracion/layout` es un guard de
+   navegación, otra forma.
 
 5. **Nada de esto tiene test.** Un cambio de token no rompe ningún test porque no hay ninguno que
    mire la interfaz. La red hoy es el `next build`, el typecheck y el guard —y ninguno de los tres
