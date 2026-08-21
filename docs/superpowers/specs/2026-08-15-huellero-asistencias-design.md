@@ -11,6 +11,15 @@
 > **Corrección (20-ago-2026):** el emparejado dejaba tramos sin cerrar y el `update` escribía
 > `null` sobre horas ya derivadas, abortando 15 días contra `asistencias_trabajado_chk`. Tres
 > reglas nuevas y la migración `0079`. Ver «El defecto del emparejado» más abajo.
+> **`0079` APLICADA el 21-ago-2026**, con las nueve pruebas en verde contra los datos reales y el
+> histórico re-derivado después. Resultado medido: `trabajado` pasó de 889 a 934, `sin_dato` de 183
+> a 160, y —lo que confirma que el defecto se cerró— **no quedó ninguna fila `'trabajado'` sin hora
+> de salida**, que era justo la combinación que abortaba el lote del colector.
+>
+> De los 160 que siguen en `sin_dato`, **147 no tienen hora de salida y 145 de ésos son días con una
+> sola marca**: la persona entró y no marcó al irse. Eso no lo puede arreglar el código —inventar la
+> hora sería inventar plata— y es exactamente lo que la pantalla de administración lista para que lo
+> complete una persona antes de liquidar.
 > **Zona de rigor:** crítica (la tabla `asistencias` alimenta la cadena del sueldo)
 > **Autor del diseño:** sesión de brainstorming con Alexander Flores
 

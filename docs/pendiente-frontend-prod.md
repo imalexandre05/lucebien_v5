@@ -129,9 +129,15 @@ pasó con el bug del foco, donde un solo defecto compartido explicaba síntomas 
 
 ## 4. Lo que quedó sin resolver, y no es frontend
 
-- **Las cuatro migraciones**, listas para pegar en `tools/migraciones-pendientes/` con su `LEEME.md`.
-  Ninguna aplicada al 21-ago. La `0079` corrige un defecto del huellero que hoy corta la ingesta del
-  colector; la `0076` es la única que mueve plata y no debería aplicarse sin ver el número antes.
+- **Las migraciones**, en `tools/migraciones-pendientes/` con su `LEEME.md`. Estado al 21-ago-2026,
+  verificado contra la base:
+
+  | Migración | Estado |
+  |---|---|
+  | `0079` · huellero | **Aplicada.** Probada antes contra las 3.107 marcas reales: nueve casos en verde |
+  | `0077` · hora fuera de contrato | **Aplicada.** No movió ningún monto, que era el punto de su default en 1 |
+  | `0078` · las pausas no se pagan | Probada (seis casos en verde). Falta el Run que la aplica |
+  | `0076` · meta semanal | **Sin aplicar, a propósito.** Es la única que mueve plata: hasta S/76,40 por persona por mes. Antes hay que comparar un borrador de liquidación con y sin ella |
 - **Trece archivos** escriben el estilo de campo en línea. Están en el baseline del guard: la deuda
   está contada y no puede crecer. No se barrieron porque el cambio puede mover relleno y ancho, y
   eso hay que mirarlo en pantalla.
