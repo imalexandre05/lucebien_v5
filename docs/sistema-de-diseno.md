@@ -260,6 +260,17 @@ Tres reglas, y la tercera es la que más se olvida.
    ser una línea con un check —`role="status"` y nada más—. Anunciar todo con el mismo peso enseña
    a ignorarlo, y entonces el aviso que sí importaba tampoco se lee.
 
+### El error de una lista no cabe dentro de un formulario
+
+Cuando una acción se dispara **desde la lista** —eliminar una fila, suspender a alguien, cambiar un
+estado— su error no puede mostrarse en el `error` del formulario o del modal de esa pantalla: en ese
+momento ese bloque está cerrado, y el mensaje se renderiza donde nadie lo ve.
+
+Es peor que el `window.alert()` que había antes, porque el alert al menos se veía.
+
+El patrón: un `errorAccion` propio, arriba de todo y siempre a la vista. Está en asistencias,
+incidencias, pagos, empleados y los dos catálogos de configuración.
+
 ### Un control deshabilitado dice por qué
 
 Un botón gris sin explicación se lee como que el sistema falló. Y el ERP se usa de pie y con el
@@ -305,13 +316,19 @@ Es parte del diseño, no un acabado.
    20-ago-2026 y están convertidos; quedan sin tocar los de caja, compras, materiales, proveedores e
    inventario, que son código muerto. Cuando un hueco se convierte, la regla es que diga **de dónde
    sale** lo que falta, no sólo que no hay nada.
-4. **Nada de esto tiene test.** Un cambio de token no rompe ningún test porque no hay ninguno que
+4. **Catorce `window.confirm()`.** Bloquean la página, no se pueden estilar y en el celular se
+   leen como una advertencia del navegador, no del sistema — y son justo los diálogos que preceden
+   a lo irreversible: eliminar una asistencia, anular un pago, suspender a una persona. Hay
+   precedente propio de cómo hacerlo bien en `reportes/[id]/acciones.tsx`, que ya los reemplazó por
+   un modal. Falta convertir el resto y sacar el patrón a una pieza compartida.
+
+5. **Nada de esto tiene test.** Un cambio de token no rompe ningún test porque no hay ninguno que
    mire la interfaz. La red hoy es el `next build`, el typecheck y el guard —y ninguno de los tres
    se entera de que una clase inventada no pinta nada—. Lo que sí funciona, y conviene repetir
    después de cualquier barrido: sacar del código todas las utilidades de token y comprobar una por
    una que existan en el CSS compilado. Hecho el 20-ago-2026 sobre las 105 que había, todas existen.
 
-5. **El estado de error de los campos no tiene consumidores.** El estilo de `aria-invalid` está en
+6. **El estado de error de los campos no tiene consumidores.** El estilo de `aria-invalid` está en
    la clase base y se activa solo cuando alguien pone el atributo, pero hoy **nadie lo pone**: los
    formularios muestran un `Aviso` arriba y no marcan el campo culpable. Cuesta tres líneas y no
    estorba, así que se queda; pero mientras nada lo use, la promesa de «los campos saben fallar» es
