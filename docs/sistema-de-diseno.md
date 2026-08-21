@@ -348,24 +348,30 @@ Es parte del diseño, no un acabado.
 
 1. **Las pantallas comerciales** (`/pedidos`, `/caja`, `/inventario`) recibieron el barrido de
    tokens pero no la revisión de flujo. Son código muerto para el alcance actual, así que no urge.
-2. **Modo oscuro.** El manual lo describe para el ERP (§11) y el sistema hoy es claro. No hay tokens
+   Ahí siguen cuatro `window.alert()` y cuatro `window.confirm()`.
+
+2. **Trece archivos escriben el estilo de campo en línea.** Están en el baseline del guard, así que
+   la deuda está contada y no puede crecer. No se barrieron a ciegas a propósito: a diferencia del
+   barrido de color, éste reestructura cadenas de clases y puede mover relleno y ancho, y hace
+   falta mirar una pantalla renderizada para darlo por bueno.
+3. **Modo oscuro.** El manual lo describe para el ERP (§11) y el sistema hoy es claro. No hay tokens
    duales.
-3. **Los estados vacíos de las pantallas comerciales.** Los del alcance actual se auditaron el
+4. **Los estados vacíos de las pantallas comerciales.** Los del alcance actual se auditaron el
    20-ago-2026 y están convertidos; quedan sin tocar los de caja, compras, materiales, proveedores e
    inventario, que son código muerto. Cuando un hueco se convierte, la regla es que diga **de dónde
    sale** lo que falta, no sólo que no hay nada.
-4. **Seis `window.confirm()` sin convertir.** Cuatro son del módulo comercial (código muerto).
+5. **Seis `window.confirm()` sin convertir.** Cuatro son del módulo comercial (código muerto).
    Uno —deshacer, en el detalle de solicitud— vive dentro de un modal, y ahí corresponde
    confirmación en línea, no un diálogo apilado. El de `configuracion/layout` es un guard de
    navegación, otra forma.
 
-5. **Nada de esto tiene test.** Un cambio de token no rompe ningún test porque no hay ninguno que
+6. **Nada de esto tiene test.** Un cambio de token no rompe ningún test porque no hay ninguno que
    mire la interfaz. La red hoy es el `next build`, el typecheck y el guard —y ninguno de los tres
    se entera de que una clase inventada no pinta nada—. Lo que sí funciona, y conviene repetir
    después de cualquier barrido: sacar del código todas las utilidades de token y comprobar una por
    una que existan en el CSS compilado. Hecho el 20-ago-2026 sobre las 105 que había, todas existen.
 
-6. **El estado de error de los campos no tiene consumidores.** El estilo de `aria-invalid` está en
+7. **El estado de error de los campos no tiene consumidores.** El estilo de `aria-invalid` está en
    la clase base y se activa solo cuando alguien pone el atributo, pero hoy **nadie lo pone**: los
    formularios muestran un `Aviso` arriba y no marcan el campo culpable. Cuesta tres líneas y no
    estorba, así que se queda; pero mientras nada lo use, la promesa de «los campos saben fallar» es
