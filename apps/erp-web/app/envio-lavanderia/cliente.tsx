@@ -96,6 +96,16 @@ export function EnvioLavanderiaCliente({
   const totalGenerales = Object.values(generales).reduce((s, v) => s + v, 0);
   const puedeEnviar = (items.length > 0 || (tipo === 'LAV' && totalGenerales > 0)) && !pending;
 
+  // Por qué está gris el botón. Mismo criterio que el formulario del turno: un control apagado sin
+  // explicación se lee como que el sistema falló, y quien manda esta lista suele estar de pie con
+  // el teléfono en el mostrador, sin nadie a quien preguntarle.
+  const motivoBloqueo =
+    pending || puedeEnviar
+      ? null
+      : tipo === 'LAV'
+        ? 'Agrega al menos una prenda con su código, o accesorios a granel.'
+        : 'Agrega al menos una prenda con su código.';
+
   function enviar() {
     setError('');
     setOk('');
@@ -282,9 +292,25 @@ export function EnvioLavanderiaCliente({
           </div>
 
           {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
-          {ok && <p className="rounded-md bg-exito-soft px-3 py-2 text-sm text-exito-deep">{ok}</p>}
+          {motivoBloqueo && (
+            <p id="motivo-envio-lav" className="text-center text-xs font-medium text-aviso-deep">
+              {motivoBloqueo}
+            </p>
+          )}
+          {/* El acierto también se anuncia. Antes era un parrafo mudo: con lector de pantalla la
+              lista se enviaba y no pasaba nada audible, que es indistinguible de que fallara.
+              `Aviso` lo marca como role="status" — informa sin interrumpir, que es lo que
+              corresponde a algo que salió bien. */}
+          {ok && <Aviso tono="exito" className="text-sm">{ok}</Aviso>}
 
-          <Button type="button" onClick={enviar} disabled={!puedeEnviar} pending={pending} className="w-full justify-center py-2.5">
+          <Button
+            type="button"
+            onClick={enviar}
+            disabled={!puedeEnviar}
+            pending={pending}
+            aria-describedby={motivoBloqueo ? 'motivo-envio-lav' : undefined}
+            className="w-full justify-center py-2.5"
+          >
             {!pending && <Send className="h-4 w-4" strokeWidth={2} />}
             {pending ? 'Enviando…' : `Enviar lista${items.length ? ` (${items.length} prenda(s))` : ''}`}
           </Button>

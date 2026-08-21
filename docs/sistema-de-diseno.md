@@ -249,6 +249,36 @@ eso se lee como lentitud aunque la consulta tarde lo mismo.
 en `[id]/`, así que si falla Pagos siguen en pantalla la cabecera, el período y las pestañas, y se
 puede pasar a Asistencias sin rehacer el camino.
 
+### El resultado de una operación
+
+Tres reglas, y la tercera es la que más se olvida.
+
+1. **El error interrumpe** (`role="alert"`, que es lo que trae `Aviso` con `tono="error"`).
+2. **El acierto informa** (`role="status"`). Sin eso, con lector de pantalla la lista se envía y no
+   pasa nada audible, que es indistinguible de que hubiera fallado.
+3. **No todo acierto necesita una caja.** Una confirmación al lado del botón que la provocó puede
+   ser una línea con un check —`role="status"` y nada más—. Anunciar todo con el mismo peso enseña
+   a ignorarlo, y entonces el aviso que sí importaba tampoco se lee.
+
+### Un control deshabilitado dice por qué
+
+Un botón gris sin explicación se lee como que el sistema falló. Y el ERP se usa de pie y con el
+teléfono, sin nadie a quien preguntarle.
+
+El patrón es siempre el mismo, y está en las cuatro pantallas de envío —reporte del turno, Valores
+360°, envío a lavandería y nueva solicitud—:
+
+```tsx
+const motivoBloqueo = !turno ? 'Elige el turno para poder enviar.' : null;
+…
+<span id="motivo-envio">{motivoBloqueo ?? 'Se guarda automáticamente.'}</span>
+<Button disabled={!puedeEnviar} aria-describedby="motivo-envio">Enviar</Button>
+```
+
+Dos detalles que ya costaron: el motivo se calcula **de verdad** —no un solo caso de los cuatro
+posibles— y **se ve en el celular**. En el formulario del turno estaba con `hidden sm:inline`, así
+que justo donde más falta hacía era donde no aparecía.
+
 ---
 
 ## 7. Escritura

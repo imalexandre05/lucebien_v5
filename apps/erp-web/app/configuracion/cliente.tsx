@@ -311,7 +311,10 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
         </p>
       )}
       {ok && (
-        <p className="flex animate-fade items-center gap-1.5 text-sm text-exito-deep">
+        // `role="status"` y no un Aviso con caja: el acierto tiene que anunciarse —sin eso, con
+        // lector de pantalla se guarda y no pasa nada audible— pero una confirmación al lado del
+        // propio botón no necesita gritar. Anunciar todo con el mismo peso enseña a ignorarlo.
+        <p role="status" className="flex animate-fade items-center gap-1.5 text-sm text-exito-deep">
           <Check className="h-4 w-4" strokeWidth={2.5} /> Cambios guardados.
         </p>
       )}

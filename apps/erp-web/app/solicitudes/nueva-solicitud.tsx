@@ -386,7 +386,16 @@ export function NuevaSolicitudModal({
               <FilaArticulo key={row.key} row={row} grupos={grupos} onChange={(p) => actualizar(row.key, p)} onRemove={() => quitar(row.key)} />
             ),
           )}
-          {items.length === 0 && <p className="rounded-md border border-dashed border-line px-3 py-6 text-center text-sm text-muted">Agrega una prenda o un artículo.</p>}
+          {items.length === 0 && (
+            // El mismo texto que explica el hueco explica el botón gris: se le pone id y el botón
+            // lo referencia, en vez de repetirlo en dos lugares que después se desincronizan.
+            <p
+              id="motivo-solicitud"
+              className="rounded-md border border-dashed border-line px-3 py-6 text-center text-sm text-muted"
+            >
+              Agrega una prenda o un artículo para poder enviar la solicitud.
+            </p>
+          )}
         </div>
 
         {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
@@ -395,7 +404,13 @@ export function NuevaSolicitudModal({
         <button type="button" onClick={cerrar} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
           Cancelar
         </button>
-        <Button type="button" onClick={enviar} pending={pending} disabled={items.length === 0}>
+        <Button
+          type="button"
+          onClick={enviar}
+          pending={pending}
+          disabled={items.length === 0}
+          aria-describedby={items.length === 0 ? 'motivo-solicitud' : undefined}
+        >
           {pending ? 'Enviando…' : 'Enviar solicitud'}
         </Button>
       </ModalFooter>
