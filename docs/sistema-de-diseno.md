@@ -204,8 +204,8 @@ nacieron de encontrar la misma pieza copiada en nueve pantallas.
 | `Badge` | Estado en una palabra. Tonos `navy` `gold` `green` `amber` `red` `info` `gray` |
 | `StatBox` | Tile de resumen. `tone` acepta un **nombre** (`navy`, `gold`, `exito`, `aviso`, `error`, `info`, `neutro`) |
 | `Button` | Variantes `primary` `gold` `outline` `ghost`, con `pending` que deshabilita y pone spinner |
-| `Input` · `Select` · `Textarea` · `Label` | Campos. El error se pinta desde `aria-invalid` |
-| `Field` | Etiqueta + control + error, atados con `id` y `aria-describedby` generados una vez |
+| `Input` · `Select` · `Textarea` · `Label` | Campos. El error se pinta desde `aria-invalid`; `Label` acepta `required` |
+| `LabelGrupo` | El título de un **grupo** de controles. No es un `<label>`: no promete una relación que no existe |
 | `Aviso` | El mensaje de una operación. `tono` `error` `aviso` `exito` `info` |
 | `EmptyState` | El hueco con nombre: ícono, título y qué hacer |
 | `Skeleton` · `SkeletonStat` · `SkeletonCard` · `SkeletonPagina` | Siluetas de carga |
@@ -213,15 +213,19 @@ nacieron de encontrar la misma pieza copiada en nueve pantallas.
 
 ### Detalles que no son obvios
 
-**`Field` vive en su propio archivo** (`field.tsx`, cliente) y no en `form.tsx`. Usa `useId`, y
-`form.tsx` lo importan tres páginas de servidor: mezclarlos las arrastraría al bundle del navegador.
-Consecuencia: `children` de `Field` es una función, y una función no cruza de servidor a cliente. En
-un formulario de servidor van `Label` e `Input` sueltos.
+**Hubo un `Field`, y se borró el mismo día.** Envolvía etiqueta, control y error atándolos con un
+`id` y un `aria-describedby` generados una vez. La auditoría mostró que no tenía **ni un** call site,
+y la razón no era que faltara adoptarlo: los formularios del ERP llevan **un** error de nivel
+formulario, no uno por campo, y en toda la aplicación hay **una** sola ayuda debajo de un campo. No
+había demanda, así que no había pieza — dejarla habría sido código muerto documentado, que es peor
+que código muerto a secas.
 
-> **`Field` todavía no tiene ni un call site** (auditado el 20-ago-2026). Los formularios del ERP
-> llevan **un** error de nivel formulario, no uno por campo, así que ninguno lo necesitaba tal como
-> está escrito hoy. Queda como la pieza que debe usar el primer formulario que sí valide campo por
-> campo; si dentro de unas semanas sigue sin usarse, conviene borrarla en vez de dejarla envejecer.
+Si algún día un formulario valida campo por campo, vuelve. Está en el historial.
+
+**`LabelGrupo` no es un `<label>`, y ahí está el punto.** Un `<label>` sin `htmlFor` y sin control
+adentro no rotula nada: se anuncia suelto o se ignora, y la persona escucha el campo sin saber de
+qué es. Pasaba en tres lugares de Contratos que titulan un widget compuesto o una sección entera. Al
+grupo lo nombra su propio `aria-label`, que es donde el lector sí lo busca.
 
 **`Aviso` sólo interrumpe cuando es un error** (`role="alert"`); el resto es `role="status"`.
 Anunciar todo con la misma urgencia enseña a ignorar los avisos.
@@ -277,8 +281,8 @@ Es parte del diseño, no un acabado.
    después de cualquier barrido: sacar del código todas las utilidades de token y comprobar una por
    una que existan en el CSS compilado. Hecho el 20-ago-2026 sobre las 105 que había, todas existen.
 
-5. **`<Label>` usado como título de grupo.** En `sueldos/acuerdos` hay tres —«Persona», «Modalidad
-   de pago», «Horario contratado»— que no rotulan un control sino un widget compuesto o una sección
-   entera, así que no pueden llevar `htmlFor`. El grupo en sí sí está nombrado (`ariaLabel` en
-   `OpcionBotones`), pero un `<label>` suelto sin destino se anuncia raro. Corresponde un `<span>`
-   con el mismo estilo, no un `<label>`.
+5. **El estado de error de los campos no tiene consumidores.** El estilo de `aria-invalid` está en
+   la clase base y se activa solo cuando alguien pone el atributo, pero hoy **nadie lo pone**: los
+   formularios muestran un `Aviso` arriba y no marcan el campo culpable. Cuesta tres líneas y no
+   estorba, así que se queda; pero mientras nada lo use, la promesa de «los campos saben fallar» es
+   sólo la mitad. `required` sí tiene tres usos, en Contratos.

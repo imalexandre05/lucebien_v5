@@ -1,4 +1,5 @@
 import type {
+  HTMLAttributes,
   InputHTMLAttributes,
   SelectHTMLAttributes,
   LabelHTMLAttributes,
@@ -53,6 +54,21 @@ export const Label = ({
       </span>
     )}
   </label>
+);
+
+/**
+ * El título de un GRUPO de controles: un picker compuesto, un radiogroup, una sección de campos.
+ *
+ * POR QUÉ NO ALCANZA CON `Label`. Un `<label>` sin `htmlFor` y sin control adentro no rotula nada:
+ * el lector de pantalla lo anuncia suelto o lo ignora, y la persona escucha el campo sin saber de
+ * qué es. Pasaba en tres lugares de Contratos —«Persona», «Modalidad de pago», «Horario
+ * contratado»—, que no rotulan un control sino un widget entero.
+ *
+ * Se ve igual que `Label`. Lo que cambia es que no promete una relación que no existe: al grupo lo
+ * nombra su propio `aria-label`, que es donde el lector sí lo busca.
+ */
+export const LabelGrupo = ({ className, ...p }: HTMLAttributes<HTMLSpanElement>) => (
+  <span className={cn('mb-1 block text-xs font-medium text-muted', className)} {...p} />
 );
 
 /**

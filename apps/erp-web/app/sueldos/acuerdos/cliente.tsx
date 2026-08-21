@@ -15,7 +15,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { EmptyState } from '../../../components/ui/empty-state';
-import { Input, Label, Select } from '../../../components/ui/form';
+import { Input, Label, Select, LabelGrupo } from '../../../components/ui/form';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { OpcionBotones, type Opcion } from '../../../components/ui/opcion-botones';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
@@ -332,7 +332,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
       >
         <ModalBody className="space-y-6">
           <div>
-            <Label>Persona</Label>
+            <LabelGrupo>Persona</LabelGrupo>
             <PersonaPicker
               empleados={empleados}
               selected={b.empleadoId ? [b.empleadoId] : []}
@@ -344,7 +344,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label htmlFor="desde">Desde</Label>
+              <Label htmlFor="desde" required>Desde</Label>
               <Input
                 id="desde"
                 type="date"
@@ -353,7 +353,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
               />
             </div>
             <div>
-              <Label htmlFor="hasta">Hasta</Label>
+              <Label htmlFor="hasta" required>Hasta</Label>
               <Input
                 id="hasta"
                 type="date"
@@ -364,7 +364,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
           </div>
 
           <div>
-            <Label>Modalidad de pago</Label>
+            <LabelGrupo>Modalidad de pago</LabelGrupo>
             <OpcionBotones
               opciones={OPC_MODALIDAD}
               value={b.modalidad}
@@ -375,7 +375,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
 
           {/* ── Horario semanal ─────────────────────────────────────────────────────────── */}
           <div>
-            <Label>Horario contratado</Label>
+            <LabelGrupo>Horario contratado</LabelGrupo>
             <p className="mb-2 text-xs text-muted">
               El horario real de LuceBien es 09:00–13:00 y 13:00–20:00, contiguo. Se cargan los dos
               turnos, no uno solo de 09:00 a 20:00: dos turnos que se pisan inflan las horas y
@@ -425,7 +425,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
           {/* ── Sueldo ──────────────────────────────────────────────────────────────────── */}
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <Label htmlFor="sueldo">Sueldo pactado del periodo</Label>
+              <Label htmlFor="sueldo" required>Sueldo pactado del periodo</Label>
               <Input
                 id="sueldo"
                 type="number"
