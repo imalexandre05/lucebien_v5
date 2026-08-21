@@ -49,7 +49,8 @@ ahí** — correrlo desde otra raíz rompe el alcance.
 | `apps/erp-web/lib/*-repo.ts` | Acceso a datos. Cada repo envuelve una tabla o RPC | Activo | Sí |
 | `apps/erp-web/app/` | Pantallas (Next.js App Router) | Activo | Sí |
 | `server.js`, `routes/`, `public/js/` | Sistema viejo Express + SQLite. **Es el que la gente usa hoy** | Congelado | No, salvo pedido explícito |
-| `/caja` `/pedidos` `/clientes` `/inventario` `/finanzas` `/estadisticas` `/proveedores` `/materiales` `/compras` | Módulo comercial. **Fuera del menú desde el 20-ago-2026**: las rutas siguen vivas pero no se navegan | **Código muerto** — fuera de alcance | No |
+| `/caja` `/pedidos` `/clientes` `/finanzas` `/estadisticas` `/proveedores` `/materiales` `/compras` | Módulo comercial. **Fuera del menú desde el 20-ago-2026**: las rutas siguen vivas pero no se navegan | **Código muerto** — fuera de alcance | No |
+| `/inventario` | Excepción: se usa como herramienta de almacén hasta que el otro sistema esté conectado (21-ago-2026). Vive en «Interno» | En uso | Sólo lo que haga falta para que siga funcionando |
 
 **Principio de capas:** `core` no importa del `adapter`. El `adapter` sí importa del `core`.
 La UI consume ambos.

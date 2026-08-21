@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Users, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, Receipt, UsersRound, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Package, Users, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, Receipt, UsersRound, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -36,6 +36,12 @@ const NAV: { section: string; items: Item[] }[] = [
       // MODULOS_SOLO_ALMACEN) a propósito — el plan pide que se vea en AMBOS perfiles de sede.
       { label: 'Solicitudes', href: '/solicitudes', icon: PackagePlus, modulo: 'solicitudes' },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt, modulo: 'pipeline' },
+      // INVENTARIO SE QUEDA, aunque el resto de lo comercial salió del menú el 20-ago-2026.
+      // Confirmado por Alexander el 21-ago: conectar el otro sistema va a tomar un tiempo y
+      // mientras tanto el equipo tiene que poder trabajar con esto. Vive en «Interno» y no en una
+      // sección comercial propia porque acá se usa como herramienta de almacén —dónde está cada
+      // prenda— y no como inventario de venta.
+      { label: 'Inventario', href: '/inventario', icon: Package, modulo: 'inventario' },
       // Módulo portado del sistema viejo (routes/lavanderia.js): lo usan las TIENDAS para mandar
       // ternos sucios + accesorios a granel al pipeline. En MODULOS_SOLO_POS (@scilb/core) — no
       // aparece en sedes de perfil 'almacen'.
