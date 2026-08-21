@@ -21,7 +21,22 @@ const fieldCls =
 
 const GRID = 5;
 const TIPOS = ['mueble', 'maniqui', 'vitrina', 'espejo', 'riel', 'silla', 'equipo', 'area'];
-const SWATCHES = ['#eab308', '#facc15', '#2563eb', '#60a5fa', '#94a3b8', '#16a34a'];
+// Los colores que se le ofrecen al administrador para pintar una zona del lienzo.
+//
+// Van en hexadecimal porque terminan guardados en la base y dibujados con `style`, no con clases:
+// el guard de diseño no los ve. Eran seis amarillos, azules y grises por defecto de Tailwind —la
+// paleta que el sistema dejó de usar— colados por esa puerta.
+//
+// Ahora salen de los tokens. Las zonas ya pintadas conservan su color: lo guardado es un valor, no
+// una referencia, así que cambiar esta lista no repinta nada de lo que ya existe.
+const SWATCHES = [
+  '#b8a515', // gold
+  '#d4bf1e', // gold-soft
+  '#2e3e6e', // navy
+  '#2f7f88', // cat-mar
+  '#6f5aa8', // cat-lila
+  '#b5643f', // cat-arcilla
+];
 const TIPO_LABEL: Record<string, string> = {
   mueble: 'Mueble / mostrador',
   maniqui: 'Maniquí',
@@ -198,7 +213,7 @@ export function LayoutEditor({
       posY: snap(LIENZO_H / 2 - 25),
       ancho: 80,
       alto: 50,
-      color: '#eab308',
+      color: '#b8a515', // gold: el color con el que nace una zona nueva
       forma: 'rect',
       nivel: 'piso',
       sobreCod: '',
@@ -231,7 +246,9 @@ export function LayoutEditor({
   };
 
   function cambiarTurno(z: ZonaEdit, turno: string) {
-    const color = turno === 'mañana' ? '#eab308' : turno === 'tarde' ? '#2563eb' : z.color;
+    // Mañana en oro y tarde en mar: dos tokens del sistema que se distinguen de un vistazo sobre
+    // el lienzo, que es para lo único que sirve este color.
+    const color = turno === 'mañana' ? '#b8a515' : turno === 'tarde' ? '#2f7f88' : z.color;
     set(z.key, { turno, color });
   }
 
@@ -367,7 +384,7 @@ export function LayoutEditor({
             onClick={(e) => {
               if (e.target === e.currentTarget) setSelKey(null);
             }}
-            className="relative w-full touch-none overflow-hidden rounded-xl border border-line bg-[#f8fafc]"
+            className="relative w-full touch-none overflow-hidden rounded-xl border border-line bg-paper"
             style={{
               aspectRatio: `${LIENZO_W} / ${LIENZO_H}`,
               backgroundImage:
@@ -398,8 +415,14 @@ export function LayoutEditor({
                     width: `${(z.ancho / LIENZO_W) * 100}%`,
                     height: `${(z.alto / LIENZO_H) * 100}%`,
                     ...formaZona(z),
-                    background: esArea ? 'rgba(148,163,184,.15)' : z.color,
-                    border: esArea ? '1.5px dashed #94a3b8' : esSel ? '2px solid #b8a515' : '1px solid rgba(0,0,0,.1)',
+                    // Un área es el suelo de la zona, no un objeto: se dibuja con el gris del
+                    // sistema y no con el slate de Tailwind.
+                    background: esArea ? 'rgba(128,122,108,.15)' : z.color,
+                    border: esArea
+                      ? '1.5px dashed #807a6c'
+                      : esSel
+                        ? '2px solid #b8a515'
+                        : '1px solid rgba(32,40,63,.12)',
                     opacity: activa ? 1 : 0.25,
                     boxShadow: esSel ? '0 0 0 3px rgba(184,165,21,.25)' : undefined,
                     zIndex: esSel ? 20 : 4,

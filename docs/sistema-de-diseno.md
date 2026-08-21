@@ -111,6 +111,24 @@ anterior no sea una letra, que es lo que de verdad hace falta.
 Se probó en las dos direcciones —con una violación inyectada falla y sale con código 1, sin ella
 pasa— y conviene volver a probarla así cada vez que se la toque.
 
+### La puerta que el guard no mira: los hexadecimales
+
+Hay tres lugares donde un color **no puede** ser una clase de Tailwind, y son justo los que se le
+escapan a la regla `diseno`:
+
+| Dónde | Por qué es hexadecimal |
+|---|---|
+| Las nueve columnas del pipeline (`app/pipeline/tablero.tsx`) | Cada una se tinta al 8% con `style`, y Tailwind no genera una opacidad calculada por columna |
+| Los colores de zona del editor de layout (`app/configuracion/layout/editor.tsx`) | Se guardan en la base y se dibujan con `style` |
+| Los colores de tela (`Negro`, `Azul Barcelona`, `Verde petróleo`…) | **No son diseño**: son el color real de una prenda. Se dejan como están |
+
+Los dos primeros eran, hasta el 20-ago-2026, la paleta por defecto de Tailwind escrita en
+hexadecimal — es decir, exactamente lo que el sistema dejó de usar, colado por la única puerta que
+la máquina no vigila. Hoy salen de los tokens y llevan el nombre del token en un comentario al lado.
+
+**Si agregas un color en `style`, ponle el nombre del token al lado.** Es lo único que va a avisarle
+a la próxima persona de que ese valor no es libre.
+
 ---
 
 ## 3. Movimiento

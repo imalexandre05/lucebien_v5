@@ -60,17 +60,33 @@ const COL_MAP: Record<string, string> = {
   Otros: '#aaaaaa',
 };
 
+// LOS COLORES DE LAS NUEVE ETAPAS.
+//
+// Van como hexadecimal y no como clase porque se usan con opacidad calculada en un `style`
+// (`${tint}14`), que Tailwind no puede generar: cada columna necesita su propio tinte al 8%.
+//
+// Eso los deja FUERA del alcance del guard de diseño, que sólo ve nombres de clase. Por eso
+// importa que salgan de la misma paleta a mano: hasta el 20-ago-2026 eran siete azules, violetas
+// y naranjas por defecto de Tailwind escritos en hexadecimal, es decir la paleta que el sistema
+// dejó de usar, colada por la única puerta que el guard no mira.
+//
+// El orden cuenta una historia y los colores la acompañan: llega sin trabajar (neutro), pasa por
+// el agua, el hilo y el taller, se aprueba, se dora, y sale. Las dos parejas de trabajo parecido
+// —refacción con compostura, lavado con planchado— comparten familia a propósito.
+//
+// UNA EXCEPCIÓN, Y ES DELIBERADA: control de calidad usa el verde de `exito`. En el resto del
+// sistema el verde significa "correcto", y acá significa exactamente eso — la prenda pasó.
 type Col = { k: string; n: string; icon: LucideIcon; tint: string };
 const COLUMNAS: Col[] = [
-  { k: 'recepcion', n: 'Recepción', icon: Inbox, tint: '#64748b' },
-  { k: 'lavado', n: 'Lavado', icon: Droplets, tint: '#2563eb' },
-  { k: 'empatado', n: 'Empatado', icon: Link2, tint: '#7c3aed' },
-  { k: 'refaccion', n: 'Refacción', icon: Wrench, tint: '#d97706' },
-  { k: 'compostura', n: 'Compostura', icon: Scissors, tint: '#ea580c' },
-  { k: 'planchado', n: 'Planchado', icon: Shirt, tint: '#0891b2' },
-  { k: 'control_calidad', n: 'Control calidad', icon: BadgeCheck, tint: '#16a34a' },
-  { k: 'listo', n: 'Listo p/ envío', icon: PackageCheck, tint: '#a98f12' },
-  { k: 'enviado', n: 'Enviadas', icon: Truck, tint: '#2e3e6e' },
+  { k: 'recepcion', n: 'Recepción', icon: Inbox, tint: '#807a6c' },        // muted
+  { k: 'lavado', n: 'Lavado', icon: Droplets, tint: '#2f7f88' },           // cat-mar
+  { k: 'empatado', n: 'Empatado', icon: Link2, tint: '#6f5aa8' },          // cat-lila
+  { k: 'refaccion', n: 'Refacción', icon: Wrench, tint: '#b5643f' },       // cat-arcilla
+  { k: 'compostura', n: 'Compostura', icon: Scissors, tint: '#8a462a' },   // cat-arcilla-deep
+  { k: 'planchado', n: 'Planchado', icon: Shirt, tint: '#1e5a61' },        // cat-mar-deep
+  { k: 'control_calidad', n: 'Control calidad', icon: BadgeCheck, tint: '#2d9e6b' }, // exito
+  { k: 'listo', n: 'Listo p/ envío', icon: PackageCheck, tint: '#b8a515' },// gold
+  { k: 'enviado', n: 'Enviadas', icon: Truck, tint: '#2e3e6e' },           // navy
 ];
 const NOMBRE: Record<string, string> = Object.fromEntries(COLUMNAS.map((c) => [c.k, c.n]));
 
