@@ -11,7 +11,8 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
-import { campoCls } from '../../components/ui/form';
+import { Aviso, campoCls } from '../../components/ui/form';
+import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
 
 type Emp = { id: string; nombre: string };
@@ -49,6 +50,10 @@ export function IncidenciasCliente({
   const [responsable, setResponsable] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [error, setError] = useState('');
+  // Un error de la TABLA no puede mostrarse dentro del formulario: cuando se elimina una fila el
+  // formulario suele estar cerrado, así que el mensaje se renderizaría en un bloque invisible —
+  // peor que el alert() nativo que había, porque al menos aquél se veía.
+  const [errorAccion, setErrorAccion] = useState('');
   const [pending, startTransition] = useTransition();
 
   // Filtros.
@@ -125,14 +130,17 @@ export function IncidenciasCliente({
   function eliminar(id: string) {
     if (!confirm('¿Eliminar esta incidencia?')) return;
     startTransition(async () => {
+      setErrorAccion('');
       const r = await accionEliminarIncidencia(id);
       if (r.ok) router.refresh();
-      else alert(r.error);
+      else setErrorAccion(r.error ?? 'No se pudo eliminar la incidencia.');
     });
   }
 
   return (
     <div className="space-y-4">
+      {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
+
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
         <StatBox index={0} label="Incidencias" valor={resumen.total} tone="navy" />
@@ -241,10 +249,23 @@ export function IncidenciasCliente({
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción</label>
               <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Qué pasó…" className={cn(fieldCls, 'w-full')} />
             </div>
-            {error && <p className="text-sm text-error">{error}</p>}
-            <Button type="button" onClick={registrar} disabled={!tipo} pending={pending}>
-              {pending ? 'Registrando…' : 'Registrar incidencia'}
-            </Button>
+            {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                onClick={registrar}
+                disabled={!tipo}
+                pending={pending}
+                aria-describedby={!tipo ? 'motivo-incidencia' : undefined}
+              >
+                {pending ? 'Registrando…' : 'Registrar incidencia'}
+              </Button>
+              {!tipo && (
+                <span id="motivo-incidencia" className="text-xs font-medium text-aviso-deep">
+                  Elige el tipo de incidencia para poder registrarla.
+                </span>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -301,8 +322,18 @@ export function IncidenciasCliente({
               ))}
               {filtradas.length === 0 && (
                 <TR>
-                  <TD className="px-5 py-8 text-center text-muted" colSpan={esAdmin ? 8 : 7}>
-                    {incidencias.length === 0 ? 'Sin incidencias registradas.' : 'Ninguna coincide con el filtro.'}
+                  <TD className="p-0" colSpan={esAdmin ? 8 : 7}>
+                    {incidencias.length === 0 ? (
+                      <EmptyState icon={AlertTriangle} titulo="Sin incidencias registradas" compacto>
+                        Una incidencia deja constancia de algo que salió mal y descuenta puntos de la
+                        evaluación del responsable. Se registran con el botón de arriba.
+                      </EmptyState>
+                    ) : (
+                      <EmptyState icon={Filter} titulo="Ninguna coincide con el filtro" compacto>
+                        Hay {incidencias.length} registradas en total. Prueba con otro nivel u otro
+                        tipo.
+                      </EmptyState>
+                    )}
                   </TD>
                 </TR>
               )}

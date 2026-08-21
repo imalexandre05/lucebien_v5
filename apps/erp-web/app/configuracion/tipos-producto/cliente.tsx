@@ -29,6 +29,9 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState('');
+  // Un error de la LISTA no cabe dentro del formulario: cuando se dispara, ese bloque suele
+  // estar cerrado y el mensaje se renderizaria invisible. Va arriba de todo.
+  const [errorAccion, setErrorAccion] = useState('');
   const [modal, setModal] = useState<ModalState>(null);
   const [eliminar, setEliminar] = useState<ProductoTipo | null>(null);
   const [form, setForm] = useState<Form>(VACIO);
@@ -78,7 +81,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
     startTransition(async () => {
       const r = await accionActivarTipoProducto(t.cod, !t.activo);
       if (r.ok) router.refresh();
-      else alert(r.error);
+      else setErrorAccion(r.error ?? 'No se pudo cambiar el estado del tipo.');
     });
   }
 
@@ -97,6 +100,8 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
 
   return (
     <div className="space-y-4">
+      {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
+
       <Card>
         <CardContent className="flex items-center justify-between py-4">
           <p className="text-sm text-muted">

@@ -13,7 +13,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
-import { campoCls } from '../../components/ui/form';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
 
@@ -58,6 +58,9 @@ export function AsistenciasCliente({
   const [tardanza, setTardanza] = useState(0);
   const [obs, setObs] = useState('');
   const [error, setError] = useState('');
+  // Un error de la LISTA no cabe dentro del formulario: cuando se dispara, ese bloque suele
+  // estar cerrado y el mensaje se renderizaria invisible. Va arriba de todo.
+  const [errorAccion, setErrorAccion] = useState('');
   const [pending, startTransition] = useTransition();
 
   // Filtros.
@@ -123,12 +126,14 @@ export function AsistenciasCliente({
     startTransition(async () => {
       const r = await accionEliminarAsistencia(id);
       if (r.ok) router.refresh();
-      else alert(r.error);
+      else setErrorAccion(r.error ?? 'No se pudo eliminar el registro de asistencia.');
     });
   }
 
   return (
     <div className="space-y-4">
+      {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
+
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatBox index={0} label="Registros" valor={resumen.total} tone="navy" />

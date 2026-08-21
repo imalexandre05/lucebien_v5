@@ -43,6 +43,9 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState('');
+  // Un error de la LISTA no cabe dentro del formulario: cuando se dispara, ese bloque suele
+  // estar cerrado y el mensaje se renderizaria invisible. Va arriba de todo.
+  const [errorAccion, setErrorAccion] = useState('');
   const [modal, setModal] = useState<ModalState>(null);
   const [eliminar, setEliminar] = useState<TipoIncidenciaAdmin | null>(null);
   const [form, setForm] = useState<TipoIncidenciaInput>(VACIO);
@@ -81,7 +84,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
     startTransition(async () => {
       const r = await accionActivarTipoIncidencia(t.id, !t.activo);
       if (r.ok) router.refresh();
-      else alert(r.error);
+      else setErrorAccion(r.error ?? 'No se pudo cambiar el estado del tipo.');
     });
   }
 
@@ -100,6 +103,8 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
 
   return (
     <div className="space-y-4">
+      {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
+
       <Card>
         <CardContent className="flex items-center justify-between py-4">
           <p className="text-sm text-muted">

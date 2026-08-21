@@ -133,18 +133,25 @@ export function EmpleadosCliente({
     [empleados],
   );
 
+  // Un error de la LISTA no cabe dentro de los modales de edición: cuando se suspende a alguien
+  // desde la tabla, esos bloques están cerrados y el mensaje quedaría invisible. Va arriba de todo.
+  const [errorAccion, setErrorAccion] = useState('');
+
   function toggleEstado(e: EmpleadoAdmin) {
     const verbo = e.activo ? 'Suspender' : 'Reactivar';
     if (!confirm(`¿${verbo} a ${e.nombre}?`)) return;
     startTransition(async () => {
+      setErrorAccion('');
       const r = await accionEstadoEmpleado(e.id, !e.activo);
-      if (!r.ok) alert(r.error);
+      if (!r.ok) setErrorAccion(r.error ?? `No se pudo ${verbo.toLowerCase()} a ${e.nombre}.`);
       else router.refresh();
     });
   }
 
   return (
     <div className="space-y-4">
+      {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
+
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatBox index={0} label="Colaboradores" valor={resumen.total} tone="navy" />
