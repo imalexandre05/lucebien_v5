@@ -60,6 +60,7 @@
 |---|---|
 | [manual-de-marca.md](manual-de-marca.md) | Colores, tipografías y criterio estético. Navy `#2e3e6e` · gold `#b8a515` |
 | [sistema-de-diseno.md](sistema-de-diseno.md) | **Cómo viven la marca y el criterio dentro del código**: los tokens semánticos, el presupuesto de movimiento, el área tocable de 44px y los componentes compartidos. Se lee antes de pintar cualquier cosa: sin esto el camino corto es escribir `bg-emerald-600` y agregar el cuarto verde del sistema |
+| [pendiente-frontend-prod.md](pendiente-frontend-prod.md) | **Qué falta para mandar el ERP a producción**: los dos bugs del Modal que hay que confirmar en pantalla, el responsive a 360px, el «menos escribir y más presionar», y los flujos que hay que recorrer a mano. Escrito al cerrar la sesión del 21-ago-2026 |
 | [brief-fable-ui.md](brief-fable-ui.md) | Elevación visual del ERP: dashboard, shell móvil, login, estados |
 | [prompts-design/](prompts-design/) | 8 documentos: identidad, color y tipografía, componentes, materiales físicos, redes, uniformes |
 
