@@ -12,11 +12,15 @@ Editor** (barra izquierda) → **New query** → pegar → **Run** (o Ctrl+Enter
 | 1 | `1-probar-0079.sql` | Prueba la corrección del huellero contra los datos reales | **No.** Termina en rojo a propósito |
 | 2 | `2-aplicar-0079.sql` | Aplica la corrección | Sí: reemplaza una función y agrega una fila de config |
 | 3 | `3-rederivar-huellero.sql` | Recupera los días perdidos | **Sí, escribe asistencias.** Va bloque por bloque |
-| 4 | `4-probar-0077.sql` | Prueba la hora fuera de contrato | No |
+| 4 | `4-probar-0077-y-0076.sql` | Prueba la 0077 **y la 0076 juntas**. Su caso 1 falla a propósito mientras la 0076 no esté aplicada — ver el encabezado del archivo | No |
 | 5 | `5-aplicar-0077.sql` | La aplica. **No cambia ningún monto** | Sí |
 | 6 | `6-probar-0078.sql` | Prueba que las pausas dejen de pagarse | No |
 | 7 | `7-aplicar-0078.sql` | La aplica. **Baja lo que cobra quien tenga huecos reales** | Sí |
 | 8 | `8-aplicar-0076-CUIDADO.sql` | La meta de la semana larga. **Mueve hasta S/76,40 por persona por mes** | Sí. Leer el encabezado antes |
+
+**El caso 1 del archivo 4 va a decir `FALLA` hasta que apliques la 0076.** Es el archivo de
+prueba compartido de las dos migraciones, y ese caso comprueba justamente la que dejaste para el
+final. Los casos 2 al 6 son los de la 0077.
 
 El 7 tiene que ir **después** del 5: la 0078 rehace una restricción que necesita el parámetro que
 agrega la 0077.

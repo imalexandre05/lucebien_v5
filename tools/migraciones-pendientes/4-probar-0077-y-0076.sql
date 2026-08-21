@@ -1,5 +1,17 @@
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
---  PROBAR 0077 · hora fuera de contrato — NO deja nada escrito
+--  PROBAR 0076 + 0077 — NO deja nada escrito
+--
+--  OJO CON EL CASO 1. Este archivo prueba las DOS migraciones juntas: el archivo de prueba es
+--  compartido, y su primer caso comprueba que la 0076 este aplicada.
+--
+--  Mientras no apliques la 0076 vas a ver:
+--
+--      RESULTADO 1-META-SIGUE-FIJA=FALLA(true) 2=ok 3=ok 4=ok 5=ok 6=ok
+--
+--  Eso NO es un defecto: es el caso 1 diciendo la verdad sobre una decision que todavia no
+--  tomaste. Los casos 2 al 6 son los de la 0077, y son los que importan para aplicarla.
+--
+--  El caso 1 va a pasar a "ok" el dia que apliques la 0076 (archivo 8).
 --
 --  Pegá TODO este archivo en el editor SQL de Supabase y dale Run.
 --

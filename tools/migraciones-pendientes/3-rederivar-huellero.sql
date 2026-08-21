@@ -9,6 +9,11 @@
 
 -- ── BLOQUE 1: la copia de seguridad. Tarda segundos y es lo que te salva si algo sale mal. ──
 create table asistencias_respaldo_20260821 as select * from asistencias;
+-- Es una copia de las horas de las 18 personas: sin RLS, cualquiera con la clave publica del
+-- proyecto podria leerla. Activada y sin politicas, no la lee nadie por la API; desde el editor SQL
+-- se sigue viendo. (Supabase avisa de esto al crear la tabla: la respuesta correcta es
+-- "Run and enable RLS".)
+alter table asistencias_respaldo_20260821 enable row level security;
 
 -- ── BLOQUE 2: cómo está AHORA. Anotá estos números antes de seguir. ────────────────────────
 select condicion, count(*) as filas, count(*) filter (where hora_salida is null) as sin_salida
