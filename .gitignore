@@ -63,3 +63,7 @@ kg.html
 # Quedan en disco para que el informe siguiente sepa qué se dijo y no lo repita.
 tools/informe-diario/informe.json
 tools/informe-diario/informe-*.json
+
+# Empaquetados del colector: pesan megas y se regeneran desde tools/colector-huellero/.
+# El 21-ago-2026 uno de 1,9 MB se colo en un commit por un `git add -A tools`.
+*.rar
