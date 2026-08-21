@@ -12,6 +12,7 @@ import {
   type EstadoPeriodo,
 } from '../../lib/colaboradores-pasos';
 import { queryPeriodo, type Periodo } from '../../lib/periodo';
+import { campoCls } from '../../components/ui/form';
 import { BarraPeriodo } from '../../components/colaboradores/barra-periodo';
 import { Avatar } from '../../components/colaboradores/avatar';
 import { HiloPago } from '../../components/colaboradores/hilo-pago';
@@ -94,7 +95,8 @@ export function ListaColaboradores({
             onChange={(e) => setBusqueda(e.target.value)}
             placeholder="Buscar por nombre o sede"
             aria-label="Buscar colaborador"
-            className="w-full rounded-md border border-line bg-white py-1.5 pl-8 pr-3 text-sm text-navy outline-none transition-colors duration-150 placeholder:text-muted focus:border-gold"
+            // pl-8 deja lugar a la lupa; el resto lo pone el sistema.
+            className={cn(campoCls, 'w-full pl-8')}
           />
         </div>
         <div className="flex items-center gap-1" role="group" aria-label="Filtrar por estado">

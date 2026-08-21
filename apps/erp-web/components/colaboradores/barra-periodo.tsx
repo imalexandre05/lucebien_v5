@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CalendarRange } from 'lucide-react';
 import { calcularCiclo } from '@scilb/core';
 import { hoyPeru } from '../../lib/fechas';
+import { campoCls } from '../ui/form';
 import { diasDelPeriodo, etiquetaPeriodo, leerPeriodo, mesCalendario, type Periodo } from '../../lib/periodo';
 import { cn } from '../../lib/cn';
 
@@ -21,8 +22,9 @@ import { cn } from '../../lib/cn';
 // con `push` el botón de atrás quedaría lleno de estados intermedios que nadie eligió. El precio
 // es que atrás no deshace un cambio de período; los presets están para eso.
 
-const campo =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 font-mono text-sm text-navy outline-none transition-colors duration-150 focus:border-gold';
+// El campo del sistema, con la mono para las fechas: un rango se lee mejor con cifras de ancho
+// fijo. Todo lo demás —hover, foco, deshabilitado, error— viene de campoCls.
+const campo = cn(campoCls, 'font-mono');
 
 export function BarraPeriodo({
   fechaIngreso,

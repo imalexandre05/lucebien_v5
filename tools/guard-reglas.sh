@@ -151,6 +151,20 @@ revisar "diseno" "Diseno -- sin colores por defecto de Tailwind" \
   "Usa un token: exito/aviso/error/info para estado, cat-* para identidad, paper/line/muted/ink para gris." \
   "$hits_diseno"
 
+# -- Diseno: el estilo de campo no se vuelve a escribir a mano -------------------------------
+# Veintisiete pantallas declaraban su propio fieldCls y otras dieciseis lo escriben en linea. Cada
+# copia se queda sin lo que se le agregue al sistema: es la razon por la que el estado de error de
+# los campos no tenia consumidores. Va campoCls de components/ui/form.
+#
+# La deuda existente esta en el baseline; lo que esta regla impide es que CREZCA. Ver
+# docs/sistema-de-diseno.md.
+hits_campo=$(grep -rn "rounded-md border border-line bg-white" \
+  apps/erp-web/app apps/erp-web/components --include="*.tsx" 2>/dev/null \
+  | grep -v "apps/erp-web/components/ui/" | sin_comentarios || true)
+revisar "campo" "Diseno -- el estilo de campo sale de campoCls" \
+  "Usa campoCls de components/ui/form, con cn() para lo que de verdad cambie." \
+  "$hits_campo"
+
 # ── Números de migración únicos, MIRANDO TODAS LAS RAMAS ───────────────────────────────────
 # El número es la identidad de una migración. Mirar sólo el directorio de trabajo no alcanza: dos
 # ramas paralelas ven la misma "última" y las dos escriben la siguiente. El choque no aparece

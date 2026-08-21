@@ -7,6 +7,8 @@ import { ArrowLeft } from 'lucide-react';
 import { ROL_LABEL, type Rol } from '@scilb/core';
 import type { Colaborador } from '../../../lib/colaboradores-repo';
 import { Avatar } from '../../../components/colaboradores/avatar';
+import { campoCls } from '../../../components/ui/form';
+import { cn } from '../../../lib/cn';
 
 // La cabecera de la persona: quién es, y el cambio rápido a otra.
 //
@@ -72,7 +74,7 @@ export function CabeceraColaborador({
           value={persona.id}
           onChange={(e) => cambiar(e.target.value)}
           disabled={pendiente}
-          className="min-w-[200px] cursor-pointer rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors duration-150 focus:border-gold disabled:opacity-60"
+          className={cn(campoCls, 'min-w-[200px] cursor-pointer')}
         >
           {personas.map((p) => (
             <option key={p.id} value={p.id}>
