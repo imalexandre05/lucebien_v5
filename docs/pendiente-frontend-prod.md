@@ -96,7 +96,28 @@ Los tres casos, en orden de cuánto molestan:
 Empezar por el contrato, que es el que Alexander señaló y el que más consecuencias tiene: lo que se
 pacta ahí es lo que después se paga.
 
-### 3.4 Que los flujos cierren
+### 3.4 Botones que prometen más de lo que hacen
+
+Alexander, probando: *«no sé para qué sirve lo de nuevo parámetro»*. Es una señal, no una duda.
+
+«Nuevo parámetro» en `/configuracion` crea una fila en `config` con la clave que escribas. El
+problema es que **nada del sistema la va a leer**: cada parámetro se lee por su nombre desde el
+código, así que uno inventado a mano queda ahí sin efecto hasta que alguien escriba el código que
+lo consulte.
+
+O sea que el botón, tal como está, sirve para dejarse una nota. Tres salidas posibles, y hay que
+elegir una:
+
+1. **Explicarlo en el propio modal** — «esto crea el parámetro; para que haga algo, un programador
+   tiene que leerlo desde el código».
+2. **Cerrarlo a admin** y moverlo abajo de todo, como herramienta avanzada.
+3. **Sacarlo**, si en la práctica nadie lo va a usar.
+
+Y la pregunta general que abre, que vale para toda la pasada de flujos: **¿hay otros botones que
+prometen más de lo que hacen?** Un control que existe y no cambia nada enseña que el sistema es
+impredecible, y eso cuesta más caro que la función que falta.
+
+### 3.5 Que los flujos cierren
 
 **Esto no se puede hacer leyendo código.** Hay que recorrer cada flujo de punta a punta y encontrar
 los callejones sin salida. Alexander reportó que los hay, pero sin ejemplos concretos.
