@@ -218,6 +218,11 @@ nacieron de encontrar la misma pieza copiada en nueve pantallas.
 Consecuencia: `children` de `Field` es una función, y una función no cruza de servidor a cliente. En
 un formulario de servidor van `Label` e `Input` sueltos.
 
+> **`Field` todavía no tiene ni un call site** (auditado el 20-ago-2026). Los formularios del ERP
+> llevan **un** error de nivel formulario, no uno por campo, así que ninguno lo necesitaba tal como
+> está escrito hoy. Queda como la pieza que debe usar el primer formulario que sí valide campo por
+> campo; si dentro de unas semanas sigue sin usarse, conviene borrarla en vez de dejarla envejecer.
+
 **`Aviso` sólo interrumpe cuando es un error** (`role="alert"`); el resto es `role="status"`.
 Anunciar todo con la misma urgencia enseña a ignorar los avisos.
 
@@ -267,4 +272,13 @@ Es parte del diseño, no un acabado.
    inventario, que son código muerto. Cuando un hueco se convierte, la regla es que diga **de dónde
    sale** lo que falta, no sólo que no hay nada.
 4. **Nada de esto tiene test.** Un cambio de token no rompe ningún test porque no hay ninguno que
-   mire la interfaz. La red hoy es el `next build` y el typecheck.
+   mire la interfaz. La red hoy es el `next build`, el typecheck y el guard —y ninguno de los tres
+   se entera de que una clase inventada no pinta nada—. Lo que sí funciona, y conviene repetir
+   después de cualquier barrido: sacar del código todas las utilidades de token y comprobar una por
+   una que existan en el CSS compilado. Hecho el 20-ago-2026 sobre las 105 que había, todas existen.
+
+5. **`<Label>` usado como título de grupo.** En `sueldos/acuerdos` hay tres —«Persona», «Modalidad
+   de pago», «Horario contratado»— que no rotulan un control sino un widget compuesto o una sección
+   entera, así que no pueden llevar `htmlFor`. El grupo en sí sí está nombrado (`ariaLabel` en
+   `OpcionBotones`), pero un `<label>` suelto sin destino se anuncia raro. Corresponde un `<span>`
+   con el mismo estilo, no un `<label>`.
