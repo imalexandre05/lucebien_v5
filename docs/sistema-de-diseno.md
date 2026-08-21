@@ -272,6 +272,20 @@ Es peor que el `window.alert()` que había antes, porque el alert al menos se ve
 El patrón: un `errorAccion` propio, arriba de todo y siempre a la vista. Está en asistencias,
 incidencias, pagos, empleados y los dos catálogos de configuración.
 
+### Cuándo va un modal, y cuándo no
+
+- **Modal** = una decisión corta. Confirmar, elegir de una lista, ajustar un número. Entrás,
+  resolvés, salís.
+- **Página** = trabajo. Muchos campos, consecuencias que hay que revisar antes de guardar, algo que
+  querés poder mirar dos veces.
+
+**La señal:** si el formulario necesita scroll interno, quería ser una página. El scroll del modal
+—que existe desde el 21-ago-2026— resuelve que los botones se alcancen, no que el sitio sea el
+correcto.
+
+Los casos que hoy están del lado equivocado están anotados en
+[pendiente-frontend-prod.md](pendiente-frontend-prod.md) §3.3.
+
 ### Confirmar algo irreversible
 
 `window.confirm()` bloquea la página, no se puede escribir en el idioma ni el tono del sistema, y en

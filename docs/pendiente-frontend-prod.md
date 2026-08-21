@@ -41,9 +41,9 @@ abren pasan una arrow inline. El efecto se re-ejecutaba en cada render y termina
 **El alto.** El panel no tenía alto máximo ni scroll: un modal largo dejaba el pie con los botones
 fuera de la ventana.
 
-Cómo confirmarlo: abrir un modal con campos de texto —evaluar en `/colaboradores/[id]/evaluacion`,
-una solicitud nueva, un movimiento de sueldo— escribir una frase entera de corrido, y achicar la
-ventana hasta que el modal no entre.
+**Confirmados en pantalla por Alexander el 21-ago-2026: los dos se fueron.** La frase entra
+completa sin perder el foco, el modal deja de crecer, cabecera y pie quedan fijos, y en modo
+teléfono los botones se ven sin scrollear la página. Ya no hay que volver sobre esto.
 
 ---
 
@@ -69,7 +69,34 @@ La pieza ya existe —`OpcionBotones`— y el criterio ya está escrito en su pr
 Dónde mirar primero: todo campo de texto cuyo valor sale de un conjunto conocido. Tipos, colores,
 tallas, motivos, niveles, condiciones. Cada uno de ésos es un teclado que no hace falta abrir.
 
-### 3.3 Que los flujos cierren
+### 3.3 Un modal es para una decisión; una página es para trabajar
+
+**Probado con Alexander el 21-ago-2026.** Los dos bugs del `Modal` quedaron cerrados, y al
+verificarlos apareció algo más grande: *«para algo tan importante como contrato no debería haber
+modal, sino funcionar dentro de la misma página; sólo los parámetros que se abran en un modal»*.
+
+Tiene razón, y la regla que sale de ahí vale para todo el sistema:
+
+- **Modal** = una decisión corta. Confirmar algo, elegir de una lista, ajustar un número. Entrás,
+  resolvés, salís.
+- **Página** = trabajo. Muchos campos, consecuencias que hay que revisar antes de guardar, algo que
+  querés poder mirar dos veces. Un modal acá te deja el contexto tapado justo cuando lo necesitás.
+
+Que el modal ahora scrollee resolvió el síntoma —los botones se alcanzan— pero no la causa: **un
+formulario que necesita scroll interno es un formulario que quería ser una página.**
+
+Los tres casos, en orden de cuánto molestan:
+
+| Dónde | Qué es hoy | Qué debería ser |
+|---|---|---|
+| Contrato de sueldo (`sueldos/acuerdos`) | Modal con fechas, modalidad, sueldo, horario por día y parámetros | Página, dentro del contenedor de contratos. **Sólo los parámetros** quedan en modal |
+| Nueva solicitud (`solicitudes/nueva-solicitud`) | Modal con prendas, artículos y motivos | A revisar con el mismo criterio |
+| Evaluar (`evaluaciones`) | Modal con ocho competencias, valores, checklists y el panel de pago | A revisar: es el formulario más largo del sistema |
+
+Empezar por el contrato, que es el que Alexander señaló y el que más consecuencias tiene: lo que se
+pacta ahí es lo que después se paga.
+
+### 3.4 Que los flujos cierren
 
 **Esto no se puede hacer leyendo código.** Hay que recorrer cada flujo de punta a punta y encontrar
 los callejones sin salida. Alexander reportó que los hay, pero sin ejemplos concretos.
