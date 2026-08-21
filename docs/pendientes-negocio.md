@@ -699,6 +699,23 @@ definición no fue una pausa, así que las dos marcas son del mismo tramo y la �
 Medido sobre el histórico: 38 días afectados, 1,7 minutos de separación promedio. La diferencia
 contra la lectura alternativa está acotada por arriba al valor de la pausa mínima.
 
+### Valores 360° ya no se puede enviar a medio contestar — **confirmar con Alexander**
+
+Hasta el 20-ago-2026 los seis valores del peer review arrancaban en 3, así que abrir la ficha de un
+compañero y tocar Guardar mandaba seis treses. Dos consecuencias, y las dos llegan a la nota: se
+podía enviar sin evaluar, y un 3 puesto a propósito era indistinguible de uno que nadie tocó.
+
+Ahora el formulario arranca vacío y exige las seis respuestas.
+
+**No cambia ningún cálculo** —`notaValores360()` promedia lo que haya, igual que antes— y quitar un
+default inventado no es inventar una regla. Pero **sí cambia cuántas evaluaciones se envían**: quien
+antes despachaba una ficha de un toque ahora tiene que contestar seis. Si la participación baja, la
+nota de Valores queda con menos datos y eso también se nota en la evaluación mensual.
+
+Lo que hay que confirmar: si se prefiere exigir las seis (más señal, menos volumen) o volver a
+permitir el envío parcial. El atajo «Todos a N» sigue disponible para quien de verdad puntúa igual
+en todo.
+
 ### La liquidación dentro del módulo de colaboradores
 
 El módulo trabaja sobre un rango libre de fechas; `sueldo_liquidaciones` trabaja sobre **un contrato
