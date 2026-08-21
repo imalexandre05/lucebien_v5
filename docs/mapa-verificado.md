@@ -340,31 +340,68 @@ Los tres son nivel 3 en la matriz de rigor: exigen spec antes de tocarlos.
 
 ---
 
-## 9. El huellero, en producción desde el 18-ago-2026
+## 9. El huellero y la plantilla, al 19-ago-2026
 
-Verificado el 18-ago-2026 consultando la base, no leyendo un log.
+Verificado consultando la base, no leyendo un log.
+
+### El colector
 
 | Dato | Valor |
 |---|---|
 | Migración | `0075` aplicada: `dispositivos_huellero`, `marcas_huellero`, `huellero_mapeos`, `huellero_colectores` |
-| Colector | `tools/colector-huellero/`, corriendo en la PC del almacén (distinta de la del sistema viejo) |
-| Marcas ingeridas | 3.084, del 2-ene al 18-ago-2026, 23 identificadores, 222 días |
-| Asistencias derivadas | **0** — no hay ningún mapeo cargado todavía |
-| Autenticación | usuario propio de Supabase (`colector-almacen@lucebien.local`) registrado en `huellero_colectores`. **Sin service key** |
-| Pantalla | `/asistencias/huellero`, construida |
+| Colector | `tools/colector-huellero/`, bajo PM2 en la PC del almacén, con arranque automático |
+| Marcas | 3.084, del 2-ene al 18-ago-2026, 23 identificadores |
+| Autenticación | usuario propio (`colector-almacen@lucebien.local`) en `huellero_colectores`. **Sin service key** |
+| Asistencias derivadas | 1.059 · 881 días trabajados · 186 con entrada y sin salida |
 
-**Lo que falta para que esto llegue al sueldo:** mapear los 23 identificadores del equipo a los 18
-empleados. Sin mapeo, las marcas se guardan con `empleado_id` en `null` y no derivan ninguna
-asistencia — la cadena del sueldo no se entera de que existen.
+### La plantilla se reinició el 19-ago-2026
 
-**Antes de liquidar un periodo con datos del huellero**, la spec exige una prueba de extremo a
-extremo: comparar las horas pagadas contra las horas marcadas. El defecto de la partición por
-turno pasaba todos los tests unitarios y sólo aparecía al liquidar.
+Decisión del dueño del proyecto, tomada con los costos a la vista: **se borraron los 16
+colaboradores que no eran Jordan ni Alexander**, con sus cuentas de acceso, y se crearon nueve a
+partir de quién marca hoy en el huellero. El motivo: la lista del ERP venía del sistema viejo y ya
+no reflejaba quién trabaja.
 
-Detalle completo en
-[docs/superpowers/specs/2026-08-15-huellero-asistencias-design.md](superpowers/specs/2026-08-15-huellero-asistencias-design.md) §13.
+**Qué se perdió:** 695 asistencias, 167 puntos de pipeline, 9 evaluaciones mensuales y 13 votos de
+Valores 360°. **Qué se conservó a propósito:** los 73 reportes y las 473 filas de historial de
+prendas — donde la referencia al empleado admitía quedar vacía, se vació en vez de borrar la fila,
+porque el reporte y la prenda son del negocio, no de la persona.
 
+**Respaldo previo:** `database/backups/pre-borrado-empleados-20260819/`, 1.925 filas en JSON,
+fuera del repo. El plan gratuito de Supabase no tiene backups: si no se hacía a mano, no existía.
+
+| Persona | Código | Rol | Sede base | Días | Sin salida |
+|---|---|---|---|---|---|
+| Marylin | 7073 | ventas_junior | AL | 190 | 10 |
+| Yessica | 6510 | ventas_junior | LB | 189 | 18 |
+| Janet | 2988 | ventas_junior | ST | 184 | 23 |
+| Sheyla | 8351 | ventas_junior | LB | 106 | 5 |
+| Jaerock | 6028 | ventas_junior | ST | 70 | 8 |
+| Daniel | 4596 | ventas_junior | ST | 65 | 11 |
+| Elthom | 6660 | ventas_junior | LB | 46 | 25 |
+| Jesus | 8319 | ventas_junior | LB | 31 | 8 |
+| Nicol | 6619 | ventas_junior | AL | 0 | 0 |
+| Alexander | 8686 | admin | ST | 96 | 16 |
+| Jordan | 9518 | admin | ST | 90 | 64 |
+
+Los nueve nuevos tienen las tres tiendas habilitadas en `empleado_tiendas`, porque los
+colaboradores rotan de sede dentro del mismo día: `sede_cod` es sólo la base.
+
+**No existe un rol "vendedor"** en `packages/core/src/permisos.ts`. Se usó `ventas_junior`, que es
+el más parecido. Anotado en `pendientes-negocio.md`.
+
+### Lo que quedó abierto
+
+- **997 marcas sin dueño**, de gente que no entró en la plantilla nueva. Tres son recientes y
+  pueden ser un error de criterio: CÉSAR (256 marcas, hasta el 31-jul), RICARDO (67, hasta el
+  6-ago) y NOHELY (35, hasta el 7-ago).
+- **El identificador 13 sigue sin mapear.** Fue JAZMIN hasta el 28-ene 08:45 y NICOL desde las
+  20:46 del mismo día. Puede ser una reasignación a otra persona o la misma persona renombrada:
+  el dueño no está seguro. Por eso Nicol figura con cero días.
+- **Un defecto en la derivación**, que dejó 15 días sin procesar y que además puede borrar una
+  hora declarada a mano: [defecto-derivacion-huellero.md](defecto-derivacion-huellero.md).
+- **Ninguna liquidación es posible todavía**: `sueldo_acuerdos` está vacía. Sin acuerdo y sin
+  horario contratado no hay contra qué calcular.
 
 ---
 
-_Verificado contra código y base de datos. Última actualización: 18 de agosto de 2026 (§9; el resto, 13 de agosto)._
+_Verificado contra código y base de datos. Última actualización: 19 de agosto de 2026 (§9; el resto, 13 de agosto)._

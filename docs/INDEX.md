@@ -20,6 +20,7 @@
 | [operacion-diaria.md](operacion-diaria.md) | **Cómo funciona el negocio en la realidad**: qué hace cada rol cada día, en cada sede, y el flujo real de las prendas |
 | [integracion-huellero.md](integracion-huellero.md) | Diseño de la integración del huellero Hikvision del almacén → tabla `asistencias`. Es la entrada del sistema de sueldos |
 | [puesta-en-marcha-huellero.md](puesta-en-marcha-huellero.md) | **Los ocho pasos para encender el huellero**: backup, migración, prueba, usuario del colector, alta del equipo, instalación en la PC del almacén y qué revisar antes de la primera liquidación |
+| [defecto-derivacion-huellero.md](defecto-derivacion-huellero.md) | **Un defecto abierto en la cadena del sueldo**: `huellero_derivar_asistencia()` escribe `'trabajado'` sin hora de salida y puede borrar una hora declarada a mano. 15 días reales sin derivar. Con reproducción y qué tests exige el arreglo |
 | [integracion-tuxedo.md](integracion-tuxedo.md) | Inspección del sistema comercial TUXEDO Pro (inventario, POS, alquiler, caja) y contrato de datos propuesto para que el motor de sueldos consuma ventas/metas por sede sin acoplarse |
 | [hoja-de-ruta-sistema.md](hoja-de-ruta-sistema.md) | Cómo se conecta todo para que la evaluación mensual salga automática y trazable |
 | [entrevista-dueno.md](entrevista-dueno.md) | Primera ronda de preguntas al dueño — **respondida** |

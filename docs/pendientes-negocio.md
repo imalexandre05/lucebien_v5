@@ -740,3 +740,27 @@ _Agregar aquí, por fase, cualquier parámetro nuevo que se sembró con un defau
 | **Valores 360° exige las seis respuestas** | Se queda. Revisar la participación a fin de mes |
 | **Todo el módulo comercial sale del menú** | Pedidos, Caja, Inventario, Clientes, Finanzas, Estadísticas, Proveedores, Materiales y Compras. Las rutas siguen vivas: se ocultan, no se borran, porque hay datos detrás y el traspaso al otro sistema todavía no ocurrió |
 | **Modo oscuro: no por ahora** | La adopción del ERP es 4,4%; el problema es que la gente lo use, no de qué color es |
+
+---
+
+## Huellero y plantilla (19-ago-2026)
+
+Ninguno de estos es un default inventado en el código: son decisiones de negocio que quedaron
+abiertas al reiniciar la plantilla, y cada una tiene consecuencia sobre a quién se le paga qué.
+
+- **¿CÉSAR, RICARDO y NOHELY siguen trabajando?** Marcaron hasta el 31-jul, el 6-ago y el 7-ago
+  respectivamente, y no se les creó cuenta. Si siguen, hay que crearlos y mapear sus 358 marcas;
+  si no, conviene marcar sus identificadores como ignorados para que no ensucien la cola.
+- **¿El identificador 13 es una persona o dos?** Fue JAZMIN hasta el 28-ene 08:45 y NICOL desde
+  las 20:46 de ese día. Si es la misma persona renombrada, sus 128 marcas van completas a Nicol;
+  si son dos, el mapeo se parte en esa fecha y el día 28 lo resuelve una persona. Hoy está sin
+  mapear y Nicol figura con cero días.
+- **No existe el rol "vendedor".** Los nueve colaboradores nuevos quedaron como `ventas_junior`,
+  que es el rol más parecido de los siete que define `packages/core/src/permisos.ts`. Si el dueño
+  quiere un rol propio de vendedor con otros permisos, es una decisión de negocio, no un ajuste.
+- **La contraseña de las nueve cuentas nuevas es la misma** (`lucebien2026`), puesta al crearlas.
+  Hay que cambiarla desde `/empleados` antes de que esas cuentas se usen de verdad.
+- **Los horarios contratados no están cargados** (`sueldo_acuerdos` está vacía). Los turnos que se
+  ven en las marcas reales son ~08:00–14:00, ~14:00–20:00 y jornada larga ~08:00–19:00, que no
+  coinciden con el 09:00–13:00 más 13:00–20:00 que asume un comentario de `0073_sueldos_rpc.sql`.
+  Cargar un horario que empieza más tarde que el real le inventa tardanza a la persona.

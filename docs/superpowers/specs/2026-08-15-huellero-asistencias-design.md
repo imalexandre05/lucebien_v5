@@ -933,3 +933,39 @@ que no levanta.
 El arranque automático lo da `pm2-windows-startup`, que engancha al **inicio de sesión de Windows,
 no al encendido**. Si la PC queda en la pantalla de contraseña, el colector no arranca. Se
 comprueba reiniciando y mirando `pm2 list` sin tocar nada.
+
+---
+
+## 14. Reinicio de plantilla y mapeo — 19-ago-2026
+
+El mapeo se hizo, pero no sobre la lista de empleados que había: el dueño decidió reiniciarla
+porque venía del sistema viejo y ya no reflejaba quién trabaja. Se borraron los 16 colaboradores
+que no eran Jordan ni Alexander y se crearon nueve a partir de quién marca hoy en el huellero.
+
+El detalle completo —qué se perdió, qué se conservó y por qué— está en
+[docs/mapa-verificado.md](../../mapa-verificado.md) §9.
+
+Lo que importa para esta spec:
+
+- **10 identificadores mapeados** con vigencia desde el 1-ene-2026, y **dos ignorados**:
+  GUILLERMO (25), que sólo abre las puertas, y REMY (1), que ya no trabaja. Los dos casos que la
+  §6 anticipaba.
+- **1.059 asistencias derivadas**: 881 días trabajados y 186 con entrada y sin salida. Ese 17,6%
+  coincide casi exactamente con el 17% medido sobre el histórico antes de implementar nada.
+- **Jordan tiene 64 días sin salida sobre 90.** Es el caso de la §6 —entra y sale varias veces al
+  día— y ahora se ve con datos propios, no estimados.
+- **El identificador 13 quedó sin mapear.** El dueño no está seguro de si JAZMIN y NICOL son la
+  misma persona renombrada o dos personas distintas. Como no hay ninguna liquidación hecha, no hay
+  plata en juego: la decisión puede esperar sin costo.
+
+### El defecto que apareció al derivar de verdad
+
+15 de los 222 días no se pudieron derivar. La restricción `asistencias_trabajado_chk` los frenó,
+así que no entró ningún dato malo — pero el intento reveló que `huellero_derivar_asistencia()`
+puede escribir `'trabajado'` sin hora de salida, y que en su rama de `update` puede **borrar una
+hora de salida declarada por una persona**, que es justo lo que la primera salvaguarda de la §6
+promete que no pasa.
+
+Está documentado con reproducción en
+[docs/defecto-derivacion-huellero.md](../../defecto-derivacion-huellero.md). Es zona crítica:
+spec antes que código, test de los dos casos, y verificador.
