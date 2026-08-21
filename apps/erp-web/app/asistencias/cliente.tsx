@@ -14,6 +14,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { Aviso, campoCls } from '../../components/ui/form';
+import { DialogoConfirmar, useConfirmacion } from '../../components/ui/confirmar';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
 
@@ -61,6 +62,7 @@ export function AsistenciasCliente({
   // Un error de la LISTA no cabe dentro del formulario: cuando se dispara, ese bloque suele
   // estar cerrado y el mensaje se renderizaria invisible. Va arriba de todo.
   const [errorAccion, setErrorAccion] = useState('');
+  const conf = useConfirmacion();
   const [pending, startTransition] = useTransition();
 
   // Filtros.
@@ -122,16 +124,26 @@ export function AsistenciasCliente({
   }
 
   function eliminar(id: string) {
-    if (!confirm('¿Eliminar este registro de asistencia?')) return;
-    startTransition(async () => {
-      const r = await accionEliminarAsistencia(id);
-      if (r.ok) router.refresh();
-      else setErrorAccion(r.error ?? 'No se pudo eliminar el registro de asistencia.');
+    conf.pedir({
+      titulo: '¿Eliminar este registro de asistencia?',
+      detalle:
+        'El día vuelve a quedar sin declarar, y un día sin declarar corta la liquidación del período entero hasta que alguien lo complete.',
+      confirmarLabel: 'Eliminar',
+      alConfirmar: () =>
+        startTransition(async () => {
+          setErrorAccion('');
+          const r = await accionEliminarAsistencia(id);
+          if (r.ok) {
+            conf.cerrar();
+            router.refresh();
+          } else setErrorAccion(r.error ?? 'No se pudo eliminar el registro de asistencia.');
+        }),
     });
   }
 
   return (
     <div className="space-y-4">
+      <DialogoConfirmar {...conf.props} pending={pending} />
       {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
 
       {/* Resumen */}

@@ -15,6 +15,7 @@ import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { StatBox } from '../../components/ui/stat-box';
 import { Aviso, campoCls } from '../../components/ui/form';
+import { DialogoConfirmar, useConfirmacion } from '../../components/ui/confirmar';
 import { cn } from '../../lib/cn';
 
 // Un rol es IDENTIDAD, no estado: por eso usa los categóricos y no los semánticos.
@@ -136,20 +137,33 @@ export function EmpleadosCliente({
   // Un error de la LISTA no cabe dentro de los modales de edición: cuando se suspende a alguien
   // desde la tabla, esos bloques están cerrados y el mensaje quedaría invisible. Va arriba de todo.
   const [errorAccion, setErrorAccion] = useState('');
+  const conf = useConfirmacion();
 
   function toggleEstado(e: EmpleadoAdmin) {
     const verbo = e.activo ? 'Suspender' : 'Reactivar';
-    if (!confirm(`¿${verbo} a ${e.nombre}?`)) return;
-    startTransition(async () => {
-      setErrorAccion('');
-      const r = await accionEstadoEmpleado(e.id, !e.activo);
-      if (!r.ok) setErrorAccion(r.error ?? `No se pudo ${verbo.toLowerCase()} a ${e.nombre}.`);
-      else router.refresh();
+    conf.pedir({
+      titulo: `¿${verbo} a ${e.nombre}?`,
+      detalle: e.activo
+        ? 'Deja de poder entrar al sistema y sale de las listas de asignación. Su historial no se toca.'
+        : 'Vuelve a poder entrar y a aparecer en las listas de asignación.',
+      confirmarLabel: verbo,
+      tono: e.activo ? 'peligro' : 'aviso',
+      alConfirmar: () =>
+        startTransition(async () => {
+          setErrorAccion('');
+          const r = await accionEstadoEmpleado(e.id, !e.activo);
+          if (!r.ok) setErrorAccion(r.error ?? `No se pudo ${verbo.toLowerCase()} a ${e.nombre}.`);
+          else {
+            conf.cerrar();
+            router.refresh();
+          }
+        }),
     });
   }
 
   return (
     <div className="space-y-4">
+      <DialogoConfirmar {...conf.props} pending={pending} />
       {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
 
       {/* Resumen */}

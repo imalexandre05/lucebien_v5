@@ -13,6 +13,7 @@ import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { Aviso, campoCls } from '../../components/ui/form';
 import { EmptyState } from '../../components/ui/empty-state';
+import { DialogoConfirmar, useConfirmacion } from '../../components/ui/confirmar';
 import { cn } from '../../lib/cn';
 
 type Emp = { id: string; nombre: string };
@@ -54,6 +55,7 @@ export function IncidenciasCliente({
   // formulario suele estar cerrado, así que el mensaje se renderizaría en un bloque invisible —
   // peor que el alert() nativo que había, porque al menos aquél se veía.
   const [errorAccion, setErrorAccion] = useState('');
+  const conf = useConfirmacion();
   const [pending, startTransition] = useTransition();
 
   // Filtros.
@@ -128,17 +130,25 @@ export function IncidenciasCliente({
   }
 
   function eliminar(id: string) {
-    if (!confirm('¿Eliminar esta incidencia?')) return;
-    startTransition(async () => {
-      setErrorAccion('');
-      const r = await accionEliminarIncidencia(id);
-      if (r.ok) router.refresh();
-      else setErrorAccion(r.error ?? 'No se pudo eliminar la incidencia.');
+    conf.pedir({
+      titulo: '¿Eliminar esta incidencia?',
+      detalle: 'Los puntos que descuenta vuelven a la evaluación del responsable.',
+      confirmarLabel: 'Eliminar',
+      alConfirmar: () =>
+        startTransition(async () => {
+          setErrorAccion('');
+          const r = await accionEliminarIncidencia(id);
+          if (r.ok) {
+            conf.cerrar();
+            router.refresh();
+          } else setErrorAccion(r.error ?? 'No se pudo eliminar la incidencia.');
+        }),
     });
   }
 
   return (
     <div className="space-y-4">
+      <DialogoConfirmar {...conf.props} pending={pending} />
       {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
 
       {/* Resumen */}

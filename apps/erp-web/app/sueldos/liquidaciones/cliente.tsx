@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Input, Label, Select } from '../../../components/ui/form';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
+import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
 import type { AcuerdoSueldo, EstadoLiquidacion, LiquidacionDetalle, LiquidacionResumen } from '../../../lib/sueldos-repo';
 import {
   accionAnular,
@@ -106,6 +107,7 @@ export function LiquidacionesCliente({
   const [error, setError] = useState<string | null>(null);
   const [codigo, setCodigo] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
+  const conf = useConfirmacion();
 
   const fallo = (r: { error?: string; codigo?: string }) => {
     setError(r.error ?? 'Error desconocido.');
@@ -138,17 +140,24 @@ export function LiquidacionesCliente({
   };
 
   const cerrar = (l: LiquidacionResumen) => {
-    const ok = window.confirm(
-      `Cerrar la liquidación de ${l.empleadoNombre ?? 'esta persona'} por ${soles(l.total)}.\n\n` +
-        'Una vez cerrada NO se puede modificar. Sólo se puede anular, con motivo, y eso queda ' +
-        'registrado.\n\n¿Seguir?',
-    );
-    if (!ok) return;
-    limpiar();
-    empezar(async () => {
-      const r = await accionCerrar(l.id);
-      if (r.ok) router.refresh();
-      else fallo(r);
+    // El monto va en el TÍTULO, no enterrado en el cuerpo: es el dato que hay que mirar antes de
+    // sellar algo que no se puede modificar. El confirm nativo lo dejaba en la segunda línea de un
+    // párrafo con saltos de línea.
+    conf.pedir({
+      titulo: `¿Cerrar la liquidación de ${l.empleadoNombre ?? 'esta persona'} por ${soles(l.total)}?`,
+      detalle:
+        'Una vez cerrada no se puede modificar. Sólo se puede anular, con motivo, y eso queda registrado.',
+      confirmarLabel: 'Cerrar liquidación',
+      alConfirmar: () => {
+        limpiar();
+        empezar(async () => {
+          const r = await accionCerrar(l.id);
+          if (r.ok) {
+            conf.cerrar();
+            router.refresh();
+          } else fallo(r);
+        });
+      },
     });
   };
 
@@ -162,12 +171,21 @@ export function LiquidacionesCliente({
   };
 
   const descartar = (l: LiquidacionResumen) => {
-    if (!window.confirm('Descartar este borrador. No deja rastro porque todavía no se pagó nada. ¿Seguir?')) return;
-    limpiar();
-    empezar(async () => {
-      const r = await accionEliminarBorrador(l.id);
-      if (r.ok) router.refresh();
-      else fallo(r);
+    conf.pedir({
+      titulo: '¿Descartar este borrador?',
+      detalle: 'No deja rastro: todavía no se pagó nada. El período se puede volver a calcular.',
+      confirmarLabel: 'Descartar',
+      tono: 'aviso',
+      alConfirmar: () => {
+        limpiar();
+        empezar(async () => {
+          const r = await accionEliminarBorrador(l.id);
+          if (r.ok) {
+            conf.cerrar();
+            router.refresh();
+          } else fallo(r);
+        });
+      },
     });
   };
 
@@ -188,6 +206,7 @@ export function LiquidacionesCliente({
 
   return (
     <>
+      <DialogoConfirmar {...conf.props} pending={pendiente} error={error ?? undefined} />
       <Card className="mb-5">
         <CardContent className="flex flex-wrap items-end gap-4 py-4">
           <div className="min-w-[20rem] flex-1">

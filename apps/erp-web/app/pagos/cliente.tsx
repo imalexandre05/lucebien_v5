@@ -14,6 +14,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { Aviso, campoCls } from '../../components/ui/form';
+import { DialogoConfirmar, useConfirmacion } from '../../components/ui/confirmar';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
 
@@ -58,6 +59,7 @@ export function PagosCliente({
   // Un error de la LISTA no cabe dentro del formulario: cuando se dispara, ese bloque suele
   // estar cerrado y el mensaje se renderizaria invisible. Va arriba de todo.
   const [errorAccion, setErrorAccion] = useState('');
+  const conf = useConfirmacion();
   const [pending, startTransition] = useTransition();
 
   // Filtros.
@@ -115,16 +117,26 @@ export function PagosCliente({
   }
 
   function eliminar(id: string) {
-    if (!confirm('¿Eliminar este pago?')) return;
-    startTransition(async () => {
-      const r = await accionEliminarPago(id);
-      if (r.ok) router.refresh();
-      else setErrorAccion(r.error ?? 'No se pudo anular el pago.');
+    conf.pedir({
+      titulo: '¿Anular este pago?',
+      detalle:
+        'El pago se conserva a la vista, marcado como anulado: borrar el rastro haría imposible reconstruir después qué se le pagó a quién.',
+      confirmarLabel: 'Anular',
+      alConfirmar: () =>
+        startTransition(async () => {
+          setErrorAccion('');
+          const r = await accionEliminarPago(id);
+          if (r.ok) {
+            conf.cerrar();
+            router.refresh();
+          } else setErrorAccion(r.error ?? 'No se pudo anular el pago.');
+        }),
     });
   }
 
   return (
     <div className="space-y-4">
+      <DialogoConfirmar {...conf.props} pending={pending} />
       {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
 
       {/* Resumen */}

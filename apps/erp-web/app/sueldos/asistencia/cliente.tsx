@@ -9,6 +9,7 @@ import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input, Label, Select } from '../../../components/ui/form';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
+import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
 import type { AsistenciaDia, CondicionDia } from '../../../lib/asistencias-repo';
 import type { AcuerdoSueldo } from '../../../lib/sueldos-repo';
 import { accionDeclararDia, accionDeclararVarios, type DiaForm } from './actions';
@@ -94,6 +95,7 @@ export function AsistenciaCliente({
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
+  const conf = useConfirmacion();
 
   // El calendario del periodo, con lo que dice el contrato de cada día. Sale de las mismas
   // funciones del core que va a usar la liquidación: si la pantalla dijera que el lunes son 11 h
@@ -166,13 +168,21 @@ export function AsistenciaCliente({
    */
   const declararTodosTrabajados = () => {
     const cuantos = sinDeclarar.length;
-    const ok = window.confirm(
-      `Se van a declarar ${cuantos} día(s) como TRABAJADOS con el horario del contrato.\n\n` +
-        'Los días que la persona faltó hay que corregirlos después, uno por uno. ' +
-        'Cada cambio queda registrado con tu nombre.\n\n¿Seguir?',
-    );
-    if (!ok) return;
+    // La confirmación más consecuente del sistema: declara N días como trabajados y eso se paga.
+    // El confirm nativo la escribía con saltos de línea y en el tono del navegador; acá el título
+    // dice cuántos días son y el detalle dice qué hay que hacer después, que es lo que de verdad
+    // se olvida.
+    conf.pedir({
+      titulo: `¿Declarar ${cuantos} día(s) como trabajados?`,
+      detalle:
+        'Se usan las horas del contrato. Los días que la persona faltó hay que corregirlos después, uno por uno, y cada cambio queda registrado con tu nombre.',
+      confirmarLabel: 'Declarar',
+      tono: 'aviso',
+      alConfirmar: () => hacerDeclararTodos(),
+    });
+  };
 
+  const hacerDeclararTodos = () => {
     setError(null);
     empezar(async () => {
       const dias: DiaForm[] = sinDeclarar.map((d) => {
@@ -196,12 +206,14 @@ export function AsistenciaCliente({
       });
       const r = await accionDeclararVarios(dias);
       if (!r.ok) setError(r.error ?? 'No se pudieron declarar todos.');
+      else conf.cerrar();
       router.refresh();
     });
   };
 
   return (
     <>
+      <DialogoConfirmar {...conf.props} pending={pendiente} error={error ?? undefined} />
       <Card className="mb-5">
         <CardContent className="flex flex-wrap items-end gap-4 py-4">
           <div className="min-w-[18rem] flex-1">
