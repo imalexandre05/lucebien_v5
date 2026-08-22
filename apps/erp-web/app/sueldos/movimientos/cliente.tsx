@@ -236,6 +236,13 @@ export function MovimientosCliente({
           <CardHeader>
             <CardTitle>Ventas del periodo</CardTitle>
           </CardHeader>
+          <p className="px-5 pb-3 text-sm text-muted">
+            Sólo lectura: cargar una venta nueva o asignar un vendedor se hace desde{' '}
+            <a className="text-gold-deep underline" href="/sueldos/ventas">
+              Ventas y metas
+            </a>
+            .
+          </p>
           <div className="border-t border-line">
             {ventas.length === 0 ? (
               <p className="px-5 py-6 text-center text-sm text-muted">Todavía no hay ninguna.</p>
