@@ -764,3 +764,57 @@ abiertas al reiniciar la plantilla, y cada una tiene consecuencia sobre a quién
   ven en las marcas reales son ~08:00–14:00, ~14:00–20:00 y jornada larga ~08:00–19:00, que no
   coinciden con el 09:00–13:00 más 13:00–20:00 que asume un comentario de `0073_sueldos_rpc.sql`.
   Cargar un horario que empieza más tarde que el real le inventa tardanza a la persona.
+
+---
+
+## Decisiones del 21-ago-2026 — Envío a Lavandería
+
+Salieron de probar la pantalla con Alexander. Ninguna es un default inventado: las tomó él.
+
+| Decisión | Qué se hizo | Dónde vive |
+|---|---|---|
+| **Camisa y corbata no son tipo de prenda** | Se cuentan a granel con los demás accesorios. La lista de tipos vuelve a ser la del sistema viejo: Terno completo, Saco, Pantalón, Chaleco, Blazer, Falda, Otros | `packages/adapter-lucebien/src/catalogos.ts` → `tiposPrenda` |
+| **«Otros» obliga a decir qué prenda es** | El texto que se escribe viaja como el tipo de la prenda. Sin eso, la prenda entra al pipeline llamándose «Otros» y ahí se pierde | `app/envio-lavanderia/cliente.tsx` |
+| **Un envío necesita al menos una prenda con código** | Antes se podía mandar una lista de puros accesorios. El código es lo que después permite seguir y reclamar una prenda | `app/envio-lavanderia/actions.ts` |
+| **Las tallas se piensan en adulto y niño** | Mismas dieciocho del sistema viejo, partidas en dos escalas. **El 26 quedó del lado de adulto** por ser medida de pantalón: si no lo es, se mueve | `catalogos.ts` → `tallasPrendaAdulto` / `tallasPrendaNino` |
+| **Elegir a un encargado lo pone como responsable de inventario** | Sólo si el campo está vacío: nunca pisa una elección hecha a mano | `app/envio-lavanderia/cliente.tsx` |
+| **Elegir al encargado del turno lo marca como colaborador** | El RPC ya lo contaba; ahora también se ve marcado. Al cambiar de encargado, el anterior **no** se desmarca solo | `app/reportes/nuevo/form.tsx` |
+
+**Queda sin decidir: qué es «tipo de envío» (general / refacción).** Lo único que cambia en la RPC
+`lavanderia_enviar` (migración 0066) es que en `REF` **todas** las prendas entran al pipeline en
+`compostura`, sin mirar el destino de cada una. Como ahora cada prenda elige su destino en la
+pantalla, el selector dice dos veces lo mismo. Las salidas son: sacarlo y que decida cada prenda —
+se pierde la etiqueta «refacción» en el historial de listas—, o dejarlo como está.
+
+---
+
+## Semáforo de `/sueldos/ventas` — de dónde sale la meta de referencia (22-ago-2026, Tarea 3 F1)
+
+**No existe ningún parámetro de "meta semanal de toda la empresa".** RN-10 es explícita: la meta
+semanal se pacta **por colaborador**, vive en `sueldo_acuerdos.parametros.metaSemanal` y varía por
+tienda, temporada, experiencia y turno (habitual: S/3.000 tiempo completo, S/1.500 medio tiempo).
+El motor tampoco tiene una noción agregada: `liquidarPeriodo()` calcula `metaPeriodo` por un único
+acuerdo a la vez.
+
+La Tarea 3 (pantalla `/sueldos/ventas`) necesita un semáforo semanal, pero esa pantalla lista
+boletas de **toda la empresa**, no de una persona. La interfaz de la tarea no decía de dónde sacar
+ese número — no era un olvido menor, es que no hay ningún dato de ese tipo en el esquema.
+
+**Se implementó así (`apps/erp-web/app/sueldos/ventas/page.tsx`):** se suman las metas **ya
+pactadas** de los contratos con `estado = 'vigente'` (`parametros.metaSemanal`, ignorando los que
+la tienen en `null`, es decir "sugerila por horas"). No se inventa ningún número nuevo: es la suma
+de acuerdos que el administrador ya negoció y cargó en Contratos. Los acuerdos sin meta pactada no
+suman — reproducir la fórmula de sugerencia (`horas de la semana × metaPorHora`) en la pantalla
+habría reimplementado el motor, que es justo lo que la Tarea 2 evitó al reusar `tramosSemanales()`.
+
+**Por qué es un piso, no el total exacto.** Si hay contratos vigentes sin meta pactada, el semáforo
+sub-representa la meta real de la empresa esa semana. La pantalla avisa cuando la suma da cero
+("ningún contrato vigente tiene una meta semanal pactada todavía"), pero no avisa cuando la suma es
+positiva y de todos modos incompleta.
+
+**Es de PRESENTACIÓN.** No toca `liquidarPeriodo()`: el pago de cada persona lo sigue calculando
+el motor con la meta de **su propio** contrato, nunca con este total agregado.
+
+**Pendiente de confirmar con el dueño:** si el criterio correcto es "sumar lo pactado" (lo que se
+implementó) o si conviene un parámetro nuevo de `/configuracion` con la meta semanal de referencia
+de la empresa, editable a mano en vez de derivado de los contratos.

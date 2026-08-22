@@ -105,7 +105,7 @@ exámenes · mi evaluación. RLS estricta: cada uno ve solo lo suyo (no-negociab
 
 ## 4. Fases
 
-### F1 — Rediseño de la operación existente (pasos 5-9, 11, 13, 15)
+### F1 — Rediseño de la operación existente (pasos 5-9, 11, 13, 15) ✅ construida (22-ago-2026)
 
 **Sin tocar el motor.** Solo pantallas, más la vista del resumen.
 
@@ -123,10 +123,37 @@ exámenes · mi evaluación. RLS estricta: cada uno ve solo lo suyo (no-negociab
   valida; la pantalla lo exige antes de enviar).
 - **Liquidación:** desglose RN-19 donde **cada línea abre los registros que la originan**
   (RN-20). Observaciones y pendientes de regularizar al costado.
-- **Resumen mensual (PEND-09):** vista imprimible de solo lectura del resultado del motor.
-  Versión admin (todo el desglose) y versión colaborador (solo él). **Sin lógica propia** — el
-  error de la hoja `RESUMEN` del Excel no se repite.
+- **Resumen mensual (PEND-09):** vista imprimible de solo lectura del resultado del motor,
+  en `/sueldos/liquidaciones/[id]/comprobante`, sólo para liquidaciones cerradas. **Sin lógica
+  propia** — el error de la hoja `RESUMEN` del Excel no se repite: cada número se lee de una línea
+  ya guardada, ninguno se recalcula en la pantalla. **Construida la versión admin; la versión
+  colaborador (verla desde Mi espacio, sólo la suya) queda pendiente** — no estaba en el alcance
+  de las 6 tareas de esta fase y se retoma junto con Mi espacio (F2 en adelante).
 - **Expediente v1:** línea de tiempo con las secciones que ya existen.
+
+**Lo que se construyó (22-ago-2026):** las 6 tareas de la fase, en `feat/sueldos-motor`. Ventas
+salió de `/sueldos/movimientos` a su propia pantalla `/sueldos/ventas`, con el semáforo de las 4
+semanas reusando `tramosSemanales()`/`diasDelPeriodo()` del motor (no reimplementados — ver
+aprendizaje abajo). La liquidación avisa fuerte cuando el periodo no tiene ventas cargadas. El
+comprobante imprimible (PEND-09) lee sólo datos ya guardados. `/sueldos` pasó de no llevar a
+ningún lado a mostrar el ciclo del periodo.
+
+**Lo que quedó afuera o pendiente:**
+- La versión del resumen mensual para el colaborador (ver Edit B arriba).
+- **`metaSemanal` del semáforo de ventas es una suma de los contratos vigentes, no un número
+  pactado en ningún lado** (RN-10 es por colaborador, no hay meta de toda la empresa). Documentado
+  en `docs/pendientes-negocio.md`, pendiente de confirmación del dueño.
+- `colaboradores/[id]/movimientos` perdió la capacidad de cargar o asignar una venta directo desde
+  la página de una persona — quedó de sólo lectura con un puntero a `/sueldos/ventas`. Es
+  coherente con la navegación híbrida de esta spec (entrada sólo por pantallas de proceso), pero
+  es un cambio de comportamiento real que vale la pena confirmar la próxima vez que Alexander
+  pruebe la pantalla.
+- Hallazgos menores sin corregir (no bloquean, quedan para la próxima pasada): un error duplicado
+  en el diálogo de eliminar una venta, acentos faltantes y un «cargalas» con voseo en el aviso
+  nuevo de liquidaciones, y una nota pendiente en `docs/pendientes-negocio.md` sobre que el
+  detector de "sin ventas" en la pantalla depende de un texto literal del motor (`sueldos.ts:819`)
+  por `.includes()` — funciona hoy, pero un cambio de redacción en el motor lo rompería en
+  silencio.
 
 ### F2 — Justificaciones y avisos (paso 10, PEND-06) — migración nueva
 
