@@ -155,19 +155,31 @@ git commit -m "fix(erp): la fecha propuesta en movimientos era UTC, no hora Peru
 
 El semáforo de las 4 semanas necesita partir el periodo igual que el motor (RN-12: **la última
 semana absorbe los días sobrantes**) y comparar con `>` estricto (§9.3: empatar la meta no la
-cumple). Es lógica de presentación —el motor sigue siendo la verdad para el pago— pero tiene que
-coincidir con él, así que va con tests propios.
+cumple).
+
+> ⚠️ **Corregido tras un hallazgo del implementador.** La primera versión de esta tarea
+> reimplementaba el partido en semanas desde cero. Eso estaba mal: `tramosSemanales()` **ya
+> existe**, exportada desde `packages/core/src/sueldos.ts:515`, con sus propios tests en
+> `sueldos.test.ts:401` y en uso real dentro de `liquidarPeriodo()` (línea 828) — es literalmente
+> RN-12, no un espejo de RN-12. Reimplementarla habría creado dos versiones que podían divergir,
+> exactamente el riesgo que esta misma tarea quería evitar. La versión corregida **reutiliza**
+> `tramosSemanales` y `diasDelPeriodo` (también ya exportada, `sueldos.ts:384`, con su propia
+> validación de fechas) en vez de duplicarlas. Lo único nuevo de verdad es `semanasConMeta`, que
+> no existía en ninguna forma reutilizable fuera de `liquidarPeriodo()`.
+
+Es lógica de presentación —el motor sigue siendo la verdad para el pago— pero al reutilizar las
+funciones del motor en vez de copiarlas, la pantalla no puede empezar a mentir: es literalmente el
+mismo código.
 
 **Dónde vive, y por qué no en `apps/erp-web/lib/`.** `tools/verificar-local.sh:69` corre vitest
 **sólo dentro de `packages/core`** (`cd packages/core && node vitest run`), y no hay ninguna
 configuración de vitest en `apps/erp-web`. Un test puesto en `apps/erp-web/lib/` no lo ejecutaría
 nadie: pasaría en verde por no existir, que es peor que no tenerlo.
 
-Como esto necesita tests de verdad —tiene que coincidir con el motor—, va en
-`packages/core/src/semanas-meta.ts` y se exporta desde el índice del paquete. **No es una regla de
-negocio nueva**: es la misma división de RN-12 expuesta para que la pantalla la lea. No toca
-ninguna función existente del core, así que no entra en el rigor de "cambiar la cadena del sueldo";
-agrega un módulo nuevo al lado, con sus tests.
+Va en `packages/core/src/semanas-meta.ts` y se exporta desde el índice del paquete. **No es una
+regla de negocio nueva**: es una lectura sobre la misma función de RN-12 que ya usa el motor. No
+toca ninguna función existente del core, así que no entra en el rigor de "cambiar la cadena del
+sueldo"; agrega un módulo nuevo al lado, con sus tests.
 
 **Archivos:**
 - Crear: `packages/core/src/semanas-meta.ts`
@@ -175,7 +187,10 @@ agrega un módulo nuevo al lado, con sus tests.
 - Modificar: `packages/core/src/index.ts` (exportar el módulo nuevo)
 
 **Interfaces:**
-- Consume: nada del proyecto. Función pura sobre strings `'YYYY-MM-DD'`.
+- Consume, de `packages/core/src/sueldos.ts` (**ya existen, no se reimplementan**):
+  - `tramosSemanales(desde: string, hasta: string): { desde: string; hasta: string }[]` — línea 515.
+  - `diasDelPeriodo(desde: string, hasta: string): string[]` — línea 384. Valida las fechas y
+    devuelve cada fecha del rango; `.length` da la cantidad de días.
 - Produce, y las tareas 3 y 4 dependen de estos nombres exactos:
 
 ```ts
@@ -189,8 +204,6 @@ export type SemanaMeta = {
   cumplida: boolean;
 };
 
-export function tramosSemanales(desde: string, hasta: string): { desde: string; hasta: string }[];
-
 export function semanasConMeta(
   desde: string,
   hasta: string,
@@ -199,34 +212,30 @@ export function semanasConMeta(
 ): SemanaMeta[];
 ```
 
-- [ ] **Paso 1: Escribir los tests que fallan**
+**`tramosSemanales` NO se re-exporta desde `semanas-meta.ts`.** Ya es pública desde `sueldos.ts` y
+`index.ts` ya hace `export * from './sueldos'`; exportarla de nuevo desde el módulo nuevo con el
+mismo nombre es exactamente el choque que este hallazgo destapó. Si algo necesita `tramosSemanales`
+directa, la importa de `@scilb/core` tal cual — ya está ahí.
+
+- [ ] **Paso 1: Confirmar las dos funciones que se reutilizan**
+
+Ejecutar:
+
+```bash
+grep -n "export function tramosSemanales\|export function diasDelPeriodo" packages/core/src/sueldos.ts
+```
+
+Esperado: las dos firmas, en las líneas 515 y 384 (pueden haberse corrido unas líneas; lo que
+importa es que ambas sigan exportadas con esa firma). Si alguna no existe o cambió de firma,
+**parar y reportar** — el resto de esta tarea depende de que sean así.
+
+- [ ] **Paso 2: Escribir los tests que fallan**
 
 Crear `packages/core/src/semanas-meta.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
-import { semanasConMeta, tramosSemanales } from './semanas-meta';
-
-describe('tramosSemanales', () => {
-  it('parte un periodo de 28 dias en 4 semanas iguales', () => {
-    const t = tramosSemanales('2025-06-16', '2025-07-13');
-    expect(t).toHaveLength(4);
-    expect(t[0]).toEqual({ desde: '2025-06-16', hasta: '2025-06-22' });
-    expect(t[3]).toEqual({ desde: '2025-07-07', hasta: '2025-07-13' });
-  });
-
-  it('la ultima semana absorbe los dias sobrantes (RN-12)', () => {
-    const t = tramosSemanales('2025-06-16', '2025-07-16');
-    expect(t).toHaveLength(4);
-    expect(t[3]).toEqual({ desde: '2025-07-07', hasta: '2025-07-16' });
-  });
-
-  it('un periodo de un solo dia da un tramo', () => {
-    expect(tramosSemanales('2025-06-16', '2025-06-16')).toEqual([
-      { desde: '2025-06-16', hasta: '2025-06-16' },
-    ]);
-  });
-});
+import { semanasConMeta } from './semanas-meta';
 
 describe('semanasConMeta', () => {
   const ventas = [
@@ -251,60 +260,44 @@ describe('semanasConMeta', () => {
     expect(s[0].vendido).toBe(0);
   });
 
-  it('numera las semanas desde 1 y reporta sus dias', () => {
+  it('numera las semanas desde 1, reporta sus dias, y la ultima absorbe lo sobrante (RN-12)', () => {
     const s = semanasConMeta('2025-06-16', '2025-07-16', ventas, 1500);
     expect(s.map((x) => x.numero)).toEqual([1, 2, 3, 4]);
     expect(s[3].dias).toBe(10);
+    expect(s[3]).toMatchObject({ desde: '2025-07-07', hasta: '2025-07-16' });
+  });
+
+  it('un periodo mas corto que una semana da una sola semana', () => {
+    const s = semanasConMeta('2025-06-16', '2025-06-19', [], 1500);
+    expect(s).toHaveLength(1);
+    expect(s[0].dias).toBe(4);
   });
 });
 ```
 
-- [ ] **Paso 2: Correr los tests y ver que fallan**
+Nota: no hay `describe('tramosSemanales', ...)` en este archivo — esa función ya tiene sus tests
+en `packages/core/src/sueldos.test.ts:401` y `:410`. Duplicarlos acá sería la misma clase de
+problema que causó el hallazgo.
+
+- [ ] **Paso 3: Correr los tests y ver que fallan**
 
 Ejecutar: `bash tools/verificar-local.sh --rapido`
 Esperado: FALLA con "Cannot find module './semanas-meta'".
 
-- [ ] **Paso 3: Escribir la implementación mínima**
+- [ ] **Paso 4: Escribir la implementación mínima**
 
 Crear `packages/core/src/semanas-meta.ts`:
 
 ```ts
 // La lectura semanal de ventas que muestra la pantalla. NO es el motor: el pago sale de
-// packages/core. Existe para que el administrador vea la misma division que va a usar el
-// calculo, y por eso copia dos decisiones de la spec del motor:
-//   - la ultima semana absorbe los dias sobrantes (RN-12), y
-//   - una semana se cumple con `>` estricto, no con `>=` (SPEC-sistema-sueldos §9.3).
-// Si alguna de las dos cambia en el motor, cambia aca tambien o la pantalla empieza a mentir.
+// liquidarPeriodo(). Reutiliza tramosSemanales() y diasDelPeriodo() de sueldos.ts en vez de
+// reimplementarlas — son RN-12, no un espejo de RN-12. Lo unico nuevo aca es cruzar esas semanas
+// con las ventas y la meta, algo que hoy solo existia enterrado dentro de liquidarPeriodo().
+//
+// El estricto de cumplida (`>`, no `>=`) copia SPEC-sistema-sueldos.md §9.3: empatar la meta no
+// la cumple.
 
-const DIA_MS = 86_400_000;
-
-/** 'YYYY-MM-DD' a las 12:00 UTC: el mediodia evita que un corrimiento de zona mueva el dia. */
-function aFecha(iso: string): Date {
-  return new Date(`${iso}T12:00:00Z`);
-}
-
-function aIso(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-/** Parte [desde, hasta] en tramos de 7 dias. El ultimo absorbe lo que sobre (RN-12). */
-export function tramosSemanales(desde: string, hasta: string): { desde: string; hasta: string }[] {
-  const ini = aFecha(desde);
-  const fin = aFecha(hasta);
-  const dias = Math.floor((fin.getTime() - ini.getTime()) / DIA_MS) + 1;
-  if (dias <= 0) return [];
-
-  const cantidad = Math.max(1, Math.floor(dias / 7));
-  const tramos: { desde: string; hasta: string }[] = [];
-
-  for (let i = 0; i < cantidad; i++) {
-    const d = new Date(ini.getTime() + i * 7 * DIA_MS);
-    const esUltimo = i === cantidad - 1;
-    const h = esUltimo ? fin : new Date(ini.getTime() + (i * 7 + 6) * DIA_MS);
-    tramos.push({ desde: aIso(d), hasta: aIso(h) });
-  }
-  return tramos;
-}
+import { diasDelPeriodo, tramosSemanales } from './sueldos';
 
 export type SemanaMeta = {
   numero: number;
@@ -327,12 +320,11 @@ export function semanasConMeta(
     const vendido = ventas
       .filter((v) => v.fecha >= t.desde && v.fecha <= t.hasta)
       .reduce((s, v) => s + v.monto, 0);
-    const dias = Math.floor((aFecha(t.hasta).getTime() - aFecha(t.desde).getTime()) / DIA_MS) + 1;
     return {
       numero: i + 1,
       desde: t.desde,
       hasta: t.hasta,
-      dias,
+      dias: diasDelPeriodo(t.desde, t.hasta).length,
       vendido,
       meta: metaSemanal,
       // Estricto a proposito: empatar la meta no la cumple (SPEC-sistema-sueldos §9.3).
@@ -342,12 +334,13 @@ export function semanasConMeta(
 }
 ```
 
-- [ ] **Paso 4: Correr los tests y ver que pasan**
+- [ ] **Paso 5: Correr los tests y ver que pasan**
 
 Ejecutar: `bash tools/verificar-local.sh --rapido`
-Esperado: los 8 tests de `semanas-meta.test.ts` en PASS, y los 388 que ya existían sin regresiones.
+Esperado: los 5 tests de `semanas-meta.test.ts` en PASS, y los 388 que ya existían sin regresiones
+(incluidos los de `tramosSemanales` en `sueldos.test.ts`, que no se tocaron).
 
-- [ ] **Paso 5: Exportarlo desde el índice del paquete**
+- [ ] **Paso 6: Exportarlo desde el índice del paquete**
 
 En `packages/core/src/index.ts`, agregar al final de la lista de exports:
 
@@ -355,17 +348,18 @@ En `packages/core/src/index.ts`, agregar al final de la lista de exports:
 export * from './semanas-meta';
 ```
 
-- [ ] **Paso 6: Verificar completo**
+- [ ] **Paso 7: Verificar completo**
 
 Ejecutar: `bash tools/verificar-local.sh`
 Esperado: guard, typecheck y tests en verde. El typecheck es el que comprueba que el export nuevo
-no choca con ningún nombre ya exportado por otro módulo del core.
+no choca con ningún nombre ya exportado por otro módulo del core — esta vez no debería, porque
+`semanas-meta.ts` ya no redefine `tramosSemanales`.
 
-- [ ] **Paso 7: Commit**
+- [ ] **Paso 8: Commit**
 
 ```bash
 git add packages/core/src/semanas-meta.ts packages/core/src/semanas-meta.test.ts packages/core/src/index.ts
-git commit -m "feat(core): la lectura semanal de ventas contra la meta, con sus tests"
+git commit -m "feat(core): la lectura semanal de ventas contra la meta, reusando tramosSemanales"
 ```
 
 ---
