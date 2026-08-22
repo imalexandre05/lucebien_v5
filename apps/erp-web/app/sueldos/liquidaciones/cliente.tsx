@@ -298,7 +298,7 @@ export function LiquidacionesCliente({
                     </div>
                   )}
                   {otrasAdvertencias.length > 0 && (
-                    <div className="rounded-md bg-aviso/10 px-3 py-2">
+                    <div role="status" className="rounded-md bg-aviso/10 px-3 py-2">
                       {otrasAdvertencias.map((a) => (
                         <p key={a} className="flex gap-2 text-sm text-aviso-deep">
                           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
