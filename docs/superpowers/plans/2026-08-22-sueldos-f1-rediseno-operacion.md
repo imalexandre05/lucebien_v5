@@ -12,7 +12,8 @@ cada sol, sin tocar el motor de cálculo.
 saca la carga de ventas de `/sueldos/movimientos` a su propia pantalla `/sueldos/ventas` con la
 lectura semanal contra la meta; se agrega el comprobante imprimible de liquidación siguiendo el
 patrón de `pagos/[id]/comprobante`; y el hub `/sueldos` pasa a mostrar el ciclo del periodo.
-Ninguna tarea modifica `packages/core` ni escribe migraciones.
+Ninguna tarea modifica una regla existente de `packages/core` ni escribe migraciones — la única
+excepción es un módulo nuevo y aislado (Tarea 2) que no toca ninguna función que calcule un pago.
 
 **Stack:** Next.js App Router (server components + server actions), TypeScript, Tailwind con los
 tokens del sistema, componentes de `apps/erp-web/components/ui/`.
@@ -63,8 +64,9 @@ Aplican a **todas** las tareas. Salen de `CLAUDE.md` y `docs/sistema-de-diseno.m
 | `apps/erp-web/app/sueldos/liquidaciones/[id]/comprobante/imprimir.tsx` | **Nuevo.** Botón de impresión, `print:hidden` | 5 |
 | `apps/erp-web/app/sueldos/page.tsx` | **Nuevo.** Hub del módulo con el ciclo del periodo | 6 |
 
-**Lo que NO se toca:** `packages/core/`, `lib/sueldos-repo.ts` (sólo se consume), las migraciones,
-y `app/colaboradores/[id]/movimientos/` — esa sección seguirá mostrando las ventas de la persona
+**Lo que NO se toca:** ninguna regla existente de `packages/core/` (la Tarea 2 sólo agrega un
+módulo nuevo al lado), `lib/sueldos-repo.ts` (sólo se consume), las migraciones, y
+`app/colaboradores/[id]/movimientos/` — esa sección seguirá mostrando las ventas de la persona
 leyendo el mismo repo.
 
 ---
