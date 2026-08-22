@@ -11,6 +11,7 @@ import { Aviso, Input, Label, LabelGrupo, Select } from '../../../components/ui/
 import { OpcionBotones } from '../../../components/ui/opcion-botones';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
+import { BarraPeriodo } from '../../../components/colaboradores/barra-periodo';
 import { cn } from '../../../lib/cn';
 import { hoyPeru } from '../../../lib/fechas';
 import type { VentaSueldo } from '../../../lib/sueldos-repo';
@@ -205,6 +206,12 @@ export function VentasCliente({
 
   return (
     <div className="space-y-6">
+      <BarraPeriodo />
+      <p className="text-xs text-muted">
+        El semáforo de abajo compara contra las semanas de <strong>este rango</strong>. Para que
+        coincida con lo que va a liquidar, elige el mismo periodo que el contrato antes de mirar
+        si se cumplió la meta.
+      </p>
       <DialogoConfirmar {...conf.props} pending={pendiente} error={errorAccion ?? undefined} />
       {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
 
@@ -221,6 +228,14 @@ export function VentasCliente({
             comparando contra nada real.
           </p>
         )}
+        {ventasSinAsignar.length > 0 && (
+          <p className="mt-2 text-xs text-muted">
+            El total vendido de cada semana incluye boletas sin vendedor asignado (hay{' '}
+            {ventasSinAsignar.length} en la cola de abajo). Nadie cobra por esas todavía, así que
+            el semáforo puede leerse en verde antes de que la comisión real de alguien esté
+            asegurada.
+          </p>
+        )}
       </div>
 
       {/* ── Carga rápida ─────────────────────────────────────────────────────────────────── */}
@@ -232,8 +247,11 @@ export function VentasCliente({
           <p className="text-xs text-muted">
             Se carga el <strong>total de la boleta</strong>, no el de un producto: la comisión mira
             el monto de la boleta contra el mínimo configurado (hoy {soles(montoMinimoComision)}).
-            Una venta sin vendedor asignado se guarda igual y queda en la cola de abajo — nada se
-            descarta en silencio.
+            Es el mínimo general de la empresa: si el contrato de esa persona pactó uno distinto,
+            la insignia de acá puede no coincidir con lo que realmente le liquide el motor — el
+            cálculo real siempre sale del contrato, esto es sólo una referencia rápida. Una venta
+            sin vendedor asignado se guarda igual y queda en la cola de abajo — nada se descarta en
+            silencio.
           </p>
           {errorForm && <Aviso tono="error">{errorForm}</Aviso>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">

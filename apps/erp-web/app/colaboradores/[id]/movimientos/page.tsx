@@ -60,7 +60,7 @@ export default async function MovimientosColaboradorPage({
         nota={
           sinLiquidar > 0
             ? `${sinLiquidar} sin liquidar en este período. Una fila cargada después de calcular y antes de cerrar hace que el cierre corte con DESACTUALIZADA, para que no quede sellado un pago que no la incluye.`
-            : 'Las ventas sin vendedor asignado no aparecen acá: se asignan desde Adelantos y ventas, que las lista aparte.'
+            : 'Cargar o asignar una venta se hace desde Ventas y metas — acá sólo se muestran las de esta persona, de sólo lectura.'
         }
       />
       <MovimientosCliente

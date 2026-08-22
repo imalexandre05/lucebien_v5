@@ -818,3 +818,18 @@ el motor con la meta de **su propio** contrato, nunca con este total agregado.
 **Pendiente de confirmar con el dueño:** si el criterio correcto es "sumar lo pactado" (lo que se
 implementó) o si conviene un parámetro nuevo de `/configuracion` con la meta semanal de referencia
 de la empresa, editable a mano en vez de derivado de los contratos.
+
+---
+
+## Insignia "comisiona" de `/sueldos/ventas` — mismo tipo de referencia, no el cálculo real (22-ago-2026, revisión final F1)
+
+El mínimo que se muestra y que decide si una boleta lleva la insignia "comisiona"
+(`sueldo_monto_minimo_comision`) es el **default de toda la empresa**, leído de `/configuracion`.
+RN-13 permite que cada contrato lo pacte distinto (`sueldo_acuerdos.parametros.montoMinimoComision`).
+La pantalla no cruza boleta con el contrato de su vendedor para mostrar el mínimo real de esa
+persona — mismo tipo de limitación que la meta semanal de arriba: es una referencia visual rápida,
+**el motor (`liquidarPeriodo()`) sigue siendo quien decide la comisión real** con el mínimo del
+contrato de cada quien. La insignia puede estar "mal" en pantalla sin que el pago esté mal.
+
+**Pendiente de confirmar con el dueño:** si conviene cruzar la boleta con el contrato del vendedor
+asignado para mostrar el mínimo correcto por persona, o si la referencia general alcanza.

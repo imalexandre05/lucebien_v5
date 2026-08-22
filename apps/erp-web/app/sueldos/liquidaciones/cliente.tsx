@@ -286,10 +286,10 @@ export function LiquidacionesCliente({
                       role="alert"
                       className="mb-4 rounded-lg border border-error-line bg-error-soft px-4 py-3 text-sm text-error-deep"
                     >
-                      <p className="font-medium">Este periodo no tiene ninguna venta cargada.</p>
+                      <p className="font-medium">Este período no tiene ninguna venta cargada.</p>
                       <p className="mt-1">
-                        Sin ventas no hay bono de meta semanal ni comision. Si todavia no las
-                        transcribiste desde tuxedo, cargalas en{' '}
+                        Sin ventas no hay bono de meta semanal ni comisión. Si todavía no las
+                        transcribiste desde tuxedo, cárgalas en{' '}
                         <a className="underline" href="/sueldos/ventas">
                           Ventas y metas
                         </a>{' '}

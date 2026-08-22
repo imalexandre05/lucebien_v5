@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Package, Users, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, Receipt, UsersRound, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Package, Users, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, Receipt, UsersRound, Wallet, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -74,6 +74,12 @@ const NAV: { section: string; items: Item[] }[] = [
         modulo: 'evaluaciones',
         modulosAlternos: ['pagos', 'sueldos'],
       },
+      // F1 del rediseño de sueldos (22-ago-2026): navegación híbrida a propósito. El 20-ago se
+      // colapsaron seis entradas de proceso en /colaboradores porque el admin piensa por persona.
+      // Acuerdos/Asistencia/Ventas y metas/Movimientos siguen siendo trabajo de PROCESO —se hace
+      // una vez por tienda o por tanda, no por persona— así que esta entrada no deshace esa
+      // decisión: agrega la que faltaba para la operación diaria, sin volver a las seis sueltas.
+      { label: 'Sueldos', href: '/sueldos', icon: Wallet, modulo: 'sueldos' },
       { label: 'Historial de reportes', href: '/administracion/reportes', icon: Files, modulo: 'reportes_admin' },
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },
       // Sigue afuera del módulo A PROPÓSITO: la liquidación trabaja sobre un contrato entero y no
