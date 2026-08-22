@@ -8,6 +8,7 @@ import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input, Label, Select } from '../../../components/ui/form';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
+import { hoyPeru } from '../../../lib/fechas';
 import { esConteo, type TipoMovimiento } from '../../../lib/sueldos-tipos';
 import type { MovimientoSueldo, VentaSueldo } from '../../../lib/sueldos-repo';
 import {
@@ -41,8 +42,6 @@ const TIPOS: { valor: TipoMovimiento; label: string; ayuda: string }[] = [
 
 const LABEL_TIPO = Object.fromEntries(TIPOS.map((t) => [t.valor, t.label])) as Record<string, string>;
 
-const hoy = (): string => new Date().toISOString().slice(0, 10);
-
 export function MovimientosCliente({
   empleados,
   movimientos,
@@ -63,7 +62,7 @@ export function MovimientosCliente({
 
   const [mov, setMov] = useState({
     empleadoId: '',
-    fecha: hoy(),
+    fecha: hoyPeru(),
     tipo: 'adelanto' as TipoMovimiento,
     monto: '',
     cantidad: '1',
@@ -71,7 +70,7 @@ export function MovimientosCliente({
   });
 
   const [venta, setVenta] = useState({
-    fecha: hoy(),
+    fecha: hoyPeru(),
     monto: '',
     tipo: 'venta' as 'venta' | 'alquiler',
     sedeCod: '',
