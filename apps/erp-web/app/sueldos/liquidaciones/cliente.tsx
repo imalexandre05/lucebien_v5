@@ -370,9 +370,19 @@ export function LiquidacionesCliente({
                           </>
                         )}
                         {l.estado === 'cerrada' && (
-                          <Button variant="ghost" onClick={() => setAnulando(l)} aria-label="Anular">
-                            <Ban className="h-4 w-4" />
-                          </Button>
+                          <>
+                            {/* Sólo cerradas: un borrador todavía puede cambiar, y un papel
+                                impreso de algo que después cambia es el problema del Excel. */}
+                            <a
+                              className="self-center text-sm text-gold-deep underline"
+                              href={`/sueldos/liquidaciones/${l.id}/comprobante`}
+                            >
+                              Resumen
+                            </a>
+                            <Button variant="ghost" onClick={() => setAnulando(l)} aria-label="Anular">
+                              <Ban className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
                       </div>
                     </TD>
