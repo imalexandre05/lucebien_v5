@@ -271,16 +271,45 @@ export function LiquidacionesCliente({
               <Dato etiqueta="Total" valor={soles(liq.total)} />
             </div>
 
-            {liq.advertencias.length > 0 && (
-              <div className="rounded-md bg-aviso/10 px-3 py-2">
-                {liq.advertencias.map((a) => (
-                  <p key={a} className="flex gap-2 text-sm text-aviso-deep">
-                    <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
-                    {a}
-                  </p>
-                ))}
-              </div>
-            )}
+            {(() => {
+              const sinVentas = liq.advertencias.some((a) =>
+                a.includes('No hay ninguna venta registrada'),
+              );
+              const otrasAdvertencias = liq.advertencias.filter(
+                (a) => !a.includes('No hay ninguna venta registrada'),
+              );
+
+              return (
+                <>
+                  {sinVentas && (
+                    <div
+                      role="alert"
+                      className="mb-4 rounded-lg border border-error-line bg-error-soft px-4 py-3 text-sm text-error-deep"
+                    >
+                      <p className="font-medium">Este periodo no tiene ninguna venta cargada.</p>
+                      <p className="mt-1">
+                        Sin ventas no hay bono de meta semanal ni comision. Si todavia no las
+                        transcribiste desde tuxedo, cargalas en{' '}
+                        <a className="underline" href="/sueldos/ventas">
+                          Ventas y metas
+                        </a>{' '}
+                        antes de cerrar.
+                      </p>
+                    </div>
+                  )}
+                  {otrasAdvertencias.length > 0 && (
+                    <div className="rounded-md bg-aviso/10 px-3 py-2">
+                      {otrasAdvertencias.map((a) => (
+                        <p key={a} className="flex gap-2 text-sm text-aviso-deep">
+                          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+                          {a}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </CardContent>
           <div className="border-t border-line">
             <Desglose lineas={liq.lineas} />
