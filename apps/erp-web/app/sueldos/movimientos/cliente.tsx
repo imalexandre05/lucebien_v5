@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
@@ -11,13 +11,7 @@ import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import { hoyPeru } from '../../../lib/fechas';
 import { esConteo, type TipoMovimiento } from '../../../lib/sueldos-tipos';
 import type { MovimientoSueldo, VentaSueldo } from '../../../lib/sueldos-repo';
-import {
-  accionAsignarVendedor,
-  accionCrearMovimiento,
-  accionCrearVenta,
-  accionEliminarMovimiento,
-  accionEliminarVenta,
-} from './actions';
+import { accionCrearMovimiento, accionEliminarMovimiento } from './actions';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
 
@@ -49,16 +43,19 @@ export function MovimientosCliente({
 }: {
   empleados: Emp[];
   movimientos: MovimientoSueldo[];
-  ventas: VentaSueldo[];
+  /**
+   * Opcional y de SOLO LECTURA — la carga y la asignación de vendedor viven en `/sueldos/ventas`
+   * desde la Tarea 3 del rediseño F1 (22-ago-2026). Este prop existe únicamente porque
+   * `app/colaboradores/[id]/movimientos/page.tsx` reutiliza este componente para mostrar las
+   * ventas de una persona en su período (fuera del alcance de esa tarea, no se toca ese archivo),
+   * y sin este prop dejaría de compilar. `/sueldos/movimientos` no lo pasa: acá esta sección
+   * simplemente no se renderiza.
+   */
+  ventas?: VentaSueldo[];
 }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
-
-  const sedes = useMemo(
-    () => [...new Set(empleados.map((e) => e.sedeCod).filter((s): s is string => Boolean(s)))].sort(),
-    [empleados],
-  );
 
   const [mov, setMov] = useState({
     empleadoId: '',
@@ -67,14 +64,6 @@ export function MovimientosCliente({
     monto: '',
     cantidad: '1',
     motivo: '',
-  });
-
-  const [venta, setVenta] = useState({
-    fecha: hoyPeru(),
-    monto: '',
-    tipo: 'venta' as 'venta' | 'alquiler',
-    sedeCod: '',
-    empleadoId: '',
   });
 
   const conteo = esConteo(mov.tipo);
@@ -103,19 +92,6 @@ export function MovimientosCliente({
           motivo: mov.motivo,
         }),
       () => setMov((v) => ({ ...v, monto: '', cantidad: '1', motivo: '' })),
-    );
-
-  const guardarVenta = () =>
-    correr(
-      () =>
-        accionCrearVenta({
-          fecha: venta.fecha,
-          monto: Number(venta.monto),
-          tipo: venta.tipo,
-          sedeCod: venta.sedeCod || null,
-          empleadoId: venta.empleadoId || null,
-        }),
-      () => setVenta((v) => ({ ...v, monto: '' })),
     );
 
   return (
@@ -254,149 +230,61 @@ export function MovimientosCliente({
         </div>
       </Card>
 
-      {/* ── Ventas ───────────────────────────────────────────────────────────────────────── */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Ventas del periodo</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-xs text-muted">
-            Se carga el <strong>total de la boleta</strong>, no el de un producto: la comisión mira
-            el monto de la boleta contra el mínimo configurado. Una venta sin vendedor asignado se
-            guarda igual y queda en la cola de abajo — nada se descarta en silencio.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div>
-              <Label htmlFor="v-fecha">Fecha</Label>
-              <Input
-                id="v-fecha"
-                type="date"
-                value={venta.fecha}
-                onChange={(e) => setVenta((v) => ({ ...v, fecha: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="v-monto">Total de la boleta (S/)</Label>
-              <Input
-                id="v-monto"
-                type="number"
-                min={0}
-                step="0.01"
-                value={venta.monto}
-                onChange={(e) => setVenta((v) => ({ ...v, monto: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="v-tipo">Tipo</Label>
-              <Select
-                id="v-tipo"
-                value={venta.tipo}
-                onChange={(e) => setVenta((v) => ({ ...v, tipo: e.target.value as 'venta' | 'alquiler' }))}
-              >
-                <option value="venta">Venta</option>
-                <option value="alquiler">Alquiler</option>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="v-sede">Sede</Label>
-              <Select
-                id="v-sede"
-                value={venta.sedeCod}
-                onChange={(e) => setVenta((v) => ({ ...v, sedeCod: e.target.value }))}
-              >
-                <option value="">Sin sede</option>
-                {sedes.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="v-emp">Vendedor</Label>
-              <Select
-                id="v-emp"
-                value={venta.empleadoId}
-                onChange={(e) => setVenta((v) => ({ ...v, empleadoId: e.target.value }))}
-              >
-                <option value="">Sin asignar</option>
-                {empleados.map((e) => (
-                  <option key={e.id} value={e.id}>
-                    {e.nombre}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          <Button onClick={guardarVenta} pending={pendiente} disabled={venta.monto === ''}>
-            <Plus className="h-4 w-4" /> Registrar venta
-          </Button>
-        </CardContent>
-
-        <div className="border-t border-line">
-          {ventas.length === 0 ? (
-            <p className="px-5 py-6 text-center text-sm text-muted">Todavía no hay ninguna.</p>
-          ) : (
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Fecha</TH>
-                  <TH>Sede</TH>
-                  <TH>Tipo</TH>
-                  <TH className="text-right">Monto</TH>
-                  <TH>Vendedor</TH>
-                  <TH />
-                </TR>
-              </THead>
-              <TBody>
-                {ventas.map((v) => (
-                  <TR key={v.id}>
-                    <TD className="whitespace-nowrap">{v.fecha}</TD>
-                    <TD>{v.sedeCod ?? '—'}</TD>
-                    <TD className="capitalize">{v.tipo}</TD>
-                    <TD className="text-right tabular-nums">{soles(v.monto)}</TD>
-                    <TD>
-                      {v.empleadoId ? (
-                        v.empleadoNombre ?? '—'
-                      ) : (
-                        <Select
-                          value=""
-                          onChange={(e) => correr(() => accionAsignarVendedor(v.id, e.target.value))}
-                          aria-label="Asignar vendedor"
-                          className="w-48"
-                        >
-                          <option value="">Sin asignar — elegir</option>
-                          {empleados.map((e) => (
-                            <option key={e.id} value={e.id}>
-                              {e.nombre}
-                            </option>
-                          ))}
-                        </Select>
-                      )}
-                      {v.vendedorExterno && (
-                        <span className="ml-2 text-xs text-muted">vino como “{v.vendedorExterno}”</span>
-                      )}
-                    </TD>
-                    <TD className="text-right">
-                      {v.liquidacionId ? (
-                        <Badge tone="green">
-                          <Lock className="mr-1 inline h-3 w-3" />
-                          liquidada
-                        </Badge>
-                      ) : (
-                        <Button variant="ghost" onClick={() => correr(() => accionEliminarVenta(v.id))} aria-label="Borrar">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </TD>
+      {/* ── Ventas: sólo lectura acá, opcional (ver el comentario del prop) ────────────────── */}
+      {ventas ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Ventas del periodo</CardTitle>
+          </CardHeader>
+          <div className="border-t border-line">
+            {ventas.length === 0 ? (
+              <p className="px-5 py-6 text-center text-sm text-muted">Todavía no hay ninguna.</p>
+            ) : (
+              <Table>
+                <THead>
+                  <TR>
+                    <TH>Fecha</TH>
+                    <TH>Sede</TH>
+                    <TH>Tipo</TH>
+                    <TH className="text-right">Monto</TH>
+                    <TH>Vendedor</TH>
+                    <TH />
                   </TR>
-                ))}
-              </TBody>
-            </Table>
-          )}
-        </div>
-      </Card>
+                </THead>
+                <TBody>
+                  {ventas.map((v) => (
+                    <TR key={v.id}>
+                      <TD className="whitespace-nowrap">{v.fecha}</TD>
+                      <TD>{v.sedeCod ?? '—'}</TD>
+                      <TD className="capitalize">{v.tipo}</TD>
+                      <TD className="text-right tabular-nums">{soles(v.monto)}</TD>
+                      <TD>
+                        {v.empleadoNombre ?? (v.vendedorExterno ? `vino como “${v.vendedorExterno}”` : 'sin asignar')}
+                      </TD>
+                      <TD className="text-right">
+                        {v.liquidacionId && (
+                          <Badge tone="green">
+                            <Lock className="mr-1 inline h-3 w-3" />
+                            liquidada
+                          </Badge>
+                        )}
+                      </TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            )}
+          </div>
+        </Card>
+      ) : (
+        <p className="text-sm text-muted">
+          Las ventas se cargan en{' '}
+          <a className="text-gold-deep underline" href="/sueldos/ventas">
+            Ventas y metas
+          </a>
+          .
+        </p>
+      )}
     </div>
   );
 }

@@ -3,18 +3,18 @@
 import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../../lib/auth';
 import {
-  asignarVendedor,
   crearMovimiento,
-  crearVenta,
   eliminarMovimiento,
-  eliminarVenta,
   SueldoRpcError,
   type MovimientoInput,
-  type VentaInput,
 } from '../../../lib/sueldos-repo';
 
 /**
- * Acciones de adelantos, descuentos, bonos y ventas.
+ * Acciones de adelantos, descuentos y bonos.
+ *
+ * Las acciones de venta (crear, asignar vendedor, eliminar) se mudaron a
+ * `apps/erp-web/app/sueldos/ventas/actions.ts` (Tarea 3 del rediseño de sueldos F1,
+ * 22-ago-2026), sin cambiar su validación.
  *
  * Todas comprueban el rol de nuevo: la pantalla ya está cerrada, pero una Server Action es un
  * endpoint público. La puerta definitiva son las policies de la 0072, que exigen administrador
@@ -62,44 +62,6 @@ export async function accionEliminarMovimiento(id: string): Promise<Resultado> {
   try {
     if (!(await admin())) return NEGADO;
     await eliminarMovimiento(id);
-    revalidatePath('/sueldos/movimientos');
-    return { ok: true };
-  } catch (e) {
-    return comoResultado(e);
-  }
-}
-
-export async function accionCrearVenta(p: VentaInput): Promise<Resultado> {
-  try {
-    if (!(await admin())) return NEGADO;
-    if (!Number.isFinite(p.monto) || p.monto < 0) {
-      return { ok: false, error: 'El monto de la boleta tiene que ser un número mayor o igual a cero.' };
-    }
-    await crearVenta(p);
-    revalidatePath('/sueldos/movimientos');
-    return { ok: true };
-  } catch (e) {
-    return comoResultado(e);
-  }
-}
-
-/** Saca una venta de la cola de sin-asignar. Las comisiones son individuales: sin vendedor, no se paga. */
-export async function accionAsignarVendedor(ventaId: string, empleadoId: string): Promise<Resultado> {
-  try {
-    if (!(await admin())) return NEGADO;
-    if (!empleadoId) return { ok: false, error: 'Elegí a quién corresponde la venta.' };
-    await asignarVendedor(ventaId, empleadoId);
-    revalidatePath('/sueldos/movimientos');
-    return { ok: true };
-  } catch (e) {
-    return comoResultado(e);
-  }
-}
-
-export async function accionEliminarVenta(id: string): Promise<Resultado> {
-  try {
-    if (!(await admin())) return NEGADO;
-    await eliminarVenta(id);
     revalidatePath('/sueldos/movimientos');
     return { ok: true };
   } catch (e) {
