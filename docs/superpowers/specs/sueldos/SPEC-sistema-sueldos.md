@@ -744,10 +744,12 @@ esencial** y abren cuatro huecos.
   descuenta del sueldo, la decide el administrador, y **si la prenda aparece la sanción se
   revoca**. Hoy el tipo `reporte` de §3.6 sólo registra el descuento; no hay forma de deshacerlo
   ni de dejar rastro de por qué se deshizo.
-- **HUE-04 — ¿La comisión va acá o no?** N1 dice que la comisión por ticket *"se seguirá llevando
-  aparte"*, pero también que es el 2% sobre boletas de venta y alquiler — que es exactamente
-  RN-13. O son la misma cosa y RN-13 se queda, o son dos cosas distintas y falta entender la
-  segunda. **Preguntar antes de construir la pantalla de ventas.**
+- **HUE-04 ✅ — Cerrado el 22-ago-2026: es la misma cosa y RN-13 se queda.** N1 decía que la
+  comisión por ticket *"se seguirá llevando aparte"*, lo que parecía anunciar una segunda
+  comisión. No lo era: **lo que se lleva aparte son las ventas**, porque viven en tuxedo — el
+  POS de las tiendas, que no se integra con nada — y por eso se registran a mano. La comisión
+  del 2% sobre boletas mayores a `monto_minimo_comision` es la única. El bono de S/30 por meta
+  semanal (RN-12) es un premio distinto, no otra comisión; los dos siguen editables.
 
 Y una que no es hueco sino un dato faltante: **S4 quedó sin responder** (qué se le descuenta a
 alguien del sueldo). Es la pregunta que valida los descuentos de RN-08, RN-09 y §3.6.

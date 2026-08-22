@@ -65,6 +65,15 @@ ENTREGA (14-15)       pendientes de regularizar (informa) · resumen mensual
 | Onboarding/capacitación | Fase futura (F6). Esta spec solo lo ubica en el flujo |
 | Móvil | Web responsive con vista por rol. Sin PWA ni app nativa |
 
+Y las del **22-ago-2026** (Alexander, sobre los puntos críticos de la revisión):
+
+| Tema | Decisión |
+|---|---|
+| HUE-04 — comisión "aparte" | **Resuelto: la del 2% (RN-13) es la única comisión.** "Aparte" significaba que las ventas viven en el otro sistema (tuxedo, el POS de las tiendas, sin integración) y se registran a mano. Los S/30 por meta semanal son el bono de RN-12, no otra comisión. Todo editable |
+| Flujo real de las ventas | El admin siempre sacó las ventas de tuxedo y las pasaba a su Excel: suma semanal por tipo (venta/alquiler) y comisiones. La pantalla de F1 replica ese trabajo: **transcribir boletas desde tuxedo, rápido** (fecha, tienda, tipo, monto), y los totales semanales salen solos |
+| Liquidar con justificaciones pendientes | **Avisa sin cortar** (patrón §6 del motor): lo pendiente cuenta como no justificado, la pantalla avisa "X justificaciones sin revisar — el total puede cambiar", el admin resuelve y recalcula |
+| HUE-02 — garantía del adelanto | **Aviso, no bloqueo**: si el colaborador no lleva una semana trabajada en el periodo, el registro avisa "no cumple la semana de garantía" y deja continuar. ⚠️ Confirmar con el dueño que el aviso alcanza |
+
 ---
 
 ## 3. Navegación (enfoque híbrido)
@@ -104,9 +113,12 @@ exámenes · mi evaluación. RLS estricta: cada uno ve solo lo suyo (no-negociab
   mostrando al costado la tarifa y la meta sugeridas (RN-14, RN-10) como referencia para negociar.
 - **Asistencia:** día activo por defecto, marcas del huellero a la vista, pausas y huecos
   explicados en pantalla (RN-05) para que el admin entienda por qué una jornada suma lo que suma.
-- **Ventas y metas:** carga rápida por fecha/tienda/tipo/monto, semáforo de las 4 semanas contra
-  su meta (RN-12), boletas > S/120 marcadas como base de comisión (RN-13), cola de ventas sin
-  vendedor visible (nada se descarta en silencio).
+- **Ventas y metas:** carga rápida por fecha/tienda/tipo/monto pensada para **transcribir boletas
+  desde tuxedo en segundos** (es el trabajo que el admin ya hacía hacia su Excel), semáforo de las
+  4 semanas contra su meta (RN-12), boletas > S/120 marcadas como base de comisión (RN-13), cola
+  de ventas sin vendedor visible (nada se descarta en silencio). Si el periodo se liquida sin
+  ventas cargadas, la advertencia es **roja e imposible de ignorar**: un olvido de carga no puede
+  volverse un pago sin comisión que nadie notó.
 - **Movimientos:** adelantos, reportes y bonos con motivo y monto obligatorios (el motor ya lo
   valida; la pantalla lo exige antes de enviar).
 - **Liquidación:** desglose RN-19 donde **cada línea abre los registros que la originan**
@@ -122,6 +134,9 @@ exámenes · mi evaluación. RLS estricta: cada uno ve solo lo suyo (no-negociab
   adjunto opcional, estado (`pendiente`|`aceptada`|`rechazada`|`no_justificable`), quién y
   cuándo resolvió.
 - El colaborador crea desde Mi espacio hasta el cierre del periodo (plazo configurable).
+- **Liquidar con justificaciones pendientes avisa, no corta.** Lo pendiente cuenta como no
+  justificado y la liquidación muestra cuántas hay sin revisar y que el total puede cambiar.
+  Nunca se descuenta en silencio algo que quizá era válido, y nunca se traba un pago.
 - **Aceptar una justificación marca `tardanza_justificada`/`falta_justificada` vía RPC** —
   nunca un update plano sobre asistencias.
 - El admin puede marcar un evento como no justificable (lo cierra para el colaborador).
@@ -179,5 +194,7 @@ exámenes · mi evaluación. RLS estricta: cada uno ve solo lo suyo (no-negociab
 |---|---|---|
 | ⚠️ Peso del examen en la nota /20 | Hoy default 0; qué peso real tendrá | Dueño |
 | PEND-10 | Qué efecto tienen los mínimos de venta para continuar | Dueño |
-| HUE-02 | Garantía mínima de una semana trabajada para dar adelanto | Dueño (validación al registrar) |
-| HUE-04 | Si la comisión por ticket "aparte" es RN-13 u otra cosa | Dueño — antes de rediseñar ventas en F1 |
+| ⚠️ HUE-02 | Si el **aviso** por no cumplir la semana de garantía alcanza, o debe bloquear el adelanto | Dueño |
+
+**Cerrado el 22-ago-2026:** HUE-04. La comisión del 2% de RN-13 es la única; el bono de S/30 por
+meta semanal (RN-12) es otro premio, no otra comisión. Ya no bloquea F1.
