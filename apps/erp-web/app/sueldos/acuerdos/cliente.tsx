@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { AlertTriangle, ArrowLeft, FileSignature, Pencil, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Copy, FileSignature, Pencil, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import {
   ESCALAS_SUELDO_DEFAULT,
   PARAMETROS_SUELDO_DEFAULT,
@@ -118,6 +118,23 @@ const deAcuerdo = (a: AcuerdoSueldo): Borrador => ({
 const minutos = (hhmm: string): number => {
   const [h, m] = hhmm.split(':').map(Number);
   return h * 60 + m;
+};
+
+// Atajos de tipeo, no regla de negocio: son los dos horarios reales que ya menciona el texto de
+// la pantalla. El administrador puede escribir cualquier otra hora.
+const TURNOS_RAPIDOS = [
+  { label: 'Mañana 09–13', horaInicio: '09:00', horaFin: '13:00' },
+  { label: 'Tarde 13–20', horaInicio: '13:00', horaFin: '20:00' },
+] as const;
+
+// La ventana visible de la barra: cubre los horarios reales con margen. Un turno fuera de la
+// ventana se recorta visualmente, nunca se pierde como dato.
+const BARRA_DESDE = 6 * 60;
+const BARRA_HASTA = 22 * 60;
+
+const pctBarra = (hhmm: string): number => {
+  const m = Math.min(Math.max(minutos(hhmm), BARRA_DESDE), BARRA_HASTA);
+  return ((m - BARRA_DESDE) / (BARRA_HASTA - BARRA_DESDE)) * 100;
 };
 
 /**
@@ -294,6 +311,26 @@ export function AcuerdosCliente({
       turnos: [...v.turnos, { diaSemana: dia, horaInicio: '09:00', horaFin: '13:00', lugar: null }],
     }));
 
+  const agregarTurnoRapido = (dia: number, r: (typeof TURNOS_RAPIDOS)[number]) =>
+    setB((v) => ({
+      ...v,
+      turnos: [...v.turnos, { diaSemana: dia, horaInicio: r.horaInicio, horaFin: r.horaFin, lugar: null }],
+    }));
+
+  // Copia los turnos de `dia` a los días SIGUIENTES que estén vacíos. No pisa un día con turnos:
+  // pisar en silencio lo que alguien ya cargó es exactamente lo que este editor no hace.
+  const copiarDiaASiguientes = (dia: number) =>
+    setB((v) => {
+      const base = v.turnos.filter((t) => t.diaSemana === dia);
+      if (base.length === 0) return v;
+      const nuevos: TurnoForm[] = [];
+      for (let d = dia + 1; d <= 7; d++) {
+        if (v.turnos.some((t) => t.diaSemana === d)) continue;
+        for (const t of base) nuevos.push({ ...t, diaSemana: d });
+      }
+      return nuevos.length === 0 ? v : { ...v, turnos: [...v.turnos, ...nuevos] };
+    });
+
   const quitarTurno = (i: number) => setB((v) => ({ ...v, turnos: v.turnos.filter((_, j) => j !== i) }));
 
   const setParametro = (clave: keyof ParametrosSueldo, texto: string) =>
@@ -390,6 +427,16 @@ export function AcuerdosCliente({
                   return (
                     <div key={dia} className="flex flex-wrap items-center gap-2 rounded-md border border-line px-3 py-2">
                       <span className="w-24 shrink-0 text-sm font-medium text-navy">{nombre}</span>
+                      {/* Barra 06:00–22:00: cada turno es un segmento. Estática a propósito. */}
+                      <div className="relative h-4 w-full max-w-[16rem] shrink-0 overflow-hidden rounded bg-paper sm:w-40" aria-hidden>
+                        {delDia.map(({ t, i }) => (
+                          <span
+                            key={i}
+                            className="absolute inset-y-0 rounded-sm bg-gold/60"
+                            style={{ left: `${pctBarra(t.horaInicio)}%`, width: `${Math.max(pctBarra(t.horaFin) - pctBarra(t.horaInicio), 1)}%` }}
+                          />
+                        ))}
+                      </div>
                       {delDia.length === 0 && <span className="text-xs text-muted">sin turnos</span>}
                       {delDia.map(({ t, i }) => (
                         <span key={i} className="flex items-center gap-1">
@@ -413,6 +460,17 @@ export function AcuerdosCliente({
                           </Button>
                         </span>
                       ))}
+                      {delDia.length === 0 &&
+                        TURNOS_RAPIDOS.map((r) => (
+                          <Button key={r.label} variant="ghost" onClick={() => agregarTurnoRapido(dia, r)}>
+                            <Plus className="h-4 w-4" /> {r.label}
+                          </Button>
+                        ))}
+                      {delDia.length > 0 && dia < 7 && (
+                        <Button variant="ghost" onClick={() => copiarDiaASiguientes(dia)}>
+                          <Copy className="h-4 w-4" /> Copiar a los días vacíos siguientes
+                        </Button>
+                      )}
                       <Button variant="ghost" className="ml-auto" onClick={() => agregarTurno(dia)}>
                         <Plus className="h-4 w-4" /> Turno
                       </Button>
