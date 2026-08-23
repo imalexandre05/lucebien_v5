@@ -98,6 +98,14 @@ que el único lugar real del sueldo es el contrato.
 
 ### 2.6 La liquidación es el pago (R4 — zona crítica)
 
+> ✅ **Migración 0080 aplicada y verificada contra `scilb` el 23-ago-2026**, vía MCP
+> `apply_migration` (queda en el registro de Supabase). La prueba de ataque corrió entera por
+> `execute_sql`: 26 aserciones en ok, cero FALLA — incluidos sobrepago por RPC y por INSERT
+> directo, `NaN`, des-anular, editar motivo, anular liquidación con pagos vigentes (U1/U2),
+> PERMISO para no-admin (V1/V2) y el filtro RLS con `set local role authenticated` (W). El
+> rollback no dejó filas (pagos=0, liquidaciones=0, acuerdos de prueba=0) y el catálogo
+> `sueldo_metodos_pago` quedó sembrado.
+
 Sobre una liquidación **cerrada** se registran pagos:
 
 | Campo | Qué |
