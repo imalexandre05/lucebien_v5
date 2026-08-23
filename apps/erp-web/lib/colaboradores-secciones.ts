@@ -54,7 +54,21 @@ export type Seccion = {
   soloAdmin?: boolean;
 };
 
+// EL ORDEN DEL ARRAY ES EL ORDEN DE LAS PESTAÑAS (nav.tsx recorre SECCIONES tal cual). Resumen va
+// primero porque ES el landing: el bare /personal/{id} resuelve ahí (segmento ''), así que primero
+// visualmente tiene que ser primero de verdad — antes Datos ocupaba el índice 0 y Resumen el 1, y
+// se aterrizaba en la SEGUNDA pestaña (fricción 4+5, hotfix R1.1). De ahí en más, el orden del
+// flujo real aprobado en la spec: Datos → Contrato → Asistencias → Movimientos → Evaluación → Pago
+// → Valores 360° (docs/superpowers/specs/sueldos/2026-08-23-personal-fusion-design.md §2.3).
 export const SECCIONES: Seccion[] = [
+  {
+    clave: 'resumen',
+    label: 'Resumen',
+    segmento: '',
+    icon: LayoutDashboard,
+    modulo: 'evaluaciones',
+    descripcion: 'Qué pasó en el período y qué falta para cerrarlo',
+  },
   {
     clave: 'datos',
     label: 'Datos',
@@ -68,12 +82,13 @@ export const SECCIONES: Seccion[] = [
     soloAdmin: true,
   },
   {
-    clave: 'resumen',
-    label: 'Resumen',
-    segmento: '',
-    icon: LayoutDashboard,
-    modulo: 'evaluaciones',
-    descripcion: 'Qué pasó en el período y qué falta para cerrarlo',
+    clave: 'contrato',
+    label: 'Contrato',
+    segmento: 'contrato',
+    icon: FileSignature,
+    modulo: 'sueldos',
+    descripcion: 'Lo pactado: modalidad, sueldo y horario',
+    soloAdmin: true,
   },
   {
     clave: 'asistencias',
@@ -82,35 +97,6 @@ export const SECCIONES: Seccion[] = [
     icon: CalendarCheck,
     modulo: 'sueldos',
     descripcion: 'Declarar qué pasó cada día del período',
-    soloAdmin: true,
-  },
-  {
-    clave: 'evaluacion',
-    label: 'Evaluación',
-    segmento: 'evaluacion',
-    icon: Award,
-    modulo: 'evaluaciones',
-    descripcion: 'La nota del período sobre 20 y su desglose',
-  },
-  {
-    clave: 'valores',
-    label: 'Valores 360°',
-    segmento: 'valores',
-    icon: HeartHandshake,
-    // NO es el permiso 'valores'. Ese está sembrado para los 7 roles porque /valores es el peer
-    // review que llena TODO el equipo. Mirar el puntaje que recibió OTRA persona es una lectura
-    // administrativa, tan sensible como su nota, y el aislamiento 2 dice que nadie ve la nota de
-    // otro. Por eso va con 'evaluaciones', que es el permiso del administrador.
-    modulo: 'evaluaciones',
-    descripcion: 'Cómo lo puntuó el equipo este mes',
-  },
-  {
-    clave: 'pago',
-    label: 'Pago',
-    segmento: 'pago',
-    icon: Wallet,
-    modulo: 'pagos',
-    descripcion: 'La liquidación del período y su registro',
     soloAdmin: true,
   },
   {
@@ -123,13 +109,33 @@ export const SECCIONES: Seccion[] = [
     soloAdmin: true,
   },
   {
-    clave: 'contrato',
-    label: 'Contrato',
-    segmento: 'contrato',
-    icon: FileSignature,
-    modulo: 'sueldos',
-    descripcion: 'Lo pactado: modalidad, sueldo y horario',
+    clave: 'evaluacion',
+    label: 'Evaluación',
+    segmento: 'evaluacion',
+    icon: Award,
+    modulo: 'evaluaciones',
+    descripcion: 'La nota del período sobre 20 y su desglose',
+  },
+  {
+    clave: 'pago',
+    label: 'Pago',
+    segmento: 'pago',
+    icon: Wallet,
+    modulo: 'pagos',
+    descripcion: 'La liquidación del período y su registro',
     soloAdmin: true,
+  },
+  {
+    clave: 'valores',
+    label: 'Valores 360°',
+    segmento: 'valores',
+    icon: HeartHandshake,
+    // NO es el permiso 'valores'. Ese está sembrado para los 7 roles porque /valores es el peer
+    // review que llena TODO el equipo. Mirar el puntaje que recibió OTRA persona es una lectura
+    // administrativa, tan sensible como su nota, y el aislamiento 2 dice que nadie ve la nota de
+    // otro. Por eso va con 'evaluaciones', que es el permiso del administrador.
+    modulo: 'evaluaciones',
+    descripcion: 'Cómo lo puntuó el equipo este mes',
   },
 ];
 
