@@ -48,6 +48,8 @@ export default async function ContratoColaboradorPage({ params }: { params: { id
       <AcuerdosCliente
         acuerdos={acuerdos}
         empleados={[{ id: persona.id, nombre: persona.nombre, rol: persona.rol, sedeCod: persona.sedeCod }]}
+        personaFija={{ id: persona.id, nombre: persona.nombre, rol: persona.rol, sedeCod: persona.sedeCod }}
+        fechaIngresoPersona={persona.fechaIngreso}
       />
     </div>
   );

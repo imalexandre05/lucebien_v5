@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
-import { AlertTriangle, FileSignature, Pencil, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
+import { AlertTriangle, ArrowLeft, FileSignature, Pencil, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import {
   ESCALAS_SUELDO_DEFAULT,
   PARAMETROS_SUELDO_DEFAULT,
@@ -15,7 +15,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { EmptyState } from '../../../components/ui/empty-state';
-import { Input, Label, Select, LabelGrupo } from '../../../components/ui/form';
+import { Aviso, Input, Label, Select, LabelGrupo } from '../../../components/ui/form';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { OpcionBotones, type Opcion } from '../../../components/ui/opcion-botones';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
@@ -36,6 +36,11 @@ const TONO_ESTADO: Record<EstadoAcuerdo, 'gray' | 'green' | 'navy'> = {
 const OPC_MODALIDAD: Opcion[] = [
   { value: 'mensual', label: 'Mensual' },
   { value: 'semanal', label: 'Semanal' },
+];
+
+const OPC_ALMUERZO: Opcion[] = [
+  { value: 'no', label: 'Sólo en días de tiempo completo' },
+  { value: 'si', label: 'Cualquier día trabajado' },
 ];
 
 const soles = (n: number): string =>
@@ -64,6 +69,8 @@ const PARAMETROS: { clave: keyof ParametrosSueldo; label: string; ayuda: string;
   { clave: 'pctComision', label: 'Comisión', ayuda: 'porcentaje sobre la base', paso: 0.5 },
   { clave: 'montoMinimoComision', label: 'Boleta mínima', ayuda: 'sólo boletas por encima entran a la comisión', paso: 10 },
 ];
+
+const ETIQUETA_PARAMETRO = new Map(PARAMETROS.map((p) => [p.clave, p.label]));
 
 type TurnoForm = { diaSemana: number; horaInicio: string; horaFin: string; lugar: string | null };
 
@@ -179,27 +186,75 @@ function analizar(b: Borrador): {
   }
 }
 
-export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSueldo[]; empleados: Emp[] }) {
-  const [abierto, setAbierto] = useState(false);
+/**
+ * POR QUÉ EL CONTRATO NO ES UN MODAL (21-ago-2026).
+ *
+ * Un modal es para una decisión corta: confirmar, elegir de una lista, ajustar un número. Un
+ * contrato de sueldo es trabajo: fechas, modalidad, siete días de horario, sueldo, escala y una
+ * vista previa que hay que leer antes de guardar, porque lo que se pacta acá es lo que después se
+ * paga. Metido en un modal, el formulario necesitaba scroll interno propio — y un formulario que
+ * necesita scroll interno es un formulario que quería ser una página.
+ *
+ * Así que el editor vive en la misma página, dentro del contenedor de contratos, y reemplaza a la
+ * lista mientras se trabaja. Lo único que sigue en modal son los parámetros: trece números que casi
+ * nunca se tocan y que, en línea, tapaban lo que sí se mira siempre.
+ */
+export function AcuerdosCliente({
+  acuerdos,
+  empleados,
+  personaFija,
+  fechaIngresoPersona,
+}: {
+  acuerdos: AcuerdoSueldo[];
+  empleados: Emp[];
+  /** Contexto /colaboradores/[id]/contrato: la persona no se elige, ya está dada. */
+  personaFija?: Emp;
+  /** Fecha de ingreso de la persona fija: precompleta el primer contrato (C-2). */
+  fechaIngresoPersona?: string | null;
+}) {
   const [editando, setEditando] = useState<string | null>(null);
+  const [enEditor, setEnEditor] = useState(false);
+  const [parametrosAbierto, setParametrosAbierto] = useState(false);
   const [b, setB] = useState<Borrador>(VACIO);
   const [error, setError] = useState<string | null>(null);
+  // El error de una acción de la lista —poner vigente— no puede vivir en el error del formulario:
+  // cuando se dispara, el formulario no está en pantalla y el mensaje se renderizaría donde nadie
+  // lo ve.
+  const [errorLista, setErrorLista] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
 
   const analisis = useMemo(() => analizar(b), [b]);
+  const propios = Object.keys(b.parametros) as (keyof ParametrosSueldo)[];
+
+  // Al entrar o salir del editor cambia todo lo que hay en pantalla. Sin volver arriba, quien abre
+  // un contrato desde el final de una lista larga cae en la mitad del formulario.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [enEditor]);
 
   const abrirNuevo = () => {
     setEditando(null);
-    setB(VACIO);
+    setB({
+      ...VACIO,
+      empleadoId: personaFija?.id ?? '',
+      // C-2: el PRIMER contrato de la persona arranca en su fecha de ingreso, editable. Una
+      // renovación no: tiene su propia fecha y atarla al ingreso original la pisaría.
+      fechaInicio: personaFija && acuerdos.length === 0 ? (fechaIngresoPersona ?? '') : '',
+    });
     setError(null);
-    setAbierto(true);
+    setEnEditor(true);
   };
 
   const abrirEdicion = (a: AcuerdoSueldo) => {
     setEditando(a.id);
     setB(deAcuerdo(a));
     setError(null);
-    setAbierto(true);
+    setEnEditor(true);
+  };
+
+  const volver = () => {
+    setParametrosAbierto(false);
+    setEnEditor(false);
   };
 
   const guardar = () => {
@@ -217,15 +272,16 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
     };
     empezar(async () => {
       const r = editando ? await accionActualizarAcuerdo(editando, form) : await accionCrearAcuerdo(form);
-      if (r.ok) setAbierto(false);
+      if (r.ok) volver();
       else setError(r.error ?? 'No se pudo guardar.');
     });
   };
 
   const cambiarEstado = (id: string, estado: EstadoAcuerdo) => {
+    setErrorLista(null);
     empezar(async () => {
       const r = await accionCambiarEstado(id, estado);
-      if (!r.ok) setError(r.error ?? 'No se pudo cambiar el estado.');
+      if (!r.ok) setErrorLista(r.error ?? 'No se pudo cambiar el estado.');
     });
   };
 
@@ -250,8 +306,304 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
       return { ...v, parametros: p };
     });
 
+  // ── El editor: la página de trabajo ──────────────────────────────────────────────────────
+  if (enEditor) {
+    return (
+      <>
+        <Card>
+          <CardHeader className="flex-wrap gap-3">
+            <div className="min-w-0">
+              <CardTitle>{editando ? 'Editar contrato' : 'Nuevo contrato'}</CardTitle>
+              <p className="mt-1 text-xs text-muted">
+                Sueldo, periodo y horario. De acá salen las horas contratadas y el valor de la hora.
+              </p>
+            </div>
+            <Button variant="ghost" onClick={volver} className="shrink-0">
+              <ArrowLeft className="h-4 w-4" /> Volver a contratos
+            </Button>
+          </CardHeader>
+
+          <CardContent className="space-y-6 border-t border-line pt-5">
+            {personaFija ? (
+              <div>
+                <LabelGrupo>Persona</LabelGrupo>
+                <p className="text-sm font-medium text-navy">Contrato de {personaFija.nombre}</p>
+              </div>
+            ) : (
+              <div>
+                <LabelGrupo>Persona</LabelGrupo>
+                <PersonaPicker
+                  empleados={empleados}
+                  selected={b.empleadoId ? [b.empleadoId] : []}
+                  onChange={(ids) => setB((v) => ({ ...v, empleadoId: ids[0] ?? '' }))}
+                  single
+                  placeholder="Buscar a la persona…"
+                />
+              </div>
+            )}
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="desde" required>Desde</Label>
+                <Input
+                  id="desde"
+                  type="date"
+                  value={b.fechaInicio}
+                  onChange={(e) => setB((v) => ({ ...v, fechaInicio: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="hasta" required>Hasta</Label>
+                <Input
+                  id="hasta"
+                  type="date"
+                  value={b.fechaFin}
+                  onChange={(e) => setB((v) => ({ ...v, fechaFin: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div>
+              <LabelGrupo>Modalidad de pago</LabelGrupo>
+              <OpcionBotones
+                opciones={OPC_MODALIDAD}
+                value={b.modalidad}
+                onChange={(x) => setB((v) => ({ ...v, modalidad: x as ModalidadAcuerdo }))}
+                ariaLabel="Modalidad"
+              />
+            </div>
+
+            {/* ── Horario semanal ───────────────────────────────────────────────────────── */}
+            <div>
+              <LabelGrupo>Horario contratado</LabelGrupo>
+              <p className="mb-2 text-xs text-muted">
+                El horario real de LuceBien es 09:00–13:00 y 13:00–20:00, contiguo. Se cargan los dos
+                turnos, no uno solo de 09:00 a 20:00: dos turnos que se pisan inflan las horas y
+                hunden el valor de la hora de todo el periodo.
+              </p>
+              <div className="space-y-2">
+                {DIAS.map((nombre, idx) => {
+                  const dia = idx + 1;
+                  const delDia = b.turnos
+                    .map((t, i) => ({ t, i }))
+                    .filter(({ t }) => t.diaSemana === dia);
+                  return (
+                    <div key={dia} className="flex flex-wrap items-center gap-2 rounded-md border border-line px-3 py-2">
+                      <span className="w-24 shrink-0 text-sm font-medium text-navy">{nombre}</span>
+                      {delDia.length === 0 && <span className="text-xs text-muted">sin turnos</span>}
+                      {delDia.map(({ t, i }) => (
+                        <span key={i} className="flex items-center gap-1">
+                          <Input
+                            type="time"
+                            className="w-28"
+                            value={t.horaInicio}
+                            onChange={(e) => setTurno(i, 'horaInicio', e.target.value)}
+                            aria-label={`Inicio del turno de ${nombre}`}
+                          />
+                          <span className="text-muted">–</span>
+                          <Input
+                            type="time"
+                            className="w-28"
+                            value={t.horaFin}
+                            onChange={(e) => setTurno(i, 'horaFin', e.target.value)}
+                            aria-label={`Fin del turno de ${nombre}`}
+                          />
+                          <Button variant="ghost" onClick={() => quitarTurno(i)} aria-label={`Quitar turno de ${nombre}`}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </span>
+                      ))}
+                      <Button variant="ghost" className="ml-auto" onClick={() => agregarTurno(dia)}>
+                        <Plus className="h-4 w-4" /> Turno
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Sueldo ────────────────────────────────────────────────────────────────── */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="sueldo" required>Sueldo pactado del periodo</Label>
+                <Input
+                  id="sueldo"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={b.sueldoPactado}
+                  onChange={(e) => setB((v) => ({ ...v, sueldoPactado: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="escala">Escala (opcional)</Label>
+                <Select
+                  id="escala"
+                  value={b.escala}
+                  onChange={(e) => setB((v) => ({ ...v, escala: e.target.value }))}
+                >
+                  <option value="">Sin escala</option>
+                  {ESCALAS_SUELDO_DEFAULT.map((e) => (
+                    <option key={e.escala} value={e.escala}>
+                      {e.escala} — S/ {e.tarifaHora.toFixed(2)}/h ({e.antiguedad})
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <LabelGrupo>Cuándo se gana el almuerzo</LabelGrupo>
+              <OpcionBotones
+                opciones={OPC_ALMUERZO}
+                value={b.almuerzoHabilitado ? 'si' : 'no'}
+                onChange={(x) => setB((v) => ({ ...v, almuerzoHabilitado: x === 'si' }))}
+                ariaLabel="Cuándo se gana el almuerzo"
+              />
+              <p className="mt-1 text-xs text-muted">
+                Un día de tiempo completo es el que llega a las horas mínimas del parámetro «Horas
+                para el almuerzo».
+              </p>
+            </div>
+
+            {/* ── Vista previa ──────────────────────────────────────────────────────────── */}
+            <div className="rounded-md border border-line bg-paper px-4 py-3">
+              {analisis.error ? (
+                <p className="text-sm text-error-deep">{analisis.error}</p>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                    <div>
+                      <p className="text-xs text-muted">Días del periodo</p>
+                      <p className="tabular-nums text-navy">{analisis.dias}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Horas contratadas</p>
+                      <p className="tabular-nums text-navy">{analisis.horas.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Valor de la hora</p>
+                      <p className="tabular-nums text-navy">
+                        {analisis.valorHora == null ? '—' : soles(analisis.valorHora)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Sugerido por escala</p>
+                      <p className="tabular-nums text-navy">
+                        {analisis.sugerido == null ? '—' : soles(analisis.sugerido)}
+                      </p>
+                    </div>
+                  </div>
+                  {analisis.sugerido != null && (
+                    <p className="mt-2 text-xs text-muted">
+                      La escala es una referencia para negociar, no una obligación: el que manda es
+                      el sueldo pactado.
+                    </p>
+                  )}
+                </>
+              )}
+
+              {analisis.avisos.map((a) => (
+                <p key={a} className="mt-2 flex gap-2 text-xs text-aviso-deep">
+                  <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+                  {a}
+                </p>
+              ))}
+            </div>
+
+            {/* ── Parámetros propios: lo único que sigue siendo un modal ─────────────────── */}
+            <div className="rounded-md border border-line px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-navy">Parámetros propios de este contrato</p>
+                  <p className="text-xs text-muted">
+                    En blanco usa el valor global de Configuración. Lo que se escriba acá vale sólo
+                    para esta persona y sólo en este contrato.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => setParametrosAbierto(true)} className="shrink-0">
+                  <SlidersHorizontal className="h-4 w-4" />
+                  {propios.length === 0 ? 'Ajustar parámetros' : `Ajustar (${propios.length})`}
+                </Button>
+              </div>
+              {propios.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {propios.map((clave) => (
+                    <Badge key={clave} tone="gold">
+                      {ETIQUETA_PARAMETRO.get(clave) ?? clave}: {String(b.parametros[clave])}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {error && <Aviso tono="error">{error}</Aviso>}
+          </CardContent>
+
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-4">
+            <Button variant="outline" onClick={volver}>
+              Cancelar
+            </Button>
+            <Button onClick={guardar} pending={pendiente} disabled={analisis.error != null}>
+              {editando ? 'Guardar cambios' : 'Pactar contrato'}
+            </Button>
+          </div>
+        </Card>
+
+        <Modal
+          open={parametrosAbierto}
+          onClose={() => setParametrosAbierto(false)}
+          title="Parámetros de este contrato"
+          subtitle="Un campo en blanco usa el valor global de Configuración."
+          size="xl"
+        >
+          <ModalBody>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {PARAMETROS.map((p) => {
+                const global = PARAMETROS_SUELDO_DEFAULT[p.clave];
+                const actual = b.parametros[p.clave];
+                return (
+                  <div key={p.clave}>
+                    <Label htmlFor={p.clave}>{p.label}</Label>
+                    <Input
+                      id={p.clave}
+                      type="number"
+                      step={p.paso}
+                      value={actual == null ? '' : String(actual)}
+                      placeholder={global == null ? 'sin meta pactada' : String(global)}
+                      onChange={(e) => setParametro(p.clave, e.target.value)}
+                    />
+                    <p className="mt-1 text-xs text-muted">{p.ayuda}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </ModalBody>
+          <ModalFooter>
+            {/* Nada se guarda desde acá: los cambios quedan en el formulario y viajan cuando se
+                guarda el contrato. Por eso no hay «Cancelar»: prometería deshacer algo que este
+                diálogo no escribió. */}
+            {propios.length > 0 && (
+              <Button variant="ghost" onClick={() => setB((v) => ({ ...v, parametros: {} }))}>
+                Volver a los globales
+              </Button>
+            )}
+            <Button onClick={() => setParametrosAbierto(false)}>Listo</Button>
+          </ModalFooter>
+        </Modal>
+      </>
+    );
+  }
+
+  // ── La lista ─────────────────────────────────────────────────────────────────────────────
   return (
     <>
+      {errorLista && (
+        <Aviso tono="error" className="mb-3">
+          {errorLista}
+        </Aviso>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Contratos de sueldo</CardTitle>
@@ -269,7 +621,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
             <Table>
               <THead>
                 <TR>
-                  <TH>Persona</TH>
+                  {!personaFija && <TH>Persona</TH>}
                   <TH>Periodo</TH>
                   <TH>Modalidad</TH>
                   <TH className="text-right">Sueldo</TH>
@@ -281,7 +633,7 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
               <TBody>
                 {acuerdos.map((a) => (
                   <TR key={a.id}>
-                    <TD className="font-medium text-navy">{a.empleadoNombre ?? '—'}</TD>
+                    {!personaFija && <TD className="font-medium text-navy">{a.empleadoNombre ?? '—'}</TD>}
                     <TD>
                       {a.fechaInicio} → {a.fechaFin}
                     </TD>
@@ -318,249 +670,6 @@ export function AcuerdosCliente({ acuerdos, empleados }: { acuerdos: AcuerdoSuel
           )}
         </CardContent>
       </Card>
-
-      {error && !abierto && (
-        <p className="mt-3 rounded-md bg-error/10 px-3 py-2 text-sm text-error-deep">{error}</p>
-      )}
-
-      <Modal
-        open={abierto}
-        onClose={() => setAbierto(false)}
-        title={editando ? 'Editar contrato' : 'Nuevo contrato'}
-        subtitle="Sueldo, periodo y horario. De acá salen las horas contratadas y el valor de la hora."
-        size="lg"
-      >
-        <ModalBody className="space-y-6">
-          <div>
-            <LabelGrupo>Persona</LabelGrupo>
-            <PersonaPicker
-              empleados={empleados}
-              selected={b.empleadoId ? [b.empleadoId] : []}
-              onChange={(ids) => setB((v) => ({ ...v, empleadoId: ids[0] ?? '' }))}
-              single
-              placeholder="Buscar a la persona…"
-            />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="desde" required>Desde</Label>
-              <Input
-                id="desde"
-                type="date"
-                value={b.fechaInicio}
-                onChange={(e) => setB((v) => ({ ...v, fechaInicio: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="hasta" required>Hasta</Label>
-              <Input
-                id="hasta"
-                type="date"
-                value={b.fechaFin}
-                onChange={(e) => setB((v) => ({ ...v, fechaFin: e.target.value }))}
-              />
-            </div>
-          </div>
-
-          <div>
-            <LabelGrupo>Modalidad de pago</LabelGrupo>
-            <OpcionBotones
-              opciones={OPC_MODALIDAD}
-              value={b.modalidad}
-              onChange={(x) => setB((v) => ({ ...v, modalidad: x as ModalidadAcuerdo }))}
-              ariaLabel="Modalidad"
-            />
-          </div>
-
-          {/* ── Horario semanal ─────────────────────────────────────────────────────────── */}
-          <div>
-            <LabelGrupo>Horario contratado</LabelGrupo>
-            <p className="mb-2 text-xs text-muted">
-              El horario real de LuceBien es 09:00–13:00 y 13:00–20:00, contiguo. Se cargan los dos
-              turnos, no uno solo de 09:00 a 20:00: dos turnos que se pisan inflan las horas y
-              hunden el valor de la hora de todo el periodo.
-            </p>
-            <div className="space-y-2">
-              {DIAS.map((nombre, idx) => {
-                const dia = idx + 1;
-                const delDia = b.turnos
-                  .map((t, i) => ({ t, i }))
-                  .filter(({ t }) => t.diaSemana === dia);
-                return (
-                  <div key={dia} className="flex flex-wrap items-center gap-2 rounded-md border border-line px-3 py-2">
-                    <span className="w-24 shrink-0 text-sm font-medium text-navy">{nombre}</span>
-                    {delDia.length === 0 && <span className="text-xs text-muted">sin turnos</span>}
-                    {delDia.map(({ t, i }) => (
-                      <span key={i} className="flex items-center gap-1">
-                        <Input
-                          type="time"
-                          className="w-28"
-                          value={t.horaInicio}
-                          onChange={(e) => setTurno(i, 'horaInicio', e.target.value)}
-                          aria-label={`Inicio del turno de ${nombre}`}
-                        />
-                        <span className="text-muted">–</span>
-                        <Input
-                          type="time"
-                          className="w-28"
-                          value={t.horaFin}
-                          onChange={(e) => setTurno(i, 'horaFin', e.target.value)}
-                          aria-label={`Fin del turno de ${nombre}`}
-                        />
-                        <Button variant="ghost" onClick={() => quitarTurno(i)} aria-label={`Quitar turno de ${nombre}`}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </span>
-                    ))}
-                    <Button variant="ghost" className="ml-auto" onClick={() => agregarTurno(dia)}>
-                      <Plus className="h-4 w-4" /> Turno
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* ── Sueldo ──────────────────────────────────────────────────────────────────── */}
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <Label htmlFor="sueldo" required>Sueldo pactado del periodo</Label>
-              <Input
-                id="sueldo"
-                type="number"
-                min={0}
-                step="0.01"
-                value={b.sueldoPactado}
-                onChange={(e) => setB((v) => ({ ...v, sueldoPactado: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label htmlFor="escala">Escala (opcional)</Label>
-              <Select
-                id="escala"
-                value={b.escala}
-                onChange={(e) => setB((v) => ({ ...v, escala: e.target.value }))}
-              >
-                <option value="">Sin escala</option>
-                {ESCALAS_SUELDO_DEFAULT.map((e) => (
-                  <option key={e.escala} value={e.escala}>
-                    {e.escala} — S/ {e.tarifaHora.toFixed(2)}/h ({e.antiguedad})
-                  </option>
-                ))}
-              </Select>
-            </div>
-          </div>
-
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="mt-0.5"
-              checked={b.almuerzoHabilitado}
-              onChange={(e) => setB((v) => ({ ...v, almuerzoHabilitado: e.target.checked }))}
-            />
-            <span>
-              <span className="font-medium text-navy">Almuerzo habilitado sin importar las horas</span>
-              <span className="block text-xs text-muted">
-                Normalmente el almuerzo se gana en los días de tiempo completo. Con esto marcado, lo
-                gana cualquier día trabajado.
-              </span>
-            </span>
-          </label>
-
-          {/* ── Vista previa ────────────────────────────────────────────────────────────── */}
-          <div className="rounded-md border border-line bg-paper px-4 py-3">
-            {analisis.error ? (
-              <p className="text-sm text-error-deep">{analisis.error}</p>
-            ) : (
-              <>
-                <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-                  <div>
-                    <p className="text-xs text-muted">Días del periodo</p>
-                    <p className="tabular-nums text-navy">{analisis.dias}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted">Horas contratadas</p>
-                    <p className="tabular-nums text-navy">{analisis.horas.toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted">Valor de la hora</p>
-                    <p className="tabular-nums text-navy">
-                      {analisis.valorHora == null ? '—' : soles(analisis.valorHora)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted">Sugerido por escala</p>
-                    <p className="tabular-nums text-navy">
-                      {analisis.sugerido == null ? '—' : soles(analisis.sugerido)}
-                    </p>
-                  </div>
-                </div>
-                {analisis.sugerido != null && (
-                  <p className="mt-2 text-xs text-muted">
-                    La escala es una referencia para negociar, no una obligación: el que manda es el
-                    sueldo pactado.
-                  </p>
-                )}
-              </>
-            )}
-
-            {analisis.avisos.map((a) => (
-              <p key={a} className="mt-2 flex gap-2 text-xs text-aviso-deep">
-                <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
-                {a}
-              </p>
-            ))}
-          </div>
-
-          {/* ── Overrides ───────────────────────────────────────────────────────────────── */}
-          <details className="rounded-md border border-line px-4 py-3">
-            <summary className="cursor-pointer text-sm font-medium text-navy">
-              Parámetros propios de este contrato
-              {Object.keys(b.parametros).length > 0 && (
-                <Badge tone="gold" className="ml-2">
-                  {Object.keys(b.parametros).length}
-                </Badge>
-              )}
-            </summary>
-            <p className="mt-2 text-xs text-muted">
-              En blanco usa el valor global de Configuración. Lo que se escriba acá vale sólo para
-              esta persona y sólo en este contrato.
-            </p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {PARAMETROS.map((p) => {
-                const global = PARAMETROS_SUELDO_DEFAULT[p.clave];
-                const actual = b.parametros[p.clave];
-                return (
-                  <div key={p.clave}>
-                    <Label htmlFor={p.clave}>{p.label}</Label>
-                    <Input
-                      id={p.clave}
-                      type="number"
-                      step={p.paso}
-                      value={actual == null ? '' : String(actual)}
-                      placeholder={global == null ? 'sin meta pactada' : String(global)}
-                      onChange={(e) => setParametro(p.clave, e.target.value)}
-                    />
-                    <p className="mt-1 text-xs text-muted">{p.ayuda}</p>
-                  </div>
-                );
-              })}
-            </div>
-          </details>
-
-          {error && <p className="rounded-md bg-error/10 px-3 py-2 text-sm text-error-deep">{error}</p>}
-        </ModalBody>
-
-        <ModalFooter>
-          <Button variant="outline" onClick={() => setAbierto(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={guardar} pending={pendiente} disabled={analisis.error != null}>
-            {editando ? 'Guardar cambios' : 'Pactar contrato'}
-          </Button>
-        </ModalFooter>
-      </Modal>
     </>
   );
 }
