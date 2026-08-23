@@ -34,7 +34,7 @@ export function NavSecciones({
         aria-hidden
         className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-paper to-transparent sm:hidden"
       />
-      <nav aria-label="Secciones del colaborador" className="-mx-1 overflow-x-auto">
+      <nav aria-label="Secciones de la persona" className="-mx-1 overflow-x-auto">
         <ul className="flex min-w-max items-center gap-1 border-b border-line px-1">
         {secciones.map((s) => {
           const href = s.segmento ? `${base}/${s.segmento}` : base;

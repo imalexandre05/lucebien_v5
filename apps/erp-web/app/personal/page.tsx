@@ -76,7 +76,7 @@ export default async function ColaboradoresPage({
   if (!(await tieneReauth(sesion.usuario.id))) {
     return (
       <div>
-        <PageHeader title="Colaboradores" subtitle="Verificación requerida" />
+        <PageHeader title="Personal" subtitle="Verificación requerida" />
         <ReauthGate mensaje="Este módulo cruza asistencia, evaluación y sueldo de todo el equipo." />
       </div>
     );
@@ -95,7 +95,7 @@ export default async function ColaboradoresPage({
   return (
     <div>
       <PageHeader
-        title="Colaboradores"
+        title="Personal"
         subtitle={`${colaboradores.length} activos · elegí a quién mirar y en qué período`}
       />
 

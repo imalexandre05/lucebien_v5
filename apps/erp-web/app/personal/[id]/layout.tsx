@@ -31,7 +31,7 @@ export default async function ColaboradorLayout({
   if (!(await tieneReauth(acceso.sesion.usuario.id))) {
     return (
       <div>
-        <PageHeader title="Colaborador" subtitle="Verificación requerida" />
+        <PageHeader title="Personal" subtitle="Verificación requerida" />
         <ReauthGate mensaje="Acá se ve la asistencia, la evaluación y el sueldo de una persona." />
       </div>
     );
