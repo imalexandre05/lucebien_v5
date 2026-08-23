@@ -55,11 +55,11 @@ export default async function PedidosPage({
             <span
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium',
-                ses ? 'bg-emerald-600/10 text-emerald-700' : 'bg-red-500/15 text-red-700',
+                ses ? 'bg-exito/10 text-exito-deep' : 'bg-error/15 text-error-deep',
               )}
               data-testid="chip-caja"
             >
-              <span className={cn('h-1.5 w-1.5 rounded-full', ses ? 'bg-emerald-600' : 'bg-red-600')} />
+              <span className={cn('h-1.5 w-1.5 rounded-full', ses ? 'bg-exito' : 'bg-error')} />
               {ses ? `Caja abierta ${soles(resumen?.efectivoEsperado ?? 0)}` : 'Caja cerrada'}
             </span>
             <Link href="/pedidos/devoluciones" className={buttonVariants({ variant: 'outline' })}>

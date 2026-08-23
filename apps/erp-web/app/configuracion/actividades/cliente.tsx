@@ -19,10 +19,10 @@ import { Badge, type Tone } from '../../../components/ui/badge';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { Aviso, campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 const CAT_LABEL: Record<string, string> = { PO: 'Primer Orden', SO: '2° Orden', IND: 'Indispensable', EXT: 'Extra' };
 const CAT_TONE: Record<string, Tone> = { PO: 'navy', SO: 'gold', IND: 'green', EXT: 'gray' };
@@ -242,7 +242,7 @@ export function ActividadesCliente({
       <TD className="pl-5 font-mono text-xs text-muted">{i + 1}</TD>
       <TD>
         <div className="flex items-center gap-2">
-          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', a.activa ? 'bg-emerald-500' : 'bg-red-400')} />
+          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', a.activa ? 'bg-exito' : 'bg-error')} />
           <div className="min-w-0">
             <div className="truncate text-sm font-medium text-navy">{a.nombre}</div>
             <div className="font-mono text-[10px] text-muted">{a.cod}</div>
@@ -254,7 +254,7 @@ export function ActividadesCliente({
       </TD>
       <TD className="text-xs capitalize text-muted">{a.turno === 'ambos' ? 'ambos' : a.turno}</TD>
       <TD className="text-right font-mono text-sm font-semibold tabular-nums text-navy">{a.peso}</TD>
-      <TD className={cn('text-right font-mono text-xs tabular-nums', a.descuento > 0 ? 'text-red-600' : 'text-muted')}>
+      <TD className={cn('text-right font-mono text-xs tabular-nums', a.descuento > 0 ? 'text-error' : 'text-muted')}>
         {a.descuento > 0 ? `-${a.descuento}` : '—'}
       </TD>
       <TD className="text-xs text-muted">{a.tipoAct === 'obligatoria' ? frecuenciaLabel(a) : '—'}</TD>
@@ -267,8 +267,8 @@ export function ActividadesCliente({
           className={cn(
             'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
             a.activa
-              ? 'border-line text-muted hover:border-red-300 hover:text-red-600'
-              : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+              ? 'border-line text-muted hover:border-error-line hover:text-error'
+              : 'border-exito-line bg-exito-soft text-exito-deep hover:bg-exito-soft',
           )}
         >
           {a.activa ? 'Deshab.' : 'Activar'}
@@ -287,7 +287,7 @@ export function ActividadesCliente({
             type="button"
             onClick={() => setEliminar(a)}
             aria-label={`Eliminar ${a.nombre}`}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-red-50 hover:text-red-600"
+            className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
           >
             <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
           </button>
@@ -622,10 +622,10 @@ export function ActividadesCliente({
                 aria-pressed={form.acumula}
                 className={cn(
                   'w-full rounded-lg border p-3 text-left transition-colors duration-150',
-                  form.acumula ? 'border-emerald-300 bg-emerald-50' : 'border-line bg-paper/60',
+                  form.acumula ? 'border-exito-line bg-exito-soft' : 'border-line bg-paper/60',
                 )}
               >
-                <div className={cn('text-sm font-semibold', form.acumula ? 'text-emerald-800' : 'text-ink')}>
+                <div className={cn('text-sm font-semibold', form.acumula ? 'text-exito-deep' : 'text-ink')}>
                   {form.acumula ? '✓ ' : ''}Acumula si no se realiza
                   <span className="ml-1 text-[11px] font-normal text-muted">(arrastre de pendientes)</span>
                 </div>
@@ -638,7 +638,7 @@ export function ActividadesCliente({
             </>
           )}
 
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setModal(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
@@ -656,14 +656,14 @@ export function ActividadesCliente({
         onClose={() => !pending && setEliminar(null)}
         size="sm"
         title="¿Eliminar actividad?"
-        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" strokeWidth={2} aria-hidden />}
+        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody>
           <p className="text-sm leading-relaxed text-muted">
             <span className="font-medium text-ink">{eliminar?.nombre}</span> ({eliminar?.cod}) se quita
             del catálogo de esta sede. Los reportes ya enviados no cambian.
           </p>
-          {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+          {error && <Aviso tono="error" className="mt-3">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setEliminar(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
@@ -673,7 +673,7 @@ export function ActividadesCliente({
             type="button"
             onClick={confirmarEliminar}
             pending={pending}
-            className="bg-red-600 hover:bg-red-700"
+            className="bg-error hover:bg-error-deep"
           >
             {pending ? 'Eliminando…' : 'Sí, eliminar'}
           </Button>
@@ -701,7 +701,7 @@ export function ActividadesCliente({
               ))}
             </select>
           </div>
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setDuplicarAbierto(false)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

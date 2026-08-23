@@ -12,7 +12,9 @@ import { LayoutMap } from '../layout-map';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { Aviso, campoCls } from '../../../components/ui/form';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
+import { EmptyState } from '../../../components/ui/empty-state';
 import { cn } from '../../../lib/cn';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
@@ -30,8 +32,7 @@ const TURNOS: { v: TurnoReporte; label: string; sub: string; icon: typeof Sun }[
   { v: 'C', label: 'Completo', sub: 'Todo el día', icon: Clock },
 ];
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = cn(campoCls, 'py-2');
 
 // Pill de categoría de la actividad (espeja PRIMER ORDEN / 2° ORDEN / INDISPENSABLE del viejo).
 function catTone(cat: string | null): Tone {
@@ -69,7 +70,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
       onClick={onClick}
       className={cn(
         'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-150 ease-out-expo',
-        on ? 'bg-emerald-600' : 'bg-line',
+        on ? 'bg-exito' : 'bg-line',
       )}
     >
       <span
@@ -207,6 +208,24 @@ export function NuevoReporteForm({
 
   const totalPts = Math.round((actPts + limpiezaPts.got) * 10) / 10;
   const puedeEnviar = Boolean(turno) && !conflicto && !pendienteAnterior && encargadoSel.length === 1 && !pending;
+
+  // POR QUÉ ESTÁ GRIS EL BOTÓN.
+  //
+  // Antes el aviso cubría un solo caso —falta el encargado— y encima era `hidden sm:inline`, así
+  // que en el celular quedaba un botón apagado sin ninguna explicación. La mitad del equipo llena
+  // este formulario de pie y con el teléfono: ahí es donde más falta hacía.
+  //
+  // El orden es el de resolución, no el de la condición: primero el turno, porque sin turno no hay
+  // nada que revisar después.
+  const motivoBloqueo = !turno
+    ? 'Elige el turno para poder enviar.'
+    : pendienteAnterior
+      ? 'Hay un reporte anterior sin cerrar. Ciérralo primero.'
+      : conflicto
+        ? 'Ya existe un reporte para este turno.'
+        : encargadoSel.length !== 1
+          ? 'Selecciona al encargado del turno, que es quien lo firma.'
+          : null;
 
   // Tarea 6: el encargado SIEMPRE cuenta como colaborador (el RPC lo agrega a
   // reporte_trabajadores aunque no esté en el picker de "Colaboradores del turno") — el contador
@@ -439,7 +458,7 @@ export function NuevoReporteForm({
               </>
             ) : (
               <>
-                <ClipboardCheck className="h-10 w-10 text-emerald-600" strokeWidth={1.5} />
+                <ClipboardCheck className="h-10 w-10 text-exito" strokeWidth={1.5} />
                 <div>
                   <p className="text-lg font-semibold text-navy">
                     {yaEnviado.estadoEnvio === 'no_enviado' ? 'Este turno se cerró automáticamente' : 'Este turno ya se envió'}
@@ -466,7 +485,7 @@ export function NuevoReporteForm({
       {turno && !cargando && !yaEnviado && conflicto && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <Clock className="h-10 w-10 text-amber-500" strokeWidth={1.5} />
+            <Clock className="h-10 w-10 text-aviso" strokeWidth={1.5} />
             <div>
               <p className="text-lg font-semibold text-navy">Este horario ya está cubierto</p>
               <p className="mt-1 text-sm text-muted">
@@ -487,7 +506,7 @@ export function NuevoReporteForm({
       {turno && !cargando && !yaEnviado && !conflicto && pendienteAnterior && (
         <Card>
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
-            <ClipboardCheck className="h-10 w-10 text-amber-500" strokeWidth={1.5} />
+            <ClipboardCheck className="h-10 w-10 text-aviso" strokeWidth={1.5} />
             <div>
               <p className="text-lg font-semibold text-navy">Hay un reporte anterior pendiente de evaluación</p>
               <p className="mt-1 text-sm text-muted">
@@ -547,7 +566,14 @@ export function NuevoReporteForm({
               </CardHeader>
               <CardContent className={cn('space-y-1.5', zonas.length > 0 && 'max-h-[640px] overflow-y-auto')}>
                 {cat.length === 0 && (
-                  <p className="py-6 text-center text-sm text-muted">No hay actividades configuradas para este turno.</p>
+                  // Sin actividades el turno no se puede reportar, y el formulario quedaba como un
+                  // hueco mudo: la persona no tenia forma de saber si estaba roto o si faltaba algo.
+                  // No se enlaza a Configuracion porque quien llena esto casi nunca es admin y el
+                  // enlace lo dejaria contra una puerta cerrada.
+                  <EmptyState icon={ClipboardCheck} titulo="Este turno no tiene actividades cargadas" compacto>
+                    No es un error del formulario: falta configurarlas. El administrador las carga en
+                    Configuración › Actividades, por sede y por turno.
+                  </EmptyState>
                 )}
                 {cat.map((a) => {
                   const on = Boolean(done[a.cod]);
@@ -655,10 +681,10 @@ export function NuevoReporteForm({
                                 'rounded-md border-2 px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
                                 inc.nivel === n
                                   ? n === 'Alto'
-                                    ? 'border-red-500 bg-red-50 text-red-700'
+                                    ? 'border-error bg-error-soft text-error-deep'
                                     : n === 'Medio'
-                                      ? 'border-amber-500 bg-amber-50 text-amber-700'
-                                      : 'border-slate-400 bg-slate-100 text-slate-700'
+                                      ? 'border-aviso bg-aviso-soft text-aviso-deep'
+                                      : 'border-muted bg-paper text-ink'
                                   : 'border-line bg-white text-muted hover:border-gold/60',
                               )}
                             >
@@ -669,7 +695,7 @@ export function NuevoReporteForm({
                         <button
                           type="button"
                           onClick={() => setIncidencias((p) => p.filter((_, j) => j !== i))}
-                          className="ml-auto text-muted transition-colors hover:text-red-600"
+                          className="ml-auto text-muted transition-colors hover:text-error"
                           aria-label="Quitar"
                         >
                           <Trash2 className="h-4 w-4" strokeWidth={1.75} />
@@ -720,7 +746,7 @@ export function NuevoReporteForm({
                               className={cn(
                                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
                                 enLista
-                                  ? 'border-emerald-600 bg-emerald-600/10 text-emerald-700'
+                                  ? 'border-exito bg-exito/10 text-exito-deep'
                                   : 'border-line bg-white text-navy hover:border-gold/70',
                               )}
                             >
@@ -790,7 +816,7 @@ export function NuevoReporteForm({
                       <button
                         type="button"
                         onClick={() => quitarExtra(i)}
-                        className="text-muted transition-colors hover:text-red-600"
+                        className="text-muted transition-colors hover:text-error"
                         aria-label="Quitar"
                       >
                         <Trash2 className="h-4 w-4" strokeWidth={1.75} />
@@ -803,7 +829,7 @@ export function NuevoReporteForm({
               <button
                 type="button"
                 onClick={agregarExtraLibre}
-                className="inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
+                className="toque inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
               >
                 <HelpCircle className="h-3.5 w-3.5" strokeWidth={2} /> Otra actividad (sin catálogo)
               </button>
@@ -812,24 +838,39 @@ export function NuevoReporteForm({
           </div>
 
           {/* ── Resumen + Envío: barra fija abajo, siempre a la vista ── */}
-          <div className="sticky bottom-0 z-20 rounded-t-xl border border-line bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
+          <div className="sticky bottom-0 z-20 overflow-hidden rounded-t-xl border border-line bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
+            {/* EL PROGRESO DEL TURNO, EN EL BORDE DE LA BARRA.
+                El contador "12/30" ya estaba, pero un número hay que leerlo; una línea que avanza
+                se ve sin mirar. Va acá y no en una tarjeta aparte porque la barra es lo único que
+                está siempre en pantalla mientras se completa el formulario.
+                Es `aria-hidden` a propósito: el mismo dato ya está escrito abajo en texto, y
+                anunciarlo dos veces sólo alarga la lectura. */}
+            <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-line/70">
+              <div
+                className="h-full origin-left bg-gold transition-transform duration-200 ease-out-expo"
+                style={{ transform: `scaleX(${cat.length ? actDone / cat.length : 0})` }}
+              />
+            </div>
             {error && (
-              <p className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
-                <span>{error}</span>
+              <Aviso tono="error" className="mb-2 text-sm">
+                {error}
                 {bloqueoId && (
-                  <Link
-                    href={`/reportes/${bloqueoId}`}
-                    className="font-medium underline underline-offset-2 hover:text-red-800"
-                  >
-                    Ver ese reporte
-                  </Link>
+                  <>
+                    {' '}
+                    <Link
+                      href={`/reportes/${bloqueoId}`}
+                      className="font-medium underline underline-offset-2"
+                    >
+                      Ver ese reporte
+                    </Link>
+                  </>
                 )}
-              </p>
+              </Aviso>
             )}
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <span className="text-xs text-muted">
                 Limpieza{' '}
-                <span className="font-mono text-sm font-bold tabular-nums text-emerald-700">
+                <span className="font-mono text-sm font-bold tabular-nums text-exito-deep">
                   {limpiezaPts.got}
                 </span>
                 <span className="font-mono text-[11px] text-muted">/{limpiezaPts.tot}</span>
@@ -853,7 +894,7 @@ export function NuevoReporteForm({
               )}
               <span className="rounded-full bg-gold/15 px-3 py-1 text-xs text-muted">
                 Total{' '}
-                <span className="font-mono text-base font-bold tabular-nums text-[#7a6e0e]">{totalPts}</span>{' '}
+                <span className="font-mono text-base font-bold tabular-nums text-gold-deep">{totalPts}</span>{' '}
                 pts
               </span>
               {/* Tarea 5: cuenta regresiva del turno — ámbar a ≤30 min, como avisaba el header.js
@@ -863,9 +904,9 @@ export function NuevoReporteForm({
                   className={cn(
                     'inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-xs font-medium tabular-nums',
                     minutosRestantes <= 0
-                      ? 'bg-red-50 text-red-700'
+                      ? 'bg-error-soft text-error-deep'
                       : minutosRestantes <= 30
-                        ? 'bg-amber-100 text-amber-800'
+                        ? 'bg-aviso-soft text-aviso-deep'
                         : 'bg-navy/5 text-muted',
                   )}
                 >
@@ -874,10 +915,11 @@ export function NuevoReporteForm({
                 </span>
               )}
               <div className="ml-auto flex items-center gap-3">
-                <span className="hidden text-xs text-muted sm:inline">
-                  {encargadoSel.length === 1
-                    ? 'Se guarda automáticamente mientras lo completas.'
-                    : 'Selecciona al encargado del turno para poder enviar.'}
+                <span
+                  id="motivo-envio"
+                  className={cn('text-xs', motivoBloqueo ? 'font-medium text-aviso-deep' : 'text-muted')}
+                >
+                  {motivoBloqueo ?? 'Se guarda automáticamente mientras lo completas.'}
                 </span>
                 <Button
                   type="button"
@@ -885,6 +927,7 @@ export function NuevoReporteForm({
                   onClick={submit}
                   disabled={!puedeEnviar}
                   pending={pending}
+                  aria-describedby="motivo-envio"
                   className="px-6 py-2.5"
                 >
                   {!pending && <Send className="h-4 w-4" strokeWidth={2} />}

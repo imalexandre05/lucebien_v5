@@ -54,10 +54,10 @@ export default async function MiDesempenoPage() {
       <PageHeader title="Mi desempeño" subtitle={`${sesion.nombre} · ${mes}`} />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Reportes del mes" valor={d.reportes.length} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Puntos pipeline" valor={d.puntosPipeline} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-        <StatBox index={2} label="Extras" valor={`S/ ${extrasTotal.toFixed(2)}`} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={3} label="Incidencias" valor={d.incidencias.length} tone="border-line bg-white text-muted" />
+        <StatBox index={0} label="Reportes del mes" valor={d.reportes.length} tone="navy" />
+        <StatBox index={1} label="Puntos pipeline" valor={d.puntosPipeline} tone="gold" />
+        <StatBox index={2} label="Extras" valor={`S/ ${extrasTotal.toFixed(2)}`} tone="exito" />
+        <StatBox index={3} label="Incidencias" valor={d.incidencias.length} tone="neutro" />
       </div>
 
       {d.ultimaEvaluacion && tramo && (
@@ -163,10 +163,10 @@ export default async function MiDesempenoPage() {
                       <span
                         className={
                           i.nivel === 'Alto'
-                            ? 'rounded-full bg-red-50 px-2.5 py-0.5 text-xs font-medium text-red-700'
+                            ? 'rounded-full bg-error-soft px-2.5 py-0.5 text-xs font-medium text-error-deep'
                             : i.nivel === 'Medio'
-                              ? 'rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700'
-                              : 'rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600'
+                              ? 'rounded-full bg-aviso-soft px-2.5 py-0.5 text-xs font-medium text-aviso-deep'
+                              : 'rounded-full bg-paper px-2.5 py-0.5 text-xs font-medium text-muted'
                         }
                       >
                         {i.nivel}

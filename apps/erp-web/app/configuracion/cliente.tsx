@@ -10,10 +10,10 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { Badge } from '../../components/ui/badge';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 const TIPO_OPCIONES: Opcion<ConfigTipo>[] = [
   { value: 'numero', label: 'Número' },
@@ -155,7 +155,7 @@ function ParametroFila({
               type="button"
               onClick={onEliminar}
               aria-label={`Eliminar ${item.etiqueta}`}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-red-50 hover:text-red-600"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
             >
               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
             </button>
@@ -305,12 +305,15 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
       </div>
 
       {error && (
-        <p className="flex animate-fade items-center gap-1.5 text-sm text-red-600">
+        <p className="flex animate-fade items-center gap-1.5 text-sm text-error">
           <AlertCircle className="h-4 w-4" strokeWidth={2} /> {error}
         </p>
       )}
       {ok && (
-        <p className="flex animate-fade items-center gap-1.5 text-sm text-emerald-700">
+        // `role="status"` y no un Aviso con caja: el acierto tiene que anunciarse —sin eso, con
+        // lector de pantalla se guarda y no pasa nada audible— pero una confirmación al lado del
+        // propio botón no necesita gritar. Anunciar todo con el mismo peso enseña a ignorarlo.
+        <p role="status" className="flex animate-fade items-center gap-1.5 text-sm text-exito-deep">
           <Check className="h-4 w-4" strokeWidth={2.5} /> Cambios guardados.
         </p>
       )}
@@ -389,7 +392,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
                   {form.opciones.map((o) => (
                     <span key={o} className="inline-flex items-center gap-1 rounded-full bg-navy/5 px-2.5 py-1 text-xs text-navy">
                       {o}
-                      <button type="button" onClick={() => quitarOpcion(o)} aria-label={`Quitar ${o}`} className="text-muted hover:text-red-600">
+                      <button type="button" onClick={() => quitarOpcion(o)} aria-label={`Quitar ${o}`} className="text-muted hover:text-error">
                         <X className="h-3 w-3" strokeWidth={2.5} />
                       </button>
                     </span>
@@ -407,7 +410,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
               onChange={(v) => setForm((f) => ({ ...f, valor: v }))}
             />
           </div>
-          {errorModal && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{errorModal}</p>}
+          {errorModal && <Aviso tono="error">{errorModal}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setModalNuevo(false)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
@@ -432,7 +435,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
           <button type="button" onClick={() => setEliminar(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </button>
-          <Button type="button" onClick={confirmarEliminar} pending={pending} className="bg-red-600 hover:bg-red-700">
+          <Button type="button" onClick={confirmarEliminar} pending={pending} className="bg-error hover:bg-error-deep">
             {pending ? 'Eliminando…' : 'Sí, eliminar'}
           </Button>
         </ModalFooter>

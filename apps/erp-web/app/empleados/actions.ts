@@ -22,7 +22,7 @@ export async function accionEstadoEmpleado(id: string, activo: boolean): Promise
   try {
     await exigirAdmin();
     await actualizarEstadoEmpleado(id, activo);
-    revalidatePath('/empleados');
+    revalidatePath('/personal');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error' };
@@ -38,7 +38,7 @@ export async function accionEditarEmpleado(
   try {
     await exigirAdmin();
     await actualizarEmpleado(id, p);
-    revalidatePath('/empleados');
+    revalidatePath('/personal');
     // El nombre/rol pueden cambiar la sesión de OTRO usuario (o la propia, si el admin se edita
     // a sí mismo) — refrescar el shell entero para que sidebar/topbar reflejen el rol nuevo.
     revalidatePath('/', 'layout');
@@ -50,12 +50,14 @@ export async function accionEditarEmpleado(
 
 export async function accionCrearEmpleado(
   p: NuevoEmpleadoInput,
-): Promise<{ ok: boolean; error?: string; cod?: string }> {
+): Promise<{ ok: boolean; error?: string; id?: string; cod?: string }> {
   try {
     await exigirAdmin();
-    const { cod } = await crearEmpleado(p);
-    revalidatePath('/empleados');
-    return { ok: true, cod };
+    // `id` (Tarea 6, alta encadenada): la persona recién creada no queda en una lista a la que
+    // volver a buscarla — la cadena sigue directo a su contrato, y para eso hace falta su id.
+    const { id, cod } = await crearEmpleado(p);
+    revalidatePath('/personal');
+    return { ok: true, id, cod };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error' };
   }
@@ -77,14 +79,14 @@ export async function accionEstablecerContrasena(id: string, password: string): 
 // derivado si tiene uno, si no su rol base) — togglePosCobro() ya avisa en su comentario que esto
 // es por ROL, no por persona: afecta a todos los que compartan ese rol/rol derivado.
 //
-// A propósito SIN `revalidatePath()`: /empleados, /caja y /configuracion/permisos ya son rutas
+// A propósito SIN `revalidatePath()`: /personal, /caja y /configuracion/permisos ya son rutas
 // dinámicas (leen la sesión vía cookies en cada request, nunca caché estático), así que la
 // próxima carga real de cualquiera de las tres YA trae el dato fresco sin necesidad de invalidar
 // nada. Y para ESTE toggle en particular, `revalidatePath` sería contraproducente: dispara un
-// refresh automático de la ruta actual apenas la Server Action resuelve, y /empleados tiene
-// `loading.tsx` (Fase 3) — ese refresh muestra su fallback de Suspense, que desmonta la página (y
-// con ella el modal de edición abierto, perdiendo el estado del admin a mitad de edición). El
-// cliente refleja el cambio con estado local optimista (ver EditarModal en cliente.tsx).
+// refresh automático de la ruta actual apenas la Server Action resuelve, y el expediente de
+// /personal tiene `loading.tsx` (Fase 3) — ese refresh muestra su fallback de Suspense, que
+// desmonta la página a mitad de edición. El cliente refleja el cambio con estado local optimista
+// (ver OperaCajaToggle en cliente.tsx, montado hoy desde la pestaña Datos del expediente).
 export async function accionTogglePosCobro(rolKey: string, activar: boolean): Promise<{ ok: boolean; error?: string }> {
   try {
     await exigirAdmin();

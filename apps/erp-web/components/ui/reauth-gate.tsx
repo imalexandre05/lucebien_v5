@@ -58,7 +58,7 @@ export function ReauthGate({ mensaje }: { mensaje?: string }) {
             autoFocus
             className="w-full rounded-md border border-line bg-white px-3 py-2 text-center text-sm text-navy outline-none transition-colors focus:border-gold"
           />
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
           <Button type="button" onClick={confirmar} pending={pending} className="w-full">
             {pending ? 'Verificando…' : 'Continuar'}
           </Button>

@@ -9,9 +9,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { StatBox } from '../../components/ui/stat-box';
 import { Badge } from '../../components/ui/badge';
+import { campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
-const fieldCls = 'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold';
+const fieldCls = campoCls;
 const soles = (n: number) => `S/ ${new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
 const entero = (n: number) => new Intl.NumberFormat('es-PE').format(Math.round(n));
 const diaCorto = (iso: string) => {
@@ -20,8 +21,8 @@ const diaCorto = (iso: string) => {
 };
 
 const NIVEL_TONE: Record<string, string> = {
-  grave: 'text-red-600',
-  moderada: 'text-amber-600',
+  grave: 'text-error',
+  moderada: 'text-aviso',
   leve: 'text-muted',
 };
 
@@ -98,10 +99,10 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
 
       {/* ── KPIs ── */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatBox index={0} label="Ingresos" valor={soles(k.ingresos)} sub="caja del periodo" tone="border-emerald-600/20 bg-emerald-50/60 text-emerald-700" />
-        <StatBox index={1} label="Neto" valor={soles(k.neto)} sub={`egresos ${soles(k.egresos)}`} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={2} label="Pedidos" valor={entero(k.pedidosN)} sub={soles(k.pedidosTotal)} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-        <StatBox index={3} label="Puntos producción" valor={entero(k.puntos)} sub={`${entero(k.incidencias)} incidencias`} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox index={0} label="Ingresos" valor={soles(k.ingresos)} sub="caja del periodo" tone="exito" />
+        <StatBox index={1} label="Neto" valor={soles(k.neto)} sub={`egresos ${soles(k.egresos)}`} tone="navy" />
+        <StatBox index={2} label="Pedidos" valor={entero(k.pedidosN)} sub={soles(k.pedidosTotal)} tone="gold" />
+        <StatBox index={3} label="Puntos producción" valor={entero(k.puntos)} sub={`${entero(k.incidencias)} incidencias`} tone="navy" />
       </div>
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
@@ -120,7 +121,7 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                 <div key={r.fecha} className="flex items-center gap-3">
                   <span className="w-12 shrink-0 font-mono text-xs text-muted">{diaCorto(r.fecha)}</span>
                   <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
-                    <div className="h-full rounded bg-emerald-500/70" style={{ width: `${Math.max(3, Math.round((r.ingresos / ingresosMax) * 100))}%` }} />
+                    <div className="h-full rounded bg-exito/70" style={{ width: `${Math.max(3, Math.round((r.ingresos / ingresosMax) * 100))}%` }} />
                   </div>
                   <span className="w-24 text-right font-mono text-xs tabular-nums text-navy">{soles(r.ingresos)}</span>
                 </div>
@@ -180,7 +181,7 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                       <TD className="pl-5 font-mono text-xs text-muted">{i + 1}</TD>
                       <TD className="text-sm font-medium text-ink">{r.nombre}</TD>
                       <TD className="text-right font-mono text-sm tabular-nums text-muted">{entero(r.acciones)}</TD>
-                      <TD className="pr-5 text-right font-mono text-sm font-bold tabular-nums text-[#7a6e0e]">{r.puntos}</TD>
+                      <TD className="pr-5 text-right font-mono text-sm font-bold tabular-nums text-gold-deep">{r.puntos}</TD>
                     </TR>
                   ))}
                 </TBody>
@@ -219,7 +220,7 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                         <TD className="text-right font-mono text-sm tabular-nums text-muted">{r.reportes}</TD>
                         <TD className="text-right font-mono text-xs tabular-nums text-muted">{r.actDone}/{r.actTotal}</TD>
                         <TD className="text-right font-mono text-sm tabular-nums text-navy">{pct}%</TD>
-                        <TD className="pr-5 text-right font-mono text-sm tabular-nums text-[#7a6e0e]">{r.puntajeProm ?? '—'}</TD>
+                        <TD className="pr-5 text-right font-mono text-sm tabular-nums text-gold-deep">{r.puntajeProm ?? '—'}</TD>
                       </TR>
                     );
                   })}

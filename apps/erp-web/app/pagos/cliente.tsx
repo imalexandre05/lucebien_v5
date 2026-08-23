@@ -3,9 +3,9 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, FileText, Filter } from 'lucide-react';
+import { Plus, Ban, FileText, Filter } from 'lucide-react';
 import { sugerirMontoPago } from '@scilb/core';
-import { accionCrearPago, accionEliminarPago } from './actions';
+import { accionCrearPago, accionAnularPago } from './actions';
 import type { Pago, EmpleadoPago } from '../../lib/pagos-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
@@ -13,6 +13,8 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
+import { Aviso, campoCls } from '../../components/ui/form';
+import { DialogoConfirmar, useConfirmacion } from '../../components/ui/confirmar';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
 
@@ -32,8 +34,7 @@ const OPC_FILTRO_ESTADO: Opcion[] = [
   ...OPC_ESTADO_PAGO,
   { value: 'anulado', label: 'Anulado' },
 ];
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 
 export function PagosCliente({
@@ -55,6 +56,10 @@ export function PagosCliente({
   const [estado, setEstado] = useState('pagado');
   const [fecha, setFecha] = useState(hoyPeru());
   const [error, setError] = useState('');
+  // Un error de la LISTA no cabe dentro del formulario: cuando se dispara, ese bloque suele
+  // estar cerrado y el mensaje se renderizaria invisible. Va arriba de todo.
+  const [errorAccion, setErrorAccion] = useState('');
+  const conf = useConfirmacion();
   const [pending, startTransition] = useTransition();
 
   // Filtros.
@@ -111,23 +116,35 @@ export function PagosCliente({
     });
   }
 
-  function eliminar(id: string) {
-    if (!confirm('¿Eliminar este pago?')) return;
-    startTransition(async () => {
-      const r = await accionEliminarPago(id);
-      if (r.ok) router.refresh();
-      else alert(r.error);
+  function anular(id: string) {
+    conf.pedir({
+      titulo: '¿Anular este pago?',
+      detalle:
+        'El pago se conserva a la vista, marcado como anulado: borrar el rastro haría imposible reconstruir después qué se le pagó a quién.',
+      confirmarLabel: 'Anular',
+      alConfirmar: () =>
+        startTransition(async () => {
+          setErrorAccion('');
+          const r = await accionAnularPago(id);
+          if (r.ok) {
+            conf.cerrar();
+            router.refresh();
+          } else setErrorAccion(r.error ?? 'No se pudo anular el pago.');
+        }),
     });
   }
 
   return (
     <div className="space-y-4">
+      <DialogoConfirmar {...conf.props} pending={pending} />
+      {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
+
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox size="md" index={0} label="Registros" valor={String(resumen.total)} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox size="md" index={1} label="Pagado" valor={soles(resumen.pagado)} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox size="md" index={2} label="Pendiente" valor={soles(resumen.pendiente)} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox size="md" index={3} label="Anulados" valor={String(resumen.anulados)} tone="border-line bg-white text-muted" />
+        <StatBox size="md" index={0} label="Registros" valor={String(resumen.total)} tone="navy" />
+        <StatBox size="md" index={1} label="Pagado" valor={soles(resumen.pagado)} tone="exito" />
+        <StatBox size="md" index={2} label="Pendiente" valor={soles(resumen.pendiente)} tone="aviso" />
+        <StatBox size="md" index={3} label="Anulados" valor={String(resumen.anulados)} tone="neutro" />
       </div>
 
       {/* Filtros + acción */}
@@ -217,7 +234,7 @@ export function PagosCliente({
                 </div>
               </div>
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-error">{error}</p>}
             <Button type="button" onClick={registrar} disabled={!empleadoId} pending={pending}>
               {pending ? 'Registrando…' : `Registrar · ${soles(monto)}`}
             </Button>
@@ -254,8 +271,8 @@ export function PagosCliente({
                         <FileText className="h-4 w-4" strokeWidth={1.75} />
                       </Link>
                       {esAdmin && (
-                        <button type="button" onClick={() => eliminar(p.id)} className="text-muted transition-colors hover:text-red-600" aria-label="Eliminar">
-                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                        <button type="button" onClick={() => anular(p.id)} className="text-muted transition-colors hover:text-error" aria-label="Anular">
+                          <Ban className="h-4 w-4" strokeWidth={1.75} />
                         </button>
                       )}
                     </div>

@@ -6,10 +6,6 @@ import {
   ClipboardCheck,
   ClipboardList,
   AlertTriangle,
-  Banknote,
-  ShoppingBag,
-  TrendingUp,
-  Coins,
   Trophy,
   Activity,
   LayoutGrid,
@@ -26,15 +22,12 @@ import {
   type EstadoCobertura,
   minutosHastaCierre,
   TURNO_LABEL,
-  totalPorTipoLinea,
   puede,
   type MatrizPermisos,
 } from '@scilb/core';
 import { listarPasadas, rankingHoy } from '../lib/pipeline-repo';
 import { listarReportes } from '../lib/reportes-repo';
 import { listarIncidencias } from '../lib/incidencias-repo';
-import { resumenFinanciero, cobrosPendientes, totalGarantias } from '../lib/caja-repo';
-import { pedidosRepo } from '../lib/pedidos-repo';
 import { getSesion } from '../lib/auth';
 import { listarSedes } from '../lib/sedes-repo';
 import { leerMatrizPermisos } from '../lib/permisos-repo';
@@ -66,7 +59,7 @@ const ETAPA_LABEL: Record<string, string> = {
 
 const KPI_TONE = 'border-line bg-white text-navy shadow-card';
 // Semáforo (Fase 6 tarea 3): mismo tile, solo cambia de tono cuando el valor amerita atención.
-const KPI_TONE_AMBER = 'border-amber-200 bg-amber-50 text-amber-900 shadow-card';
+const KPI_TONE_AMBER = 'border-aviso-line bg-aviso-soft text-aviso-deep shadow-card';
 
 // Badge de estado por color (Fase 6 tarea 1) — icono circular de la fila de "Actividad reciente"
 // y Badge de texto comparten la misma paleta para que se lean como el mismo estado.
@@ -77,9 +70,9 @@ const ESTADO_ACTIVIDAD_TONE: Record<EstadoActividad, Tone> = {
   sin_actividad: 'gray',
 };
 const ICONO_ESTADO_CLS: Record<EstadoActividad, string> = {
-  ok: 'bg-emerald-600/10 text-emerald-700',
-  por_evaluar: 'bg-amber-500/15 text-amber-700',
-  no_enviado: 'bg-red-500/15 text-red-700',
+  ok: 'bg-exito/10 text-exito-deep',
+  por_evaluar: 'bg-aviso/15 text-aviso-deep',
+  no_enviado: 'bg-error/15 text-error-deep',
   sin_actividad: 'bg-ink/10 text-muted',
 };
 // Cobertura de turnos (tarea 2): verde = cubierto, rojo = falta (no_enviado o sin_reportar),
@@ -109,32 +102,33 @@ export default async function Dashboard() {
   // consultas pesadas del panel gerencial. Fallback seguro: si la matriz falla, no ve el
   // dashboard (solo admin/dueno pasan siempre, por el mecanismo de puede()).
   const sesionPrevia = await getSesion();
+  let matriz: MatrizPermisos = {};
   if (sesionPrevia) {
-    let matrizPrevia: MatrizPermisos = {};
     try {
-      matrizPrevia = await leerMatrizPermisos();
+      matriz = await leerMatrizPermisos();
     } catch {
-      matrizPrevia = {};
+      matriz = {};
     }
-    if (!puede(matrizPrevia, sesionPrevia.usuario.rol, 'dashboard', 'ver', sesionPrevia.usuario.rolCod)) {
+    if (!puede(matriz, sesionPrevia.usuario.rol, 'dashboard', 'ver', sesionPrevia.usuario.rolCod)) {
       redirect('/reportes/nuevo');
     }
   }
 
-  const [sesion, pasadas, reportes, incidencias, ranking, finHoy, pedidos, pendientes, garantias, sedes, config] =
-    await Promise.all([
-      getSesion(),
-      listarPasadas(),
-      listarReportes(),
-      listarIncidencias(),
-      rankingHoy(),
-      resumenFinanciero(hoyPeru(), hoyPeru()),
-      pedidosRepo.listar(),
-      cobrosPendientes(),
-      totalGarantias(),
-      listarSedes().catch(() => []),
-      leerConfigMap().catch(() => ({}) as Record<string, string>),
-    ]);
+  // EL DASHBOARD YA NO MIRA DINERO (20-ago-2026, decisión de Alexander).
+  //
+  // Pedidos, caja, cobros pendientes y garantías salieron del panel junto con todo el módulo
+  // comercial: lo va a manejar otro programador en un sistema aparte. Con eso se van también las
+  // cuatro consultas que sólo los alimentaban — `pedidosRepo.listar()` traía TODOS los pedidos con
+  // sus líneas y era, de lejos, la más cara de esta pantalla.
+  const [sesion, pasadas, reportes, incidencias, ranking, sedes, config] = await Promise.all([
+    getSesion(),
+    listarPasadas(),
+    listarReportes(),
+    listarIncidencias(),
+    rankingHoy(),
+    listarSedes().catch(() => []),
+    leerConfigMap().catch(() => ({}) as Record<string, string>),
+  ]);
   const SEDE_NOMBRE = Object.fromEntries(sedes.map((s) => [s.cod, s.nombre]));
 
   const hoy = hoyPeru();
@@ -173,14 +167,6 @@ export default async function Dashboard() {
     0,
   );
 
-  const soles = (n: number) => `S/ ${n.toFixed(2)}`;
-  // Fase 9 (hallazgo de la F8): agrupar por `pedido.tipo` (cabecera) perdía los pedidos 'mixto'
-  // por completo — un alquiler + una venta en la misma visita no cae en ningún grupo. La fuente
-  // correcta es la LÍNEA (`pedido_items.tipo`), vía el helper puro y testeado del core.
-  const porTipoLinea = totalPorTipoLinea(pedidos.flatMap((p) => p.items));
-  const totalVentas = porTipoLinea.venta;
-  const totalAlquiler = porTipoLinea.alquiler;
-  const saldoPendiente = pendientes.reduce((s, p) => s + p.saldo, 0);
 
   // Distribución del pipeline por etapa (flujo de 9 pasos).
   const porEtapa = new Map<string, number>();
@@ -283,7 +269,7 @@ export default async function Dashboard() {
       {/* ── KPIs del día ── */}
       <section aria-label="Indicadores del día">
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Interno</div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatBox
             index={0}
             size="xl"
@@ -305,17 +291,6 @@ export default async function Dashboard() {
             label="Reportes por evaluar"
             valor={<CountUp value={porEvaluar} delayMs={60} />}
             sub={`${enviadosHoy} enviado(s) hoy`}
-          />
-          <StatBox
-            index={2}
-            size="xl"
-            align="left"
-            icon={Banknote}
-            href="/caja"
-            tone={KPI_TONE}
-            label="Caja del día"
-            valor={<CountUp value={finHoy.ingresos} prefix="S/ " delayMs={120} />}
-            sub={`neto ${soles(finHoy.neto)} · ${soles(finHoy.egresos)} egresos`}
           />
           <StatBox
             index={3}
@@ -371,7 +346,7 @@ export default async function Dashboard() {
                         <div
                           className={cn(
                             'animate-rise font-mono text-lg font-semibold tabular-nums',
-                            n === 0 ? 'text-muted/60' : esListo ? 'text-[#7a6e0e]' : 'text-navy',
+                            n === 0 ? 'text-muted/60' : esListo ? 'text-gold-deep' : 'text-navy',
                           )}
                           style={{ animationDelay: `${i * 45}ms` }}
                         >
@@ -542,7 +517,7 @@ export default async function Dashboard() {
                       <span
                         className={cn(
                           'font-mono text-sm font-bold tabular-nums',
-                          i === 0 ? 'text-[#7a6e0e]' : 'text-navy',
+                          i === 0 ? 'text-gold-deep' : 'text-navy',
                         )}
                       >
                         {r.total}
@@ -562,56 +537,6 @@ export default async function Dashboard() {
         </Card>
       </div>
 
-      {/* ── Comercial ── */}
-      <section className="mt-6" aria-label="Indicadores comerciales">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Comercial</div>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatBox
-            index={0}
-            size="md"
-            align="left"
-            icon={ShoppingBag}
-            href="/pedidos"
-            tone={KPI_TONE}
-            label="Total ventas"
-            valor={<CountUp value={totalVentas} prefix="S/ " decimals={2} />}
-            sub="pedidos de venta"
-          />
-          <StatBox
-            index={1}
-            size="md"
-            align="left"
-            icon={TrendingUp}
-            href="/pedidos"
-            tone={KPI_TONE}
-            label="Total alquiler"
-            valor={<CountUp value={totalAlquiler} prefix="S/ " decimals={2} delayMs={60} />}
-            sub="pedidos de alquiler"
-          />
-          <StatBox
-            index={2}
-            size="md"
-            align="left"
-            icon={Banknote}
-            href="/caja"
-            tone={KPI_TONE}
-            label="Cobros pendientes"
-            valor={<CountUp value={saldoPendiente} prefix="S/ " decimals={2} delayMs={120} />}
-            sub={`${pendientes.length} pedido(s)`}
-          />
-          <StatBox
-            index={3}
-            size="md"
-            align="left"
-            icon={Coins}
-            href="/caja"
-            tone={KPI_TONE}
-            label="Garantías"
-            valor={<CountUp value={garantias} prefix="S/ " decimals={2} delayMs={180} />}
-            sub="depósitos vigentes"
-          />
-        </div>
-      </section>
     </div>
   );
 }
@@ -622,10 +547,10 @@ export default async function Dashboard() {
 function PuntajePill({ puntaje }: { puntaje: number }) {
   const cls =
     puntaje >= 85
-      ? 'bg-emerald-600/10 text-emerald-700'
+      ? 'bg-exito/10 text-exito-deep'
       : puntaje >= 60
-        ? 'bg-gold/20 text-[#7a6e0e]'
-        : 'bg-red-500/15 text-red-700';
+        ? 'bg-gold/20 text-gold-deep'
+        : 'bg-error/15 text-error-deep';
   return (
     <span className={cn('rounded-full px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums', cls)}>
       {puntaje}%

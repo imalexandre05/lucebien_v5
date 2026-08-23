@@ -11,10 +11,10 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { Modal, ModalBody } from '../../../components/ui/modal';
 import { OpcionBotones, type Opcion } from '../../../components/ui/opcion-botones';
 import { StatBox } from '../../../components/ui/stat-box';
+import { campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 const OPC_TABLA: Opcion[] = [{ value: '', label: 'Todas' }, ...TABLAS_AUDITADAS.map((t) => ({ value: t, label: TABLA_LABEL[t] }))];
 const OPC_OPERACION: Opcion[] = [
@@ -67,10 +67,10 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Mostrando" valor={kpis.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Creados" valor={kpis.creados} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={2} label="Editados" valor={kpis.editados} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-        <StatBox index={3} label="Eliminados" valor={kpis.eliminados} tone="border-red-200 bg-red-50 text-red-700" />
+        <StatBox index={0} label="Mostrando" valor={kpis.total} tone="navy" />
+        <StatBox index={1} label="Creados" valor={kpis.creados} tone="exito" />
+        <StatBox index={2} label="Editados" valor={kpis.editados} tone="gold" />
+        <StatBox index={3} label="Eliminados" valor={kpis.eliminados} tone="error" />
       </div>
 
       <Card>
@@ -215,10 +215,10 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                         {cambios.map((c) => (
                           <TR key={c.campo}>
                             <TD className="pl-3 font-mono text-xs text-navy">{c.campo}</TD>
-                            <TD className="max-w-[220px] truncate text-xs text-red-700" title={valorLegible(c.antes)}>
+                            <TD className="max-w-[220px] truncate text-xs text-error-deep" title={valorLegible(c.antes)}>
                               {valorLegible(c.antes)}
                             </TD>
-                            <TD className="max-w-[220px] truncate text-xs text-emerald-700" title={valorLegible(c.despues)}>
+                            <TD className="max-w-[220px] truncate text-xs text-exito-deep" title={valorLegible(c.despues)}>
                               {valorLegible(c.despues)}
                             </TD>
                           </TR>

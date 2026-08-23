@@ -121,7 +121,7 @@ function TarjetaEspecial({
         'flex w-full items-center gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors duration-150',
         !readOnly && 'active:scale-[0.99]',
         readOnly && 'cursor-default',
-        !esEval && (marcada ? 'border-emerald-600/60 bg-emerald-50' : 'border-dashed border-line bg-white hover:border-gold/60'),
+        !esEval && (marcada ? 'border-exito/60 bg-exito-soft' : 'border-dashed border-line bg-white hover:border-gold/60'),
       )}
       style={esEval ? { borderColor: ev.borde, background: `${ev.bg}55` } : undefined}
     >
@@ -133,12 +133,12 @@ function TarjetaEspecial({
           <IconoEstado v={estadoEval} className="h-3 w-3" />
         </span>
       ) : marcada ? (
-        <CheckSquare className="h-5 w-5 shrink-0 text-emerald-600" strokeWidth={2} />
+        <CheckSquare className="h-5 w-5 shrink-0 text-exito" strokeWidth={2} />
       ) : (
         <Square className="h-5 w-5 shrink-0 text-muted/50" strokeWidth={1.75} />
       )}
       <span className="min-w-0 flex-1">
-        <span className={cn('block text-sm font-semibold', activa && !esEval ? 'text-emerald-800' : 'text-ink')}>
+        <span className={cn('block text-sm font-semibold', activa && !esEval ? 'text-exito-deep' : 'text-ink')}>
           {z.nombre || z.cod}
         </span>
         <span className="block text-[11px] text-muted">{sub}</span>
@@ -146,7 +146,7 @@ function TarjetaEspecial({
       <span
         className={cn(
           'shrink-0 font-mono text-xs font-bold tabular-nums',
-          !esEval && (marcada ? 'text-emerald-700' : 'text-muted'),
+          !esEval && (marcada ? 'text-exito-deep' : 'text-muted'),
         )}
         style={esEval ? { color: ev.borde } : undefined}
       >
@@ -269,13 +269,13 @@ export function LayoutMap({
         )}
         {!readOnly && esEval && onMass && (
           <>
-            <button type="button" onClick={() => onMass(1)} aria-label="Aprobar todas las zonas" className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors duration-150 hover:bg-emerald-100 active:scale-[0.97]">
+            <button type="button" onClick={() => onMass(1)} aria-label="Aprobar todas las zonas" className="inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1.5 text-xs font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
               <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> Aprobar
             </button>
-            <button type="button" onClick={() => onMass(0.5)} aria-label="Observar todas las zonas" className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-100 active:scale-[0.97]">
+            <button type="button" onClick={() => onMass(0.5)} aria-label="Observar todas las zonas" className="inline-flex items-center gap-1 rounded-md border border-aviso-line bg-aviso-soft px-2.5 py-1.5 text-xs font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]">
               <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Observar
             </button>
-            <button type="button" onClick={() => onMass(0)} aria-label="Rechazar todas las zonas" className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 transition-colors duration-150 hover:bg-red-100 active:scale-[0.97]">
+            <button type="button" onClick={() => onMass(0)} aria-label="Rechazar todas las zonas" className="inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1.5 text-xs font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
               <X className="h-3.5 w-3.5" strokeWidth={2.5} /> Rechazar
             </button>
           </>
@@ -293,7 +293,7 @@ export function LayoutMap({
               style={esEval ? { borderColor: ev.borde, color: ev.borde, background: `${ev.bg}44` } : undefined}
               className={cn(
                 'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors duration-150',
-                !esEval && (on ? 'border-emerald-600 bg-emerald-600/10 text-emerald-700' : 'border-line bg-white text-muted hover:border-gold'),
+                !esEval && (on ? 'border-exito bg-exito/10 text-exito-deep' : 'border-line bg-white text-muted hover:border-gold'),
                 readOnly && 'cursor-default',
               )}
             >
@@ -302,7 +302,7 @@ export function LayoutMap({
             </button>
           );
         })}
-        <span className="ml-auto rounded-full bg-emerald-600/10 px-3 py-1 font-mono text-xs font-bold tabular-nums text-emerald-700">
+        <span className="ml-auto rounded-full bg-exito/10 px-3 py-1 font-mono text-xs font-bold tabular-nums text-exito-deep">
           {r1(ganados)} / {r1(totalPts)} pts
         </span>
       </div>
@@ -342,7 +342,7 @@ export function LayoutMap({
         className={cn(
           'relative w-full flex-1 overflow-hidden rounded-xl border transition-colors duration-200',
           'aspect-[800/580] xl:aspect-auto',
-          pisoMarcado && !esEval ? 'border-emerald-500/70 bg-emerald-50/70' : 'border-line bg-[#f8fafc]',
+          pisoMarcado && !esEval ? 'border-exito/70 bg-exito-soft/70' : 'border-line bg-[#f8fafc]',
           esEval && piso && 'cursor-pointer',
           !readOnly && piso && !esEval && 'cursor-pointer',
         )}
@@ -353,7 +353,7 @@ export function LayoutMap({
           <span
             className={cn(
               'pointer-events-none absolute bottom-1 left-1/2 z-0 -translate-x-1/2 select-none text-[9px] font-semibold',
-              pisoMarcado ? 'text-emerald-600' : 'text-muted/50',
+              pisoMarcado ? 'text-exito' : 'text-muted/50',
             )}
           >
             {pisoMarcado ? '✓ Piso limpio' : 'Clic en el espacio vacío → Piso'}
@@ -378,7 +378,7 @@ export function LayoutMap({
                 className="pointer-events-none z-[1] flex items-center justify-center overflow-hidden"
                 title={z.nombre}
               >
-                <span className="px-1 text-center text-[8px] leading-tight text-slate-400">{z.nombre || z.cod}</span>
+                <span className="px-1 text-center text-[8px] leading-tight text-muted">{z.nombre || z.cod}</span>
               </div>
             );
           }
@@ -400,7 +400,7 @@ export function LayoutMap({
             ring = '2px solid #15803d';
             glow = '0 0 6px rgba(22,163,74,.35)';
             chip = (
-              <span className="absolute -right-1 -top-1 z-[6] flex h-3.5 w-3.5 animate-scale-in items-center justify-center rounded-full border border-white bg-emerald-700 text-white">
+              <span className="absolute -right-1 -top-1 z-[6] flex h-3.5 w-3.5 animate-scale-in items-center justify-center rounded-full border border-white bg-exito-deep text-white">
                 <Check className="h-2 w-2" strokeWidth={4} />
               </span>
             );
@@ -509,13 +509,13 @@ export function LayoutMap({
                         onClick={() => toggle(cod)}
                         className={cn(
                           'flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] transition-colors duration-150',
-                          !esEval && zzOn ? 'bg-emerald-50 text-emerald-800' : 'hover:bg-paper',
+                          !esEval && zzOn ? 'bg-exito-soft text-exito-deep' : 'hover:bg-paper',
                         )}
                       >
                         {esEval ? (
                           <IconoEstado v={zzEstado} className="h-3 w-3 shrink-0" />
                         ) : zzOn ? (
-                          <CheckSquare className="h-3 w-3 shrink-0 text-emerald-600" strokeWidth={2} />
+                          <CheckSquare className="h-3 w-3 shrink-0 text-exito" strokeWidth={2} />
                         ) : (
                           <Square className="h-3 w-3 shrink-0 text-muted/50" strokeWidth={1.75} />
                         )}
@@ -549,13 +549,13 @@ export function LayoutMap({
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-[2px] bg-[#eab308]" /> AM</span>
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-[2px] bg-[#2563eb]" /> PM</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2 bg-[#facc15]" style={{ borderRadius: '50% 50% 2px 2px' }} /> Maniquí</span>
-        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-600" /> Hecho</span>
+        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-exito" /> Hecho</span>
         {esEval && (
           <span className="ml-auto inline-flex items-center gap-1.5">
             Clic:
-            <Check className="h-3 w-3 text-emerald-600" strokeWidth={3} />→
-            <Eye className="h-3 w-3 text-amber-600" strokeWidth={3} />→
-            <X className="h-3 w-3 text-red-600" strokeWidth={3} />
+            <Check className="h-3 w-3 text-exito" strokeWidth={3} />→
+            <Eye className="h-3 w-3 text-aviso" strokeWidth={3} />→
+            <X className="h-3 w-3 text-error" strokeWidth={3} />
           </span>
         )}
       </div>
@@ -576,7 +576,7 @@ export function LayoutMap({
         </div>
         <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line/60">
           <div
-            className={cn('h-full rounded-full transition-[width] duration-300', frac >= 1 ? 'bg-emerald-600' : frac >= 0.5 ? 'bg-amber-500' : 'bg-red-500')}
+            className={cn('h-full rounded-full transition-[width] duration-300', frac >= 1 ? 'bg-exito' : frac >= 0.5 ? 'bg-aviso' : 'bg-error')}
             style={{ width: `${Math.round(frac * 100)}%` }}
           />
         </div>
@@ -611,7 +611,7 @@ export function LayoutMap({
         </ul>
         <div className="mt-2 flex items-center justify-between rounded-lg border border-gold/40 bg-gold/10 px-3 py-2">
           <span className="text-sm font-semibold text-navy">Limpieza</span>
-          <span className="font-mono text-sm font-bold tabular-nums text-[#7a6e0e]">
+          <span className="font-mono text-sm font-bold tabular-nums text-gold-deep">
             {r1(ganados)}/{r1(totalPts)}
           </span>
         </div>

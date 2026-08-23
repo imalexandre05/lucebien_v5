@@ -11,10 +11,10 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 const nfmt = (n: number) => new Intl.NumberFormat('es-PE', { maximumFractionDigits: 2 }).format(n);
 
@@ -79,7 +79,7 @@ export function MaterialesCliente({
             onClick={() => setSoloBajos((v) => !v)}
             className={cn(
               'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition',
-              soloBajos ? 'border-red-300 bg-red-50 text-red-700' : 'border-line text-navy hover:border-gold',
+              soloBajos ? 'border-error-line bg-error-soft text-error-deep' : 'border-line text-navy hover:border-gold',
             )}
           >
             <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Bajo mínimo
@@ -120,7 +120,7 @@ export function MaterialesCliente({
                     <TD className="text-sm text-ink">{m.categoria || '—'}</TD>
                     <TD className="font-mono text-xs text-navy">{m.sedeCod}</TD>
                     <TD className="text-right">
-                      <span className={cn('font-mono text-sm font-semibold tabular-nums', bajo ? 'text-red-600' : 'text-navy')}>
+                      <span className={cn('font-mono text-sm font-semibold tabular-nums', bajo ? 'text-error' : 'text-navy')}>
                         {nfmt(m.stockActual)}
                       </span>
                       <span className="ml-1 text-[10px] text-muted">{m.unidad}</span>
@@ -293,7 +293,7 @@ function MaterialModal({
           <input type="checkbox" checked={form.activo} onChange={(e) => set('activo', e.target.checked)} />
           Material activo
         </label>
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
@@ -348,7 +348,7 @@ function AjusteModal({ material, onClose, onSaved }: { material: Material; onClo
         <p className="rounded-md bg-navy/5 px-3 py-2 text-sm text-navy">
           Stock resultante: <span className="font-mono font-semibold tabular-nums">{nfmt(resultante)}</span> {material.unidad}
         </p>
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>

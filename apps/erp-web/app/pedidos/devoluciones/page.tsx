@@ -36,9 +36,9 @@ export default async function DevolucionesPage() {
   const proximos = items.filter((i) => nivelDevolucion(i.dias) === 'proximo').length;
 
   const NIVEL_CLS = {
-    vencido: 'bg-red-50 text-red-700',
-    hoy: 'bg-amber-50 text-amber-700',
-    proximo: 'bg-gold/20 text-[#7a6e0e]',
+    vencido: 'bg-error-soft text-error-deep',
+    hoy: 'bg-aviso-soft text-aviso-deep',
+    proximo: 'bg-gold/20 text-gold-deep',
     futuro: 'bg-ink/10 text-muted',
   } as const;
   const alerta = (dias: number) => {
@@ -60,9 +60,9 @@ export default async function DevolucionesPage() {
       />
 
       <div className="mb-4 grid grid-cols-3 gap-3">
-        <StatBox index={0} label="Vencidos" valor={vencidos} tone="border-red-200 bg-red-50 text-red-700" />
-        <StatBox index={1} label="Hoy" valor={deHoy} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox index={2} label="Próximos (3d)" valor={proximos} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox index={0} label="Vencidos" valor={vencidos} tone="error" />
+        <StatBox index={1} label="Hoy" valor={deHoy} tone="aviso" />
+        <StatBox index={2} label="Próximos (3d)" valor={proximos} tone="gold" />
       </div>
 
       <Card>
@@ -82,7 +82,7 @@ export default async function DevolucionesPage() {
               {items.map((p) => {
                 const a = alerta(p.dias);
                 return (
-                  <TR key={p.id} className={cn(p.dias < 0 && 'bg-red-50/40')}>
+                  <TR key={p.id} className={cn(p.dias < 0 && 'bg-error-soft/40')}>
                     <TD className="pl-5">
                       <Link href={`/pedidos/${p.id}`} className="font-medium text-navy transition-colors hover:text-gold">
                         {p.clienteNombre ?? '—'}

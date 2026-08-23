@@ -8,11 +8,12 @@ import type { Notificacion } from '../../lib/notificaciones-repo';
 import { generarAlertasAction, marcarLeidaAction, marcarTodasLeidasAction } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
 
 const SEV: Record<Notificacion['severidad'], { icon: typeof Info; cls: string; tone: 'gray' | 'amber' | 'navy'; label: string }> = {
-  critica: { icon: ShieldAlert, cls: 'text-red-600', tone: 'amber', label: 'Crítica' },
-  warn: { icon: AlertTriangle, cls: 'text-amber-600', tone: 'amber', label: 'Aviso' },
+  critica: { icon: ShieldAlert, cls: 'text-error', tone: 'amber', label: 'Crítica' },
+  warn: { icon: AlertTriangle, cls: 'text-aviso', tone: 'amber', label: 'Aviso' },
   info: { icon: Info, cls: 'text-navy', tone: 'navy', label: 'Info' },
 };
 
@@ -105,7 +106,7 @@ export function NotificacionesCliente({ notificaciones, esAdmin }: { notificacio
                 type="button"
                 onClick={marcarTodas}
                 disabled={pending}
-                className="inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition hover:border-gold"
+                className="toque inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition hover:border-gold"
               >
                 <CheckCheck className="h-3.5 w-3.5" strokeWidth={2} /> Marcar todas
               </button>
@@ -129,11 +130,16 @@ export function NotificacionesCliente({ notificaciones, esAdmin }: { notificacio
 
       {filtradas.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center gap-2 py-14 text-center text-muted">
-            <Bell className="h-8 w-8 text-line" strokeWidth={1.5} />
-            <p className="text-sm">{filtro === 'no_leidas' ? 'No tienes notificaciones sin leer.' : 'No hay notificaciones.'}</p>
-            {esAdmin && filtro !== 'no_leidas' && <p className="text-xs">Usa “Generar alertas” para evaluar el estado actual.</p>}
-          </CardContent>
+          <EmptyState
+            icon={Bell}
+            titulo={filtro === 'no_leidas' ? 'Nada sin leer' : 'Sin notificaciones'}
+          >
+            {filtro === 'no_leidas'
+              ? 'Ya viste todo lo que había. Cambia el filtro para volver a leer lo anterior.'
+              : esAdmin
+                ? 'Las alertas se generan al revisar el estado del sistema. Usa «Generar alertas» acá arriba para evaluarlo ahora.'
+                : 'Acá van a aparecer los avisos que te toquen: reportes por evaluar, incidencias y vencimientos.'}
+          </EmptyState>
         </Card>
       ) : (
         <div className="space-y-2">

@@ -7,9 +7,18 @@
   --navy: #2e3e6e;
   --navy-deep: #1b2440;
   --gold: #b8a515;
+  --gold-deep: #8a7c10;
   --paper: #f6f4ef;
   --ink: #20283f;
   --line: #e6e0d4;
+
+  /* Semánticos del manual de marca §6. Espejo de tailwind.config.ts: los dos archivos se editan
+     juntos, si no uno de los dos empieza a mentir. Acá sólo van los que hacen falta fuera de las
+     clases de Tailwind (CSS suelto, scrollbars, print). */
+  --exito: #2d9e6b;
+  --aviso: #e08c1a;
+  --error: #c94040;
+  --info: #3a7fc1;
 }
 
 @layer base {
@@ -55,6 +64,37 @@
 }
 
 @layer components {
+  /* `toque` — área tocable de verdad sin engordar el diseño.
+   *
+   * EL PROBLEMA. El ERP es denso a propósito: tablas con acciones chicas por fila, botones de
+   * `px-2 py-1 text-xs` que miden unos 24px de alto. Con un mouse se aciertan; con el pulgar, no.
+   * Y la mitad del equipo llena esto de pie y con el celular.
+   *
+   * LA SALIDA. Un ::after invisible que estira el área a 44px de alto, centrado sobre el control.
+   * El botón se ve exactamente igual — la densidad que se pidió no se toca — y el dedo tiene dónde
+   * caer.
+   *
+   * Sólo alto, nunca ancho. Dos botones lado a lado con un hueco chico se pisarían las áreas y el
+   * segundo se comería los toques del primero. Vertical es además donde de verdad se falla: en una
+   * tabla, las filas están apiladas.
+   *
+   * Sólo con puntero grueso. En escritorio, áreas invisibles de 44px sobre controles de 24
+   * empezarían a taparse entre sí y a robar clicks a lo que tienen al lado. */
+  @media (pointer: coarse) {
+    .toque {
+      position: relative;
+    }
+    .toque::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 44px;
+      transform: translateY(-50%);
+    }
+  }
+
   /* Hairline dorada: el divisor-firma del "atelier". */
   .gold-rule {
     height: 2px;
@@ -62,14 +102,24 @@
   }
 }
 
-/* Motion accesible: reduce movimiento, conserva legibilidad (Emil + a11y). */
+/* Movimiento reducido: MENOS movimiento, no cero interfaz.
+ *
+ * La versión anterior ponía TODAS las transiciones en 0.01ms, y con eso también se llevaba puestos
+ * el color y la opacidad. Eso es pasarse de largo: quien pide menos movimiento no pide que la
+ * interfaz deje de responder. Una fila que se ilumina al pasar sigue diciendo algo, y quitarla deja
+ * el sistema mudo justo para quien más necesita señales claras.
+ *
+ * Lo que se va es el desplazamiento; lo que se queda es todo lo que no se mueve. Las animaciones de
+ * keyframes terminan al instante y, como todas llevan `both` o `backwards`, aterrizan en su estado
+ * final sin pasar por el recorrido. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-property: opacity, color, background-color, border-color, box-shadow, fill, stroke !important;
+    transition-duration: 120ms !important;
   }
 }
 

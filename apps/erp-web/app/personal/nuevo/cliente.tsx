@@ -1,0 +1,135 @@
+'use client';
+
+import { useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import type { RolDerivado } from '../../../lib/roles-repo';
+import type { Sede } from '../../../lib/sedes-repo';
+import { CamposPerfil, opcionesRol } from '../../empleados/cliente';
+import { accionCrearEmpleado } from '../../empleados/actions';
+import { Card, CardContent } from '../../../components/ui/card';
+import { Button, buttonVariants } from '../../../components/ui/button';
+import { Aviso, campoCls } from '../../../components/ui/form';
+import { cn } from '../../../lib/cn';
+import { hoyPeru } from '../../../lib/fechas';
+
+// Paso 1 de la alta encadenada (R2): los mismos campos que tenía el modal «Nuevo colaborador» de
+// EmpleadosCliente —CamposPerfil (nombre, rol, sede, tiendas, fecha de ingreso, notas) más una
+// contraseña inicial—, ahora como página en vez de modal. SIN salario: el alta nunca lo capturó
+// (spec §2.4: "nunca lo tuvo").
+//
+// Al crear, esta pantalla NO muestra el código interno una sola vez como sí hacía el modal viejo:
+// la cadena sigue derecho al contrato, que es el punto entero de esta pantalla. El `cod` sigue
+// disponible para soporte desde la base si hiciera falta.
+export function NuevaPersonaCliente({
+  sedes,
+  rolesDerivados,
+}: {
+  sedes: Sede[];
+  rolesDerivados: RolDerivado[];
+}) {
+  const router = useRouter();
+  const opciones = useMemo(() => opcionesRol(rolesDerivados), [rolesDerivados]);
+
+  const [nombre, setNombre] = useState('');
+  const [rolValor, setRolValor] = useState<string>('ventas_junior');
+  const [sedePrimaria, setSedePrimaria] = useState(sedes[0]?.cod ?? '');
+  const [tiendas, setTiendas] = useState<string[]>(sedes[0] ? [sedes[0].cod] : []);
+  // F4 (validador de flujo 23-ago-2026): quien se está registrando casi siempre empieza el mismo
+  // día del alta. Default a hoy, no obligatorio: el campo sigue editable para el caso real de
+  // cargar a alguien que ya venía trabajando.
+  const [fechaIngreso, setFechaIngreso] = useState(hoyPeru());
+  const [notas, setNotas] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [pending, startTransition] = useTransition();
+
+  function crear() {
+    setError('');
+    if (!nombre.trim()) {
+      setError('El nombre es obligatorio');
+      return;
+    }
+    if (!sedePrimaria) {
+      setError('Elige una sede primaria');
+      return;
+    }
+    if (password.length < 4) {
+      setError('La contraseña debe tener al menos 4 caracteres');
+      return;
+    }
+    const opcion = opciones.find((o) => o.valor === rolValor);
+    if (!opcion) {
+      setError('Elige un rol');
+      return;
+    }
+    startTransition(async () => {
+      const r = await accionCrearEmpleado({
+        nombre,
+        rolBase: opcion.rolBase,
+        rolCod: opcion.rolCod,
+        sedeCod: sedePrimaria,
+        tiendas,
+        fechaIngreso: fechaIngreso || null,
+        notas,
+        password,
+      });
+      if (!r.ok || !r.id) {
+        setError(r.error ?? 'No se pudo crear a la persona.');
+        return;
+      }
+      // Paso 2 de la cadena: el contrato, con el editor ya abierto (AcuerdosCliente +
+      // abrirNuevoAlMontar) y la fecha de ingreso precompletada (F1.5).
+      router.push(`/personal/${r.id}/contrato?continuar=alta`);
+    });
+  }
+
+  return (
+    <Card>
+      <CardContent className="space-y-4 pt-5">
+        <CamposPerfil
+          nombre={nombre}
+          setNombre={setNombre}
+          rolValor={rolValor}
+          setRolValor={setRolValor}
+          sedePrimaria={sedePrimaria}
+          setSedePrimaria={setSedePrimaria}
+          tiendas={tiendas}
+          setTiendas={setTiendas}
+          fechaIngreso={fechaIngreso}
+          setFechaIngreso={setFechaIngreso}
+          notas={notas}
+          setNotas={setNotas}
+          sedes={sedes}
+          opciones={opciones}
+        />
+
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Contraseña inicial</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Mínimo 4 caracteres"
+            className={cn(campoCls, 'w-full')}
+          />
+        </div>
+
+        {error && (
+          <Aviso tono="error" className="text-sm">
+            {error}
+          </Aviso>
+        )}
+
+        <div className="flex items-center justify-end gap-3 border-t border-line/60 pt-4">
+          <Link href="/personal" className={buttonVariants({ variant: 'ghost' })}>
+            Cancelar
+          </Link>
+          <Button type="button" onClick={crear} pending={pending}>
+            {pending ? 'Creando…' : 'Guardar y seguir al contrato'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

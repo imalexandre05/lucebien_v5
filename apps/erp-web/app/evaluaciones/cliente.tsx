@@ -3,13 +3,12 @@
 import { Fragment, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Filter, ChevronRight, Award, FileText } from 'lucide-react';
+import { Plus, Filter, ChevronRight, Award } from 'lucide-react';
 import {
   COMPONENTES,
   calcularNotaMensual,
   calcularCiclo,
   notaCompetencias,
-  sugerirMontoPago,
   tramoEval,
   TRAMO_LABEL,
   type ComponentesEval,
@@ -17,15 +16,16 @@ import {
   type TramoEval,
   type Ciclo,
 } from '@scilb/core';
-import { accionCrearEvaluacion, accionComponentesEval, accionRegistrarPagoCiclo } from './actions';
+import { accionCrearEvaluacion, accionComponentesEval } from './actions';
 import type { Evaluacion, EmpleadoParaEvaluacion, CompetenciaConfig } from '../../lib/evaluaciones-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
-import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
+import { OpcionBotones } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
+import { campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
 
@@ -56,9 +56,9 @@ function PerfilComponentes({
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-xs text-ink">
                   {label}
-                  <span className="ml-1.5 font-mono text-[10px] text-muted">{fmtPeso(pesos[key])}</span>
+                  <span className="ml-1.5 tabular-nums text-[10px] text-muted">{fmtPeso(pesos[key])}</span>
                 </span>
-                <span className="font-mono text-xs font-semibold tabular-nums text-navy">{v.toFixed(1)}</span>
+                <span className="tabular-nums text-xs font-semibold text-navy">{v.toFixed(1)}</span>
               </div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line/60">
                 <div className="h-full rounded-full bg-navy" style={{ width: `${pct}%` }} />
@@ -83,15 +83,7 @@ const TRAMO_TONE: Record<TramoEval, Tone> = {
   bajo: 'gray',
 };
 const TRAMOS: TramoEval[] = ['excelente', 'bueno', 'mejorar', 'bajo'];
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold disabled:cursor-not-allowed disabled:opacity-60';
-const soles = (n: number) => `S/ ${n.toFixed(2)}`;
-
-const OPC_METODO_PAGO: Opcion[] = [
-  { value: 'efectivo', label: 'Efectivo' },
-  { value: 'yape', label: 'Yape' },
-  { value: 'transferencia', label: 'Transferencia' },
-];
+const fieldCls = campoCls;
 
 const CERO: ComponentesEval = {
   competencias: 0,
@@ -105,12 +97,12 @@ const CERO: ComponentesEval = {
   bonusVentas: 0,
 };
 
-// Evaluación recién guardada: el contexto mínimo que necesita el panel de pago (Fase 12 tarea 6).
+// Evaluación recién guardada: el contexto mínimo para la nota de referencia que aparece debajo
+// (R4, spec §2.6: "la liquidación ES el pago" — acá ya no se registra nada, sólo se informa).
 type EvalGuardada = {
   id: string;
   empleadoId: string;
   nombre: string;
-  salarioBase: number;
   notaFinal: number;
   cicloDesde: string;
   cicloHasta: string;
@@ -148,17 +140,11 @@ export function EvaluacionesCliente({
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
-  // Panel de pago (Fase 12 tarea 6): aparece justo después de guardar la evaluación, en la MISMA
-  // pantalla — "herramienta única del admin que junta evaluación + pagos del ciclo".
+  // Nota de referencia (R4, spec §2.6): aparece justo después de guardar la evaluación, en la
+  // MISMA pantalla. Antes acá vivía el panel que registraba el pago contra el sistema viejo — ese
+  // camino se cerró (ROTURA 2, validador de flujo 23-ago-2026): la liquidación es el pago, y esta
+  // pantalla ya no escribe nada, sólo apunta a dónde se registra.
   const [evalGuardada, setEvalGuardada] = useState<EvalGuardada | null>(null);
-  const [pagoBonus, setPagoBonus] = useState(0);
-  const [pagoDescuentos, setPagoDescuentos] = useState(0);
-  const [pagoMetodo, setPagoMetodo] = useState('efectivo');
-  const [pagoFecha, setPagoFecha] = useState(hoyPeru());
-  const [pagoObs, setPagoObs] = useState('');
-  const [pagoError, setPagoError] = useState('');
-  const [pagoId, setPagoId] = useState<string | null>(null);
-  const [pagoPending, startPagoTransition] = useTransition();
 
   // Filtros del historial.
   const [q, setQ] = useState('');
@@ -174,11 +160,6 @@ export function EvaluacionesCliente({
   const compParaCalculo = useMemo(() => ({ ...comp, competencias: competenciaNota }), [comp, competenciaNota]);
   const nota = useMemo(() => calcularNotaMensual(compParaCalculo, pesos), [compParaCalculo, pesos]);
   const tramo = tramoEval(nota);
-
-  const montoSugerido = useMemo(
-    () => (evalGuardada ? sugerirMontoPago(evalGuardada.salarioBase, evalGuardada.notaFinal, pagoBonus, pagoDescuentos) : 0),
-    [evalGuardada, pagoBonus, pagoDescuentos],
-  );
 
   const meses = useMemo(() => [...new Set(evaluaciones.map((e) => e.mes))].sort().reverse(), [evaluaciones]);
 
@@ -208,7 +189,6 @@ export function EvaluacionesCliente({
   function elegirEmpleado(id: string) {
     setEmpleadoId(id);
     setEvalGuardada(null);
-    setPagoId(null);
     setInfoExtra(null);
     setComp(CERO);
     setCompetenciaSel({});
@@ -282,44 +262,10 @@ export function EvaluacionesCliente({
         id: r.id,
         empleadoId,
         nombre: emp?.nombre ?? '',
-        salarioBase: emp?.salarioBase ?? 0,
         notaFinal: nota,
         cicloDesde: ciclo.desde,
         cicloHasta: ciclo.hasta,
       });
-      setPagoBonus(0);
-      setPagoDescuentos(0);
-      setPagoMetodo('efectivo');
-      setPagoFecha(hoyPeru());
-      setPagoObs('');
-      setPagoError('');
-      setPagoId(null);
-      router.refresh();
-    });
-  }
-
-  function registrarPago() {
-    if (!evalGuardada) return;
-    setPagoError('');
-    startPagoTransition(async () => {
-      const r = await accionRegistrarPagoCiclo({
-        empleadoId: evalGuardada.empleadoId,
-        evaluacionId: evalGuardada.id,
-        cicloDesde: evalGuardada.cicloDesde,
-        cicloHasta: evalGuardada.cicloHasta,
-        montoBase: evalGuardada.salarioBase,
-        monto: montoSugerido,
-        bonus: pagoBonus,
-        descuentos: pagoDescuentos,
-        metodo: pagoMetodo,
-        fechaPago: pagoFecha,
-        observaciones: pagoObs,
-      });
-      if (!r.ok || !r.id) {
-        setPagoError(r.error ?? 'Error al registrar el pago');
-        return;
-      }
-      setPagoId(r.id);
       router.refresh();
     });
   }
@@ -331,17 +277,16 @@ export function EvaluacionesCliente({
     setComp(CERO);
     setCompetenciaSel({});
     setEvalGuardada(null);
-    setPagoId(null);
   }
 
   return (
     <div className="space-y-4">
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Evaluaciones" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Promedio" valor={resumen.promedio} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-        <StatBox index={2} label="Excelente" valor={resumen.excelente} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="border-line bg-white text-muted" />
+        <StatBox index={0} label="Evaluaciones" valor={resumen.total} tone="navy" />
+        <StatBox index={1} label="Promedio" valor={resumen.promedio} tone="gold" />
+        <StatBox index={2} label="Excelente" valor={resumen.excelente} tone="exito" />
+        <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="neutro" />
       </div>
 
       {/* Filtros + acción */}
@@ -443,14 +388,14 @@ export function EvaluacionesCliente({
             {infoExtra && (
               <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line/60 bg-paper/60 px-3 py-2 text-xs text-muted">
                 <span>
-                  Puntos de pipeline en el ciclo <span className="font-mono font-semibold text-navy">{infoExtra.puntosPipeline}</span>
+                  Puntos de pipeline en el ciclo <span className="tabular-nums font-semibold text-navy">{infoExtra.puntosPipeline}</span>
                 </span>
                 <span>
-                  Extras registrados <span className="font-mono font-semibold text-navy">{infoExtra.extrasCantidad}</span>
+                  Extras registrados <span className="tabular-nums font-semibold text-navy">{infoExtra.extrasCantidad}</span>
                   {' · '}
-                  <span className="font-mono font-semibold text-navy">S/ {infoExtra.extrasMonto.toFixed(2)}</span>
+                  <span className="tabular-nums font-semibold text-navy">S/ {infoExtra.extrasMonto.toFixed(2)}</span>
                   {' · '}
-                  <span className="font-mono font-semibold text-navy">{infoExtra.extrasPuntos} pts</span>
+                  <span className="tabular-nums font-semibold text-navy">{infoExtra.extrasPuntos} pts</span>
                 </span>
                 <span className="italic">No entran a la fórmula — contexto para tu criterio.</span>
               </div>
@@ -462,7 +407,7 @@ export function EvaluacionesCliente({
                 <div key={key} className="flex items-center gap-2">
                   <label className="flex-1 text-sm text-navy">
                     {label}
-                    <span className="ml-1 font-mono text-[10px] text-muted">×{pesos[key]}</span>
+                    <span className="ml-1 tabular-nums text-[10px] text-muted">×{pesos[key]}</span>
                   </label>
                   <input
                     type="number"
@@ -482,9 +427,9 @@ export function EvaluacionesCliente({
             <div className="border-t border-line/60 pt-3">
               <div className="mb-2 flex items-center justify-between">
                 <span className="text-xs uppercase tracking-wide text-muted">
-                  Competencias <span className="ml-1 font-mono text-[10px] text-muted">×{pesos.competencias}</span>
+                  Competencias <span className="ml-1 tabular-nums text-[10px] text-muted">×{pesos.competencias}</span>
                 </span>
-                <span className="font-mono text-sm font-semibold text-navy">{competenciaNota.toFixed(1)}/20</span>
+                <span className="tabular-nums text-sm font-semibold text-navy">{competenciaNota.toFixed(1)}/20</span>
               </div>
               {competenciasConfig.length === 0 ? (
                 <p className="text-xs text-muted">Sin catálogo de competencias todavía (falta aplicar la migración 0057) — la nota queda en 0.</p>
@@ -516,7 +461,7 @@ export function EvaluacionesCliente({
               </div>
             </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm text-error">{error}</p>}
             <div className="flex items-center gap-3">
               <Button type="button" onClick={guardar} disabled={!empleadoId || !ciclo} pending={pending}>
                 {pending ? 'Guardando…' : `Guardar · ${nota.toFixed(2)}`}
@@ -527,8 +472,12 @@ export function EvaluacionesCliente({
         </Card>
       )}
 
-      {/* Sugerencia de pago (Fase 12 tarea 5+6): aparece justo después de guardar, misma pantalla —
-          cierra el ciclo evaluación → pago sin navegar a /pagos. */}
+      {/* Nota de referencia (R4, spec §2.6): aparece justo después de guardar, misma pantalla.
+          Ya NO registra ningún pago — hasta el 23-ago-2026 este panel sugería un monto con la
+          fórmula vieja (salario_base) y escribía en la tabla `pagos`, un segundo camino de pago
+          que contradecía «la liquidación ES el pago» (ROTURA 2, validador de flujo). El pago vive
+          ahora en la pestaña de la persona; acá sólo queda la nota como referencia para el
+          administrador. */}
       {esAdmin && evalGuardada && (
         <Card>
           <CardHeader>
@@ -538,55 +487,18 @@ export function EvaluacionesCliente({
             </Badge>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-xs text-muted">
-              Ciclo {evalGuardada.cicloDesde} a {evalGuardada.cicloHasta}. Cierra el ciclo registrando el pago correspondiente.
+            <p className="text-xs text-muted">Ciclo {evalGuardada.cicloDesde} a {evalGuardada.cicloHasta}.</p>
+
+            <p className="rounded-lg border border-line bg-paper/60 px-3 py-2.5 text-sm text-ink">
+              El pago se registra en la pestaña{' '}
+              <Link
+                href={`/personal/${evalGuardada.empleadoId}/pago`}
+                className="font-medium text-navy underline decoration-gold decoration-2 underline-offset-2 hover:text-navy-dark"
+              >
+                Liquidación y pago
+              </Link>{' '}
+              de la persona.
             </p>
-
-            {pagoId ? (
-              <div className="flex flex-wrap items-center gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm text-emerald-800">
-                <FileText className="h-4 w-4 shrink-0" strokeWidth={1.75} />
-                Pago registrado.
-                <Link href={`/pagos/${pagoId}/comprobante`} className="font-medium underline underline-offset-2">
-                  Ver comprobante
-                </Link>
-              </div>
-            ) : (
-              <>
-                <div className="rounded-lg border border-gold/30 bg-gold/10 p-4 text-center">
-                  <div className="text-xs uppercase tracking-wide text-muted">Sugerencia de pago</div>
-                  <div className="font-mono text-2xl font-bold tabular-nums text-navy">{soles(montoSugerido)}</div>
-                  <div className="mt-0.5 text-[11px] text-muted">salario base × (nota final / 20) + bonus − descuentos</div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Fecha</label>
-                    <input type="date" value={pagoFecha} onChange={(e) => setPagoFecha(e.target.value)} className={cn(fieldCls, 'w-full')} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
-                    <OpcionBotones opciones={OPC_METODO_PAGO} value={pagoMetodo} onChange={setPagoMetodo} ariaLabel="Método" />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Bonus</label>
-                    <input type="number" step="0.5" value={pagoBonus} onChange={(e) => setPagoBonus(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descuentos</label>
-                    <input type="number" step="0.5" value={pagoDescuentos} onChange={(e) => setPagoDescuentos(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Observaciones (opcional)</label>
-                    <input value={pagoObs} onChange={(e) => setPagoObs(e.target.value)} className={cn(fieldCls, 'w-full')} />
-                  </div>
-                </div>
-
-                {pagoError && <p className="text-sm text-red-600">{pagoError}</p>}
-                <Button type="button" onClick={registrarPago} pending={pagoPending}>
-                  {pagoPending ? 'Registrando…' : `Registrar pago · ${soles(montoSugerido)}`}
-                </Button>
-              </>
-            )}
 
             <button type="button" onClick={reiniciar} className="block text-xs text-muted underline underline-offset-2 hover:text-navy">
               Nueva evaluación
@@ -636,9 +548,9 @@ export function EvaluacionesCliente({
                           />
                         </button>
                       </TD>
-                      <TD className="font-mono text-xs text-muted">{e.mes}</TD>
+                      <TD className="tabular-nums text-xs text-muted">{e.mes}</TD>
                       <TD className="font-medium text-navy">{e.empleadoNombre ?? '—'}</TD>
-                      <TD className="text-right font-mono text-base font-bold tabular-nums text-navy">{e.notaFinal.toFixed(2)}</TD>
+                      <TD className="text-right tabular-nums text-base font-bold text-navy">{e.notaFinal.toFixed(2)}</TD>
                       <TD className="pr-5">
                         <Badge tone={TRAMO_TONE[t]}>{TRAMO_LABEL[t]}</Badge>
                       </TD>

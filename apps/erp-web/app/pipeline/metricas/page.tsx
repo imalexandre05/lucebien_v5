@@ -5,6 +5,7 @@ import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { StatBox } from '../../../components/ui/stat-box';
+import { EmptyState } from '../../../components/ui/empty-state';
 
 const ETAPAS: Record<string, string> = {
   recepcion: 'Recepción',
@@ -62,11 +63,11 @@ export default async function MetricasPage() {
         </Link>
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-          <StatBox index={0} label="En proceso" valor={enProceso} sub="prendas en taller" tone="border-navy/15 bg-navy/5 text-navy" />
-          <StatBox index={1} label="Listas p/ envío" valor={listas} sub="esperan despacho" tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
-          <StatBox index={2} label="En camino" valor={enCamino} sub="por confirmar en tienda" tone="border-navy/15 bg-navy/5 text-navy" />
-          <StatBox index={3} label="Movimientos hoy" valor={movsHoy} sub="avances de etapa" tone="border-emerald-600/20 bg-emerald-50/60 text-emerald-700" />
-          <StatBox index={4} label="Puntos hoy" valor={ptsHoy} sub="todo el equipo" tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+          <StatBox index={0} label="En proceso" valor={enProceso} sub="prendas en taller" tone="navy" />
+          <StatBox index={1} label="Listas p/ envío" valor={listas} sub="esperan despacho" tone="gold" />
+          <StatBox index={2} label="En camino" valor={enCamino} sub="por confirmar en tienda" tone="navy" />
+          <StatBox index={3} label="Movimientos hoy" valor={movsHoy} sub="avances de etapa" tone="exito" />
+          <StatBox index={4} label="Puntos hoy" valor={ptsHoy} sub="todo el equipo" tone="gold" />
         </div>
 
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
@@ -105,7 +106,10 @@ export default async function MetricasPage() {
             </CardHeader>
             <CardContent className="overflow-x-auto px-0 pb-0">
               {ranking.length === 0 ? (
-                <p className="px-5 pb-5 text-sm text-muted">Aún no hay puntos registrados hoy.</p>
+                <EmptyState icon={Trophy} titulo="Todavía no se registraron puntos hoy" compacto>
+                  Los puntos salen de avanzar prendas en el pipeline: cada pasada suma los suyos al
+                  operario que la hizo.
+                </EmptyState>
               ) : (
                 <Table>
                   <THead>
@@ -122,7 +126,7 @@ export default async function MetricasPage() {
                         <TD className="pl-5 font-mono text-xs text-muted">{i + 1}</TD>
                         <TD className="text-sm font-medium text-ink">{r.nombre}</TD>
                         <TD className="text-right font-mono text-sm tabular-nums text-muted">{r.acciones}</TD>
-                        <TD className="pr-5 text-right font-mono text-sm font-bold tabular-nums text-[#7a6e0e]">
+                        <TD className="pr-5 text-right font-mono text-sm font-bold tabular-nums text-gold-deep">
                           <span className="inline-flex items-center gap-1">
                             <Zap className="h-3 w-3" strokeWidth={2.5} /> {r.total}
                           </span>

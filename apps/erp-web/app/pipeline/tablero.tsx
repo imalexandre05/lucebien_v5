@@ -60,17 +60,33 @@ const COL_MAP: Record<string, string> = {
   Otros: '#aaaaaa',
 };
 
+// LOS COLORES DE LAS NUEVE ETAPAS.
+//
+// Van como hexadecimal y no como clase porque se usan con opacidad calculada en un `style`
+// (`${tint}14`), que Tailwind no puede generar: cada columna necesita su propio tinte al 8%.
+//
+// Eso los deja FUERA del alcance del guard de diseño, que sólo ve nombres de clase. Por eso
+// importa que salgan de la misma paleta a mano: hasta el 20-ago-2026 eran siete azules, violetas
+// y naranjas por defecto de Tailwind escritos en hexadecimal, es decir la paleta que el sistema
+// dejó de usar, colada por la única puerta que el guard no mira.
+//
+// El orden cuenta una historia y los colores la acompañan: llega sin trabajar (neutro), pasa por
+// el agua, el hilo y el taller, se aprueba, se dora, y sale. Las dos parejas de trabajo parecido
+// —refacción con compostura, lavado con planchado— comparten familia a propósito.
+//
+// UNA EXCEPCIÓN, Y ES DELIBERADA: control de calidad usa el verde de `exito`. En el resto del
+// sistema el verde significa "correcto", y acá significa exactamente eso — la prenda pasó.
 type Col = { k: string; n: string; icon: LucideIcon; tint: string };
 const COLUMNAS: Col[] = [
-  { k: 'recepcion', n: 'Recepción', icon: Inbox, tint: '#64748b' },
-  { k: 'lavado', n: 'Lavado', icon: Droplets, tint: '#2563eb' },
-  { k: 'empatado', n: 'Empatado', icon: Link2, tint: '#7c3aed' },
-  { k: 'refaccion', n: 'Refacción', icon: Wrench, tint: '#d97706' },
-  { k: 'compostura', n: 'Compostura', icon: Scissors, tint: '#ea580c' },
-  { k: 'planchado', n: 'Planchado', icon: Shirt, tint: '#0891b2' },
-  { k: 'control_calidad', n: 'Control calidad', icon: BadgeCheck, tint: '#16a34a' },
-  { k: 'listo', n: 'Listo p/ envío', icon: PackageCheck, tint: '#a98f12' },
-  { k: 'enviado', n: 'Enviadas', icon: Truck, tint: '#2e3e6e' },
+  { k: 'recepcion', n: 'Recepción', icon: Inbox, tint: '#807a6c' },        // muted
+  { k: 'lavado', n: 'Lavado', icon: Droplets, tint: '#2f7f88' },           // cat-mar
+  { k: 'empatado', n: 'Empatado', icon: Link2, tint: '#6f5aa8' },          // cat-lila
+  { k: 'refaccion', n: 'Refacción', icon: Wrench, tint: '#b5643f' },       // cat-arcilla
+  { k: 'compostura', n: 'Compostura', icon: Scissors, tint: '#8a462a' },   // cat-arcilla-deep
+  { k: 'planchado', n: 'Planchado', icon: Shirt, tint: '#1e5a61' },        // cat-mar-deep
+  { k: 'control_calidad', n: 'Control calidad', icon: BadgeCheck, tint: '#2d9e6b' }, // exito
+  { k: 'listo', n: 'Listo p/ envío', icon: PackageCheck, tint: '#b8a515' },// gold
+  { k: 'enviado', n: 'Enviadas', icon: Truck, tint: '#2e3e6e' },           // navy
 ];
 const NOMBRE: Record<string, string> = Object.fromEntries(COLUMNAS.map((c) => [c.k, c.n]));
 
@@ -83,12 +99,13 @@ const TABS: { k: string; label: string; href?: string; pronto?: boolean }[] = [
   { k: 'metricas', label: 'Métricas', href: '/pipeline/metricas' },
 ];
 
-// Tono del pill de tipo de lavado.
+// Tono del pill de tipo de lavado. Es una categoría, no un estado: el lavado en seco no es una
+// advertencia. Por eso los tres salen de los categóricos y del neutro, y ninguno del semántico.
 const tipoLavadoCls = (t: string): string => {
   const v = t.toLowerCase();
-  if (v.includes('seco')) return 'bg-amber-50 text-amber-700';
-  if (v.includes('espec')) return 'bg-violet-50 text-violet-700';
-  return 'bg-slate-100 text-slate-600';
+  if (v.includes('seco')) return 'bg-cat-arcilla-soft text-cat-arcilla-deep';
+  if (v.includes('espec')) return 'bg-cat-lila-soft text-cat-lila-deep';
+  return 'bg-paper text-muted';
 };
 
 type Handlers = {
@@ -276,7 +293,7 @@ export function TableroPipeline({
         </div>
         <div className="flex items-center gap-5">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> En vivo
+            <span className="h-1.5 w-1.5 rounded-full bg-exito" /> En vivo
           </span>
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-wide text-paper/50">Sesión</div>
@@ -315,7 +332,7 @@ export function TableroPipeline({
         )}
         <div className="ml-auto flex items-center gap-2 pb-1.5">
           <span className="rounded-full bg-navy/5 px-2.5 py-1 text-xs font-medium text-navy">{enProceso} en proceso</span>
-          <span className="rounded-full bg-emerald-600/10 px-2.5 py-1 text-xs font-medium text-emerald-700">{enviados} enviados</span>
+          <span className="rounded-full bg-exito/10 px-2.5 py-1 text-xs font-medium text-exito-deep">{enviados} enviados</span>
         </div>
       </div>
 
@@ -332,13 +349,13 @@ export function TableroPipeline({
           <Chip key={t} on={tipoF === t} onClick={() => setTipoF(t)}>{t}</Chip>
         ))}
         <div className="relative ml-auto">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <input
             type="search"
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por código, color o tipo…"
-            className="w-64 rounded-md border border-line bg-white py-1.5 pl-8 pr-3 text-sm text-navy placeholder:text-slate-400 focus:border-navy focus:outline-none"
+            className="w-64 rounded-md border border-line bg-white py-1.5 pl-8 pr-3 text-sm text-navy placeholder:text-muted focus:border-navy focus:outline-none"
           />
         </div>
       </div>
@@ -399,14 +416,14 @@ export function TableroPipeline({
       {/* ── Ranking del día ── */}
       {ranking.length > 0 && (
         <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-lg border border-line bg-white p-3">
-          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted">
             <Trophy className="h-4 w-4 text-gold" strokeWidth={2} /> Puntos de hoy
           </span>
           {ranking.map((r, i) => (
             <span key={r.nombre} className="inline-flex items-center gap-1.5 rounded-full bg-navy/5 px-2.5 py-1 text-xs">
-              <span className="font-mono text-[10px] text-slate-400">#{i + 1}</span>
+              <span className="font-mono text-[10px] text-muted">#{i + 1}</span>
               <span className="font-medium text-navy">{r.nombre}</span>
-              <span className="font-mono font-bold tabular-nums text-[#7a6e0e]">{r.total}</span>
+              <span className="font-mono font-bold tabular-nums text-gold-deep">{r.total}</span>
             </span>
           ))}
         </div>
@@ -458,7 +475,7 @@ export function TableroPipeline({
                   />
                 ))}
                 {items.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-line py-5 text-center text-xs text-slate-400">
+                  <div className="rounded-lg border border-dashed border-line py-5 text-center text-xs text-muted">
                     {ql || sedeF || tipoF ? 'sin coincidencias' : '— vacío —'}
                   </div>
                 )}
@@ -475,7 +492,7 @@ export function TableroPipeline({
             toast.tono === 'gold'
               ? 'bg-gold text-navy'
               : toast.tono === 'warn'
-                ? 'bg-amber-600 text-white'
+                ? 'bg-aviso text-white'
                 : 'bg-navy text-white'
           }`}
           role="status"
@@ -491,7 +508,7 @@ export function TableroPipeline({
           {toast.undo && (
             <button
               onClick={toast.undo}
-              className="inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-xs font-medium transition hover:bg-white/30"
+              className="toque inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-xs font-medium transition hover:bg-white/30"
             >
               <Undo2 className="h-3 w-3" strokeWidth={2.5} /> Deshacer
             </button>
@@ -586,7 +603,7 @@ function Tarjeta({
             }}
             aria-label="Dividir en saco + pantalón"
             title="Dividir en saco + pantalón"
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-300 transition-colors hover:bg-navy/5 hover:text-navy"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-line transition-colors hover:bg-navy/5 hover:text-navy"
           >
             <Split className="h-3 w-3" strokeWidth={2.5} />
           </button>
@@ -600,7 +617,7 @@ function Tarjeta({
             }}
             aria-label="Deshacer división"
             title="Deshacer división (vuelve a ser una sola prenda)"
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-slate-300 transition-colors hover:bg-navy/5 hover:text-navy"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-line transition-colors hover:bg-navy/5 hover:text-navy"
           >
             <Combine className="h-3 w-3" strokeWidth={2.5} />
           </button>
@@ -622,7 +639,7 @@ function Tarjeta({
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-1">
         <span className="rounded bg-navy/5 px-1.5 py-0.5 font-mono text-[10px] text-navy">{p.sedeOrigenCod}</span>
-        {Boolean(meta) && <span className="truncate text-[11px] leading-tight text-slate-500">{meta}</span>}
+        {Boolean(meta) && <span className="truncate text-[11px] leading-tight text-muted">{meta}</span>}
       </div>
       {(Boolean(p.tipoLavado) || Boolean(p.necesitaCompostura) || Boolean(p.aprobada)) && (
         <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -632,17 +649,17 @@ function Tarjeta({
             </span>
           )}
           {Boolean(p.necesitaCompostura) && (
-            <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">compostura</span>
+            <span className="rounded bg-aviso-soft px-1.5 py-0.5 text-[10px] font-medium text-aviso-deep">compostura</span>
           )}
           {Boolean(p.aprobada) && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+            <span className="inline-flex items-center gap-0.5 rounded bg-exito-soft px-1.5 py-0.5 text-[10px] font-medium text-exito-deep">
               <Check className="h-2.5 w-2.5" strokeWidth={3} /> ok
             </span>
           )}
         </div>
       )}
       {Boolean(p.obsCalidad) && (
-        <div className="mt-1 flex items-start gap-1 rounded bg-red-50 px-2 py-1 text-[11px] text-red-700">
+        <div className="mt-1 flex items-start gap-1 rounded bg-error-soft px-2 py-1 text-[11px] text-error-deep">
           <AlertTriangle className="mt-px h-3 w-3 shrink-0" strokeWidth={2.5} /> {p.obsCalidad}
         </div>
       )}
@@ -684,7 +701,7 @@ function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
       </select>
       <button
         onClick={() => h.rechazar(p.id, destino)}
-        className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 active:scale-[.98]"
+        className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-error-line bg-error-soft px-2 py-1.5 text-xs font-medium text-error-deep transition hover:bg-error-soft active:scale-[.98]"
       >
         <Undo2 className="h-3.5 w-3.5" strokeWidth={2.5} /> Rechazar
       </button>

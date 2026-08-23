@@ -11,6 +11,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 type ActEval = { cod: string; nombre: string; cat: string | null; peso: number; calificacion: number | null };
@@ -34,9 +35,9 @@ function Estado3({
   nombre?: string;
 }) {
   const opts: { v: number; Icon: typeof Check; on: string; label: string }[] = [
-    { v: 1, Icon: Check, on: 'bg-emerald-600 text-white', label: 'Aprobar' },
-    { v: 0.5, Icon: Eye, on: 'bg-amber-500 text-white', label: 'Observar' },
-    { v: 0, Icon: X, on: 'bg-red-600 text-white', label: 'Rechazar' },
+    { v: 1, Icon: Check, on: 'bg-exito text-white', label: 'Aprobar' },
+    { v: 0.5, Icon: Eye, on: 'bg-aviso text-white', label: 'Observar' },
+    { v: 0, Icon: X, on: 'bg-error text-white', label: 'Rechazar' },
   ];
   return (
     <div className="inline-flex shrink-0 overflow-hidden rounded-lg border border-line">
@@ -135,17 +136,17 @@ export function EvaluarPanel({
         <h2 className="flex items-center gap-2 text-xl font-semibold text-navy">
           <Star className="h-5 w-5 text-gold" strokeWidth={2} /> Evaluar reporte
         </h2>
-        <span className="rounded-full bg-gold/15 px-3 py-1 font-mono text-base font-bold tabular-nums text-[#7a6e0e]">
+        <span className="rounded-full bg-gold/15 px-3 py-1 font-mono text-base font-bold tabular-nums text-gold-deep">
           {puntaje}%
         </span>
       </div>
 
       {trabajadores.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2 text-sm text-aviso-deep">
           <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={2} />
           <span>El evaluante no puede haber estado en el turno:</span>
           {trabajadores.map((t) => (
-            <span key={t} className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-amber-800">
+            <span key={t} className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-aviso-deep">
               {t}
             </span>
           ))}
@@ -177,13 +178,13 @@ export function EvaluarPanel({
         <CardHeader>
           <CardTitle>Calificación por actividad</CardTitle>
           <div className="flex items-center gap-1.5">
-            <button type="button" onClick={() => masivoActs(1)} aria-label="Aprobar todo" className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-medium text-emerald-700 transition-colors duration-150 hover:bg-emerald-100 active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(1)} aria-label="Aprobar todo" className="inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1.5 text-xs font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
               <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
-            <button type="button" onClick={() => masivoActs(0.5)} aria-label="Observar todo" className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs font-medium text-amber-700 transition-colors duration-150 hover:bg-amber-100 active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(0.5)} aria-label="Observar todo" className="inline-flex items-center gap-1 rounded-md border border-aviso-line bg-aviso-soft px-2.5 py-1.5 text-xs font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]">
               <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
-            <button type="button" onClick={() => masivoActs(0)} aria-label="Rechazar todo" className="inline-flex items-center gap-1 rounded-md border border-red-300 bg-red-50 px-2.5 py-1.5 text-xs font-medium text-red-700 transition-colors duration-150 hover:bg-red-100 active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(0)} aria-label="Rechazar todo" className="inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1.5 text-xs font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
               <X className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
           </div>
@@ -215,7 +216,7 @@ export function EvaluarPanel({
         </CardContent>
       </Card>
 
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
 
       <Button
         type="button"
@@ -277,7 +278,7 @@ export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean 
         data-testid="anular-reporte"
         onClick={() => setConfirmar('reporte')}
         disabled={pending}
-        className={cn(buttonVariants({ variant: 'outline' }), 'border-red-300 text-red-600 hover:bg-red-50')}
+        className={cn(buttonVariants({ variant: 'outline' }), 'border-error-line text-error hover:bg-error-soft')}
       >
         Anular reporte
       </button>
@@ -287,7 +288,7 @@ export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean 
         onClose={cerrar}
         size="sm"
         title={confirmar === 'eval' ? '¿Anular la evaluación?' : '¿Anular este reporte?'}
-        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" strokeWidth={2} aria-hidden />}
+        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody>
           <p className="text-sm leading-relaxed text-muted">
@@ -295,7 +296,7 @@ export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean 
               ? 'El reporte vuelve a quedar pendiente de evaluación.'
               : 'Se borran sus actividades, trabajadores y extras. Esta acción no se puede deshacer.'}
           </p>
-          {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+          {error && <Aviso tono="error" className="mt-3">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={cerrar} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
@@ -306,7 +307,7 @@ export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean 
             data-testid="confirmar-anular"
             onClick={ejecutar}
             pending={pending}
-            className="bg-red-600 hover:bg-red-700"
+            className="bg-error hover:bg-error-deep"
           >
             {pending ? 'Anulando…' : 'Sí, anular'}
           </Button>

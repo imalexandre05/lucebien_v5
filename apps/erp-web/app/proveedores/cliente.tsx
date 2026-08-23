@@ -10,10 +10,10 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 const vacio = (): ProveedorInput => ({
   nombre: '',
@@ -226,7 +226,7 @@ function ProveedorModal({
           <input type="checkbox" checked={form.activo} onChange={(e) => set('activo', e.target.checked)} />
           Proveedor activo
         </label>
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>

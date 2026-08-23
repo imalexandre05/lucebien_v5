@@ -145,6 +145,14 @@ Nunca:
 | **Error** | `#c94040` | Errores, stock agotado. |
 | **Info** | `#3a7fc1` | Información neutral. |
 
+> **En el ERP estos cuatro son tokens, no hexadecimales sueltos.** Cada familia tiene cuatro pasos
+> —`soft` para el fondo, `line` para el borde, la base para el punto o la barra, `deep` para el
+> texto— y el paso `deep` sobre `soft` pasa 4.5:1 en las cuatro. Ver
+> [sistema-de-diseno.md](sistema-de-diseno.md) §2.
+>
+> La paleta por defecto de Tailwind no se usa: sus verdes y ámbares son fríos al lado del navy y
+> del oro.
+
 ### Cómo usar el oro
 
 El dorado es un color **de acento, no de fondo**. Reglas:

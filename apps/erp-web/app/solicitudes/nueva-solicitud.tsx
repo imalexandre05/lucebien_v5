@@ -18,6 +18,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { OpcionBotones } from '../../components/ui/opcion-botones';
 import { Badge } from '../../components/ui/badge';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 // Formulario de alta (Fase 11). Portado de suAdd/suFields/suEnviar en public/js/solicitudes.js —
@@ -25,8 +26,7 @@ import { cn } from '../../lib/cn';
 // los primitivos del ERP nuevo. `mtela`+`mprenda` del catálogo viejo se combinan en el único campo
 // `modelo` de solicitud_items (la migración 0056 no separa columnas para cada uno — el sistema
 // viejo hacía exactamente lo mismo en suEnviar: `item.modelo=[mt,mp].filter(Boolean).join(' | ')`).
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = cn(campoCls, 'py-2');
 
 const OPC_URGENCIA = URGENCIAS_SOLICITUD.map((u) => ({ value: u, label: URGENCIA_LABEL[u] }));
 
@@ -164,7 +164,7 @@ function FilaPrenda({
     <div className="rounded-lg border border-line bg-paper/50 p-3">
       <div className="mb-2 flex items-center justify-between">
         <Badge tone="navy">Prenda</Badge>
-        <button type="button" onClick={onRemove} aria-label="Quitar ítem" className="text-muted transition-colors hover:text-red-600">
+        <button type="button" onClick={onRemove} aria-label="Quitar ítem" className="text-muted transition-colors hover:text-error">
           <X className="h-4 w-4" strokeWidth={2} />
         </button>
       </div>
@@ -248,7 +248,7 @@ function FilaArticulo({
     <div className="rounded-lg border border-line bg-paper/50 p-3">
       <div className="mb-2 flex items-center justify-between">
         <Badge tone="gold">Artículo</Badge>
-        <button type="button" onClick={onRemove} aria-label="Quitar ítem" className="text-muted transition-colors hover:text-red-600">
+        <button type="button" onClick={onRemove} aria-label="Quitar ítem" className="text-muted transition-colors hover:text-error">
           <X className="h-4 w-4" strokeWidth={2} />
         </button>
       </div>
@@ -385,16 +385,31 @@ export function NuevaSolicitudModal({
               <FilaArticulo key={row.key} row={row} grupos={grupos} onChange={(p) => actualizar(row.key, p)} onRemove={() => quitar(row.key)} />
             ),
           )}
-          {items.length === 0 && <p className="rounded-md border border-dashed border-line px-3 py-6 text-center text-sm text-muted">Agrega una prenda o un artículo.</p>}
+          {items.length === 0 && (
+            // El mismo texto que explica el hueco explica el botón gris: se le pone id y el botón
+            // lo referencia, en vez de repetirlo en dos lugares que después se desincronizan.
+            <p
+              id="motivo-solicitud"
+              className="rounded-md border border-dashed border-line px-3 py-6 text-center text-sm text-muted"
+            >
+              Agrega una prenda o un artículo para poder enviar la solicitud.
+            </p>
+          )}
         </div>
 
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={cerrar} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
           Cancelar
         </button>
-        <Button type="button" onClick={enviar} pending={pending} disabled={items.length === 0}>
+        <Button
+          type="button"
+          onClick={enviar}
+          pending={pending}
+          disabled={items.length === 0}
+          aria-describedby={items.length === 0 ? 'motivo-solicitud' : undefined}
+        >
           {pending ? 'Enviando…' : 'Enviar solicitud'}
         </Button>
       </ModalFooter>

@@ -54,7 +54,7 @@ export default async function ValoresPage() {
           <PageHeader title="Valores 360°" subtitle="Evaluación entre compañeros" />
           <Card>
             <CardContent className="flex items-start gap-3 py-6">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" strokeWidth={1.75} />
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-aviso" strokeWidth={1.75} />
               <div>
                 <p className="text-sm font-semibold text-navy">Falta aplicar la migración 0057</p>
                 <p className="mt-1 text-sm text-muted">

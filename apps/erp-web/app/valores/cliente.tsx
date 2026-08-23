@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, HeartHandshake, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, HeartHandshake } from 'lucide-react';
 import { VALORES, LIKERT_LABELS, type PuntajeValores } from '@scilb/core';
 import { accionEnviarValores } from './actions';
 import type { CompaneroValor, MiResumenValores, SeguimientoValorFila } from '../../lib/valores-repo';
@@ -15,16 +15,22 @@ import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { ReauthGate } from '../../components/ui/reauth-gate';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
-const DEFAULT_PUNTAJE: PuntajeValores = {
-  integridad: 3,
-  respeto: 3,
-  honestidad: 3,
-  amabilidad: 3,
-  relacion: 3,
-  actitud: 3,
-};
+// SIN RESPUESTA POR DEFECTO, Y ES EL CAMBIO QUE MÁS IMPORTA DE ESTA PANTALLA.
+//
+// Antes los seis valores arrancaban en 3. Eso tenía dos costos y los dos van a la nota: se podía
+// abrir, tocar Guardar y mandar seis treses sin haber evaluado nada; y un 3 puesto a propósito era
+// indistinguible de un 3 que nadie tocó. La nota de Valores 360° entra a la evaluación mensual, así
+// que ese ruido termina en el sueldo de alguien.
+//
+// Ahora se arranca vacío y no se puede guardar hasta contestar los seis. El atajo «Todos a N» sigue
+// estando: quien de verdad puntúa igual en todo lo dice con un acto explícito, que no es lo mismo
+// que un formulario que lo eligió por él.
+type PuntajeParcial = Partial<PuntajeValores>;
+
+const SIN_PUNTAJE: PuntajeParcial = {};
 
 // Botones 1-5 con el nombre Likert al lado (public/js/data.js:87) — "Botones > selects".
 const OPC_LIKERT: Opcion[] = LIKERT_LABELS.map((label, i) => ({ value: String(i + 1), label: `${i + 1} · ${label}` }));
@@ -68,7 +74,7 @@ export function ValoresCliente({
   const router = useRouter();
   const [vista, setVista] = useState<'evaluar' | 'seguimiento'>('evaluar');
   const [abierto, setAbierto] = useState<CompaneroValor | null>(null);
-  const [puntaje, setPuntaje] = useState<PuntajeValores>(DEFAULT_PUNTAJE);
+  const [puntaje, setPuntaje] = useState<PuntajeParcial>(SIN_PUNTAJE);
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
@@ -76,7 +82,7 @@ export function ValoresCliente({
 
   function abrir(c: CompaneroValor) {
     setAbierto(c);
-    setPuntaje(DEFAULT_PUNTAJE);
+    setPuntaje(SIN_PUNTAJE);
     setError('');
   }
 
@@ -84,11 +90,16 @@ export function ValoresCliente({
     setPuntaje({ integridad: v, respeto: v, honestidad: v, amabilidad: v, relacion: v, actitud: v });
   }
 
+  // Cuántos de los seis están contestados. Es lo que habilita el botón y lo que se muestra arriba
+  // del formulario: sin eso, "no me deja guardar" no tiene explicación a la vista.
+  const contestados = VALORES.filter(({ key }) => puntaje[key] != null).length;
+  const completo = contestados === VALORES.length;
+
   function guardar() {
-    if (!abierto) return;
+    if (!abierto || !completo) return;
     setError('');
     startTransition(async () => {
-      const r = await accionEnviarValores(abierto.id, mes, puntaje);
+      const r = await accionEnviarValores(abierto.id, mes, puntaje as PuntajeValores);
       if (!r.ok) {
         setError(r.error ?? 'Error al guardar');
         return;
@@ -101,25 +112,24 @@ export function ValoresCliente({
   return (
     <div className="space-y-4">
       {avisoVentanaCerrada && (
-        <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={1.75} aria-hidden />
-          <p>{avisoVentanaCerrada}</p>
-        </div>
+        <Aviso tono="aviso" className="text-sm">
+          {avisoVentanaCerrada}
+        </Aviso>
       )}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Compañeros" valor={companeros.length} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox index={0} label="Compañeros" valor={companeros.length} tone="navy" />
         <StatBox
           index={1}
           label="Pendientes"
           valor={pendientes}
-          tone={pendientes > 0 ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}
+          tone={pendientes > 0 ? 'border-aviso-line bg-aviso-soft text-aviso-deep' : 'border-exito-line bg-exito-soft text-exito-deep'}
         />
-        <StatBox index={2} label="Recibidas (yo)" valor={miResumen.recibidas} tone="border-line bg-white text-muted" />
+        <StatBox index={2} label="Recibidas (yo)" valor={miResumen.recibidas} tone="neutro" />
         <StatBox
           index={3}
           label="Mi nota /20"
           valor={miResumen.nota20 != null ? miResumen.nota20.toFixed(1) : '—'}
-          tone="border-gold/30 bg-gold/10 text-[#7a6e0e]"
+          tone="gold"
         />
       </div>
 
@@ -202,13 +212,13 @@ export function ValoresCliente({
         ) : seguimiento ? (
           <>
             <div className="grid grid-cols-3 gap-3">
-              <StatBox index={0} label="Empleados" valor={seguimiento.totalEmpleados} tone="border-navy/15 bg-navy/5 text-navy" />
-              <StatBox index={1} label="Evaluaciones" valor={seguimiento.totalEvaluaciones} tone="border-line bg-white text-muted" />
+              <StatBox index={0} label="Empleados" valor={seguimiento.totalEmpleados} tone="navy" />
+              <StatBox index={1} label="Evaluaciones" valor={seguimiento.totalEvaluaciones} tone="neutro" />
               <StatBox
                 index={2}
                 label="Cumplimiento"
                 valor={`${Math.round(seguimiento.cumplimientoGlobal * 100)}%`}
-                tone="border-gold/30 bg-gold/10 text-[#7a6e0e]"
+                tone="gold"
               />
             </div>
             <Card>
@@ -243,8 +253,11 @@ export function ValoresCliente({
                     ))}
                     {seguimiento.filas.length === 0 && (
                       <TR>
-                        <TD className="px-5 py-8 text-center text-muted" colSpan={5}>
-                          Sin empleados activos que mostrar.
+                        <TD className="p-0" colSpan={5}>
+                          <EmptyState icon={HeartHandshake} titulo="Sin colaboradores activos" compacto>
+                            El seguimiento se arma con el directorio de gente activa. Si alguien
+                            falta, revisa su estado en Empleados.
+                          </EmptyState>
                         </TD>
                       </TR>
                     )}
@@ -257,6 +270,19 @@ export function ValoresCliente({
 
       <Modal open={Boolean(abierto)} onClose={() => setAbierto(null)} title={abierto ? `Evaluar a ${abierto.nombre}` : ''} subtitle={mes} size="lg">
         <ModalBody className="space-y-4">
+          {/* El progreso de los seis, arriba de todo: es lo que explica por qué el botón está
+              gris, y lo dice antes de que la persona llegue abajo a descubrirlo. */}
+          <div className="flex items-center gap-3">
+            <div className="h-1 flex-1 overflow-hidden rounded-full bg-line/70">
+              <div
+                className="h-full origin-left bg-gold transition-transform duration-200 ease-out-expo"
+                style={{ transform: `scaleX(${contestados / VALORES.length})` }}
+              />
+            </div>
+            <span className="shrink-0 font-mono text-xs tabular-nums text-muted">
+              {contestados}/{VALORES.length}
+            </span>
+          </div>
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Atajo</span>
             {[1, 2, 3, 4, 5].map((v) => (
@@ -272,17 +298,36 @@ export function ValoresCliente({
           </div>
           {VALORES.map(({ key, label }) => (
             <div key={key}>
-              <div className="mb-1.5 text-sm font-medium text-navy">{label}</div>
-              <OpcionBotones opciones={OPC_LIKERT} value={String(puntaje[key])} onChange={(v) => setPuntaje((p) => ({ ...p, [key]: Number(v) }))} ariaLabel={label} />
+              <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                <span className="text-sm font-medium text-navy">{label}</span>
+                {puntaje[key] == null && <span className="text-[11px] text-muted">sin responder</span>}
+              </div>
+              <OpcionBotones
+                opciones={OPC_LIKERT}
+                value={puntaje[key] == null ? '' : String(puntaje[key])}
+                onChange={(v) => setPuntaje((p) => ({ ...p, [key]: Number(v) }))}
+                ariaLabel={label}
+              />
             </div>
           ))}
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
+          <span id="motivo-valores" className="mr-auto text-xs text-muted">
+            {completo
+              ? 'Quién puntuó qué no se muestra a nadie.'
+              : `Faltan ${VALORES.length - contestados} de ${VALORES.length}.`}
+          </span>
           <Button type="button" variant="outline" onClick={() => setAbierto(null)}>
             Cancelar
           </Button>
-          <Button type="button" onClick={guardar} pending={pending}>
+          <Button
+            type="button"
+            onClick={guardar}
+            disabled={!completo}
+            pending={pending}
+            aria-describedby="motivo-valores"
+          >
             {pending ? 'Guardando…' : 'Guardar evaluación'}
           </Button>
         </ModalFooter>

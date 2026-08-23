@@ -10,6 +10,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { EmptyState } from '../../components/ui/empty-state';
 import { PersonaPicker } from '../../components/ui/persona-picker';
+import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 // Mismo vocabulario que /pipeline/registrar (no inventar valores nuevos).
@@ -95,6 +96,16 @@ export function EnvioLavanderiaCliente({
   const totalGenerales = Object.values(generales).reduce((s, v) => s + v, 0);
   const puedeEnviar = (items.length > 0 || (tipo === 'LAV' && totalGenerales > 0)) && !pending;
 
+  // Por qué está gris el botón. Mismo criterio que el formulario del turno: un control apagado sin
+  // explicación se lee como que el sistema falló, y quien manda esta lista suele estar de pie con
+  // el teléfono en el mostrador, sin nadie a quien preguntarle.
+  const motivoBloqueo =
+    pending || puedeEnviar
+      ? null
+      : tipo === 'LAV'
+        ? 'Agrega al menos una prenda con su código, o accesorios a granel.'
+        : 'Agrega al menos una prenda con su código.';
+
   function enviar() {
     setError('');
     setOk('');
@@ -136,8 +147,7 @@ export function EnvioLavanderiaCliente({
     });
   }
 
-  const fieldCls =
-    'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-slate-400 focus:border-navy focus:outline-none';
+  const fieldCls = campoCls;
 
   return (
     <div className="space-y-5">
@@ -224,7 +234,7 @@ export function EnvioLavanderiaCliente({
                     <button
                       type="button"
                       onClick={() => quitarItem(i)}
-                      className="ml-auto text-muted transition-colors hover:text-red-600"
+                      className="ml-auto text-muted transition-colors hover:text-error"
                       aria-label="Quitar"
                     >
                       <X className="h-4 w-4" strokeWidth={2} />
@@ -280,10 +290,26 @@ export function EnvioLavanderiaCliente({
             </div>
           </div>
 
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-          {ok && <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{ok}</p>}
+          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+          {motivoBloqueo && (
+            <p id="motivo-envio-lav" className="text-center text-xs font-medium text-aviso-deep">
+              {motivoBloqueo}
+            </p>
+          )}
+          {/* El acierto también se anuncia. Antes era un parrafo mudo: con lector de pantalla la
+              lista se enviaba y no pasaba nada audible, que es indistinguible de que fallara.
+              `Aviso` lo marca como role="status" — informa sin interrumpir, que es lo que
+              corresponde a algo que salió bien. */}
+          {ok && <Aviso tono="exito" className="text-sm">{ok}</Aviso>}
 
-          <Button type="button" onClick={enviar} disabled={!puedeEnviar} pending={pending} className="w-full justify-center py-2.5">
+          <Button
+            type="button"
+            onClick={enviar}
+            disabled={!puedeEnviar}
+            pending={pending}
+            aria-describedby={motivoBloqueo ? 'motivo-envio-lav' : undefined}
+            className="w-full justify-center py-2.5"
+          >
             {!pending && <Send className="h-4 w-4" strokeWidth={2} />}
             {pending ? 'Enviando…' : `Enviar lista${items.length ? ` (${items.length} prenda(s))` : ''}`}
           </Button>
@@ -336,7 +362,7 @@ export function EnvioLavanderiaCliente({
                         </Button>
                       )}
                       {l.estado === 'Devuelto-Observado' && (
-                        <span className="inline-flex items-center gap-1 text-xs text-red-700">
+                        <span className="inline-flex items-center gap-1 text-xs text-error-deep">
                           <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Con observación
                         </span>
                       )}

@@ -196,8 +196,11 @@ export async function obtenerPago(id: string): Promise<PagoDetalle | null> {
   };
 }
 
-export async function eliminarPago(id: string): Promise<void> {
+// Anular NO borra la fila: la pantalla siempre prometió conservar el pago a la vista, marcado
+// como anulado, porque perder el rastro haría imposible reconstruir después qué se le pagó a
+// quién. `anulado` es una columna desde la migración 0001; hasta esta función, nada la escribía.
+export async function anularPago(id: string): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.from('pagos').delete().eq('id', id);
+  const { error } = await sb.from('pagos').update({ anulado: true }).eq('id', id);
   if (error) throw new Error(error.message);
 }

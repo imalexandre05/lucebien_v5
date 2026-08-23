@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ETAPAS_CONFECCION, type Pedido, type EstadoPedido, type EtapaConfeccion } from '@scilb/core';
 import { accionCambiarEstadoPedido, accionActualizarEtapaConfeccion, accionAnularPedido } from '../actions';
 import { Button, buttonVariants } from '../../../components/ui/button';
+import { Aviso } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
 const ETAPA_LABEL: Record<EtapaConfeccion, string> = { corte: 'Corte', armado: 'Armado', ajuste: 'Ajuste', entrega: 'Entrega' };
@@ -104,7 +105,7 @@ export function PedidoAcciones({ pedido }: { pedido: Pedido }) {
                 Cerrar pedido
               </Button>
             )}
-            <button type="button" disabled={pending} onClick={anular} className={cn(buttonVariants({ variant: 'ghost' }), 'text-red-700 hover:bg-red-50')}>
+            <button type="button" disabled={pending} onClick={anular} className={cn(buttonVariants({ variant: 'ghost' }), 'text-error-deep hover:bg-error-soft')}>
               Anular pedido
             </button>
           </div>
@@ -113,7 +114,7 @@ export function PedidoAcciones({ pedido }: { pedido: Pedido }) {
           )}
         </div>
       )}
-      {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+      {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
     </div>
   );
 }

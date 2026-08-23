@@ -1,17 +1,23 @@
 import type { ReactNode } from 'react';
 import { cn } from '../../lib/cn';
 
-export type Tone = 'navy' | 'gold' | 'green' | 'amber' | 'red' | 'gray';
+export type Tone = 'navy' | 'gold' | 'green' | 'amber' | 'red' | 'info' | 'gray';
 
+// Los nombres se conservan —'green', 'amber', 'red' están escritos en 67 archivos— pero ya no
+// apuntan a la paleta por defecto de Tailwind sino a los semánticos del manual (§6). Los verdes y
+// ámbares de Tailwind son fríos al lado del navy y del oro; éstos comparten su temperatura.
+//
+// El anillo interior es lo que los hace legibles como estado y no como mancha: sobre una tarjeta
+// blanca un fondo al 10% casi no se ve, y el color terminaba dependiendo sólo del texto.
 const tones: Record<Tone, string> = {
-  navy: 'bg-navy/10 text-navy',
-  gold: 'bg-gold/20 text-[#7a6e0e]',
-  green: 'bg-emerald-600/10 text-emerald-700',
-  amber: 'bg-amber-500/20 text-amber-700',
-  // 'red' (Fase 6): alerta dura, distinta de amber — mismo par bg/text que ya se usaba suelto
-  // (sin pasar por Badge) en el aviso de calidad del pipeline y en el botón Rechazar.
-  red: 'bg-red-500/15 text-red-700',
-  gray: 'bg-ink/10 text-muted',
+  navy: 'bg-navy/10 text-navy ring-1 ring-inset ring-navy/15',
+  gold: 'bg-gold/15 text-gold-deep ring-1 ring-inset ring-gold/30',
+  green: 'bg-exito-soft text-exito-deep ring-1 ring-inset ring-exito-line',
+  amber: 'bg-aviso-soft text-aviso-deep ring-1 ring-inset ring-aviso-line',
+  // 'red' (Fase 6): alerta dura, distinta de amber — el aviso de calidad del pipeline y Rechazar.
+  red: 'bg-error-soft text-error-deep ring-1 ring-inset ring-error-line',
+  info: 'bg-info-soft text-info-deep ring-1 ring-inset ring-info-line',
+  gray: 'bg-ink/10 text-muted ring-1 ring-inset ring-ink/10',
 };
 
 export function Badge({

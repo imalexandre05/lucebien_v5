@@ -38,10 +38,25 @@ export function Modal({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
 
+  // POR QUÉ `onClose` VA EN UN REF Y NO EN LAS DEPENDENCIAS. Éste era el bug de "escribo una letra
+  // y el campo se deselecciona", y estaba acá, en una pieza compartida, así que pasaba en TODOS los
+  // modales del sistema.
+  //
+  // Las 27 pantallas que abren un modal pasan `onClose={() => setAbierto(null)}`: una función nueva
+  // en cada render. Con `onClose` en las dependencias, el efecto se volvía a ejecutar en cada
+  // render — y el efecto termina en `panelRef.current?.focus()`. O sea: escribías una letra, el
+  // estado cambiaba, React re-renderizaba, y el efecto le robaba el foco al input y se lo daba al
+  // panel. La letra siguiente ya no llegaba al campo.
+  //
+  // El ref guarda siempre la última versión de `onClose` sin entrar en las dependencias, así que
+  // Escape sigue llamando a la función correcta y el efecto corre una sola vez: al abrir.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
@@ -51,7 +66,7 @@ export function Modal({
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
@@ -67,14 +82,25 @@ export function Modal({
         aria-modal="true"
         tabIndex={-1}
         className={cn(
-          'w-full animate-scale-in rounded-2xl border border-line bg-white shadow-lift outline-none',
+          // EL MODAL NO SE PASA DE LA PANTALLA.
+          //
+          // No tenía alto máximo ni scroll: un modal largo —el de evaluar, el de una solicitud con
+          // varias prendas— crecía hacia abajo y el pie con los botones quedaba fuera de la
+          // ventana, sin forma de llegar. No se podía ni guardar ni cancelar.
+          //
+          // `dvh` y no `vh`: en el celular la barra del navegador aparece y desaparece, y con `vh`
+          // el pie queda tapado justo cuando la barra está.
+          //
+          // Columna flex: la cabecera y el pie quedan fijos y lo único que scrollea es el cuerpo.
+          // Un modal donde el título se va al scrollear pierde de qué estabas hablando.
+          'flex w-full max-h-[calc(100dvh-2rem)] flex-col animate-scale-in rounded-2xl border border-line bg-white shadow-lift outline-none',
           SIZES[size],
           className,
         )}
         onClick={(e) => e.stopPropagation()}
       >
         {(title || icon) && (
-          <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <div className="flex shrink-0 items-center justify-between gap-3 border-b border-line px-5 py-4">
             <div className="flex min-w-0 items-center gap-3">
               {icon}
               <div className="min-w-0">
@@ -100,14 +126,19 @@ export function Modal({
   );
 }
 
+// El cuerpo es lo único que scrollea. `min-h-0` hace falta: sin eso, un hijo flex se niega a
+// achicarse por debajo de su contenido y el scroll nunca aparece.
 export function ModalBody({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn('px-5 py-4', className)}>{children}</div>;
+  return <div className={cn('min-h-0 flex-1 overflow-y-auto px-5 py-4', className)}>{children}</div>;
 }
 
 export function ModalFooter({ className, children }: { className?: string; children: ReactNode }) {
   return (
     <div
-      className={cn('flex items-center justify-end gap-2 border-t border-line px-5 py-4', className)}
+      className={cn(
+        'flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-line px-5 py-4',
+        className,
+      )}
     >
       {children}
     </div>

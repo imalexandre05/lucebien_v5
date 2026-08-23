@@ -16,10 +16,10 @@ import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../../components/ui/opcion-botones';
+import { Aviso, campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 // Mismo orden/colores que /incidencias/cliente.tsx (NIVELES) para que la gravedad se vea igual
 // en el catálogo y en el formulario que lo consume.
@@ -31,7 +31,7 @@ const NIVELES: Opcion[] = [
 
 function NivelPill({ nivel }: { nivel: string }) {
   const cls =
-    nivel === 'Alto' ? 'bg-red-50 text-red-700' : nivel === 'Medio' ? 'bg-amber-50 text-amber-700' : 'bg-slate-100 text-slate-600';
+    nivel === 'Alto' ? 'bg-error-soft text-error-deep' : nivel === 'Medio' ? 'bg-aviso-soft text-aviso-deep' : 'bg-paper text-muted';
   return <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', cls)}>{nivel}</span>;
 }
 
@@ -43,6 +43,9 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState('');
+  // Un error de la LISTA no cabe dentro del formulario: cuando se dispara, ese bloque suele
+  // estar cerrado y el mensaje se renderizaria invisible. Va arriba de todo.
+  const [errorAccion, setErrorAccion] = useState('');
   const [modal, setModal] = useState<ModalState>(null);
   const [eliminar, setEliminar] = useState<TipoIncidenciaAdmin | null>(null);
   const [form, setForm] = useState<TipoIncidenciaInput>(VACIO);
@@ -81,7 +84,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
     startTransition(async () => {
       const r = await accionActivarTipoIncidencia(t.id, !t.activo);
       if (r.ok) router.refresh();
-      else alert(r.error);
+      else setErrorAccion(r.error ?? 'No se pudo cambiar el estado del tipo.');
     });
   }
 
@@ -100,6 +103,8 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
 
   return (
     <div className="space-y-4">
+      {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
+
       <Card>
         <CardContent className="flex items-center justify-between py-4">
           <p className="text-sm text-muted">
@@ -146,8 +151,8 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
                         className={cn(
                           'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
                           t.activo
-                            ? 'border-line text-muted hover:border-red-300 hover:text-red-600'
-                            : 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+                            ? 'border-line text-muted hover:border-error-line hover:text-error'
+                            : 'border-exito-line bg-exito-soft text-exito-deep hover:bg-exito-soft',
                         )}
                       >
                         {t.activo ? 'Deshab.' : 'Activar'}
@@ -166,7 +171,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
                           type="button"
                           onClick={() => setEliminar(t)}
                           aria-label={`Eliminar ${t.tipo}`}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-red-50 hover:text-red-600"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
                         >
                           <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                         </button>
@@ -247,7 +252,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
             </div>
           </div>
           <p className="text-xs text-muted">Gravedad y puntos son solo el valor sugerido al elegir este tipo — quien registra la incidencia los puede ajustar.</p>
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+          {error && <Aviso tono="error">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setModal(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
@@ -265,20 +270,20 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
         onClose={() => !pending && setEliminar(null)}
         size="sm"
         title="¿Eliminar tipo?"
-        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-amber-500" strokeWidth={2} aria-hidden />}
+        icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody>
           <p className="text-sm leading-relaxed text-muted">
             <span className="font-medium text-ink">{eliminar?.tipo}</span> se quita del catálogo. Las incidencias que ya se registraron
             con este tipo no cambian (el campo tipo sigue siendo texto libre).
           </p>
-          {error && <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+          {error && <Aviso tono="error" className="mt-3">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
           <button type="button" onClick={() => setEliminar(null)} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </button>
-          <Button type="button" onClick={confirmarEliminar} pending={pending} className="bg-red-600 hover:bg-red-700">
+          <Button type="button" onClick={confirmarEliminar} pending={pending} className="bg-error hover:bg-error-deep">
             {pending ? 'Eliminando…' : 'Sí, eliminar'}
           </Button>
         </ModalFooter>

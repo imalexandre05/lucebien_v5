@@ -13,6 +13,8 @@ import { Ticket } from './ticket';
 import { accionCrearPedidoConstructor } from '../actions';
 import { accionAbrirCaja } from '../../caja/actions';
 import { Card, CardContent } from '../../../components/ui/card';
+import { campoCls } from '../../../components/ui/form';
+import { cn } from '../../../lib/cn';
 
 export type LineaLocal = {
   key: string;
@@ -33,8 +35,7 @@ export type LineaLocal = {
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
-const fieldCls =
-  'w-full rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = cn(campoCls, 'w-full py-2');
 
 // Constructor de pedidos (Fase 9): una sola pantalla, sin modal, teclado-first. Orquesta el estado
 // del pedido en construcción y lo entrega COMPLETO a pedido_crear (una transacción — Fase 8): el
@@ -235,7 +236,7 @@ export function PedidosConstructor({
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
         {exito && (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" data-testid="exito-banner">
+          <div className="flex items-center justify-between gap-3 rounded-md border border-exito-line bg-exito-soft px-4 py-3 text-sm text-exito-deep" data-testid="exito-banner">
             <span>
               Pedido <span className="font-mono font-semibold">{exito.codigo}</span> registrado.
             </span>
@@ -248,7 +249,7 @@ export function PedidosConstructor({
                   Contrato
                 </Link>
               )}
-              <button type="button" onClick={() => setExito(null)} aria-label="Cerrar" className="text-emerald-700/70 hover:text-emerald-900">
+              <button type="button" onClick={() => setExito(null)} aria-label="Cerrar" className="text-exito-deep/70 hover:text-exito-deep">
                 <X className="h-4 w-4" strokeWidth={2} />
               </button>
             </div>

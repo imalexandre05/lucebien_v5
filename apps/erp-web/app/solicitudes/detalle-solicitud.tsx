@@ -19,6 +19,7 @@ import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button, buttonVariants } from '../../components/ui/button';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 type Emp = { id: string; nombre: string; sedeCod: string | null };
@@ -204,7 +205,7 @@ function Contenido({
           <Badge tone={URGENCIA_TONE[solicitud.urgencia]}>{URGENCIA_LABEL[solicitud.urgencia]}</Badge>
           <Badge tone={ESTADO_TONE[solicitud.estado]}>{ESTADO_LABEL[solicitud.estado]}</Badge>
           {solicitud.pedidoImpreso && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700">
+            <span className="inline-flex items-center gap-1 rounded-full bg-exito-soft px-2 py-0.5 text-[10px] font-medium text-exito-deep">
               <Printer className="h-3 w-3" strokeWidth={2} /> Pedido impreso
             </span>
           )}
@@ -228,7 +229,7 @@ function Contenido({
             </div>
           )}
           {solicitud.entregadoPorNombre && (
-            <div className="rounded-r-md border-l-2 border-emerald-500 bg-emerald-50 px-2.5 py-1.5 text-xs text-emerald-800">
+            <div className="rounded-r-md border-l-2 border-exito bg-exito-soft px-2.5 py-1.5 text-xs text-exito-deep">
               Entregó <b>{solicitud.entregadoPorNombre}</b> a <b>{solicitud.recibeEnTienda ?? '—'}</b> · {fechaHora(solicitud.fechaEntrega)}
             </div>
           )}
@@ -238,7 +239,7 @@ function Contenido({
             </div>
           )}
           {solicitud.rechazadoPorNombre && (
-            <div className="rounded-r-md border-l-2 border-red-500 bg-red-50 px-2.5 py-1.5 text-xs text-red-800">
+            <div className="rounded-r-md border-l-2 border-error bg-error-soft px-2.5 py-1.5 text-xs text-error-deep">
               Rechazó <b>{solicitud.rechazadoPorNombre}</b> — {solicitud.motivoRechazo}
             </div>
           )}
@@ -301,7 +302,7 @@ function Contenido({
                       <TD
                         className={cn(
                           'text-right font-mono font-semibold',
-                          i.cantidadEnviada >= i.cantidad ? 'text-emerald-700' : i.cantidadEnviada > 0 ? 'text-amber-700' : 'text-red-600',
+                          i.cantidadEnviada >= i.cantidad ? 'text-exito-deep' : i.cantidadEnviada > 0 ? 'text-aviso-deep' : 'text-error',
                         )}
                       >
                         {i.cantidadEnviada}
@@ -333,7 +334,7 @@ function Contenido({
                       </>
                     )}
                     {solicitud.estado === 'confirmada' && (
-                      <TD className={cn('text-right font-mono font-semibold', i.cantidadRecibida >= i.cantidadEnviada ? 'text-emerald-700' : 'text-red-600')}>
+                      <TD className={cn('text-right font-mono font-semibold', i.cantidadRecibida >= i.cantidadEnviada ? 'text-exito-deep' : 'text-error')}>
                         {i.cantidadRecibida}
                       </TD>
                     )}
@@ -358,14 +359,14 @@ function Contenido({
         )}
 
         {rechazando && (
-          <div className="rounded-md border border-red-200 bg-red-50 p-3">
-            <label className="mb-1 block text-xs uppercase tracking-wide text-red-700">Motivo del rechazo (obligatorio)</label>
+          <div className="rounded-md border border-error-line bg-error-soft p-3">
+            <label className="mb-1 block text-xs uppercase tracking-wide text-error-deep">Motivo del rechazo (obligatorio)</label>
             <input
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Ej: no hay stock"
               autoFocus
-              className="w-full rounded-md border border-red-300 bg-white px-2.5 py-2 text-sm outline-none focus:border-red-500"
+              className="w-full rounded-md border border-error-line bg-white px-2.5 py-2 text-sm outline-none focus:border-error"
             />
           </div>
         )}
@@ -431,7 +432,7 @@ function Contenido({
           </div>
         )}
 
-        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>
       <ModalFooter className="flex-wrap justify-start gap-2">
         {esPendiente && esGestor && !rechazando && (
@@ -443,7 +444,7 @@ function Contenido({
               type="button"
               onClick={() => setRechazando(true)}
               disabled={pending}
-              className={cn(buttonVariants({ variant: 'outline' }), 'border-red-300 text-red-600 hover:bg-red-50')}
+              className={cn(buttonVariants({ variant: 'outline' }), 'border-error-line text-error hover:bg-error-soft')}
             >
               Rechazar
             </button>
@@ -463,7 +464,7 @@ function Contenido({
             >
               Cancelar
             </button>
-            <Button type="button" onClick={confirmarRechazo} pending={pending} className="bg-red-600 hover:bg-red-700">
+            <Button type="button" onClick={confirmarRechazo} pending={pending} className="bg-error hover:bg-error-deep">
               {pending ? 'Rechazando…' : 'Confirmar rechazo'}
             </Button>
           </>

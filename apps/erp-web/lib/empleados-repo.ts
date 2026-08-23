@@ -104,6 +104,12 @@ export async function establecerContrasenaEmpleado(id: string, password: string)
 // prenda_historial/reporte_trabajadores/reporte_extras enlazan por `empleado_id uuid` (ver
 // 0001_init.sql), no por nombre — renombrar no requiere propagar nada, solo la RPC valida
 // unicidad case-insensitive (el login por usuario busca `ilike nombre`).
+// `salarioBase` sigue siendo obligatorio a propósito, aunque desde R3/T7 ningún formulario lo
+// edita (el sueldo real lo paga el contrato — ver ContactoCampos en app/empleados/cliente.tsx).
+// La RPC empleado_actualizar recibe p_salario_base como parámetro NOT NULL con
+// `coalesce(p_salario_base, 0)`: omitirlo o mandar null pondría la columna en 0. Todo llamador
+// tiene que mandar el valor YA guardado de la persona, sin pasar por ningún input, para que el
+// resto de la edición no lo altere.
 export type EditarEmpleadoInput = {
   nombre: string;
   rolBase: Rol;

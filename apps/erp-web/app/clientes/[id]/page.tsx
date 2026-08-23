@@ -13,7 +13,7 @@ import { cn } from '../../../lib/cn';
 const TIPO_TONE: Record<TipoPedido, Tone> = { alquiler: 'navy', venta: 'gold', servicio: 'green', confeccion: 'amber', mixto: 'gray' };
 const SEG_LABEL: Record<SegmentoCliente, string> = { vip: 'VIP', recurrente: 'Recurrente', nuevo: 'Nuevo' };
 const SEG_CLS: Record<SegmentoCliente, string> = {
-  vip: 'bg-gold/20 text-[#7a6e0e]',
+  vip: 'bg-gold/20 text-gold-deep',
   recurrente: 'bg-navy/10 text-navy',
   nuevo: 'bg-ink/10 text-muted',
 };
@@ -78,7 +78,7 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
               <span className="text-navy">{m.diasSinComprar == null ? '—' : `hace ${m.diasSinComprar} d`}</span>
             </div>
             {m.seguir && (
-              <p className="mt-1 rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-700">
+              <p className="mt-1 rounded bg-aviso-soft px-2 py-1 text-[11px] text-aviso-deep">
                 Cliente inactivo — conviene reactivar.
               </p>
             )}

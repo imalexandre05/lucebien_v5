@@ -43,9 +43,9 @@ export default async function FinanzasPage() {
       <PageHeader title="Finanzas" subtitle="Ingresos, egresos y reportes básicos (de caja)" />
 
       <div className="grid grid-cols-3 gap-3">
-        <StatBox index={0} label="Ingresos" valor={soles(fin.ingresos)} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={1} label="Egresos" valor={soles(fin.egresos)} tone="border-red-200 bg-red-50 text-red-700" />
-        <StatBox index={2} label="Neto" valor={soles(fin.neto)} tone="border-navy/15 bg-navy/5 text-navy" />
+        <StatBox index={0} label="Ingresos" valor={soles(fin.ingresos)} tone="exito" />
+        <StatBox index={1} label="Egresos" valor={soles(fin.egresos)} tone="error" />
+        <StatBox index={2} label="Neto" valor={soles(fin.neto)} tone="navy" />
       </div>
 
       <div className="mt-4 grid gap-4 lg:grid-cols-3">

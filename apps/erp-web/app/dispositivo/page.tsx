@@ -40,14 +40,14 @@ export default async function DispositivoPage({
         <Card>
           <CardContent className="pt-6">
             {searchParams.error === 'permiso' && (
-              <p className="mb-4 rounded-md bg-amber-500/15 px-3 py-2 text-xs text-amber-700">
+              <p className="mb-4 rounded-md bg-aviso/15 px-3 py-2 text-xs text-aviso-deep">
                 Solo un administrador puede autorizar este equipo.
               </p>
             )}
 
             {aprobado ? (
               <div className="flex flex-col items-center gap-4 py-4 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600/10 text-emerald-700">
+                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-exito/10 text-exito-deep">
                   <ShieldCheck className="h-6 w-6" strokeWidth={2} />
                 </span>
                 <p className="text-sm text-muted">Este equipo está autorizado para usar SCI-LB.</p>
@@ -101,7 +101,7 @@ export default async function DispositivoPage({
 function EstadoAviso({ estado, solicitado }: { estado: EstadoDispositivo; solicitado: boolean }) {
   if (solicitado || estado === 'pendiente') {
     return (
-      <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800">
+      <div className="flex items-start gap-3 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2.5 text-sm text-aviso-deep">
         <Clock className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
         <span>Solicitud registrada. Este equipo queda <strong>pendiente</strong> hasta que un administrador lo apruebe.</span>
       </div>
@@ -109,7 +109,7 @@ function EstadoAviso({ estado, solicitado }: { estado: EstadoDispositivo; solici
   }
   if (estado === 'rechazado' || estado === 'revocado') {
     return (
-      <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+      <div className="flex items-start gap-3 rounded-lg border border-error-line bg-error-soft px-3 py-2.5 text-sm text-error-deep">
         <Ban className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
         <span>El acceso de este equipo fue <strong>{estado}</strong>. Contacta a un administrador.</span>
       </div>

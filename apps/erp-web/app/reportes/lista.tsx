@@ -14,6 +14,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
+import { campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 const ESTADO_TONE: Record<EstadoReporte, Tone> = {
@@ -34,8 +35,7 @@ const ESTADO_FILTRO_LABEL: Record<FiltroEstado, string> = {
   todos: 'Todos',
 };
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 const OPC_FILTRO_TURNO: Opcion[] = [
   { value: '', label: 'Todos los turnos' },
@@ -51,7 +51,7 @@ const OPC_FILTRO_ESTADO: Opcion<FiltroEstado>[] = (Object.keys(ESTADO_FILTRO_LAB
 function Puntaje({ r }: { r: Reporte }) {
   if (!r.evaluado) return <span className="text-muted">—</span>;
   const p = r.puntajeEval ?? r.puntaje;
-  const cls = p >= 85 ? 'bg-emerald-600/10 text-emerald-700' : p >= 60 ? 'bg-gold/20 text-[#7a6e0e]' : 'bg-red-50 text-red-700';
+  const cls = p >= 85 ? 'bg-exito/10 text-exito-deep' : p >= 60 ? 'bg-gold/20 text-gold-deep' : 'bg-error-soft text-error-deep';
   return <span className={cn('rounded-full px-2.5 py-0.5 font-mono text-xs font-bold tabular-nums', cls)}>{p}%</span>;
 }
 
@@ -83,13 +83,13 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
   return (
     <div>
       {pendientes > 0 && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-aviso-line bg-aviso-soft px-4 py-2.5 text-sm text-aviso-deep">
           <ClipboardCheck className="h-4 w-4 shrink-0" strokeWidth={2} />
           Hay <strong className="font-semibold">{pendientes}</strong> reporte(s) pendientes de evaluación.
           <button
             type="button"
             onClick={() => setEstado('pendiente')}
-            className="ml-auto rounded-md border border-amber-300 px-2.5 py-1 text-xs font-medium text-amber-800 transition-colors duration-150 hover:bg-amber-100 active:scale-[0.97]"
+            className="ml-auto rounded-md border border-aviso-line px-2.5 py-1 text-xs font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]"
           >
             Ver pendientes
           </button>
@@ -148,7 +148,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                     <TD className="pl-5">
                       <Link
                         href={`/reportes/${r.id}`}
-                        className="inline-block rounded-md bg-navy px-2.5 py-1 font-mono text-xs font-medium text-paper transition-colors duration-150 hover:bg-navy-dark"
+                        className="toque inline-block rounded-md bg-navy px-2.5 py-1 font-mono text-xs font-medium text-paper transition-colors duration-150 hover:bg-navy-dark"
                       >
                         {r.id}
                       </Link>

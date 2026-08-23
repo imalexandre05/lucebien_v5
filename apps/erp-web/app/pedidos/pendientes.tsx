@@ -12,6 +12,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { MetodoPagoBotones } from '../../components/ui/metodo-pago-botones';
 import { MontoInput } from '../../components/ui/monto-input';
 import { EmptyState } from '../../components/ui/empty-state';
+import { Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 
 const TIPO_TONE: Record<TipoPedido, Tone> = { alquiler: 'navy', venta: 'gold', servicio: 'green', confeccion: 'amber', mixto: 'gray' };
@@ -119,7 +120,7 @@ export function PedidosPendientes({
           <Chip label="Del día" count={delDia.length} active={filtro === 'delDia'} onClick={() => toggleFiltro('delDia')} testId="filtro-del-dia" />
         </div>
 
-        {error && <p className="mb-2 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        {error && <Aviso tono="error" className="mb-2 text-sm">{error}</Aviso>}
 
         <div className="overflow-x-auto">
           <Table>
@@ -148,7 +149,7 @@ export function PedidosPendientes({
                       <Badge tone={TIPO_TONE[p.tipo]}>{TIPO_LABEL[p.tipo]}</Badge>
                     </TD>
                     <TD className="text-right font-mono text-xs tabular-nums">{soles(p.total)}</TD>
-                    <TD className={cn('text-right font-mono text-xs tabular-nums', p.saldo > 0 && 'font-semibold text-amber-700')}>{soles(p.saldo)}</TD>
+                    <TD className={cn('text-right font-mono text-xs tabular-nums', p.saldo > 0 && 'font-semibold text-aviso-deep')}>{soles(p.saldo)}</TD>
                     <TD className="font-mono text-xs text-muted">{p.fechaDevolucion ?? '—'}</TD>
                     <TD className="text-right">
                       <div className="flex justify-end gap-1.5">
@@ -176,7 +177,7 @@ export function PedidosPendientes({
                         {p.items.some((i) => i.tipo === 'alquiler') && (
                           <Link
                             href={`/pedidos/${p.id}/contrato`}
-                            className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-navy transition-colors hover:border-gold"
+                            className="toque inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-navy transition-colors hover:border-gold"
                           >
                             <FileText className="h-3.5 w-3.5" strokeWidth={2} /> Contrato
                           </Link>

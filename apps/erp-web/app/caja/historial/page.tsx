@@ -44,8 +44,8 @@ export default async function HistorialCajaPage() {
                   <TD className="pl-5 font-mono text-xs text-muted">{s.fecha}</TD>
                   <TD className="font-mono">{s.sedeCod}</TD>
                   <TD className="text-right font-mono tabular-nums">{soles(s.montoApertura)}</TD>
-                  <TD className="text-right font-mono tabular-nums text-emerald-700">{soles(s.ingresos)}</TD>
-                  <TD className="text-right font-mono tabular-nums text-red-700">{soles(s.egresos)}</TD>
+                  <TD className="text-right font-mono tabular-nums text-exito-deep">{soles(s.ingresos)}</TD>
+                  <TD className="text-right font-mono tabular-nums text-error-deep">{soles(s.egresos)}</TD>
                   <TD className="text-right font-mono tabular-nums">{s.montoCierre == null ? '—' : soles(s.montoCierre)}</TD>
                   <TD className="text-right">
                     {s.diferencia == null ? (
@@ -54,7 +54,7 @@ export default async function HistorialCajaPage() {
                       <span
                         className={cn(
                           'font-mono text-xs font-medium tabular-nums',
-                          Math.abs(s.diferencia) < 0.01 ? 'text-emerald-700' : 'text-amber-700',
+                          Math.abs(s.diferencia) < 0.01 ? 'text-exito-deep' : 'text-aviso-deep',
                         )}
                       >
                         {soles(s.diferencia)}

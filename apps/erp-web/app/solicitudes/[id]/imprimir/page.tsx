@@ -122,7 +122,7 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
           </p>
         )}
         {s.motivoRechazo && (
-          <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-xs text-red-800">
+          <p className="mt-4 rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">
             <b>Rechazada</b> por {s.rechazadoPorNombre ?? '—'} — {s.motivoRechazo}
           </p>
         )}

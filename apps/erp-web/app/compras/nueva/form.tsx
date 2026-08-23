@@ -8,10 +8,10 @@ import { totalCompra } from '@scilb/core';
 import { crearCompraAction } from '../actions';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
+import { Aviso, campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
 
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy placeholder:text-slate-400 focus:border-navy focus:outline-none';
+const fieldCls = campoCls;
 
 const soles = (n: number) => `S/ ${new Intl.NumberFormat('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)}`;
 
@@ -108,7 +108,7 @@ export function NuevaCompraForm({
           </div>
 
           {materialesSede.length === 0 ? (
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <p className="rounded-md bg-aviso-soft px-3 py-2 text-sm text-aviso-deep">
               La sede {sede} no tiene materiales registrados.{' '}
               <Link href="/materiales" className="font-medium underline">
                 Crea materiales
@@ -158,7 +158,7 @@ export function NuevaCompraForm({
                     <button
                       type="button"
                       onClick={() => setFilas((p) => (p.length > 1 ? p.filter((_, j) => j !== i) : p))}
-                      className="justify-self-end text-muted transition-colors hover:text-red-600"
+                      className="justify-self-end text-muted transition-colors hover:text-error"
                       aria-label="Quitar fila"
                     >
                       <Trash2 className="h-4 w-4" strokeWidth={1.75} />
@@ -178,12 +178,12 @@ export function NuevaCompraForm({
 
           <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Observación (opcional)" className={cn(fieldCls, 'w-full')} />
 
-          {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
 
           <div className="flex items-center justify-between border-t border-line pt-4">
             <span className="text-sm text-muted">
               Total de la compra:{' '}
-              <span className="font-mono text-lg font-semibold tabular-nums text-[#7a6e0e]">{soles(total)}</span>
+              <span className="font-mono text-lg font-semibold tabular-nums text-gold-deep">{soles(total)}</span>
             </span>
             <Button
               type="button"

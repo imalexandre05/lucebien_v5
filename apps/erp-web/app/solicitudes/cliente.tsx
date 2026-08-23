@@ -87,10 +87,10 @@ export function SolicitudesCliente({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Pendientes" valor={resumen.pendientes} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox index={1} label="Aprobadas" valor={resumen.aprobadas} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={2} label="Entregadas" valor={resumen.entregadas} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={3} label="Confirmadas" valor={resumen.confirmadas} tone="border-line bg-white text-muted" />
+        <StatBox index={0} label="Pendientes" valor={resumen.pendientes} tone="aviso" />
+        <StatBox index={1} label="Aprobadas" valor={resumen.aprobadas} tone="navy" />
+        <StatBox index={2} label="Entregadas" valor={resumen.entregadas} tone="exito" />
+        <StatBox index={3} label="Confirmadas" valor={resumen.confirmadas} tone="neutro" />
       </div>
 
       <Card>

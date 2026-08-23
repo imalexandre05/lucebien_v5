@@ -1,4 +1,4 @@
-import { ShieldCheck, ShieldX, Ban } from 'lucide-react';
+import { ShieldCheck, ShieldX, Ban, Laptop } from 'lucide-react';
 import { getSesion } from '../../lib/auth';
 import { listarDispositivos, type Dispositivo } from '../../lib/dispositivos-repo';
 import { listarSedes } from '../../lib/sedes-repo';
@@ -8,6 +8,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { StatBox } from '../../components/ui/stat-box';
 import { buttonVariants } from '../../components/ui/button';
+import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
 import { accionAprobar, accionRechazar, accionRevocar, accionCambiarSede } from './actions';
 
@@ -54,10 +55,10 @@ export default async function DispositivosPage() {
       />
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatBox index={0} label="Equipos" valor={disp.length} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Aprobados" valor={n('aprobado')} tone="border-emerald-200 bg-emerald-50 text-emerald-700" />
-        <StatBox index={2} label="Pendientes" valor={n('pendiente')} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox index={3} label="Bloqueados" valor={n('rechazado') + n('revocado')} tone="border-line bg-white text-muted" />
+        <StatBox index={0} label="Equipos" valor={disp.length} tone="navy" />
+        <StatBox index={1} label="Aprobados" valor={n('aprobado')} tone="exito" />
+        <StatBox index={2} label="Pendientes" valor={n('pendiente')} tone="aviso" />
+        <StatBox index={3} label="Bloqueados" valor={n('rechazado') + n('revocado')} tone="neutro" />
       </div>
 
       <Card>
@@ -121,7 +122,7 @@ export default async function DispositivosPage() {
                       {d.estado !== 'aprobado' && (
                         <form action={accionAprobar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 transition-colors duration-150 hover:bg-emerald-100 active:scale-[0.97]">
+                          <button className="toque inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1 text-xs font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
                             <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2} /> Aprobar
                           </button>
                         </form>
@@ -129,7 +130,7 @@ export default async function DispositivosPage() {
                       {d.estado === 'pendiente' && (
                         <form action={accionRechazar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-xs font-medium text-muted transition-colors duration-150 hover:border-gold hover:text-navy active:scale-[0.97]">
+                          <button className="toque inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-xs font-medium text-muted transition-colors duration-150 hover:border-gold hover:text-navy active:scale-[0.97]">
                             <ShieldX className="h-3.5 w-3.5" strokeWidth={2} /> Rechazar
                           </button>
                         </form>
@@ -137,7 +138,7 @@ export default async function DispositivosPage() {
                       {d.estado === 'aprobado' && (
                         <form action={accionRevocar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 transition-colors duration-150 hover:bg-red-100 active:scale-[0.97]">
+                          <button className="toque inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1 text-xs font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
                             <Ban className="h-3.5 w-3.5" strokeWidth={2} /> Revocar
                           </button>
                         </form>
@@ -148,8 +149,11 @@ export default async function DispositivosPage() {
               ))}
               {disp.length === 0 && (
                 <TR>
-                  <TD colSpan={7} className="px-5 py-10 text-center text-muted">
-                    Aún no hay equipos registrados. Cada equipo aparece aquí la primera vez que entra.
+                  <TD colSpan={7} className="p-0">
+                    <EmptyState icon={Laptop} titulo="Todavía no entró ningún equipo">
+                      Cada computadora o teléfono aparece acá la primera vez que alguien abre el ERP
+                      desde él. No hay nada que registrar a mano.
+                    </EmptyState>
                   </TD>
                 </TR>
               )}

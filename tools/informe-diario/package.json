@@ -1,0 +1,11 @@
+{
+  "name": "informe-diario",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Generación, conversión a PDF y envío de los informes de avance de LuceBien",
+  "dependencies": {
+    "nodemailer": "^6.9.14",
+    "pizzip": "^3.1.7"
+  }
+}

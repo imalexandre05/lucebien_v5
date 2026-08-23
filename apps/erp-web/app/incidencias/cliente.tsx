@@ -11,22 +11,24 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
+import { Aviso, campoCls } from '../../components/ui/form';
+import { EmptyState } from '../../components/ui/empty-state';
+import { DialogoConfirmar, useConfirmacion } from '../../components/ui/confirmar';
 import { cn } from '../../lib/cn';
 
 type Emp = { id: string; nombre: string };
 
 const NIVELES = ['Alto', 'Medio', 'Bajo'];
 const OPC_FILTRO_NIVEL: Opcion[] = [{ value: '', label: 'Todos los niveles' }, ...NIVELES.map((n) => ({ value: n, label: n }))];
-const fieldCls =
-  'rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold';
+const fieldCls = campoCls;
 
 function NivelPill({ nivel }: { nivel: string }) {
   const cls =
     nivel === 'Alto'
-      ? 'bg-red-50 text-red-700'
+      ? 'bg-error-soft text-error-deep'
       : nivel === 'Medio'
-        ? 'bg-amber-50 text-amber-700'
-        : 'bg-slate-100 text-slate-600';
+        ? 'bg-aviso-soft text-aviso-deep'
+        : 'bg-paper text-muted';
   return <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', cls)}>{nivel}</span>;
 }
 
@@ -49,6 +51,11 @@ export function IncidenciasCliente({
   const [responsable, setResponsable] = useState('');
   const [descripcion, setDescripcion] = useState('');
   const [error, setError] = useState('');
+  // Un error de la TABLA no puede mostrarse dentro del formulario: cuando se elimina una fila el
+  // formulario suele estar cerrado, así que el mensaje se renderizaría en un bloque invisible —
+  // peor que el alert() nativo que había, porque al menos aquél se veía.
+  const [errorAccion, setErrorAccion] = useState('');
+  const conf = useConfirmacion();
   const [pending, startTransition] = useTransition();
 
   // Filtros.
@@ -123,23 +130,34 @@ export function IncidenciasCliente({
   }
 
   function eliminar(id: string) {
-    if (!confirm('¿Eliminar esta incidencia?')) return;
-    startTransition(async () => {
-      const r = await accionEliminarIncidencia(id);
-      if (r.ok) router.refresh();
-      else alert(r.error);
+    conf.pedir({
+      titulo: '¿Eliminar esta incidencia?',
+      detalle: 'Los puntos que descuenta vuelven a la evaluación del responsable.',
+      confirmarLabel: 'Eliminar',
+      alConfirmar: () =>
+        startTransition(async () => {
+          setErrorAccion('');
+          const r = await accionEliminarIncidencia(id);
+          if (r.ok) {
+            conf.cerrar();
+            router.refresh();
+          } else setErrorAccion(r.error ?? 'No se pudo eliminar la incidencia.');
+        }),
     });
   }
 
   return (
     <div className="space-y-4">
+      <DialogoConfirmar {...conf.props} pending={pending} />
+      {errorAccion && <Aviso tono="error">{errorAccion}</Aviso>}
+
       {/* Resumen */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-        <StatBox index={0} label="Incidencias" valor={resumen.total} tone="border-navy/15 bg-navy/5 text-navy" />
-        <StatBox index={1} label="Alto" valor={resumen.alto} tone="border-red-200 bg-red-50 text-red-700" />
-        <StatBox index={2} label="Medio" valor={resumen.medio} tone="border-amber-200 bg-amber-50 text-amber-700" />
-        <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="border-line bg-white text-muted" />
-        <StatBox index={4} label="Puntos" valor={resumen.puntos} tone="border-gold/30 bg-gold/10 text-[#7a6e0e]" />
+        <StatBox index={0} label="Incidencias" valor={resumen.total} tone="navy" />
+        <StatBox index={1} label="Alto" valor={resumen.alto} tone="error" />
+        <StatBox index={2} label="Medio" valor={resumen.medio} tone="aviso" />
+        <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="neutro" />
+        <StatBox index={4} label="Puntos" valor={resumen.puntos} tone="gold" />
       </div>
 
       {/* Filtros + acción */}
@@ -225,10 +243,10 @@ export function IncidenciasCliente({
                       'rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors duration-150',
                       nivel === n
                         ? n === 'Alto'
-                          ? 'border-red-500 bg-red-50 text-red-700'
+                          ? 'border-error bg-error-soft text-error-deep'
                           : n === 'Medio'
-                            ? 'border-amber-500 bg-amber-50 text-amber-700'
-                            : 'border-slate-400 bg-slate-100 text-slate-700'
+                            ? 'border-aviso bg-aviso-soft text-aviso-deep'
+                            : 'border-muted bg-paper text-ink'
                         : 'border-line bg-white text-muted hover:border-gold/60',
                     )}
                   >
@@ -241,10 +259,23 @@ export function IncidenciasCliente({
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción</label>
               <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Qué pasó…" className={cn(fieldCls, 'w-full')} />
             </div>
-            {error && <p className="text-sm text-red-600">{error}</p>}
-            <Button type="button" onClick={registrar} disabled={!tipo} pending={pending}>
-              {pending ? 'Registrando…' : 'Registrar incidencia'}
-            </Button>
+            {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                onClick={registrar}
+                disabled={!tipo}
+                pending={pending}
+                aria-describedby={!tipo ? 'motivo-incidencia' : undefined}
+              >
+                {pending ? 'Registrando…' : 'Registrar incidencia'}
+              </Button>
+              {!tipo && (
+                <span id="motivo-incidencia" className="text-xs font-medium text-aviso-deep">
+                  Elige el tipo de incidencia para poder registrarla.
+                </span>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -281,7 +312,7 @@ export function IncidenciasCliente({
                     {i.origen === 'reporte' && i.reporteId ? (
                       <Link
                         href={`/reportes/${i.reporteId}`}
-                        className="inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 font-mono text-[11px] text-navy transition hover:bg-navy/10"
+                        className="toque inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 font-mono text-[11px] text-navy transition hover:bg-navy/10"
                       >
                         reporte
                       </Link>
@@ -292,7 +323,7 @@ export function IncidenciasCliente({
                   <TD className="text-right font-mono tabular-nums">{i.puntosPenalidad || '—'}</TD>
                   {esAdmin && (
                     <TD className="pr-5 text-right">
-                      <button type="button" onClick={() => eliminar(i.id)} className="text-muted transition-colors hover:text-red-600" aria-label="Eliminar">
+                      <button type="button" onClick={() => eliminar(i.id)} className="text-muted transition-colors hover:text-error" aria-label="Eliminar">
                         <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                       </button>
                     </TD>
@@ -301,8 +332,18 @@ export function IncidenciasCliente({
               ))}
               {filtradas.length === 0 && (
                 <TR>
-                  <TD className="px-5 py-8 text-center text-muted" colSpan={esAdmin ? 8 : 7}>
-                    {incidencias.length === 0 ? 'Sin incidencias registradas.' : 'Ninguna coincide con el filtro.'}
+                  <TD className="p-0" colSpan={esAdmin ? 8 : 7}>
+                    {incidencias.length === 0 ? (
+                      <EmptyState icon={AlertTriangle} titulo="Sin incidencias registradas" compacto>
+                        Una incidencia deja constancia de algo que salió mal y descuenta puntos de la
+                        evaluación del responsable. Se registran con el botón de arriba.
+                      </EmptyState>
+                    ) : (
+                      <EmptyState icon={Filter} titulo="Ninguna coincide con el filtro" compacto>
+                        Hay {incidencias.length} registradas en total. Prueba con otro nivel u otro
+                        tipo.
+                      </EmptyState>
+                    )}
                   </TD>
                 </TR>
               )}

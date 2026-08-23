@@ -28,8 +28,20 @@ database/backups/
 respaldo_pre_*/
 _local_backup_pre_*/
 
-# Metadata local del CLI Claude Code
-.claude/
+# Metadata local del CLI Claude Code (sesiones, worktrees, permisos de esta PC).
+# EXCEPCIÓN: agents/, hooks/ y las skills propias del proyecto son parte del harness
+# y sí se versionan — el subagente verificador, el hook de cierre y la skill del
+# informe tienen que viajar con el repo. Una skill sin versionar deja sus
+# herramientas sin manual.
+# Las skills de terceros instaladas en esta PC (paletas, estilos de diseño) NO se
+# versionan: no son del proyecto y se reinstalan solas.
+.claude/*
+!.claude/agents/
+!.claude/hooks/
+!.claude/skills/
+.claude/skills/*
+!.claude/skills/informe-diario/
+!.claude/settings.json
 
 # Tooling local (no compartir con cliente — vive solo en mi PC)
 tools/local/
@@ -39,3 +51,19 @@ tools/local/
 test-results/
 playwright-report/
 .next-build/
+
+# Grafo de código (graphify). Derivado del código: se regenera con
+# `graphify extract . --code-only` en ~35s. No se versiona porque el hook
+# post-commit lo reconstruye en cada commit y graph.json pesa ~5 MB — versionarlo
+# sumaría ese peso a CADA commit del historial.
+graphify-out/
+kg.html
+
+# Informe de avances: archivos de trabajo, uno por informe (informe-001.json…).
+# Quedan en disco para que el informe siguiente sepa qué se dijo y no lo repita.
+tools/informe-diario/informe.json
+tools/informe-diario/informe-*.json
+
+# Empaquetados del colector: pesan megas y se regeneran desde tools/colector-huellero/.
+# El 21-ago-2026 uno de 1,9 MB se colo en un commit por un `git add -A tools`.
+*.rar
