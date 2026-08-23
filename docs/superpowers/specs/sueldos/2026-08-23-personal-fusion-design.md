@@ -119,6 +119,26 @@ Reglas:
 - Los **adelantos NO son pagos de la liquidación**: ya entran como descuento dentro del cálculo
   (RN-19). Acá se registra lo pagado del TOTAL ya calculado. La pantalla lo aclara para que
   nadie registre el adelanto dos veces.
+- **Una liquidación con pagos vigentes no se anula** (regla agregada el 23-ago-2026 tras el
+  verificador, hallazgo 1). Si se anulara, los pagos quedarían colgados de una liquidación
+  anulada y la reemisión arrancaría con pagado = 0: el camino directo a pagar dos veces el mismo
+  mes. Para anular una liquidación con pagos hay que **anular antes cada pago con su motivo** —
+  así el rastro de por qué ese dinero ya no cuenta queda escrito, nunca implícito. Lo impone la
+  base (trigger sobre `sueldo_liquidaciones`), con un mensaje que dice cuántos pagos y por
+  cuánto. Trasladar pagos a una reemisión queda fuera: es más diseño y nadie lo pidió.
+  ⚠️ Default de seguridad tomado por Alexander vía el agente, pendiente de confirmar con el
+  dueño; anotado en `pendientes-negocio.md`.
+- **La regla del saldo vive en la base, no solo en la RPC**: el trigger de la tabla de pagos
+  también rechaza un INSERT directo que supere el total (bloqueando la fila de la liquidación
+  antes de sumar, mismo lock que la RPC). Un administrador que escriba por PostgREST o SQL
+  crudo tampoco puede pagar de más ni colar un `NaN`. `registrado_por` obligatorio por la misma
+  vía. El monto se redondea a 2 decimales antes de validarse, para que lo validado sea
+  exactamente lo guardado.
+- Una liquidación con `total ≤ 0` (descuentos ≥ ingresos) no admite pagos y **no se muestra
+  como «pagada»**: la pantalla la marca «sin monto a pagar». «Pagada» exige `total > 0` y saldo
+  0.
+- `metodo` se acepta como texto libre (editar el catálogo no invalida la historia); `fecha` sin
+  cota. Ambas anotadas en `pendientes-negocio.md` como decisión de negocio abierta.
 - Migración nueva (reservar número), idempotente, con su archivo de prueba en
   `packages/db/pruebas/` que intente: pagar un borrador, pagar de más, editar un pago, borrar
   un pago, pagar una anulada — todo debe fallar.

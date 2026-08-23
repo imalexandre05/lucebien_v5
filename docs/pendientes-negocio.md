@@ -866,3 +866,18 @@ migrar antes esos dos consumidores a leer el sueldo del contrato vigente, con el
 «más reciente si hay varios» que ya usa la pestaña Datos — o si se queda como un campo histórico
 sin UI. No es urgente: el módulo de Pagos viejo sale del menú en R4 (spec §2.7) y su reemplazo
 (Liquidación y pago) no depende de esta columna.
+
+---
+
+## Pagos de liquidación (0080) — defaults tomados el 23-ago-2026, pendientes del dueño
+
+Salieron del verificador adversarial de la migración 0080, antes de aplicarla. Ninguno altera un
+cálculo de sueldo: son guardas sobre el registro de lo pagado.
+
+| Decisión | Default tomado | Por qué | Quién confirma |
+|---|---|---|---|
+| Anular una liquidación que ya tiene pagos vigentes | **Se bloquea**: primero se anula cada pago con su motivo, después la liquidación | Si no, los pagos quedan colgados de una anulada y la reemisión arranca en pagado=0 — se paga dos veces el mes | Dueño |
+| Métodos de pago (`sueldo_metodos_pago`) | `Efectivo, Yape, Plin, Transferencia, Otro`, editable en /configuracion | Inventado: nadie dijo cuáles usa la empresa | Dueño |
+| `metodo` como texto libre, sin validar contra el catálogo | Se acepta lo que venga | Editar el catálogo no debe invalidar pagos viejos; el costo es que «Otro» y «otro » convivan | Dueño |
+| `fecha` del pago sin cota | Acepta cualquier fecha | Nadie definió un rango (¿puede registrarse un pago de hace dos meses?) | Dueño |
+| Liquidación con `total ≤ 0` | No admite pagos; la pantalla la marca «sin monto a pagar», nunca «pagada» | Descuentos ≥ ingresos; «pagada» exige total > 0 y saldo 0 | — (técnica) |
