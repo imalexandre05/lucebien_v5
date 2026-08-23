@@ -151,10 +151,25 @@ function analizar(b: Borrador): {
   dias: number;
   valorHora: number | null;
   sugerido: number | null;
+  pagoMensual: number | null; // sueldo / (dias/30) — aproximado siempre (decisión 23-ago)
+  horasMensuales: number | null; // horas / (dias/30)
+  almuerzoPeriodo: number | null; // techo: días con horario "completo" × valor almuerzo
+  almuerzoMensual: number | null;
   error: string | null;
   avisos: string[];
 } {
-  const vacio = { horas: 0, dias: 0, valorHora: null, sugerido: null, error: null, avisos: [] as string[] };
+  const vacio = {
+    horas: 0,
+    dias: 0,
+    valorHora: null,
+    sugerido: null,
+    pagoMensual: null,
+    horasMensuales: null,
+    almuerzoPeriodo: null,
+    almuerzoMensual: null,
+    error: null,
+    avisos: [] as string[],
+  };
   if (!b.fechaInicio || !b.fechaFin || b.turnos.length === 0) return vacio;
 
   try {
@@ -162,6 +177,18 @@ function analizar(b: Borrador): {
     const fechas = diasDelPeriodo(b.fechaInicio, b.fechaFin);
     const horas = fechas.reduce((s, f) => s + (porDia.get(diaSemanaISO(f))?.horas ?? 0), 0);
     const pactado = Number(b.sueldoPactado);
+
+    const meses = fechas.length / 30;
+    const horasMin = b.parametros.horasMinimasAlmuerzo ?? PARAMETROS_SUELDO_DEFAULT.horasMinimasAlmuerzo;
+    const valorAlm = b.parametros.valorAlmuerzo ?? PARAMETROS_SUELDO_DEFAULT.valorAlmuerzo;
+    // Techo de almuerzos (C-4): cuenta los días del periodo cuyo horario contratado llega a las
+    // horas mínimas — o todos los días con horario, si el almuerzo está habilitado a mano. Es lo
+    // MÁXIMO si cumple el horario todos los días; el real sale de la asistencia (RN-15).
+    const diasConAlmuerzo = fechas.filter((f) => {
+      const h = porDia.get(diaSemanaISO(f))?.horas ?? 0;
+      return b.almuerzoHabilitado ? h > 0 : h >= horasMin;
+    }).length;
+    const almuerzoPeriodo = diasConAlmuerzo * valorAlm;
 
     const avisos: string[] = [];
 
@@ -193,6 +220,10 @@ function analizar(b: Borrador): {
       dias: fechas.length,
       valorHora: horas > 0 && pactado > 0 ? pactado / horas : null,
       sugerido: b.escala && horas > 0 ? sueldoSugerido(Number(b.escala), horas) : null,
+      pagoMensual: pactado > 0 && meses > 0 ? pactado / meses : null,
+      horasMensuales: horas > 0 && meses > 0 ? horas / meses : null,
+      almuerzoPeriodo: horas > 0 ? almuerzoPeriodo : null,
+      almuerzoMensual: horas > 0 && meses > 0 ? almuerzoPeriodo / meses : null,
       error: null,
       avisos,
     };
@@ -526,6 +557,7 @@ export function AcuerdosCliente({
 
             {/* ── Vista previa ──────────────────────────────────────────────────────────── */}
             <div className="rounded-md border border-line bg-paper px-4 py-3">
+              <p className="mb-2 text-sm font-medium text-navy">Resumen del contrato</p>
               {analisis.error ? (
                 <p className="text-sm text-error-deep">{analisis.error}</p>
               ) : (
@@ -551,11 +583,43 @@ export function AcuerdosCliente({
                         {analisis.sugerido == null ? '—' : soles(analisis.sugerido)}
                       </p>
                     </div>
+                    <div>
+                      <p className="text-xs text-muted">Pago del periodo</p>
+                      <p className="tabular-nums text-navy">
+                        {Number(b.sueldoPactado) > 0 ? soles(Number(b.sueldoPactado)) : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Pago mensual (aprox.)</p>
+                      <p className="tabular-nums text-navy">
+                        {analisis.pagoMensual == null ? '—' : soles(analisis.pagoMensual)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Horas mensuales (aprox.)</p>
+                      <p className="tabular-nums text-navy">
+                        {analisis.horasMensuales == null ? '—' : analisis.horasMensuales.toFixed(2)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted">Almuerzos (máx. mes / periodo)</p>
+                      <p className="tabular-nums text-navy">
+                        {analisis.almuerzoMensual == null
+                          ? '—'
+                          : `${soles(analisis.almuerzoMensual)} · ${soles(analisis.almuerzoPeriodo!)}`}
+                      </p>
+                    </div>
                   </div>
                   {analisis.sugerido != null && (
                     <p className="mt-2 text-xs text-muted">
                       La escala es una referencia para negociar, no una obligación: el que manda es
                       el sueldo pactado.
+                    </p>
+                  )}
+                  {analisis.almuerzoPeriodo != null && analisis.almuerzoPeriodo > 0 && (
+                    <p className="mt-2 text-xs text-muted">
+                      Almuerzos: es el máximo si cumple el horario todos los días; lo que
+                      efectivamente gane sale de la asistencia.
                     </p>
                   )}
                 </>
