@@ -12,6 +12,7 @@
 import { getServerClient } from './supabase/server';
 import type { Periodo } from './periodo';
 import { estadoVacio, type EstadoPeriodo } from './colaboradores-pasos';
+import { listarPagosDeLiquidaciones, LiquidacionPagosNoMigradoError } from './sueldos-repo';
 
 export type { EstadoPeriodo } from './colaboradores-pasos';
 
@@ -77,10 +78,11 @@ type Fila = Record<string, unknown>;
  * Una consulta por tabla con `in(ids)` y el cruce en memoria, en vez de siete consultas por
  * persona: con 18 personas la diferencia entre 6 consultas y 126 se nota en la pantalla.
  *
- * DEGRADACIÓN. Las columnas de ciclo de `pagos` y `evaluaciones_mensuales` llegaron con la
- * migración 0057. Si no está aplicada, esos bloques caen en su `catch` y la pantalla muestra el
- * resto en vez de reventar entera — la lección que este repo ya aprendió en pagos-repo.ts. Lo que
- * se pierde es un indicador, no la pantalla.
+ * DEGRADACIÓN. Las columnas de ciclo de `evaluaciones_mensuales` llegaron con la migración 0057;
+ * los pagos de liquidación (`sueldo_liquidacion_pagos`) con la 0080. Si alguna de las dos no está
+ * aplicada, su bloque cae en su propio `catch` y la pantalla muestra el resto en vez de reventar
+ * entera — la lección que este repo ya aprendió en pagos-repo.ts. Lo que se pierde es un
+ * indicador, no la pantalla.
  */
 export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<string, EstadoPeriodo>> {
   const mapa = new Map<string, EstadoPeriodo>(ids.map((id) => [id, estadoVacio(id)]));
@@ -183,25 +185,67 @@ export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<s
     // 0057 sin aplicar: la nota queda en null y la pantalla lo muestra como "sin evaluar".
   }
 
+  // Pago: la liquidación CERRADA que cubre el período (spec §2.6 R4 — «la liquidación ES el
+  // pago»; ROTURA 1 del validador de flujo 23-ago-2026). Antes acá se miraba `pagos`, el sistema
+  // viejo — historia congelada (§2.7), no un estado a mostrar: un pago sin ciclo, o un ciclo que
+  // no coincide con el período, dejaba el hilo diciendo "falta" para siempre aunque la
+  // liquidación ya estuviera pagada. La verdad de hoy vive en `sueldo_liquidaciones` +
+  // `sueldo_liquidacion_pagos` — las mismas tablas de la pestaña «Liquidación y pago».
   try {
-    const { data, error } = await sb
-      .from('pagos')
-      .select('empleado_id, anulado, ciclo_desde, ciclo_hasta')
+    const { data: liqs, error: eLiq } = await sb
+      .from('sueldo_liquidaciones')
+      .select('id, empleado_id, periodo_desde, periodo_hasta, total')
       .in('empleado_id', ids)
-      .eq('anulado', false);
-    if (error) throw new Error(error.message);
-    for (const r of (data as Fila[]) ?? []) {
-      const e = de(r.empleado_id);
-      if (!e || e.pagado) continue;
-      const desde = r.ciclo_desde ? String(r.ciclo_desde).slice(0, 10) : null;
-      const hasta = r.ciclo_hasta ? String(r.ciclo_hasta).slice(0, 10) : null;
-      // Un pago ad-hoc sin ciclo no se puede atribuir a este período: no cuenta como pagado.
-      if (!desde || !hasta) continue;
-      if (hasta < p.desde || desde > p.hasta) continue;
-      e.pagado = true;
+      .eq('estado', 'cerrada');
+    if (eLiq) throw new Error(eLiq.message);
+
+    // La liquidación de ESTE período por persona: la primera cerrada cuyo rango se solapa, mismo
+    // criterio de "primera que calza" que ya usan 'contrato' y 'evaluación' arriba. Con las
+    // liquidaciones mensuales de hoy no hay ambigüedad real; si algún día se solapan dos, gana la
+    // que la consulta trajo primero.
+    const liqPorEmpleado = new Map<string, { id: string; total: number }>();
+    for (const r of (liqs as Fila[]) ?? []) {
+      const empId = String(r.empleado_id ?? '');
+      if (!mapa.has(empId) || liqPorEmpleado.has(empId)) continue;
+      const desde = String(r.periodo_desde ?? '').slice(0, 10);
+      const hasta = String(r.periodo_hasta ?? '').slice(0, 10);
+      if (desde <= p.hasta && hasta >= p.desde) liqPorEmpleado.set(empId, { id: String(r.id), total: Number(r.total ?? 0) });
+    }
+
+    if (liqPorEmpleado.size > 0) {
+      try {
+        // Segunda consulta, en lote: lo pagado de TODAS las liquidaciones encontradas, de un
+        // saque — no una por persona. `listarPagosDeLiquidaciones` es la versión sin nombres de
+        // `listarPagosLiquidacion` (lib/sueldos-repo.ts), pensada justo para este cruce por lote.
+        const pagos = await listarPagosDeLiquidaciones([...liqPorEmpleado.values()].map((v) => v.id));
+        const pagadoPorLiq = new Map<string, number>();
+        for (const pago of pagos) {
+          pagadoPorLiq.set(pago.liquidacionId, (pagadoPorLiq.get(pago.liquidacionId) ?? 0) + pago.monto);
+        }
+
+        for (const [empId, liq] of liqPorEmpleado) {
+          const e = mapa.get(empId);
+          if (!e) continue;
+          const pagado = Math.round((pagadoPorLiq.get(liq.id) ?? 0) * 100) / 100;
+          if (liq.total <= 0) e.pago = { tipo: 'sin_monto' };
+          else if (pagado >= liq.total) e.pago = { tipo: 'pagada', total: liq.total, pagado };
+          else e.pago = { tipo: 'pendiente', total: liq.total, pagado };
+        }
+      } catch (e) {
+        if (!(e instanceof LiquidacionPagosNoMigradoError)) throw e;
+        // 0080 sin aplicar: se sabe que hay una liquidación cerrada pero no lo pagado. 'sin_dato'
+        // y no 'sin_liquidacion' — decir "falta registrarlo" mentiría sobre algo que sí existe.
+        for (const empId of liqPorEmpleado.keys()) {
+          const e2 = mapa.get(empId);
+          if (e2) e2.pago = { tipo: 'sin_dato' };
+        }
+      }
     }
   } catch {
-    // 0057 sin aplicar: el indicador queda en falso y la sección de pago lo aclara.
+    // Falla la consulta a `sueldo_liquidaciones` (o cualquier otra cosa no capturada arriba): el
+    // indicador de pago se queda en su default ('sin_liquidacion') en vez de tirar abajo la lista
+    // entera — mismo criterio que 'evaluación' más arriba. Nunca cae al viejo `pagos`: esa tabla
+    // es historia congelada (§2.7), no un estado a mostrar.
   }
 
   return mapa;

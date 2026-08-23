@@ -918,6 +918,34 @@ export async function listarPagosLiquidacion(liquidacionId: string): Promise<Pag
   return rows.map((r) => aPagoLiquidacion(r, r.registrado_por ? (nombre.get(r.registrado_por) ?? null) : null));
 }
 
+export type PagoResumen = { liquidacionId: string; monto: number };
+
+/**
+ * Lo pagado (no anulado) de un LOTE de liquidaciones, en una sola consulta y sin resolver
+ * nombres — para `estadoDelPeriodo()` (colaboradores-repo.ts), que cruza hasta veinte personas
+ * de un saque y no puede permitirse una consulta de `listarPagosLiquidacion()` por persona (esa
+ * además resuelve el directorio, que acá no hace falta). Mismo criterio de degradación que el
+ * resto de este bloque: tabla o función inexistente (0080 sin aplicar) se traduce a
+ * `LiquidacionPagosNoMigradoError`, nunca a un 500.
+ */
+export async function listarPagosDeLiquidaciones(liquidacionIds: string[]): Promise<PagoResumen[]> {
+  if (liquidacionIds.length === 0) return [];
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('sueldo_liquidacion_pagos')
+    .select('liquidacion_id, monto')
+    .in('liquidacion_id', liquidacionIds)
+    .eq('anulado', false);
+  if (error) {
+    if (esTablaOFuncionInexistente(error)) throw new LiquidacionPagosNoMigradoError();
+    throw errorSueldo(error);
+  }
+  return ((data as { liquidacion_id: string; monto: number | string }[]) ?? []).map((r) => ({
+    liquidacionId: r.liquidacion_id,
+    monto: Number(r.monto ?? 0),
+  }));
+}
+
 export type PagoLiquidacionInput = {
   liquidacionId: string;
   fecha: string;

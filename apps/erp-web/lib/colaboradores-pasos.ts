@@ -5,6 +5,27 @@
 // arrastraría medio backend al bundle. Acá no hay ni una consulta: entra el estado ya calculado y
 // sale la lista de pasos.
 
+/**
+ * El estado de pago del período (spec §2.6 R4 — «la liquidación ES el pago»).
+ *
+ * Reemplaza al `pagado: boolean` que miraba la tabla vieja `pagos` (ROTURA 1, validador de flujo
+ * 23-ago-2026): con la liquidación como pago real, "pagado o no" ya no alcanza — una liquidación
+ * cerrada puede estar parcialmente saldada, o no tener liquidación todavía, o la 0080 puede no
+ * estar aplicada en esta base. Cada caso necesita su propio mensaje, no un booleano que sólo puede
+ * mentir en alguna de las cuatro situaciones.
+ */
+export type EstadoPago =
+  /** Ninguna liquidación `cerrada` cubre el período: nada que pagar todavía. */
+  | { tipo: 'sin_liquidacion' }
+  /** Hay una liquidación cerrada pero no se pudo leer lo pagado (falta aplicar la migración 0080). */
+  | { tipo: 'sin_dato' }
+  /** Liquidación cerrada con `total <= 0` (descuentos ≥ ingresos): no admite pagos, no hace falta ninguno. */
+  | { tipo: 'sin_monto' }
+  /** Liquidación cerrada y saldada. */
+  | { tipo: 'pagada'; total: number; pagado: number }
+  /** Liquidación cerrada con saldo pendiente. */
+  | { tipo: 'pendiente'; total: number; pagado: number };
+
 export type EstadoPeriodo = {
   empleadoId: string;
   reportes: number;
@@ -18,8 +39,8 @@ export type EstadoPeriodo = {
   puntosPipeline: number;
   /** Nota de la evaluación que cubre el período, si ya se hizo. */
   nota: number | null;
-  /** Hay un pago no anulado cuyo ciclo cae dentro del período. */
-  pagado: boolean;
+  /** Estado de pago de la liquidación que cubre el período. Ver `EstadoPago`. */
+  pago: EstadoPago;
   /** Hay un contrato que cubre el período. */
   contrato: boolean;
 };
@@ -33,9 +54,32 @@ export const estadoVacio = (empleadoId: string): EstadoPeriodo => ({
   incidencias: 0,
   puntosPipeline: 0,
   nota: null,
-  pagado: false,
+  pago: { tipo: 'sin_liquidacion' },
   contrato: false,
 });
+
+const soles = (n: number): string => `S/ ${n.toFixed(2)}`;
+
+/** El texto del paso «Pago», uno por cada caso de `EstadoPago` (ver su comentario). */
+function detallePago(pago: EstadoPago): string {
+  switch (pago.tipo) {
+    case 'sin_liquidacion':
+      return 'Falta registrarlo';
+    case 'sin_dato':
+      return 'Sin dato de pago (falta aplicar la migración 0080)';
+    case 'sin_monto':
+      return 'Sin monto a pagar';
+    case 'pagada':
+      return `Pagado ${soles(pago.total)}`;
+    case 'pendiente':
+      return `Pagado ${soles(pago.pagado)} de ${soles(pago.total)}`;
+  }
+}
+
+/** El paso «Pago» está resuelto cuando está saldado o cuando no había nada que pagar. */
+function pagoListo(pago: EstadoPago): boolean {
+  return pago.tipo === 'pagada' || pago.tipo === 'sin_monto';
+}
 
 export type ClavePaso = 'contrato' | 'salidas' | 'asistencia' | 'evaluacion' | 'pago';
 
@@ -103,8 +147,8 @@ export function pendientesDelPeriodo(e: EstadoPeriodo): Pendiente[] {
     {
       clave: 'pago',
       titulo: 'Pago',
-      detalle: e.pagado ? 'Registrado' : 'Falta registrarlo',
-      listo: e.pagado,
+      detalle: detallePago(e.pago),
+      listo: pagoListo(e.pago),
       seccion: 'pago',
     },
   ];
