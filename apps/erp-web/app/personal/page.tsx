@@ -40,13 +40,16 @@ import { ListaColaboradores } from './cliente';
 // /evaluaciones lo hace de verdad (ver app/evaluaciones/page.tsx).
 type Herramienta = { href: string; icono: LucideIcon; label: string; gate: 'admin' | 'evaluaciones' };
 
+// Orden según spec §2.2: Declarar asistencia · Ventas y metas · Adelantos y descuentos · Liquidar
+// el periodo · Evaluaciones del mes · Contratos. El plan de R1 (Tarea 2) lo había dejado con los
+// dos últimos invertidos.
 const HERRAMIENTAS: Herramienta[] = [
   { href: '/sueldos/asistencia', icono: CalendarCheck, label: 'Declarar asistencia', gate: 'admin' },
   { href: '/sueldos/ventas', icono: ShoppingBag, label: 'Ventas y metas', gate: 'admin' },
   { href: '/sueldos/movimientos', icono: Wallet, label: 'Adelantos y descuentos', gate: 'admin' },
   { href: '/sueldos/liquidaciones', icono: Coins, label: 'Liquidar el periodo', gate: 'admin' },
-  { href: '/sueldos/acuerdos', icono: FileSignature, label: 'Contratos', gate: 'admin' },
   { href: '/evaluaciones', icono: Award, label: 'Evaluaciones del mes', gate: 'evaluaciones' },
+  { href: '/sueldos/acuerdos', icono: FileSignature, label: 'Contratos', gate: 'admin' },
 ];
 
 export default async function ColaboradoresPage({
