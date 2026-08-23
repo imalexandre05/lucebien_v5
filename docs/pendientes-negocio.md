@@ -833,3 +833,36 @@ contrato de cada quien. La insignia puede estar "mal" en pantalla sin que el pag
 
 **Pendiente de confirmar con el dueño:** si conviene cruzar la boleta con el contrato del vendedor
 asignado para mostrar el mínimo correcto por persona, o si la referencia general alcanza.
+
+---
+
+## Sueldo único (R3/T7, 23-ago-2026) — `salario_base` queda huérfana de UI
+
+**Decisión de Alexander** (spec `docs/superpowers/specs/sueldos/2026-08-23-personal-fusion-design.md`
+§2.5): el sueldo real de una persona lo paga el contrato (`sueldo_acuerdos.sueldo_pactado`), nunca
+`empleados.salario_base`. Desde hoy el ERP nuevo **ya no muestra ni edita** esa columna en ningún
+formulario: la pestaña Datos del expediente (`app/personal/[id]/datos/cliente.tsx`) reemplazó el
+input «Salario base» por una lectura de solo lectura del contrato vigente («Sueldo (contrato
+vigente): S/ X · Ver contrato» / «Sin contrato — pactarlo»), y el alta (`app/personal/nuevo/
+cliente.tsx`) nunca la capturó.
+
+**La columna NO se borra ni se congela en la base.** `salario_base` sigue viva en `empleados`, y
+`EditarEmpleadoInput.salarioBase` (`lib/empleados-repo.ts`) sigue siendo un parámetro obligatorio
+de la RPC `empleado_actualizar` (migración `0050`, `coalesce(p_salario_base, 0)` — mandar null la
+pondría en 0 en vez de dejarla como estaba). La ficha ahora manda el valor YA guardado de la
+persona, sin pasar por ningún input, para que editar el resto de los datos no la altere.
+
+**Quién sigue leyéndola (consumidores congelados, no tocados por esta tarea):**
+- `sugerirMontoPago(salarioBase, …)` — `packages/core/src/pagos.ts:12` — alimenta la sugerencia de
+  monto del panel de pagos viejo (`app/pagos/cliente.tsx`) y de evaluaciones
+  (`app/evaluaciones/cliente.tsx`), incluidas sus versiones montadas por persona dentro del
+  expediente (`app/personal/[id]/pago/page.tsx`, `app/personal/[id]/evaluacion/page.tsx`).
+- Ambos paneles siguen leyendo `empleados.salario_base` (vía `lib/colaboradores-repo.ts`,
+  `lib/pagos-repo.ts` y `lib/evaluaciones-repo.ts`) para mostrar «Salario base: S/ X» como
+  referencia junto a la nota.
+
+**Pendiente, con calma:** decidir si `salario_base` se retira de la base — para eso habría que
+migrar antes esos dos consumidores a leer el sueldo del contrato vigente, con el mismo criterio de
+«más reciente si hay varios» que ya usa la pestaña Datos — o si se queda como un campo histórico
+sin UI. No es urgente: el módulo de Pagos viejo sale del menú en R4 (spec §2.7) y su reemplazo
+(Liquidación y pago) no depende de esta columna.
