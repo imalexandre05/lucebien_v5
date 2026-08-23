@@ -28,6 +28,15 @@
 --
 -- Reutiliza de la 0072/0073, nada se reescribe: private.app_es_admin(),
 -- private.sueldo_liquidacion_es_mia(uuid), private.sueldo_no_truncate(), private.audit_log_trigger().
+--
+-- Cierra, en este mismo archivo (Zone Guard: la spec ya se actualizó en un commit aparte,
+-- c02c41a), tres hallazgos del verificador adversarial antes de aplicarse — spec §2.6:
+--   · Una liquidación con pagos vigentes no se anula (sección 2, trigger nuevo sobre
+--     sueldo_liquidaciones).
+--   · La regla del saldo vive en la base, no sólo en la RPC (sección 4, rama INSERT del trigger
+--     de sueldo_liquidacion_pagos) — mismo `for update`, mismo código SALDO:.
+--   · El monto se redondea a 2 decimales ANTES de validar (sección 6), y 'NaN' queda rechazado
+--     tanto por el check de la tabla como por la propia comparación del saldo.
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 1) sueldo_liquidacion_pagos — un abono contra el total ya congelado
@@ -51,7 +60,11 @@ create table if not exists sueldo_liquidacion_pagos (
   anulado_en     timestamptz,
   creado_en      timestamptz not null default now(),
 
-  constraint sueldo_pago_monto_chk      check (monto > 0),
+  -- `monto > 0` sólo NO alcanza para 'NaN': Postgres ordena NaN como MAYOR que cualquier valor
+  -- no-NaN (a diferencia de IEEE754), así que 'NaN' > 0 es verdadero y ese check lo deja pasar.
+  -- La segunda mitad lo cierra explícito: 'NaN' = 'NaN' sí es verdadero para el tipo numeric de
+  -- Postgres (otra diferencia con float), así que la comparación detecta el caso.
+  constraint sueldo_pago_monto_chk      check (monto > 0 and not (monto = 'NaN'::numeric)),
   constraint sueldo_pago_metodo_chk     check (length(trim(metodo)) > 0),
   -- Mismo criterio que sueldo_liq_anulacion_chk (0072): anular sin motivo es perder el rastro de
   -- por qué. anulado_por queda fuera del check por la misma razón que allá — es `on delete set
@@ -74,7 +87,50 @@ comment on column sueldo_liquidacion_pagos.nota is
    veces — la pantalla (T9) lo aclara para que nadie lo haga.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 2) Aislamiento y RLS — mismo aislamiento 1 que sueldo_liquidacion_lineas: uno ve sus propios
+-- 2) sueldo_liquidaciones — una liquidación con pagos vigentes no se anula
+--
+--    Agregado el 23-ago-2026 tras el verificador adversarial (spec §2.6, hallazgo 1, ya en
+--    `docs/pendientes-negocio.md` como default de seguridad pendiente de confirmar con el dueño).
+--    Si se dejara anular con pagos colgando, la reemisión arrancaría en pagado=0: el camino
+--    directo a pagar dos veces el mismo mes. Para anular una liquidación con pagos hace falta
+--    anular antes cada pago con SU motivo — el rastro de por qué ese dinero ya no cuenta queda
+--    escrito, nunca implícito.
+--
+--    Convive con private.sueldo_liq_inmutable() de la 0072: mismo evento (BEFORE UPDATE) sobre
+--    la misma tabla, y Postgres corre los triggers de un mismo evento en orden alfabético por
+--    nombre — 'trg_sueldo_liq_inmutable' < 'trg_sueldo_liq_pagos_vigentes', así que el de la 0072
+--    corre primero. Pero el orden no cambia el resultado: este trigger sólo VALIDA (nunca toca
+--    NEW) y cualquiera de los dos que levante una excepción aborta el UPDATE entero. La 0072 deja
+--    pasar la transición cerrada→anulada bien formada; este trigger, después, la bloquea igual si
+--    quedan pagos sin anular.
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+create or replace function private.sueldo_liq_pagos_bloquean_anular() returns trigger
+  language plpgsql security definer set search_path = public as $$
+declare
+  v_n    int;
+  v_suma numeric;
+begin
+  if new.estado = 'anulada' and old.estado <> 'anulada' then
+    select count(*), coalesce(sum(monto), 0) into v_n, v_suma
+    from sueldo_liquidacion_pagos
+    where liquidacion_id = new.id and not anulado;
+
+    if v_n > 0 then
+      raise exception 'ESTADO:esta liquidación tiene % pago(s) vigente(s) por S/%; anulalos con motivo antes de anularla',
+        v_n, v_suma;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_sueldo_liq_pagos_vigentes on sueldo_liquidaciones;
+create trigger trg_sueldo_liq_pagos_vigentes before update on sueldo_liquidaciones
+  for each row execute function private.sueldo_liq_pagos_bloquean_anular();
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+-- 3) Aislamiento y RLS — mismo aislamiento 1 que sueldo_liquidacion_lineas: uno ve sus propios
 --    pagos, el administrador los ve todos. Reusa private.sueldo_liquidacion_es_mia(uuid) de la
 --    0072, no se reescribe el helper.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -94,28 +150,60 @@ create policy sueldo_pago_admin on sueldo_liquidacion_pagos for all
   using (private.app_es_admin()) with check (private.app_es_admin());
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 3) Inmutabilidad — un pago nace, y después sólo se anula. Nunca se edita, nunca se borra.
+-- 4) Inmutabilidad — un pago nace, y después sólo se anula. Nunca se edita, nunca se borra.
 --
 --    Cubre INSERT también, y no sólo UPDATE/DELETE: sin ese primer guard, un insert que evite la
---    RPC (misma cuenta admin, por SQL directo) podría crear un pago contra una liquidación que
---    todavía es 'borrador' o que ya está 'anulada'. La RPC ya lo valida — este es el mismo
---    cinturón de más que sueldo_sellado_inmutable le puso a sueldo_movimientos en la 0072: la
---    regla no depende de que quien escribe la respete, depende de que la base la haga cumplir.
+--    RPC (misma cuenta admin, por SQL directo o PostgREST) podría crear un pago contra una
+--    liquidación que todavía es 'borrador' o que ya está 'anulada' — o pagar de más. La RPC ya
+--    valida todo esto para dar el mensaje amable, pero **la regla del saldo vive acá, en la base,
+--    no sólo en la RPC** (spec §2.6, hallazgo del verificador): este es el mismo cinturón de más
+--    que sueldo_sellado_inmutable le puso a sueldo_movimientos en la 0072. Mismo `for update`
+--    sobre la liquidación que usa sueldo_liquidacion_pagar() — dentro de la misma transacción
+--    Postgres no se autobloquea por pedir un lock que ya tiene, así que un abono por RPC no
+--    duplica el lock al disparar este trigger.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create or replace function private.sueldo_pago_inmutable() returns trigger
   language plpgsql security definer set search_path = public as $$
 declare
-  v_estado text;
+  v_estado  text;
+  v_total   numeric;
+  v_pagado  numeric;
 begin
   if TG_OP = 'DELETE' then
     raise exception 'CONGELADA:un pago de liquidación no se borra; se anula con motivo, el rastro tiene que quedar';
   end if;
 
   if TG_OP = 'INSERT' then
-    select l.estado into v_estado from sueldo_liquidaciones l where l.id = new.liquidacion_id;
+    -- `registrado_por` no lleva `not null` en la columna (así puede quedar en null si el empleado
+    -- que lo cargó se borra después — on delete set null), pero AL NACER un pago siempre tiene
+    -- que traer quién lo registró. Sin este guard, un insert directo por SQL crudo deja un pago
+    -- sin autor desde el origen, no sólo después de un borrado.
+    if new.registrado_por is null then
+      raise exception 'DATO:un pago tiene que quedar con quién lo registró';
+    end if;
+
+    select l.estado, l.total into v_estado, v_total
+    from sueldo_liquidaciones l where l.id = new.liquidacion_id for update;
+
     if v_estado is distinct from 'cerrada' then
       raise exception 'ESTADO:sólo se paga una liquidación cerrada (está %)', coalesce(v_estado, 'inexistente');
     end if;
+
+    -- Anti-sobrepago acá también. Un pago que nace ya anulado (caso raro, pero la tabla lo
+    -- permite) no cuenta contra el saldo: no se le está pidiendo plata a nadie con esa fila.
+    -- 'NaN' cae solo: por cómo Postgres ordena numeric, NaN es "mayor" que cualquier total, así
+    -- que la comparación de abajo lo rechaza igual (y el check de la tabla lo cierra aparte).
+    if not new.anulado then
+      select coalesce(sum(monto), 0) into v_pagado
+      from sueldo_liquidacion_pagos
+      where liquidacion_id = new.liquidacion_id and not anulado;
+
+      if v_pagado + new.monto > v_total then
+        raise exception 'SALDO:este abono deja % pagado contra un total de %; supera lo que falta cobrar',
+          (v_pagado + new.monto), v_total;
+      end if;
+    end if;
+
     return new;
   end if;
 
@@ -148,7 +236,7 @@ create trigger trg_sueldo_pago_no_truncate before truncate on sueldo_liquidacion
   for each statement execute function private.sueldo_no_truncate();
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 4) Auditoría — mismo trigger genérico de la 0058 que ya audita el resto de las tablas de
+-- 5) Auditoría — mismo trigger genérico de la 0058 que ya audita el resto de las tablas de
 --    sueldos (0072 §10). Un pago es una decisión de plata tanto como cualquiera de esas.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 drop trigger if exists trg_audit_sueldo_liquidacion_pagos on sueldo_liquidacion_pagos;
@@ -156,7 +244,7 @@ create trigger trg_audit_sueldo_liquidacion_pagos after insert or update or dele
   for each row execute function private.audit_log_trigger();
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 5) sueldo_liquidacion_pagar(...) — registra un abono
+-- 6) sueldo_liquidacion_pagar(...) — registra un abono
 --
 --    `security invoker` con `set search_path = public` y un guard explícito adentro, igual que
 --    las tres RPC de la 0073: la RLS del actor decide el alcance, y el guard no depende de que
@@ -183,6 +271,11 @@ begin
   if not private.app_es_admin() then
     raise exception 'PERMISO:sólo el administrador registra pagos de liquidación';
   end if;
+
+  -- Se redondea ANTES de validar nada, para que lo que se valida (contra cero, contra el saldo)
+  -- sea exactamente lo que se guarda. Redondear después dejaría pasar un monto que aprobó la
+  -- validación con más decimales y se guarda distinto (spec §2.6, hallazgo del verificador).
+  p_monto := round(p_monto, 2);
 
   if p_fecha is null then
     raise exception 'DATO:hace falta la fecha del pago';
@@ -228,7 +321,7 @@ comment on function sueldo_liquidacion_pagar(uuid, date, numeric, text, text) is
    sobre la liquidación, a prueba de dos abonos simultáneos.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 6) sueldo_liquidacion_pago_anular(...) — el único camino para deshacer un abono
+-- 7) sueldo_liquidacion_pago_anular(...) — el único camino para deshacer un abono
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create or replace function sueldo_liquidacion_pago_anular(p_pago_id uuid, p_motivo text)
   returns jsonb language plpgsql volatile security invoker set search_path = public as $fn$
@@ -267,7 +360,7 @@ comment on function sueldo_liquidacion_pago_anular(uuid, text) is
    sólo deja pasar exactamente esta transición.';
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 7) Catálogo de métodos de pago (spec §2.6 y §6) — no-negociable 5: default explícito,
+-- 8) Catálogo de métodos de pago (spec §2.6 y §6) — no-negociable 5: default explícito,
 --    comentado como tal, editable desde /configuracion. Los cinco valores son los que la spec
 --    PROPONE (23-ago-2026, sin confirmar con el dueño todavía — ya anotado en la spec §6, no
 --    hace falta otra fila en pendientes-negocio.md).
