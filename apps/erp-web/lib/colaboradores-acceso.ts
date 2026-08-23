@@ -28,8 +28,13 @@ export async function accesoColaboradores(): Promise<Acceso | null> {
     matriz = {};
   }
 
-  const secciones = SECCIONES.filter((s) =>
-    puede(matriz, sesion.usuario.rol, s.modulo, 'ver', sesion.usuario.rolCod),
+  // soloAdmin es una segunda condición, no un reemplazo: la sección necesita el módulo Y —si lo
+  // pide— ser admin/dueño. Sin esto, un rol no-admin con 'sueldos' o 'pagos' tildado en
+  // /configuracion/permisos veía una pestaña que adentro siempre tiene el candado puesto (ROTURA
+  // 3, hotfix R1.1) — ver el porqué de cada soloAdmin en colaboradores-secciones.ts.
+  const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
+  const secciones = SECCIONES.filter(
+    (s) => (esAdmin || !s.soloAdmin) && puede(matriz, sesion.usuario.rol, s.modulo, 'ver', sesion.usuario.rolCod),
   ).map((s) => s.clave);
 
   return { sesion, secciones };

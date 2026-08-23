@@ -28,13 +28,24 @@ export default async function ResumenColaboradorPage({
 }) {
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
-  if (!acceso.secciones.includes('resumen')) redirect('/personal');
+
+  const periodo = leerPeriodo(searchParams);
+  const query = queryPeriodo(periodo);
+
+  if (!acceso.secciones.includes('resumen')) {
+    // Un rol sin 'resumen' (p.ej. sólo 'pagos') puede tener igual otras secciones habilitadas: se
+    // lo manda a la PRIMERA que sí puede ver, con el período puesto, en vez de rebotarlo a la
+    // lista — el bare /personal/{id} es justo el link que usa la lista (ROTURA 2, hotfix R1.1). El
+    // rol queda parado en un bucle cerrado si no: la lista lo manda acá y acá lo manda a la lista.
+    // Sólo si no le queda NINGUNA sección se vuelve a /personal, que es el único lugar donde ese
+    // rol puede estar parado.
+    if (acceso.secciones.length === 0) redirect('/personal');
+    redirect(rutaSeccion(params.id, acceso.secciones[0], query));
+  }
 
   const persona = await obtenerColaborador(params.id);
   if (!persona) notFound();
 
-  const periodo = leerPeriodo(searchParams);
-  const query = queryPeriodo(periodo);
   const [estado, desempeno] = await Promise.all([
     estadoDeColaborador(persona.id, periodo),
     miDesempeno(persona.id, periodo.desde, periodo.hasta),

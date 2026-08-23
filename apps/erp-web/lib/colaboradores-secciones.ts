@@ -42,6 +42,16 @@ export type Seccion = {
   modulo: string;
   /** Qué se hace acá, en una línea. Se muestra como título de la sección. */
   descripcion: string;
+  /**
+   * true si la PANTALLA de esta sección hardcodea `rol === 'admin' || rol === 'dueno'` por
+   * dentro, además de lo que diga la matriz (ver cada page.tsx bajo app/personal/[id]/). Sin
+   * esto, un rol no-admin al que el administrador le tildó 'ver' en el módulo de la sección
+   * (p.ej. 'sueldos' o 'pagos', configurables en /configuracion/permisos) ve la pestaña en la
+   * navegación y adentro choca con un candado fijo — la pestaña queda como un callejón sin
+   * salida (ROTURA 3, hotfix R1.1). Con esto, accesoColaboradores() ya no la ofrece; el gate
+   * hardcodeado de la pantalla se queda igual, como segunda defensa.
+   */
+  soloAdmin?: boolean;
 };
 
 export const SECCIONES: Seccion[] = [
@@ -55,6 +65,7 @@ export const SECCIONES: Seccion[] = [
     // mecanismo, igual que el gate hardcodeado que tenía la pantalla suelta).
     modulo: 'empleados',
     descripcion: 'Identidad, rol, sede, contacto y acceso de la persona',
+    soloAdmin: true,
   },
   {
     clave: 'resumen',
@@ -71,6 +82,7 @@ export const SECCIONES: Seccion[] = [
     icon: CalendarCheck,
     modulo: 'sueldos',
     descripcion: 'Declarar qué pasó cada día del período',
+    soloAdmin: true,
   },
   {
     clave: 'evaluacion',
@@ -99,6 +111,7 @@ export const SECCIONES: Seccion[] = [
     icon: Wallet,
     modulo: 'pagos',
     descripcion: 'La liquidación del período y su registro',
+    soloAdmin: true,
   },
   {
     clave: 'movimientos',
@@ -107,6 +120,7 @@ export const SECCIONES: Seccion[] = [
     icon: HandCoins,
     modulo: 'sueldos',
     descripcion: 'Adelantos, descuentos y ventas atribuidas',
+    soloAdmin: true,
   },
   {
     clave: 'contrato',
@@ -115,6 +129,7 @@ export const SECCIONES: Seccion[] = [
     icon: FileSignature,
     modulo: 'sueldos',
     descripcion: 'Lo pactado: modalidad, sueldo y horario',
+    soloAdmin: true,
   },
 ];
 
