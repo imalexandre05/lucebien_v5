@@ -118,7 +118,9 @@ export const SECCIONES: Seccion[] = [
   },
   {
     clave: 'pago',
-    label: 'Pago',
+    // R4 (spec §2.6/§2.7): la liquidación pasó a ser el pago, así que el nombre de la pestaña lo
+    // dice. Clave y segmento no se tocan — la URL /personal/{id}/pago no se mueve.
+    label: 'Liquidación y pago',
     segmento: 'pago',
     icon: Wallet,
     modulo: 'pagos',
