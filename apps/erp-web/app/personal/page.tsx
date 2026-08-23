@@ -1,4 +1,6 @@
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { Award, CalendarCheck, Coins, FileSignature, ShoppingBag, Wallet, type LucideIcon } from 'lucide-react';
 import { puede, type MatrizPermisos } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
@@ -8,6 +10,7 @@ import { MODULOS_DEL_MODULO } from '../../lib/colaboradores-secciones';
 import { listarColaboradores, estadoDelPeriodo } from '../../lib/colaboradores-repo';
 import { PageHeader } from '../../components/shell/page-header';
 import { ReauthGate } from '../../components/ui/reauth-gate';
+import { Card, CardContent } from '../../components/ui/card';
 import { ListaColaboradores } from './cliente';
 
 // El módulo único que pidió reemplazar ocho entradas sueltas del menú (Evaluaciones, Pagos,
@@ -21,6 +24,30 @@ import { ListaColaboradores } from './cliente';
 // menú ya mostraba por separado, y cada sección de adentro conserva el suyo (ver
 // lib/colaboradores-secciones.ts). Reautenticación como en /evaluaciones y /pagos: acá se cruza
 // nota, asistencia y sueldo de terceros, que es lo más sensible del sistema.
+
+// HERRAMIENTAS DEL PERÍODO (Tarea 2 de la fusión R1-R4): el hub /sueldos (F1, cinco tarjetas
+// grandes explicando el recorrido) queda absorbido acá como una fila compacta arriba de la lista
+// — la lista de personas sigue siendo la protagonista. /sueldos ahora redirige para acá.
+//
+// GATE REAL, no el de la matriz. Las cinco pantallas de /sueldos/* no llaman
+// puede(matriz, rol, 'sueldos', ...): cada una hardcodea `rol === 'admin' || rol === 'dueno'`
+// (ver p.ej. app/sueldos/asistencia/page.tsx). 'sueldos' sí existe como módulo configurable en
+// /configuracion/permisos —decide si "Personal" aparece en el menú (sidebar.tsx)— pero un rol
+// no-admin con 'sueldos' tildado ahí igual choca con esa pared al entrar a cualquiera de esas
+// cinco. Gatear el enlace con puede() le mostraría una herramienta que no puede usar; por eso acá
+// se replica el gate real (esAdmin), no el de la matriz. Evaluaciones sí usa puede() porque
+// /evaluaciones lo hace de verdad (ver app/evaluaciones/page.tsx).
+type Herramienta = { href: string; icono: LucideIcon; label: string; gate: 'admin' | 'evaluaciones' };
+
+const HERRAMIENTAS: Herramienta[] = [
+  { href: '/sueldos/asistencia', icono: CalendarCheck, label: 'Declarar asistencia', gate: 'admin' },
+  { href: '/sueldos/ventas', icono: ShoppingBag, label: 'Ventas y metas', gate: 'admin' },
+  { href: '/sueldos/movimientos', icono: Wallet, label: 'Adelantos y descuentos', gate: 'admin' },
+  { href: '/sueldos/liquidaciones', icono: Coins, label: 'Liquidar el periodo', gate: 'admin' },
+  { href: '/sueldos/acuerdos', icono: FileSignature, label: 'Contratos', gate: 'admin' },
+  { href: '/evaluaciones', icono: Award, label: 'Evaluaciones del mes', gate: 'evaluaciones' },
+];
+
 export default async function ColaboradoresPage({
   searchParams,
 }: {
@@ -49,6 +76,10 @@ export default async function ColaboradoresPage({
     );
   }
 
+  const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
+  const puedeEvaluaciones = puede(matriz, sesion.usuario.rol, 'evaluaciones', 'ver', sesion.usuario.rolCod);
+  const herramientas = HERRAMIENTAS.filter((h) => (h.gate === 'admin' ? esAdmin : puedeEvaluaciones));
+
   const periodo = leerPeriodo(searchParams);
   const colaboradores = await listarColaboradores();
   const estado = await estadoDelPeriodo(
@@ -62,6 +93,32 @@ export default async function ColaboradoresPage({
         title="Colaboradores"
         subtitle={`${colaboradores.length} activos · elegí a quién mirar y en qué período`}
       />
+
+      {herramientas.length > 0 && (
+        <div className="mb-5">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+            Herramientas del período
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {herramientas.map((h, i) => {
+              const Icono = h.icono;
+              return (
+                <Link key={h.href} href={h.href} className="animate-rise" style={{ animationDelay: `${i * 40}ms` }}>
+                  <Card interactive className="h-full">
+                    <CardContent className="flex flex-col items-center gap-2 p-3 text-center">
+                      <span className="rounded-lg bg-navy/5 p-2 text-navy">
+                        <Icono className="h-4 w-4" aria-hidden="true" />
+                      </span>
+                      <span className="text-xs font-medium text-navy">{h.label}</span>
+                    </CardContent>
+                  </Card>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <ListaColaboradores
         colaboradores={colaboradores}
         estado={Object.fromEntries(estado)}
