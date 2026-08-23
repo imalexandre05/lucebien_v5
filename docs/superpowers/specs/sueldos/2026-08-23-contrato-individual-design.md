@@ -4,8 +4,13 @@
 > prueba real de Alexander sobre el ERP (22-ago-2026, con capturas). Todas son de presentación:
 > ninguna toca `packages/core`, ninguna escribe una migración, ninguna cambia un cálculo de pago.
 >
-> **Estado:** aprobada por Alexander el 23-ago-2026, en conversación, con el diseño validado
-> paso a paso (incluido un mockup comparativo de tres layouts para el horario — eligió B).
+> **Estado:** construida el 23-ago-2026 (C-1 a C-4, commits `1c39096`..`a947bb0`, cada tarea con
+> revisión propia en verde). Pendientes de §4 sin cambios. Nota que dejó la revisión de C-4: si
+> algún día `horasMinimasAlmuerzo` se configura en 0, el techo de almuerzos contaría también los
+> días sin horario (`0 >= 0`) — corregirlo pasa primero por esta spec (Zone Guard).
+>
+> Diseño aprobado por Alexander el 23-ago-2026, con mockup comparativo de tres layouts para el
+> horario — eligió B.
 >
 > **Zona de rigor:** spec corta. Pantalla existente, sin campo de negocio nuevo, sin motor.
 
