@@ -8,7 +8,7 @@
 > **Cuándo leerlo:** antes de pintar cualquier cosa. Sin esto, el camino corto es escribir
 > `bg-emerald-600` y agregar el verde número cuatro del sistema.
 >
-> **Última pasada:** 2026-08-20.
+> **Última pasada:** 2026-08-21.
 
 ---
 
@@ -210,7 +210,9 @@ nacieron de encontrar la misma pieza copiada en nueve pantallas.
 | `EmptyState` | El hueco con nombre: ícono, título y qué hacer |
 | `Skeleton` · `SkeletonStat` · `SkeletonCard` · `SkeletonPagina` | Siluetas de carga |
 | `DialogoConfirmar` + `useConfirmacion` | La confirmación de algo irreversible. Reemplaza a `window.confirm()` |
-| `Modal` · `Spinner` · `PersonaPicker` · `ActivoPicker` · `MontoInput` · `OpcionBotones` | Piezas de formulario y diálogo |
+| `Modal` · `Spinner` · `PersonaPicker` · `ActivoPicker` · `MontoInput` | Piezas de formulario y diálogo |
+| `OpcionBotones` | Botones en vez de un `<select>`. `tamano`: `compacto` (default) o `grande` (44 px, para lo que se llena de pie). `layout`: `fila` (pills) o `grilla` (celdas iguales; las columnas las pone quien llama con `className`). `punto` pinta un disco de color en la opción |
+| `Avatar` · `tonoAvatar()` | Iniciales en un disco. El tono sale del nombre, así que la misma persona sale siempre del mismo color en toda la aplicación |
 
 ### Detalles que no son obvios
 
@@ -344,6 +346,33 @@ que justo donde más falta hacía era donde no aparecía.
 
 ---
 
+## 6 bis. Elegir de un conjunto conocido
+
+Todo campo cuyo valor sale de una lista cerrada —tipos, tallas, motivos, niveles, destinos— va en
+**botones**, no en un `<select>`. Media plantilla llena el ERP de pie, en el mostrador, con el
+teléfono en una mano: cada desplegable es abrir la lista del sistema, buscar, elegir y cerrar, y
+después el valor elegido queda escondido dentro de la caja.
+
+**La excepción es el largo.** Diecisiete colores de tela en botones ocupaban cuatro filas y
+empujaban el resto del formulario fuera de la pantalla. Ahí vuelve el menú —que se despliega sobre
+lo que ya hay y no mueve nada— pero **con el punto del color elegido al lado del nombre**, que era
+el problema de fondo: «Azul acero» y «Azul presidente» leídos no se distinguen, vistos sí. Dentro
+del menú van agrupados por familia con `<optgroup>`.
+
+El corte, entonces, no es una cantidad de opciones: es **si mostrarlas todas cabe sin tapar el
+trabajo**. Hasta ahí, botones.
+
+Tres cosas que se aprendieron aplicándolo en Envío a Lavandería:
+
+- **Las escalas distintas se separan.** Dieciocho tallas en una sola fila obligan a leerla entera;
+  partidas en adulto y niño, cada una se ve de un vistazo.
+- **Lo que ya está contado se enciende.** Seis contadores de accesorios en cero se leen todos
+  iguales. El que tiene al menos uno se marca en oro, y así se ve qué falta sin repasar uno por uno.
+- **Un «Otros» pide que lo describan.** Si no, la prenda entra al pipeline llamándose «Otros» y
+  ahí se pierde.
+
+---
+
 ## 7. Escritura
 
 Es parte del diseño, no un acabado.
@@ -352,7 +381,7 @@ Es parte del diseño, no un acabado.
 - Frases que dicen qué pasó y qué hacer. «No se pudo guardar: falta la hora de salida» sirve;
   «Ocurrió un error» no.
 - Sin signos de exclamación en confirmaciones. Sin «Ups».
-- Los números van en `font-mono` con `tabular-nums`: sin eso, una columna de cifras baila al
+- Los números van en `tabular-nums`: sin eso, una columna de cifras baila al
   actualizarse.
 - Un botón deshabilitado **dice por qué**, y lo dice también en el celular.
 

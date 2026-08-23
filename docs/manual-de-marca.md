@@ -171,7 +171,7 @@ El dorado es un color **de acento, no de fondo**. Reglas:
 |---|---|---|
 | **Display / Marca** | Cormorant Garamond | Solo logo, títulos hero en e-commerce, precio de prenda destacado |
 | **Cuerpo / UI** | Inter | Todo el texto de interfaz, párrafos, botones, labels |
-| **Datos / Técnico** | JetBrains Mono | Códigos de prenda, precios en tabla, fechas, contadores |
+| **Datos / Técnico** | JetBrains Mono | Códigos de prenda y precios **en pieza impresa**. Ver la nota de abajo |
 
 ### Escala tipográfica
 
