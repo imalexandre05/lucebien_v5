@@ -8,6 +8,7 @@ import {
 } from '@scilb/core';
 import { mapaNombres } from './directorio';
 import { getServerClient } from './supabase/server';
+import { leerConfigMap } from './config-repo';
 
 /**
  * sueldos-repo.ts — acceso a datos del motor de sueldos (migraciones 0072 y 0073).
@@ -48,6 +49,8 @@ import { getServerClient } from './supabase/server';
  * - `DESACTUALIZADA` — se cargó algo entre el cálculo y el cierre. Hay que recalcular.
  * - `CONGELADA` — se intentó tocar algo ya liquidado. No se reintenta: se corrige el mes en curso.
  * - `CONFIG` — un parámetro de `/configuracion` no es un número. Lo arregla el administrador.
+ * - `SALDO` — código de la 0080 (`sueldo_liquidacion_pagar`): el abono pedido deja lo pagado por
+ *   encima del total de la liquidación. No se reintenta con el mismo monto.
  */
 export type CodigoSueldo =
   | 'PERMISO'
@@ -55,7 +58,8 @@ export type CodigoSueldo =
   | 'ESTADO'
   | 'DESACTUALIZADA'
   | 'CONGELADA'
-  | 'CONFIG';
+  | 'CONFIG'
+  | 'SALDO';
 
 export class SueldoRpcError extends Error {
   codigo?: CodigoSueldo;
@@ -73,6 +77,7 @@ const CODIGOS: readonly string[] = [
   'DESACTUALIZADA',
   'CONGELADA',
   'CONFIG',
+  'SALDO',
 ];
 
 function errorSueldo(error: { message?: string } | null): SueldoRpcError {
@@ -809,4 +814,171 @@ export async function obtenerLiquidacion(id: string): Promise<LiquidacionDetalle
     resultado: r.resultado as Liquidacion,
     lineas,
   };
+}
+
+// ── Pagos de liquidación (migración 0080) ──────────────────────────────────────────────────
+//
+// «La liquidación es el pago» (spec §2.6): sobre una liquidación `cerrada` se acumulan abonos
+// hasta saldarla. El total es el de `sueldo_liquidaciones.total`, ya congelado al cerrar — acá
+// sólo se lee y se escribe la lista de abonos contra ese total. La regla de negocio (no pagar de
+// más, no pagar un borrador, no editar ni borrar un pago) vive en la migración 0080: esta capa
+// wrappea la tabla y las dos RPC, no reimplementa nada de eso.
+//
+// DEGRADACIÓN ELEGANTE. La 0080 puede no estar aplicada todavía en la base contra la que corre
+// esta pantalla (la aplica el controlador después de la verificación adversarial de la Tarea 10).
+// Mismo patrón que ValoresNoMigradoError/SolicitudesNoMigradoError: la tabla o la función
+// faltante se traducen a LiquidacionPagosNoMigradoError, y la pantalla la atrapa para avisar en
+// vez de reventar con un 500.
+
+export class LiquidacionPagosNoMigradoError extends Error {
+  constructor() {
+    super('Falta aplicar la migración 0080 (tabla sueldo_liquidacion_pagos y sus RPC).');
+    this.name = 'LiquidacionPagosNoMigradoError';
+  }
+}
+
+function esTablaOFuncionInexistente(error: { code?: string; message?: string } | null): boolean {
+  if (!error) return false;
+  const msg = (error.message ?? '').toLowerCase();
+  return (
+    error.code === 'PGRST205' ||
+    error.code === 'PGRST202' ||
+    error.code === '42P01' ||
+    error.code === '42883' ||
+    /could not find the table/i.test(msg) ||
+    /could not find the function/i.test(msg)
+  );
+}
+
+export type PagoLiquidacion = {
+  id: string;
+  liquidacionId: string;
+  fecha: string;
+  monto: number;
+  metodo: string;
+  nota: string | null;
+  /** Nombre de quién lo cargó, resuelto vía el directorio. `null` si la cuenta ya no existe. */
+  registradoPor: string | null;
+  anulado: boolean;
+  anuladoMotivo: string | null;
+  anuladoEn: string | null;
+  creadoEn: string;
+};
+
+type RowPagoLiquidacion = {
+  id: string;
+  liquidacion_id: string;
+  fecha: string;
+  monto: number | string;
+  metodo: string;
+  nota: string | null;
+  registrado_por: string | null;
+  anulado: boolean;
+  anulado_motivo: string | null;
+  anulado_en: string | null;
+  creado_en: string;
+};
+
+function aPagoLiquidacion(r: RowPagoLiquidacion, nombre: string | null): PagoLiquidacion {
+  return {
+    id: r.id,
+    liquidacionId: r.liquidacion_id,
+    fecha: (r.fecha ?? '').slice(0, 10),
+    monto: Number(r.monto ?? 0),
+    metodo: r.metodo,
+    nota: r.nota,
+    registradoPor: nombre,
+    anulado: Boolean(r.anulado),
+    anuladoMotivo: r.anulado_motivo,
+    anuladoEn: r.anulado_en,
+    creadoEn: r.creado_en,
+  };
+}
+
+/**
+ * Los abonos de una liquidación, del más reciente al más viejo. La RLS de la 0080 ya dice quién
+ * ve qué (aislamiento 1): acá no se filtra por empleado, sólo por liquidación — es un filtro de
+ * pantalla, no de seguridad, igual que el resto de este archivo (ver nota 1 de la cabecera).
+ */
+export async function listarPagosLiquidacion(liquidacionId: string): Promise<PagoLiquidacion[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('sueldo_liquidacion_pagos')
+    .select('*')
+    .eq('liquidacion_id', liquidacionId)
+    .order('fecha', { ascending: false })
+    .order('creado_en', { ascending: false });
+  if (error) {
+    if (esTablaOFuncionInexistente(error)) throw new LiquidacionPagosNoMigradoError();
+    throw errorSueldo(error);
+  }
+
+  const rows = (data as RowPagoLiquidacion[]) ?? [];
+  const nombre = await mapaNombres();
+  return rows.map((r) => aPagoLiquidacion(r, r.registrado_por ? (nombre.get(r.registrado_por) ?? null) : null));
+}
+
+export type PagoLiquidacionInput = {
+  liquidacionId: string;
+  fecha: string;
+  monto: number;
+  metodo: string;
+  nota?: string;
+};
+
+/**
+ * Registra un abono. Los nombres de parámetro son los EXACTOS de `sueldo_liquidacion_pagar(...)`
+ * en la 0080 — cambiarlos acá sin cambiar la migración rompe la llamada en silencio (PostgREST
+ * no avisa de un parámetro de más o de menos con un mensaje claro).
+ *
+ * Anti-sobrepago, borrador pagable, liquidación anulada: todo lo valida la RPC con el `select …
+ * for update` de la migración. Acá no se repite ninguna de esas comprobaciones.
+ */
+export async function pagarLiquidacion(p: PagoLiquidacionInput): Promise<string> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('sueldo_liquidacion_pagar', {
+    p_liquidacion_id: p.liquidacionId,
+    p_fecha: p.fecha,
+    p_monto: p.monto,
+    p_metodo: p.metodo,
+    p_nota: p.nota?.trim() || null,
+  });
+  if (error) {
+    if (esTablaOFuncionInexistente(error)) throw new LiquidacionPagosNoMigradoError();
+    throw errorSueldo(error);
+  }
+  return String(data as string);
+}
+
+/** El único camino para deshacer un abono. El motivo es obligatorio, como en el resto del módulo. */
+export async function anularPagoLiquidacion(pagoId: string, motivo: string): Promise<void> {
+  if (motivo.trim().length === 0) {
+    throw new SueldoRpcError('Hace falta el motivo de la anulación.', 'DATO');
+  }
+  const sb = getServerClient();
+  const { error } = await sb.rpc('sueldo_liquidacion_pago_anular', {
+    p_pago_id: pagoId,
+    p_motivo: motivo.trim(),
+  });
+  if (error) {
+    if (esTablaOFuncionInexistente(error)) throw new LiquidacionPagosNoMigradoError();
+    throw errorSueldo(error);
+  }
+}
+
+// Mismos cinco valores que siembra la 0080 §7 en `config.sueldo_metodos_pago` — la spec los marca
+// como PROPUESTA sin confirmar con el dueño todavía (§6), así que este default es una copia
+// literal del seed, no una decisión nueva tomada acá.
+const METODOS_PAGO_DEFAULT = ['Efectivo', 'Yape', 'Plin', 'Transferencia', 'Otro'];
+
+/** El catálogo de métodos de pago de liquidación, editable desde /configuracion (no-negociable 5). */
+export async function leerMetodosPago(): Promise<string[]> {
+  const config = await leerConfigMap();
+  const crudo = config['sueldo_metodos_pago'];
+  if (!crudo) return METODOS_PAGO_DEFAULT;
+  const metodos = crudo
+    .split(',')
+    .map((m) => m.trim())
+    .filter(Boolean);
+  return metodos.length > 0 ? metodos : METODOS_PAGO_DEFAULT;
 }
