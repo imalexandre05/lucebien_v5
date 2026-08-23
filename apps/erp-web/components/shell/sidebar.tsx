@@ -180,10 +180,14 @@ export function SidebarNav({
   );
 }
 
+// El pie decía «Fase 1 · demo» en todas las pantallas, incluida la de un colaborador. Mientras el
+// sistema era una maqueta eso era honesto; ahora va a llevar sueldos de personas reales, y una
+// pantalla que se anuncia como demo invita a no confiar en lo que muestra. Queda el nombre de la
+// empresa, que es de quien es el sistema.
 export function SidebarFooter() {
   return (
     <div className="border-t border-white/10 px-6 py-4 text-[11px] leading-relaxed text-paper/40">
-      Fase 1 · demo
+      Sistema de Control Interno
       <br />
       Confecciones Aliaga E.I.R.L.
     </div>
