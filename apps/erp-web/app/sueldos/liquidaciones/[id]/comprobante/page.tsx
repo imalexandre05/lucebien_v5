@@ -1,6 +1,11 @@
 import { Fragment } from 'react';
 import { notFound } from 'next/navigation';
-import { obtenerLiquidacion } from '../../../../../lib/sueldos-repo';
+import {
+  obtenerLiquidacion,
+  listarPagosLiquidacion,
+  LiquidacionPagosNoMigradoError,
+  type PagoLiquidacion,
+} from '../../../../../lib/sueldos-repo';
 import { fechaHoraCorta } from '../../../../../lib/fechas';
 import { Table, TBody, TD, TH, THead, TR } from '../../../../../components/ui/table';
 import { ImprimirResumen } from './imprimir';
@@ -19,7 +24,9 @@ const GRUPO_LABEL: Record<string, string> = {
   ingreso: 'Ingresos',
   descuento: 'Descuentos',
   ajuste: 'Ajustes',
-  final: 'Total',
+  // F3 (validador de flujo 23-ago-2026): el grupo trae tardanzas, reportes y bonos además del
+  // total — "Total" a secas prometía una sola cifra donde hay varias líneas.
+  final: 'Cierre y total',
 };
 
 export default async function ComprobanteLiquidacionPage({ params }: { params: { id: string } }) {
@@ -29,6 +36,27 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
   // Las lineas solo se escriben al cerrar (comentario de LineaGuardada en sueldos-repo.ts): un
   // borrador todavia no tiene nada guardado para mostrar sin inventarlo.
   const sinCerrar = liq.lineas.length === 0;
+
+  // Pagos registrados (F1, validador de flujo 23-ago-2026): el papel mostraba el total pero no si
+  // ya se había pagado. Se agrega en silencio — un borrador no tiene pagos que mostrar todavía, y
+  // si la migración 0080 no está aplicada en esta base, el resto del comprobante se sigue
+  // imprimiendo igual (mismo criterio de degradación de sueldos-repo.ts y de la pestaña
+  // Liquidación y pago).
+  let pagos: PagoLiquidacion[] | null = null;
+  if (!sinCerrar) {
+    try {
+      pagos = await listarPagosLiquidacion(liq.id);
+    } catch (e) {
+      if (!(e instanceof LiquidacionPagosNoMigradoError)) throw e;
+      pagos = null;
+    }
+  }
+  // Aritmética de sólo pantalla, igual que la pestaña Liquidación y pago
+  // (app/personal/[id]/pago/cliente.tsx): suma de lo NO anulado contra el total ya congelado.
+  const pagado = pagos ? Math.round(pagos.filter((p) => !p.anulado).reduce((s, p) => s + p.monto, 0) * 100) / 100 : 0;
+  const saldo = pagos ? Number((liq.total - pagado).toFixed(2)) : 0;
+  // total <= 0 (descuentos >= ingresos) nunca fue "pagado" — un saldo ahí no es una deuda real.
+  const sinMontoAPagar = liq.total <= 0;
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -135,6 +163,56 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
             </div>
           )}
         </div>
+
+        {/* 3.5 Pagos registrados (F1, validador de flujo 23-ago-2026): el papel tiene que decir
+            si esto está pagado, no sólo cuánto había que pagar. Se omite en silencio si la 0080
+            no está aplicada (pagos === null); nunca se muestra si es un borrador (sinCerrar). */}
+        {!sinCerrar && pagos != null && (
+          <section className="mt-8">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Pagos registrados</h2>
+            <div className="mt-2 border-t border-line">
+              {pagos.length === 0 ? (
+                <p className="py-4 text-sm text-muted">Sin pagos registrados todavía.</p>
+              ) : (
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Fecha</TH>
+                      <TH>Método</TH>
+                      <TH className="text-right">Monto</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {pagos.map((p) => (
+                      <TR key={p.id} className={p.anulado ? 'text-muted' : undefined}>
+                        <TD className="tabular-nums">{p.fecha}</TD>
+                        <TD>
+                          {p.metodo}
+                          {p.anulado && (
+                            <span className="ml-2 text-xs">anulado: {p.anuladoMotivo ?? '—'}</span>
+                          )}
+                        </TD>
+                        <TD className={p.anulado ? 'text-right tabular-nums line-through' : 'text-right tabular-nums'}>
+                          {soles(p.monto)}
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              )}
+            </div>
+            <div className="mt-3 flex justify-end gap-8 border-t border-line pt-3 text-sm">
+              <div className="text-right">
+                <div className="text-xs uppercase tracking-wide text-muted">Pagado</div>
+                <div className="tabular-nums font-medium text-navy">{soles(pagado)}</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xs uppercase tracking-wide text-muted">Saldo</div>
+                <div className="tabular-nums font-medium text-navy">{sinMontoAPagar ? '—' : soles(saldo)}</div>
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* 4. Observaciones y pendientes de regularizar, si los hay */}
         {/* El panel de "pendientes de regularizar" (paso 14 del flujo, F5) todavía no existe: no

@@ -94,6 +94,11 @@ export async function accionCrearAcuerdo(f: AcuerdoForm): Promise<Resultado> {
 
     const id = await crearAcuerdo(aInput(f), admId);
     revalidatePath('/sueldos/acuerdos');
+    // ROTURA 3 (validador de flujo 23-ago-2026): este mismo editor se monta en
+    // /personal/[id]/contrato (T9), una ruta dinámica que esta línea sola no alcanza — 'layout'
+    // revalida ese path y todo lo que cuelga de él, para cualquier id, igual que ya hacen
+    // /configuracion/permisos y /notificaciones para su propio alcance amplio.
+    revalidatePath('/personal', 'layout');
     return { ok: true, id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'No se pudo guardar el contrato.' };
@@ -110,6 +115,11 @@ export async function accionActualizarAcuerdo(id: string, f: AcuerdoForm): Promi
 
     await actualizarAcuerdo(id, aInput(f));
     revalidatePath('/sueldos/acuerdos');
+    // ROTURA 3 (validador de flujo 23-ago-2026): este mismo editor se monta en
+    // /personal/[id]/contrato (T9), una ruta dinámica que esta línea sola no alcanza — 'layout'
+    // revalida ese path y todo lo que cuelga de él, para cualquier id, igual que ya hacen
+    // /configuracion/permisos y /notificaciones para su propio alcance amplio.
+    revalidatePath('/personal', 'layout');
     return { ok: true, id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'No se pudo guardar el contrato.' };
@@ -130,6 +140,11 @@ export async function accionCambiarEstado(id: string, estado: EstadoAcuerdo): Pr
     }
     await cambiarEstadoAcuerdo(id, estado);
     revalidatePath('/sueldos/acuerdos');
+    // ROTURA 3 (validador de flujo 23-ago-2026): este mismo editor se monta en
+    // /personal/[id]/contrato (T9), una ruta dinámica que esta línea sola no alcanza — 'layout'
+    // revalida ese path y todo lo que cuelga de él, para cualquier id, igual que ya hacen
+    // /configuracion/permisos y /notificaciones para su propio alcance amplio.
+    revalidatePath('/personal', 'layout');
     return { ok: true, id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'No se pudo cambiar el estado.' };

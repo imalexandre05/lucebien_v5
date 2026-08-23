@@ -35,7 +35,9 @@ const GRUPO_LABEL: Record<string, string> = {
   ingreso: 'Ingresos',
   descuento: 'Descuentos',
   ajuste: 'Ajustes',
-  final: 'Total',
+  // F3 (validador de flujo 23-ago-2026): el grupo trae tardanzas, reportes y bonos además del
+  // total — "Total" a secas prometía una sola cifra donde hay varias líneas.
+  final: 'Cierre y total',
 };
 
 /** El desglose, agrupado como lo lee una persona: primero lo que suma, después lo que resta. */
@@ -203,6 +205,10 @@ export function LiquidacionesCliente({
   };
 
   const liq = preview?.liquidacion;
+  // F2 (validador de flujo 23-ago-2026): el contrato que se está liquidando, para llevar su
+  // período al enlace de abajo — sin esto, "cárgalas en Ventas y metas" mandaba a la pantalla
+  // vacía, sin el período puesto, y había que volver a elegirlo a mano.
+  const acuerdoSeleccionado = acuerdos.find((a) => a.id === acuerdoId);
 
   return (
     <>
@@ -290,7 +296,14 @@ export function LiquidacionesCliente({
                       <p className="mt-1">
                         Sin ventas no hay bono de meta semanal ni comisión. Si todavía no las
                         transcribiste desde tuxedo, cárgalas en{' '}
-                        <a className="underline" href="/sueldos/ventas">
+                        <a
+                          className="underline"
+                          href={
+                            acuerdoSeleccionado
+                              ? `/sueldos/ventas?desde=${acuerdoSeleccionado.fechaInicio}&hasta=${acuerdoSeleccionado.fechaFin}`
+                              : '/sueldos/ventas'
+                          }
+                        >
                           Ventas y metas
                         </a>{' '}
                         antes de cerrar.

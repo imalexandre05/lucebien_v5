@@ -11,6 +11,7 @@ import { Card, CardContent } from '../../../components/ui/card';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { Aviso, campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
+import { hoyPeru } from '../../../lib/fechas';
 
 // Paso 1 de la alta encadenada (R2): los mismos campos que tenía el modal «Nuevo colaborador» de
 // EmpleadosCliente —CamposPerfil (nombre, rol, sede, tiendas, fecha de ingreso, notas) más una
@@ -34,7 +35,10 @@ export function NuevaPersonaCliente({
   const [rolValor, setRolValor] = useState<string>('ventas_junior');
   const [sedePrimaria, setSedePrimaria] = useState(sedes[0]?.cod ?? '');
   const [tiendas, setTiendas] = useState<string[]>(sedes[0] ? [sedes[0].cod] : []);
-  const [fechaIngreso, setFechaIngreso] = useState('');
+  // F4 (validador de flujo 23-ago-2026): quien se está registrando casi siempre empieza el mismo
+  // día del alta. Default a hoy, no obligatorio: el campo sigue editable para el caso real de
+  // cargar a alguien que ya venía trabajando.
+  const [fechaIngreso, setFechaIngreso] = useState(hoyPeru());
   const [notas, setNotas] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');

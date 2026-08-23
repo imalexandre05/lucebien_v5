@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, Check } from 'lucide-react';
 import { diaSemanaISO, diasDelPeriodo, resumirHorario } from '@scilb/core';
 import { Badge } from '../../../components/ui/badge';
@@ -93,6 +93,8 @@ export function AsistenciaCliente({
   margenMinutos: number;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
   const conf = useConfirmacion();
@@ -221,7 +223,16 @@ export function AsistenciaCliente({
             <Select
               id="acuerdo"
               value={acuerdo.id}
-              onChange={(e) => router.push(`/sueldos/asistencia?acuerdo=${e.target.value}`)}
+              onChange={(e) => {
+                // F7 (validador de flujo 23-ago-2026): antes esto siempre mandaba a la ruta
+                // suelta /sueldos/asistencia, así que elegir otro contrato desde
+                // /personal/[id]/asistencias sacaba a la persona de su propia ficha. Con
+                // usePathname() se queda donde está montado, y se preservan los demás parámetros
+                // de la URL (el período de la barra) en vez de perderlos.
+                const params = new URLSearchParams(searchParams.toString());
+                params.set('acuerdo', e.target.value);
+                router.push(`${pathname}?${params.toString()}`);
+              }}
             >
               {acuerdos.map((a) => (
                 <option key={a.id} value={a.id}>

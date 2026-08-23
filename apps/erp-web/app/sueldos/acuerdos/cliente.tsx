@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { AlertTriangle, ArrowLeft, Copy, FileSignature, Pencil, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import {
   ESCALAS_SUELDO_DEFAULT,
@@ -26,6 +27,7 @@ import { accionActualizarAcuerdo, accionCambiarEstado, accionCrearAcuerdo, type 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const DIAS_CORTO = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
 const TONO_ESTADO: Record<EstadoAcuerdo, 'gray' | 'green' | 'navy'> = {
   borrador: 'gray',
@@ -280,7 +282,13 @@ export function AcuerdosCliente({
    */
   abrirNuevoAlMontar?: boolean;
 }) {
-  const arrancaEnEditor = Boolean(abrirNuevoAlMontar) && acuerdos.length === 0;
+  const router = useRouter();
+  // R2 (spec §2.4) más el hallazgo F6 del validador de flujo (23-ago-2026): con `personaFija`
+  // (montado en /personal/[id]/contrato) y CERO contratos, arranca directo en el editor aunque no
+  // venga `?continuar=alta` — quien vuelve a una ficha sin contrato (alta interrumpida, o
+  // cualquier otra vuelta) cae lista para trabajar, no frente a un "Todavía no hay ningún
+  // contrato" que exige un clic más para llegar a donde ya se sabe que hay que ir.
+  const arrancaEnEditor = (Boolean(abrirNuevoAlMontar) || Boolean(personaFija)) && acuerdos.length === 0;
   const [editando, setEditando] = useState<string | null>(null);
   const [enEditor, setEnEditor] = useState(arrancaEnEditor);
   const [parametrosAbierto, setParametrosAbierto] = useState(false);
@@ -339,8 +347,14 @@ export function AcuerdosCliente({
     };
     empezar(async () => {
       const r = editando ? await accionActualizarAcuerdo(editando, form) : await accionCrearAcuerdo(form);
-      if (r.ok) volver();
-      else setError(r.error ?? 'No se pudo guardar.');
+      if (r.ok) {
+        volver();
+        // ROTURA 3 (validador de flujo 23-ago-2026): las acciones sólo revalidan la ruta vieja
+        // /sueldos/acuerdos. Montado en /personal/[id]/contrato nadie volvía a pedirle datos al
+        // servidor, así que la lista seguía mostrando lo de antes de guardar. router.refresh()
+        // reobtiene la página actual — sea cual sea la ruta en la que este cliente esté montado.
+        router.refresh();
+      } else setError(r.error ?? 'No se pudo guardar.');
     });
   };
 
@@ -349,6 +363,7 @@ export function AcuerdosCliente({
     empezar(async () => {
       const r = await accionCambiarEstado(id, estado);
       if (!r.ok) setErrorLista(r.error ?? 'No se pudo cambiar el estado.');
+      else router.refresh();
     });
   };
 
@@ -516,11 +531,27 @@ export function AcuerdosCliente({
                             <Plus className="h-4 w-4" /> {r.label}
                           </Button>
                         ))}
-                      {delDia.length > 0 && dia < 7 && (
-                        <Button variant="ghost" onClick={() => copiarDiaASiguientes(dia)}>
-                          <Copy className="h-4 w-4" /> Copiar a los días vacíos siguientes
-                        </Button>
-                      )}
+                      {delDia.length > 0 && dia < 7 && (() => {
+                        // F5 (validador de flujo 23-ago-2026): el botón decía "días vacíos
+                        // siguientes" sin decir cuáles, así que copiar era un salto de fe —
+                        // ¿pisa domingo o no? Acá se listan los días que de verdad van a recibir
+                        // la copia (los que hoy no tienen ningún turno), sin excluir ninguno: los
+                        // locales de LuceBien SÍ abren domingo, así que excluirlo sería inventar
+                        // una regla de negocio que nadie pidió.
+                        const vacios: number[] = [];
+                        for (let d = dia + 1; d <= 7; d++) {
+                          if (!b.turnos.some((t) => t.diaSemana === d)) vacios.push(d);
+                        }
+                        const etiqueta =
+                          vacios.length === 0
+                            ? 'Copiar a los días vacíos siguientes'
+                            : `Copiar a ${vacios.map((d) => DIAS_CORTO[d - 1]).join(', ')}`;
+                        return (
+                          <Button variant="ghost" onClick={() => copiarDiaASiguientes(dia)}>
+                            <Copy className="h-4 w-4" /> {etiqueta}
+                          </Button>
+                        );
+                      })()}
                       <Button variant="ghost" className="ml-auto" onClick={() => agregarTurno(dia)}>
                         <Plus className="h-4 w-4" /> Turno
                       </Button>
