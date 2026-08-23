@@ -10,21 +10,40 @@ import { expect, type Page } from '@playwright/test';
  * admin y otra con rol de colaborador— creadas para esto. Así una prueba nunca deja rastro a
  * nombre de alguien de verdad, y las contraseñas de las personas siguen siendo suyas.
  *
- * Todo se puede pisar por variable de entorno para no dejar credenciales escritas en el
- * repositorio.
+ * LAS CONTRASEÑAS NO ESTÁN ACÁ Y NO PUEDEN ESTAR. Llegan por variable de entorno y no tienen
+ * valor por defecto: si faltan, la prueba se detiene con un mensaje que dice cómo darlas. Una
+ * contraseña con valor por defecto en el repositorio es una contraseña publicada — y estas son de
+ * cuentas que existen de verdad en la base.
+ *
+ *   E2E_ADMIN_PASSWORD=...  E2E_COLAB_PASSWORD=...  npx playwright test
  */
+
+function exigir(variable: string): string {
+  const valor = process.env[variable];
+  if (!valor) {
+    throw new Error(
+      `Falta ${variable}. Las pruebas con sesión necesitan las contraseñas de las cuentas de ` +
+        `prueba y no se guardan en el repositorio. Defínelas antes de correr Playwright.`,
+    );
+  }
+  return valor;
+}
 export const PERFILES = {
   // Quien puede todo: contratos, liquidaciones, pagos, configuración.
   admin: {
     usuario: process.env.E2E_ADMIN_USUARIO || 'Prueba Admin',
-    password: process.env.E2E_ADMIN_PASSWORD || 'PruebaE2E-9901',
+    get password() {
+      return exigir('E2E_ADMIN_PASSWORD');
+    },
     sede: process.env.E2E_ADMIN_SEDE || 'ST',
     sedeNombre: process.env.E2E_ADMIN_SEDE_NOMBRE || 'Stand',
   },
   // Quien sólo trabaja: reporta su turno, ve lo suyo, y no debería ver lo de nadie más.
   colaborador: {
     usuario: process.env.E2E_COLAB_USUARIO || 'Prueba Colaborador',
-    password: process.env.E2E_COLAB_PASSWORD || 'PruebaE2E-9902',
+    get password() {
+      return exigir('E2E_COLAB_PASSWORD');
+    },
     sede: process.env.E2E_COLAB_SEDE || 'AL',
     sedeNombre: process.env.E2E_COLAB_SEDE_NOMBRE || 'Almacen Central',
   },
