@@ -9,6 +9,7 @@ import type { RolDerivado } from '../../lib/roles-repo';
 import type { Sede } from '../../lib/sedes-repo';
 import { accionEstadoEmpleado, accionEditarEmpleado, accionEstablecerContrasena, accionCrearEmpleado, accionTogglePosCobro } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
+import { tonoAvatar } from '../../components/colaboradores/avatar';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
@@ -78,9 +79,13 @@ function Pill({
 
 // Opciones de rol combinadas: los 7 base + los roles derivados activos (Fase 1). Un rol derivado
 // lleva su rol_base entre paréntesis porque ESE es el que manda para la RLS/alcance por sede.
-type OpcionRol = { valor: string; label: string; rolBase: Rol; rolCod: string | null };
+//
+// Exportado (con CamposPerfil, opcionesRol, OperaCajaToggle y ContrasenaForm): la pestaña Datos
+// del expediente (app/personal/[id]/datos/cliente.tsx) reusa esta misma ficha para una sola
+// persona en vez de reescribirla — un formulario, dos lugares que lo montan.
+export type OpcionRol = { valor: string; label: string; rolBase: Rol; rolCod: string | null };
 
-function opcionesRol(rolesDerivados: RolDerivado[]): OpcionRol[] {
+export function opcionesRol(rolesDerivados: RolDerivado[]): OpcionRol[] {
   return [
     ...ROLES_BASE.map((r) => ({ valor: r, label: ROL_LABEL[r], rolBase: r, rolCod: null })),
     ...rolesDerivados
@@ -203,7 +208,7 @@ export function EmpleadosCliente({
             ))}
           </select>
           <OpcionBotones opciones={OPC_FILTRO_ESTADO} value={fEstado} onChange={setFEstado} ariaLabel="Estado" />
-          <span className="font-mono text-xs text-muted tabular-nums">{filtrados.length} colaboradores</span>
+          <span className="tabular-nums text-xs text-muted">{filtrados.length} colaboradores</span>
           <button type="button" onClick={() => setCrear(true)} className={cn(buttonVariants({ variant: 'gold' }), 'ml-auto')}>
             <Plus className="h-4 w-4" strokeWidth={2} /> Nuevo colaborador
           </button>
@@ -231,12 +236,17 @@ export function EmpleadosCliente({
                   <TR key={e.id} className={cn(!e.activo && 'opacity-60')}>
                     <TD className="pl-5">
                       <div className="flex items-center gap-3">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy-deep text-[11px] font-bold text-gold">
+                        <span
+                          className={cn(
+                            'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-bold',
+                            tonoAvatar(e.nombre),
+                          )}
+                        >
                           {iniciales(e)}
                         </span>
                         <div className="min-w-0">
                           <div className="truncate font-medium text-navy">{e.nombre}</div>
-                          <div className="font-mono text-[10px] tracking-widest text-muted">••••</div>
+                          <div className="tabular-nums text-[10px] tracking-widest text-muted">••••</div>
                         </div>
                       </div>
                     </TD>
@@ -244,7 +254,7 @@ export function EmpleadosCliente({
                       <div className="flex flex-wrap gap-1">
                         {e.tiendas.length ? (
                           e.tiendas.map((t) => (
-                            <span key={t} className="rounded bg-navy/5 px-1.5 py-0.5 font-mono text-[10px] text-navy">
+                            <span key={t} className="rounded bg-navy/5 px-1.5 py-0.5 tabular-nums text-[10px] text-navy">
                               {t}
                             </span>
                           ))
@@ -280,7 +290,7 @@ export function EmpleadosCliente({
                         </span>
                       )}
                     </TD>
-                    <TD className="font-mono text-xs">{e.telefono || '—'}</TD>
+                    <TD className="tabular-nums text-xs">{e.telefono || '—'}</TD>
                     <TD className="pr-5">
                       <div className="flex items-center justify-end gap-2">
                         <button
@@ -357,7 +367,7 @@ export function EmpleadosCliente({
 }
 
 // ── Campos compartidos entre Crear y Editar (identidad + rol + sedes + notas) ──────────────────
-function CamposPerfil({
+export function CamposPerfil({
   nombre,
   setNombre,
   rolValor,
@@ -468,6 +478,190 @@ function CamposPerfil({
   );
 }
 
+// ── Contacto y salario (compartido, ver nota en OpcionRol arriba) ──────────────────────────────
+export function ContactoYSalarioCampos({
+  telefono,
+  setTelefono,
+  dni,
+  setDni,
+  direccion,
+  setDireccion,
+  salario,
+  setSalario,
+}: {
+  telefono: string;
+  setTelefono: (v: string) => void;
+  dni: string;
+  setDni: (v: string) => void;
+  direccion: string;
+  setDireccion: (v: string) => void;
+  salario: number;
+  setSalario: (v: number) => void;
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Teléfono</label>
+          <input value={telefono} onChange={(e) => setTelefono(e.target.value)} className={cn(fieldCls, 'w-full')} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">DNI</label>
+          <input value={dni} onChange={(e) => setDni(e.target.value)} className={cn(fieldCls, 'w-full')} />
+        </div>
+      </div>
+      <div>
+        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección</label>
+        <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className={cn(fieldCls, 'w-full')} />
+      </div>
+      <div>
+        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Salario base (S/)</label>
+        <input
+          type="number"
+          step="0.5"
+          value={salario}
+          onChange={(e) => setSalario(Number(e.target.value))}
+          className={cn(fieldCls, 'w-full')}
+        />
+      </div>
+    </>
+  );
+}
+
+// "Opera caja" (Fase 10, punto 4): expone el permiso 'pos_cobro' del rol seleccionado en el picker
+// de arriba como un toggle directo, en vez de mandar al admin hasta la matriz completa de
+// /configuracion/permisos. Compartido (ver nota en OpcionRol arriba).
+export function OperaCajaToggle({
+  rolValor,
+  opciones,
+  matrizPermisos,
+  nombrePersona,
+}: {
+  rolValor: string;
+  opciones: OpcionRol[];
+  matrizPermisos: MatrizPermisos;
+  nombrePersona: string;
+}) {
+  const opcionRolActual = opciones.find((o) => o.valor === rolValor);
+  const esAdminODueno = opcionRolActual?.rolBase === 'admin' || opcionRolActual?.rolBase === 'dueno';
+  const [posCobroPending, startPosCobroTransition] = useTransition();
+  const [posCobroError, setPosCobroError] = useState('');
+  // Override optimista, keado por rol: NO se usa router.refresh() acá — quien monta este bloque
+  // (el modal de /empleados o la pestaña Datos) puede vivir bajo un Suspense que lo desmontaría
+  // a mitad de edición. El toggle ya confirmó server-side (accionTogglePosCobro esperó la
+  // respuesta); reflejar el nuevo valor localmente es correcto y evita el parpadeo.
+  const [posCobroOverride, setPosCobroOverride] = useState<{ rol: string; valor: boolean } | null>(null);
+  const operaCajaBase = opcionRolActual
+    ? puede(matrizPermisos, opcionRolActual.rolBase, 'pos_cobro', 'ver', opcionRolActual.rolCod)
+    : false;
+  const operaCaja = posCobroOverride && posCobroOverride.rol === rolValor ? posCobroOverride.valor : operaCajaBase;
+
+  function togglePosCobro() {
+    if (!opcionRolActual) return;
+    setPosCobroError('');
+    const rolAlTogglear = rolValor;
+    const nuevoValor = !operaCaja;
+    startPosCobroTransition(async () => {
+      const r = await accionTogglePosCobro(rolAlTogglear, nuevoValor);
+      if (!r.ok) {
+        setPosCobroError(r.error ?? 'Error');
+        return;
+      }
+      setPosCobroOverride({ rol: rolAlTogglear, valor: nuevoValor });
+    });
+  }
+
+  if (esAdminODueno) {
+    return (
+      <p className="rounded-md bg-navy/5 px-3 py-2 text-[11px] text-muted">
+        Administrador/dueño siempre puede operar caja — no depende de este permiso.
+      </p>
+    );
+  }
+
+  return (
+    <div className="rounded-md border border-line bg-paper/40 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
+          <div>
+            <p className="text-sm font-medium text-navy">Opera caja</p>
+            <p className="text-[11px] text-muted">
+              Permiso de cajero (<span className="tabular-nums">pos_cobro</span>) del rol{' '}
+              <span className="font-medium">{opcionRolActual?.label}</span> — aplica a TODOS
+              los colaboradores con este rol, no solo a {nombrePersona.split(' ')[0]}.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={togglePosCobro}
+          disabled={posCobroPending}
+          aria-pressed={operaCaja}
+          className={cn(
+            'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+            operaCaja ? 'border-exito bg-exito-soft text-exito-deep' : 'border-line bg-white text-muted hover:border-gold/60',
+          )}
+        >
+          {posCobroPending ? 'Guardando…' : operaCaja ? 'Sí, opera caja' : 'No opera caja'}
+        </button>
+      </div>
+      {posCobroError && <Aviso tono="error" className="mt-2">{posCobroError}</Aviso>}
+    </div>
+  );
+}
+
+// Cambiar la contraseña es una acción propia, separada del guardado de perfil (distinto endpoint,
+// distinto feedback — no tiene sentido bloquear una por la otra). Compartido (ver nota arriba).
+export function ContrasenaForm({ empleadoId }: { empleadoId: string }) {
+  const [password, setPassword] = useState('');
+  const [passError, setPassError] = useState('');
+  const [passOk, setPassOk] = useState(false);
+  const [passPending, startPassTransition] = useTransition();
+
+  function guardarContrasena() {
+    setPassError('');
+    setPassOk(false);
+    startPassTransition(async () => {
+      const r = await accionEstablecerContrasena(empleadoId, password);
+      if (!r.ok) {
+        setPassError(r.error ?? 'Error');
+        return;
+      }
+      setPassword('');
+      setPassOk(true);
+    });
+  }
+
+  return (
+    <div className="border-t border-line/60 pt-3">
+      <label className="mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted">
+        <KeyRound className="h-3.5 w-3.5" strokeWidth={2} /> Asignar / reiniciar contraseña
+      </label>
+      <div className="flex gap-2">
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          placeholder="Nueva contraseña"
+          className={cn(fieldCls, 'flex-1')}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          onClick={guardarContrasena}
+          disabled={password.length < 4}
+          pending={passPending}
+        >
+          {passPending ? 'Guardando…' : 'Asignar'}
+        </Button>
+      </div>
+      {passOk && <p className="mt-1.5 text-xs font-medium text-exito-deep">Contraseña actualizada ✓</p>}
+      {passError && <p className="mt-1.5 rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{passError}</p>}
+    </div>
+  );
+}
+
 function EditarModal({
   emp,
   sedes,
@@ -496,48 +690,6 @@ function EditarModal({
   const [salario, setSalario] = useState(emp.salarioBase);
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
-
-  // "Opera caja" (Fase 10, punto 4): refleja el permiso 'pos_cobro' del ROL seleccionado ahora
-  // mismo en el picker de arriba (no necesariamente el rol original del empleado, si el admin lo
-  // está cambiando en el mismo modal). admin/dueno quedan fuera: puede() los deja pasar siempre,
-  // sin importar la matriz — togglear no tendría ningún efecto.
-  const opcionRolActual = opciones.find((o) => o.valor === rolValor);
-  const esAdminODueno = opcionRolActual?.rolBase === 'admin' || opcionRolActual?.rolBase === 'dueno';
-  const [posCobroPending, startPosCobroTransition] = useTransition();
-  const [posCobroError, setPosCobroError] = useState('');
-  // Override optimista, keado por rol: NO se usa router.refresh() acá — /empleados tiene
-  // loading.tsx (Fase 3), y refresh() dispara su fallback de Suspense, que desmonta la página
-  // (y con ella este modal, perdiendo `editar`) mientras recarga. El toggle ya confirmó server-
-  // side (accionTogglePosCobro esperó la respuesta); reflejar el nuevo valor localmente es
-  // correcto y evita el parpadeo — la próxima carga normal de /empleados ya viene con
-  // `revalidatePath` aplicado.
-  const [posCobroOverride, setPosCobroOverride] = useState<{ rol: string; valor: boolean } | null>(null);
-  const operaCajaBase = opcionRolActual
-    ? puede(matrizPermisos, opcionRolActual.rolBase, 'pos_cobro', 'ver', opcionRolActual.rolCod)
-    : false;
-  const operaCaja = posCobroOverride && posCobroOverride.rol === rolValor ? posCobroOverride.valor : operaCajaBase;
-
-  function togglePosCobro() {
-    if (!opcionRolActual) return;
-    setPosCobroError('');
-    const rolAlTogglear = rolValor;
-    const nuevoValor = !operaCaja;
-    startPosCobroTransition(async () => {
-      const r = await accionTogglePosCobro(rolAlTogglear, nuevoValor);
-      if (!r.ok) {
-        setPosCobroError(r.error ?? 'Error');
-        return;
-      }
-      setPosCobroOverride({ rol: rolAlTogglear, valor: nuevoValor });
-    });
-  }
-
-  // Contraseña: acción propia, separada del guardado de perfil (distinto endpoint, distinto
-  // feedback — no tiene sentido bloquear una por la otra).
-  const [password, setPassword] = useState('');
-  const [passError, setPassError] = useState('');
-  const [passOk, setPassOk] = useState(false);
-  const [passPending, startPassTransition] = useTransition();
 
   function guardar() {
     setError('');
@@ -572,20 +724,6 @@ function EditarModal({
     });
   }
 
-  function guardarContrasena() {
-    setPassError('');
-    setPassOk(false);
-    startPassTransition(async () => {
-      const r = await accionEstablecerContrasena(emp.id, password);
-      if (!r.ok) {
-        setPassError(r.error ?? 'Error');
-        return;
-      }
-      setPassword('');
-      setPassOk(true);
-    });
-  }
-
   return (
     <Modal
       open
@@ -594,7 +732,12 @@ function EditarModal({
       title={emp.nombre}
       subtitle={rolInfo(emp.rol).label}
       icon={
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-navy-deep text-[11px] font-bold text-gold">
+        <span
+          className={cn(
+            'flex h-9 w-9 items-center justify-center rounded-full text-[11px] font-bold',
+            tonoAvatar(emp.nombre),
+          )}
+        >
           {iniciales(emp)}
         </span>
       }
@@ -623,96 +766,26 @@ function EditarModal({
           opciones={opciones}
         />
 
-        {/* "Opera caja" (Fase 10, punto 4): expone el permiso 'pos_cobro' del rol seleccionado
-            arriba como un toggle directo, en vez de mandar al admin hasta la matriz completa de
-            /configuracion/permisos. */}
-        {!esAdminODueno && (
-          <div className="rounded-md border border-line bg-paper/40 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
-                <div>
-                  <p className="text-sm font-medium text-navy">Opera caja</p>
-                  <p className="text-[11px] text-muted">
-                    Permiso de cajero (<span className="font-mono">pos_cobro</span>) del rol{' '}
-                    <span className="font-medium">{opcionRolActual?.label}</span> — aplica a TODOS
-                    los colaboradores con este rol, no solo a {emp.nombre.split(' ')[0]}.
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={togglePosCobro}
-                disabled={posCobroPending}
-                aria-pressed={operaCaja}
-                className={cn(
-                  'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-                  operaCaja ? 'border-exito bg-exito-soft text-exito-deep' : 'border-line bg-white text-muted hover:border-gold/60',
-                )}
-              >
-                {posCobroPending ? 'Guardando…' : operaCaja ? 'Sí, opera caja' : 'No opera caja'}
-              </button>
-            </div>
-            {posCobroError && <Aviso tono="error" className="mt-2">{posCobroError}</Aviso>}
-          </div>
-        )}
-        {esAdminODueno && (
-          <p className="rounded-md bg-navy/5 px-3 py-2 text-[11px] text-muted">
-            Administrador/dueño siempre puede operar caja — no depende de este permiso.
-          </p>
-        )}
+        <OperaCajaToggle
+          rolValor={rolValor}
+          opciones={opciones}
+          matrizPermisos={matrizPermisos}
+          nombrePersona={emp.nombre}
+        />
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Teléfono</label>
-            <input value={telefono} onChange={(e) => setTelefono(e.target.value)} className={cn(fieldCls, 'w-full')} />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">DNI</label>
-            <input value={dni} onChange={(e) => setDni(e.target.value)} className={cn(fieldCls, 'w-full')} />
-          </div>
-        </div>
-        <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección</label>
-          <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className={cn(fieldCls, 'w-full')} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Salario base (S/)</label>
-          <input
-            type="number"
-            step="0.5"
-            value={salario}
-            onChange={(e) => setSalario(Number(e.target.value))}
-            className={cn(fieldCls, 'w-full')}
-          />
-        </div>
+        <ContactoYSalarioCampos
+          telefono={telefono}
+          setTelefono={setTelefono}
+          dni={dni}
+          setDni={setDni}
+          direccion={direccion}
+          setDireccion={setDireccion}
+          salario={salario}
+          setSalario={setSalario}
+        />
         {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
 
-        <div className="border-t border-line/60 pt-3">
-          <label className="mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted">
-            <KeyRound className="h-3.5 w-3.5" strokeWidth={2} /> Asignar / reiniciar contraseña
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Nueva contraseña"
-              className={cn(fieldCls, 'flex-1')}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={guardarContrasena}
-              disabled={password.length < 4}
-              pending={passPending}
-            >
-              {passPending ? 'Guardando…' : 'Asignar'}
-            </Button>
-          </div>
-          {passOk && <p className="mt-1.5 text-xs font-medium text-exito-deep">Contraseña actualizada ✓</p>}
-          {passError && <p className="mt-1.5 rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{passError}</p>}
-        </div>
+        <ContrasenaForm empleadoId={emp.id} />
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
@@ -797,7 +870,7 @@ function CrearModal({
             <strong>{nombre}</strong> ya puede iniciar sesión con su nombre y la contraseña asignada.
           </p>
           <p className="text-xs text-muted">
-            Código interno (soporte): <span className="font-mono text-navy">{cod}</span>
+            Código interno (soporte): <span className="tabular-nums text-navy">{cod}</span>
           </p>
         </ModalBody>
         <ModalFooter>

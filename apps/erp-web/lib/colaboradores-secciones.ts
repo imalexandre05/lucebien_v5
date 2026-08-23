@@ -16,12 +16,14 @@ import {
   FileSignature,
   HandCoins,
   HeartHandshake,
+  IdCard,
   LayoutDashboard,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
 
 export type ClaveSeccion =
+  | 'datos'
   | 'resumen'
   | 'evaluacion'
   | 'asistencias'
@@ -43,6 +45,17 @@ export type Seccion = {
 };
 
 export const SECCIONES: Seccion[] = [
+  {
+    clave: 'datos',
+    label: 'Datos',
+    segmento: 'datos',
+    icon: IdCard,
+    // 'empleados', no 'evaluaciones' ni 'sueldos': es el mismo permiso que ya tenía /empleados
+    // (hoy sin fila propia en permisos_modulos — puede() sólo deja pasar a admin/dueño por
+    // mecanismo, igual que el gate hardcodeado que tenía la pantalla suelta).
+    modulo: 'empleados',
+    descripcion: 'Identidad, rol, sede, contacto y acceso de la persona',
+  },
   {
     clave: 'resumen',
     label: 'Resumen',
