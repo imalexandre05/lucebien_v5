@@ -2,14 +2,16 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Info, UserCheck, UserX } from 'lucide-react';
+import Link from 'next/link';
+import { Info, UserCheck, UserX, Wallet } from 'lucide-react';
 import type { MatrizPermisos } from '@scilb/core';
 import type { EmpleadoAdmin } from '../../../../lib/empleados-repo';
 import type { Sede } from '../../../../lib/sedes-repo';
 import type { RolDerivado } from '../../../../lib/roles-repo';
+import { rutaSeccion } from '../../../../lib/colaboradores-secciones';
 import {
   CamposPerfil,
-  ContactoYSalarioCampos,
+  ContactoCampos,
   OperaCajaToggle,
   ContrasenaForm,
   opcionesRol,
@@ -21,24 +23,30 @@ import { Aviso } from '../../../../components/ui/form';
 import { DialogoConfirmar, useConfirmacion } from '../../../../components/ui/confirmar';
 import { cn } from '../../../../lib/cn';
 
-// La misma ficha de /empleados —CamposPerfil, OperaCajaToggle, ContactoYSalarioCampos,
-// ContrasenaForm, las cuatro exportadas desde app/empleados/cliente.tsx—, montada para UNA
-// persona en vez de para las 18 de la lista.
+// La misma ficha de /empleados —CamposPerfil, OperaCajaToggle, ContactoCampos, ContrasenaForm,
+// las cuatro exportadas desde app/empleados/cliente.tsx—, montada para UNA persona en vez de para
+// las 18 de la lista.
 //
 // EL TOGGLE DE ACTIVO/SUSPENDIDO NO SE EXTRAJO. Llama a la misma accionEstadoEmpleado y usa el
 // mismo useConfirmacion()/DialogoConfirmar que la fila de /empleados, pero acá no vive dentro de
 // una fila de tabla — sacarlo a una pieza compartida hubiera significado tocar también el
 // renderizado de esa lista por una veintena de líneas de wiring, no de campos de formulario.
+const soles = (n: number): string =>
+  `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 export function DatosCliente({
   emp,
   sedes,
   rolesDerivados,
   matrizPermisos,
+  sueldoVigente,
 }: {
   emp: EmpleadoAdmin;
   sedes: Sede[];
   rolesDerivados: RolDerivado[];
   matrizPermisos: MatrizPermisos;
+  /** `sueldoPactado` del contrato vigente de esta persona, o null si no tiene (R3/T7, spec §2.5). */
+  sueldoVigente: number | null;
 }) {
   const router = useRouter();
   const opciones = useMemo(() => opcionesRol(rolesDerivados), [rolesDerivados]);
@@ -52,7 +60,6 @@ export function DatosCliente({
   const [telefono, setTelefono] = useState(emp.telefono ?? '');
   const [dni, setDni] = useState(emp.dni ?? '');
   const [direccion, setDireccion] = useState(emp.direccion ?? '');
-  const [salario, setSalario] = useState(emp.salarioBase);
   const [error, setError] = useState('');
   const [guardado, setGuardado] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -81,7 +88,13 @@ export function DatosCliente({
         telefono,
         dni,
         direccion,
-        salarioBase: salario,
+        // El sueldo ya no se edita acá (R3/T7): la RPC empleado_actualizar (0050) recibe
+        // p_salario_base como parámetro obligatorio y hace `coalesce(p_salario_base, 0)`, así que
+        // omitirlo o mandar null pondría la columna en 0. Se manda el valor YA guardado, sin
+        // pasar por ningún input, para que editar el resto de la ficha deje salario_base
+        // byte-idéntico — la columna sigue viva para sus consumidores congelados (pagos/
+        // evaluaciones, ver docs/pendientes-negocio.md).
+        salarioBase: emp.salarioBase,
       });
       if (!r.ok) {
         setError(r.error ?? 'Error');
@@ -193,16 +206,49 @@ export function DatosCliente({
             nombrePersona={emp.nombre}
           />
 
-          <ContactoYSalarioCampos
+          <ContactoCampos
             telefono={telefono}
             setTelefono={setTelefono}
             dni={dni}
             setDni={setDni}
             direccion={direccion}
             setDireccion={setDireccion}
-            salario={salario}
-            setSalario={setSalario}
           />
+
+          {/* Sueldo único (R3/T7): manda solo el contrato. Acá donde antes vivía el input de
+              «Salario base» ahora se lee el sueldo pactado, en solo lectura, con enlace a la
+              pestaña Contrato — nunca se edita desde la ficha. */}
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Sueldo</label>
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-paper/40 px-3 py-2">
+              <Wallet className="h-4 w-4 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />
+              {sueldoVigente != null ? (
+                <>
+                  <p className="text-sm text-ink">
+                    Sueldo (contrato vigente):{' '}
+                    <span className="font-semibold tabular-nums text-navy">{soles(sueldoVigente)}</span>
+                  </p>
+                  <Link
+                    href={rutaSeccion(emp.id, 'contrato', '')}
+                    className="ml-auto text-xs font-medium text-navy underline decoration-gold decoration-2 underline-offset-2 hover:text-navy-dark"
+                  >
+                    Ver contrato
+                  </Link>
+                </>
+              ) : (
+                <Link
+                  href={rutaSeccion(emp.id, 'contrato', '')}
+                  className="text-sm font-medium text-navy underline decoration-gold decoration-2 underline-offset-2 hover:text-navy-dark"
+                >
+                  Sin contrato — pactarlo
+                </Link>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] text-muted">
+              El sueldo se pacta en el contrato — esta ficha ya no lo edita.
+            </p>
+          </div>
+
           {error && (
             <Aviso tono="error" className="text-sm">
               {error}

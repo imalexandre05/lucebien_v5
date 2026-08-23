@@ -176,16 +176,20 @@ export function CamposPerfil({
   );
 }
 
-// ── Contacto y salario (compartido, ver nota en OpcionRol arriba) ──────────────────────────────
-export function ContactoYSalarioCampos({
+// ── Contacto (compartido, ver nota en OpcionRol arriba) ─────────────────────────────────────────
+// Hasta R3/T7 esta pieza se llamaba ContactoYSalarioCampos y traía también el salario editable de
+// la ficha. Salió (spec 2026-08-23-personal-fusion-design.md §2.5): el sueldo real lo paga el
+// contrato (`sueldo_pactado`), nunca `empleados.salario_base` — editarlo acá no tenía ningún
+// efecto en lo que cobraba la persona. La pestaña Datos ahora muestra el sueldo del contrato
+// vigente en solo lectura (app/personal/[id]/datos/cliente.tsx); la columna sigue en la base para
+// los consumidores congelados (ver docs/pendientes-negocio.md).
+export function ContactoCampos({
   telefono,
   setTelefono,
   dni,
   setDni,
   direccion,
   setDireccion,
-  salario,
-  setSalario,
 }: {
   telefono: string;
   setTelefono: (v: string) => void;
@@ -193,8 +197,6 @@ export function ContactoYSalarioCampos({
   setDni: (v: string) => void;
   direccion: string;
   setDireccion: (v: string) => void;
-  salario: number;
-  setSalario: (v: number) => void;
 }) {
   return (
     <>
@@ -211,16 +213,6 @@ export function ContactoYSalarioCampos({
       <div>
         <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección</label>
         <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className={cn(fieldCls, 'w-full')} />
-      </div>
-      <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Salario base (S/)</label>
-        <input
-          type="number"
-          step="0.5"
-          value={salario}
-          onChange={(e) => setSalario(Number(e.target.value))}
-          className={cn(fieldCls, 'w-full')}
-        />
       </div>
     </>
   );
