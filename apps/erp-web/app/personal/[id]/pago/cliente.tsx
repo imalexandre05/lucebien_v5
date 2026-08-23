@@ -150,8 +150,14 @@ export function LiquidacionPagoCliente({
           const pagado = pagos.filter((p) => !p.anulado).reduce((s, p) => s + p.monto, 0);
           const saldo = Number((l.total - pagado).toFixed(2));
           const cerrada = l.estado === 'cerrada';
-          const saldada = migrado && cerrada && saldo <= 0;
-          const puedePagar = migrado && cerrada && saldo > 0;
+          // Verificador adversarial de la 0080 (spec §2.6, commit c02c41a): con total ≤ 0
+          // (descuentos ≥ ingresos) la RPC rechaza CUALQUIER abono con SALDO, así que saldo ≤ 0
+          // acá no significa "se pagó" — significa "no había nada que pagar". «Pagada» exige
+          // total > 0 y saldo saldado; total ≤ 0 muestra su propio badge neutral y no ofrece
+          // formulario, porque ofrecerlo sería prometer un pago que la base nunca va a aceptar.
+          const sinMontoAPagar = cerrada && l.total <= 0;
+          const saldada = migrado && cerrada && !sinMontoAPagar && saldo <= 0;
+          const puedePagar = migrado && cerrada && !sinMontoAPagar && saldo > 0;
 
           return (
             <Card key={l.id}>
@@ -163,6 +169,7 @@ export function LiquidacionPagoCliente({
                   <div className="mt-1 flex items-center gap-2">
                     <Badge tone={TONO[l.estado]}>{l.estado}</Badge>
                     {saldada && <Badge tone="green">pagada</Badge>}
+                    {sinMontoAPagar && <Badge tone="gray">sin monto a pagar</Badge>}
                   </div>
                 </div>
                 <a
@@ -193,13 +200,22 @@ export function LiquidacionPagoCliente({
                         <p
                           className={cn(
                             'tabular-nums font-medium',
-                            migrado && saldo <= 0 ? 'text-exito-deep' : 'text-navy',
+                            migrado && !sinMontoAPagar && saldo <= 0 ? 'text-exito-deep' : 'text-navy',
                           )}
                         >
-                          {migrado ? soles(saldo) : '—'}
+                          {/* total ≤ 0 nunca fue pagado: un saldo negativo ahí no es "a favor" de
+                              nadie, es sólo total menos cero. No se muestra ese número. */}
+                          {sinMontoAPagar ? '—' : migrado ? soles(saldo) : '—'}
                         </p>
                       </div>
                     </div>
+
+                    {sinMontoAPagar && (
+                      <p className="text-xs text-muted">
+                        Los descuentos igualan o superan los ingresos de este período: no hay
+                        monto que pagar, así que no admite abonos.
+                      </p>
+                    )}
 
                     {pagos.length > 0 && (
                       <Table>

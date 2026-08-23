@@ -442,6 +442,21 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 0,
     step: 15,
   },
+  // Pagos de liquidación (migración 0080, spec §2.6). Mismo formato simple que pos_metodos_pago
+  // arriba: texto libre separado por comas, sin el prefijo "valor:Etiqueta" de aquél porque acá
+  // el método se guarda tal cual lo escribe el administrador (texto libre, RN de la 0080) — no
+  // hay un valor interno distinto de la etiqueta que mostrar. Sin este item el catálogo no
+  // conocía la clave y /configuracion la mostraba como "Personalizada" con una etiqueta adivinada
+  // de la clave y sin ninguna descripción.
+  {
+    clave: 'sueldo_metodos_pago',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Métodos de pago de liquidaciones',
+    descripcion:
+      'Métodos disponibles al registrar un abono contra una liquidación cerrada (pestaña Liquidación y pago). Separados por comas, ej. "Efectivo,Yape,Plin,Transferencia,Otro". Default inventado el 23-ago-2026, no confirmado por el dueño — editable acá.',
+    tipo: 'texto',
+    default: 'Efectivo,Yape,Plin,Transferencia,Otro',
+  },
 
   // ── Huellero (migración 0075) ─────────────────────────────────────────────────────────────
   // Van tipados a propósito. Sin catálogo aparecen como "Personalizados" con input de texto
