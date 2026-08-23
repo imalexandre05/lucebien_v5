@@ -52,7 +52,37 @@ export default defineConfig({
     screenshot: 'only-on-failure',
   },
 
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  // Tres públicos, no uno.
+  //
+  // `anonimo` es lo que ve alguien sin sesión: que la aplicación levante y que una ruta protegida
+  // lo eche al login. No depende de nada y se puede correr siempre.
+  //
+  // `admin` y `colaborador` corren con la sesión ya iniciada por `auth.setup.ts`. Están separados
+  // a propósito: la mitad de las cosas que hay que comprobar no son "¿funciona?" sino "¿quién lo
+  // ve?" — un colaborador que alcanza la liquidación de otro es un fallo que sólo se ve teniendo
+  // los dos perfiles corriendo la misma pantalla.
+  projects: [
+    { name: 'setup', testMatch: /auth\.setup\.ts/, use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'anonimo',
+      testMatch: /(humo|smoke)\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'admin',
+      testMatch: /admin\..*\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], storageState: 'e2e/.sesiones/admin.json' },
+      dependencies: ['setup'],
+    },
+    {
+      name: 'colaborador',
+      testMatch: /colaborador\..*\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], storageState: 'e2e/.sesiones/colaborador.json' },
+      dependencies: ['setup'],
+    },
+    // Las de escritura son opt-in (E2E_WRITE=1) y entran solas; conservan su propio login.
+    { name: 'escritura', testMatch: /write-flows\.spec\.ts/, use: { ...devices['Desktop Chrome'] } },
+  ],
 
   // Contra un despliegue no hay nada que levantar. En local, Playwright arranca el servidor y
   // reusa el que ya esté corriendo, para no pelearse con el `pnpm dev` que tengas abierto.

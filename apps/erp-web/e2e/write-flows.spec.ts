@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { entrar } from './sesiones';
 
 // Flujos de ESCRITURA (opt-in). Solo corren con E2E_WRITE=1 porque crean datos reales en la BD.
 // Diseñados para AUTO-LIMPIARSE (el reporte se anula al final) y para SALTAR con gracia cuando el
@@ -109,12 +110,7 @@ test.describe('flujos de escritura', () => {
 });
 
 async function login(page: Page) {
-  await page.goto('/login');
-  await page.selectOption('select[name="sede"]', SEDE);
-  await page.fill('input[name="cod"]', COD);
-  await page.getByRole('button', { name: 'Ingresar' }).click();
-  // El dashboard ahora recibe con el hero de saludo (no un heading "Dashboard").
-  await expect(page.getByRole('heading', { name: /Buen[oa]s (días|tardes|noches)/ })).toBeVisible({
-    timeout: 15000,
-  });
+  // El selector de sede dejó de ser un <select> en la Fase 2 ("el dispositivo manda"): ahora son
+  // botones con role="radio". El helper compartido ya lo contempla.
+  await entrar(page, 'admin');
 }
