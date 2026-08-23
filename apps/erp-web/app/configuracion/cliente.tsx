@@ -89,7 +89,7 @@ function ControlTipado({
             className="h-8 w-10 cursor-pointer rounded border border-line bg-white p-0.5 disabled:cursor-not-allowed"
             aria-label="Color"
           />
-          <span className="font-mono text-xs text-muted">{valor || '—'}</span>
+          <span className="tabular-nums text-xs text-muted">{valor || '—'}</span>
         </div>
       );
     }
@@ -143,7 +143,7 @@ function ParametroFila({
             )}
           </div>
           {item.descripcion && <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-muted">{item.descripcion}</p>}
-          <div className="mt-1 flex items-center gap-2 font-mono text-[10px] text-muted/70">
+          <div className="mt-1 flex items-center gap-2 tabular-nums text-[10px] text-muted/70">
             {item.clave}
             {item.default != null && <span>· default: {item.default}</span>}
           </div>
@@ -335,7 +335,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
                 value={form.clave}
                 onChange={(e) => setForm((f) => ({ ...f, clave: e.target.value }))}
                 placeholder="mi_parametro"
-                className={cn(fieldCls, 'w-full font-mono')}
+                className={cn(fieldCls, 'w-full tabular-nums')}
               />
             </div>
             <div>
@@ -427,7 +427,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
         <ModalBody>
           <p className="text-sm leading-relaxed text-muted">
             <span className="font-medium text-ink">{eliminar?.etiqueta}</span> (
-            <span className="font-mono text-xs">{eliminar?.clave}</span>) se borra de Configuración. Si algún código todavía lo lee, volverá a
+            <span className="tabular-nums text-xs">{eliminar?.clave}</span>) se borra de Configuración. Si algún código todavía lo lee, volverá a
             usar su propio valor por defecto interno.
           </p>
         </ModalBody>

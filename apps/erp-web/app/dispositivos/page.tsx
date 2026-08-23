@@ -87,7 +87,7 @@ export default async function DispositivosPage() {
                     )}
                   </TD>
                   <TD>
-                    <span className="font-mono text-[11px] text-muted" title={d.deviceId}>
+                    <span className="tabular-nums text-[11px] text-muted" title={d.deviceId}>
                       …{d.deviceId.slice(-8)}
                     </span>
                   </TD>
@@ -103,7 +103,7 @@ export default async function DispositivosPage() {
                           aria-pressed={d.sedeCod === s.cod}
                           title={`Pre-marcar ${s.nombre} en el login de este equipo`}
                           className={cn(
-                            'rounded-full border px-2 py-0.5 font-mono text-[11px] font-medium transition-colors',
+                            'rounded-full border px-2 py-0.5 tabular-nums text-[11px] font-medium transition-colors',
                             d.sedeCod === s.cod ? 'border-navy bg-navy text-paper' : 'border-line text-muted hover:border-gold hover:text-navy',
                           )}
                         >
@@ -115,8 +115,8 @@ export default async function DispositivosPage() {
                   <TD>
                     <Badge tone={TONE[d.estado]}>{LABEL[d.estado]}</Badge>
                   </TD>
-                  <TD className="font-mono text-xs text-muted">{fecha(d.creadoEn)}</TD>
-                  <TD className="font-mono text-xs text-muted">{fecha(d.ultimoVisto)}</TD>
+                  <TD className="tabular-nums text-xs text-muted">{fecha(d.creadoEn)}</TD>
+                  <TD className="tabular-nums text-xs text-muted">{fecha(d.ultimoVisto)}</TD>
                   <TD className="pr-5">
                     <div className="flex items-center justify-end gap-1.5">
                       {d.estado !== 'aprobado' && (
@@ -166,7 +166,7 @@ export default async function DispositivosPage() {
         La <strong className="font-medium text-navy">sede</strong> es la que este equipo pre-marca como botón en su
         pantalla de login (&ldquo;el dispositivo manda&rdquo;) — quien tenga varias tiendas puede cambiarla ahí mismo o
         después desde el topbar. El control de acceso por equipo se activa con el flag{' '}
-        <span className="font-mono">DEVICE_GATE</span>. Mientras no haya ningún equipo aprobado, el acceso queda
+        <span className="tabular-nums">DEVICE_GATE</span>. Mientras no haya ningún equipo aprobado, el acceso queda
         abierto (modo instalación) para no bloquear al primer administrador.
       </p>
     </div>

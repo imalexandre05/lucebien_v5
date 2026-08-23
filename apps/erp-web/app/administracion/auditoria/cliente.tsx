@@ -158,7 +158,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                         <Badge tone={OPERACION_TONE[f.operacion]}>{OPERACION_LABEL[f.operacion]}</Badge>
                       </TD>
                       <TD className="text-sm text-navy">{f.actorNombre ?? <span className="text-muted">Sistema</span>}</TD>
-                      <TD className="font-mono text-[11px] text-muted" title={f.filaId}>
+                      <TD className="tabular-nums text-[11px] text-muted" title={f.filaId}>
                         {f.filaId.slice(0, 8)}
                       </TD>
                       <TD className="pr-5 text-right">
@@ -195,7 +195,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
               <p className="text-xs text-muted">
                 Actor: <span className="font-medium text-navy">{detalle.actorNombre ?? 'Sistema (sin usuario en sesión, p. ej. una acción administrativa por API)'}</span>
                 {' · '}
-                Fila: <span className="font-mono">{detalle.filaId}</span>
+                Fila: <span className="tabular-nums">{detalle.filaId}</span>
               </p>
 
               {detalle.operacion === 'UPDATE' ? (
@@ -214,7 +214,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                       <TBody>
                         {cambios.map((c) => (
                           <TR key={c.campo}>
-                            <TD className="pl-3 font-mono text-xs text-navy">{c.campo}</TD>
+                            <TD className="pl-3 tabular-nums text-xs text-navy">{c.campo}</TD>
                             <TD className="max-w-[220px] truncate text-xs text-error-deep" title={valorLegible(c.antes)}>
                               {valorLegible(c.antes)}
                             </TD>
@@ -233,7 +233,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                     <tbody>
                       {Object.entries(detalle.operacion === 'DELETE' ? detalle.antes ?? {} : detalle.despues ?? {}).map(([k, v]) => (
                         <tr key={k} className="border-b border-line/50 last:border-0">
-                          <td className="py-1 pr-3 align-top font-mono text-navy">{k}</td>
+                          <td className="py-1 pr-3 align-top tabular-nums text-navy">{k}</td>
                           <td className="py-1 align-top text-muted">{valorLegible(v)}</td>
                         </tr>
                       ))}

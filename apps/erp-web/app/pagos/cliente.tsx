@@ -258,13 +258,13 @@ export function PagosCliente({
             <TBody>
               {filtrados.map((p) => (
                 <TR key={p.id}>
-                  <TD className="pl-5 font-mono text-xs text-muted">{p.fechaPago ?? p.createdAt.slice(0, 10)}</TD>
+                  <TD className="pl-5 tabular-nums text-xs text-muted">{p.fechaPago ?? p.createdAt.slice(0, 10)}</TD>
                   <TD className="font-medium text-navy">{p.empleadoNombre ?? '—'}</TD>
                   <TD className="capitalize">{p.metodo}</TD>
                   <TD>
                     <Badge tone={ESTADO_TONE[p.anulado ? 'anulado' : p.estado] ?? 'gray'}>{p.anulado ? 'anulado' : p.estado}</Badge>
                   </TD>
-                  <TD className="text-right font-mono font-semibold tabular-nums">{soles(p.monto)}</TD>
+                  <TD className="text-right tabular-nums font-semibold">{soles(p.monto)}</TD>
                   <TD className="pr-5">
                     <div className="flex items-center justify-end gap-2">
                       <Link href={`/pagos/${p.id}/comprobante`} className="text-muted transition-colors hover:text-navy" aria-label="Comprobante" title="Comprobante">

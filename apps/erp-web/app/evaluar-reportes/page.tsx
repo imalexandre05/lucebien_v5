@@ -66,17 +66,17 @@ export default async function EvaluarReportesPage() {
                 {pendientes.map((r) => (
                   <TR key={r.id}>
                     <TD className="pl-5">
-                      <span className="inline-block rounded-md bg-navy px-2.5 py-1 font-mono text-xs font-medium text-paper">
+                      <span className="inline-block rounded-md bg-navy px-2.5 py-1 tabular-nums text-xs font-medium text-paper">
                         {r.id}
                       </span>
                     </TD>
-                    <TD className="font-mono">{r.sedeCod}</TD>
-                    <TD className="font-mono text-xs text-muted">{r.fecha}</TD>
+                    <TD className="tabular-nums">{r.sedeCod}</TD>
+                    <TD className="tabular-nums text-xs text-muted">{r.fecha}</TD>
                     <TD>
                       <Badge tone="navy">{TURNO_LABEL[r.turno] ?? r.turno}</Badge>
                     </TD>
                     <TD>{r.encargadoNombre ?? '—'}</TD>
-                    <TD className="text-right font-mono tabular-nums">
+                    <TD className="text-right tabular-nums">
                       {r.actDone}/{r.actTotal}
                     </TD>
                     <TD className="pr-5 text-right">

@@ -92,7 +92,7 @@ export function ClientePanel({
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-navy">{value.nombre || '(sin nombre)'}</p>
-            <p className="truncate font-mono text-xs text-muted">
+            <p className="truncate tabular-nums text-xs text-muted">
               {value.dni ? `DNI ${value.dni}` : 'sin DNI'} {value.telefono && `· ${value.telefono}`}
               {!value.id && ' · cliente nuevo'}
             </p>
@@ -173,7 +173,7 @@ export function ClientePanel({
               )}
             >
               <span className="truncate font-medium text-navy">{c.nombre}</span>
-              <span className="shrink-0 font-mono text-xs text-muted">{c.dni || '—'} {c.telefono && `· ${c.telefono}`}</span>
+              <span className="shrink-0 tabular-nums text-xs text-muted">{c.dni || '—'} {c.telefono && `· ${c.telefono}`}</span>
             </button>
           ))}
           {filtrados.length === 0 && <p className="px-3 py-3 text-center text-xs text-muted">Sin coincidencias.</p>}

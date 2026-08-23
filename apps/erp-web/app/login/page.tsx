@@ -35,7 +35,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
           <div className="mt-4 animate-rise text-4xl font-semibold leading-none text-navy [animation-delay:90ms]">
             LuceBien
           </div>
-          <div className="mt-2 animate-rise font-mono text-[10px] tracking-brand text-gold [animation-delay:150ms]">
+          <div className="mt-2 animate-rise tabular-nums text-[10px] tracking-brand text-gold [animation-delay:150ms]">
             SCI · LB
           </div>
         </div>
@@ -87,7 +87,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
                     maxLength={4}
                     placeholder="····"
                     autoComplete="off"
-                    className="py-2.5 text-center font-mono text-lg tracking-[0.5em] placeholder:tracking-[0.3em]"
+                    className="py-2.5 text-center tabular-nums text-lg tracking-[0.5em] placeholder:tracking-[0.3em]"
                     aria-describedby="login-ayuda"
                     required
                     autoFocus

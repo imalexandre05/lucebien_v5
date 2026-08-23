@@ -91,7 +91,7 @@ export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: 
               )}
             >
               <span className="truncate">
-                <span className="font-mono">{s.cod}</span> · {s.nombre}
+                <span className="tabular-nums">{s.cod}</span> · {s.nombre}
               </span>
               {s.cod === sedeActual && <Check className="h-3.5 w-3.5 shrink-0 text-gold" strokeWidth={2} aria-hidden />}
             </button>

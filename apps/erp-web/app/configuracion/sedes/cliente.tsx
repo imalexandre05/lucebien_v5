@@ -89,7 +89,7 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
               {sedes.map((s) => (
                 <TR key={s.cod}>
                   <TD className="pl-5">
-                    <span className="inline-block rounded-md bg-navy px-2.5 py-1 font-mono text-xs font-semibold text-paper">
+                    <span className="inline-block rounded-md bg-navy px-2.5 py-1 tabular-nums text-xs font-semibold text-paper">
                       {s.cod}
                     </span>
                   </TD>
@@ -133,7 +133,7 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
                 onChange={(e) => setForm((f) => ({ ...f, cod: e.target.value.toUpperCase() }))}
                 placeholder="HY"
                 maxLength={3}
-                className={cn(fieldCls, 'w-28 text-center font-mono uppercase tracking-[0.2em]')}
+                className={cn(fieldCls, 'w-28 text-center tabular-nums uppercase tracking-[0.2em]')}
               />
             </div>
           )}

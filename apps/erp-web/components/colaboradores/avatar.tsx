@@ -20,6 +20,32 @@ export function inicialesDe(nombre: string, guardadas?: string | null): string {
   return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
 }
 
+/**
+ * SEIS TONOS PARA QUE UNA PERSONA SE RECONOZCA SIN LEER.
+ *
+ * Todos los avatares eran el mismo disco dorado, así que una lista de dieciocho personas se veía
+ * como dieciocho discos iguales y había que leer el nombre en cada uno. El color no dice nada del
+ * estado de nadie —no es «bien» ni «mal»—: es identidad, que es justo para lo que existen los
+ * categóricos del sistema (docs/sistema-de-diseno.md §2).
+ *
+ * El tono sale del nombre, así que la misma persona sale siempre del mismo color, en cualquier
+ * pantalla y sin guardar nada en la base.
+ */
+const TONOS_AVATAR = [
+  'bg-navy text-paper',
+  'bg-cat-lila text-paper',
+  'bg-cat-arcilla text-paper',
+  'bg-cat-mar text-paper',
+  'bg-gold text-navy-deep',
+  'bg-navy-deep text-gold',
+] as const;
+
+export function tonoAvatar(clave: string): string {
+  let h = 0;
+  for (let i = 0; i < clave.length; i++) h = (h * 31 + clave.charCodeAt(i)) >>> 0;
+  return TONOS_AVATAR[h % TONOS_AVATAR.length];
+}
+
 const tamanos = {
   sm: 'h-8 w-8 text-[11px]',
   md: 'h-10 w-10 text-xs',
@@ -41,7 +67,8 @@ export function Avatar({
     <span
       aria-hidden
       className={cn(
-        'flex shrink-0 select-none items-center justify-center rounded-full bg-gold font-semibold tracking-wide text-navy-deep',
+        'flex shrink-0 select-none items-center justify-center rounded-full font-semibold tracking-wide',
+        tonoAvatar(nombre),
         tamanos[size],
         className,
       )}

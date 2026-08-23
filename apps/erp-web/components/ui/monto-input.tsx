@@ -31,7 +31,7 @@ export const MontoInput = forwardRef<
       {label && <label className="mb-1 block text-xs uppercase tracking-wide text-muted">{label}</label>}
       <div className="flex items-center gap-1.5">
         <div className="relative flex-1">
-          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 font-mono text-sm text-muted">S/</span>
+          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 tabular-nums text-sm text-muted">S/</span>
           <input
             ref={ref}
             type="number"
@@ -45,7 +45,7 @@ export const MontoInput = forwardRef<
             value={Number.isFinite(value) && value !== 0 ? value : value === 0 ? '' : value}
             onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
             onKeyDown={onKeyDown}
-            className="w-full rounded-md border border-line bg-white py-2 pl-8 pr-2.5 text-right font-mono text-sm tabular-nums text-navy outline-none transition-colors focus:border-gold disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-md border border-line bg-white py-2 pl-8 pr-2.5 text-right tabular-nums text-sm text-navy outline-none transition-colors focus:border-gold disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
         {total != null && total > 0 && (

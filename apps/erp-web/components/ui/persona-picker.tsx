@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { Check, Search, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
+import { tonoAvatar } from '../colaboradores/avatar';
 
 type Persona = { id: string; nombre: string; rol?: string; sedeCod?: string | null };
 
@@ -89,12 +90,17 @@ export function PersonaPicker({
                 on ? 'bg-navy/5' : 'hover:bg-paper',
               )}
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-navy-deep text-xs font-bold text-gold">
+              <span
+                className={cn(
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                  tonoAvatar(e.nombre),
+                )}
+              >
                 {iniciales(e.nombre)}
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-navy">{e.nombre}</span>
-                {tag && <span className="block truncate font-mono text-[11px] text-muted">{tag}</span>}
+                {tag && <span className="block truncate tabular-nums text-[11px] text-muted">{tag}</span>}
               </span>
               <span
                 className={cn(
@@ -136,7 +142,7 @@ export function PersonaPicker({
             );
           })
         )}
-        <span className="ml-auto font-mono text-[11px] tabular-nums text-muted">
+        <span className="ml-auto tabular-nums text-[11px] text-muted">
           {single ? `${selected.length}/1` : `${selected.length} sel.`}
         </span>
       </div>

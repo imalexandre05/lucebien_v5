@@ -251,7 +251,7 @@ function ColaSinAsignar({
               const reasignado = s.nombresEquipo.length > 1;
               return (
                 <TR key={clave}>
-                  <TD className="font-mono text-xs">{s.employeeNo}</TD>
+                  <TD className="tabular-nums text-xs">{s.employeeNo}</TD>
                   <TD>
                     {s.nombresEquipo.join(', ') || <span className="text-muted">sin nombre</span>}
                     {reasignado && (
@@ -360,7 +360,7 @@ function DiasSinSalida({
                   <TR key={d.id}>
                     <TD>{d.empleadoNombre ?? <span className="text-muted">sin nombre</span>}</TD>
                     <TD>{d.fecha}</TD>
-                    <TD className="font-mono text-xs">{d.horaEntrada ?? '—'}</TD>
+                    <TD className="tabular-nums text-xs">{d.horaEntrada ?? '—'}</TD>
                     <TD>
                       <input
                         type="time"
@@ -432,8 +432,8 @@ function DiasARevisar({ dias }: { dias: DiaPendiente[] }) {
               <TR key={d.id}>
                 <TD>{d.empleadoNombre ?? <span className="text-muted">sin nombre</span>}</TD>
                 <TD>{d.fecha}</TD>
-                <TD className="font-mono text-xs">{d.horaEntrada ?? '—'}</TD>
-                <TD className="font-mono text-xs">{d.horaSalida ?? '—'}</TD>
+                <TD className="tabular-nums text-xs">{d.horaEntrada ?? '—'}</TD>
+                <TD className="tabular-nums text-xs">{d.horaSalida ?? '—'}</TD>
                 <TD className="text-xs text-aviso-deep">{(d.obs ?? '').replace(/^revisar:\s*/, '')}</TD>
               </TR>
             ))}
@@ -482,7 +482,7 @@ function MapeosVigentes({
             <TBody>
               {mapeos.map((m) => (
                 <TR key={m.id}>
-                  <TD className="font-mono text-xs">{m.employeeNo}</TD>
+                  <TD className="tabular-nums text-xs">{m.employeeNo}</TD>
                   <TD>
                     {m.ignorado ? (
                       <Badge tone="gray">Ignorado</Badge>

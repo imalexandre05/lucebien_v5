@@ -136,7 +136,7 @@ export function EvaluarPanel({
         <h2 className="flex items-center gap-2 text-xl font-semibold text-navy">
           <Star className="h-5 w-5 text-gold" strokeWidth={2} /> Evaluar reporte
         </h2>
-        <span className="rounded-full bg-gold/15 px-3 py-1 font-mono text-base font-bold tabular-nums text-gold-deep">
+        <span className="rounded-full bg-gold/15 px-3 py-1 tabular-nums text-base font-bold text-gold-deep">
           {puntaje}%
         </span>
       </div>
@@ -192,11 +192,11 @@ export function EvaluarPanel({
         <CardContent className="space-y-2">
           {actividades.map((a) => (
             <div key={a.cod} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white px-3 py-2.5">
-              <span className="w-12 shrink-0 font-mono text-xs text-muted">{a.cod}</span>
+              <span className="w-12 shrink-0 tabular-nums text-xs text-muted">{a.cod}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-navy">{a.nombre}</span>
-                  {a.peso > 0 && <span className="font-mono text-[11px] text-muted">{a.peso}pts</span>}
+                  {a.peso > 0 && <span className="tabular-nums text-[11px] text-muted">{a.peso}pts</span>}
                 </div>
               </div>
               {a.cat && <Badge tone={catTone(a.cat)}>{a.cat}</Badge>}

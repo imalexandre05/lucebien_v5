@@ -50,22 +50,22 @@ export default async function PedidoDetalle({ params }: { params: { id: string }
             </Campo>
             <Campo label="Sede">{p.sedeCod}</Campo>
             <Campo label="Fecha">
-              <span className="font-mono">{p.fecha}</span>
+              <span className="tabular-nums">{p.fecha}</span>
             </Campo>
             <Campo label="Estado">
               <span className="capitalize">{p.estado}</span>
             </Campo>
             <Campo label="Vendido por">
-              <span className="font-mono">{p.creadoPorCod ?? '—'}</span>
+              <span className="tabular-nums">{p.creadoPorCod ?? '—'}</span>
             </Campo>
             {p.fechaDevolucion && (
               <Campo label="Devolución">
-                <span className="font-mono">{p.fechaDevolucion}</span>
+                <span className="tabular-nums">{p.fechaDevolucion}</span>
               </Campo>
             )}
             {p.fechaEntrega && (
               <Campo label="Entrega">
-                <span className="font-mono">{p.fechaEntrega}</span>
+                <span className="tabular-nums">{p.fechaEntrega}</span>
               </Campo>
             )}
           </dl>
@@ -89,13 +89,13 @@ export default async function PedidoDetalle({ params }: { params: { id: string }
                     <TD className="pl-3">
                       <Badge tone={TIPO_TONE[it.tipo] ?? 'gray'}>{TIPO_LABEL[it.tipo] ?? it.tipo}</Badge>
                     </TD>
-                    <TD className="font-mono text-xs">
+                    <TD className="tabular-nums text-xs">
                       {it.activoCodigo ?? it.descripcion ?? '—'}
                       {it.esCortesia && <Badge tone="green" className="ml-2">CORTESÍA</Badge>}
                     </TD>
-                    <TD className="text-right font-mono">{it.cantidad}</TD>
-                    <TD className="text-right font-mono tabular-nums">S/ {it.precioUnitario.toFixed(2)}</TD>
-                    <TD className="text-right font-mono tabular-nums">S/ {it.subtotal.toFixed(2)}</TD>
+                    <TD className="text-right tabular-nums">{it.cantidad}</TD>
+                    <TD className="text-right tabular-nums">S/ {it.precioUnitario.toFixed(2)}</TD>
+                    <TD className="text-right tabular-nums">S/ {it.subtotal.toFixed(2)}</TD>
                     <TD className="capitalize">{ESTADO_ITEM_LABEL[it.estado] ?? it.estado}</TD>
                   </TR>
                 ))}
@@ -105,13 +105,13 @@ export default async function PedidoDetalle({ params }: { params: { id: string }
 
           <dl className="mt-4 grid grid-cols-2 gap-x-8 sm:grid-cols-4">
             <Campo label="Total">
-              <span className="font-mono tabular-nums">S/ {p.total.toFixed(2)}</span>
+              <span className="tabular-nums">S/ {p.total.toFixed(2)}</span>
             </Campo>
             <Campo label="Cobrado">
-              <span className="font-mono tabular-nums">S/ {p.cobrado.toFixed(2)}</span>
+              <span className="tabular-nums">S/ {p.cobrado.toFixed(2)}</span>
             </Campo>
             <Campo label="Saldo">
-              <span className="font-mono tabular-nums font-semibold text-navy">S/ {p.saldo.toFixed(2)}</span>
+              <span className="tabular-nums font-semibold text-navy">S/ {p.saldo.toFixed(2)}</span>
             </Campo>
             <Campo label="Estado de pago">
               <span className="capitalize">{p.estadoPago}</span>
@@ -123,7 +123,7 @@ export default async function PedidoDetalle({ params }: { params: { id: string }
               <Campo label="Garantía">{GARANTIA_LABEL[p.garantia.tipo]}</Campo>
               {p.garantia.tipo === 'efectivo' && (
                 <Campo label="Monto">
-                  <span className="font-mono tabular-nums">S/ {(p.garantia.monto ?? 0).toFixed(2)}</span>
+                  <span className="tabular-nums">S/ {(p.garantia.monto ?? 0).toFixed(2)}</span>
                 </Campo>
               )}
               {p.garantia.tipo === 'documento' && (

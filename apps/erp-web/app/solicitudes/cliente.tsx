@@ -144,8 +144,8 @@ export function SolicitudesCliente({
             <TBody>
               {filtradas.map((s) => (
                 <TR key={s.id} className={cn(s.sedeCod === sedeActual && 'border-l-2 border-l-navy bg-navy/[0.03]')}>
-                  <TD className="pl-5 font-mono text-xs text-muted">{fechaHora(s.createdAt)}</TD>
-                  <TD className="font-mono">{s.sedeCod}</TD>
+                  <TD className="pl-5 tabular-nums text-xs text-muted">{fechaHora(s.createdAt)}</TD>
+                  <TD className="tabular-nums">{s.sedeCod}</TD>
                   <TD className="text-sm">{resumenItems(s.items)}</TD>
                   <TD>
                     <Badge tone={URGENCIA_TONE[s.urgencia]}>{URGENCIA_LABEL[s.urgencia]}</Badge>

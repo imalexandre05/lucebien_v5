@@ -7,6 +7,7 @@ import { VALORES, LIKERT_LABELS, type PuntajeValores } from '@scilb/core';
 import { accionEnviarValores } from './actions';
 import type { CompaneroValor, MiResumenValores, SeguimientoValorFila } from '../../lib/valores-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
+import { tonoAvatar } from '../../components/colaboradores/avatar';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -184,7 +185,12 @@ export function ValoresCliente({
                         c.evaluado ? 'cursor-default opacity-60' : 'hover:bg-navy/5',
                       )}
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy/10 text-xs font-semibold text-navy">
+                      <span
+                        className={cn(
+                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                          tonoAvatar(c.nombre),
+                        )}
+                      >
                         {iniciales(c.nombre)}
                       </span>
                       <span className="flex-1 text-sm font-medium text-navy">{c.nombre}</span>
@@ -237,8 +243,8 @@ export function ValoresCliente({
                     {seguimiento.filas.map((f) => (
                       <TR key={f.id}>
                         <TD className="pl-5 font-medium text-navy">{f.nombre}</TD>
-                        <TD className="text-right font-mono tabular-nums">{f.recibidas}</TD>
-                        <TD className="text-right font-mono tabular-nums">
+                        <TD className="text-right tabular-nums">{f.recibidas}</TD>
+                        <TD className="text-right tabular-nums">
                           {f.enviadas}/{f.debeEnviar}
                         </TD>
                         <TD className="text-right">
@@ -246,7 +252,7 @@ export function ValoresCliente({
                             {Math.round(f.cumplimiento * 100)}%
                           </Badge>
                         </TD>
-                        <TD className="pr-5 text-right font-mono font-semibold tabular-nums">
+                        <TD className="pr-5 text-right tabular-nums font-semibold">
                           {f.nota20 != null ? f.nota20.toFixed(1) : '—'}
                         </TD>
                       </TR>
@@ -279,7 +285,7 @@ export function ValoresCliente({
                 style={{ transform: `scaleX(${contestados / VALORES.length})` }}
               />
             </div>
-            <span className="shrink-0 font-mono text-xs tabular-nums text-muted">
+            <span className="shrink-0 tabular-nums text-xs text-muted">
               {contestados}/{VALORES.length}
             </span>
           </div>

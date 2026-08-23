@@ -142,7 +142,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
                     <TD>
                       <NivelPill nivel={t.nivelDefault} />
                     </TD>
-                    <TD className="font-mono text-sm text-navy">{t.puntosDefault}</TD>
+                    <TD className="tabular-nums text-sm text-navy">{t.puntosDefault}</TD>
                     <TD>
                       <button
                         type="button"

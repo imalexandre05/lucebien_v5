@@ -51,7 +51,7 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2} /> Volver al kanban
         </Link>
-        <span className="ml-auto rounded-full bg-navy/5 px-2.5 py-1 font-mono text-xs font-medium text-navy">
+        <span className="ml-auto rounded-full bg-navy/5 px-2.5 py-1 tabular-nums text-xs font-medium text-navy">
           {enCamino.length} por confirmar
         </span>
       </div>
@@ -71,7 +71,7 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
               <CardTitle className="flex items-center gap-2.5">
                 <Truck className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
                 Hacia {sede}
-                <span className="rounded-full bg-navy/5 px-2 py-0.5 font-mono text-xs tabular-nums text-navy">
+                <span className="rounded-full bg-navy/5 px-2 py-0.5 tabular-nums text-xs text-navy">
                   {items.length}
                 </span>
                 {sede === miSede && <Badge tone="gold">tu sede</Badge>}
@@ -91,12 +91,12 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
                 <TBody>
                   {items.map((p) => (
                     <TR key={p.id}>
-                      <TD className="pl-5 font-mono text-sm font-semibold text-navy">{p.codigo}</TD>
+                      <TD className="pl-5 tabular-nums text-sm font-semibold text-navy">{p.codigo}</TD>
                       <TD className="text-sm text-ink">
                         {[p.tipo, p.color, p.talla ? `T.${p.talla}` : ''].filter(Boolean).join(' · ') || '—'}
                       </TD>
-                      <TD className="font-mono text-xs text-muted">{p.sedeOrigenCod}</TD>
-                      <TD className="font-mono text-xs text-muted">{fecha(p.fechaEnvio)}</TD>
+                      <TD className="tabular-nums text-xs text-muted">{p.sedeOrigenCod}</TD>
+                      <TD className="tabular-nums text-xs text-muted">{fecha(p.fechaEnvio)}</TD>
                       <TD className="pr-5">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
@@ -154,12 +154,12 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
               <TBody>
                 {recibidas.map((p) => (
                   <TR key={p.id}>
-                    <TD className="pl-5 font-mono text-sm text-navy">{p.codigo}</TD>
+                    <TD className="pl-5 tabular-nums text-sm text-navy">{p.codigo}</TD>
                     <TD className="text-sm text-ink">
                       {[p.tipo, p.color].filter(Boolean).join(' · ') || '—'}
                     </TD>
-                    <TD className="font-mono text-xs text-muted">{p.sedeDestinoCod}</TD>
-                    <TD className={cn('pr-5 font-mono text-xs text-muted')}>{fecha(p.fechaActualizado)}</TD>
+                    <TD className="tabular-nums text-xs text-muted">{p.sedeDestinoCod}</TD>
+                    <TD className={cn('pr-5 tabular-nums text-xs text-muted')}>{fecha(p.fechaActualizado)}</TD>
                   </TR>
                 ))}
               </TBody>

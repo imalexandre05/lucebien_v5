@@ -22,8 +22,12 @@ export async function accionEnviarLavanderia(p: {
   generales: GeneralesEnvio;
   items: ItemEnvio[];
 }): Promise<{ ok: boolean; id?: string; error?: string }> {
-  if (!p.items.length && Object.values(p.generales).every((v) => v === 0)) {
-    return { ok: false, error: 'La lista está vacía: agrega prendas o accesorios.' };
+  // UNA LISTA NECESITA AL MENOS UNA PRENDA CON CÓDIGO (decisión de Alexander, 21-ago-2026).
+  // Antes bastaba con accesorios a granel. El código es lo que después permite seguir y reclamar
+  // una prenda: un envío sin ninguno no se puede rastrear, y los accesorios de esa lista tampoco.
+  // Anotado en docs/pendientes-negocio.md.
+  if (!p.items.length) {
+    return { ok: false, error: 'La lista necesita al menos una prenda con su código.' };
   }
   try {
     const id = await enviarLavanderia(p);

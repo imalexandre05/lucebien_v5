@@ -12,7 +12,7 @@ export default function Loading() {
       <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
         <div>
           <div className="text-xl font-semibold leading-none">Prendas recibidas</div>
-          <div className="mt-1 font-mono text-[11px] uppercase tracking-widest text-gold">Almacén Central</div>
+          <div className="mt-1 tabular-nums text-[11px] uppercase tracking-widest text-gold">Almacén Central</div>
         </div>
         <Skeleton className="h-6 w-24 bg-white/10" />
       </div>

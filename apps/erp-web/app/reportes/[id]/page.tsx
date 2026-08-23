@@ -91,8 +91,8 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
             </div>
           </div>
           <div className="text-right">
-            <div className="font-mono text-sm font-semibold text-navy">{r.id}</div>
-            <div className="mt-1 font-mono text-[11px] text-muted">
+            <div className="tabular-nums text-sm font-semibold text-navy">{r.id}</div>
+            <div className="mt-1 tabular-nums text-[11px] text-muted">
               {r.sedeCod} · {TURNO_LABEL[r.turno] ?? r.turno} · {r.fecha}
             </div>
             <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted">
@@ -121,18 +121,18 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
         <CardContent className="pt-2">
           <dl className="grid grid-cols-1 gap-x-8 sm:grid-cols-2">
             <Campo label="Sede">
-              <span className="font-mono">{r.sedeCod}</span>
+              <span className="tabular-nums">{r.sedeCod}</span>
             </Campo>
             <Campo label="Turno">{TURNO_LABEL[r.turno] ?? r.turno}</Campo>
             <Campo label="Encargado">{r.encargadoNombre ?? '—'}</Campo>
             <Campo label="Evaluador">{r.evaluadorNombre ?? '—'}</Campo>
             <Campo label="Actividades hechas">
-              <span className="font-mono tabular-nums">
+              <span className="tabular-nums">
                 {r.actDone}/{r.actTotal}
               </span>
             </Campo>
             <Campo label="Puntaje">
-              <span className="font-mono tabular-nums">
+              <span className="tabular-nums">
                 {r.evaluado ? r.puntajeEval ?? r.puntaje : '— (sin evaluar)'}
               </span>
             </Campo>
@@ -195,10 +195,10 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
                 <TBody>
                   {regulares.map((a) => (
                     <TR key={a.id}>
-                      <TD className="pl-5 font-mono text-xs">{a.cod}</TD>
+                      <TD className="pl-5 tabular-nums text-xs">{a.cod}</TD>
                       <TD>{a.nombre}</TD>
-                      <TD className="font-mono text-xs text-muted">{a.cat ?? '—'}</TD>
-                      <TD className="text-right font-mono tabular-nums">
+                      <TD className="tabular-nums text-xs text-muted">{a.cat ?? '—'}</TD>
+                      <TD className="text-right tabular-nums">
                         {a.calificacion == null ? '—' : a.calificacion}
                       </TD>
                       <TD className="pr-5 text-xs text-muted">{a.obsEval || a.obs || '—'}</TD>
@@ -245,10 +245,10 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
                         {puedeVerPuntosExtras && e.revisar && <Badge tone="amber">A revisar</Badge>}
                       </TD>
                       <TD className="text-xs text-muted">{e.registradoPorNombre ?? '—'}</TD>
-                      <TD className="text-right font-mono tabular-nums">{e.cantidad}</TD>
-                      <TD className="text-right font-mono tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
+                      <TD className="text-right tabular-nums">{e.cantidad}</TD>
+                      <TD className="text-right tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
                       {puedeVerPuntosExtras && (
-                        <TD className="pr-5 text-right font-mono tabular-nums">{e.puntosTotal}</TD>
+                        <TD className="pr-5 text-right tabular-nums">{e.puntosTotal}</TD>
                       )}
                     </TR>
                   ))}
@@ -273,7 +273,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
       </Link>
 
       {/* Pie de documento — solo impresión. */}
-      <footer className="mt-8 hidden items-center justify-between border-t border-line pt-3 font-mono text-[10px] text-muted print:flex">
+      <footer className="mt-8 hidden items-center justify-between border-t border-line pt-3 tabular-nums text-[10px] text-muted print:flex">
         <span>SCI-LB · Sistema de Control Interno</span>
         <span>
           {r.id} · impreso {new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeZone: 'America/Lima' }).format(new Date())}

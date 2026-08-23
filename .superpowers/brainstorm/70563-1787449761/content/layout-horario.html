@@ -1,0 +1,157 @@
+<h2>¿Cuál forma de cargar el horario semanal se entiende mejor?</h2>
+<p class="subtitle">Hoy es una fila por día con dos inputs de hora sueltos. El horario real de LuceBien
+se repite casi siempre: 09:00–13:00 + 13:00–20:00, lunes a miércoles, y nada el resto de la
+semana. Elegí la que se sienta más rápida de llenar y de leer de un vistazo.</p>
+
+<style>
+  .lb-navy { color: #2e3e6e; }
+  .lb-gold { color: #8a7c10; }
+  .lb-grid { display: grid; grid-template-columns: 90px repeat(7, 1fr); gap: 4px; font-size: 11px; }
+  .lb-grid .hdr { font-weight: 600; color: #2e3e6e; text-align: center; padding: 4px 2px; }
+  .lb-timecol { color: #807a6c; text-align: right; padding-right: 6px; font-variant-numeric: tabular-nums; }
+  .lb-cell { border: 1px solid #e6e0d4; border-radius: 3px; min-height: 18px; position: relative; background: #f6f4ef; }
+  .lb-block { position: absolute; left: 1px; right: 1px; background: #d4bf1e; opacity: 0.85; border-radius: 3px; border: 1px solid #8a7c10; }
+  .lb-dayrow { display: flex; align-items: center; gap: 8px; border: 1px solid #e6e0d4; border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; background: #fff; }
+  .lb-dayname { width: 70px; font-weight: 600; color: #2e3e6e; font-size: 13px; }
+  .lb-timebar { flex: 1; height: 20px; background: #f6f4ef; border-radius: 4px; position: relative; overflow: hidden; }
+  .lb-timebar .seg { position: absolute; top: 0; bottom: 0; background: #b8a515; opacity: 0.5; }
+  .lb-pill { font-size: 11px; padding: 2px 8px; border-radius: 999px; border: 1px solid #e6e0d4; background: #f6f4ef; color: #2e3e6e; cursor: pointer; }
+  .lb-pill.on { background: #2e3e6e; color: #fff; border-color: #2e3e6e; }
+  .lb-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .lb-table th, .lb-table td { border: 1px solid #e6e0d4; padding: 6px 8px; text-align: center; }
+  .lb-table th { background: #f6f4ef; color: #2e3e6e; font-weight: 600; }
+  .lb-input-mini { border: 1px solid #e6e0d4; border-radius: 4px; padding: 2px 4px; font-size: 11px; width: 62px; font-variant-numeric: tabular-nums; }
+</style>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="padding:10px;">
+        <div class="lb-grid">
+          <div></div>
+          <div class="hdr">Lun</div><div class="hdr">Mar</div><div class="hdr">Mié</div>
+          <div class="hdr">Jue</div><div class="hdr">Vie</div><div class="hdr">Sáb</div><div class="hdr">Dom</div>
+          <div class="lb-timecol">09</div>
+          <div class="lb-cell"><div class="lb-block" style="top:0;bottom:50%"></div></div>
+          <div class="lb-cell"><div class="lb-block" style="top:0;bottom:50%"></div></div>
+          <div class="lb-cell"><div class="lb-block" style="top:0;bottom:50%"></div></div>
+          <div class="lb-cell"></div><div class="lb-cell"></div><div class="lb-cell"></div><div class="lb-cell"></div>
+          <div class="lb-timecol">13</div>
+          <div class="lb-cell"><div class="lb-block" style="top:0;bottom:0"></div></div>
+          <div class="lb-cell"><div class="lb-block" style="top:0;bottom:0"></div></div>
+          <div class="lb-cell"><div class="lb-block" style="top:0;bottom:0"></div></div>
+          <div class="lb-cell"></div><div class="lb-cell"></div><div class="lb-cell"></div><div class="lb-cell"></div>
+          <div class="lb-timecol">20</div>
+          <div class="lb-cell"></div><div class="lb-cell"></div><div class="lb-cell"></div>
+          <div class="lb-cell"></div><div class="lb-cell"></div><div class="lb-cell"></div><div class="lb-cell"></div>
+        </div>
+        <p style="font-size:10px;color:#807a6c;margin-top:6px;">Click y arrastrá sobre la grilla para crear un turno. Click en un bloque dorado para editar la hora exacta.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Grilla semanal (calendario real)</h3>
+      <p>Días en columnas, horas en el eje vertical. Se arrastra para crear un turno y se ve la
+      semana entera de un vistazo — el bloque más parecido a un calendario de verdad.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>A favor</h4><ul>
+          <li>Lectura instantánea de huecos y solapes</li>
+          <li>Se siente como Google Calendar</li>
+        </ul></div>
+        <div class="cons"><h4>En contra</h4><ul>
+          <li>Más trabajo de construir (drag-to-resize, táctil)</li>
+          <li>En el celular una grilla de 7 columnas aprieta</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="padding:10px;">
+        <div class="lb-dayrow">
+          <span class="lb-dayname">Lunes</span>
+          <div class="lb-timebar"><div class="seg" style="left:19%;width:17%"></div><div class="seg" style="left:36%;width:29%"></div></div>
+          <span class="lb-pill on">09–13 · 13–20</span>
+        </div>
+        <div class="lb-dayrow">
+          <span class="lb-dayname">Martes</span>
+          <div class="lb-timebar"><div class="seg" style="left:19%;width:17%"></div><div class="seg" style="left:36%;width:29%"></div></div>
+          <span class="lb-pill on">09–13 · 13–20</span>
+        </div>
+        <div class="lb-dayrow">
+          <span class="lb-dayname">Jueves</span>
+          <div class="lb-timebar"></div>
+          <span class="lb-pill">sin turnos</span>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+          <span class="lb-pill on">Copiar Lunes a Mar–Mié</span>
+          <span class="lb-pill">Turno mañana 09–13</span>
+          <span class="lb-pill">Turno tarde 13–20</span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Fila por día + barra visual + atajos</h3>
+      <p>Se mantiene la fila por día de hoy (nada que reaprender) pero la hora se ve como una barra
+      de color en vez de números sueltos, y atajos como «copiar de Lunes» arman el resto de la
+      semana en un click.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>A favor</h4><ul>
+          <li>Cambio chico sobre lo que ya existe</li>
+          <li>El atajo «copiar» resuelve el caso real (Lun–Mié iguales)</li>
+        </ul></div>
+        <div class="cons"><h4>En contra</h4><ul>
+          <li>No es un calendario de verdad, es una fila mejorada</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mockup" style="padding:10px;">
+        <table class="lb-table">
+          <tr><th></th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th><th>Dom</th></tr>
+          <tr>
+            <td style="text-align:left;color:#807a6c;">Turno 1</td>
+            <td><input class="lb-input-mini" value="09:00"/><br/><input class="lb-input-mini" value="13:00"/></td>
+            <td><input class="lb-input-mini" value="09:00"/><br/><input class="lb-input-mini" value="13:00"/></td>
+            <td><input class="lb-input-mini" value="09:00"/><br/><input class="lb-input-mini" value="13:00"/></td>
+            <td>—</td><td>—</td><td>—</td><td>—</td>
+          </tr>
+          <tr>
+            <td style="text-align:left;color:#807a6c;">Turno 2</td>
+            <td><input class="lb-input-mini" value="13:00"/><br/><input class="lb-input-mini" value="20:00"/></td>
+            <td><input class="lb-input-mini" value="13:00"/><br/><input class="lb-input-mini" value="20:00"/></td>
+            <td><input class="lb-input-mini" value="13:00"/><br/><input class="lb-input-mini" value="20:00"/></td>
+            <td>—</td><td>—</td><td>—</td><td>—</td>
+          </tr>
+        </table>
+        <p style="font-size:10px;color:#807a6c;margin-top:6px;">Turnos en filas, días en columnas — llenás horizontal y ves el patrón semanal como tabla.</p>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Matriz turno × día</h3>
+      <p>Filas = turno 1 / turno 2, columnas = los 7 días. Se llena como una planilla: rápido para
+      alguien acostumbrado a Excel, y el patrón semanal (quién trabaja qué días) se lee en una
+      tabla compacta.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>A favor</h4><ul>
+          <li>Más compacto en pantalla chica que A</li>
+          <li>Natural para quien ya piensa en planillas</li>
+        </ul></div>
+        <div class="cons"><h4>En contra</h4><ul>
+          <li>Un tercer turno (excepción) no entra bien en la matriz</li>
+          <li>Menos "calendario", más "tabla"</li>
+        </ul></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="label" style="margin-top:16px;">Mi recomendación: B. Resuelve el pedido real (la carga es
+complicada) con el menor riesgo — no reconstruye el editor de turnos desde cero, y el atajo
+«copiar de Lunes» es exactamente el caso de LuceBien (mismo horario tres días seguidos). A es más
+lindo pero es un componente nuevo de verdad (drag-to-resize) para un beneficio marginal sobre B.</p>

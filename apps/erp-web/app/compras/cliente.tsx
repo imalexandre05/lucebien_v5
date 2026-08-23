@@ -65,14 +65,14 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
                 const est = ESTADO[c.estado];
                 return (
                   <TR key={c.id} className={cn(c.estado === 'anulada' && 'opacity-60')}>
-                    <TD className="pl-5 font-mono text-xs text-muted">{c.fecha}</TD>
+                    <TD className="pl-5 tabular-nums text-xs text-muted">{c.fecha}</TD>
                     <TD className="text-sm font-medium text-navy">{c.proveedorNombre ?? '—'}</TD>
-                    <TD className="font-mono text-xs text-navy">{c.sedeCod}</TD>
+                    <TD className="tabular-nums text-xs text-navy">{c.sedeCod}</TD>
                     <TD className="max-w-[22rem] text-sm text-ink">
                       {c.items.map((i) => `${i.cantidad}× ${i.materialNombre ?? 'material'}`).join(' · ') || '—'}
                       {Boolean(c.obs) && <span className="block text-xs text-muted">{c.obs}</span>}
                     </TD>
-                    <TD className="text-right font-mono text-sm tabular-nums text-navy">{soles(c.total)}</TD>
+                    <TD className="text-right tabular-nums text-sm text-navy">{soles(c.total)}</TD>
                     <TD>
                       <Badge tone={est.tone}>{est.label}</Badge>
                     </TD>

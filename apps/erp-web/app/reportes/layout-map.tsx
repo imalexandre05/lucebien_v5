@@ -145,7 +145,7 @@ function TarjetaEspecial({
       </span>
       <span
         className={cn(
-          'shrink-0 font-mono text-xs font-bold tabular-nums',
+          'shrink-0 tabular-nums text-xs font-bold',
           !esEval && (marcada ? 'text-exito-deep' : 'text-muted'),
         )}
         style={esEval ? { color: ev.borde } : undefined}
@@ -302,7 +302,7 @@ export function LayoutMap({
             </button>
           );
         })}
-        <span className="ml-auto rounded-full bg-exito/10 px-3 py-1 font-mono text-xs font-bold tabular-nums text-exito-deep">
+        <span className="ml-auto rounded-full bg-exito/10 px-3 py-1 tabular-nums text-xs font-bold text-exito-deep">
           {r1(ganados)} / {r1(totalPts)} pts
         </span>
       </div>
@@ -466,7 +466,7 @@ export function LayoutMap({
                 {chip}
                 <span
                   className={cn(
-                    'pointer-events-none px-0.5 font-mono text-[7px] font-semibold leading-none',
+                    'pointer-events-none px-0.5 tabular-nums text-[7px] font-semibold leading-none',
                     esEval ? 'text-ink/70' : oscuro ? 'text-[#5c3d00]' : 'text-white',
                   )}
                   style={{ textShadow: oscuro || esEval ? undefined : '0 0 2px rgba(0,0,0,.25)' }}
@@ -474,14 +474,14 @@ export function LayoutMap({
                   {z.cod}
                 </span>
                 {z.sobreCod && (
-                  <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-full bg-navy-deep px-1 py-px font-mono text-[6px] leading-tight text-paper/90">
+                  <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-full bg-navy-deep px-1 py-px tabular-nums text-[6px] leading-tight text-paper/90">
                     s/{z.sobreCod}
                   </span>
                 )}
                 {tieneSolape && !dropdownAbierto && (
                   <span
                     aria-hidden
-                    className="absolute -left-1.5 -top-1.5 z-[7] flex h-4 w-4 items-center justify-center rounded-full border border-white bg-navy-deep font-mono text-[8px] font-bold text-paper"
+                    className="absolute -left-1.5 -top-1.5 z-[7] flex h-4 w-4 items-center justify-center rounded-full border border-white bg-navy-deep tabular-nums text-[8px] font-bold text-paper"
                   >
                     {grupo!.size}
                   </span>
@@ -520,7 +520,7 @@ export function LayoutMap({
                           <Square className="h-3 w-3 shrink-0 text-muted/50" strokeWidth={1.75} />
                         )}
                         <span className="min-w-0 flex-1 truncate">{zz.nombre || zz.cod}</span>
-                        <span className="shrink-0 font-mono text-[9px] text-muted">{zz.cod}</span>
+                        <span className="shrink-0 tabular-nums text-[9px] text-muted">{zz.cod}</span>
                       </button>
                     );
                   })}
@@ -600,8 +600,8 @@ export function LayoutMap({
                   <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-white" style={{ background: ev.chip }}>
                     <IconoEstado v={v} className="h-2.5 w-2.5" />
                   </span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink">{z.cod}</span>
-                  <span className="shrink-0 font-mono text-[11px] font-semibold tabular-nums" style={{ color: ev.borde }}>
+                  <span className="min-w-0 flex-1 truncate tabular-nums text-[11px] text-ink">{z.cod}</span>
+                  <span className="shrink-0 tabular-nums text-[11px] font-semibold" style={{ color: ev.borde }}>
                     {r1(z.peso * v)}/{r1(z.peso)}
                   </span>
                 </button>
@@ -611,7 +611,7 @@ export function LayoutMap({
         </ul>
         <div className="mt-2 flex items-center justify-between rounded-lg border border-gold/40 bg-gold/10 px-3 py-2">
           <span className="text-sm font-semibold text-navy">Limpieza</span>
-          <span className="font-mono text-sm font-bold tabular-nums text-gold-deep">
+          <span className="tabular-nums text-sm font-bold text-gold-deep">
             {r1(ganados)}/{r1(totalPts)}
           </span>
         </div>

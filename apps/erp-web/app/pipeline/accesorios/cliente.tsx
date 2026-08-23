@@ -150,7 +150,7 @@ export function AccesoriosCliente({
             <CardHeader>
               <CardTitle>
                 Por validar en tienda{' '}
-                <span className="ml-1 rounded-full bg-navy/5 px-2 py-0.5 font-mono text-xs tabular-nums text-navy">
+                <span className="ml-1 rounded-full bg-navy/5 px-2 py-0.5 tabular-nums text-xs text-navy">
                   {pendientes.length}
                 </span>
               </CardTitle>
@@ -174,9 +174,9 @@ export function AccesoriosCliente({
                   <TBody>
                     {pendientes.map((e) => (
                       <TR key={e.id}>
-                        <TD className="pl-5 font-mono text-xs text-muted">{fecha(e.fecha)}</TD>
+                        <TD className="pl-5 tabular-nums text-xs text-muted">{fecha(e.fecha)}</TD>
                         <TD>
-                          <span className="font-mono text-sm font-semibold text-navy">{e.sedeDestinoCod}</span>
+                          <span className="tabular-nums text-sm font-semibold text-navy">{e.sedeDestinoCod}</span>
                           {e.sedeDestinoCod === miSede && (
                             <Badge tone="gold" className="ml-1.5">
                               tu sede
@@ -223,10 +223,10 @@ export function AccesoriosCliente({
                   <TBody>
                     {validados.map((e) => (
                       <TR key={e.id}>
-                        <TD className="pl-5 font-mono text-xs text-muted">{fecha(e.fecha)}</TD>
-                        <TD className="font-mono text-sm text-navy">{e.sedeDestinoCod}</TD>
+                        <TD className="pl-5 tabular-nums text-xs text-muted">{fecha(e.fecha)}</TD>
+                        <TD className="tabular-nums text-sm text-navy">{e.sedeDestinoCod}</TD>
                         <TD className="text-sm text-ink">{e.items.map((i) => `${i.cantidad}× ${i.tipo}`).join(' · ')}</TD>
-                        <TD className="pr-5 font-mono text-xs text-exito-deep">{fecha(e.fechaValidado)}</TD>
+                        <TD className="pr-5 tabular-nums text-xs text-exito-deep">{fecha(e.fechaValidado)}</TD>
                       </TR>
                     ))}
                   </TBody>

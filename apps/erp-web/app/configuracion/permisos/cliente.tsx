@@ -155,10 +155,10 @@ export function PermisosCliente({
       <Card>
         <CardContent className="flex flex-wrap items-center gap-3 py-4">
           <p className="text-sm text-muted">
-            Clic en cada letra para activar/desactivar esa acción. <span className="font-mono text-xs">V</span> ver ·{' '}
-            <span className="font-mono text-xs">C</span> crear · <span className="font-mono text-xs">E</span> editar ·{' '}
-            <span className="font-mono text-xs">D</span> eliminar ·{' '}
-            <span className="font-mono text-xs">{totalActivos}</span> activadas.
+            Clic en cada letra para activar/desactivar esa acción. <span className="tabular-nums text-xs">V</span> ver ·{' '}
+            <span className="tabular-nums text-xs">C</span> crear · <span className="tabular-nums text-xs">E</span> editar ·{' '}
+            <span className="tabular-nums text-xs">D</span> eliminar ·{' '}
+            <span className="tabular-nums text-xs">{totalActivos}</span> activadas.
           </p>
           <div className="ml-auto flex items-center gap-3">
             {guardado && <span className="text-xs font-medium text-exito-deep">Guardado ✓</span>}

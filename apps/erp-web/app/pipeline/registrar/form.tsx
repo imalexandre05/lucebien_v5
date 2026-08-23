@@ -8,16 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Button } from '../../../components/ui/button';
 import { campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
+import { coloresPrenda, tallasPrenda, tiposLavado, tiposPrenda } from '@scilb/adapter-lucebien';
 
-// Mismos vocabularios que usa el tablero (no inventar valores nuevos).
-const TIPOS = ['Terno completo', 'Saco', 'Pantalón', 'Camisa', 'Chaleco', 'Corbata', 'Otros'];
-const COLORES = [
-  'Negro', 'Azul noche', 'Azul Barcelona', 'Azul eléctrico', 'Azul acero', 'Azul presidente',
-  'Verde petróleo', 'Celeste', 'Celeste bb', 'Plomo', 'Plomo rata', 'Beige', 'Camello',
-  'Vino', 'Blanco', 'Gris', 'Otros',
-];
-const TALLAS = ['XS', 'S', 'M', 'L', 'XL', '2XL', '4', '6', '8', '10', '12', '14', '16'];
-const LAVADOS = ['normal', 'seco', 'especializado'];
+// Mismos vocabularios que usa el tablero (no inventar valores nuevos). Vivían escritos acá y otra
+// vez, iguales, en /envio-lavanderia; ahora las dos pantallas leen la misma lista del adapter.
+const TIPOS = tiposPrenda;
+const COLORES = coloresPrenda;
+const TALLAS = tallasPrenda;
+const LAVADOS = tiposLavado;
 
 const fieldCls = campoCls;
 
@@ -92,7 +90,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
                 onChange={(e) => setCodigo(e.target.value)}
                 placeholder="TN-042"
                 autoFocus
-                className={cn(fieldCls, 'font-mono uppercase')}
+                className={cn(fieldCls, 'tabular-nums uppercase')}
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -175,7 +173,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
           {registradas.map((c, i) => (
             <span
               key={`${c}-${i}`}
-              className="inline-flex items-center gap-1 rounded bg-exito-soft px-1.5 py-0.5 font-mono text-[11px] font-medium text-exito-deep"
+              className="inline-flex items-center gap-1 rounded bg-exito-soft px-1.5 py-0.5 tabular-nums text-[11px] font-medium text-exito-deep"
             >
               <Check className="h-2.5 w-2.5" strokeWidth={3} /> {c}
             </span>

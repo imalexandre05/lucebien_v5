@@ -74,7 +74,7 @@ export function StatBox({
         {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />}
         <span>{label}</span>
       </div>
-      <div className={cn('font-mono font-bold tabular-nums', numero, size === 'xl' && 'mt-1.5')}>
+      <div className={cn('tabular-nums font-bold', numero, size === 'xl' && 'mt-1.5')}>
         {valor}
       </div>
       {sub != null && <div className={cn('text-[10px] text-muted', size === 'xl' && 'mt-1')}>{sub}</div>}

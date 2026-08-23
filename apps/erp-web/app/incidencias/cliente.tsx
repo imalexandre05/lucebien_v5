@@ -298,8 +298,8 @@ export function IncidenciasCliente({
             <TBody>
               {filtradas.map((i) => (
                 <TR key={i.id}>
-                  <TD className="pl-5 font-mono text-xs text-muted">{i.fecha}</TD>
-                  <TD className="font-mono">{i.sedeCod}</TD>
+                  <TD className="pl-5 tabular-nums text-xs text-muted">{i.fecha}</TD>
+                  <TD className="tabular-nums">{i.sedeCod}</TD>
                   <TD>
                     <div className="font-medium text-navy">{i.tipo}</div>
                     {i.descripcion && <div className="text-xs text-muted">{i.descripcion}</div>}
@@ -312,7 +312,7 @@ export function IncidenciasCliente({
                     {i.origen === 'reporte' && i.reporteId ? (
                       <Link
                         href={`/reportes/${i.reporteId}`}
-                        className="toque inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 font-mono text-[11px] text-navy transition hover:bg-navy/10"
+                        className="toque inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 tabular-nums text-[11px] text-navy transition hover:bg-navy/10"
                       >
                         reporte
                       </Link>
@@ -320,7 +320,7 @@ export function IncidenciasCliente({
                       <span className="text-xs text-muted">manual</span>
                     )}
                   </TD>
-                  <TD className="text-right font-mono tabular-nums">{i.puntosPenalidad || '—'}</TD>
+                  <TD className="text-right tabular-nums">{i.puntosPenalidad || '—'}</TD>
                   {esAdmin && (
                     <TD className="pr-5 text-right">
                       <button type="button" onClick={() => eliminar(i.id)} className="text-muted transition-colors hover:text-error" aria-label="Eliminar">

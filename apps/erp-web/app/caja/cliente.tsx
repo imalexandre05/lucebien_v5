@@ -149,7 +149,7 @@ export function CajaCliente({
           <div className="inline-flex items-center gap-2 text-xl font-semibold leading-none">
             <span className="h-2 w-2 rounded-full bg-exito" /> Caja abierta · {sesion.sedeCod}
           </div>
-          <div className="mt-1 font-mono text-[11px] text-paper/60">
+          <div className="mt-1 tabular-nums text-[11px] text-paper/60">
             Apertura {soles(sesion.montoApertura)} · {sesion.aperturaAt.slice(0, 16).replace('T', ' ')}
           </div>
         </div>
@@ -187,7 +187,7 @@ export function CajaCliente({
       <Card>
         <CardHeader>
           <CardTitle>Cobros pendientes</CardTitle>
-          <span className="font-mono text-xs text-muted tabular-nums">{pendientes.length}</span>
+          <span className="tabular-nums text-xs text-muted">{pendientes.length}</span>
         </CardHeader>
         <CardContent className="overflow-x-auto px-0 pb-0">
           <Table>
@@ -207,10 +207,10 @@ export function CajaCliente({
                 <TR key={p.pedidoId}>
                   <TD className="pl-5 font-medium text-navy">{p.clienteNombre ?? '—'}</TD>
                   <TD className="capitalize">{p.tipo}</TD>
-                  <TD className="font-mono text-xs text-muted">{p.fecha}</TD>
-                  <TD className="text-right font-mono tabular-nums">{soles(p.total)}</TD>
-                  <TD className="text-right font-mono tabular-nums text-muted">{soles(p.cobrado)}</TD>
-                  <TD className="text-right font-mono font-semibold tabular-nums text-navy">{soles(p.saldo)}</TD>
+                  <TD className="tabular-nums text-xs text-muted">{p.fecha}</TD>
+                  <TD className="text-right tabular-nums">{soles(p.total)}</TD>
+                  <TD className="text-right tabular-nums text-muted">{soles(p.cobrado)}</TD>
+                  <TD className="text-right tabular-nums font-semibold text-navy">{soles(p.saldo)}</TD>
                   <TD className="pr-5 text-right">
                     {puedeCobrar && (
                       <button
@@ -256,14 +256,14 @@ export function CajaCliente({
             <TBody>
               {movimientos.map((m) => (
                 <TR key={m.id}>
-                  <TD className="pl-5 font-mono text-xs text-muted">{m.createdAt.slice(11, 16)}</TD>
+                  <TD className="pl-5 tabular-nums text-xs text-muted">{m.createdAt.slice(11, 16)}</TD>
                   <TD>
                     <Badge tone={m.tipo === 'ingreso' ? 'green' : 'amber'}>{m.tipo}</Badge>
                   </TD>
                   <TD className="capitalize">{m.categoria.replace(/_/g, ' ')}{m.cobroTipo ? ` · ${m.cobroTipo}` : ''}</TD>
                   <TD className="capitalize">{m.metodo ?? '—'}</TD>
                   <TD className="text-sm text-muted">{m.registradoPorNombre ?? '—'}</TD>
-                  <TD className={cn('pr-5 text-right font-mono font-semibold tabular-nums', m.tipo === 'ingreso' ? 'text-exito-deep' : 'text-error-deep')}>
+                  <TD className={cn('pr-5 text-right tabular-nums font-semibold', m.tipo === 'ingreso' ? 'text-exito-deep' : 'text-error-deep')}>
                     {m.tipo === 'ingreso' ? '+' : '−'} {soles(m.monto)}
                   </TD>
                 </TR>
@@ -425,7 +425,7 @@ export function CajaCliente({
         >
           <div className="flex justify-between rounded-md bg-navy/5 px-3 py-2 text-sm">
             <span className="text-muted">Efectivo esperado</span>
-            <span className="font-mono font-semibold text-navy">{soles(resumen.efectivoEsperado)}</span>
+            <span className="tabular-nums font-semibold text-navy">{soles(resumen.efectivoEsperado)}</span>
           </div>
           <div>
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Efectivo contado (arqueo)</label>
@@ -433,7 +433,7 @@ export function CajaCliente({
           </div>
           <div className={cn('flex justify-between rounded-md px-3 py-2 text-sm', Math.abs(montoCierre - resumen.efectivoEsperado) < 0.01 ? 'bg-exito-soft text-exito-deep' : 'bg-aviso-soft text-aviso-deep')}>
             <span>Diferencia</span>
-            <span className="font-mono font-semibold">{soles(montoCierre - resumen.efectivoEsperado)}</span>
+            <span className="tabular-nums font-semibold">{soles(montoCierre - resumen.efectivoEsperado)}</span>
           </div>
           {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
         </Modal>

@@ -151,6 +151,18 @@ revisar "diseno" "Diseno -- sin colores por defecto de Tailwind" \
   "Usa un token: exito/aviso/error/info para estado, cat-* para identidad, paper/line/muted/ink para gris." \
   "$hits_diseno"
 
+# -- Diseno: sin tipografia monoespaciada ----------------------------------------------------
+# Los codigos y los numeros iban en font-mono. La familia ni siquiera estaba cargada, asi que el
+# navegador caia en la monoespaciada del sistema y el ERP se veia como una terminal. Se saco entera
+# el 21-ago-2026 (decision de Alexander): los numeros se alinean con tabular-nums, que es lo unico
+# que hacia falta. La familia mono ya no existe en tailwind.config.ts.
+hits_mono=$(grep -rn "font-mono" \
+  apps/erp-web/app apps/erp-web/components apps/erp-web/lib \
+  --include="*.tsx" --include="*.ts" 2>/dev/null | sin_comentarios || true)
+revisar "mono" "Diseno -- sin tipografia monoespaciada" \
+  "Usa tabular-nums para que los numeros no bailen. No hay familia mono en el sistema." \
+  "$hits_mono"
+
 # -- Diseno: el estilo de campo no se vuelve a escribir a mano -------------------------------
 # Veintisiete pantallas declaraban su propio fieldCls y otras dieciseis lo escriben en linea. Cada
 # copia se queda sin lo que se le agregue al sistema: es la razon por la que el estado de error de

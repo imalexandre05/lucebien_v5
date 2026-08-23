@@ -216,7 +216,7 @@ export default async function Dashboard() {
         icon: Shirt,
         titulo: (
           <>
-            <span className="font-mono">{p.codigo}</span> → {ETAPA_LABEL[p.etapa] ?? p.etapa}
+            <span className="tabular-nums">{p.codigo}</span> → {ETAPA_LABEL[p.etapa] ?? p.etapa}
           </>
         ),
         detalle: p.tipo || null,
@@ -257,7 +257,7 @@ export default async function Dashboard() {
             <div className="pointer-events-none absolute inset-[5px] rounded-[9px] border border-gold/45" />
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <span className="text-3xl font-semibold leading-none text-navy">{dia.dia}</span>
-              <span className="mt-1 font-mono text-[9px] uppercase tracking-[0.18em] text-muted">
+              <span className="mt-1 tabular-nums text-[9px] uppercase tracking-[0.18em] text-muted">
                 {dia.mes} {dia.anio}
               </span>
             </div>
@@ -311,7 +311,7 @@ export default async function Dashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2.5">
             Pipeline de lavandería
-            <span className="rounded-full bg-navy/5 px-2.5 py-0.5 font-mono text-xs font-semibold tabular-nums text-navy">
+            <span className="rounded-full bg-navy/5 px-2.5 py-0.5 tabular-nums text-xs font-semibold text-navy">
               {totalFlujo} en proceso
             </span>
           </CardTitle>
@@ -345,7 +345,7 @@ export default async function Dashboard() {
                       >
                         <div
                           className={cn(
-                            'animate-rise font-mono text-lg font-semibold tabular-nums',
+                            'animate-rise tabular-nums text-lg font-semibold',
                             n === 0 ? 'text-muted/60' : esListo ? 'text-gold-deep' : 'text-navy',
                           )}
                           style={{ animationDelay: `${i * 45}ms` }}
@@ -471,10 +471,10 @@ export default async function Dashboard() {
                           {ev.detalle && <span className="block truncate text-xs text-muted">{ev.detalle}</span>}
                         </span>
                         <span className="shrink-0 text-right">
-                          <span className="block font-mono text-[11px] text-muted">{tiempoRelativo(ev.ts, ahora)}</span>
+                          <span className="block tabular-nums text-[11px] text-muted">{tiempoRelativo(ev.ts, ahora)}</span>
                           {/* Fecha absoluta (tarea 1): "hace 3 h" no dice CUÁNDO fue — solo en reportes. */}
                           {esReporte && (
-                            <span className="block font-mono text-[10px] text-muted/70">{fechaHoraCorta(ev.ts)}</span>
+                            <span className="block tabular-nums text-[10px] text-muted/70">{fechaHoraCorta(ev.ts)}</span>
                           )}
                         </span>
                       </Link>
@@ -511,12 +511,12 @@ export default async function Dashboard() {
                   <div key={r.nombre} className="animate-rise" style={{ animationDelay: `${i * 50}ms` }}>
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="flex min-w-0 items-baseline gap-2">
-                        <span className="w-6 shrink-0 font-mono text-[11px] text-muted">#{i + 1}</span>
+                        <span className="w-6 shrink-0 tabular-nums text-[11px] text-muted">#{i + 1}</span>
                         <span className="truncate text-sm text-ink">{r.nombre}</span>
                       </span>
                       <span
                         className={cn(
-                          'font-mono text-sm font-bold tabular-nums',
+                          'tabular-nums text-sm font-bold',
                           i === 0 ? 'text-gold-deep' : 'text-navy',
                         )}
                       >
@@ -552,7 +552,7 @@ function PuntajePill({ puntaje }: { puntaje: number }) {
         ? 'bg-gold/20 text-gold-deep'
         : 'bg-error/15 text-error-deep';
   return (
-    <span className={cn('rounded-full px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums', cls)}>
+    <span className={cn('rounded-full px-2 py-0.5 tabular-nums text-[10px] font-bold', cls)}>
       {puntaje}%
     </span>
   );

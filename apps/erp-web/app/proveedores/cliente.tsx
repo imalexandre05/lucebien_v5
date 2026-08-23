@@ -100,13 +100,13 @@ export function ProveedoresCliente({ proveedores, categorias }: { proveedores: P
                       </span>
                       <div className="min-w-0">
                         <div className="truncate font-medium text-navy">{p.nombre}</div>
-                        {Boolean(p.ruc) && <div className="font-mono text-[10px] text-muted">RUC {p.ruc}</div>}
+                        {Boolean(p.ruc) && <div className="tabular-nums text-[10px] text-muted">RUC {p.ruc}</div>}
                       </div>
                     </div>
                   </TD>
                   <TD className="text-sm text-ink">{p.categoria || '—'}</TD>
                   <TD className="text-sm text-ink">{p.contacto || '—'}</TD>
-                  <TD className="font-mono text-xs">{p.telefono || '—'}</TD>
+                  <TD className="tabular-nums text-xs">{p.telefono || '—'}</TD>
                   <TD>
                     {p.activo ? (
                       <Badge tone="green">Activo</Badge>

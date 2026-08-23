@@ -92,7 +92,7 @@ export function HiloPago({
           <>
             <span
               className={cn(
-                'relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 font-mono text-xs font-semibold transition-colors duration-200',
+                'relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 tabular-nums text-xs font-semibold transition-colors duration-200',
                 TONO[e].circulo,
               )}
             >

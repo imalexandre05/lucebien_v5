@@ -18,7 +18,7 @@ function Fila({ label, valor }: { label: string; valor: string }) {
   return (
     <div className="flex items-center justify-between border-b border-line/60 py-2 text-sm last:border-0">
       <span className="capitalize text-muted">{label}</span>
-      <span className="font-mono tabular-nums text-navy">{valor}</span>
+      <span className="tabular-nums text-navy">{valor}</span>
     </div>
   );
 }
