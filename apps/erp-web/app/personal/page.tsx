@@ -6,7 +6,7 @@ import { getSesion } from '../../lib/auth';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
 import { tieneReauth } from '../../lib/reauth';
 import { leerPeriodo } from '../../lib/periodo';
-import { MODULOS_DEL_MODULO } from '../../lib/colaboradores-secciones';
+import { SECCIONES } from '../../lib/colaboradores-secciones';
 import { listarColaboradores, estadoDelPeriodo } from '../../lib/colaboradores-repo';
 import { PageHeader } from '../../components/shell/page-header';
 import { ReauthGate } from '../../components/ui/reauth-gate';
@@ -62,10 +62,16 @@ export default async function ColaboradoresPage({
   } catch {
     matriz = {};
   }
-  const visibles = MODULOS_DEL_MODULO.filter((m) =>
-    puede(matriz, sesion.usuario.rol, m, 'ver', sesion.usuario.rolCod),
+  const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
+  // Mismo criterio que accesoColaboradores(): una sección soloAdmin no cuenta para decidir si el
+  // módulo entero es visible, porque adentro su pantalla la bloquea igual para quien no sea
+  // admin/dueño (colaboradores-secciones.ts). Antes se miraba MODULOS_DEL_MODULO, que no
+  // distinguía soloAdmin: un rol con sólo 'pagos'/'sueldos'/'empleados' entraba a esta lista y
+  // después chocaba con un callejón sin salida en cada persona (hotfix R1.1).
+  const visibles = SECCIONES.some(
+    (s) => (esAdmin || !s.soloAdmin) && puede(matriz, sesion.usuario.rol, s.modulo, 'ver', sesion.usuario.rolCod),
   );
-  if (!visibles.length) redirect('/reportes/nuevo');
+  if (!visibles) redirect('/reportes/nuevo');
 
   if (!(await tieneReauth(sesion.usuario.id))) {
     return (
@@ -76,7 +82,6 @@ export default async function ColaboradoresPage({
     );
   }
 
-  const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
   const puedeEvaluaciones = puede(matriz, sesion.usuario.rol, 'evaluaciones', 'ver', sesion.usuario.rolCod);
   const herramientas = HERRAMIENTAS.filter((h) => (h.gate === 'admin' ? esAdmin : puedeEvaluaciones));
 

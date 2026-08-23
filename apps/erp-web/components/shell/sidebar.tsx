@@ -16,9 +16,13 @@ type Item = {
   icon: LucideIcon;
   modulo: string;
   /**
-   * Módulos alternativos que también abren esta entrada. Existe por Personal, que fusiona cuatro
-   * entradas con permisos distintos: con `modulo` a secas, un rol que solo veía 'sueldos' habría
-   * perdido el acceso que tenía. Adentro cada sección conserva el suyo.
+   * Módulos alternativos que también abren esta entrada: alcanza con pasar uno solo. Sirve para
+   * fusionar el menú de varias pantallas con permisos distintos sin que un rol pierda acceso —
+   * pero sólo si cada alternativa de verdad abre algo alcanzable para un rol no-admin. Si la
+   * pantalla de destino hardcodea admin/dueño por dentro (soloAdmin en colaboradores-secciones.ts),
+   * la alternativa sólo sirve para admin/dueño, que ya pasan por mecanismo sin necesitar esto — y
+   * un rol no-admin se queda con una entrada de menú que abre y no lo deja abrir a nadie (hotfix
+   * R1.1, ver Personal más abajo).
    */
   modulosAlternos?: string[];
 };
@@ -61,16 +65,24 @@ const NAV: { section: string; items: Item[] }[] = [
     items: [
       // PERSONAL (23-ago-2026): Colaboradores, Sueldos, Liquidaciones y Empleados se funden en una
       // sola entrada. Se entra por la persona y adentro está todo el flujo; lo masivo queda como
-      // herramientas del período dentro del apartado. 'empleados' entra a los alternos para que
-      // quien solo tenía Empleados no pierda el acceso que tenía (no-negociable 3: fusionar el
-      // menú no amplía ni recorta). Las rutas viejas siguen funcionando —nada se borró— pero salen
-      // del menú para que la respuesta a "¿qué pasa con esta persona?" sea una sola.
+      // herramientas del período dentro del apartado. Las rutas viejas siguen funcionando —nada se
+      // borró— pero salen del menú para que la respuesta a "¿qué pasa con esta persona?" sea una
+      // sola.
+      //
+      // SIN modulosAlternos (hotfix R1.1, 23-ago-2026). La primera versión sumaba 'pagos',
+      // 'sueldos' y 'empleados' para que un rol que sólo tenía uno de esos tres no perdiera el
+      // acceso que ya tenía. Pero adentro de /personal cada pestaña sigue exigiendo el permiso de
+      // su pantalla original, y las de sueldos/pagos/datos hardcodean admin/dueño por dentro
+      // (soloAdmin, colaboradores-secciones.ts): un rol no-admin con sólo uno de esos tres módulos
+      // entraba a la lista y no podía abrir a NADIE — la entrada del menú era un callejón sin
+      // salida. admin/dueño no pierden nada: puede() los deja pasar por mecanismo sin mirar
+      // modulosAlternos (packages/core/src/auth.ts). 'evaluaciones' es el único módulo que de
+      // verdad abre una pestaña alcanzable para un rol no-admin (resumen/evaluación/valores).
       {
         label: 'Personal',
         href: '/personal',
         icon: UsersRound,
         modulo: 'evaluaciones',
-        modulosAlternos: ['pagos', 'sueldos', 'empleados'],
       },
       { label: 'Historial de reportes', href: '/administracion/reportes', icon: Files, modulo: 'reportes_admin' },
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },

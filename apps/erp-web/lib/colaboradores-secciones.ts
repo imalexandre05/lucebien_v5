@@ -140,6 +140,3 @@ export function rutaSeccion(empleadoId: string, seccion: ClaveSeccion | string, 
   const base = `/personal/${empleadoId}${segmento ? `/${segmento}` : ''}`;
   return query ? `${base}?${query}` : base;
 }
-
-/** Los módulos que abren el módulo entero: con ver uno alcanza para entrar a la lista. */
-export const MODULOS_DEL_MODULO = Array.from(new Set(SECCIONES.map((s) => s.modulo)));
