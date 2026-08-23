@@ -33,7 +33,7 @@ export default async function AsistenciasColaboradorPage({
 }) {
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
-  if (!acceso.secciones.includes('asistencias')) redirect(`/colaboradores/${params.id}`);
+  if (!acceso.secciones.includes('asistencias')) redirect(`/personal/${params.id}`);
 
   const esAdmin = acceso.sesion.usuario.rol === 'admin' || acceso.sesion.usuario.rol === 'dueno';
   const persona = await obtenerColaborador(params.id);

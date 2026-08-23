@@ -33,7 +33,7 @@ export type ClaveSeccion =
 export type Seccion = {
   clave: ClaveSeccion;
   label: string;
-  /** Segmento de ruta bajo /colaboradores/[id]. Vacío en el resumen, que es la raíz. */
+  /** Segmento de ruta bajo /personal/[id]. Vacío en el resumen, que es la raíz. */
   segmento: string;
   icon: LucideIcon;
   /** Módulo de permisos que ya gobernaba la pantalla original. */
@@ -109,7 +109,7 @@ export const SECCIONES: Seccion[] = [
 export function rutaSeccion(empleadoId: string, seccion: ClaveSeccion | string, query: string): string {
   const s = SECCIONES.find((x) => x.clave === seccion);
   const segmento = s?.segmento ?? String(seccion);
-  const base = `/colaboradores/${empleadoId}${segmento ? `/${segmento}` : ''}`;
+  const base = `/personal/${empleadoId}${segmento ? `/${segmento}` : ''}`;
   return query ? `${base}?${query}` : base;
 }
 

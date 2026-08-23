@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Package, Users, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, Receipt, UsersRound, Wallet, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Package, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, UsersRound, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -16,9 +16,9 @@ type Item = {
   icon: LucideIcon;
   modulo: string;
   /**
-   * Módulos alternativos que también abren esta entrada. Existe por el módulo de colaboradores,
-   * que reemplazó seis entradas con permisos distintos: con `modulo` a secas, un rol que sólo veía
-   * 'sueldos' habría perdido el acceso que tenía. Adentro cada sección conserva el suyo.
+   * Módulos alternativos que también abren esta entrada. Existe por Personal, que fusiona cuatro
+   * entradas con permisos distintos: con `modulo` a secas, un rol que solo veía 'sueldos' habría
+   * perdido el acceso que tenía. Adentro cada sección conserva el suyo.
    */
   modulosAlternos?: string[];
 };
@@ -59,35 +59,22 @@ const NAV: { section: string; items: Item[] }[] = [
     // lista, es el formulario operativo (arriba, en "Interno").
     section: 'Administración',
     items: [
-      // UN MÓDULO EN LUGAR DE SEIS. Evaluaciones, Pagos, Contratos, Declarar asistencia,
-      // Adelantos y ventas, y Asistencias eran seis entradas distintas para la misma pregunta:
-      // "¿qué pasa con esta persona en este período?". Ahora se entra por la persona y se navega
-      // por secciones adentro (app/colaboradores). Las rutas viejas siguen funcionando —nada se
-      // borró— pero salen del menú para que la respuesta sea una sola.
-      //
-      // El permiso no cambia: el módulo se abre con cualquiera de los que ya gobernaban esas
-      // pantallas, y cada sección de adentro conserva el suyo (lib/colaboradores-secciones.ts).
+      // PERSONAL (23-ago-2026): Colaboradores, Sueldos, Liquidaciones y Empleados se funden en una
+      // sola entrada. Se entra por la persona y adentro está todo el flujo; lo masivo queda como
+      // herramientas del período dentro del apartado. 'empleados' entra a los alternos para que
+      // quien solo tenía Empleados no pierda el acceso que tenía (no-negociable 3: fusionar el
+      // menú no amplía ni recorta). Las rutas viejas siguen funcionando —nada se borró— pero salen
+      // del menú para que la respuesta a "¿qué pasa con esta persona?" sea una sola.
       {
-        label: 'Colaboradores',
-        href: '/colaboradores',
+        label: 'Personal',
+        href: '/personal',
         icon: UsersRound,
         modulo: 'evaluaciones',
-        modulosAlternos: ['pagos', 'sueldos'],
+        modulosAlternos: ['pagos', 'sueldos', 'empleados'],
       },
-      // F1 del rediseño de sueldos (22-ago-2026): navegación híbrida a propósito. El 20-ago se
-      // colapsaron seis entradas de proceso en /colaboradores porque el admin piensa por persona.
-      // Acuerdos/Asistencia/Ventas y metas/Movimientos siguen siendo trabajo de PROCESO —se hace
-      // una vez por tienda o por tanda, no por persona— así que esta entrada no deshace esa
-      // decisión: agrega la que faltaba para la operación diaria, sin volver a las seis sueltas.
-      { label: 'Sueldos', href: '/sueldos', icon: Wallet, modulo: 'sueldos' },
       { label: 'Historial de reportes', href: '/administracion/reportes', icon: Files, modulo: 'reportes_admin' },
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },
-      // Sigue afuera del módulo A PROPÓSITO: la liquidación trabaja sobre un contrato entero y no
-      // sobre un rango libre de fechas, que es el grano del módulo. Mudarla sin resolver esa
-      // diferencia sería mover el problema. Anotado en la spec del módulo.
-      { label: 'Liquidaciones', href: '/sueldos/liquidaciones', icon: Receipt, modulo: 'sueldos' },
       { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle, modulo: 'incidencias' },
-      { label: 'Empleados', href: '/empleados', icon: Users, modulo: 'empleados' },
       { label: 'Dispositivos', href: '/dispositivos', icon: Laptop, modulo: 'dispositivos' },
       // Fase 13 tarea 4: sin filas propias en permisos_modulos (mismo criterio que empleados/
       // configuracion/dispositivos arriba) → puede() solo deja pasar a admin/dueño por mecanismo.

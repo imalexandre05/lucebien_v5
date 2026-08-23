@@ -22,7 +22,7 @@ export function NavSecciones({
 }) {
   const pathname = usePathname();
   const query = useSearchParams().toString();
-  const base = `/colaboradores/${empleadoId}`;
+  const base = `/personal/${empleadoId}`;
   const secciones = SECCIONES.filter((s) => visibles.includes(s.clave));
 
   return (

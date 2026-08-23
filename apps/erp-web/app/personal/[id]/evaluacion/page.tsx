@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export default async function EvaluacionColaboradorPage({ params }: { params: { id: string } }) {
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
-  if (!acceso.secciones.includes('evaluacion')) redirect(`/colaboradores/${params.id}`);
+  if (!acceso.secciones.includes('evaluacion')) redirect(`/personal/${params.id}`);
 
   const persona = await obtenerColaborador(params.id);
   if (!persona) notFound();

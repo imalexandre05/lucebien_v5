@@ -30,7 +30,7 @@ export default async function ValoresColaboradorPage({
 }) {
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
-  if (!acceso.secciones.includes('valores')) redirect(`/colaboradores/${params.id}`);
+  if (!acceso.secciones.includes('valores')) redirect(`/personal/${params.id}`);
 
   const esAdmin = acceso.sesion.usuario.rol === 'admin' || acceso.sesion.usuario.rol === 'dueno';
   const persona = await obtenerColaborador(params.id);
@@ -112,7 +112,7 @@ export default async function ValoresColaboradorPage({
                   <div key={key}>
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="text-xs text-ink">{label}</span>
-                      <span className="font-mono text-xs font-semibold tabular-nums text-navy">
+                      <span className="tabular-nums text-xs font-semibold text-navy">
                         {v == null ? '—' : `${v.toFixed(2)} / 5`}
                       </span>
                     </div>
@@ -130,7 +130,7 @@ export default async function ValoresColaboradorPage({
               <span className="text-xs text-muted">
                 Nota de Valores 360°, la que entra a la evaluación mensual
               </span>
-              <span className="font-mono text-xl font-bold tabular-nums text-navy">
+              <span className="tabular-nums text-xl font-bold text-navy">
                 {resumen.nota20 == null ? '—' : resumen.nota20.toFixed(2)}
                 <span className="ml-0.5 text-xs font-normal text-muted">/20</span>
               </span>

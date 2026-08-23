@@ -28,7 +28,7 @@ export default async function ResumenColaboradorPage({
 }) {
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
-  if (!acceso.secciones.includes('resumen')) redirect('/colaboradores');
+  if (!acceso.secciones.includes('resumen')) redirect('/personal');
 
   const persona = await obtenerColaborador(params.id);
   if (!persona) notFound();
@@ -132,9 +132,9 @@ export default async function ResumenColaboradorPage({
                 <TBody>
                   {desempeno.reportes.slice(0, 12).map((r) => (
                     <TR key={r.id}>
-                      <TD className="font-mono text-xs tabular-nums">{r.fecha}</TD>
+                      <TD className="tabular-nums text-xs">{r.fecha}</TD>
                       <TD className="text-xs">{r.turno}</TD>
-                      <TD className="text-right font-mono text-xs tabular-nums">
+                      <TD className="text-right tabular-nums text-xs">
                         {r.evaluado && r.puntajeEval != null ? (
                           r.puntajeEval.toFixed(1)
                         ) : (
@@ -176,7 +176,7 @@ export default async function ResumenColaboradorPage({
                 <TBody>
                   {desempeno.incidencias.map((i) => (
                     <TR key={i.id}>
-                      <TD className="font-mono text-xs tabular-nums">{i.fecha}</TD>
+                      <TD className="tabular-nums text-xs">{i.fecha}</TD>
                       <TD className="text-xs">{i.tipo}</TD>
                       <TD className="text-right text-xs">{i.nivel}</TD>
                     </TR>

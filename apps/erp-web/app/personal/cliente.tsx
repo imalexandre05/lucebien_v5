@@ -113,7 +113,7 @@ export function ListaColaboradores({
             >
               {f.label}
               {f.clave === 'pendientes' && conPendientes > 0 && (
-                <span className="ml-1.5 font-mono tabular-nums opacity-80">{conPendientes}</span>
+                <span className="ml-1.5 tabular-nums opacity-80">{conPendientes}</span>
               )}
             </button>
           ))}
@@ -133,7 +133,7 @@ export function ListaColaboradores({
           {visibles.map(({ c, e, pasos, corte }, i) => (
             <li key={c.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
               <Link
-                href={`/colaboradores/${c.id}?${query}`}
+                href={`/personal/${c.id}?${query}`}
                 className="group grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 outline-none transition-colors duration-150 hover:bg-paper/70 focus-visible:bg-paper/70 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/60 active:bg-line/50 active:duration-75 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
               >
                 <Avatar nombre={c.nombre} iniciales={c.iniciales} />
@@ -159,7 +159,7 @@ export function ListaColaboradores({
                 </div>
 
                 <div className="hidden text-right sm:block">
-                  <span className="block font-mono text-base font-semibold tabular-nums text-navy">
+                  <span className="block tabular-nums text-base font-semibold text-navy">
                     {e.nota != null ? e.nota.toFixed(2) : '—'}
                   </span>
                   <span className="block text-[11px] text-muted">nota /20</span>

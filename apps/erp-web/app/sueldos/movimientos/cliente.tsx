@@ -46,7 +46,7 @@ export function MovimientosCliente({
   /**
    * Opcional y de SOLO LECTURA — la carga y la asignación de vendedor viven en `/sueldos/ventas`
    * desde la Tarea 3 del rediseño F1 (22-ago-2026). Este prop existe únicamente porque
-   * `app/colaboradores/[id]/movimientos/page.tsx` reutiliza este componente para mostrar las
+   * `app/personal/[id]/movimientos/page.tsx` reutiliza este componente para mostrar las
    * ventas de una persona en su período (fuera del alcance de esa tarea, no se toca ese archivo),
    * y sin este prop dejaría de compilar. `/sueldos/movimientos` no lo pasa: acá esta sección
    * simplemente no se renderiza.

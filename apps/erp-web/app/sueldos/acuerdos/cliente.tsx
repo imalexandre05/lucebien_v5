@@ -255,7 +255,7 @@ export function AcuerdosCliente({
 }: {
   acuerdos: AcuerdoSueldo[];
   empleados: Emp[];
-  /** Contexto /colaboradores/[id]/contrato: la persona no se elige, ya está dada. */
+  /** Contexto /personal/[id]/contrato: la persona no se elige, ya está dada. */
   personaFija?: Emp;
   /** Fecha de ingreso de la persona fija: precompleta el primer contrato (C-2). */
   fechaIngresoPersona?: string | null;

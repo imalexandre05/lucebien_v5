@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export default async function ContratoColaboradorPage({ params }: { params: { id: string } }) {
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
-  if (!acceso.secciones.includes('contrato')) redirect(`/colaboradores/${params.id}`);
+  if (!acceso.secciones.includes('contrato')) redirect(`/personal/${params.id}`);
 
   const esAdmin = acceso.sesion.usuario.rol === 'admin' || acceso.sesion.usuario.rol === 'dueno';
   const persona = await obtenerColaborador(params.id);
