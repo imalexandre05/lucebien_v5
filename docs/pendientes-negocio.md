@@ -874,6 +874,12 @@ sin UI. No es urgente: el módulo de Pagos viejo sale del menú en R4 (spec §2.
 Salieron del verificador adversarial de la migración 0080, antes de aplicarla. Ninguno altera un
 cálculo de sueldo: son guardas sobre el registro de lo pagado.
 
+**Actualización 23-ago-2026:** la migración 0080 ya quedó aplicada y verificada contra `scilb`
+(26 aserciones en ok, ver §2.6 de
+[2026-08-23-personal-fusion-design.md](superpowers/specs/sueldos/2026-08-23-personal-fusion-design.md)).
+Los defaults de la tabla siguen exactamente igual — «aplicarla» dejó de ser el paso pendiente;
+lo que sigue pendiente es que el dueño confirme cada default.
+
 | Decisión | Default tomado | Por qué | Quién confirma |
 |---|---|---|---|
 | Anular una liquidación que ya tiene pagos vigentes | **Se bloquea**: primero se anula cada pago con su motivo, después la liquidación | Si no, los pagos quedan colgados de una anulada y la reemisión arranca en pagado=0 — se paga dos veces el mes | Dueño |
