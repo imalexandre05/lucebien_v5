@@ -3,9 +3,9 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Trash2, FileText, Filter } from 'lucide-react';
+import { Plus, Ban, FileText, Filter } from 'lucide-react';
 import { sugerirMontoPago } from '@scilb/core';
-import { accionCrearPago, accionEliminarPago } from './actions';
+import { accionCrearPago, accionAnularPago } from './actions';
 import type { Pago, EmpleadoPago } from '../../lib/pagos-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
@@ -116,7 +116,7 @@ export function PagosCliente({
     });
   }
 
-  function eliminar(id: string) {
+  function anular(id: string) {
     conf.pedir({
       titulo: '¿Anular este pago?',
       detalle:
@@ -125,7 +125,7 @@ export function PagosCliente({
       alConfirmar: () =>
         startTransition(async () => {
           setErrorAccion('');
-          const r = await accionEliminarPago(id);
+          const r = await accionAnularPago(id);
           if (r.ok) {
             conf.cerrar();
             router.refresh();
@@ -271,8 +271,8 @@ export function PagosCliente({
                         <FileText className="h-4 w-4" strokeWidth={1.75} />
                       </Link>
                       {esAdmin && (
-                        <button type="button" onClick={() => eliminar(p.id)} className="text-muted transition-colors hover:text-error" aria-label="Eliminar">
-                          <Trash2 className="h-4 w-4" strokeWidth={1.75} />
+                        <button type="button" onClick={() => anular(p.id)} className="text-muted transition-colors hover:text-error" aria-label="Anular">
+                          <Ban className="h-4 w-4" strokeWidth={1.75} />
                         </button>
                       )}
                     </div>

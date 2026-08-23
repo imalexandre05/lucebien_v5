@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../lib/auth';
-import { crearPago, eliminarPago } from '../../lib/pagos-repo';
+import { crearPago, anularPago } from '../../lib/pagos-repo';
 
 async function soloAdmin() {
   const sesion = await getSesion();
@@ -29,13 +29,13 @@ export async function accionCrearPago(input: {
   }
 }
 
-export async function accionEliminarPago(id: string): Promise<{ ok: boolean; error?: string }> {
+export async function accionAnularPago(id: string): Promise<{ ok: boolean; error?: string }> {
   try {
     if (!(await soloAdmin())) return { ok: false, error: 'Solo admin/dueño' };
-    await eliminarPago(id);
+    await anularPago(id);
     revalidatePath('/pagos');
     return { ok: true };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Error al eliminar' };
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al anular' };
   }
 }
