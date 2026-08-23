@@ -6,7 +6,13 @@
 > «Herramientas del periodo» dentro del mismo apartado. Sale de la prueba real de Alexander
 > (22/23-ago): la navegación híbrida de la spec maestra del 21-ago no se entiende usándola.
 >
-> **Estado:** aprobada por Alexander el 23-ago-2026, decisión por decisión (5 preguntas).
+> **Estado:** CONSTRUIDA el 23-ago-2026 — R1 a R4 completos (commits `e68d02b`..`7a474db`),
+> cada fase con revisor propio, la 0080 aplicada y verificada contra scilb, y tres validadores
+> de flujo de negocio (empleado nuevo · fin de mes con adelanto y dos abonos · «cuánto cobro»)
+> cuyos hallazgos —3 roturas reales— quedaron corregidos y re-verificados. Los defaults ⚠️
+> siguen pendientes del dueño (pendientes-negocio.md).
+>
+> Aprobada por Alexander el 23-ago-2026, decisión por decisión (5 preguntas).
 > **Zona de rigor:** R1–R3 spec corta (navegación y pantallas, cero esquema). **R4 zona
 > crítica** (pagos de liquidaciones: migración + RPC + verificador).
 >
