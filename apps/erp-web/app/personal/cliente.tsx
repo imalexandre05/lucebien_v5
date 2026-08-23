@@ -11,6 +11,7 @@ import {
   pendientesDelPeriodo,
   type EstadoPeriodo,
 } from '../../lib/colaboradores-pasos';
+import { rutaSeccion } from '../../lib/colaboradores-secciones';
 import { queryPeriodo, type Periodo } from '../../lib/periodo';
 import { campoCls } from '../../components/ui/form';
 import { BarraPeriodo } from '../../components/colaboradores/barra-periodo';
@@ -133,7 +134,12 @@ export function ListaColaboradores({
           {visibles.map(({ c, e, pasos, corte }, i) => (
             <li key={c.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
               <Link
-                href={`/personal/${c.id}?${query}`}
+                // Si hay un corte, el enlace va directo a la sección que lo resuelve (spec §2.4:
+                // «la lista la marca en ámbar con acceso directo al paso» — antes las 18 filas
+                // aterrizaban siempre en Resumen, y desde ahí recién a la sección con un segundo
+                // clic). Mismo patrón que ya usa el hilo completo de Resumen (rutaSeccion + la
+                // sección del paso), sólo que acá decide el destino de toda la fila.
+                href={corte ? rutaSeccion(c.id, corte.seccion, query) : `/personal/${c.id}?${query}`}
                 className="group grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 outline-none transition-colors duration-150 hover:bg-paper/70 focus-visible:bg-paper/70 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/60 active:bg-line/50 active:duration-75 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
               >
                 <Avatar nombre={c.nombre} iniciales={c.iniciales} />

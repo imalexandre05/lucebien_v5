@@ -50,12 +50,14 @@ export async function accionEditarEmpleado(
 
 export async function accionCrearEmpleado(
   p: NuevoEmpleadoInput,
-): Promise<{ ok: boolean; error?: string; cod?: string }> {
+): Promise<{ ok: boolean; error?: string; id?: string; cod?: string }> {
   try {
     await exigirAdmin();
-    const { cod } = await crearEmpleado(p);
+    // `id` (Tarea 6, alta encadenada): la persona recién creada no queda en una lista a la que
+    // volver a buscarla — la cadena sigue directo a su contrato, y para eso hace falta su id.
+    const { id, cod } = await crearEmpleado(p);
     revalidatePath('/empleados');
-    return { ok: true, cod };
+    return { ok: true, id, cod };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error' };
   }

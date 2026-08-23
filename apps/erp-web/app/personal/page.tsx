@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Award, CalendarCheck, Coins, FileSignature, ShoppingBag, Wallet, type LucideIcon } from 'lucide-react';
+import { Award, CalendarCheck, Coins, FileSignature, Plus, ShoppingBag, Wallet, type LucideIcon } from 'lucide-react';
 import { puede, type MatrizPermisos } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
@@ -11,6 +11,7 @@ import { listarColaboradores, estadoDelPeriodo } from '../../lib/colaboradores-r
 import { PageHeader } from '../../components/shell/page-header';
 import { ReauthGate } from '../../components/ui/reauth-gate';
 import { Card, CardContent } from '../../components/ui/card';
+import { buttonVariants } from '../../components/ui/button';
 import { ListaColaboradores } from './cliente';
 
 // El módulo único que pidió reemplazar ocho entradas sueltas del menú (Evaluaciones, Pagos,
@@ -94,9 +95,19 @@ export default async function ColaboradoresPage({
 
   return (
     <div>
+      {/* Alta encadenada (R2): mismo gate que las herramientas de admin — hasta acá no había
+          ningún camino de UI para registrar a alguien nuevo (el modal viejo de /empleados quedó
+          como código muerto detrás del redirect de R1). */}
       <PageHeader
         title="Personal"
         subtitle={`${colaboradores.length} activos · elegí a quién mirar y en qué período`}
+        action={
+          esAdmin ? (
+            <Link href="/personal/nuevo" className={buttonVariants({ variant: 'primary' })}>
+              <Plus className="h-4 w-4" strokeWidth={2} /> Nueva persona
+            </Link>
+          ) : undefined
+        }
       />
 
       {herramientas.length > 0 && (

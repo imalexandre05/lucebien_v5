@@ -247,11 +247,24 @@ function analizar(b: Borrador): {
  * lista mientras se trabaja. Lo único que sigue en modal son los parámetros: trece números que casi
  * nunca se tocan y que, en línea, tapaban lo que sí se mira siempre.
  */
+// El borrador con el que arranca un contrato nuevo: vacío, salvo que sea el PRIMER contrato de
+// una persona fija — ahí la fecha de inicio se precompleta con su fecha de ingreso (C-2). Función
+// aparte para que abrirNuevo() y el arranque directo de la alta encadenada (abrirNuevoAlMontar)
+// no repitan el mismo literal por separado.
+function borradorNuevo(personaFija: Emp | undefined, fechaIngresoPersona: string | null | undefined, esPrimero: boolean): Borrador {
+  return {
+    ...VACIO,
+    empleadoId: personaFija?.id ?? '',
+    fechaInicio: personaFija && esPrimero ? (fechaIngresoPersona ?? '') : '',
+  };
+}
+
 export function AcuerdosCliente({
   acuerdos,
   empleados,
   personaFija,
   fechaIngresoPersona,
+  abrirNuevoAlMontar,
 }: {
   acuerdos: AcuerdoSueldo[];
   empleados: Emp[];
@@ -259,11 +272,21 @@ export function AcuerdosCliente({
   personaFija?: Emp;
   /** Fecha de ingreso de la persona fija: precompleta el primer contrato (C-2). */
   fechaIngresoPersona?: string | null;
+  /**
+   * Alta encadenada (R2, spec §2.4): si viene marcado y todavía no hay ningún contrato, arranca
+   * directo en el editor con el borrador de un contrato nuevo, en vez de mostrar primero la lista
+   * vacía y obligar a un clic más en «Nuevo contrato». Sólo importa al MONTAR — es estado
+   * inicial, no un efecto: así no puede pisar una edición que la persona ya esté haciendo.
+   */
+  abrirNuevoAlMontar?: boolean;
 }) {
+  const arrancaEnEditor = Boolean(abrirNuevoAlMontar) && acuerdos.length === 0;
   const [editando, setEditando] = useState<string | null>(null);
-  const [enEditor, setEnEditor] = useState(false);
+  const [enEditor, setEnEditor] = useState(arrancaEnEditor);
   const [parametrosAbierto, setParametrosAbierto] = useState(false);
-  const [b, setB] = useState<Borrador>(VACIO);
+  const [b, setB] = useState<Borrador>(() =>
+    arrancaEnEditor ? borradorNuevo(personaFija, fechaIngresoPersona, true) : VACIO,
+  );
   const [error, setError] = useState<string | null>(null);
   // El error de una acción de la lista —poner vigente— no puede vivir en el error del formulario:
   // cuando se dispara, el formulario no está en pantalla y el mensaje se renderizaría donde nadie
@@ -282,13 +305,9 @@ export function AcuerdosCliente({
 
   const abrirNuevo = () => {
     setEditando(null);
-    setB({
-      ...VACIO,
-      empleadoId: personaFija?.id ?? '',
-      // C-2: el PRIMER contrato de la persona arranca en su fecha de ingreso, editable. Una
-      // renovación no: tiene su propia fecha y atarla al ingreso original la pisaría.
-      fechaInicio: personaFija && acuerdos.length === 0 ? (fechaIngresoPersona ?? '') : '',
-    });
+    // C-2: el PRIMER contrato de la persona arranca en su fecha de ingreso, editable. Una
+    // renovación no: tiene su propia fecha y atarla al ingreso original la pisaría.
+    setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0));
     setError(null);
     setEnEditor(true);
   };

@@ -5,6 +5,7 @@ import { obtenerColaborador } from '../../../../lib/colaboradores-repo';
 import { listarAcuerdos } from '../../../../lib/sueldos-repo';
 import { Card } from '../../../../components/ui/card';
 import { EmptyState } from '../../../../components/ui/empty-state';
+import { Aviso } from '../../../../components/ui/form';
 import { SeccionHeader } from '../../../../components/colaboradores/seccion-header';
 import { AcuerdosCliente } from '../../../sueldos/acuerdos/cliente';
 
@@ -15,7 +16,13 @@ import { AcuerdosCliente } from '../../../sueldos/acuerdos/cliente';
 // declarada al día.
 export const dynamic = 'force-dynamic';
 
-export default async function ContratoColaboradorPage({ params }: { params: { id: string } }) {
+export default async function ContratoColaboradorPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
   if (!acceso.secciones.includes('contrato')) redirect(`/personal/${params.id}`);
@@ -38,6 +45,9 @@ export default async function ContratoColaboradorPage({ params }: { params: { id
   }
 
   const acuerdos = await listarAcuerdos(persona.id);
+  // Alta encadenada (R2, spec §2.4): llega directo desde /personal/nuevo. Sin este aviso, aterrizar
+  // acá con el editor ya abierto se leería como un salto sin explicación.
+  const continuaDeAlta = searchParams?.continuar === 'alta';
 
   return (
     <div className="space-y-3">
@@ -45,11 +55,13 @@ export default async function ContratoColaboradorPage({ params }: { params: { id
         seccion="contrato"
         nota="Un contrato liquidado no se edita: lo que se pagó se calculó contra estos números, y cambiarlos después dejaría la boleta sin poder reconstruirse."
       />
+      {continuaDeAlta && <Aviso tono="info">Datos guardados. Ahora el contrato y su horario.</Aviso>}
       <AcuerdosCliente
         acuerdos={acuerdos}
         empleados={[{ id: persona.id, nombre: persona.nombre, rol: persona.rol, sedeCod: persona.sedeCod }]}
         personaFija={{ id: persona.id, nombre: persona.nombre, rol: persona.rol, sedeCod: persona.sedeCod }}
         fechaIngresoPersona={persona.fechaIngreso}
+        abrirNuevoAlMontar={continuaDeAlta}
       />
     </div>
   );
