@@ -27,7 +27,6 @@ export const RUTAS_INTERNO = [
 
 /** Lo que sólo toca quien administra: personas, plata y reglas. */
 export const RUTAS_ADMIN = [
-  '/personal',
   '/personal/nuevo',
   '/sueldos',
   '/sueldos/acuerdos',
@@ -56,6 +55,16 @@ export const RUTAS_ADMIN = [
  * una incidencia. No son pantallas de administración: son parte de su trabajo.
  */
 export const RUTAS_COLABORADOR = ['/evaluar-reportes', '/incidencias'];
+
+/**
+ * `/personal` es de los dos, y por eso se prueba aparte.
+ *
+ * El módulo se muestra a quien pueda ver cualquiera de sus secciones que no sean de administración
+ * —un colaborador puede ver Valores 360°, así que entra— pero adentro la RLS sólo le devuelve su
+ * propia ficha. Lo que hay que comprobar no es si la puerta se abre, sino que del otro lado no
+ * haya nadie más.
+ */
+export const RUTA_PERSONAL = '/personal';
 
 /**
  * Módulo comercial: fuera del menú desde el 20-ago-2026 (lo maneja otro sistema), pero las rutas

@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { RUTAS_ADMIN, RUTAS_COLABORADOR, SECCIONES_PERSONA } from './rutas';
+import { RUTAS_ADMIN, RUTAS_COLABORADOR, RUTA_PERSONAL, SECCIONES_PERSONA } from './rutas';
 import { PERFILES } from './sesiones';
 
 /**
@@ -72,6 +72,23 @@ test.describe('un colaborador sí entra a lo que la matriz de permisos le conced
       expect(respuesta?.status() ?? 0, `${ruta} respondió mal`).toBeLessThan(400);
       expect(page.url(), `${ruta} lo rebotó, y la matriz dice que puede`).toContain(ruta);
     });
+  }
+});
+
+test('en Personal, un colaborador sólo se encuentra a sí mismo', async ({ page }) => {
+  // El módulo se le muestra (puede ver Valores 360°, que es una de sus secciones), pero la lista
+  // sale de la base con SU sesión: la política de `empleados` es «admin, o yo mismo». Si algún día
+  // alguien cambia esa política o mete una consulta con el cliente que bypassa la RLS, esta prueba
+  // es la que lo grita.
+  await page.goto(RUTA_PERSONAL, { waitUntil: 'domcontentloaded' });
+  await page.waitForLoadState('networkidle').catch(() => {});
+  const cuerpo = (await page.locator('body').innerText().catch(() => '')) || '';
+
+  // Si lo rebotó o le pidió la contraseña otra vez, no hay nada que comprobar acá.
+  test.skip(page.url().includes('/reportes/nuevo') || cuerpo.includes('Confirma que eres tú'));
+
+  for (const otro of ['Alexander', 'Jordan', 'Marylin', 'Yessica', 'Sheyla', 'Nicol']) {
+    expect(cuerpo, `Personal le muestra a ${otro} a un colaborador`).not.toContain(otro);
   }
 });
 

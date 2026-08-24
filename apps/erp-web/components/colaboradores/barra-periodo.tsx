@@ -12,7 +12,7 @@ import { cn } from '../../lib/cn';
 // La barra de período que comparten TODAS las secciones del módulo.
 //
 // Una sola barra, arriba de la navegación, es lo que hacía que el módulo viejo se sintiera simple:
-// elegís una vez y todo lo de abajo habla de ese período. Cuando cada pantalla trae su propio par
+// se elige una vez y todo lo de abajo habla de ese período. Cuando cada pantalla trae su propio par
 // de fechas, cambiar de pantalla es volver a empezar.
 //
 // El período viaja en la URL (lib/periodo.ts), así que este componente sólo la reescribe, y un

@@ -103,7 +103,7 @@ export default async function ColaboradoresPage({
           como código muerto detrás del redirect de R1). */}
       <PageHeader
         title="Personal"
-        subtitle={`${colaboradores.length} activos · elegí a quién mirar y en qué período`}
+        subtitle={`${colaboradores.length} activos · elige a quién mirar y en qué período`}
         action={
           esAdmin ? (
             <Link href="/personal/nuevo" className={buttonVariants({ variant: 'primary' })}>

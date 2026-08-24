@@ -18,18 +18,51 @@ export function fijarSedeActiva(sede: string): void {
   cookies().set(SEDE_COOKIE, sede, { httpOnly: true, sameSite: 'lax', path: '/' });
 }
 
+/**
+ * La sede que se eligió al entrar, sólo si es una de las de esa persona.
+ *
+ * El switcher del topbar valida esto desde la Fase 2 (components/shell/sede-actions.ts), pero el
+ * login no: aceptaba cualquiera de las cuatro que pinta la pantalla. No era una fuga —la RLS
+ * aguanta, filtra por auth.uid() y no por esta cookie— pero el turno no se podía registrar: crear
+ * una solicitud o una incidencia terminaba en un `ERROR 42501` de Postgres, en inglés y sin
+ * explicación, y la persona no tenía forma de saber que había elegido mal.
+ *
+ * Administradores y dueños pueden entrar por cualquier sede que exista; el resto, sólo por las
+ * suyas. Si la elegida no vale, se cae a la sede primaria de la persona en lugar de dejar la
+ * cookie envenenada.
+ */
+async function sedeValidaParaEntrar(userId: string, sede: string): Promise<string> {
+  const admin = getAdminClient();
+  const [{ data: emp }, { data: tiendas }] = await Promise.all([
+    admin.from('empleados').select('rol, sede_cod').eq('id', userId).maybeSingle(),
+    admin.from('empleado_tiendas').select('sede_cod').eq('empleado_id', userId),
+  ]);
+  if (!emp) return '';
+
+  const { rol, sede_cod: sedePrimaria } = emp as { rol: string; sede_cod: string | null };
+  if (rol === 'admin' || rol === 'dueno') {
+    const { data: todas } = await admin.from('sedes').select('cod');
+    const existe = (todas ?? []).some((s) => (s as { cod: string }).cod === sede);
+    return existe ? sede : (sedePrimaria ?? '');
+  }
+
+  const propias = new Set<string>((tiendas ?? []).map((t) => (t as { sede_cod: string }).sede_cod));
+  if (sedePrimaria) propias.add(sedePrimaria);
+  return propias.has(sede) ? sede : (sedePrimaria ?? '');
+}
+
 // Login híbrido: el empleado entra con su código de 4 dígitos + sede.
 // El código ES la credencial (Supabase Auth tiene el bcrypt del código importado del
 // sistema viejo). La sede elegida se guarda como "sede activa" (filtros / sucursal por
 // defecto), no como identidad — un empleado puede tener varias sedes.
 export async function login(cod: string, sede: string): Promise<{ ok: boolean; error?: string }> {
   const sb = getServerClient();
-  const { error } = await sb.auth.signInWithPassword({
+  const { data, error } = await sb.auth.signInWithPassword({
     email: `${cod}@${EMAIL_DOMAIN}`,
     password: cod,
   });
   if (error) return { ok: false, error: error.message };
-  fijarSedeActiva(sede);
+  if (data.user) fijarSedeActiva(await sedeValidaParaEntrar(data.user.id, sede));
   return { ok: true };
 }
 
@@ -52,12 +85,12 @@ export async function loginConUsuario(
   if (!emp) return { ok: false, error: 'Usuario o contraseña incorrectos' };
 
   const sb = getServerClient();
-  const { error } = await sb.auth.signInWithPassword({
+  const { data, error } = await sb.auth.signInWithPassword({
     email: `${(emp as { cod: string }).cod}@${EMAIL_DOMAIN}`,
     password,
   });
   if (error) return { ok: false, error: 'Usuario o contraseña incorrectos' };
-  if (sede) fijarSedeActiva(sede);
+  if (sede && data.user) fijarSedeActiva(await sedeValidaParaEntrar(data.user.id, sede));
   return { ok: true };
 }
 
@@ -79,7 +112,7 @@ export const getSesion = cache(async (): Promise<Sesion | null> => {
   if (!user) return null;
 
   const [empRes, { data: tiendas }] = await Promise.all([
-    sb.from('empleados').select('id, nombre, rol, rol_cod, sede_cod').eq('id', user.id).maybeSingle(),
+    sb.from('empleados').select('id, nombre, rol, rol_cod, sede_cod, activo').eq('id', user.id).maybeSingle(),
     sb.from('empleado_tiendas').select('sede_cod').eq('empleado_id', user.id),
   ]);
 
@@ -91,12 +124,19 @@ export const getSesion = cache(async (): Promise<Sesion | null> => {
     // corra; no borrar esto antes de confirmar que 0050 está aplicada en producción.
     const { data: fallback } = await sb
       .from('empleados')
-      .select('id, nombre, rol, sede_cod')
+      .select('id, nombre, rol, sede_cod, activo')
       .eq('id', user.id)
       .maybeSingle();
     emp = fallback as Record<string, unknown> | null;
   }
   if (!emp) return null;
+
+  // Segunda cerradura de la suspensión: banear al usuario impide entrar de nuevo, pero no mata la
+  // sesión que el navegador ya tenía — ese token sigue siendo válido hasta que expire. Para la
+  // aplicación, una persona suspendida es igual que una sin sesión.
+  // El `!== false` es a propósito: si la columna no viniera (un entorno viejo, o el fallback de
+  // arriba), no se echa a nadie por una columna ausente.
+  if (emp.activo === false) return null;
 
   const sedeActiva = cookies().get(SEDE_COOKIE)?.value || (emp.sede_cod as string) || '';
   const lista = (tiendas ?? []).map((t) => t.sede_cod as string);

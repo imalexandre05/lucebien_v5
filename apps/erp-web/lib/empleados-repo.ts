@@ -76,13 +76,64 @@ export async function listarEmpleadosAdmin(): Promise<EmpleadoAdmin[]> {
 }
 
 // Suspender / reactivar (sin cascada de nombre: no toca el nombre). RLS exige admin.
+//
+// LA COLUMNA SOLA NO CERRABA NADA. Hasta el 23-ago-2026 esto escribía `activo` y `estado` y ahí
+// terminaba: ni el login, ni la sesión, ni el middleware, ni los helpers de RLS miraban esa
+// columna, y `banned_until` quedaba en null en Supabase Auth. Quien era suspendido entraba esa
+// misma tarde con su usuario de siempre, enviaba reportes que sumaban puntos y consultaba su
+// liquidación. El diálogo de la ficha, mientras tanto, le prometía al administrador que la persona
+// "deja de poder entrar al sistema".
+//
+// Ahora hay tres cerraduras, cada una suficiente por sí sola (spec
+// docs/superpowers/specs/permisos/2026-08-23-suspender-cierra-la-puerta-design.md):
+//   1. acá: se banea al usuario en Supabase Auth, con el mismo cliente admin que ya se usa abajo
+//      para la contraseña;
+//   2. getSesion() devuelve null si la persona no está activa, para cortar la sesión que ya
+//      estuviera abierta (el token sigue siendo válido hasta que expire);
+//   3. los helpers de RLS exigen `activo` (migración 0083), por si alguien escribe la columna a
+//      mano sin pasar por esta pantalla.
 export async function actualizarEstadoEmpleado(id: string, activo: boolean): Promise<void> {
+  // No se puede suspender al último administrador activo: nadie podría volver a reactivarlo desde
+  // la aplicación y la empresa quedaría afuera de su propio sistema.
+  if (!activo) {
+    const { data: admins, error: eAdm } = await getAdminClient()
+      .from('empleados')
+      .select('id')
+      .in('rol', ['admin', 'dueno'])
+      .eq('activo', true);
+    if (eAdm) throw new Error(eAdm.message);
+    const quedan = (admins ?? []).filter((a) => String((a as { id: string }).id) !== id);
+    const esAdmin = (admins ?? []).some((a) => String((a as { id: string }).id) === id);
+    if (esAdmin && quedan.length === 0) {
+      throw new Error(
+        'No se puede suspender al último administrador activo. Nombra a otro administrador antes de suspender a este.',
+      );
+    }
+  }
+
   const sb = getServerClient();
   const { error } = await sb
     .from('empleados')
     .update({ activo, estado: activo ? 'activo' : 'suspendido' })
     .eq('id', id);
   if (error) throw new Error(error.message);
+
+  // El baneo es lo que cierra la puerta de calle. Si falla, se deshace la escritura de arriba: una
+  // ficha que dice "suspendido" con el acceso todavía vivo es peor que no haber hecho nada,
+  // porque el administrador se queda tranquilo.
+  const { error: eBan } = await getAdminClient().auth.admin.updateUserById(id, {
+    // 876000 horas son cien años. Supabase no tiene un "para siempre"; reactivar manda 'none'.
+    ban_duration: activo ? 'none' : '876000h',
+  });
+  if (eBan) {
+    await sb
+      .from('empleados')
+      .update({ activo: !activo, estado: activo ? 'suspendido' : 'activo' })
+      .eq('id', id);
+    throw new Error(
+      `No se pudo ${activo ? 'reactivar' : 'suspender'} el acceso de esta persona: ${eBan.message}. No se cambió nada.`,
+    );
+  }
 }
 
 // Asignar/reiniciar la contraseña de login (LOGIN_V2). Usa el cliente admin — cambiar la

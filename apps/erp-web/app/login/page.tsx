@@ -45,13 +45,15 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
           <CardContent className="pt-6">
             {searchParams.error && (
               <p role="alert" className="mb-4 animate-rise rounded-md bg-aviso/15 px-3 py-2 text-xs text-aviso-deep">
-                {searchParams.error === 'credenciales'
-                  ? loginV2
-                    ? 'Usuario o contraseña incorrectos.'
-                    : 'Código o sede incorrectos.'
-                  : loginV2
-                    ? 'Datos inválidos. Revisa el usuario y la contraseña.'
-                    : 'Datos inválidos. Revisa la sede y el código (4 dígitos).'}
+                {searchParams.error === 'suspendido'
+                  ? 'Tu acceso está suspendido. Habla con el administrador.'
+                  : searchParams.error === 'credenciales'
+                    ? loginV2
+                      ? 'Usuario o contraseña incorrectos.'
+                      : 'Código o sede incorrectos.'
+                    : loginV2
+                      ? 'Datos inválidos. Revisa el usuario y la contraseña.'
+                      : 'Datos inválidos. Revisa la sede y el código (4 dígitos).'}
               </p>
             )}
             {loginV2 ? (
