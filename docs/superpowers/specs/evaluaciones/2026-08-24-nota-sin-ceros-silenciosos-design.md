@@ -121,3 +121,27 @@ En `packages/core/src/evaluaciones.test.ts`, que ya existe:
   números que `packages/core` ya exporta como `PESOS_DEFAULT`. Pueden separarse con el tiempo.
 - **`/configuración` deja guardar un peso vacío.** El arreglo de L12 es defensivo, en el lector.
   Que la pantalla lo acepte en primer lugar es de otro lote.
+
+---
+
+## 6. Decisión de Alexander — 24-ago-2026
+
+**Pregunta:** ¿qué hace el sistema cuando los siete pesos no suman 100 %?
+
+**Respuesta: A ahora, B más adelante.**
+
+- **Ahora (esta spec, C-2):** la pantalla **avisa** y deja pasar. *«Los pesos suman 95 %: esta nota
+  no está sobre 20 sino sobre 19.»* El administrador ve el número y decide.
+- **Más adelante:** Configuración **dejará de aceptar** pesos que no sumen 100 %. Eso entra cuando
+  se rehaga esa pantalla para editar los siete juntos con el total a la vista mientras se escribe —
+  no antes: bloquear el guardado sobre la pantalla actual, donde los pesos se editan de a uno,
+  obliga a dejar el formulario en un estado inválido para llegar al válido, y produce una pantalla
+  que pelea con quien la usa.
+
+**Lo que se descartó, y por qué.** Que el sistema reescale los pesos solo para que siempre sumen
+100 %. Nunca fallaría, pero el administrador escribiría 20 % y el motor usaría 21 %: la pantalla
+mostrando un número y el motor usando otro es exactamente lo que esta auditoría vino a eliminar de
+un sistema que termina en un pago.
+
+Con esto, la **decisión 14** queda contestada. Lo que sigue abierto no es una pregunta sino una
+tarea: construir el bloqueo junto con el rediseño de la pantalla de pesos.
