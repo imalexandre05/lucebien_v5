@@ -11,7 +11,9 @@
 --     reemplaza a la policy que ya no las cubre — si esto se rompe, la conversión abrió un agujero
 --     peor que el que cerró);
 --   · el auto-cierre ya no monta un turno C encima de un M que envió una persona;
---   · la asistencia derivada del reporte deja una sola fila por día, con turno 'C'.
+--   · la asistencia derivada del reporte deja una sola fila por día, con el turno DEL REPORTE
+--     (no 'C': la 0079 rescata esa fila buscándola por turno, y el huellero sólo usa 'M'/'T');
+--   · y ese día, después de que el huellero derive su tramo, la liquidación NO se bloquea.
 --
 -- Cada falla se verifica por su SÍNTOMA exacto —cuántas filas tocó, o el prefijo `PERMISO:` del
 -- error—, no por "lanzó algo": una policy que se rompe y falla por otro motivo tiene que
@@ -301,7 +303,10 @@ begin
   if exists (select 1 from reportes where id = id_c_control) then r := r || 'M-control=ok ';
   else r := r || 'M-CONTROL-VACIO=FALLA(el auto-cierre no corrio: M no comprobo nada) '; end if;
 
-  -- ═══ F55 — la asistencia derivada deja UNA fila por día, con turno 'C' ════════════════════
+  -- ═══ F55 — la asistencia derivada deja UNA fila por día, con el turno del reporte ═══════
+  -- El turno importa: la 0079 rescata esta fila buscándola por (empleado, fecha, turno) y el
+  -- huellero sólo escribe 'M' y 'T'. Una fila forzada a 'C' no se rescata nunca, y desde la 0085
+  -- un día con una fila declarada y otra en 'sin_dato' bloquea el periodo entero.
   insert into reportes (id, sede_cod, turno, fecha, encargado_id, estado_envio)
     values (id_asis1, v_sede, 'M', date '1999-01-05', col, 'enviado');
   insert into reporte_trabajadores (reporte_id, empleado_id) values (id_asis1, col);
@@ -309,8 +314,8 @@ begin
 
   select count(*), min(turno) into v_cnt, v_turno
     from asistencias where empleado_id = col and fecha = date '1999-01-05';
-  if v_cnt = 1 and v_turno = 'C' then r := r || 'N=ok ';
-  else r := r || 'N-ASISTENCIA-MAL=FALLA(' || v_cnt || ' filas, turno ' || coalesce(v_turno, 'NULL') || ') '; end if;
+  if v_cnt = 1 and v_turno = 'M' then r := r || 'N=ok ';
+  else r := r || 'N-ASISTENCIA-MAL=FALLA(' || v_cnt || ' filas, turno ' || coalesce(v_turno, 'NULL') || ', esperaba 1 fila turno M) '; end if;
 
   -- O) El día que el huellero ya cubrió con su fila por tramo (turno 'M'): no se agrega ninguna.
   --    Sin este guard, escribir siempre 'C' habría duplicado los 1.105 días que el huellero cubre.
@@ -325,6 +330,29 @@ begin
     from asistencias where empleado_id = col and fecha = date '1999-01-06';
   if v_cnt = 1 then r := r || 'O=ok ';
   else r := r || 'O-DIA-DUPLICADO=FALLA(' || v_cnt || ' filas) '; end if;
+
+  -- N2) EL ORDEN INVERSO, que es el que rompe: primero el reporte, después el huellero.
+  --     El caso O prueba «huellero primero». Éste prueba «reporte primero», que es el frecuente
+  --     (la persona manda el turno antes de marcar, o el colector sincroniza a la noche). Con la
+  --     fila del reporte en el mismo turno que después usa el huellero, el emparejado la rescata
+  --     y el día queda con UNA fila declarada. Si en cambio quedaran dos —una 'M' del huellero y
+  --     una 'C' del reporte, como hacía la primera versión de esta migración—, `sueldo_entrada`
+  --     abortaría el periodo entero con «DATO:hay tramos sin cerrar».
+  update asistencias
+     set condicion = 'trabajado', hora_entrada = time '09:00', hora_salida = time '13:00',
+         fuente = 'huellero'
+   where empleado_id = col and fecha = date '1999-01-05' and turno = 'M';
+
+  select count(*) into v_cnt
+    from asistencias where empleado_id = col and fecha = date '1999-01-05';
+  if v_cnt = 1 then r := r || 'N2-rescate=ok ';
+  else r := r || 'N2-RESCATE=FALLA(' || v_cnt || ' filas: el huellero no pudo rescatar la del reporte) '; end if;
+
+  select count(*) into v_cnt
+    from asistencias
+   where empleado_id = col and fecha = date '1999-01-05' and condicion = 'sin_dato';
+  if v_cnt = 0 then r := r || 'N2-sin-dato=ok ';
+  else r := r || 'N2-SIN-DATO=FALLA(' || v_cnt || ' fila(s) quedarian bloqueando la liquidacion) '; end if;
 
   -- ═══ F56 — el auto-cierre sigue desagendado ══════════════════════════════════════════════
   select count(*) into v_cnt from cron.job where jobname like 'reportes-auto-cierre%';
