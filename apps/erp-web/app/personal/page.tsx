@@ -90,7 +90,14 @@ export default async function ColaboradoresPage({
   const herramientas = HERRAMIENTAS.filter((h) => (h.gate === 'admin' ? esAdmin : puedeEvaluaciones));
 
   const periodo = leerPeriodo(searchParams);
-  const colaboradores = await listarColaboradores();
+  // Los suspendidos se piden SÓLO para admin/dueño, y no por prolijidad: la única razón para
+  // verlos es entrar a su expediente a reactivarlos (pestaña Datos) o a terminar de pagarles lo
+  // que se les debe (pestaña Liquidación y pago), y las dos pestañas son soloAdmin
+  // (colaboradores-secciones.ts). Sin esto, suspender era una puerta de una sola dirección: se
+  // llega al expediente sólo desde esta lista, y la lista los recortaba. Para el resto de los
+  // roles la consulta queda exactamente igual que antes.
+  const colaboradores = await listarColaboradores(esAdmin);
+  const activos = colaboradores.filter((c) => c.activo).length;
   const estado = await estadoDelPeriodo(
     colaboradores.map((c) => c.id),
     periodo,
@@ -103,7 +110,7 @@ export default async function ColaboradoresPage({
           como código muerto detrás del redirect de R1). */}
       <PageHeader
         title="Personal"
-        subtitle={`${colaboradores.length} activos · elige a quién mirar y en qué período`}
+        subtitle={`${activos} activos · elige a quién mirar y en qué período`}
         action={
           esAdmin ? (
             <Link href="/personal/nuevo" className={buttonVariants({ variant: 'primary' })}>

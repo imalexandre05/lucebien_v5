@@ -46,9 +46,13 @@ export const ORDEN_SECCIONES = [
   SECCION_VALORES,
 ];
 
-// Puntos de productividad (packages/core/src/puntos.ts::ClavePuntos) — 9 claves, todas
-// "puntos que suma el operario al completar la etapa X". Una pieza que no es terno completo suma
-// la mitad (regla confirmada E1, ver puntosDeEtapa() en el core) — no depende de config.
+// Puntos de productividad — 10 claves, todas "puntos que suma el operario al completar la etapa
+// X". Una pieza que no es terno completo suma la mitad (regla confirmada E1; la regla vigente es
+// puntosAvance() de packages/core/src/pipeline.ts, replicada en plpgsql dentro de
+// pipeline_avanzar) — no depende de config.
+// OJO: el tipo ClavePuntos de packages/core/src/puntos.ts enumera sólo 9 y no incluye
+// 'pts_recepcion'; ese archivo no calcula nada en producción (lo dice su propia cabecera) y este
+// catálogo es la lista completa de las claves pts_* que `pipeline_avanzar` busca en config.
 function ptsItem(clave: string, etiqueta: string, def: string): ConfigCatalogoItem {
   return {
     clave,
@@ -80,6 +84,11 @@ function pesoItem(clave: string, etiqueta: string, def: string): ConfigCatalogoI
 
 export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   // ── Puntos del pipeline (packages/core/src/puntos.ts) ──────────────────────────────────────
+  // `pts_recepcion` se sembró recién con la migración 0089: faltaba en la base y en este
+  // catálogo, así que `pipeline_avanzar` caía a su default interno de 1 y el peso de la etapa
+  // no se podía editar desde ninguna pantalla. El default sigue siendo 1 justamente para no
+  // cambiar ningún cálculo ya hecho (39 filas de pipeline_puntos con etapa='recepcion').
+  ptsItem('pts_recepcion', 'Recepción', '1'),
   ptsItem('pts_lavado_normal', 'Lavado normal', '1'),
   ptsItem('pts_lavado_seco', 'Lavado en seco', '3'),
   ptsItem('pts_lavado_especializado', 'Lavado especializado', '5'),

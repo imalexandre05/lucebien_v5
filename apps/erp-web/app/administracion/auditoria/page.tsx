@@ -31,7 +31,7 @@ export default async function AuditoriaPage() {
     const filas = await listarAuditoria();
     return (
       <div>
-        <PageHeader title="Auditoría" subtitle="Quién hizo qué, cuándo — pedidos, caja, empleados, pagos y evaluaciones" />
+        <PageHeader title="Auditoría" subtitle="Quién hizo qué, cuándo — asistencias, sueldos, evaluaciones, personas, configuración, solicitudes, pedidos, caja y pagos" />
         <AuditoriaCliente filasIniciales={filas} />
       </div>
     );
@@ -39,7 +39,7 @@ export default async function AuditoriaPage() {
     if (e instanceof AuditoriaNoMigradoError) {
       return (
         <div>
-          <PageHeader title="Auditoría" subtitle="Quién hizo qué, cuándo — pedidos, caja, empleados, pagos y evaluaciones" />
+          <PageHeader title="Auditoría" subtitle="Quién hizo qué, cuándo — asistencias, sueldos, evaluaciones, personas, configuración, solicitudes, pedidos, caja y pagos" />
           <Card>
             <CardContent className="flex items-start gap-3 py-6">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-aviso" strokeWidth={1.75} />

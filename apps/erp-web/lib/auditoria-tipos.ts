@@ -9,18 +9,27 @@
 export type OperacionAudit = 'INSERT' | 'UPDATE' | 'DELETE';
 
 // LA LISTA TIENE QUE COINCIDIR CON LOS TRIGGERS DE LA BASE, no con lo que se auditaba el día que
-// se escribió esta constante. Faltaban cuatro de las ocho tablas que ya escriben en `audit_log`, y
-// el filtro de la pantalla se arma con esta lista: elegir «Pedidos» devolvía una lista vacía
-// mientras el rastro entero estaba guardado, y los 4.809 movimientos de asistencias —la tabla que
-// más escribe, y la que decide un sueldo— no tenían ni entrada en el desplegable.
-// Verificado contra `select distinct tabla from audit_log` el 23-ago-2026, más `solicitudes`, que
-// empieza a auditarse con la migración 0087.
+// se escribió esta constante. El filtro de la pantalla se arma con esta lista: lo que no está acá
+// es rastro guardado al que nadie puede llegar. Elegir «Pedidos» devolvía una lista vacía mientras
+// los 138 movimientos estaban en la base, y los 4.809 de asistencias —la tabla que más escribe, y
+// la que decide un sueldo— no tenían ni entrada en el desplegable.
+//
+// Verificado el 24-ago-2026 contra `pg_trigger`: catorce triggers `trg_audit_*` ya vivos —
+// `solicitudes` entre ellos, desde la migración 0087—, más `config`, que llega con la 0088.
+// Faltaban las cinco tablas `sueldo_*` de la cadena de liquidación, que son justamente las que hay
+// que poder auditar cuando alguien discute un pago.
 export const TABLAS_AUDITADAS = [
   'asistencias',
   'sueldo_acuerdos',
   'sueldo_acuerdo_turnos',
+  'sueldo_liquidaciones',
+  'sueldo_liquidacion_lineas',
+  'sueldo_liquidacion_pagos',
+  'sueldo_movimientos',
+  'sueldo_ventas',
   'evaluaciones_mensuales',
   'empleados',
+  'config',
   'solicitudes',
   'pedidos',
   'caja_movimientos',
@@ -32,13 +41,25 @@ export const TABLA_LABEL: Record<TablaAuditada, string> = {
   asistencias: 'Asistencias',
   sueldo_acuerdos: 'Contratos',
   sueldo_acuerdo_turnos: 'Horarios',
+  sueldo_liquidaciones: 'Liquidaciones',
+  sueldo_liquidacion_lineas: 'Líneas de liquidación',
+  sueldo_liquidacion_pagos: 'Abonos de sueldo',
+  sueldo_movimientos: 'Adelantos y descuentos',
+  sueldo_ventas: 'Ventas para comisión',
   evaluaciones_mensuales: 'Evaluaciones',
   empleados: 'Personas',
+  config: 'Configuración',
   solicitudes: 'Solicitudes',
   pedidos: 'Pedidos',
   caja_movimientos: 'Caja',
   pagos: 'Pagos',
 };
+
+// El tamaño de la ventana de CADA consulta, no del módulo entero. Vive acá —y no sólo en el
+// repositorio— porque la pantalla necesita el mismo número para avisar, cuando la consulta lo
+// toca, que hay más rastro del que está mostrando. Mientras el 200 estuvo escrito dos veces
+// (repo y pantalla), el aviso podía dejar de coincidir con el corte real sin que nada avisara.
+export const LIMITE_AUDITORIA = 200;
 
 export type AuditLogFila = {
   id: number;

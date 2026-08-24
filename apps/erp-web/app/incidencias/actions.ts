@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../lib/auth';
-import { crearIncidencia, eliminarIncidencia } from '../../lib/incidencias-repo';
+import { actualizarResponsableIncidencia, crearIncidencia, eliminarIncidencia } from '../../lib/incidencias-repo';
 
 function fechaPeru(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
@@ -33,6 +33,25 @@ export async function accionCrearIncidencia(input: {
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error al registrar' };
+  }
+}
+
+// Asigna, cambia o quita el responsable de una incidencia ya registrada. Mismo control de rol que
+// accionEliminarIncidencia: la policy inc_update ya es admin-only en la base, esto solo adelanta
+// el rechazo para que el mensaje sea entendible en vez de un UPDATE de cero filas.
+export async function accionAsignarResponsableIncidencia(
+  id: string,
+  responsableId: string | null,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const sesion = await getSesion();
+    const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
+    if (!esAdmin) return { ok: false, error: 'Solo admin/dueño' };
+    await actualizarResponsableIncidencia(id, responsableId);
+    revalidatePath('/incidencias');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al asignar el responsable' };
   }
 }
 

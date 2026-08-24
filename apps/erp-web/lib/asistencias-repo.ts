@@ -251,6 +251,19 @@ export async function declararDia(d: DeclaracionDia): Promise<void> {
 
   const sb = getServerClient();
 
+  // Las horas que se declaran acá las escribió una persona, así que dejan de ser de la máquina.
+  //
+  // POR QUÉ HACE FALTA DECIRLO. `huellero_puso_entrada` / `huellero_puso_salida` no son un dato
+  // de auditoría: mandan. La derivación recalcula exactamente las horas cuyo sello está en `true`
+  // (0079_huellero_emparejado_fix.sql:270-273) y la reversión de un mapeo anula exactamente ésas
+  // (0075:876-877). Sin bajar el sello, la corrección se escribía bien y el siguiente lote del
+  // colector la volvía a pisar con la hora de la máquina, sin un solo error a la vista — y el
+  // 98,8 % de las filas de `asistencias` viene del huellero. `crearAsistencia()` ya lo hacía;
+  // esta puerta, que es la principal, no.
+  //
+  // Sólo cuando hay hora: el sello protege una hora, y sobre una hora en `null` no protege nada
+  // (la derivación la rellena igual por el `coalesce` de 0079:270-273). En la rama de `insert`
+  // este mismo objeto alcanza: si no hay hora, la columna toma su `default false`.
   const declaracion = {
     condicion: d.condicion,
     hora_entrada: d.horaEntrada || null,
@@ -258,6 +271,8 @@ export async function declararDia(d: DeclaracionDia): Promise<void> {
     tardanza_justificada: d.tardanzaJustificada,
     falta_justificada: d.faltaJustificada,
     motivo_justificacion: d.motivoJustificacion?.trim() || null,
+    ...(d.horaEntrada ? { huellero_puso_entrada: false } : {}),
+    ...(d.horaSalida ? { huellero_puso_salida: false } : {}),
   };
 
   // QUÉ FILA SE DECLARA, Y POR QUÉ NO SIEMPRE UNA NUEVA.

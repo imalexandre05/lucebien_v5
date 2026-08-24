@@ -4,6 +4,26 @@
 // (independiente del alcance más amplio por sede que tiene la RLS de reportes/incidencias).
 import { getServerClient } from './supabase/server';
 
+/**
+ * El instante en que empieza un día natural de Perú (UTC−5), para filtrar una columna
+ * `timestamptz`.
+ *
+ * POR QUÉ. `pipeline_puntos.fecha` es timestamptz y el servidor corre en UTC (no-negociable 4).
+ * Comparar contra 'YYYY-MM-DD' pelado lo interpreta como medianoche UTC, que en hora Perú son las
+ * 19:00 del día ANTERIOR: el rango queda corrido cinco horas y el último día se pierde casi
+ * entero. Medido contra la base el 23-ago-2026: los puntos de junio de una misma persona daban
+ * 38,50 con el filtro viejo y 70,50 con éste — acá eso es el número que alguien ve de SÍ MISMO.
+ *
+ * Copia deliberada de lib/colaboradores-repo.ts: son las dos únicas consultas de la aplicación que
+ * filtran esta columna, y este módulo no debe depender del otro. La RPC de la 0057 tiene su propio
+ * filtro y otro criterio: no se toca.
+ */
+const inicioDiaPeru = (dia: string): string => `${dia}T00:00:00-05:00`;
+
+/** El día siguiente a 'YYYY-MM-DD'. Aritmética en UTC para que la zona del proceso no la corra. */
+const diaSiguiente = (dia: string): string =>
+  new Date(Date.parse(`${dia}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+
 export type MiReporte = { id: string; fecha: string; turno: string; evaluado: boolean; puntajeEval: number | null };
 export type MiExtra = { id: string; fecha: string; nombre: string; montoTotal: number };
 export type MiIncidencia = { id: string; fecha: string; tipo: string; nivel: string };
@@ -24,7 +44,14 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
     sb.from('reportes').select('id, fecha, turno, evaluado, puntaje_eval').eq('encargado_id', empleadoId).gte('fecha', desde).lte('fecha', hasta).order('fecha', { ascending: false }),
     sb.from('reporte_extras').select('id, nombre, monto_total, reportes!inner(fecha)').eq('registrado_por_id', empleadoId).gte('reportes.fecha', desde).lte('reportes.fecha', hasta),
     sb.from('incidencias').select('id, fecha, tipo, nivel').eq('responsable_id', empleadoId).gte('fecha', desde).lte('fecha', hasta).order('fecha', { ascending: false }),
-    sb.from('pipeline_puntos').select('puntos').eq('empleado_id', empleadoId).gte('fecha', desde).lte('fecha', hasta),
+    // `pipeline_puntos.fecha` es la ÚNICA columna timestamptz de estas cinco consultas: va por día
+    // natural de Perú (ver `inicioDiaPeru`). El resto filtra columnas `date` y no necesita nada.
+    sb
+      .from('pipeline_puntos')
+      .select('puntos')
+      .eq('empleado_id', empleadoId)
+      .gte('fecha', inicioDiaPeru(desde))
+      .lt('fecha', inicioDiaPeru(diaSiguiente(hasta))),
     sb.from('evaluaciones_mensuales').select('mes, nota_final').eq('empleado_id', empleadoId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
   ]);
   for (const r of [repRes, extRes, incRes, pipeRes, evalRes]) {

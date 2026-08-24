@@ -1,7 +1,18 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
-import { Plus, Minus, X, Send, Shirt, Package, Users, Check, AlertTriangle } from 'lucide-react';
+import { Fragment, useRef, useState, useTransition } from 'react';
+import {
+  Plus,
+  Minus,
+  X,
+  Send,
+  Shirt,
+  Package,
+  Users,
+  Check,
+  AlertTriangle,
+  ClipboardCheck,
+} from 'lucide-react';
 import { accionEnviarLavanderia, accionValidarRetorno } from './actions';
 import type { ListaLavanderia, ItemEnvio } from '../../lib/lavanderia-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -10,7 +21,7 @@ import { Badge, type Tone } from '../../components/ui/badge';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { EmptyState } from '../../components/ui/empty-state';
 import { PersonaPicker } from '../../components/ui/persona-picker';
-import { Aviso, campoCls, Label, LabelGrupo, Select } from '../../components/ui/form';
+import { Aviso, campoCls, Label, LabelGrupo, Select, Textarea } from '../../components/ui/form';
 import { OpcionBotones } from '../../components/ui/opcion-botones';
 import {
   familiasColorPrenda,
@@ -63,6 +74,14 @@ const ACCESORIOS: { key: keyof Generales; label: string }[] = [
 type Generales = { camisas: number; corbatas: number; michis: number; corbatones: number; portaTernos: number; zapatos: number };
 const GENERALES_VACIO: Generales = { camisas: 0, corbatas: 0, michis: 0, corbatones: 0, portaTernos: 0, zapatos: 0 };
 
+// CÓMO VOLVIÓ CADA PRENDA. Las dos únicas respuestas que entiende la base: lavanderia_validar_retorno
+// (migración 0066) guarda este texto en lista_items.estado_retorno y marca la lista como
+// 'Devuelto-Observado' en cuanto una sola prenda no volvió 'bien'.
+const OPC_RETORNO = [
+  { value: 'bien', label: 'Bien' },
+  { value: 'problema', label: 'Con problema' },
+];
+
 const ESTADO_TONE: Record<string, Tone> = {
   'En proceso': 'amber',
   Validado: 'green',
@@ -93,6 +112,13 @@ export function EnvioLavanderiaCliente({
   const [listas, setListas] = useState(listasIniciales);
   const [error, setError] = useState('');
   const [ok, setOk] = useState('');
+  // Revisión del retorno: qué lista está abierta, cómo volvió cada prenda de esa lista, la nota que
+  // queda como sustento del reclamo, y el error propio del panel —lejos del aviso del formulario de
+  // envío, que está a dos pantallas de scroll de acá.
+  const [revisando, setRevisando] = useState<string | null>(null);
+  const [retornoItems, setRetornoItems] = useState<Record<string, 'bien' | 'problema'>>({});
+  const [obsRetorno, setObsRetorno] = useState('');
+  const [errorRetorno, setErrorRetorno] = useState('');
   const [pending, startTransition] = useTransition();
   const codigoRef = useRef<HTMLInputElement>(null);
 
@@ -196,22 +222,66 @@ export function EnvioLavanderiaCliente({
     });
   }
 
-  function validar(listaId: string, itemsEstado: { id: string; estado: 'bien' | 'problema' }[]) {
+  /**
+   * Abre la revisión de una lista que volvió de lavandería.
+   *
+   * TODAS LAS PRENDAS ARRANCAN EN «BIEN». No es una regla inventada acá: es exactamente como la base
+   * ya lee un ítem sin estado —`coalesce(estado_retorno, 'bien')` en lavanderia_validar_retorno,
+   * migración 0066— y es el caso común. Lo que cambia es que ahora marcar «problema» es posible: el
+   * único control que existía validaba la lista entera como «todo bien» y no había forma de dejar
+   * constancia de una prenda que volvió manchada, rota o directamente no volvió.
+   */
+  function abrirRevision(l: ListaLavanderia) {
+    setRevisando(l.id);
+    setErrorRetorno('');
+    setObsRetorno(l.obsRetorno ?? '');
+    setRetornoItems(
+      Object.fromEntries(l.items.map((i) => [i.id, i.estadoRetorno === 'problema' ? 'problema' : 'bien'])),
+    );
+  }
+
+  function cerrarRevision() {
+    setRevisando(null);
+    setErrorRetorno('');
+  }
+
+  function estadoDeItem(id: string): 'bien' | 'problema' {
+    return retornoItems[id] ?? 'bien';
+  }
+
+  function marcarItem(id: string, estado: 'bien' | 'problema') {
+    setRetornoItems((p) => ({ ...p, [id]: estado }));
+  }
+
+  function validar(l: ListaLavanderia) {
+    const itemsEstado = l.items.map((i) => ({ id: i.id, estado: estadoDeItem(i.id) }));
+    const hayProblema = itemsEstado.some((i) => i.estado === 'problema');
+    const obs = obsRetorno.trim();
+    setErrorRetorno('');
     startTransition(async () => {
-      const r = await accionValidarRetorno({ id: listaId, items: itemsEstado, obsRetorno: '' });
-      if (r.ok) {
-        setListas((p) =>
-          p.map((l) =>
-            l.id === listaId
-              ? {
-                  ...l,
-                  estado: itemsEstado.some((i) => i.estado === 'problema') ? 'Devuelto-Observado' : 'Validado',
-                  validadoTienda: true,
-                }
-              : l,
-          ),
-        );
+      const r = await accionValidarRetorno({ id: l.id, items: itemsEstado, obsRetorno: obs });
+      if (!r.ok) {
+        // Antes un fallo acá no se veía: la fila se quedaba igual y quien validaba no tenía cómo
+        // saber si había pasado algo o si el sistema estaba pensando.
+        setErrorRetorno(r.error ?? 'No se pudo validar el retorno');
+        return;
       }
+      setListas((p) =>
+        p.map((x) =>
+          x.id === l.id
+            ? {
+                ...x,
+                estado: hayProblema ? 'Devuelto-Observado' : 'Validado',
+                validadoTienda: true,
+                // La RPC hace `coalesce(p_obs_retorno, obs_retorno)`: una nota vacía no borra la que
+                // ya estaba. La copia local sigue esa misma regla para no mostrar otra cosa.
+                obsRetorno: obs || x.obsRetorno,
+                items: x.items.map((i) => ({ ...i, estadoRetorno: estadoDeItem(i.id) })),
+              }
+            : x,
+        ),
+      );
+      setRevisando(null);
     });
   }
 
@@ -597,35 +667,169 @@ export function EnvioLavanderiaCliente({
                 </TR>
               </THead>
               <TBody>
-                {listas.map((l) => (
-                  <TR key={l.id}>
-                    <TD className="pl-5 tabular-nums text-xs">{l.id.slice(0, 8)}</TD>
-                    <TD>{l.tipo === 'LAV' ? 'General' : 'Refacción'}</TD>
-                    <TD className="tabular-nums text-xs text-muted">{l.fecha.slice(0, 10)}</TD>
-                    <TD className="text-right tabular-nums">{l.items.length}</TD>
-                    <TD>
-                      <Badge tone={ESTADO_TONE[l.estado] ?? 'gray'}>{l.estado}</Badge>
-                    </TD>
-                    <TD className="pr-5 text-right">
-                      {l.estado === 'En proceso' && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          className="px-3 py-1.5 text-xs"
-                          disabled={pending}
-                          onClick={() => validar(l.id, l.items.map((i) => ({ id: i.id, estado: 'bien' as const })))}
-                        >
-                          <Check className="h-3.5 w-3.5" strokeWidth={2} /> Validar retorno (todo bien)
-                        </Button>
+                {listas.map((l) => {
+                  const abierta = revisando === l.id;
+                  const conProblema = abierta
+                    ? l.items.filter((i) => estadoDeItem(i.id) === 'problema').length
+                    : 0;
+                  return (
+                    <Fragment key={l.id}>
+                      <TR>
+                        <TD className="pl-5 tabular-nums text-xs">{l.id.slice(0, 8)}</TD>
+                        <TD>{l.tipo === 'LAV' ? 'General' : 'Refacción'}</TD>
+                        <TD className="tabular-nums text-xs text-muted">{l.fecha.slice(0, 10)}</TD>
+                        <TD className="text-right tabular-nums">{l.items.length}</TD>
+                        <TD>
+                          <Badge tone={ESTADO_TONE[l.estado] ?? 'gray'}>{l.estado}</Badge>
+                        </TD>
+                        <TD className="pr-5 text-right">
+                          {/* EL RETORNO SE REVISA, NO SE FIRMA A CIEGAS. Este botón antes validaba la
+                              lista entera como «todo bien» de una sola vez: era la única salida para
+                              destrabar la fila, así que una prenda manchada o perdida se declaraba
+                              buena y desaparecía el único registro reclamable a la lavandería. Ahora
+                              despliega el detalle y cada prenda se responde por separado. */}
+                          {l.estado === 'En proceso' && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="px-3 py-1.5 text-xs"
+                              disabled={pending}
+                              aria-expanded={abierta}
+                              aria-controls={abierta ? 'revision-' + l.id : undefined}
+                              onClick={() => (abierta ? cerrarRevision() : abrirRevision(l))}
+                            >
+                              <ClipboardCheck className="h-3.5 w-3.5" strokeWidth={2} />
+                              {abierta ? 'Cerrar revisión' : 'Revisar retorno'}
+                            </Button>
+                          )}
+                          {l.estado === 'Devuelto-Observado' && (
+                            <span className="inline-flex flex-col items-end gap-0.5 text-xs text-error-deep">
+                              <span className="inline-flex items-center gap-1">
+                                <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Con observación
+                              </span>
+                              {/* La nota se muestra en la fila y no sólo en la base: es el sustento del
+                                  reclamo, y guardada donde nadie la ve no sirve de nada. */}
+                              {l.obsRetorno && (
+                                <span className="max-w-[18rem] text-right font-normal leading-snug text-muted">
+                                  «{l.obsRetorno}»
+                                </span>
+                              )}
+                            </span>
+                          )}
+                        </TD>
+                      </TR>
+
+                      {abierta && (
+                        <TR className="hover:bg-transparent">
+                          <TD colSpan={6} id={'revision-' + l.id} className="bg-paper/70 px-5 py-4">
+                            <div className="space-y-4">
+                              <div>
+                                <LabelGrupo>Cómo volvió cada prenda</LabelGrupo>
+                                <p className="text-xs text-muted">
+                                  Marca «Con problema» la prenda que volvió mal o que no volvió. Con una sola
+                                  marcada, la lista queda como «Devuelto-Observado» y no como validada.
+                                </p>
+                              </div>
+
+                              {/* Una lista sin prendas no debería existir —enviar exige al menos una— pero
+                                  las que quedaron de antes sí pueden estar así, y un recuadro vacío se lee
+                                  como que la pantalla se rompió. */}
+                              {l.items.length === 0 && (
+                                <p className="rounded-md border border-dashed border-line px-3 py-2.5 text-sm text-muted">
+                                  Esta lista no tiene prendas registradas: sólo se puede dar por validada.
+                                </p>
+                              )}
+
+                              <ul className="divide-y divide-line rounded-md border border-line empty:hidden">
+                                {l.items.map((i) => (
+                                  <li
+                                    key={i.id}
+                                    className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 text-sm"
+                                  >
+                                    <span className="tabular-nums font-medium text-navy">{i.cod}</span>
+                                    <span className="text-muted">
+                                      {[i.tipo, i.color, i.talla].filter(Boolean).join(' · ')}
+                                    </span>
+                                    {/* La observación con la que SALIÓ la prenda: sin ella, quien revisa no
+                                        puede saber si la mancha es nueva o si ya iba así. */}
+                                    {i.obs && (
+                                      <span className="w-full text-xs text-muted sm:w-auto">«{i.obs}»</span>
+                                    )}
+                                    <OpcionBotones
+                                      className="ml-auto"
+                                      opciones={OPC_RETORNO}
+                                      value={estadoDeItem(i.id)}
+                                      onChange={(v) => marcarItem(i.id, v === 'problema' ? 'problema' : 'bien')}
+                                      disabled={pending}
+                                      ariaLabel={'Cómo volvió ' + i.cod}
+                                    />
+                                  </li>
+                                ))}
+                              </ul>
+
+                              <div>
+                                <Label htmlFor={'obs-retorno-' + l.id}>Observación del retorno</Label>
+                                <Textarea
+                                  id={'obs-retorno-' + l.id}
+                                  value={obsRetorno}
+                                  onChange={(e) => setObsRetorno(e.target.value)}
+                                  disabled={pending}
+                                  placeholder="Qué pasó y con cuál prenda: «LB-100 volvió con la solapa manchada», «LB-104 no volvió»."
+                                />
+                              </div>
+
+                              {/* NO BLOQUEA. Si la observación debe ser obligatoria cuando hay una prenda con
+                                  problema es una regla de negocio que todavía no está decidida: acá sólo se
+                                  avisa, para no dejar a la encargada sin forma de cerrar la lista. */}
+                              {conProblema > 0 && !obsRetorno.trim() && (
+                                <Aviso tono="aviso">
+                                  Hay{' '}
+                                  {conProblema === 1
+                                    ? 'una prenda marcada con problema'
+                                    : conProblema + ' prendas marcadas con problema'}{' '}
+                                  y ninguna descripción. Sin decir qué pasó, el reclamo a la lavandería queda
+                                  sin sustento.
+                                </Aviso>
+                              )}
+
+                              {errorRetorno && <Aviso tono="error">{errorRetorno}</Aviso>}
+
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <span className="text-sm text-muted">
+                                  {conProblema === 0
+                                    ? 'Todas las prendas volvieron bien.'
+                                    : conProblema === 1
+                                      ? '1 prenda con problema.'
+                                      : conProblema + ' prendas con problema.'}
+                                </span>
+                                <div className="flex flex-wrap gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    className="px-3 py-2"
+                                    disabled={pending}
+                                    onClick={cerrarRevision}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    className="px-3 py-2"
+                                    pending={pending}
+                                    onClick={() => validar(l)}
+                                  >
+                                    {!pending && <Check className="h-4 w-4" strokeWidth={2} />}
+                                    {conProblema > 0 ? 'Registrar con observación' : 'Validar retorno'}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </TD>
+                        </TR>
                       )}
-                      {l.estado === 'Devuelto-Observado' && (
-                        <span className="inline-flex items-center gap-1 text-xs text-error-deep">
-                          <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Con observación
-                        </span>
-                      )}
-                    </TD>
-                  </TR>
-                ))}
+                    </Fragment>
+                  );
+                })}
               </TBody>
             </Table>
           )}

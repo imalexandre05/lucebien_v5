@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Ban, Wallet } from 'lucide-react';
 import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
@@ -140,8 +141,19 @@ export function LiquidacionPagoCliente({
 
       {liquidaciones.length === 0 ? (
         <Card>
-          <CardContent className="py-8 text-center text-sm text-muted">
-            Esta persona todavía no tiene ninguna liquidación guardada.
+          {/* El vacío tiene que decir a dónde ir. Acá no hay nada que hacer —el pago se registra
+              sobre una liquidación CERRADA (0080) y calcular y cerrar se hace en otra pantalla—,
+              así que sin este enlace la pestaña era un callejón: el paso «Pago» del hilo mandaba
+              para acá y acá no había ninguna salida. */}
+          <CardContent className="space-y-3 py-8 text-center text-sm text-muted">
+            <p>Esta persona todavía no tiene ninguna liquidación guardada.</p>
+            <p>
+              La liquidación se calcula y se cierra en{' '}
+              <Link href="/sueldos/liquidaciones" className="text-gold-deep underline">
+                Liquidar el periodo
+              </Link>
+              . Recién sobre una liquidación cerrada se registra el pago acá.
+            </p>
           </CardContent>
         </Card>
       ) : (

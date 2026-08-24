@@ -8,7 +8,11 @@ insert into sedes (cod, nombre, direccion, interna) values
   ('AL', 'Almacen Central', '', true)
 on conflict (cod) do nothing;
 
+-- Las 10 claves pts_*, en orden de pipeline. `pts_recepcion` se agregó con la migración 0089:
+-- faltaba, y `pipeline_avanzar` venía cayendo a su default interno de 1 (ver 0089 y el
+-- no-negociable 5 — ningún peso de negocio hardcodeado en una función SQL).
 insert into config (clave, valor) values
+  ('pts_recepcion', '1'),
   ('pts_lavado_normal', '1'), ('pts_lavado_seco', '3'), ('pts_lavado_especializado', '5'),
   ('pts_empatado', '0.5'), ('pts_refaccion', '2'), ('pts_compostura', '5'),
   ('pts_planchado', '3'), ('pts_control_calidad', '2'), ('pts_accesorio', '0.5')

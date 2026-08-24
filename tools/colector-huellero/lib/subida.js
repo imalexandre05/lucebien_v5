@@ -85,7 +85,12 @@ export async function obtenerCheckpoint(supabase, dispositivoId) {
 // antes que uno viejo adelantaría el checkpoint por encima de marcas que nunca se subieron.
 export async function enviarMarcas(supabase, dispositivoId, marcas, registrar = () => {}) {
   const ordenadas = [...marcas].sort((a, b) => a.marcada_en.localeCompare(b.marcada_en));
-  const total = { insertadas: 0, duplicadas: 0, sin_mapeo: 0, enviadas: 0 };
+  // `derivaciones_fallidas` y `rechazadas` los devolvía la RPC desde la 0075 y acá se tiraban sin
+  // leerlos, así que no tenían un solo consumidor en todo el repositorio. El primero es el que
+  // importa: cuenta los días en que las marcas ENTRARON pero la asistencia no se pudo crear
+  // (0075:631). Sin él, el log seguía diciendo "48 nuevas" y la pantalla mostraba el equipo al
+  // día mientras el mes se liquidaba sin esos días.
+  const total = { insertadas: 0, duplicadas: 0, sin_mapeo: 0, rechazadas: 0, derivaciones_fallidas: 0, enviadas: 0 };
 
   // Un lote vacío también se manda: la RPC actualiza `ultima_sincronizacion` y así un ciclo sin
   // marcas sigue siendo señal de que el colector está vivo. Un colector caído se ve en la
@@ -102,11 +107,28 @@ export async function enviarMarcas(supabase, dispositivoId, marcas, registrar = 
     total.insertadas += Number(data?.insertadas ?? 0);
     total.duplicadas += Number(data?.duplicadas ?? 0);
     total.sin_mapeo += Number(data?.sin_mapeo ?? 0);
+    total.rechazadas += Number(data?.rechazadas ?? 0);
+    total.derivaciones_fallidas += Number(data?.derivaciones_fallidas ?? 0);
     total.enviadas += paquete.length;
 
     if (paquetes.length > 1) {
       registrar(`   lote de ${paquete.length}: ${data?.insertadas ?? 0} nuevas, ${data?.duplicadas ?? 0} repetidas`);
     }
+  }
+
+  // El aviso va acá y no lo arma quien llama: es la única capa que ve la respuesta de la RPC, y
+  // el silencio era justamente el problema. No se lanza una excepción — las marcas ya están a
+  // salvo en la base y el ciclo siguiente vuelve a derivar solo; tumbar el proceso perdería el
+  // latido de `ultima_sincronizacion`, que es lo que hace visible una cadena rota en la pantalla.
+  if (total.derivaciones_fallidas > 0) {
+    registrar(
+      `   ATENCIÓN: ${total.derivaciones_fallidas} día(s) no se pudieron derivar — las marcas ` +
+      'entraron pero NO se creó la asistencia. Revisar que huellero_jornada_max_horas y ' +
+      'huellero_jornada_min_horas en /configuracion sean números con punto decimal.',
+    );
+  }
+  if (total.rechazadas > 0) {
+    registrar(`   ${total.rechazadas} marca(s) rechazadas por la base: se leyeron del equipo y no se guardaron.`);
   }
 
   return total;

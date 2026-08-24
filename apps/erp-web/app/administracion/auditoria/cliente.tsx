@@ -1,8 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { History, Search, Eye } from 'lucide-react';
-import { TABLAS_AUDITADAS, TABLA_LABEL, camposCambiados, type AuditLogFila, type OperacionAudit } from '../../../lib/auditoria-tipos';
+import {
+  TABLAS_AUDITADAS,
+  TABLA_LABEL,
+  LIMITE_AUDITORIA,
+  camposCambiados,
+  type AuditLogFila,
+  type OperacionAudit,
+} from '../../../lib/auditoria-tipos';
+import { accionBuscarAuditoria } from './actions';
 import { fechaHoraCorta } from '../../../lib/fechas';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
@@ -16,7 +24,11 @@ import { cn } from '../../../lib/cn';
 
 const fieldCls = campoCls;
 
-const OPC_TABLA: Opcion[] = [{ value: '', label: 'Todas' }, ...TABLAS_AUDITADAS.map((t) => ({ value: t, label: TABLA_LABEL[t] }))];
+// El filtro de tabla es un <select> y no la fila de pastillas: son quince tablas auditadas más
+// «Todas», y el propio componente fija su límite en cinco opciones
+// (components/ui/opcion-botones.tsx:13-15). Los dos campos de fecha de esta misma barra ya son
+// controles densos, así que el conjunto sigue leyéndose parejo.
+const OPC_TABLA = [{ value: '', label: 'Todas las tablas' }, ...TABLAS_AUDITADAS.map((t) => ({ value: t as string, label: TABLA_LABEL[t] }))];
 const OPC_OPERACION: Opcion[] = [
   { value: '', label: 'Todas' },
   { value: 'INSERT', label: 'Creado' },
@@ -41,16 +53,53 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
   const [fActor, setFActor] = useState('');
   const [detalle, setDetalle] = useState<AuditLogFila | null>(null);
 
+  const [filas, setFilas] = useState<AuditLogFila[]>(filasIniciales);
+  const [cargando, setCargando] = useState(false);
+  const [errorBusqueda, setErrorBusqueda] = useState('');
+
+  // LOS CUATRO FILTROS SE RESUELVEN EN EL SERVIDOR. Antes se traían las 200 filas más recientes y
+  // se recortaban acá; como `asistencias` es el 92% de audit_log, esas 200 eran todas suyas y
+  // elegir «Pedidos» devolvía una lista vacía con los 138 movimientos guardados en la base.
+  //
+  // `pedido` numera cada consulta: si la respuesta que llega no es la de la última consulta
+  // disparada, se descarta. Sin eso, dos cambios rápidos de filtro pueden pintar el resultado del
+  // primero encima del segundo.
+  const pedido = useRef(0);
+  const primerRender = useRef(true);
+
+  useEffect(() => {
+    // El primer render ya tiene las filas que trajo page.tsx: volver a pedirlas sería una consulta
+    // de más en cada visita.
+    if (primerRender.current) {
+      primerRender.current = false;
+      return;
+    }
+    const mio = ++pedido.current;
+    setCargando(true);
+    // Pequeña espera: escribir una fecha dispara varios cambios (día, mes, año) y cada uno sería
+    // una consulta.
+    const t = setTimeout(async () => {
+      const r = await accionBuscarAuditoria({ tabla: fTabla, operacion: fOperacion, desde: fDesde, hasta: fHasta });
+      if (mio !== pedido.current) return;
+      if (r.ok) {
+        setFilas(r.filas);
+        setErrorBusqueda('');
+      } else {
+        setErrorBusqueda(r.error);
+      }
+      setCargando(false);
+    }, 250);
+    return () => clearTimeout(t);
+  }, [fTabla, fOperacion, fDesde, fHasta]);
+
+  // El actor se sigue filtrando acá a propósito: el repositorio filtra por identificador y esta
+  // caja busca por nombre escrito. Con los otros cuatro filtros ya aplicados en el servidor, la
+  // ventana sobre la que busca es la correcta.
   const filtradas = useMemo(() => {
-    return filasIniciales.filter((f) => {
-      if (fTabla && f.tabla !== fTabla) return false;
-      if (fOperacion && f.operacion !== fOperacion) return false;
-      if (fDesde && f.at.slice(0, 10) < fDesde) return false;
-      if (fHasta && f.at.slice(0, 10) > fHasta) return false;
-      if (fActor && !(f.actorNombre ?? '').toLowerCase().includes(fActor.toLowerCase())) return false;
-      return true;
-    });
-  }, [filasIniciales, fTabla, fOperacion, fDesde, fHasta, fActor]);
+    if (!fActor) return filas;
+    const buscado = fActor.toLowerCase();
+    return filas.filter((f) => (f.actorNombre ?? '').toLowerCase().includes(buscado));
+  }, [filas, fActor]);
 
   const kpis = useMemo(
     () => ({
@@ -76,8 +125,21 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
       <Card>
         <CardContent className="flex flex-wrap items-end gap-3 py-4">
           <div>
-            <div className="mb-1 text-[10px] uppercase tracking-wide text-muted">Tabla</div>
-            <OpcionBotones opciones={OPC_TABLA} value={fTabla} onChange={setFTabla} ariaLabel="Tabla" />
+            <label htmlFor="aud-tabla" className="mb-1 block text-[10px] uppercase tracking-wide text-muted">
+              Tabla
+            </label>
+            <select
+              id="aud-tabla"
+              value={fTabla}
+              onChange={(e) => setFTabla(e.target.value)}
+              className={cn(fieldCls, 'cursor-pointer')}
+            >
+              {OPC_TABLA.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <div className="mb-1 text-[10px] uppercase tracking-wide text-muted">Operación</div>
@@ -125,8 +187,17 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
               Limpiar filtros
             </button>
           )}
+          {cargando && <span className="text-xs text-muted">Buscando…</span>}
         </CardContent>
       </Card>
+
+      {errorBusqueda && (
+        <Card>
+          <CardContent className="py-3">
+            <p className="text-sm text-error-deep">No se pudo leer la auditoría: {errorBusqueda}</p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardContent className="overflow-x-auto px-0 pb-0">
@@ -174,8 +245,17 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                   ))}
                 </TBody>
               </Table>
-              {filasIniciales.length >= 200 && (
-                <p className="px-5 py-3 text-[11px] text-muted">Mostrando los {filasIniciales.length} movimientos más recientes.</p>
+              {/* Se mide contra `filas` (el resultado de la ÚLTIMA consulta, inicial o filtrada) y
+                  no contra `filasIniciales` (fija, la del primer render): con el filtro ya resuelto
+                  en el servidor, cada búsqueda tiene su propio corte de 200, y el aviso tiene que
+                  reaccionar a esa búsqueda — no repetir para siempre el conteo con el que abrió la
+                  pantalla. Mismo LIMITE_AUDITORIA que usa el repositorio (auditoria-tipos.ts), para
+                  que este aviso nunca pueda desincronizarse del corte real. */}
+              {filas.length >= LIMITE_AUDITORIA && (
+                <p className="px-5 py-3 text-[11px] text-muted">
+                  Hay más de {LIMITE_AUDITORIA} movimientos con este resultado — se muestran los {LIMITE_AUDITORIA} más recientes. Acota el
+                  rango de fechas para ver el resto.
+                </p>
               )}
             </>
           )}

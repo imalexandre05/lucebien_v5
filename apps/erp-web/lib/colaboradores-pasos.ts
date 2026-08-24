@@ -64,7 +64,11 @@ const soles = (n: number): string => `S/ ${n.toFixed(2)}`;
 function detallePago(pago: EstadoPago): string {
   switch (pago.tipo) {
     case 'sin_liquidacion':
-      return 'Falta registrarlo';
+      // No dice «falta registrarlo»: no hay ningún pago que registrar todavía. Lo que falta es
+      // CALCULAR la liquidación del período y CERRARLA — recién sobre una liquidación cerrada la
+      // base acepta un abono (`sueldo_liquidacion_pagar`, 0080). Nombrar el paso equivocado
+      // mandaba a buscar un formulario de pago que ahí no existe.
+      return 'Falta calcular y cerrar la liquidación';
     case 'sin_dato':
       return 'Sin dato de pago (falta aplicar la migración 0080)';
     case 'sin_monto':
