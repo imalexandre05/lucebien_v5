@@ -134,9 +134,16 @@ export const TRAMO_LABEL: Record<TramoEval, string> = {
 //
 // Aritmética: se usa Date.UTC (no `new Date(y,m,d)` local) para que el resultado NUNCA dependa
 // de la zona horaria del proceso que ejecuta esto (el server viejo corría con TZ fija; aquí no se
-// puede asumir). El comportamiento de "normalización de calendario" de JS (p. ej. día 31 en un
-// mes de 30 días rueda al mes siguiente) es el MISMO en Date.UTC que en Date local — se preserva
-// tal cual el original, incluida esa rareza de bordes de mes (ver docs/pendientes-negocio.md).
+// puede asumir).
+//
+// Mes corto (aniversario en día 29/30/31 contra un mes que no llega a ese día): hasta el 24-ago-
+// 2026 esto dejaba que Date.UTC desbordara el día inexistente al mes siguiente (aniversario 31,
+// ciclo que cae en febrero → arrancaba/terminaba el 3 de marzo, en vez de recortar al 28).
+// Alexander confirmó que la regla real es la que ya usaba en su Excel antes de este sistema: el
+// ciclo se RECORTA al último día real del mes, nunca se corre. Ver spec
+// docs/superpowers/specs/evaluaciones/2026-08-24-ciclo-aniversario-mes-corto-design.md — cierra
+// (sin actualizar todavía el texto) el pendiente anotado en docs/pendientes-negocio.md sobre esta
+// misma rareza.
 export type FuenteCiclo = 'aniversario' | 'mes_calendario';
 export interface Ciclo {
   desde: string;
@@ -144,8 +151,13 @@ export interface Ciclo {
   fuente: FuenteCiclo;
 }
 
-const MS_DIA = 24 * 60 * 60 * 1000;
 const fmtUTC = (t: number): string => new Date(t).toISOString().slice(0, 10);
+
+// El día 0 del mes siguiente a (y, m0) es el último día real de (y, m0). Aritmética pura sobre un
+// timestamp ya construido con Date.UTC — no lee el reloj del sistema, así que no es el
+// `new Date()` que el core tiene prohibido.
+const ultimoDiaDelMes = (y: number, m0: number): number =>
+  new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate();
 
 /** hoyStr: 'YYYY-MM-DD' (pasar hoyPeru() desde el caller — el core no llama a `new Date()`). */
 export function calcularCiclo(fechaIngreso: string | null | undefined, hoyStr: string): Ciclo {
@@ -170,7 +182,19 @@ export function calcularCiclo(fechaIngreso: string | null | undefined, hoyStr: s
       y -= 1;
     }
   }
-  const desde = fmtUTC(Date.UTC(y, m, dInicio));
-  const hasta = fmtUTC(Date.UTC(y, m + 1, dInicio) - MS_DIA); // día antes del próximo aniversario
+
+  // Recorte de mes corto (spec 2026-08-24-ciclo-aniversario-mes-corto-design.md §3): si el mes
+  // donde arranca el ciclo no llega al día de aniversario, el ciclo arranca el último día real de
+  // ese mes en vez de que Date.UTC lo desborde al mes siguiente.
+  const diaDesde = Math.min(dInicio, ultimoDiaDelMes(y, m));
+  const desde = fmtUTC(Date.UTC(y, m, diaDesde));
+
+  // "El día antes del próximo aniversario", recortado al último día real del mes siguiente cuando
+  // ese mes no llega a (día de aniversario − 1). El día correcto se calcula ANTES de llamar a
+  // Date.UTC — restarle milisegundos a una fecha ya construida (como hacía la versión anterior)
+  // es exactamente lo que reintroducía el desborde que esto corrige.
+  const diaHasta = Math.min(dInicio - 1, ultimoDiaDelMes(y, m + 1));
+  const hasta = fmtUTC(Date.UTC(y, m + 1, diaHasta));
+
   return { desde, hasta, fuente: 'aniversario' };
 }

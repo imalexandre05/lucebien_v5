@@ -185,10 +185,72 @@ describe('calcularCiclo', () => {
     });
   });
 
-  it('aniversario en día 31: hereda el mismo "rollover" de calendario que el sistema viejo', () => {
-    // fecha_ingreso día 31, ciclo arranca en febrero (28 días en 2026, no bisiesto): Date.UTC
-    // normaliza el 31-feb al 3 de marzo — mismo comportamiento que `new Date(y,m,31)` en el
-    // original (routes/evaluaciones.js:123), no es un bug nuevo. Ver docs/pendientes-negocio.md.
-    expect(calcularCiclo('2026-01-31', '2026-03-15').desde).toBe('2026-03-03');
+  // Antes del 24-ago-2026 esto esperaba '2026-03-03' (Date.UTC desbordaba el 31-feb al mes
+  // siguiente) y el comentario original decía "no es un bug nuevo, ver
+  // docs/pendientes-negocio.md" — ese era justo el pendiente sin resolver hasta que Alexander
+  // confirmara la regla. La spec 2026-08-24-ciclo-aniversario-mes-corto-design.md la confirma: el
+  // ciclo se recorta al último día real del mes, no se corre al siguiente.
+  it('aniversario en día 31: se recorta al último día real del mes, no se corre al siguiente', () => {
+    // fecha_ingreso día 31, ciclo arranca en febrero (28 días en 2026, no bisiesto) → arranca el
+    // 28-feb, no el 3-mar.
+    expect(calcularCiclo('2026-01-31', '2026-03-15').desde).toBe('2026-02-28');
+  });
+
+  // ── Tabla §5 de la spec 2026-08-24-ciclo-aniversario-mes-corto-design.md ────────────────────
+  // (el primer caso de la tabla, día 15 en un mes de 31 días, ya está cubierto arriba por
+  // "aniversario: hoy ya pasó el día del mes" y no se repite acá).
+  it('ingresa el 29 de enero → el ciclo termina el 28 de febrero', () => {
+    expect(calcularCiclo('2026-01-29', '2026-01-29')).toEqual({
+      desde: '2026-01-29',
+      hasta: '2026-02-28',
+      fuente: 'aniversario',
+    });
+  });
+
+  it('ingresa el 30 de enero → el ciclo termina el 28 de febrero', () => {
+    expect(calcularCiclo('2026-01-30', '2026-01-30')).toEqual({
+      desde: '2026-01-30',
+      hasta: '2026-02-28',
+      fuente: 'aniversario',
+    });
+  });
+
+  it('ingresa el 31 de enero → el ciclo termina el 28 de febrero', () => {
+    expect(calcularCiclo('2026-01-31', '2026-01-31')).toEqual({
+      desde: '2026-01-31',
+      hasta: '2026-02-28',
+      fuente: 'aniversario',
+    });
+  });
+
+  // La spec §5 dice, en prosa, "29 de febrero (el mes sí tiene ese día)" para este caso. La
+  // fórmula del §3 aplicada literalmente no da eso: hasta = min(díaDeseado − 1, últimoDíaDelMes)
+  // con díaDeseado = 29 es min(28, últimoDíaDelMes), y últimoDíaDelMes de febrero nunca baja de
+  // 28 — bisiesto o no, el resultado es siempre 28 (2028 es bisiesto: Date.UTC(2028,2,0) da día
+  // 29, y aun así min(28, 29) = 28). Se implementa la fórmula tal cual el §3, sin inventar una
+  // rama especial para bisiestos que la spec no describe; la discrepancia con la prosa del §5
+  // queda anotada en el informe de esta tarea, no resuelta acá.
+  it('ingresa el 29 de enero en año bisiesto → el ciclo termina el 28 de febrero (ver informe)', () => {
+    expect(calcularCiclo('2028-01-29', '2028-01-29')).toEqual({
+      desde: '2028-01-29',
+      hasta: '2028-02-28',
+      fuente: 'aniversario',
+    });
+  });
+
+  it('ingresa el 31 de octubre → el mes siguiente tiene 30 días, el ciclo termina el 30', () => {
+    expect(calcularCiclo('2026-10-31', '2026-10-31')).toEqual({
+      desde: '2026-10-31',
+      hasta: '2026-11-30',
+      fuente: 'aniversario',
+    });
+  });
+
+  it('ingresa el 31 de diciembre → cruce de año, el ciclo termina el 30 de enero', () => {
+    expect(calcularCiclo('2026-12-31', '2026-12-31')).toEqual({
+      desde: '2026-12-31',
+      hasta: '2027-01-30',
+      fuente: 'aniversario',
+    });
   });
 });
