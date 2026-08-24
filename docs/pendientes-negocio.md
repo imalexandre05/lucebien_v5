@@ -914,29 +914,64 @@ base viva, y lo que sobrevivió se corrigió. El detalle está en
 Ninguna de estas se inventó: quedan esperando respuesta y hasta entonces el sistema hace lo más
 conservador.
 
-1. **¿Todo el equipo debe tener acceso a las cuatro sedes?** Hoy las nueve personas de ventas tienen
-   AL, LB y ST en `empleado_tiendas` (Jordan y Marylin además TR). Mientras eso sea así, el
-   aislamiento por sede no aísla: cualquiera ve los reportes de todas las tiendas. Puede ser
-   correcto —la gente rota— o puede ser herencia de la carga inicial.
-2. **¿La nota mensual /20 debe modificar el monto de la liquidación, y con qué fórmula?** Hoy no lo
-   hace: `sueldo_liquidaciones` no tiene ninguna columna de evaluación y `EntradaLiquidacion`
-   tampoco. La cadena está descrita pero el último eslabón no existe.
-3. **¿El crédito de un turno es del encargado que firma el reporte, o de todo el equipo que figura
-   en `reporte_trabajadores`?** Hoy la nota sólo cuenta los reportes donde la persona fue
-   ENCARGADA, y los únicos dos encargados que existen son los dos administradores: para las nueve
-   personas de ventas, tres de los siete componentes de la nota salen en cero.
-4. **¿Una actividad no realizada cuenta como calificación 0, o no aplica ese día?** Hoy ni siquiera
+1. **¿Una actividad no realizada cuenta como calificación 0, o no aplica ese día?** Hoy ni siquiera
    existe como fila, así que nunca entra al divisor.
-5. **¿La puntualidad de la nota se deriva de la hora de entrada contra el horario contratado —como
-   ya hace el motor de sueldos— o se mantiene la carga manual de `minutos_tardanza`?** Esa columna
-   vale 0 en las 1.118 filas y nada la escribe.
-6. **¿Cuánto debe durar la reautenticación?** Hoy son 15 minutos. Quien liquida sueldos toda una
-   tarde vuelve a escribir su contraseña cada 15 minutos.
-7. **¿Los operativos deben ver el listado de incidencias de su sede?** La migración 0046 lo cerró a
-   administradores y la 0065 abrió el permiso de módulo a los operativos: las dos se contradicen.
-8. **El único contrato real de la base** (Marylin, 2026-05-22 a 2026-08-22, S/ 1.953) cubre tres
-   meses en una sola fila. Bajo el modelo vigente eso significa S/ 1.953 **por los tres meses**.
-   ¿Es lo que se quiso pactar?
+2. **¿Cómo se paga un contrato que dura varios meses?** Ver más abajo, §«Contratos de varios
+   meses» — es la más grande de todas y sigue en diseño.
+
+### Preguntas contestadas el 24-ago-2026
+
+| Pregunta | Respuesta de Alexander | Qué cambia |
+|---|---|---|
+| ¿Todo el equipo debe tener acceso a las cuatro sedes? | **Sí, a propósito.** No hay problema en que lo tengan; el horario de cada contrato dice en qué sede está cada quien. El acceso a varias sedes existe porque a veces rotan de imprevisto o por necesidad, pero es temporal | Ninguno. El aislamiento por sede no aísla nada hoy y **está bien que sea así** — no es un defecto, es cómo trabaja el equipo. Se cierra sin tocar código |
+| ¿La nota mensual /20 debe modificar el monto de la liquidación? | **No.** Es un indicador de rendimiento. Cuando se mida el promedio de puntajes del equipo, se le pondrá un valor en soles a cada punto que lo supere — eso vendrá después, no hoy | Ninguno todavía. Queda anotada la idea futura (ver «Bono por rendimiento sobre el promedio del equipo» más abajo) |
+| ¿El crédito de un turno es del encargado o de todo el equipo? | **De todo el equipo.** Sólo los puntos extras son individuales | Migración `0091_evaluacion_equipo_y_puntualidad` — spec en [2026-08-24-equipo-y-puntualidad-design.md](superpowers/specs/evaluaciones/2026-08-24-equipo-y-puntualidad-design.md) |
+| ¿La puntualidad de la nota se deriva del horario o de la carga manual? | **Se calcula sola, del horario.** | Misma migración `0091` que el punto anterior |
+| ¿Cuánto debe durar la reautenticación? | **15 minutos está bien**, sin cambios | Ninguno |
+| ¿Los operativos deben ver el listado de incidencias de su sede? | **Sí, pero no quién la reportó — eso lo ve sólo el administrador** | Spec en [2026-08-24-incidencias-reportante-solo-admin-design.md](superpowers/specs/almacen/2026-08-24-incidencias-reportante-solo-admin-design.md) |
+| El contrato viejo de Marylin (S/ 1.953 por tres meses) | **Fue un contrato mal cargado**, error de tipeo del propio Alexander, no un defecto del sistema | Ya corregido: contrato nuevo del 1-jul al 30-sep, S/ 1.800 (S/ 600/mes). Pero la pregunta abrió una más grande — ver abajo |
+
+### Bono por rendimiento sobre el promedio del equipo — idea futura, no construir todavía
+
+Cuando se tenga suficiente historial, se va a medir el promedio de puntajes del equipo y, a partir
+de ahí, se le va a poner un valor en soles a cada punto de nota que lo supere — así la nota /20 deja
+de ser sólo un indicador y empieza a pagar algo cuando el desempeño es alto. No hay fecha ni diseño
+todavía. Queda anotado para no perderlo, no para empezarlo.
+
+### Contratos de varios meses — la pregunta más grande, todavía en diseño
+
+**Lo que dijo Alexander, textual:** *«un contrato no se hace solo por un mes, pero tampoco implica
+que el admin paga cuando todo el contrato se termine»* y *«la idea es siempre verlo mensual o
+semanal (según modalidad)»*.
+
+**Lo que eso significa para el sistema, tal como está hoy.** Un contrato (`sueldo_acuerdos`) tiene
+una fecha de inicio, una de fin, una `modalidad` (mensual o semanal) y un `sueldo_pactado`. Hoy el
+motor trata esas tres cosas como una sola unidad: `sueldo_entrada(acuerdo)` siempre usa el rango
+completo del contrato como el período a liquidar, y `sueldo_pactado` es literalmente «lo que se
+paga por todo ese rango» — de ahí sale el valor de la hora (`sueldo_pactado ÷ horas del rango
+completo`). Un contrato de tres meses sólo se puede liquidar **una vez, entero**, al final.
+
+Eso es exactamente lo que Alexander dice que no quiere: el contrato puede —y a veces conviene que
+dure varios meses, por estabilidad— pero el **pago** tiene que poder salir cada mes (o cada semana,
+según la modalidad), sin esperar a que el contrato entero termine.
+
+**Lo que cambiaría, en criollo:**
+- `sueldo_pactado` dejaría de ser «el total del contrato» y pasaría a ser **la tarifa del período**:
+  si la modalidad es mensual, es lo que se paga POR MES, sin importar cuántos meses dure el
+  contrato completo. Con el contrato de Marylin que acabamos de cargar (modalidad mensual,
+  1-jul a 30-sep), esto ya está bien pensado por casualidad: pusimos S/ 600 mensuales, no S/ 1.800
+  totales con la esperanza de que se dividiera solo.
+- Un contrato de tres meses pasaría a tener **hasta tres liquidaciones**, una por mes, en vez de
+  una sola que cubra todo el rango.
+- Hay que decidir qué pasa con un mes a medias (un contrato que arranca el 15): ¿se paga
+  proporcional a los días de ese mes, o el primer período es más corto y ya?
+
+**Por qué esto no se construye hoy, junto con el resto.** Es un cambio en el corazón del motor de
+sueldos —cómo se define «cuánto vale la hora» y «cuántas liquidaciones tiene un contrato»— y hay
+más de una forma razonable de resolver el punto del mes a medias. Equivocarse acá no es un error
+chico: es volver a tocar el cálculo de un pago real. Antes de escribir una sola línea, hace falta
+que Alexander confirme cómo se prorratea un período incompleto — se le va a preguntar aparte, con
+un par de ejemplos concretos, antes de tocar el motor.
 
 ---
 

@@ -113,17 +113,15 @@ Vale la pena dejarlo escrito, porque es el argumento de por qué el proceso cues
 
 ## 4. Lo que queda abierto
 
-Las decisiones que el sistema no puede tomar solo están en
-[docs/pendientes-negocio.md](pendientes-negocio.md), §«Auditoría del 23-ago-2026». Las dos más
-caras:
+Las decisiones que el sistema no podía tomar solo están en
+[docs/pendientes-negocio.md](pendientes-negocio.md). **Actualización del 24-ago:** Alexander
+contestó las dos más caras de esta lista al día siguiente —«todo el equipo del turno recibe los
+puntos, no sólo el encargado» y «el acceso a las cuatro sedes es intencional, es cómo rota el
+equipo»— y quedaron migradas o cerradas sin código, según correspondía. El detalle vive en
+`pendientes-negocio.md` §«Preguntas contestadas el 24-ago-2026».
 
-1. **La nota mensual sólo cuenta los reportes donde la persona fue encargada**, y los únicos dos
-   encargados que existen son los dos administradores. Para las nueve personas de ventas, tres de
-   los siete componentes de la nota salen en cero — y un cero calculado no se distingue de un cero
-   merecido.
-2. **Todo el equipo tiene acceso a las cuatro sedes.** Mientras eso sea así, el aislamiento por sede
-   no aísla nada. Puede ser correcto —la gente rota entre tiendas— o puede ser herencia de la carga
-   inicial.
+Esa misma conversación abrió una pregunta más grande de lo que parecía: cómo se paga un contrato
+que dura varios meses. Sigue en diseño — ver `pendientes-negocio.md` §«Contratos de varios meses».
 
 Y una deuda técnica que no alcanzó esta tanda: `prenda_pasada` sigue con escritura directa abierta,
 como estaban reportes y solicitudes antes de esta auditoría. El CHECK de etapa que agregó la 0086 le
