@@ -164,9 +164,24 @@ export function NuevoReporteForm({
         const prev = new Map((d.actividades ?? []).map((x) => [x.cod, x]));
         const initDone: Record<string, boolean> = {};
         const initObs: Record<string, string> = {};
+        // NADA MARCADO POR DEFECTO: LO QUE SE VE ES LO QUE SE DECLARA.
+        //
+        // Antes un turno sin borrador previo nacía con TODAS las actividades del catálogo en
+        // «hecha». De ese marcado sale el puntaje del turno, del puntaje la nota mensual y de la
+        // nota el pago: abrir la pantalla y enviar sin tocar nada acreditaba el catálogo entero.
+        // Los borradores que hay hoy en la base tienen el 100 % de sus actividades en
+        // realizada=true, que es lo que produce un default, no una jornada.
+        //
+        // Arrancar sin marcar no le cambia la costumbre al equipo: es lo que ya hace todos los
+        // días el sistema viejo, que dibuja cada casilla sin `checked` (public/js/app.js:512) y
+        // guarda en el borrador únicamente las marcadas (public/js/reportes-autoenvio.js:103).
+        // El atajo sigue estando: «Todas» marca el turno completo de un clic, y eso es un acto
+        // explícito de la persona, no una decisión que el formulario tomó por ella.
+        //
+        // Mismo criterio y misma razón que en Valores 360° (apps/erp-web/app/valores/cliente.tsx:22-31).
         actividades.forEach((a) => {
           const p = prev.get(a.cod);
-          initDone[a.cod] = p ? Boolean(p.realizada) : true;
+          initDone[a.cod] = Boolean(p?.realizada);
           if (p?.obs) initObs[a.cod] = p.obs;
         });
         setDone(initDone);
@@ -277,7 +292,15 @@ export function NuevoReporteForm({
         sede,
         fecha,
         turno,
-        encargadoId,
+        // EL CRÉDITO DEL TURNO ES DE QUIEN LO FIRMA, NO DE QUIEN ABRIÓ LA SESIÓN.
+        //
+        // La prop `encargadoId` es el usuario de la sesión (así lo pasa page.tsx) y solo sirve
+        // como valor inicial del selector. Si el auto-cierre alcanza a este borrador, copia esta
+        // columna a reportes.encargado_id y le abre una fila en reporte_trabajadores
+        // (0052_reportes_acceso_turnos.sql): guardar aquí al de la sesión le acreditaba el turno a
+        // quien tenía el navegador abierto, no a quien la persona eligió. Se guarda el elegido; el
+        // de la sesión queda solo como respaldo si el selector quedó vacío.
+        encargadoId: encargadoSel[0] ?? encargadoId,
         payload: {
           trabajadores,
           encargado: encargadoSel,

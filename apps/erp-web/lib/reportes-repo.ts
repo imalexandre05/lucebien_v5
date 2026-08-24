@@ -366,8 +366,8 @@ export async function buscarConflictoTurno(sede: string, fecha: string, turno: T
 // bloqueoId deja que la UI enlace directo al reporte causante en vez de un mensaje mudo.
 export class ReporteCrearError extends Error {
   bloqueoId?: string;
-  tipo?: 'turno_conflicto' | 'reporte_pendiente';
-  constructor(message: string, tipo?: 'turno_conflicto' | 'reporte_pendiente', bloqueoId?: string) {
+  tipo?: 'turno_conflicto' | 'reporte_pendiente' | 'permiso';
+  constructor(message: string, tipo?: 'turno_conflicto' | 'reporte_pendiente' | 'permiso', bloqueoId?: string) {
     super(message);
     this.tipo = tipo;
     this.bloqueoId = bloqueoId;
@@ -391,7 +391,18 @@ function parsearErrorCrear(mensaje: string): ReporteCrearError {
       pendiente[1],
     );
   }
+  // Desde la migración 0081 las dos RPC son `security definer` y llevan su propio control de sede
+  // adentro (antes lo ponía la política de la tabla). Cuando ese control corta, el mensaje llega
+  // con el prefijo `PERMISO:` y sin esto la pantalla mostraba el texto crudo de Postgres.
+  const permiso = mensaje.match(/^PERMISO:\s*(.+)$/);
+  if (permiso) return new ReporteCrearError(mayuscula(permiso[1]), 'permiso');
+
   return new ReporteCrearError(mensaje);
+}
+
+/** El mensaje viene de la base en minúscula; en pantalla se lee como una frase. */
+function mayuscula(texto: string): string {
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
 export async function crearReporte(p: {
@@ -431,7 +442,9 @@ export async function evaluarReporte(
 ): Promise<number> {
   const sb = getServerClient();
   const { data, error } = await sb.rpc('reportes_evaluar', { p_id: id, p_calificaciones: calificaciones });
-  if (error) throw new Error(error.message);
+  // Mismo motivo que en crearReporte: el control de sede de la 0081 corta con `PERMISO:` y sin
+  // esto la persona veía el texto crudo de Postgres en vez de una explicación.
+  if (error) throw parsearErrorCrear(error.message);
   return Number(data) || 0;
 }
 

@@ -8,15 +8,36 @@
 
 export type OperacionAudit = 'INSERT' | 'UPDATE' | 'DELETE';
 
-export const TABLAS_AUDITADAS = ['pedidos', 'caja_movimientos', 'empleados', 'pagos', 'evaluaciones_mensuales'] as const;
+// LA LISTA TIENE QUE COINCIDIR CON LOS TRIGGERS DE LA BASE, no con lo que se auditaba el día que
+// se escribió esta constante. Faltaban cuatro de las ocho tablas que ya escriben en `audit_log`, y
+// el filtro de la pantalla se arma con esta lista: elegir «Pedidos» devolvía una lista vacía
+// mientras el rastro entero estaba guardado, y los 4.809 movimientos de asistencias —la tabla que
+// más escribe, y la que decide un sueldo— no tenían ni entrada en el desplegable.
+// Verificado contra `select distinct tabla from audit_log` el 23-ago-2026, más `solicitudes`, que
+// empieza a auditarse con la migración 0087.
+export const TABLAS_AUDITADAS = [
+  'asistencias',
+  'sueldo_acuerdos',
+  'sueldo_acuerdo_turnos',
+  'evaluaciones_mensuales',
+  'empleados',
+  'solicitudes',
+  'pedidos',
+  'caja_movimientos',
+  'pagos',
+] as const;
 export type TablaAuditada = (typeof TABLAS_AUDITADAS)[number];
 
 export const TABLA_LABEL: Record<TablaAuditada, string> = {
+  asistencias: 'Asistencias',
+  sueldo_acuerdos: 'Contratos',
+  sueldo_acuerdo_turnos: 'Horarios',
+  evaluaciones_mensuales: 'Evaluaciones',
+  empleados: 'Personas',
+  solicitudes: 'Solicitudes',
   pedidos: 'Pedidos',
   caja_movimientos: 'Caja',
-  empleados: 'Empleados',
   pagos: 'Pagos',
-  evaluaciones_mensuales: 'Evaluaciones',
 };
 
 export type AuditLogFila = {

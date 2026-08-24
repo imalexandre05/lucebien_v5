@@ -49,27 +49,46 @@ const soles = (n: number): string =>
   `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /**
- * Los 14 parámetros que un contrato puede pisar. El orden agrupa por tema, no por importancia.
+ * Los 13 parámetros que un contrato puede pisar. El orden agrupa por tema, no por importancia.
  *
  * Se listan acá y no se generan desde `PARAMETROS_SUELDO_DEFAULT` porque cada uno necesita una
- * etiqueta que un administrador entienda y un paso de edición propio: `factorMeta` se mueve de a
- * 0,05 y `penalidadTardanza` de a 1 sol. Un formulario generado sin eso obliga a tipear 0.85 a
- * mano en un campo que sube de a 1.
+ * etiqueta que un administrador entienda, un paso de edición propio y su rango: `factorMeta` se
+ * mueve de a 0,05, `penalidadTardanza` de a 1 sol y `pctComision` es una fracción que nunca pasa
+ * de 1. Un formulario generado sin eso obliga a tipear 0.85 a mano en un campo que sube de a 1.
+ *
+ * `paso`, `min` y `max` repiten lo que cada parámetro global ya declara en
+ * `lib/config-catalogo.ts`: el mismo número tiene que pedir lo mismo se escriba donde se escriba.
+ * Acotan el campo, no reemplazan a la validación del servidor: `validar()` en `actions.ts` vuelve
+ * a comprobar el rango, porque una Server Action es un endpoint público y el atributo `max` de un
+ * input no viaja con los datos.
  */
-const PARAMETROS: { clave: keyof ParametrosSueldo; label: string; ayuda: string; paso: number }[] = [
-  { clave: 'toleranciaMinutos', label: 'Tolerancia', ayuda: 'minutos de gracia antes de que sea tardanza', paso: 1 },
-  { clave: 'tardanzasLibres', label: 'Tardanzas libres', ayuda: 'no se descuentan nunca', paso: 1 },
-  { clave: 'penalidadTardanza', label: 'Penalidad por tardanza', ayuda: 'soles por tardanza injustificada', paso: 1 },
-  { clave: 'diasDescuentoPorFalta', label: 'Días por falta', ayuda: 'días de sueldo que cuesta una falta EN TOTAL', paso: 1 },
-  { clave: 'valorAlmuerzo', label: 'Valor del almuerzo', ayuda: 'soles por almuerzo no entregado', paso: 1 },
-  { clave: 'horasMinimasAlmuerzo', label: 'Horas para el almuerzo', ayuda: 'horas que hacen del día un tiempo completo', paso: 1 },
-  { clave: 'valorCapacitacion', label: 'Valor por capacitación', ayuda: 'soles por persona nueva capacitada', paso: 1 },
-  { clave: 'metaSemanal', label: 'Meta semanal pactada', ayuda: 'vacío = se sugiere con las horas', paso: 50 },
-  { clave: 'metaPorHora', label: 'Meta por hora', ayuda: 'sólo se usa para sugerir la meta', paso: 1 },
-  { clave: 'factorMeta', label: 'Factor de la meta', ayuda: 'fracción de la meta que hay que superar', paso: 0.05 },
-  { clave: 'bonoMetaSemanal', label: 'Bono por meta', ayuda: 'soles por semana cumplida', paso: 5 },
-  { clave: 'pctComision', label: 'Comisión', ayuda: 'porcentaje sobre la base', paso: 0.5 },
-  { clave: 'montoMinimoComision', label: 'Boleta mínima', ayuda: 'sólo boletas por encima entran a la comisión', paso: 10 },
+type ParametroEditable = {
+  clave: keyof ParametrosSueldo;
+  label: string;
+  ayuda: string;
+  paso: number;
+  min: number;
+  /** Sólo donde el parámetro tiene techo real: hoy la comisión, que es una fracción de la base. */
+  max?: number;
+};
+
+const PARAMETROS: ParametroEditable[] = [
+  { clave: 'toleranciaMinutos', label: 'Tolerancia', ayuda: 'minutos de gracia antes de que sea tardanza', paso: 1, min: 0 },
+  { clave: 'tardanzasLibres', label: 'Tardanzas libres', ayuda: 'no se descuentan nunca', paso: 1, min: 0 },
+  { clave: 'penalidadTardanza', label: 'Penalidad por tardanza', ayuda: 'soles por tardanza injustificada', paso: 1, min: 0 },
+  { clave: 'diasDescuentoPorFalta', label: 'Días por falta', ayuda: 'días de sueldo que cuesta una falta EN TOTAL', paso: 1, min: 1 },
+  { clave: 'valorAlmuerzo', label: 'Valor del almuerzo', ayuda: 'soles por almuerzo no entregado', paso: 1, min: 0 },
+  { clave: 'horasMinimasAlmuerzo', label: 'Horas para el almuerzo', ayuda: 'horas que hacen del día un tiempo completo', paso: 1, min: 0 },
+  { clave: 'valorCapacitacion', label: 'Valor por capacitación', ayuda: 'soles por persona nueva capacitada', paso: 1, min: 0 },
+  { clave: 'metaSemanal', label: 'Meta semanal pactada', ayuda: 'vacío = se sugiere con las horas', paso: 50, min: 0 },
+  { clave: 'metaPorHora', label: 'Meta por hora', ayuda: 'sólo se usa para sugerir la meta', paso: 1, min: 0 },
+  { clave: 'factorMeta', label: 'Factor de la meta', ayuda: 'fracción de la meta que hay que superar', paso: 0.05, min: 0 },
+  { clave: 'bonoMetaSemanal', label: 'Bono por meta', ayuda: 'soles por semana cumplida', paso: 5, min: 0 },
+  // La comisión es una FRACCIÓN, no un porcentaje: el motor la multiplica tal cual por la base
+  // (RN-13). Decía «porcentaje» y subía de a 0,5, así que una pulsación de la flecha sobre el
+  // campo vacío pactaba un 50% de comisión y un «2» escrito pensando en 2% pactaba un 200%.
+  { clave: 'pctComision', label: 'Comisión', ayuda: 'fracción sobre la base: 0,02 = 2%', paso: 0.005, min: 0, max: 1 },
+  { clave: 'montoMinimoComision', label: 'Boleta mínima', ayuda: 'sólo boletas por encima entran a la comisión', paso: 10, min: 0 },
 ];
 
 const ETIQUETA_PARAMETRO = new Map(PARAMETROS.map((p) => [p.clave, p.label]));
@@ -741,6 +760,8 @@ export function AcuerdosCliente({
                       id={p.clave}
                       type="number"
                       step={p.paso}
+                      min={p.min}
+                      max={p.max}
                       value={actual == null ? '' : String(actual)}
                       placeholder={global == null ? 'sin meta pactada' : String(global)}
                       onChange={(e) => setParametro(p.clave, e.target.value)}

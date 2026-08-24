@@ -48,6 +48,14 @@ test.describe('flujos de escritura', () => {
     // Sin trabajadores + un encargado → el admin (evaluador) no es trabajador, así puede evaluar.
     await encargado.click();
 
+    // Desde el 23-ago-2026 las actividades nacen SIN marcar (spec
+    // docs/superpowers/specs/reportes/2026-08-23-default-actividades-design.md). Sin este clic el
+    // reporte se envía vacío, el panel de evaluación queda deshabilitado y el tramo
+    // evaluar → anular de esta misma prueba se saltea solo: seguiría en verde sin probar lo que
+    // dice probar.
+    const todas = page.getByRole('button', { name: 'Todas' });
+    if (await todas.isVisible().catch(() => false)) await todas.click();
+
     await page.getByTestId('enviar-reporte').click();
     await page.waitForURL(/\/reportes\/[^/]+$/, { timeout: 20000 });
     const reporteUrl = page.url();

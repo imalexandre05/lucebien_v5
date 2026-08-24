@@ -249,7 +249,6 @@ export async function declararDia(d: DeclaracionDia): Promise<void> {
     throw new Error(`${d.fecha}: una falta no lleva horas. Quitá las horas o cambiá la condición.`);
   }
 
-  const turno = d.turno ?? TURNO_DIA_COMPLETO;
   const sb = getServerClient();
 
   const declaracion = {
@@ -261,14 +260,42 @@ export async function declararDia(d: DeclaracionDia): Promise<void> {
     motivo_justificacion: d.motivoJustificacion?.trim() || null,
   };
 
-  const { data: existente, error: eBuscar } = await sb
+  // QUÉ FILA SE DECLARA, Y POR QUÉ NO SIEMPRE UNA NUEVA.
+  //
+  // Declarar un día ponía la fila en el turno «día completo» salvo que quien llamara dijera otro.
+  // Eso alcanzaba cuando la tabla tenía una fila por día; desde que el huellero escribe una fila
+  // por TRAMO (migración 0079) y el envío de un reporte deja la suya con el turno de ese turno, un
+  // día suele llegar acá con una fila ya puesta. Insertar otra dejaba el día con dos, y desde la
+  // 0085 un día con una fila declarada y otra en `sin_dato` bloquea la liquidación entera: el
+  // administrador declaraba el día y el periodo quedaba trabado, sin entender por qué.
+  //
+  // Con una sola fila en el día, se declara ESA, sea cual sea su turno. Con varias —el día partido
+  // en tramos— no hay una respuesta única y el sistema no la inventa: se explica y se pide
+  // declarar tramo por tramo, que es lo que la pantalla ya permite pasando `turno`.
+  const { data: delDia, error: eBuscar } = await sb
     .from('asistencias')
-    .select('id')
+    .select('id, turno')
     .eq('empleado_id', d.empleadoId)
-    .eq('fecha', d.fecha)
-    .eq('turno', turno)
-    .maybeSingle();
+    .eq('fecha', d.fecha);
   if (eBuscar) throw new Error(eBuscar.message);
+
+  const filas = (delDia ?? []) as { id: string; turno: string }[];
+  const explicito = d.turno ?? null;
+  const existente = explicito
+    ? (filas.find((f) => f.turno === explicito) ?? null)
+    : filas.length === 1
+      ? filas[0]
+      : null;
+
+  if (!explicito && filas.length > 1) {
+    const turnos = filas.map((f) => f.turno).join(', ');
+    throw new Error(
+      `${d.fecha}: el día está partido en varios tramos (${turnos}). Declara cada uno por separado ` +
+        'para no perder las horas de ninguno.',
+    );
+  }
+
+  const turno = explicito ?? TURNO_DIA_COMPLETO;
 
   if (existente) {
     const { error } = await sb.from('asistencias').update(declaracion).eq('id', (existente as { id: string }).id);
