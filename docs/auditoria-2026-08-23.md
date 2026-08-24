@@ -141,3 +141,66 @@ cd apps/erp-web
 E2E_URL=http://localhost:3005 npx playwright test --project=admin        # las 57 pantallas
 E2E_URL=http://localhost:3005 npx playwright test --project=colaborador  # el no-negociable 3
 ```
+
+---
+
+## 6. Segunda ola — cerrada el 24-ago-2026
+
+Diez lotes más, con el mismo ciclo. El verificador dio **listo con reparos**, y su único hallazgo
+fue del tipo que este repositorio ya pagó caro: un comentario afirmaba «trece triggers de
+auditoría» y la base tiene catorce. Corregido contra `pg_trigger`, no contra el documento.
+
+### Lo que entró
+
+**El dinero.** Los puntos del pipeline estaban corridos cinco horas: se comparaba una columna con
+hora contra una fecha pelada, y el último día del período se perdía casi entero — donde había
+70,50 puntos, la pantalla mostraba 38,50. El indicador de días sin declarar pasó a medir con el
+mismo criterio que el motor (el calendario del contrato, no las filas que existen), así que dejó de
+pintarse verde justo antes de que Calcular cortara.
+
+**La nota mensual.** `calcularNotaMensual` tenía dos maneras de estar mal sin avisar: `(c[key] ||
+0)` convertía un dato roto en un cero indistinguible de un cero merecido, y nadie comprobaba que los
+siete pesos sumaran 100 %. Ahora corta nombrando qué está roto, y la desviación de los pesos se ve
+en pantalla. La decisión de qué hacer con esa desviación quedó contestada: avisar ahora, bloquear
+cuando se rehaga la pantalla de pesos (spec de evaluaciones §6).
+
+**El trabajo humano.** Una corrección de hora hecha a mano se deshacía sola en el siguiente lote del
+colector, porque nadie bajaba las banderas que marcan que esa hora la puso la máquina. Y el colector
+descartaba en silencio las derivaciones que fallaban: el log decía «insertadas 48» aunque ninguna
+hubiera llegado a una asistencia.
+
+**Los permisos.** La matriz de `/configuración` borraba en silencio las filas de los módulos que la
+pantalla no muestra: un solo Guardar se llevaba 18, entre ellas la de solicitudes, que deja a los
+diez no-administradores sin esa pantalla.
+
+**El rastro.** La configuración no dejaba ninguno, pese a que la migración que la tipó se llama
+`config_tipado_auditoria`: quién movió un parámetro de sueldo era una pregunta con tres respuestas
+posibles y ninguna evidencia. Y el filtro de la pantalla de auditoría subió al servidor — antes se
+traían 200 filas y se filtraba sobre esas, así que elegir «Pedidos» devolvía vacío con 138
+movimientos guardados.
+
+**Lo que se hacía y no se podía deshacer.** Dar de baja un activo lo borraba físicamente; ahora
+queda en estado `baja`, que ya existía sin usarse. Suspender a una persona la sacaba de todas las
+listas, incluida la única desde donde se la puede reactivar o terminar de pagarle.
+
+### Migraciones aplicadas y verificadas
+
+`0084` (el huellero respeta el dato humano, 8/8), `0088` (auditoría de configuración, 9/9) y `0089`
+(pts_recepcion, el único peso del pipeline que vivía como default silencioso dentro de una RPC).
+Las dos primeras con su prueba de ataque corrida contra la base real, en verde y sin dejar una fila.
+
+### Un hallazgo verificado y descartado
+
+El agente que aplicó las migraciones reportó que varias funciones `security definer` del esquema
+`private` tienen `execute` concedido a `anon` — el mismo patrón que motivó la migración 0090.
+Hizo bien en reportarlo y no tocarlo.
+
+**Comprobado: no hay puerta detrás.** PostgREST sólo expone el esquema `public`. Un `POST` a
+`/rest/v1/rpc/app_es_admin`, `/app_es_colector_huellero` y `/audit_log_trigger` con la clave anónima
+devuelve `404 PGRST202 — Searched for the function public.<nombre>`: ni siquiera busca en `private`.
+Además, catorce de esas funciones devuelven `trigger`, un tipo que PostgREST no expone como ruta
+invocable en ningún caso.
+
+Revocar el privilegio sería higiene sin efecto. Queda anotado en vez de escrito: si algún día
+alguien agrega `private` a los esquemas expuestos en la configuración de la API, esto pasa a
+importar — y en ese momento habrá cosas peores expuestas que estas funciones.
