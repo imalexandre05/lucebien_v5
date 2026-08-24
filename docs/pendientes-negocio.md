@@ -937,3 +937,23 @@ conservador.
 8. **El único contrato real de la base** (Marylin, 2026-05-22 a 2026-08-22, S/ 1.953) cubre tres
    meses en una sola fila. Bajo el modelo vigente eso significa S/ 1.953 **por los tres meses**.
    ¿Es lo que se quiso pactar?
+
+---
+
+## Ola B de la auditoría (23-ago-2026) — decisiones tomadas al corregir
+
+Diez lotes más. Ninguno inventó un parámetro de negocio: lo que sigue son las lecturas que hubo que
+elegir para que un arreglo fuera posible, y que conviene que Alexander confirme.
+
+| Decisión | Qué se eligió | Por qué | Quién confirma |
+|---|---|---|---|
+| Peso de la etapa **Recepción** en el pipeline | `pts_recepcion = 1`, sembrado y editable desde /configuración | **No es un número elegido**: es el que la RPC venía aplicando de hecho desde la 0009 porque la clave no existía y caía a su default. Sembrarlo no cambia ningún cálculo; lo vuelve visible y editable, que es lo que pide el no-negociable 5. Falta decir si 1 es el peso correcto frente a lavado (1), planchado (3) o compostura (5) | Dueño |
+| Los filtros de Personal (**«Con algo pendiente», «Listos para pagar», «Todos»**) | Significan «entre los activos» | Una persona suspendida nunca completa los cinco pasos del período: mezclarla la dejaría clavada arriba de «Con algo pendiente» para siempre. Los suspendidos tienen su propio filtro | Dueño — por si esperaba que «Todos» fuera literal |
+| Días sin declarar cuando **no hay calendario contratado legible** | Se cuenta como antes, por filas | Contar cero sería peor que contar de menos: diría «no falta nada» justo antes de pagar | — (técnica) |
+| Un activo **dado de baja** en inventario | Deja de borrarse físicamente: pasa a estado `baja` y **se queda en la lista** | No se pierde el rastro de una prenda que existió. El costo es que la lista se va a ensuciar con el tiempo; agregar un filtro que los oculte es una pantalla, no una regla | Dueño |
+| **Cambiar el responsable de una incidencia** | Se puede, y no pide confirmación | Mueve los puntos de penalidad de una evaluación a otra: el descuento se calcula en vivo sobre `incidencias.responsable_id`. Las evaluaciones ya cerradas conservan su nota. Es reversible desde el mismo selector | Dueño |
+| **Validación del retorno de lavandería** | Todas las prendas arrancan en «Bien»; la observación **no** es obligatoria cuando hay una con problema | El arranque en «Bien» replica cómo la base ya lee un ítem sin estado. No obligar la observación es deliberado: dejar a la encargada sin forma de cerrar la lista un sábado es peor que una nota vacía | Dueño |
+| Vocabulario del retorno | Dos valores: `bien` y `problema` | Es lo que entiende la RPC. Categorías intermedias («no volvió», «manchada», «rota») serían un catálogo nuevo | Dueño |
+| **Las ocho competencias** de la evaluación mensual | Hay que responderlas antes de guardar | Antes el formulario arrancaba con el nivel 0 —el peor de la rúbrica— pintado como si alguien lo hubiera elegido. Es el mismo criterio que ya se aprobó para Valores 360° | — (ya decidido en Valores) |
+| Que los **siete pesos de la nota sumen 1** | **No se fuerza** | Es la decisión 14, todavía abierta. El catálogo dice «deberían sumar 1» y nadie lo hace cumplir: hoy suman exactamente 1,00, pero nada impide que dejen de hacerlo | Dueño |
+| Parámetros **personalizados** de /configuración | Siguen sin validarse | No declaran tipo ni rango. Validarlos exige decidir si eso se guarda en la tabla `config` | Dueño |
