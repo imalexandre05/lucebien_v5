@@ -38,11 +38,42 @@ export const PESOS_DEFAULT: PesosEval = {
   tardanza: 0.05,
 };
 
+// Corta antes de devolver una nota, en vez de disfrazar un dato roto de un cero merecido: si un
+// componente o un peso llega NaN, Infinity, null o undefined (división por cero aguas arriba,
+// columna que volvió null, un Number('')), antes `|| 0` lo convertía en 0 sin dejar rastro y la
+// nota salía creíble y equivocada. Un componente que vale 0 de verdad sigue sin lanzar nada:
+// Number.isFinite(0) es true — la diferencia entre "no hizo nada" y "no sabemos" es justo lo que
+// esto restaura. Ver docs/superpowers/specs/evaluaciones/2026-08-24-nota-sin-ceros-silenciosos-
+// design.md (§1-A, §2 C-1).
+function validarNumero(valor: number, nombre: ComponenteKey, tipo: 'componente' | 'peso'): number {
+  if (typeof valor !== 'number' || !Number.isFinite(valor)) {
+    throw new Error(
+      `El ${tipo} "${nombre}" no es un número (${String(valor)}). La nota no se puede calcular con un dato roto.`,
+    );
+  }
+  return valor;
+}
+
+/** Puede lanzar (ver validarNumero): un componente o un peso que no es un número finito corta el
+ *  cálculo en vez de devolver una nota silenciosamente equivocada. */
 export function calcularNotaMensual(c: ComponentesEval, p: PesosEval): number {
   let nota = 0;
-  for (const { key } of COMPONENTES) nota += (c[key] || 0) * (p[key] || 0);
+  for (const { key } of COMPONENTES) {
+    nota += validarNumero(c[key], key, 'componente') * validarNumero(p[key], key, 'peso');
+  }
   nota = nota - (c.descuentoIncidencias || 0) + (c.bonusVentas || 0);
   return Math.round(nota * 100) / 100;
+}
+
+// Los siete pesos son editables desde /configuración (así tiene que ser) y nada obliga a que
+// sumen 1 — que lo hagan es la decisión 14, todavía abierta (docs/pendientes-negocio.md).
+// Normalizarlos acá adentro sería inventar esa regla en silencio, que es peor que no tenerla: esto
+// sólo saca la desviación a la luz para que el administrador la vea junto a la nota y decida él.
+export function revisarPesos(p: PesosEval): { suma: number; desviado: boolean } {
+  const total = COMPONENTES.reduce((acc, { key }) => acc + p[key], 0);
+  // 0.01 de tolerancia: los siete pesos son decimales y la suma en coma flotante no siempre cae
+  // en exactamente 1, aunque matemáticamente sí sumen 1 (p. ej. 0.1+0.2+0.15+0.15+0.1+0.2+0.1).
+  return { suma: Math.round(total * 100) / 100, desviado: Math.abs(total - 1) > 0.01 };
 }
 
 // Tardanza → nota /20 (CONTEXTO-PROYECTO.md §5): max(0, 20 − floor(min_total / minPorPunto)).

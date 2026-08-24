@@ -4,6 +4,7 @@ import {
   notaTardanza,
   tramoEval,
   calcularCiclo,
+  revisarPesos,
   PESOS_DEFAULT,
   type ComponentesEval,
 } from './evaluaciones';
@@ -31,6 +32,50 @@ describe('calcularNotaMensual', () => {
     // solo competencias=20 (peso 0.25), resto 0 → 5
     const c = { ...base, valores: 0, operaciones: 0, software: 0, limpieza: 0, examenes: 0, tardanza: 0 };
     expect(calcularNotaMensual(c, PESOS_DEFAULT)).toBe(5);
+  });
+
+  // C-1 (spec nota-sin-ceros-silenciosos): un componente o un peso que no es un número finito
+  // corta en vez de disolverse en un cero calculado que se ve igual que un cero merecido.
+  it('un componente en NaN corta y el mensaje nombra cuál', () => {
+    const c: ComponentesEval = { ...base, valores: NaN };
+    expect(() => calcularNotaMensual(c, PESOS_DEFAULT)).toThrow(
+      'El componente "valores" no es un número (NaN). La nota no se puede calcular con un dato roto.',
+    );
+  });
+
+  it('un componente en undefined corta y el mensaje lo nombra', () => {
+    const c = { ...base, operaciones: undefined as unknown as number };
+    expect(() => calcularNotaMensual(c, PESOS_DEFAULT)).toThrow(/"operaciones"/);
+  });
+
+  it('un peso en NaN corta', () => {
+    const p = { ...PESOS_DEFAULT, examenes: NaN };
+    expect(() => calcularNotaMensual(base, p)).toThrow(/"examenes"/);
+  });
+
+  it('un componente en 0 legítimo no lanza: la nota lo cuenta como cero', () => {
+    // software pesa 0.1 en PESOS_DEFAULT: bajarlo de 20 a 0 resta 0.1 × 20 = 2 puntos.
+    const c = { ...base, software: 0 };
+    expect(() => calcularNotaMensual(c, PESOS_DEFAULT)).not.toThrow();
+    expect(calcularNotaMensual(c, PESOS_DEFAULT)).toBe(18);
+  });
+});
+
+describe('revisarPesos', () => {
+  it('PESOS_DEFAULT no está desviado', () => {
+    expect(revisarPesos(PESOS_DEFAULT)).toEqual({ suma: 1, desviado: false });
+  });
+
+  it('pesos que suman 0,95 quedan marcados como desviados', () => {
+    const p = { ...PESOS_DEFAULT, examenes: 0.1 }; // 0.25+0.25+0.1+0.1+0.1+0.10+0.05 = 0.95
+    expect(revisarPesos(p)).toEqual({ suma: 0.95, desviado: true });
+  });
+
+  it('ruido de coma flotante en el último decimal no cuenta como desviado', () => {
+    // 0.1+0.2+0.15+0.15+0.1+0.2+0.1 suma 1 matemáticamente pero en coma flotante da
+    // 1.0000000000000002 — muy por debajo de la tolerancia de 0.01, no debe marcarse desviado.
+    const p = { competencias: 0.1, valores: 0.2, operaciones: 0.15, software: 0.15, limpieza: 0.1, examenes: 0.2, tardanza: 0.1 };
+    expect(revisarPesos(p)).toEqual({ suma: 1, desviado: false });
   });
 });
 

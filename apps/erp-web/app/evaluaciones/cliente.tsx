@@ -3,12 +3,13 @@
 import { Fragment, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Filter, ChevronRight, Award } from 'lucide-react';
+import { Plus, Filter, ChevronRight, Award, AlertTriangle } from 'lucide-react';
 import {
   COMPONENTES,
   calcularNotaMensual,
   calcularCiclo,
   notaCompetencias,
+  revisarPesos,
   tramoEval,
   TRAMO_LABEL,
   type ComponentesEval,
@@ -35,6 +36,10 @@ import { hoyPeru } from '../../lib/fechas';
 // se normaliza solo la presentación.
 const fmtPeso = (p: number | undefined | null) =>
   p == null ? '—' : p > 1 ? `${p}%` : `${Math.round(p * 100)}%`;
+
+// Aviso de C-2 (spec nota-sin-ceros-silenciosos): comas de miles/decimales al estilo peruano,
+// mismo criterio que el resto de la pantalla (S/ en app/estadisticas, app/compras, etc.).
+const fmtSuma = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 });
 
 function PerfilComponentes({
   componentes,
@@ -157,9 +162,22 @@ export function EvaluacionesCliente({
     return notaCompetencias(competenciasConfig.map((c) => competenciaSel[c.cod] ?? 0));
   }, [competenciaSel, competenciasConfig]);
 
+  // Competencias sin responder. El nivel 0 es el PEOR escalón de la rúbrica, así que arrancar con
+  // una opción preseleccionada hacía indistinguible «lo evalué en 0» de «no lo miré», y bastaba
+  // abrir y guardar para mandar ocho ceros a una nota que termina en el sueldo de alguien. Se
+  // arranca vacío y no se puede guardar hasta responder las ocho (mismo criterio que /valores).
+  const competenciasFaltantes = useMemo(
+    () => competenciasConfig.filter((c) => competenciaSel[c.cod] === undefined).length,
+    [competenciaSel, competenciasConfig],
+  );
+
   const compParaCalculo = useMemo(() => ({ ...comp, competencias: competenciaNota }), [comp, competenciaNota]);
   const nota = useMemo(() => calcularNotaMensual(compParaCalculo, pesos), [compParaCalculo, pesos]);
   const tramo = tramoEval(nota);
+  // C-2 (spec nota-sin-ceros-silenciosos): revisarPesos() no corrige nada — sólo hace visible
+  // cuánto se alejan de 1 los pesos configurados, para que el administrador decida con el número
+  // delante. La decisión de forzar que sumen 1 sigue abierta (decisión 14, pendientes-negocio.md).
+  const revisionPesos = useMemo(() => revisarPesos(pesos), [pesos]);
 
   const meses = useMemo(() => [...new Set(evaluaciones.map((e) => e.mes))].sort().reverse(), [evaluaciones]);
 
@@ -339,6 +357,15 @@ export function EvaluacionesCliente({
             </Badge>
           </CardHeader>
           <CardContent className="space-y-3">
+            {revisionPesos.desviado && (
+              <div className="flex items-start gap-3 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2.5 text-sm text-aviso-deep">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+                <span>
+                  Los pesos configurados suman <strong>{fmtSuma(revisionPesos.suma)}</strong>: esta nota no
+                  está sobre 20 sino sobre {fmtSuma(revisionPesos.suma * 20)}.
+                </span>
+              </div>
+            )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Empleado</label>
@@ -437,10 +464,15 @@ export function EvaluacionesCliente({
                 <div className="space-y-3">
                   {competenciasConfig.map((c) => (
                     <div key={c.cod}>
-                      <div className="mb-1 text-xs font-medium text-navy">{c.nombre}</div>
+                      <div className="mb-1 flex items-baseline justify-between gap-2">
+                        <span className="text-xs font-medium text-navy">{c.nombre}</span>
+                        {competenciaSel[c.cod] === undefined && (
+                          <span className="text-[11px] text-muted">sin responder</span>
+                        )}
+                      </div>
                       <OpcionBotones
                         opciones={c.rubrica.map((texto, i) => ({ value: String(i), label: `${i} · ${texto}` }))}
-                        value={String(competenciaSel[c.cod] ?? 0)}
+                        value={competenciaSel[c.cod] === undefined ? '' : String(competenciaSel[c.cod])}
                         onChange={(v) => setCompetenciaSel((p) => ({ ...p, [c.cod]: Number(v) }))}
                         ariaLabel={c.nombre}
                       />
@@ -463,10 +495,20 @@ export function EvaluacionesCliente({
 
             {error && <p className="text-sm text-error">{error}</p>}
             <div className="flex items-center gap-3">
-              <Button type="button" onClick={guardar} disabled={!empleadoId || !ciclo} pending={pending}>
+              <Button
+                type="button"
+                onClick={guardar}
+                disabled={!empleadoId || !ciclo || competenciasFaltantes > 0}
+                pending={pending}
+                aria-describedby="motivo-evaluacion"
+              >
                 {pending ? 'Guardando…' : `Guardar · ${nota.toFixed(2)}`}
               </Button>
-              <span className="text-xs text-muted">La nota usa los pesos de Configuración y se guarda un snapshot.</span>
+              <span id="motivo-evaluacion" className="text-xs text-muted">
+                {competenciasFaltantes > 0
+                  ? `Faltan ${competenciasFaltantes} de ${competenciasConfig.length} competencias.`
+                  : 'La nota usa los pesos de Configuración y se guarda un snapshot.'}
+              </span>
             </div>
           </CardContent>
         </Card>

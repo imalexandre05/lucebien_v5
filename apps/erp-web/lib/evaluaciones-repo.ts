@@ -20,8 +20,15 @@ export type Evaluacion = {
 // Pesos de evaluación desde config (editables). Defaults si falta alguna clave.
 export async function leerPesosEval(): Promise<PesosEval> {
   const m = await leerConfigMap();
+  // Se comprueba el vacío ANTES de convertir. `leerConfigMap()` normaliza un valor nulo a cadena
+  // vacía, y `Number('')` es 0 y es finito: sin este chequeo, un peso que el administrador borró
+  // en /configuracion entraba a la nota como 0 en vez de volver al default, y el componente
+  // desaparecía del cálculo /20 sin que nada avisara. Mismo patrón que ya usan las pantallas de
+  // asistencia del sueldo (app/sueldos/asistencia/page.tsx).
   const num = (k: string, d: number) => {
-    const v = Number(m[k]);
+    const crudo = m[k];
+    if (crudo == null || crudo.trim() === '') return d;
+    const v = Number(crudo);
     return Number.isFinite(v) ? v : d;
   };
   return {
