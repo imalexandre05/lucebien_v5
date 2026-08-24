@@ -65,3 +65,52 @@ pueden ver» se cumple, la mitad que dice «sólo el admin puede» no se constru
   cuerpo de la página, en ningún punto, contiene el nombre de quien reportó una incidencia que no
   sea la propia sesión.
 - Como administrador (perfil `admin`): confirmar que la línea «Reportado por» aparece.
+
+---
+
+## 5. Addendum — 24-ago-2026: la premisa §1 estaba mal en un punto
+
+Al implementar C-1/C-2, el agente encontró que la premisa **«los operativos ya pueden ver el
+listado» no es cierta a nivel de base**, aunque sí lo sea a nivel de permiso de módulo.
+
+**Verificado contra `pg_policies` en scilb:** la política `inc_select` sobre `incidencias` es
+
+```sql
+using (private.app_es_admin())
+```
+
+**Sólo el administrador puede leer una fila**, sin excepción. La migración 0065 le dio a los tres
+roles operativos el permiso de **módulo** (`ver` en `permisos_modulos`, lo que hace que el ítem
+aparezca en el menú y la página no rebote), pero nunca tocó esta política de RLS. Resultado: hoy,
+para cualquier operativo, `/incidencias` carga sin error y muestra **«0 registradas»** siempre —
+no porque no haya incidencias de su sede, sino porque la base no le devuelve ninguna fila.
+
+Esto contradice directamente la premisa de esta spec y la respuesta de Alexander («sí [pueden ver
+el listado], pero no quién reportó»): hoy no ven el listado en absoluto.
+
+### C-3 — La política de lectura se pone en línea con el resto del módulo
+
+`inc_insert` (la política de escritura de este mismo módulo, migración 0056 o posterior) ya tiene
+el patrón correcto:
+
+```sql
+with check (private.app_es_admin() OR private.app_es_almacen() OR sede_cod in (select private.app_sedes()))
+```
+
+`inc_select` pasa a usar la misma condición, ahora como `using`. Es el mismo criterio que ya
+protege `reportes` (`rep_select`), `solicitudes` y el resto de las tablas por sede: administrador,
+o el rol de almacén, o la sede de quien pregunta.
+
+**Efecto práctico hoy:** como las once personas tienen las cuatro sedes en `empleado_tiendas`
+(confirmado el 23-ago, y confirmado por Alexander el 24-ago como intencional — rotación temporal),
+esta política deja ver, en la práctica, las incidencias de cualquier sede a cualquier persona. Es
+el mismo comportamiento que ya tienen reportes y solicitudes: no es un aislamiento nuevo que se
+rompe, es el mismo patrón que el resto del sistema ya usa.
+
+### Cómo se comprueba (se suma a §4)
+
+Prueba de la migración `packages/db/pruebas/0092_incidencias_rls_por_sede.prueba.sql`, con la forma
+de las demás: monta una incidencia de prueba, suplanta a una persona no-admin, confirma que la lee
+(hoy no podía), suplanta a alguien sin ninguna sede en común (si existiera) para confirmar que la
+política sigue negando fuera de sede, y confirma que `inc_update`/`inc_delete` siguen intactas
+(esta spec no las toca).
