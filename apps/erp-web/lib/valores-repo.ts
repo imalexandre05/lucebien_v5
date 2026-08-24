@@ -9,6 +9,7 @@ import {
   type ConfigVentanaValores,
 } from '@scilb/core';
 import { getServerClient } from './supabase/server';
+import { getSesion } from './auth';
 import { leerConfigMap } from './config-repo';
 import { hoyPeru } from './fechas';
 
@@ -135,15 +136,34 @@ export type MiResumenValores = {
   nota20: number | null;
 };
 
-// Mi resumen del mes: promedio recibido por valor + nota/20, SIN revelar quién evaluó (el select
-// trae evaluador_id pero nunca sale de esta función). Puerto de routes/valores.js:200-219.
+// Mi resumen del mes: promedio recibido por valor + nota/20, SIN revelar quién evaluó.
+//
+// EL ANONIMATO NO PUEDE DEPENDER DE ESTE `select`. Hasta la migración 0082 esta función leía la
+// tabla directamente y confiaba en pedir sólo las seis columnas de puntaje: la política de RLS
+// dejaba leer la fila entera a quien fuera `evaluado_id`, y la fila trae `evaluador_id`. Cualquiera
+// con su sesión iniciada podía preguntarle a PostgREST lo mismo con `select=*` y ver quién lo
+// había puntuado. En un equipo de once personas, eso identifica a la persona sin margen.
+//
+// Ahora la política ya no le da acceso a esas filas, y esto pasa por una función `security
+// definer` que devuelve las seis notas y nada más. Puerto de routes/valores.js:200-219.
+//
+// DOS CAMINOS, NO UNO. La misma función la usan dos pantallas distintas: «Valores 360°», donde
+// alguien mira lo suyo, y la ficha de una persona en Personal, donde el administrador mira lo de
+// otro. El primero pasa por la función `security definer`, que sólo sabe devolver lo del que
+// pregunta. El segundo lee la tabla, donde la política ya decide quién puede: un administrador ve
+// todo, y cualquier otro que intente mirar la ficha ajena se lleva cero filas.
 export async function miResumenValores(empleadoId: string, mes: string): Promise<MiResumenValores> {
   const sb = getServerClient();
-  const { data, error } = await sb
-    .from('evaluaciones_valores')
-    .select('integridad, respeto, honestidad, amabilidad, relacion, actitud')
-    .eq('evaluado_id', empleadoId)
-    .eq('mes', mes);
+  const sesion = await getSesion();
+  const esPropio = sesion?.usuario.id === empleadoId;
+
+  const { data, error } = esPropio
+    ? await sb.rpc('valores_mis_puntajes', { p_mes: mes })
+    : await sb
+        .from('evaluaciones_valores')
+        .select('integridad, respeto, honestidad, amabilidad, relacion, actitud')
+        .eq('evaluado_id', empleadoId)
+        .eq('mes', mes);
   if (error) {
     if (esTablaOFuncionInexistente(error)) throw new ValoresNoMigradoError();
     throw new Error(error.message);
