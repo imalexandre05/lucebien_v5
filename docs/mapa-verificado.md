@@ -122,7 +122,7 @@ Tardanza: `eval_tardanza_min_por_punto = 15` (se pierde 1 punto cada 15 minutos 
 Esto es lo más grande que quedó abierto y merece su propia sesión. Lo dijo el 14-ago-2026 y
 **contradice lo que hay en el código**.
 
-**Lo que hace hoy `calcularNotaMensual()`** (`packages/core/src/evaluaciones.ts:41`): cada
+**Lo que hace hoy `calcularNotaMensual()`** (`packages/core/src/evaluaciones.ts:79`): cada
 componente entra en escala /20, se multiplica por su peso, y la suma da la nota. Los pesos suman
 1.00 y la nota nunca pasa de 20.
 

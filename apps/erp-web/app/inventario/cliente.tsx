@@ -283,7 +283,7 @@ export function InventarioCliente({
                 return (
                   <TR key={a.id} className={cn(bloqueo && 'bg-aviso-soft/40')}>
                     <TD className="pl-5">
-                      <div className="flex items-center gap-1 font-mono font-medium text-navy">
+                      <div className="flex items-center gap-1 tabular-nums font-medium text-navy">
                         {a.codigo}
                         {a.publicable && <Globe className="h-3 w-3 text-exito" strokeWidth={2} aria-label="Publicable en la web" />}
                       </div>
@@ -298,10 +298,10 @@ export function InventarioCliente({
                       {catTipo ? (
                         <>
                           <div className="text-sm text-navy">{catTipo.nombre}</div>
-                          <div className="font-mono text-[10px] text-muted">{a.tipo}</div>
+                          <div className="tabular-nums text-[10px] text-muted">{a.tipo}</div>
                         </>
                       ) : (
-                        <span className="font-mono text-sm">{a.tipo}</span>
+                        <span className="tabular-nums text-sm">{a.tipo}</span>
                       )}
                     </TD>
                     <TD>
@@ -324,7 +324,7 @@ export function InventarioCliente({
                         className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
-                    <TD className="font-mono">{a.sedeCod}</TD>
+                    <TD className="tabular-nums">{a.sedeCod}</TD>
                     <TD>
                       {a.enPipeline ? (
                         <span title="Prevalece sobre el estado comercial mientras está en proceso">
@@ -368,7 +368,7 @@ export function InventarioCliente({
                           const v = Number(e.target.value);
                           if (v !== a.precioAlquiler) guardarInline(a, { precioAlquiler: v });
                         }}
-                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
                     <TD className="text-right">
@@ -381,10 +381,10 @@ export function InventarioCliente({
                           const v = Number(e.target.value);
                           if (v !== a.precioVenta) guardarInline(a, { precioVenta: v });
                         }}
-                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
-                    <TD className="text-right font-mono">{a.usosAcumulados}</TD>
+                    <TD className="text-right tabular-nums">{a.usosAcumulados}</TD>
                     <TD className="pr-5">
                       <div className="flex items-center justify-end gap-1">
                         {a.pieza === 'unica' && (
@@ -454,7 +454,7 @@ export function InventarioCliente({
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Código</label>
-                  <input value={modal.form.codigo} onChange={(e) => setCampo('codigo', e.target.value.toUpperCase())} placeholder="TN-042" className={cn(fieldCls, 'w-full font-mono')} />
+                  <input value={modal.form.codigo} onChange={(e) => setCampo('codigo', e.target.value.toUpperCase())} placeholder="TN-042" className={cn(fieldCls, 'w-full tabular-nums')} />
                 </div>
                 <div>
                   <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tipo</label>
@@ -493,7 +493,7 @@ export function InventarioCliente({
                   {/* Fase 2: ya no es un <select> — un activo nuevo nace en tu sede activa; uno
                       existente conserva la suya (reubicarlo es un movimiento físico real, no un
                       campo de formulario — ver Fase 11, Solicitudes tienda↔almacén). */}
-                  <div className={cn(fieldCls, 'flex w-full items-center font-mono text-navy')}>
+                  <div className={cn(fieldCls, 'flex w-full items-center tabular-nums text-navy')}>
                     {modal.form.sedeCod || '—'}
                   </div>
                 </div>

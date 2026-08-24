@@ -134,10 +134,10 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
               <TBody>
                 {tipos.map((t) => (
                   <TR key={t.cod} className={cn(!t.activo && 'opacity-55')}>
-                    <TD className="pl-5 font-mono text-sm font-semibold text-navy">{t.prefijo}</TD>
+                    <TD className="pl-5 tabular-nums text-sm font-semibold text-navy">{t.prefijo}</TD>
                     <TD>
                       <div className="text-sm font-medium text-navy">{t.nombre}</div>
-                      <div className="font-mono text-[10px] text-muted">{t.cod}</div>
+                      <div className="tabular-nums text-[10px] text-muted">{t.cod}</div>
                     </TD>
                     <TD className="text-xs text-muted">
                       {t.atributosSugeridos.length ? t.atributosSugeridos.join(', ') : '—'}
@@ -203,7 +203,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                 disabled={modal?.modo === 'editar'}
                 onChange={(e) => setForm((f) => ({ ...f, cod: e.target.value }))}
                 placeholder="pantalon"
-                className={cn(fieldCls, 'w-full font-mono disabled:bg-paper disabled:text-muted')}
+                className={cn(fieldCls, 'w-full tabular-nums disabled:bg-paper disabled:text-muted')}
               />
             </div>
             <div>
@@ -216,7 +216,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                 onChange={(e) => setForm((f) => ({ ...f, prefijo: e.target.value.toUpperCase() }))}
                 placeholder="PT"
                 maxLength={4}
-                className={cn(fieldCls, 'w-full font-mono uppercase')}
+                className={cn(fieldCls, 'w-full tabular-nums uppercase')}
               />
             </div>
           </div>

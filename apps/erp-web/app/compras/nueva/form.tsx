@@ -154,7 +154,7 @@ export function NuevaCompraForm({
                       className={cn(fieldCls, 'w-full text-right')}
                       aria-label="Costo unitario"
                     />
-                    <span className="text-right font-mono text-sm tabular-nums text-navy">{soles(sub)}</span>
+                    <span className="text-right tabular-nums text-sm text-navy">{soles(sub)}</span>
                     <button
                       type="button"
                       onClick={() => setFilas((p) => (p.length > 1 ? p.filter((_, j) => j !== i) : p))}
@@ -183,7 +183,7 @@ export function NuevaCompraForm({
           <div className="flex items-center justify-between border-t border-line pt-4">
             <span className="text-sm text-muted">
               Total de la compra:{' '}
-              <span className="font-mono text-lg font-semibold tabular-nums text-gold-deep">{soles(total)}</span>
+              <span className="tabular-nums text-lg font-semibold text-gold-deep">{soles(total)}</span>
             </span>
             <Button
               type="button"

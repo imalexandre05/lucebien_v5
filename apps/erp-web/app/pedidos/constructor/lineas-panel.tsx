@@ -127,7 +127,7 @@ export function LineasPanel({
           value={manualPrecio || ''}
           onChange={(e) => setManualPrecio(Number(e.target.value) || 0)}
           placeholder="S/ 0.00"
-          className="w-28 rounded-md border border-line bg-white px-2.5 py-1.5 text-right font-mono text-sm text-navy outline-none focus:border-gold"
+          className="w-28 rounded-md border border-line bg-white px-2.5 py-1.5 text-right tabular-nums text-sm text-navy outline-none focus:border-gold"
         />
         <button
           type="button"
@@ -157,7 +157,7 @@ export function LineasPanel({
                 <Badge tone="navy">{TIPO_LABEL[l.tipo]}</Badge>
               </TD>
               <TD className="max-w-[16rem] truncate">
-                {l.activoCodigo && <span className="mr-1.5 font-mono text-xs text-navy">{l.activoCodigo}</span>}
+                {l.activoCodigo && <span className="mr-1.5 tabular-nums text-xs text-navy">{l.activoCodigo}</span>}
                 <span className="text-xs text-muted">{l.descripcion || '—'}</span>
               </TD>
               <TD className="text-center">
@@ -166,7 +166,7 @@ export function LineasPanel({
                   min="1"
                   value={l.cantidad}
                   onChange={(e) => onUpdate(l.key, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
-                  className="w-14 rounded-md border border-line bg-white px-1.5 py-1 text-center font-mono text-xs text-navy outline-none focus:border-gold"
+                  className="w-14 rounded-md border border-line bg-white px-1.5 py-1 text-center tabular-nums text-xs text-navy outline-none focus:border-gold"
                 />
               </TD>
               <TD className="text-right">
@@ -179,7 +179,7 @@ export function LineasPanel({
                     min="0"
                     value={l.precioUnitario}
                     onChange={(e) => onUpdate(l.key, { precioUnitario: Number(e.target.value) || 0 })}
-                    className="w-24 rounded-md border border-line bg-white px-1.5 py-1 text-right font-mono text-xs text-navy outline-none focus:border-gold"
+                    className="w-24 rounded-md border border-line bg-white px-1.5 py-1 text-right tabular-nums text-xs text-navy outline-none focus:border-gold"
                   />
                 )}
               </TD>

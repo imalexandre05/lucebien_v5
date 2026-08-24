@@ -4,11 +4,23 @@ import { revalidatePath } from 'next/cache';
 import type { PesosEval } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
 import { crearEvaluacion, componentesEvaluacion } from '../../lib/evaluaciones-repo';
-import { crearPago, PagosCicloNoMigradoError } from '../../lib/pagos-repo';
 
 async function esAdmin() {
   const s = await getSesion();
   return s?.usuario.rol === 'admin' || s?.usuario.rol === 'dueno';
+}
+
+// Una evaluación por persona y mes: la unicidad la garantiza la base
+// (evaluaciones_mensuales_empleado_id_mes_key). Volver a guardar el mismo ciclo es el error
+// humano más probable de esta pantalla, y hasta ahora llegaba como el texto crudo de Postgres.
+// Sólo se traduce ese choque: cualquier otro error sigue mostrándose tal cual para no esconder
+// un fallo real detrás de un mensaje amable.
+function mensajeDeError(e: unknown, porDefecto: string): string {
+  if (!(e instanceof Error)) return porDefecto;
+  if (e.message.includes('evaluaciones_mensuales_empleado_id_mes_key')) {
+    return 'Ya existe una evaluación de esta persona para ese mes';
+  }
+  return e.message || porDefecto;
 }
 
 // Calcula los componentes desde la data para el rango [desde, hasta] → operaciones/software/
@@ -33,8 +45,8 @@ export async function accionComponentesEval(
   }
 }
 
-// Devuelve el id de la evaluación creada (Fase 12): la herramienta única de ciclo lo necesita
-// para enlazar el pago que se registra justo después, en la misma pantalla.
+// Devuelve el id de la evaluación creada. Ya no enlaza ningún pago desde acá (ver el cierre del
+// archivo): el id queda como referencia de lo recién guardado para la pantalla.
 export async function accionCrearEvaluacion(input: {
   empleadoId: string;
   mes: string;
@@ -61,49 +73,12 @@ export async function accionCrearEvaluacion(input: {
     revalidatePath('/evaluaciones');
     return { ok: true, id };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Error al guardar' };
+    return { ok: false, error: mensajeDeError(e, 'Error al guardar') };
   }
 }
 
-// Fase 12 tarea 6: cierra el ciclo evaluación → pago sin salir de /evaluaciones. Si la migración
-// 0057 no corrió todavía (columnas de ciclo en `pagos`), crearPago() lanza PagosCicloNoMigradoError
-// — se traduce a un mensaje claro en vez de un 500 (lección de la Fase 4/7).
-export async function accionRegistrarPagoCiclo(input: {
-  empleadoId: string;
-  evaluacionId: string;
-  cicloDesde: string;
-  cicloHasta: string;
-  montoBase: number;
-  monto: number;
-  bonus: number;
-  descuentos: number;
-  metodo: string;
-  fechaPago: string;
-  observaciones: string;
-}): Promise<{ ok: boolean; id?: string; error?: string }> {
-  try {
-    if (!(await esAdmin())) return { ok: false, error: 'Solo admin/dueño' };
-    if (!input.empleadoId || !input.evaluacionId) return { ok: false, error: 'Falta la evaluación del ciclo' };
-    if (input.monto < 0) return { ok: false, error: 'Monto inválido' };
-    const id = await crearPago({
-      empleadoId: input.empleadoId,
-      monto: input.monto,
-      bonus: input.bonus,
-      descuentos: input.descuentos,
-      metodo: input.metodo,
-      estado: 'pagado',
-      fechaPago: input.fechaPago,
-      evaluacionId: input.evaluacionId,
-      montoBase: input.montoBase,
-      cicloDesde: input.cicloDesde,
-      cicloHasta: input.cicloHasta,
-      observaciones: input.observaciones || null,
-    });
-    revalidatePath('/evaluaciones');
-    revalidatePath('/pagos');
-    return { ok: true, id };
-  } catch (e) {
-    if (e instanceof PagosCicloNoMigradoError) return { ok: false, error: e.message };
-    return { ok: false, error: e instanceof Error ? e.message : 'Error al registrar el pago' };
-  }
-}
+// Acá vivía accionRegistrarPagoCiclo(), el segundo camino de pago: escribía en `pagos` desde
+// /evaluaciones. Se borró el 23-ago-2026 porque la ROTURA 2 ya había cerrado ese camino en la
+// pantalla —«la liquidación ES el pago»— y quedó como acción de servidor sin ningún llamador,
+// alcanzable igual desde fuera. Esta pantalla ya no escribe dinero: el pago vive en la pestaña
+// de la persona.

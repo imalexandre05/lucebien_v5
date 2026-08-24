@@ -7,6 +7,8 @@ import { listarNotificaciones, type Notificacion } from '../../lib/notificacione
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
 import { listarSedes, getPerfilSede } from '../../lib/sedes-repo';
 import { LogoMark } from '../brand/logo';
+import { tonoAvatar } from '../colaboradores/avatar';
+import { cn } from '../../lib/cn';
 import { MobileNav } from './mobile-nav';
 import { NotificacionesBell } from './notificaciones-popover';
 import { SedePopover } from './sede-popover';
@@ -92,7 +94,10 @@ export async function Topbar() {
             href="/mi-desempeno"
             title="Mi desempeño"
             aria-label="Mi desempeño"
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-navy text-xs font-semibold text-paper outline-none transition-transform duration-150 hover-fine:scale-105 focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-95"
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold outline-none transition-transform duration-150 hover-fine:scale-105 focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-95',
+              tonoAvatar(nombre),
+            )}
           >
             {iniciales(nombre)}
           </Link>

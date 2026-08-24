@@ -118,9 +118,22 @@ export const inventarioRepo: InventarioRepo = {
     if (error) throw new Error(error.message);
     return fromRow(data as Row, null);
   },
+  // «Dar de baja» es un cambio de estado, no un borrado. Acá había un DELETE físico mientras la
+  // pantalla preguntaba «¿Dar de baja este activo?», y eso costaba tres cosas a la vez:
+  //   1. inventario_activo no tiene trigger de auditoría, así que la fila desaparecía sin dejar
+  //      rastro de quién la borró ni de qué prenda era.
+  //   2. la policy inv_write es "for all" sobre la sede propia — no es solo el admin: cualquier
+  //      colaborador podía hacer desaparecer los activos de su sede.
+  //   3. en cuanto la prenda había pasado por el pipeline o entrado en un pedido, la referencian
+  //      prenda_pasada.activo_id y pedido_items.activo_id (ambas FK sin ON DELETE, verificado en
+  //      la base) y el DELETE reventaba con un 23503 crudo de Postgres en la cara del usuario.
+  // El estado 'baja' ya existe en el core (EstadoActivo), en el check de la base y en los mapas de
+  // etiqueta y color de la pantalla: la fila queda marcada como Baja, sigue siendo consultable y
+  // el histórico del pipeline no se rompe. El nombre `eliminar` se conserva porque es el de la
+  // interfaz InventarioRepo (packages/core), fuera del alcance de este cambio.
   async eliminar(id) {
     const sb = getServerClient();
-    const { error } = await sb.from('inventario_activo').delete().eq('id', id);
+    const { error } = await sb.from('inventario_activo').update({ estado: 'baja' }).eq('id', id);
     if (error) throw new Error(error.message);
   },
 };

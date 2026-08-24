@@ -23,6 +23,7 @@ import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { campoCls } from '../../../components/ui/form';
+import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
 import { cn } from '../../../lib/cn';
 
 type Emp = { id: string; nombre: string };
@@ -65,11 +66,18 @@ export function HuelleroCliente({
 
   // Los días marcados para revisar y los que sólo esperan la hora de salida son problemas
   // distintos: el primero necesita una decisión, el segundo un dato.
+  //
+  // POR QUÉ `includes` Y NO `startsWith`. El motivo no empieza la observación: la derivación lo
+  // concatena a lo que ya había (0079, `concat_ws(' · ', ...)`), así que la forma real en la base
+  // es "auto: huellero · revisar: …". Con `startsWith` esas filas caían en la columna equivocada
+  // —se le decía al administrador que la persona no marcó al irse cuando sí lo había hecho— y el
+  // botón «Completar» fallaba siempre, porque el guard del servidor sí busca por contenido
+  // (`estadoDelDia` en lib/huellero-repo.ts). Mismo criterio en los dos lados o no hay criterio.
   const { aRevisar, sinSalida } = useMemo(() => {
     const rev: DiaPendiente[] = [];
     const sal: DiaPendiente[] = [];
     for (const d of pendientes) {
-      if ((d.obs ?? '').startsWith('revisar:')) rev.push(d);
+      if ((d.obs ?? '').includes('revisar:')) rev.push(d);
       else sal.push(d);
     }
     return { aRevisar: rev, sinSalida: sal };
@@ -251,7 +259,7 @@ function ColaSinAsignar({
               const reasignado = s.nombresEquipo.length > 1;
               return (
                 <TR key={clave}>
-                  <TD className="font-mono text-xs">{s.employeeNo}</TD>
+                  <TD className="tabular-nums text-xs">{s.employeeNo}</TD>
                   <TD>
                     {s.nombresEquipo.join(', ') || <span className="text-muted">sin nombre</span>}
                     {reasignado && (
@@ -360,7 +368,7 @@ function DiasSinSalida({
                   <TR key={d.id}>
                     <TD>{d.empleadoNombre ?? <span className="text-muted">sin nombre</span>}</TD>
                     <TD>{d.fecha}</TD>
-                    <TD className="font-mono text-xs">{d.horaEntrada ?? '—'}</TD>
+                    <TD className="tabular-nums text-xs">{d.horaEntrada ?? '—'}</TD>
                     <TD>
                       <input
                         type="time"
@@ -409,11 +417,17 @@ function DiasARevisar({ dias }: { dias: DiaPendiente[] }) {
         <CardTitle>Días que necesitan una decisión ({dias.length})</CardTitle>
       </CardHeader>
       <CardContent>
+        {/*
+          El enlace apunta a «Declarar asistencia» y no a /asistencias: esta clase de día se
+          resuelve DECLARANDO la condición del día, y /asistencias por diseño no la declara
+          (lo dice el comentario de `listarAsistencias` en lib/asistencias-repo.ts). Mandar al
+          administrador ahí era mandarlo a la única pantalla donde no podía resolverlo.
+        */}
         <p className="mb-3 text-sm text-muted">
           El sistema guardó las horas pero no dio el día por trabajado, porque el resultado no
-          puede ser cierto o porque el identificador cambió de dueño ese día. Corregilo desde
-          <Link href="/asistencias" className="ml-1 underline">
-            Asistencias
+          puede ser cierto o porque el identificador cambió de dueño ese día. Corregirlo desde
+          <Link href="/sueldos/asistencia" className="ml-1 underline">
+            Declarar asistencia
           </Link>
           .
         </p>
@@ -432,9 +446,17 @@ function DiasARevisar({ dias }: { dias: DiaPendiente[] }) {
               <TR key={d.id}>
                 <TD>{d.empleadoNombre ?? <span className="text-muted">sin nombre</span>}</TD>
                 <TD>{d.fecha}</TD>
-                <TD className="font-mono text-xs">{d.horaEntrada ?? '—'}</TD>
-                <TD className="font-mono text-xs">{d.horaSalida ?? '—'}</TD>
-                <TD className="text-xs text-aviso-deep">{(d.obs ?? '').replace(/^revisar:\s*/, '')}</TD>
+                <TD className="tabular-nums text-xs">{d.horaEntrada ?? '—'}</TD>
+                <TD className="tabular-nums text-xs">{d.horaSalida ?? '—'}</TD>
+                {/*
+                  Se recorta todo lo que venga ANTES del motivo, no sólo la etiqueta: la
+                  observación real es "auto: huellero · revisar: …" y con el recorte anterior la
+                  columna «Motivo» repetía el prefijo en cada fila. El cuantificador es perezoso
+                  para cortar en el primer «revisar:» y no perder un segundo motivo concatenado.
+                */}
+                <TD className="text-xs text-aviso-deep">
+                  {(d.obs ?? '').replace(/^.*?revisar:\s*/, '')}
+                </TD>
               </TR>
             ))}
           </TBody>
@@ -456,9 +478,41 @@ function MapeosVigentes({
   pending: boolean;
 }) {
   const [cierres, setCierres] = useState<Record<string, string>>({});
+  const conf = useConfirmacion();
+
+  // Borrar un mapeo no es «quitar una fila»: devuelve a la cola TODAS las marcas de ese
+  // identificador y revierte las asistencias que se derivaron de ellas, que es lo que alimenta la
+  // liquidación. En el módulo hermano hasta eliminar un registro suelto de asistencia pasa por
+  // este diálogo (app/asistencias/cliente.tsx); acá, con más consecuencia, no había ninguno.
+  function pedirBorrado(m: MapeoHuellero) {
+    const quien = m.ignorado
+      ? 'que estaba marcado como ignorado'
+      : `de ${m.empleadoNombre ?? 'esa persona'}`;
+    conf.pedir({
+      titulo: `¿Borrar el mapeo del identificador ${m.employeeNo}?`,
+      detalle:
+        `Todas las marcas del identificador ${m.employeeNo} ${quien} vuelven a la cola de sin ` +
+        'asignar, y los días que se habían derivado de ellas se recalculan: los que se queden ' +
+        'sin marca pierden sus horas y vuelven a frenar la liquidación del periodo. Para dejar ' +
+        'de contarlo desde una fecha en adelante, sin tocar lo ya derivado, está la opción ' +
+        '«Cerrar en».',
+      confirmarLabel: 'Borrar mapeo',
+      alConfirmar: () => {
+        conf.cerrar();
+        correr(() =>
+          accionBorrarMapeo({
+            mapeoId: m.id,
+            dispositivoId: m.dispositivoId,
+            employeeNo: m.employeeNo,
+          }),
+        );
+      },
+    });
+  }
 
   return (
     <Card>
+      <DialogoConfirmar {...conf.props} pending={pending} />
       <CardHeader>
         <CardTitle>Identificadores asignados ({mapeos.length})</CardTitle>
       </CardHeader>
@@ -482,7 +536,7 @@ function MapeosVigentes({
             <TBody>
               {mapeos.map((m) => (
                 <TR key={m.id}>
-                  <TD className="font-mono text-xs">{m.employeeNo}</TD>
+                  <TD className="tabular-nums text-xs">{m.employeeNo}</TD>
                   <TD>
                     {m.ignorado ? (
                       <Badge tone="gray">Ignorado</Badge>
@@ -524,16 +578,9 @@ function MapeosVigentes({
                     <Button
                       variant="ghost"
                       disabled={pending}
-                      onClick={() =>
-                        correr(() =>
-                          accionBorrarMapeo({
-                            mapeoId: m.id,
-                            dispositivoId: m.dispositivoId,
-                            employeeNo: m.employeeNo,
-                          }),
-                        )
-                      }
-                      title="Sus marcas vuelven a la cola"
+                      onClick={() => pedirBorrado(m)}
+                      title="Borrar el mapeo: sus marcas vuelven a la cola"
+                      aria-label={`Borrar el mapeo del identificador ${m.employeeNo}`}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

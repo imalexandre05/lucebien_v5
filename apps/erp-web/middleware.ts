@@ -62,6 +62,26 @@ export async function middleware(req: NextRequest) {
     return conToken(NextResponse.redirect(url));
   };
 
+  // Suspensión: el token sigue vivo, la persona ya no.
+  //
+  // Banear a alguien en Supabase Auth le impide volver a entrar, pero no invalida el token que su
+  // navegador ya tenía. Sin esta comprobación, quien fue suspendido seguía navegando hasta que ese
+  // token expirara — y las páginas que sí miran la sesión lo mandaban a /login, donde la regla de
+  // abajo lo devolvía al inicio por tener usuario: un rebote infinito en vez de una explicación.
+  //
+  // Es una consulta más por request, por clave primaria. Se paga a propósito: es la diferencia
+  // entre que una baja sea efectiva ahora o dentro de una hora.
+  if (features.AUTH_V2 && user) {
+    const { data: emp } = await supabase.from('empleados').select('activo').eq('id', user.id).maybeSingle();
+    if (emp && (emp as { activo: boolean }).activo === false) {
+      await supabase.auth.signOut();
+      const url = req.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('error', 'suspendido');
+      return conToken(NextResponse.redirect(url));
+    }
+  }
+
   if (features.AUTH_V2 && !user && !enLogin) return redir('/login');
   if (features.AUTH_V2 && user && enLogin) return redir('/');
 

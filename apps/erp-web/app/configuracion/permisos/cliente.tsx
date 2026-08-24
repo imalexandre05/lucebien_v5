@@ -131,11 +131,27 @@ export function PermisosCliente({
     setError('');
     setGuardado(false);
     const filas: { rol: string; modulo: string; acciones: Accion[] }[] = [];
+    const dibujadas = new Set<string>(); // celdas (rol|modulo) que esta pantalla sí edita
     for (const rolKey of columnas) {
       for (const { modulos } of GRUPOS) {
         for (const { modulo } of modulos) {
           filas.push({ rol: rolKey, modulo, acciones: estado[rolKey]?.[modulo] ?? [] });
+          dibujadas.add(`${rolKey}|${modulo}`);
         }
+      }
+    }
+    // La RPC `permisos_guardar_matriz` reemplaza la tabla ENTERA: lo que no se manda, se borra.
+    // La base tiene celdas que esta pantalla no dibuja — módulos que sembró una migración y no
+    // están en GRUPOS (solicitudes, notificaciones, lavanderia_envio, datos_personas) y roles
+    // derivados desactivados, que no son columna. Sin reemitirlas, un Guardar las borraría y
+    // nadie podría devolverlas desde la UI: a /solicitudes se entra justamente por ese permiso.
+    // Se copian TAL CUAL, el mismo patrón que documenta togglePosCobro en lib/permisos-repo.ts.
+    // Se reemiten por celda y no por módulo a propósito: agregar el módulo faltante a GRUPOS
+    // arregla el caso de hoy y se vuelve a romper con el próximo módulo que siembre una migración.
+    for (const [rol, modulos] of Object.entries(matrizInicial)) {
+      for (const [modulo, acciones] of Object.entries(modulos ?? {})) {
+        if (dibujadas.has(`${rol}|${modulo}`)) continue;
+        filas.push({ rol, modulo, acciones: [...(acciones ?? [])] });
       }
     }
     startTransition(async () => {
@@ -155,10 +171,10 @@ export function PermisosCliente({
       <Card>
         <CardContent className="flex flex-wrap items-center gap-3 py-4">
           <p className="text-sm text-muted">
-            Clic en cada letra para activar/desactivar esa acción. <span className="font-mono text-xs">V</span> ver ·{' '}
-            <span className="font-mono text-xs">C</span> crear · <span className="font-mono text-xs">E</span> editar ·{' '}
-            <span className="font-mono text-xs">D</span> eliminar ·{' '}
-            <span className="font-mono text-xs">{totalActivos}</span> activadas.
+            Clic en cada letra para activar/desactivar esa acción. <span className="tabular-nums text-xs">V</span> ver ·{' '}
+            <span className="tabular-nums text-xs">C</span> crear · <span className="tabular-nums text-xs">E</span> editar ·{' '}
+            <span className="tabular-nums text-xs">D</span> eliminar ·{' '}
+            <span className="tabular-nums text-xs">{totalActivos}</span> activadas.
           </p>
           <div className="ml-auto flex items-center gap-3">
             {guardado && <span className="text-xs font-medium text-exito-deep">Guardado ✓</span>}

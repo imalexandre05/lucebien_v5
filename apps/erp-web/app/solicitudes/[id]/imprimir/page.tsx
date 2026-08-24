@@ -40,13 +40,13 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
         <header className="flex items-start justify-between border-b-2 border-navy pb-4">
           <div>
             <div className="text-3xl font-semibold text-navy">LuceBien</div>
-            <div className="mt-1 font-mono text-[10px] tracking-brand text-gold">
+            <div className="mt-1 tabular-nums text-[10px] tracking-brand text-gold">
               {tipo === 'confirmacion' ? 'CONFIRMACIÓN DE ENTREGA' : 'PEDIDO A ALMACÉN'} · SCI-LB
             </div>
             <div className="mt-2 text-xs text-muted">Confecciones Aliaga E.I.R.L. · Huancayo, Perú</div>
           </div>
           <div className="text-right text-xs text-muted">
-            <div className="font-mono text-[11px] text-navy">Ref. #{s.id.slice(0, 8).toUpperCase()}</div>
+            <div className="tabular-nums text-[11px] text-navy">Ref. #{s.id.slice(0, 8).toUpperCase()}</div>
             <div className="mt-0.5">{fechaHora(s.createdAt)}</div>
           </div>
         </header>
@@ -54,7 +54,7 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
         <section className="mt-6 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
           <div>
             <div className="text-xs uppercase tracking-wide text-muted">Sede</div>
-            <div className="mt-0.5 font-mono text-navy">{s.sedeCod}</div>
+            <div className="mt-0.5 tabular-nums text-navy">{s.sedeCod}</div>
           </div>
           <div>
             <div className="text-xs uppercase tracking-wide text-muted">Solicitante</div>
@@ -101,9 +101,9 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
                 <td className="py-1.5 pr-2">{i.color ?? '—'}</td>
                 <td className="py-1.5 pr-2">{i.talla ?? '—'}</td>
                 <td className="py-1.5 pr-2 text-muted">{[i.tela, i.modelo].filter(Boolean).join(' · ') || '—'}</td>
-                <td className="py-1.5 pr-2 text-right font-mono">{i.cantidad}</td>
-                <td className="py-1.5 pr-2 text-right font-mono">{i.cantidadEnviada || '—'}</td>
-                {tipo === 'confirmacion' && <td className="py-1.5 pr-2 text-right font-mono">{i.cantidadRecibida || '—'}</td>}
+                <td className="py-1.5 pr-2 text-right tabular-nums">{i.cantidad}</td>
+                <td className="py-1.5 pr-2 text-right tabular-nums">{i.cantidadEnviada || '—'}</td>
+                {tipo === 'confirmacion' && <td className="py-1.5 pr-2 text-right tabular-nums">{i.cantidadRecibida || '—'}</td>}
                 <td className="py-1.5 text-muted">{i.obs || i.detalle || '—'}</td>
               </tr>
             ))}

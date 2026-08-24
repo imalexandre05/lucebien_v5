@@ -32,7 +32,7 @@ function Chip({ label, count, active, onClick, testId }: { label: string; count:
         active ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
       )}
     >
-      {label} <span className="font-mono tabular-nums">{count}</span>
+      {label} <span className="tabular-nums">{count}</span>
     </button>
   );
 }
@@ -140,7 +140,7 @@ export function PedidosPendientes({
                 <Fragment key={p.id}>
                   <TR data-testid="pendiente-fila">
                     <TD>
-                      <Link href={`/pedidos/${p.id}`} className="font-mono text-xs font-medium text-navy hover:text-gold">
+                      <Link href={`/pedidos/${p.id}`} className="tabular-nums text-xs font-medium text-navy hover:text-gold">
                         {p.codigo}
                       </Link>
                     </TD>
@@ -148,9 +148,9 @@ export function PedidosPendientes({
                     <TD>
                       <Badge tone={TIPO_TONE[p.tipo]}>{TIPO_LABEL[p.tipo]}</Badge>
                     </TD>
-                    <TD className="text-right font-mono text-xs tabular-nums">{soles(p.total)}</TD>
-                    <TD className={cn('text-right font-mono text-xs tabular-nums', p.saldo > 0 && 'font-semibold text-aviso-deep')}>{soles(p.saldo)}</TD>
-                    <TD className="font-mono text-xs text-muted">{p.fechaDevolucion ?? '—'}</TD>
+                    <TD className="text-right tabular-nums text-xs">{soles(p.total)}</TD>
+                    <TD className={cn('text-right tabular-nums text-xs', p.saldo > 0 && 'font-semibold text-aviso-deep')}>{soles(p.saldo)}</TD>
+                    <TD className="tabular-nums text-xs text-muted">{p.fechaDevolucion ?? '—'}</TD>
                     <TD className="text-right">
                       <div className="flex justify-end gap-1.5">
                         {p.saldo > 0 && (

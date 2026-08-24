@@ -59,7 +59,7 @@ export default async function ValoresPage() {
                 <p className="text-sm font-semibold text-navy">Falta aplicar la migración 0057</p>
                 <p className="mt-1 text-sm text-muted">
                   Este módulo todavía no tiene sus tablas en la base de datos. Aplica{' '}
-                  <code className="rounded bg-navy/5 px-1.5 py-0.5 font-mono text-xs">
+                  <code className="rounded bg-navy/5 px-1.5 py-0.5 tabular-nums text-xs">
                     packages/db/migrations/0057_valores360_competencias_pagos.sql
                   </code>{' '}
                   contra el proyecto Supabase y recarga esta página.

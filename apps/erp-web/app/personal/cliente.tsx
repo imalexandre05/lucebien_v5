@@ -27,12 +27,22 @@ import { cn } from '../../lib/cn';
 // corte, y dentro de cada grupo sí manda el nombre, que es lo que hace que la fila de alguien no
 // salte de lugar todos los días.
 
-type Filtro = 'pendientes' | 'listos' | 'todos';
+type Filtro = 'pendientes' | 'listos' | 'todos' | 'suspendidos';
 
+// «Suspendidos» es la puerta de vuelta, no una vista más. El botón Reactivar y el formulario de
+// abono viven dentro del expediente, y al expediente sólo se llega desde esta lista: mientras la
+// lista mostraba únicamente a los activos, suspender a alguien era irreversible desde la interfaz
+// y su saldo pendiente quedaba sin camino para pagarse.
+//
+// Los otros tres filtros siguen mirando SÓLO a los activos, «Todos» incluido. Una persona
+// suspendida nunca va a completar los cinco pasos del período, así que mezclarla ahí la dejaría
+// clavada arriba de «Con algo pendiente» para siempre, empujando hacia abajo a quien sí espera
+// algo. El filtro sólo aparece si hay a quién mostrar.
 const FILTROS: { clave: Filtro; label: string }[] = [
   { clave: 'pendientes', label: 'Con algo pendiente' },
   { clave: 'listos', label: 'Listos para pagar' },
   { clave: 'todos', label: 'Todos' },
+  { clave: 'suspendidos', label: 'Suspendidos' },
 ];
 
 // Quita tildes para que buscar "jose" encuentre "José". El mapa explícito sigue el precedente de
@@ -70,18 +80,27 @@ export function ListaColaboradores({
     [colaboradores, estado],
   );
 
-  const conPendientes = filas.filter((f) => f.corte).length;
+  const conPendientes = filas.filter((f) => f.c.activo && f.corte).length;
+  const suspendidos = filas.filter((f) => !f.c.activo).length;
+  const filtrosVisibles = FILTROS.filter((f) => f.clave !== 'suspendidos' || suspendidos > 0);
+  // Si se reactivó a la última persona suspendida, su botón desaparece: el filtro elegido tiene
+  // que volver solo, o la lista se queda vacía sin ningún control que explique por qué.
+  const filtroActivo: Filtro = filtro === 'suspendidos' && suspendidos === 0 ? 'pendientes' : filtro;
 
   const visibles = useMemo(() => {
     const q = normalizar(busqueda.trim());
     return filas
-      .filter((f) => (filtro === 'todos' ? true : filtro === 'pendientes' ? f.corte : !f.corte))
+      .filter((f) =>
+        filtroActivo === 'suspendidos'
+          ? !f.c.activo
+          : f.c.activo && (filtroActivo === 'todos' ? true : filtroActivo === 'pendientes' ? Boolean(f.corte) : !f.corte),
+      )
       .filter((f) => !q || normalizar(f.c.nombre).includes(q) || normalizar(f.c.sedeCod ?? '').includes(q))
       .sort((a, b) => {
         if (Boolean(a.corte) !== Boolean(b.corte)) return a.corte ? -1 : 1;
         return a.c.nombre.localeCompare(b.c.nombre, 'es');
       });
-  }, [filas, filtro, busqueda]);
+  }, [filas, filtroActivo, busqueda]);
 
   return (
     <div className="space-y-4">
@@ -101,20 +120,23 @@ export function ListaColaboradores({
           />
         </div>
         <div className="flex items-center gap-1" role="group" aria-label="Filtrar por estado">
-          {FILTROS.map((f) => (
+          {filtrosVisibles.map((f) => (
             <button
               key={f.clave}
               type="button"
               onClick={() => setFiltro(f.clave)}
-              aria-pressed={filtro === f.clave}
+              aria-pressed={filtroActivo === f.clave}
               className={cn(
                 'cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60',
-                filtro === f.clave ? 'bg-navy text-paper' : 'text-navy hover:bg-navy/5',
+                filtroActivo === f.clave ? 'bg-navy text-paper' : 'text-navy hover:bg-navy/5',
               )}
             >
               {f.label}
               {f.clave === 'pendientes' && conPendientes > 0 && (
                 <span className="ml-1.5 tabular-nums opacity-80">{conPendientes}</span>
+              )}
+              {f.clave === 'suspendidos' && (
+                <span className="ml-1.5 tabular-nums opacity-80">{suspendidos}</span>
               )}
             </button>
           ))}
@@ -123,10 +145,10 @@ export function ListaColaboradores({
 
       {visibles.length === 0 ? (
         <div className="rounded-lg border border-line bg-white shadow-card">
-          <EmptyState icon={Users} titulo={filtro === 'pendientes' ? 'No falta nada en este período' : 'Nadie coincide'}>
-            {filtro === 'pendientes'
+          <EmptyState icon={Users} titulo={filtroActivo === 'pendientes' ? 'No falta nada en este período' : 'Nadie coincide'}>
+            {filtroActivo === 'pendientes'
               ? 'Los cinco pasos están resueltos para todo el equipo en el rango elegido.'
-              : 'Probá con otro nombre, otro filtro u otro período.'}
+              : 'Prueba con otro nombre, otro filtro u otro período.'}
           </EmptyState>
         </div>
       ) : (
@@ -149,6 +171,10 @@ export function ListaColaboradores({
                   <p className="truncate text-xs text-muted">
                     {ROL_LABEL[c.rol as Rol] ?? c.rol}
                     {c.sedeCod ? ` · ${c.sedeCod}` : ''}
+                    {/* Se dice en la fila y no sólo en el filtro: el expediente de una persona
+                        suspendida se abre igual, y quien llega desde el buscador tiene que saber
+                        que ya no trabaja ahí antes de leer sus pendientes del período. */}
+                    {!c.activo && ' · suspendido'}
                   </p>
                 </div>
 

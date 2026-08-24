@@ -18,11 +18,11 @@ export default function NuevoClientePage() {
             </div>
             <div>
               <Label>DNI</Label>
-              <Input name="dni" placeholder="8 dígitos" className="font-mono" />
+              <Input name="dni" placeholder="8 dígitos" className="tabular-nums" />
             </div>
             <div>
               <Label>Teléfono</Label>
-              <Input name="telefono" placeholder="9 dígitos" className="font-mono" />
+              <Input name="telefono" placeholder="9 dígitos" className="tabular-nums" />
             </div>
             <div>
               <Label>Sede</Label>

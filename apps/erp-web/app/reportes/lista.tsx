@@ -52,7 +52,7 @@ function Puntaje({ r }: { r: Reporte }) {
   if (!r.evaluado) return <span className="text-muted">—</span>;
   const p = r.puntajeEval ?? r.puntaje;
   const cls = p >= 85 ? 'bg-exito/10 text-exito-deep' : p >= 60 ? 'bg-gold/20 text-gold-deep' : 'bg-error-soft text-error-deep';
-  return <span className={cn('rounded-full px-2.5 py-0.5 font-mono text-xs font-bold tabular-nums', cls)}>{p}%</span>;
+  return <span className={cn('rounded-full px-2.5 py-0.5 tabular-nums text-xs font-bold', cls)}>{p}%</span>;
 }
 
 export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
@@ -117,7 +117,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
           </select>
           <OpcionBotones opciones={OPC_FILTRO_TURNO} value={turno} onChange={setTurno} ariaLabel="Turno" />
           <OpcionBotones opciones={OPC_FILTRO_ESTADO} value={estado} onChange={setEstado} ariaLabel="Estado" />
-          <span className="ml-auto font-mono text-xs text-muted tabular-nums">
+          <span className="ml-auto tabular-nums text-xs text-muted">
             {filtrados.length} reportes
           </span>
         </CardContent>
@@ -148,13 +148,13 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                     <TD className="pl-5">
                       <Link
                         href={`/reportes/${r.id}`}
-                        className="toque inline-block rounded-md bg-navy px-2.5 py-1 font-mono text-xs font-medium text-paper transition-colors duration-150 hover:bg-navy-dark"
+                        className="toque inline-block rounded-md bg-navy px-2.5 py-1 tabular-nums text-xs font-medium text-paper transition-colors duration-150 hover:bg-navy-dark"
                       >
                         {r.id}
                       </Link>
                     </TD>
-                    <TD className="font-mono">{r.sedeCod}</TD>
-                    <TD className="font-mono text-xs text-muted">{r.fecha}</TD>
+                    <TD className="tabular-nums">{r.sedeCod}</TD>
+                    <TD className="tabular-nums text-xs text-muted">{r.fecha}</TD>
                     <TD>
                       <Badge tone="navy">{TURNO_LABEL[r.turno] ?? r.turno}</Badge>
                     </TD>
@@ -163,7 +163,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                       {r.trabajadores.length > 0 ? (
                         <span
                           title={r.trabajadores.join(', ')}
-                          className="inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 font-mono text-xs text-navy"
+                          className="inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 tabular-nums text-xs text-navy"
                         >
                           {r.trabajadores.length}
                         </span>
@@ -171,7 +171,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                         <span className="text-muted">—</span>
                       )}
                     </TD>
-                    <TD className="text-right font-mono tabular-nums">
+                    <TD className="text-right tabular-nums">
                       {r.actDone}/{r.actTotal}
                     </TD>
                     <TD className="text-right">

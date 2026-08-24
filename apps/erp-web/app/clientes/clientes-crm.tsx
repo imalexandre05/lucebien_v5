@@ -70,7 +70,7 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
             <option value="recurrente">Recurrente</option>
             <option value="nuevo">Nuevo</option>
           </select>
-          <span className="ml-auto font-mono text-xs text-muted tabular-nums">{filtrados.length} clientes</span>
+          <span className="ml-auto tabular-nums text-xs text-muted">{filtrados.length} clientes</span>
         </CardContent>
       </Card>
 
@@ -98,13 +98,13 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
                         {c.nombre}
                       </Link>
                       {(c.telefono || c.dni) && (
-                        <div className="font-mono text-[11px] text-muted">{c.telefono || c.dni}</div>
+                        <div className="tabular-nums text-[11px] text-muted">{c.telefono || c.dni}</div>
                       )}
                     </TD>
-                    <TD className="font-mono text-xs">{c.sedeCod || '—'}</TD>
-                    <TD className="text-right font-mono tabular-nums">{c.pedidos}</TD>
-                    <TD className="text-right font-mono tabular-nums">S/ {c.totalGastado.toFixed(2)}</TD>
-                    <TD className="font-mono text-xs text-muted">
+                    <TD className="tabular-nums text-xs">{c.sedeCod || '—'}</TD>
+                    <TD className="text-right tabular-nums">{c.pedidos}</TD>
+                    <TD className="text-right tabular-nums">S/ {c.totalGastado.toFixed(2)}</TD>
+                    <TD className="tabular-nums text-xs text-muted">
                       {c.ultimoPedido ?? '—'}
                       {c.seguir && (
                         <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-aviso-soft px-1.5 py-0.5 text-[10px] font-medium text-aviso-deep">

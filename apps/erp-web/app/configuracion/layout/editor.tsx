@@ -315,7 +315,7 @@ export function LayoutEditor({
               {f === 'todos' ? 'Todos' : f === 'M' ? 'AM' : 'PM'}
             </button>
           ))}
-          <span className="ml-2 font-mono text-xs text-muted">
+          <span className="ml-2 tabular-nums text-xs text-muted">
             {zonas.length} zonas · {totalPts} pts
           </span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -362,7 +362,7 @@ export function LayoutEditor({
           <p>
             <span className="font-semibold">{solapesInesperados.length} solape(s) sin declarar:</span>{' '}
             {solapesInesperados.map(([a, b], i) => (
-              <span key={`${a}-${b}`} className="font-mono">
+              <span key={`${a}-${b}`} className="tabular-nums">
                 {i > 0 && ', '}
                 {a}↔{b}
               </span>
@@ -430,7 +430,7 @@ export function LayoutEditor({
                   {texturaZona(z)}
                   <span
                     className={cn(
-                      'pointer-events-none px-0.5 font-mono text-[7px] font-semibold leading-none',
+                      'pointer-events-none px-0.5 tabular-nums text-[7px] font-semibold leading-none',
                       esArea ? 'text-muted' : 'text-white',
                     )}
                     style={esArea ? undefined : { textShadow: '0 0 2px rgba(0,0,0,.3)' }}
@@ -438,7 +438,7 @@ export function LayoutEditor({
                     {z.cod}
                   </span>
                   {z.sobreCod && (
-                    <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-full bg-navy-deep px-1 py-px font-mono text-[6px] leading-tight text-paper/90">
+                    <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-full bg-navy-deep px-1 py-px tabular-nums text-[6px] leading-tight text-paper/90">
                       s/{z.sobreCod}
                     </span>
                   )}
@@ -487,7 +487,7 @@ export function LayoutEditor({
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block">
                     <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Código</span>
-                    <input value={sel.cod} onChange={(e) => set(sel.key, { cod: e.target.value.toUpperCase() })} className={cn(fieldCls, 'w-full font-mono uppercase')} />
+                    <input value={sel.cod} onChange={(e) => set(sel.key, { cod: e.target.value.toUpperCase() })} className={cn(fieldCls, 'w-full tabular-nums uppercase')} />
                   </label>
                   <label className="block">
                     <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Peso (pts)</span>
@@ -574,7 +574,7 @@ export function LayoutEditor({
                       {sel.nivel === 'sobre' && (
                         <label className="block">
                           <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Sobre</span>
-                          <select value={sel.sobreCod} onChange={(e) => set(sel.key, { sobreCod: e.target.value })} className={cn(fieldCls, 'w-full font-mono')}>
+                          <select value={sel.sobreCod} onChange={(e) => set(sel.key, { sobreCod: e.target.value })} className={cn(fieldCls, 'w-full tabular-nums')}>
                             <option value="">—</option>
                             {muebles.map((m) => (
                               <option key={m.key} value={m.cod}>
@@ -615,11 +615,11 @@ export function LayoutEditor({
                     selKey === z.key && 'bg-gold/10',
                   )}
                 >
-                  <span className="w-12 shrink-0 rounded bg-navy px-1.5 py-0.5 text-center font-mono text-[10px] font-semibold text-paper">
+                  <span className="w-12 shrink-0 rounded bg-navy px-1.5 py-0.5 text-center tabular-nums text-[10px] font-semibold text-paper">
                     {z.cod}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs text-ink">{z.nombre}</span>
-                  <span className="shrink-0 font-mono text-[11px] font-semibold tabular-nums text-navy">{z.peso}</span>
+                  <span className="shrink-0 tabular-nums text-[11px] font-semibold text-navy">{z.peso}</span>
                 </button>
               ))}
               {TIPOS.map((tipo) => {
@@ -643,14 +643,14 @@ export function LayoutEditor({
                         )}
                       >
                         <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px] border border-black/10" style={{ background: z.color }} />
-                        <span className="w-10 shrink-0 font-mono text-[10px] font-semibold text-navy">{z.cod}</span>
+                        <span className="w-10 shrink-0 tabular-nums text-[10px] font-semibold text-navy">{z.cod}</span>
                         <span className="min-w-0 flex-1 truncate text-xs text-ink">{z.nombre}</span>
                         {z.sobreCod && (
-                          <span className="shrink-0 rounded-full bg-navy-deep px-1.5 py-px font-mono text-[8px] text-paper/90">
+                          <span className="shrink-0 rounded-full bg-navy-deep px-1.5 py-px tabular-nums text-[8px] text-paper/90">
                             s/{z.sobreCod}
                           </span>
                         )}
-                        <span className="shrink-0 font-mono text-[11px] tabular-nums text-muted">{z.peso}</span>
+                        <span className="shrink-0 tabular-nums text-[11px] text-muted">{z.peso}</span>
                       </button>
                     ))}
                   </div>

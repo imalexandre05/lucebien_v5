@@ -118,9 +118,9 @@ export function MaterialesCliente({
                       {!m.activo && <span className="ml-2 text-xs text-muted">(inactivo)</span>}
                     </TD>
                     <TD className="text-sm text-ink">{m.categoria || '—'}</TD>
-                    <TD className="font-mono text-xs text-navy">{m.sedeCod}</TD>
+                    <TD className="tabular-nums text-xs text-navy">{m.sedeCod}</TD>
                     <TD className="text-right">
-                      <span className={cn('font-mono text-sm font-semibold tabular-nums', bajo ? 'text-error' : 'text-navy')}>
+                      <span className={cn('tabular-nums text-sm font-semibold', bajo ? 'text-error' : 'text-navy')}>
                         {nfmt(m.stockActual)}
                       </span>
                       <span className="ml-1 text-[10px] text-muted">{m.unidad}</span>
@@ -130,8 +130,8 @@ export function MaterialesCliente({
                         </Badge>
                       )}
                     </TD>
-                    <TD className="text-right font-mono text-xs tabular-nums text-muted">{nfmt(m.stockMinimo)}</TD>
-                    <TD className="text-right font-mono text-xs tabular-nums text-muted">
+                    <TD className="text-right tabular-nums text-xs text-muted">{nfmt(m.stockMinimo)}</TD>
+                    <TD className="text-right tabular-nums text-xs text-muted">
                       {m.costoPromedio ? `S/ ${nfmt(m.costoPromedio)}` : '—'}
                     </TD>
                     <TD className="pr-5">
@@ -346,7 +346,7 @@ function AjusteModal({ material, onClose, onSaved }: { material: Material; onClo
           <input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. consumo en taller, merma…" className={cn(fieldCls, 'w-full')} />
         </div>
         <p className="rounded-md bg-navy/5 px-3 py-2 text-sm text-navy">
-          Stock resultante: <span className="font-mono font-semibold tabular-nums">{nfmt(resultante)}</span> {material.unidad}
+          Stock resultante: <span className="tabular-nums font-semibold">{nfmt(resultante)}</span> {material.unidad}
         </p>
         {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
       </ModalBody>

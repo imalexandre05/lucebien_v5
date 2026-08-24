@@ -35,7 +35,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
           <div className="mt-4 animate-rise text-4xl font-semibold leading-none text-navy [animation-delay:90ms]">
             LuceBien
           </div>
-          <div className="mt-2 animate-rise font-mono text-[10px] tracking-brand text-gold [animation-delay:150ms]">
+          <div className="mt-2 animate-rise tabular-nums text-[10px] tracking-brand text-gold [animation-delay:150ms]">
             SCI · LB
           </div>
         </div>
@@ -45,13 +45,15 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
           <CardContent className="pt-6">
             {searchParams.error && (
               <p role="alert" className="mb-4 animate-rise rounded-md bg-aviso/15 px-3 py-2 text-xs text-aviso-deep">
-                {searchParams.error === 'credenciales'
-                  ? loginV2
-                    ? 'Usuario o contraseña incorrectos.'
-                    : 'Código o sede incorrectos.'
-                  : loginV2
-                    ? 'Datos inválidos. Revisa el usuario y la contraseña.'
-                    : 'Datos inválidos. Revisa la sede y el código (4 dígitos).'}
+                {searchParams.error === 'suspendido'
+                  ? 'Tu acceso está suspendido. Habla con el administrador.'
+                  : searchParams.error === 'credenciales'
+                    ? loginV2
+                      ? 'Usuario o contraseña incorrectos.'
+                      : 'Código o sede incorrectos.'
+                    : loginV2
+                      ? 'Datos inválidos. Revisa el usuario y la contraseña.'
+                      : 'Datos inválidos. Revisa la sede y el código (4 dígitos).'}
               </p>
             )}
             {loginV2 ? (
@@ -87,7 +89,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
                     maxLength={4}
                     placeholder="····"
                     autoComplete="off"
-                    className="py-2.5 text-center font-mono text-lg tracking-[0.5em] placeholder:tracking-[0.3em]"
+                    className="py-2.5 text-center tabular-nums text-lg tracking-[0.5em] placeholder:tracking-[0.3em]"
                     aria-describedby="login-ayuda"
                     required
                     autoFocus

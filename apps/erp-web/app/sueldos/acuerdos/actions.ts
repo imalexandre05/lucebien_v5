@@ -63,6 +63,17 @@ function validar(f: AcuerdoForm): string | null {
   if (f.escala != null && (!Number.isInteger(f.escala) || f.escala < 1)) {
     return 'La escala tiene que ser un número entero de 1 en adelante.';
   }
+  // La comisión pactada en el contrato es una FRACCIÓN de la base, no un porcentaje: el motor la
+  // multiplica tal cual (RN-13, `packages/core/src/sueldos.ts`), igual que el parámetro global
+  // `sueldo_pct_comision`, que ya declara min 0 y max 1. `resolverParametros()` sólo rechaza
+  // negativos, y el `check` de la 0072 mira los nombres de las claves, no sus valores: sin este
+  // guard un 0,5 tipeado de más pactaba un 50% de comisión y se pagaba sin que nada chillara.
+  // La pantalla ya acota el campo; esto lo vuelve a comprobar porque una Server Action es un
+  // endpoint público.
+  const pctComision = f.parametros?.pctComision;
+  if (pctComision != null && (!Number.isFinite(pctComision) || pctComision < 0 || pctComision > 1)) {
+    return 'La comisión es una fracción sobre la base: 0,02 = 2%. Tiene que estar entre 0 y 1.';
+  }
   for (const t of f.turnos) {
     if (!t.horaInicio || !t.horaFin) return 'Hay un turno sin hora de inicio o de fin.';
     if (t.horaFin <= t.horaInicio) {

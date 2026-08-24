@@ -192,6 +192,28 @@ export async function crearIncidencia(p: {
   if (error) throw new Error(error.message);
 }
 
+// Reasigna (o quita) el responsable de una incidencia ya registrada.
+//
+// POR QUÉ HACÍA FALTA. El formulario ofrece «— sin responsable (el admin investigará) —» como
+// opción por defecto, pero después no existía ninguna función que actualizara una incidencia:
+// la única salida para completarla era borrarla y volver a cargarla, lo que cambia la fecha de
+// registro y pierde quién la reportó. La policy inc_update (migración 0046) ya permite el UPDATE
+// solo a admin/dueño, así que no hace falta migración; la acción del servidor vuelve a comprobar
+// el rol para dar un mensaje claro.
+//
+// El descuento por incidencias de la evaluación mensual se calcula en vivo sobre
+// `incidencias.responsable_id` (RPC evaluacion_componentes, migración 0057), así que reasignar
+// mueve los puntos de penalidad de una persona a la otra en la siguiente lectura. Las
+// evaluaciones ya cerradas guardan su nota y no se recalculan solas.
+export async function actualizarResponsableIncidencia(id: string, responsableId: string | null): Promise<void> {
+  const sb = getServerClient();
+  // El select() de vuelta no es decorativo: sin él, un UPDATE que la RLS descarta devuelve
+  // "sin error y cero filas" y la pantalla diría que guardó algo que no guardó.
+  const { data, error } = await sb.from('incidencias').update({ responsable_id: responsableId }).eq('id', id).select('id');
+  if (error) throw new Error(error.message);
+  if (!data || data.length === 0) throw new Error('No se pudo asignar el responsable: la incidencia ya no existe o no tienes permiso.');
+}
+
 export async function eliminarIncidencia(id: string): Promise<void> {
   const sb = getServerClient();
   const { error } = await sb.from('incidencias').delete().eq('id', id);

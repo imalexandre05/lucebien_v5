@@ -239,13 +239,13 @@ export function ActividadesCliente({
 
   const fila = (a: ActividadAdmin, i: number) => (
     <TR key={a.id} className={cn(!a.activa && 'opacity-55')}>
-      <TD className="pl-5 font-mono text-xs text-muted">{i + 1}</TD>
+      <TD className="pl-5 tabular-nums text-xs text-muted">{i + 1}</TD>
       <TD>
         <div className="flex items-center gap-2">
           <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', a.activa ? 'bg-exito' : 'bg-error')} />
           <div className="min-w-0">
             <div className="truncate text-sm font-medium text-navy">{a.nombre}</div>
-            <div className="font-mono text-[10px] text-muted">{a.cod}</div>
+            <div className="tabular-nums text-[10px] text-muted">{a.cod}</div>
           </div>
         </div>
       </TD>
@@ -253,12 +253,12 @@ export function ActividadesCliente({
         <Badge tone={CAT_TONE[a.categoria] ?? 'gray'}>{CAT_LABEL[a.categoria] ?? a.categoria}</Badge>
       </TD>
       <TD className="text-xs capitalize text-muted">{a.turno === 'ambos' ? 'ambos' : a.turno}</TD>
-      <TD className="text-right font-mono text-sm font-semibold tabular-nums text-navy">{a.peso}</TD>
-      <TD className={cn('text-right font-mono text-xs tabular-nums', a.descuento > 0 ? 'text-error' : 'text-muted')}>
+      <TD className="text-right tabular-nums text-sm font-semibold text-navy">{a.peso}</TD>
+      <TD className={cn('text-right tabular-nums text-xs', a.descuento > 0 ? 'text-error' : 'text-muted')}>
         {a.descuento > 0 ? `-${a.descuento}` : '—'}
       </TD>
       <TD className="text-xs text-muted">{a.tipoAct === 'obligatoria' ? frecuenciaLabel(a) : '—'}</TD>
-      <TD className="text-center font-mono text-xs">{a.tipoAct === 'obligatoria' ? (a.acumula ? 'S' : 'N') : '—'}</TD>
+      <TD className="text-center tabular-nums text-xs">{a.tipoAct === 'obligatoria' ? (a.acumula ? 'S' : 'N') : '—'}</TD>
       <TD>
         <button
           type="button"
@@ -591,7 +591,7 @@ export function ActividadesCliente({
                             aria-pressed={on}
                             onClick={() => toggleDia(d)}
                             className={cn(
-                              'h-8 w-9 rounded-md border font-mono text-xs font-semibold transition-colors duration-150 active:scale-[0.97]',
+                              'h-8 w-9 rounded-md border tabular-nums text-xs font-semibold transition-colors duration-150 active:scale-[0.97]',
                               on ? 'border-navy bg-navy text-paper' : 'border-line bg-white text-muted hover:border-gold',
                             )}
                           >

@@ -289,7 +289,7 @@ export function TableroPipeline({
       <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
         <div>
           <div className="text-xl font-semibold leading-none">Prendas recibidas</div>
-          <div className="mt-1 font-mono text-[11px] uppercase tracking-widest text-gold">Almacén Central</div>
+          <div className="mt-1 tabular-nums text-[11px] uppercase tracking-widest text-gold">Almacén Central</div>
         </div>
         <div className="flex items-center gap-5">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium">
@@ -297,7 +297,7 @@ export function TableroPipeline({
           </span>
           <div className="text-right">
             <div className="text-[10px] uppercase tracking-wide text-paper/50">Sesión</div>
-            <div className="inline-flex items-center gap-1 font-mono text-lg font-bold text-gold">
+            <div className="inline-flex items-center gap-1 tabular-nums text-lg font-bold text-gold">
               <Zap className="h-4 w-4" strokeWidth={2.5} /> {sesionPts}
             </div>
           </div>
@@ -367,7 +367,7 @@ export function TableroPipeline({
       {sel.size > 0 && selEtapa && (
         <div className="absolute inset-x-3 bottom-3 z-40 flex flex-wrap items-center gap-2.5 rounded-xl border-2 border-navy bg-white px-4 py-3 shadow-lift">
           <span className="text-sm font-semibold text-navy">
-            <span className="font-mono text-base">{sel.size}</span> en {NOMBRE[selEtapa] ?? selEtapa}
+            <span className="tabular-nums text-base">{sel.size}</span> en {NOMBRE[selEtapa] ?? selEtapa}
           </span>
           {selEtapa === 'listo' ? (
             <>
@@ -421,9 +421,9 @@ export function TableroPipeline({
           </span>
           {ranking.map((r, i) => (
             <span key={r.nombre} className="inline-flex items-center gap-1.5 rounded-full bg-navy/5 px-2.5 py-1 text-xs">
-              <span className="font-mono text-[10px] text-muted">#{i + 1}</span>
+              <span className="tabular-nums text-[10px] text-muted">#{i + 1}</span>
               <span className="font-medium text-navy">{r.nombre}</span>
-              <span className="font-mono font-bold tabular-nums text-gold-deep">{r.total}</span>
+              <span className="tabular-nums font-bold text-gold-deep">{r.total}</span>
             </span>
           ))}
         </div>
@@ -444,7 +444,7 @@ export function TableroPipeline({
                   {col.n}
                 </span>
                 <span
-                  className="ml-auto rounded-full bg-white px-2 py-0.5 font-mono text-xs font-semibold tabular-nums"
+                  className="ml-auto rounded-full bg-white px-2 py-0.5 tabular-nums text-xs font-semibold"
                   style={{ color: col.tint }}
                 >
                   {items.length}
@@ -593,7 +593,7 @@ function Tarjeta({
           style={{ background: COL_MAP[p.color ?? ''] ?? '#cbd5e1' }}
           title={p.color ?? ''}
         />
-        <span className="truncate font-mono text-sm font-semibold text-navy">{p.codigo}</span>
+        <span className="truncate tabular-nums text-sm font-semibold text-navy">{p.codigo}</span>
         {esTerno && (
           <button
             type="button"
@@ -638,7 +638,7 @@ function Tarjeta({
         </button>
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-1">
-        <span className="rounded bg-navy/5 px-1.5 py-0.5 font-mono text-[10px] text-navy">{p.sedeOrigenCod}</span>
+        <span className="rounded bg-navy/5 px-1.5 py-0.5 tabular-nums text-[10px] text-navy">{p.sedeOrigenCod}</span>
         {Boolean(meta) && <span className="truncate text-[11px] leading-tight text-muted">{meta}</span>}
       </div>
       {(Boolean(p.tipoLavado) || Boolean(p.necesitaCompostura) || Boolean(p.aprobada)) && (

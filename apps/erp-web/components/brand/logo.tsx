@@ -81,7 +81,7 @@ export function Logo({
       <Image src={LOCKUP_SRC[tone]} alt="LuceBien" width={w} height={h} className="shrink-0 object-contain" priority />
       {tagline && (
         <div className={cn(vertical && 'text-center')}>
-          <div className="font-mono text-[10px] tracking-brand text-gold">SCI · LB</div>
+          <div className="tabular-nums text-[10px] tracking-brand text-gold">SCI · LB</div>
         </div>
       )}
     </div>

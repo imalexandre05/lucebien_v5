@@ -284,7 +284,7 @@ function Contenido({
                     </TD>
                     <TD>{i.talla ?? '—'}</TD>
                     <TD className="text-xs text-muted">{[i.tela, i.modelo].filter(Boolean).join(' · ') || '—'}</TD>
-                    <TD className="text-right font-mono font-semibold">{i.cantidad}</TD>
+                    <TD className="text-right tabular-nums font-semibold">{i.cantidad}</TD>
                     {mostrarEnviar && (
                       <TD className="text-right">
                         <input
@@ -301,7 +301,7 @@ function Contenido({
                     {!esPendiente && !mostrarEnviar && (
                       <TD
                         className={cn(
-                          'text-right font-mono font-semibold',
+                          'text-right tabular-nums font-semibold',
                           i.cantidadEnviada >= i.cantidad ? 'text-exito-deep' : i.cantidadEnviada > 0 ? 'text-aviso-deep' : 'text-error',
                         )}
                       >
@@ -334,7 +334,7 @@ function Contenido({
                       </>
                     )}
                     {solicitud.estado === 'confirmada' && (
-                      <TD className={cn('text-right font-mono font-semibold', i.cantidadRecibida >= i.cantidadEnviada ? 'text-exito-deep' : 'text-error')}>
+                      <TD className={cn('text-right tabular-nums font-semibold', i.cantidadRecibida >= i.cantidadEnviada ? 'text-exito-deep' : 'text-error')}>
                         {i.cantidadRecibida}
                       </TD>
                     )}
@@ -421,7 +421,7 @@ function Contenido({
                             value={codigos[i.id]?.[k] ?? ''}
                             onChange={(e) => setCodigo(i.id, k, e.target.value.toUpperCase())}
                             placeholder={`Código ${k + 1}`}
-                            className="rounded-md border border-line bg-white px-2 py-1.5 font-mono text-xs uppercase tracking-wide outline-none focus:border-gold"
+                            className="rounded-md border border-line bg-white px-2 py-1.5 tabular-nums text-xs uppercase tracking-wide outline-none focus:border-gold"
                           />
                         ))}
                       </div>

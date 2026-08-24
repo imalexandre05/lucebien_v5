@@ -164,9 +164,24 @@ export function NuevoReporteForm({
         const prev = new Map((d.actividades ?? []).map((x) => [x.cod, x]));
         const initDone: Record<string, boolean> = {};
         const initObs: Record<string, string> = {};
+        // NADA MARCADO POR DEFECTO: LO QUE SE VE ES LO QUE SE DECLARA.
+        //
+        // Antes un turno sin borrador previo nacía con TODAS las actividades del catálogo en
+        // «hecha». De ese marcado sale el puntaje del turno, del puntaje la nota mensual y de la
+        // nota el pago: abrir la pantalla y enviar sin tocar nada acreditaba el catálogo entero.
+        // Los borradores que hay hoy en la base tienen el 100 % de sus actividades en
+        // realizada=true, que es lo que produce un default, no una jornada.
+        //
+        // Arrancar sin marcar no le cambia la costumbre al equipo: es lo que ya hace todos los
+        // días el sistema viejo, que dibuja cada casilla sin `checked` (public/js/app.js:512) y
+        // guarda en el borrador únicamente las marcadas (public/js/reportes-autoenvio.js:103).
+        // El atajo sigue estando: «Todas» marca el turno completo de un clic, y eso es un acto
+        // explícito de la persona, no una decisión que el formulario tomó por ella.
+        //
+        // Mismo criterio y misma razón que en Valores 360° (apps/erp-web/app/valores/cliente.tsx:22-31).
         actividades.forEach((a) => {
           const p = prev.get(a.cod);
-          initDone[a.cod] = p ? Boolean(p.realizada) : true;
+          initDone[a.cod] = Boolean(p?.realizada);
           if (p?.obs) initObs[a.cod] = p.obs;
         });
         setDone(initDone);
@@ -227,6 +242,22 @@ export function NuevoReporteForm({
           ? 'Selecciona al encargado del turno, que es quien lo firma.'
           : null;
 
+  /**
+   * Elegir al encargado del turno también lo marca como colaborador.
+   *
+   * El RPC ya lo contaba —el encargado entra a `reporte_trabajadores` esté o no en el picker— pero
+   * en pantalla no se veía marcado, así que había que acordarse de que igual contaba. Ahora se
+   * marca solo: lo que se ve es lo que se guarda.
+   *
+   * Al cambiar de encargado no se desmarca al anterior: puede haber trabajado el turno igual, y
+   * quitarlo en silencio sería peor que dejarlo de más. Se destilda a mano.
+   */
+  function elegirEncargado(ids: string[]) {
+    setEncargadoSel(ids);
+    const id = ids[0];
+    if (id && !trabajadores.includes(id)) setTrabajadores((p) => [...p, id]);
+  }
+
   // Tarea 6: el encargado SIEMPRE cuenta como colaborador (el RPC lo agrega a
   // reporte_trabajadores aunque no esté en el picker de "Colaboradores del turno") — el contador
   // de Equipo refleja esa unión, no solo el picker de trabajadores.
@@ -261,7 +292,15 @@ export function NuevoReporteForm({
         sede,
         fecha,
         turno,
-        encargadoId,
+        // EL CRÉDITO DEL TURNO ES DE QUIEN LO FIRMA, NO DE QUIEN ABRIÓ LA SESIÓN.
+        //
+        // La prop `encargadoId` es el usuario de la sesión (así lo pasa page.tsx) y solo sirve
+        // como valor inicial del selector. Si el auto-cierre alcanza a este borrador, copia esta
+        // columna a reportes.encargado_id y le abre una fila en reporte_trabajadores
+        // (0052_reportes_acceso_turnos.sql): guardar aquí al de la sesión le acreditaba el turno a
+        // quien tenía el navegador abierto, no a quien la persona eligió. Se guarda el elegido; el
+        // de la sesión queda solo como respaldo si el selector quedó vacío.
+        encargadoId: encargadoSel[0] ?? encargadoId,
         payload: {
           trabajadores,
           encargado: encargadoSel,
@@ -394,7 +433,7 @@ export function NuevoReporteForm({
                 );
               })}
             </div>
-            <p className="mt-2 font-mono text-xs text-muted">
+            <p className="mt-2 tabular-nums text-xs text-muted">
               {sede} · {fecha}
               {turno && ` · ${idReporte(fecha, turno, sede)}`}
             </p>
@@ -422,7 +461,7 @@ export function NuevoReporteForm({
                 <PersonaPicker
                   empleados={empleadosOrden}
                   selected={encargadoSel}
-                  onChange={setEncargadoSel}
+                  onChange={elegirEncargado}
                   placeholder="Buscar encargado…"
                   single
                   testId="picker-encargado"
@@ -468,7 +507,7 @@ export function NuevoReporteForm({
                       'Venció el plazo, pero se guardó todo lo que ya habías marcado (actividades, limpieza, extras, colaboradores). Corresponde evaluarlo.'
                     ) : (
                       <>
-                        El reporte <span className="font-mono">{yaEnviado.id}</span> ya está registrado. Ahora corresponde evaluarlo.
+                        El reporte <span className="tabular-nums">{yaEnviado.id}</span> ya está registrado. Ahora corresponde evaluarlo.
                       </>
                     )}
                   </p>
@@ -545,7 +584,7 @@ export function NuevoReporteForm({
               <CardHeader>
                 <CardTitle>Actividades del turno</CardTitle>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-xs text-muted tabular-nums">
+                  <span className="tabular-nums text-xs text-muted">
                     {actDone}/{cat.length}
                   </span>
                   <button
@@ -585,10 +624,10 @@ export function NuevoReporteForm({
                         on ? 'border-navy/15 bg-navy/[0.03]' : 'border-line bg-white',
                       )}
                     >
-                      <span className="w-10 shrink-0 font-mono text-[11px] text-muted">{a.cod}</span>
+                      <span className="w-10 shrink-0 tabular-nums text-[11px] text-muted">{a.cod}</span>
                       <div className="min-w-0 flex-1">
                         <span className="text-[13px] font-medium leading-snug text-navy">{a.nombre}</span>
-                        {a.peso > 0 && <span className="ml-1.5 font-mono text-[10px] text-muted">{a.peso}pts</span>}
+                        {a.peso > 0 && <span className="ml-1.5 tabular-nums text-[10px] text-muted">{a.peso}pts</span>}
                         {a.pendienteAcumulado && (
                           <Badge tone="amber" className="ml-1.5">
                             pendiente
@@ -715,7 +754,7 @@ export function NuevoReporteForm({
             <CardHeader>
               <CardTitle>Extras</CardTitle>
               {extras.length > 0 && (
-                <span className="font-mono text-xs text-muted tabular-nums">{extras.length} agregado(s)</span>
+                <span className="tabular-nums text-xs text-muted">{extras.length} agregado(s)</span>
               )}
             </CardHeader>
             <CardContent className="space-y-3">
@@ -752,7 +791,7 @@ export function NuevoReporteForm({
                             >
                               {enLista ? <Check className="h-3 w-3" strokeWidth={2.5} /> : <Plus className="h-3 w-3" strokeWidth={2.5} />}
                               {c.nombre}
-                              {enLista && <span className="font-mono text-[11px] font-bold">×{enLista.cantidad}</span>}
+                              {enLista && <span className="tabular-nums text-[11px] font-bold">×{enLista.cantidad}</span>}
                             </button>
                           );
                         })}
@@ -785,7 +824,7 @@ export function NuevoReporteForm({
                         >
                           <Minus className="h-3.5 w-3.5" strokeWidth={2} />
                         </button>
-                        <span className="w-6 text-center font-mono text-sm font-semibold tabular-nums">{e.cantidad}</span>
+                        <span className="w-6 text-center tabular-nums text-sm font-semibold">{e.cantidad}</span>
                         <button
                           type="button"
                           onClick={() => cambiarCantidadExtra(i, 1)}
@@ -870,31 +909,31 @@ export function NuevoReporteForm({
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
               <span className="text-xs text-muted">
                 Limpieza{' '}
-                <span className="font-mono text-sm font-bold tabular-nums text-exito-deep">
+                <span className="tabular-nums text-sm font-bold text-exito-deep">
                   {limpiezaPts.got}
                 </span>
-                <span className="font-mono text-[11px] text-muted">/{limpiezaPts.tot}</span>
+                <span className="tabular-nums text-[11px] text-muted">/{limpiezaPts.tot}</span>
               </span>
               <span className="text-xs text-muted">
                 Actividades{' '}
-                <span className="font-mono text-sm font-bold tabular-nums text-navy">
+                <span className="tabular-nums text-sm font-bold text-navy">
                   {actDone}/{cat.length}
                 </span>
               </span>
               <span className="text-xs text-muted" title="El encargado del turno siempre cuenta como colaborador">
-                Equipo <span className="font-mono text-sm font-bold tabular-nums text-navy">{equipoCount}</span>
+                Equipo <span className="tabular-nums text-sm font-bold text-navy">{equipoCount}</span>
               </span>
               {extras.filter((e) => e.nombre.trim()).length > 0 && (
                 <span className="text-xs text-muted">
                   Extras{' '}
-                  <span className="font-mono text-sm font-bold tabular-nums text-navy">
+                  <span className="tabular-nums text-sm font-bold text-navy">
                     {extras.filter((e) => e.nombre.trim()).length}
                   </span>
                 </span>
               )}
               <span className="rounded-full bg-gold/15 px-3 py-1 text-xs text-muted">
                 Total{' '}
-                <span className="font-mono text-base font-bold tabular-nums text-gold-deep">{totalPts}</span>{' '}
+                <span className="tabular-nums text-base font-bold text-gold-deep">{totalPts}</span>{' '}
                 pts
               </span>
               {/* Tarea 5: cuenta regresiva del turno — ámbar a ≤30 min, como avisaba el header.js
@@ -902,7 +941,7 @@ export function NuevoReporteForm({
               {minutosRestantes !== null && (
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2.5 py-1 font-mono text-xs font-medium tabular-nums',
+                    'inline-flex items-center gap-1 rounded-full px-2.5 py-1 tabular-nums text-xs font-medium',
                     minutosRestantes <= 0
                       ? 'bg-error-soft text-error-deep'
                       : minutosRestantes <= 30

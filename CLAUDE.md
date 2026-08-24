@@ -138,7 +138,9 @@ El protocolo completo para trabajar en varias secciones a la vez está en
 - **Commits:** Conventional Commits — `tipo(scope): descripción`. Scopes: `core`, `adapter`,
   `migration`, `pipeline`, `reportes`, `evaluaciones`, `empleados`, `erp`, `tools`.
 - **Colores:** navy `#2e3e6e` · gold `#b8a515`. NO usar `#0A1628` ni `#C8A24B` (deprecados).
-- **Fuentes:** Cormorant Garamond (display) · Inter (cuerpo) · JetBrains Mono (códigos).
+- **Fuentes:** Cormorant Garamond (display) · Inter (cuerpo). **Nada monoespaciado en el ERP**
+  (21-ago-2026): los números se alinean con `tabular-nums` y lo hace cumplir el guard. JetBrains
+  Mono sigue vigente sólo en las etiquetas físicas (ver manual de marca).
 - **Estética:** seria y sobria. Sin confeti, sin elementos infantiles, emojis mínimos y funcionales.
 - **Migraciones:** idempotentes. `create ... if not exists`, y `alter` envuelto para que reaplicar
   no falle.

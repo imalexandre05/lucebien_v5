@@ -249,9 +249,21 @@ export async function declararDia(d: DeclaracionDia): Promise<void> {
     throw new Error(`${d.fecha}: una falta no lleva horas. Quitá las horas o cambiá la condición.`);
   }
 
-  const turno = d.turno ?? TURNO_DIA_COMPLETO;
   const sb = getServerClient();
 
+  // Las horas que se declaran acá las escribió una persona, así que dejan de ser de la máquina.
+  //
+  // POR QUÉ HACE FALTA DECIRLO. `huellero_puso_entrada` / `huellero_puso_salida` no son un dato
+  // de auditoría: mandan. La derivación recalcula exactamente las horas cuyo sello está en `true`
+  // (0079_huellero_emparejado_fix.sql:270-273) y la reversión de un mapeo anula exactamente ésas
+  // (0075:876-877). Sin bajar el sello, la corrección se escribía bien y el siguiente lote del
+  // colector la volvía a pisar con la hora de la máquina, sin un solo error a la vista — y el
+  // 98,8 % de las filas de `asistencias` viene del huellero. `crearAsistencia()` ya lo hacía;
+  // esta puerta, que es la principal, no.
+  //
+  // Sólo cuando hay hora: el sello protege una hora, y sobre una hora en `null` no protege nada
+  // (la derivación la rellena igual por el `coalesce` de 0079:270-273). En la rama de `insert`
+  // este mismo objeto alcanza: si no hay hora, la columna toma su `default false`.
   const declaracion = {
     condicion: d.condicion,
     hora_entrada: d.horaEntrada || null,
@@ -259,16 +271,46 @@ export async function declararDia(d: DeclaracionDia): Promise<void> {
     tardanza_justificada: d.tardanzaJustificada,
     falta_justificada: d.faltaJustificada,
     motivo_justificacion: d.motivoJustificacion?.trim() || null,
+    ...(d.horaEntrada ? { huellero_puso_entrada: false } : {}),
+    ...(d.horaSalida ? { huellero_puso_salida: false } : {}),
   };
 
-  const { data: existente, error: eBuscar } = await sb
+  // QUÉ FILA SE DECLARA, Y POR QUÉ NO SIEMPRE UNA NUEVA.
+  //
+  // Declarar un día ponía la fila en el turno «día completo» salvo que quien llamara dijera otro.
+  // Eso alcanzaba cuando la tabla tenía una fila por día; desde que el huellero escribe una fila
+  // por TRAMO (migración 0079) y el envío de un reporte deja la suya con el turno de ese turno, un
+  // día suele llegar acá con una fila ya puesta. Insertar otra dejaba el día con dos, y desde la
+  // 0085 un día con una fila declarada y otra en `sin_dato` bloquea la liquidación entera: el
+  // administrador declaraba el día y el periodo quedaba trabado, sin entender por qué.
+  //
+  // Con una sola fila en el día, se declara ESA, sea cual sea su turno. Con varias —el día partido
+  // en tramos— no hay una respuesta única y el sistema no la inventa: se explica y se pide
+  // declarar tramo por tramo, que es lo que la pantalla ya permite pasando `turno`.
+  const { data: delDia, error: eBuscar } = await sb
     .from('asistencias')
-    .select('id')
+    .select('id, turno')
     .eq('empleado_id', d.empleadoId)
-    .eq('fecha', d.fecha)
-    .eq('turno', turno)
-    .maybeSingle();
+    .eq('fecha', d.fecha);
   if (eBuscar) throw new Error(eBuscar.message);
+
+  const filas = (delDia ?? []) as { id: string; turno: string }[];
+  const explicito = d.turno ?? null;
+  const existente = explicito
+    ? (filas.find((f) => f.turno === explicito) ?? null)
+    : filas.length === 1
+      ? filas[0]
+      : null;
+
+  if (!explicito && filas.length > 1) {
+    const turnos = filas.map((f) => f.turno).join(', ');
+    throw new Error(
+      `${d.fecha}: el día está partido en varios tramos (${turnos}). Declara cada uno por separado ` +
+        'para no perder las horas de ninguno.',
+    );
+  }
+
+  const turno = explicito ?? TURNO_DIA_COMPLETO;
 
   if (existente) {
     const { error } = await sb.from('asistencias').update(declaracion).eq('id', (existente as { id: string }).id);

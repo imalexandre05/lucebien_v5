@@ -25,52 +25,107 @@ export type Colaborador = {
   sedeCod: string | null;
   fechaIngreso: string | null;
   salarioBase: number;
+  /** `false` cuando la persona está suspendida. Ver `listarColaboradores`. */
+  activo: boolean;
 };
 
-/** Las personas activas, para el selector y la lista. Consulta liviana a propósito. */
-export async function listarColaboradores(): Promise<Colaborador[]> {
+const COLUMNAS_COLABORADOR =
+  'id, nombre, iniciales, rol, rol_cod, sede_cod, fecha_ingreso, salario_base, activo';
+
+const aColaborador = (r: Record<string, unknown>): Colaborador => ({
+  id: String(r.id),
+  nombre: String(r.nombre ?? ''),
+  iniciales: (r.iniciales as string | null) ?? null,
+  rol: String(r.rol ?? ''),
+  rolCod: (r.rol_cod as string | null) ?? null,
+  sedeCod: (r.sede_cod as string | null) ?? null,
+  fechaIngreso: r.fecha_ingreso ? String(r.fecha_ingreso).slice(0, 10) : null,
+  salarioBase: Number(r.salario_base ?? 0),
+  activo: r.activo !== false,
+});
+
+/**
+ * Las personas para el selector y la lista. Consulta liviana a propósito.
+ *
+ * POR QUÉ EXISTE `incluirSuspendidos`. Suspender era una puerta de una sola dirección. El botón
+ * Reactivar vive en la pestaña Datos y el formulario de abono en la pestaña Liquidación y pago,
+ * las dos DENTRO del expediente, y al expediente sólo se llega desde esta lista — /empleados es un
+ * redirect a /personal. Con la lista recortada a `activo = true`, quien suspendía a alguien perdía
+ * el camino para reactivarlo y para terminar de pagarle lo que le quedaba debiendo.
+ *
+ * NO AMPLÍA LO QUE NADIE VE (no-negociable 3): sigue mandando la RLS de `emp_select`. Esto cambia
+ * qué pide la lista, no qué deja ver la base. Quién lo pide lo decide quien llama (hoy sólo
+ * admin/dueño, ver app/personal/page.tsx).
+ */
+export async function listarColaboradores(incluirSuspendidos = false): Promise<Colaborador[]> {
   const sb = getServerClient();
-  const { data, error } = await sb
-    .from('empleados')
-    .select('id, nombre, iniciales, rol, rol_cod, sede_cod, fecha_ingreso, salario_base')
-    .eq('activo', true)
-    .order('nombre', { ascending: true });
+  let consulta = sb.from('empleados').select(COLUMNAS_COLABORADOR);
+  if (!incluirSuspendidos) consulta = consulta.eq('activo', true);
+  const { data, error } = await consulta.order('nombre', { ascending: true });
   if (error) throw new Error(error.message);
-  return ((data as Record<string, unknown>[]) ?? []).map((r) => ({
-    id: String(r.id),
-    nombre: String(r.nombre ?? ''),
-    iniciales: (r.iniciales as string | null) ?? null,
-    rol: String(r.rol ?? ''),
-    rolCod: (r.rol_cod as string | null) ?? null,
-    sedeCod: (r.sede_cod as string | null) ?? null,
-    fechaIngreso: r.fecha_ingreso ? String(r.fecha_ingreso).slice(0, 10) : null,
-    salarioBase: Number(r.salario_base ?? 0),
-  }));
+  return ((data as Record<string, unknown>[]) ?? []).map(aColaborador);
 }
 
 export async function obtenerColaborador(id: string): Promise<Colaborador | null> {
   const sb = getServerClient();
   const { data, error } = await sb
     .from('empleados')
-    .select('id, nombre, iniciales, rol, rol_cod, sede_cod, fecha_ingreso, salario_base')
+    .select(COLUMNAS_COLABORADOR)
     .eq('id', id)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) return null;
-  const r = data as Record<string, unknown>;
-  return {
-    id: String(r.id),
-    nombre: String(r.nombre ?? ''),
-    iniciales: (r.iniciales as string | null) ?? null,
-    rol: String(r.rol ?? ''),
-    rolCod: (r.rol_cod as string | null) ?? null,
-    sedeCod: (r.sede_cod as string | null) ?? null,
-    fechaIngreso: r.fecha_ingreso ? String(r.fecha_ingreso).slice(0, 10) : null,
-    salarioBase: Number(r.salario_base ?? 0),
-  };
+  return aColaborador(data as Record<string, unknown>);
 }
 
 type Fila = Record<string, unknown>;
+
+// ── Fechas: los dos criterios que usa el resto del archivo, juntos ───────────────────────
+
+/**
+ * El instante en que empieza un día natural de Perú (UTC−5), para filtrar una columna
+ * `timestamptz`.
+ *
+ * POR QUÉ. `pipeline_puntos.fecha` es timestamptz y el servidor corre en UTC (no-negociable 4).
+ * Comparar contra 'YYYY-MM-DD' pelado lo interpreta como medianoche UTC, que en hora Perú son las
+ * 19:00 del día ANTERIOR: el rango entero queda corrido cinco horas y el último día del período se
+ * pierde casi completo. Medido contra la base el 23-ago-2026: los puntos de junio de una misma
+ * persona daban 38,50 con el filtro viejo y 70,50 con éste.
+ *
+ * Se cierra con `lt` sobre el día siguiente y no con `lte` sobre el último día, porque `hasta`
+ * tiene que entrar ENTERO, hasta las 23:59:59 de Perú.
+ *
+ * Duplicado a propósito en lib/desempeno-repo.ts: son las dos únicas consultas de la aplicación
+ * que filtran esta columna. La RPC de la 0057 tiene su propio filtro y otro criterio: no se toca.
+ */
+export const inicioDiaPeru = (dia: string): string => `${dia}T00:00:00-05:00`;
+
+/** El día siguiente a 'YYYY-MM-DD'. Aritmética en UTC para que la zona del proceso no la corra. */
+export const diaSiguiente = (dia: string): string =>
+  new Date(Date.parse(`${dia}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * Los días 'YYYY-MM-DD' de un rango cerrado, en orden. Aritmética en UTC por el mismo motivo.
+ *
+ * El tope de 400 vueltas es un cinturón, no una regla: un contrato mal cargado con `fecha_fin` en
+ * 2099 no puede colgar la pantalla. Ningún período que ofrece la barra llega a un año.
+ */
+function diasEntre(desde: string, hasta: string): string[] {
+  const dias: string[] = [];
+  const inicio = Date.parse(`${desde}T00:00:00Z`);
+  const fin = Date.parse(`${hasta}T00:00:00Z`);
+  if (!Number.isFinite(inicio) || !Number.isFinite(fin)) return dias;
+  for (let t = inicio, i = 0; t <= fin && i < 400; t += 86_400_000, i += 1) {
+    dias.push(new Date(t).toISOString().slice(0, 10));
+  }
+  return dias;
+}
+
+/** Día de semana ISO (1 = lunes … 7 = domingo), igual que `extract(isodow …)` de Postgres. */
+function diaSemanaIso(dia: string): number {
+  const d = new Date(`${dia}T00:00:00Z`).getUTCDay();
+  return d === 0 ? 7 : d;
+}
 
 /**
  * El estado de un conjunto de personas en un período, de un saque.
@@ -104,8 +159,10 @@ export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<s
       .from('pipeline_puntos')
       .select('empleado_id, puntos')
       .in('empleado_id', ids)
-      .gte('fecha', p.desde)
-      .lte('fecha', p.hasta),
+      // La ÚNICA columna timestamptz de estas cuatro consultas: se filtra por día natural de
+      // Perú (ver `inicioDiaPeru`). Las otras tres miran columnas `date` y no necesitan nada.
+      .gte('fecha', inicioDiaPeru(p.desde))
+      .lt('fecha', inicioDiaPeru(diaSiguiente(p.hasta))),
   ]);
   for (const r of [rep, asis, inc, pipe]) {
     if (r.error) throw new Error(r.error.message);
@@ -140,29 +197,102 @@ export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<s
     dias.set(fecha, actual);
     diasPorEmpleado.set(id, dias);
   }
-  for (const [id, dias] of diasPorEmpleado) {
-    const e = mapa.get(id);
-    if (!e) continue;
-    for (const d of dias.values()) {
-      if (d.declarado) e.diasDeclarados += 1;
-      else e.diasSinDato += 1;
-      if (d.sinSalida) e.diasSinSalida += 1;
-    }
-  }
 
   // Contrato que cubre el período. `estado <> 'borrador'`: un borrador todavía no pacta nada.
   const { data: acu, error: eAcu } = await sb
     .from('sueldo_acuerdos')
-    .select('empleado_id, fecha_inicio, fecha_fin, estado')
+    .select('id, empleado_id, fecha_inicio, fecha_fin, estado')
     .in('empleado_id', ids)
     .neq('estado', 'borrador');
   if (eAcu) throw new Error(eAcu.message);
+
+  // El tramo del período que cada acuerdo cubre DE VERDAD: su vigencia intersectada con el rango
+  // elegido. Se guardan todos los acuerdos que se solapan y no sólo el primero, porque un período
+  // puede quedar partido entre dos contratos (uno termina el 15, el otro empieza el 16) y mirar
+  // sólo uno dejaría media quincena fuera del calendario de abajo.
+  type TramoContratado = { acuerdoId: string; desde: string; hasta: string };
+  const tramosPorEmpleado = new Map<string, TramoContratado[]>();
   for (const r of (acu as Fila[]) ?? []) {
-    const e = de(r.empleado_id);
-    if (!e || e.contrato) continue;
+    const empId = String(r.empleado_id ?? '');
+    const e = mapa.get(empId);
+    if (!e) continue;
     const inicio = String(r.fecha_inicio ?? '').slice(0, 10);
     const fin = r.fecha_fin ? String(r.fecha_fin).slice(0, 10) : null;
-    if (inicio <= p.hasta && (fin == null || fin >= p.desde)) e.contrato = true;
+    if (!(inicio <= p.hasta && (fin == null || fin >= p.desde))) continue;
+    e.contrato = true;
+    const tramos = tramosPorEmpleado.get(empId) ?? [];
+    tramos.push({
+      acuerdoId: String(r.id),
+      desde: inicio > p.desde ? inicio : p.desde,
+      hasta: fin != null && fin < p.hasta ? fin : p.hasta,
+    });
+    tramosPorEmpleado.set(empId, tramos);
+  }
+
+  // Qué días de la semana contrata cada acuerdo. Sin esto no hay calendario que recorrer: un
+  // domingo sin turno no es un día sin declarar, es un día libre.
+  //
+  // AISLAMIENTO. `sueldo_turnos_select` (0072) deja ver los turnos propios, y todos al
+  // administrador. A quien no sea admin le llegan sólo los suyos y el resto de las personas cae al
+  // conteo por filas de más abajo — se pierde precisión en un indicador, no se filtra nada.
+  const turnosPorAcuerdo = new Map<string, Set<number>>();
+  const acuerdoIds = [...tramosPorEmpleado.values()].flat().map((t) => t.acuerdoId);
+  if (acuerdoIds.length > 0) {
+    const { data: tur, error: eTur } = await sb
+      .from('sueldo_acuerdo_turnos')
+      .select('acuerdo_id, dia_semana')
+      .in('acuerdo_id', acuerdoIds);
+    if (eTur) throw new Error(eTur.message);
+    for (const r of (tur as Fila[]) ?? []) {
+      const acuerdoId = String(r.acuerdo_id ?? '');
+      const dia = Number(r.dia_semana ?? 0);
+      if (dia < 1 || dia > 7) continue;
+      const dias = turnosPorAcuerdo.get(acuerdoId) ?? new Set<number>();
+      dias.add(dia);
+      turnosPorAcuerdo.set(acuerdoId, dias);
+    }
+  }
+
+  // El conteo de días, con el MISMO criterio que el motor: recorrer el CALENDARIO del contrato
+  // —`generate_series(fecha_inicio, fecha_fin)` en 0085:62-78, heredado tal cual de 0078:139-163—
+  // y marcar como sin declarar todo día con turno contratado que no tenga una fila con condición
+  // distinta de 'sin_dato'.
+  //
+  // ANTES ACÁ SE RECORRÍAN SÓLO LAS FILAS QUE EXISTÍAN, que es la medición al revés: un día
+  // contratado del que nadie cargó NADA no sumaba a `diasSinDato`, el paso se pintaba verde, y
+  // recién al apretar Calcular el motor cortaba con «falta declarar la asistencia de…». Si las dos
+  // reglas se vuelven a separar, el hilo vuelve a mentir justo antes de pagar.
+  //
+  // SIN CALENDARIO LEGIBLE el conteo queda como estaba, por filas: cuando no hay contrato que
+  // cubra el período —o el acuerdo todavía no tiene horario cargado, o la RLS no deja ver sus
+  // turnos— no hay días contratados que exigir, y contar cero sería peor que contar de menos.
+  for (const [id, e] of mapa) {
+    const dias = diasPorEmpleado.get(id) ?? new Map<string, { declarado: boolean; sinSalida: boolean }>();
+    for (const d of dias.values()) {
+      if (d.declarado) e.diasDeclarados += 1;
+      if (d.sinSalida) e.diasSinSalida += 1;
+    }
+
+    const tramos = (tramosPorEmpleado.get(id) ?? []).filter(
+      (t) => (turnosPorAcuerdo.get(t.acuerdoId)?.size ?? 0) > 0,
+    );
+    if (tramos.length === 0) {
+      for (const d of dias.values()) if (!d.declarado) e.diasSinDato += 1;
+      continue;
+    }
+
+    // Un Set y no un contador: dos tramos contiguos nunca se pisan (la base lo impide con
+    // `sueldo_acuerdos_sin_solape`), pero contar por fecha deja el número a salvo igual.
+    const sinDeclarar = new Set<string>();
+    for (const t of tramos) {
+      const contratados = turnosPorAcuerdo.get(t.acuerdoId);
+      if (!contratados) continue;
+      for (const dia of diasEntre(t.desde, t.hasta)) {
+        if (!contratados.has(diaSemanaIso(dia))) continue;
+        if (!dias.get(dia)?.declarado) sinDeclarar.add(dia);
+      }
+    }
+    e.diasSinDato = sinDeclarar.size;
   }
 
   // Evaluación del período: la más reciente cuyo ciclo se solape con el rango elegido.

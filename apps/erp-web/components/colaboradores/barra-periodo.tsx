@@ -12,7 +12,7 @@ import { cn } from '../../lib/cn';
 // La barra de período que comparten TODAS las secciones del módulo.
 //
 // Una sola barra, arriba de la navegación, es lo que hacía que el módulo viejo se sintiera simple:
-// elegís una vez y todo lo de abajo habla de ese período. Cuando cada pantalla trae su propio par
+// se elige una vez y todo lo de abajo habla de ese período. Cuando cada pantalla trae su propio par
 // de fechas, cambiar de pantalla es volver a empezar.
 //
 // El período viaja en la URL (lib/periodo.ts), así que este componente sólo la reescribe, y un
@@ -24,7 +24,7 @@ import { cn } from '../../lib/cn';
 
 // El campo del sistema, con la mono para las fechas: un rango se lee mejor con cifras de ancho
 // fijo. Todo lo demás —hover, foco, deshabilitado, error— viene de campoCls.
-const campo = cn(campoCls, 'font-mono');
+const campo = cn(campoCls, 'tabular-nums');
 
 export function BarraPeriodo({
   fechaIngreso,
@@ -130,7 +130,7 @@ export function BarraPeriodo({
       <p className="ml-auto flex items-center gap-1.5 text-xs text-muted">
         <CalendarRange className="h-3.5 w-3.5" aria-hidden />
         <span>{etiquetaPeriodo(periodo)}</span>
-        <span className="font-mono tabular-nums">· {diasDelPeriodo(periodo)} días</span>
+        <span className="tabular-nums">· {diasDelPeriodo(periodo)} días</span>
       </p>
     </div>
   );

@@ -238,7 +238,7 @@ export function PedidosConstructor({
         {exito && (
           <div className="flex items-center justify-between gap-3 rounded-md border border-exito-line bg-exito-soft px-4 py-3 text-sm text-exito-deep" data-testid="exito-banner">
             <span>
-              Pedido <span className="font-mono font-semibold">{exito.codigo}</span> registrado.
+              Pedido <span className="tabular-nums font-semibold">{exito.codigo}</span> registrado.
             </span>
             <div className="flex items-center gap-3">
               <Link href={`/pedidos/${exito.id}`} className="font-medium underline-offset-2 hover:underline">

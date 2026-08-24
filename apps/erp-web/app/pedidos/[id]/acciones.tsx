@@ -64,7 +64,7 @@ export function PedidoAcciones({ pedido }: { pedido: Pedido }) {
       {lineasConfeccion.map((linea) => (
         <div key={linea.id}>
           <p className="mb-1.5 text-xs uppercase tracking-wide text-muted">
-            Etapa de confección — <span className="font-mono">{linea.descripcion || linea.activoCodigo || linea.id.slice(0, 8)}</span>
+            Etapa de confección — <span className="tabular-nums">{linea.descripcion || linea.activoCodigo || linea.id.slice(0, 8)}</span>
           </p>
           <div className="flex flex-wrap gap-1.5">
             {ETAPAS_CONFECCION.map((e) => (

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../lib/auth';
 import { guardarConfig, crearParametroConfig, eliminarParametroConfig } from '../../lib/config-repo';
-import type { ConfigTipo } from '../../lib/config-catalogo';
+import { CONFIG_CATALOGO_MAP, type ConfigTipo } from '../../lib/config-catalogo';
 
 type R = { ok: boolean; error?: string };
 const fallo = (e: unknown): R => ({ ok: false, error: e instanceof Error ? e.message : 'Error' });
@@ -15,10 +15,34 @@ async function exigirAdmin(): Promise<R | null> {
   return null;
 }
 
+// El catálogo (lib/config-catalogo.ts) ya declara el tipo y el rango de cada parámetro conocido;
+// esto solo lo hace cumplir antes de escribir. Sin esta comprobación un número vacío o con letras
+// se guarda tal cual y el fallo aparece después y lejos: `private.evaluacion_componentes_datos`
+// castea el valor a numeric, devuelve el error 22P02 y el botón "Calcular" de /evaluaciones deja
+// de funcionar para todos, con texto crudo de Postgres en pantalla.
+//
+// No se valida un parámetro personalizado (no está en el catálogo: no declara tipo ni rango), ni
+// se exige que los 7 pesos de la nota sumen 1 — esa regla no está decidida todavía.
+function primerErrorDeCatalogo(items: { clave: string; valor: string }[]): string | null {
+  for (const item of items) {
+    const def = CONFIG_CATALOGO_MAP.get(item.clave);
+    if (!def || def.tipo !== 'numero') continue;
+    const crudo = (item.valor ?? '').trim();
+    if (crudo === '') return `"${def.etiqueta}" no puede quedar vacío: es un número.`;
+    const n = Number(crudo);
+    if (!Number.isFinite(n)) return `"${def.etiqueta}" debe ser un número (se recibió "${item.valor}").`;
+    if (def.min !== undefined && n < def.min) return `"${def.etiqueta}" no puede ser menor que ${def.min}.`;
+    if (def.max !== undefined && n > def.max) return `"${def.etiqueta}" no puede ser mayor que ${def.max}.`;
+  }
+  return null;
+}
+
 export async function accionGuardarConfig(items: { clave: string; valor: string }[]): Promise<R> {
   try {
     const bloqueo = await exigirAdmin();
     if (bloqueo) return bloqueo;
+    const invalido = primerErrorDeCatalogo(items);
+    if (invalido) return { ok: false, error: invalido };
     await guardarConfig(items);
     revalidatePath('/configuracion');
     return { ok: true };

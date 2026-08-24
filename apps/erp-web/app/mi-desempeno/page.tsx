@@ -96,12 +96,12 @@ export default async function MiDesempenoPage() {
               <TBody>
                 {d.reportes.map((r) => (
                   <TR key={r.id}>
-                    <TD className="pl-5 font-mono text-xs text-muted">{r.fecha}</TD>
+                    <TD className="pl-5 tabular-nums text-xs text-muted">{r.fecha}</TD>
                     <TD>{TURNO_LABEL[r.turno as keyof typeof TURNO_LABEL] ?? r.turno}</TD>
                     <TD>
                       <Badge tone={r.evaluado ? 'green' : 'amber'}>{r.evaluado ? 'Evaluado' : 'Pendiente'}</Badge>
                     </TD>
-                    <TD className="pr-5 text-right font-mono tabular-nums">{r.puntajeEval ?? '—'}</TD>
+                    <TD className="pr-5 text-right tabular-nums">{r.puntajeEval ?? '—'}</TD>
                   </TR>
                 ))}
               </TBody>
@@ -129,9 +129,9 @@ export default async function MiDesempenoPage() {
               <TBody>
                 {d.extras.map((e) => (
                   <TR key={e.id}>
-                    <TD className="pl-5 font-mono text-xs text-muted">{e.fecha}</TD>
+                    <TD className="pl-5 tabular-nums text-xs text-muted">{e.fecha}</TD>
                     <TD>{e.nombre}</TD>
-                    <TD className="pr-5 text-right font-mono tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
+                    <TD className="pr-5 text-right tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
                   </TR>
                 ))}
               </TBody>
@@ -157,7 +157,7 @@ export default async function MiDesempenoPage() {
               <TBody>
                 {d.incidencias.map((i) => (
                   <TR key={i.id}>
-                    <TD className="pl-5 font-mono text-xs text-muted">{i.fecha}</TD>
+                    <TD className="pl-5 tabular-nums text-xs text-muted">{i.fecha}</TD>
                     <TD>{i.tipo}</TD>
                     <TD className="pr-5">
                       <span

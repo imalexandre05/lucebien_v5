@@ -43,7 +43,7 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
           <Card key={k.label} className="animate-rise" style={{ animationDelay: `${i * 60}ms` }}>
             <CardContent className="pt-5">
               <div className="text-xs font-medium uppercase tracking-wide text-muted">{k.label}</div>
-              <div className="mt-2 font-mono text-2xl font-semibold tabular-nums text-navy">{k.value}</div>
+              <div className="mt-2 tabular-nums text-2xl font-semibold text-navy">{k.value}</div>
             </CardContent>
           </Card>
         ))}
@@ -57,11 +57,11 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between border-b border-line/60 py-1.5">
               <span className="text-muted">DNI</span>
-              <span className="font-mono text-navy">{cliente.dni || '—'}</span>
+              <span className="tabular-nums text-navy">{cliente.dni || '—'}</span>
             </div>
             <div className="flex justify-between border-b border-line/60 py-1.5">
               <span className="text-muted">Teléfono</span>
-              <span className="font-mono text-navy">{cliente.telefono || '—'}</span>
+              <span className="tabular-nums text-navy">{cliente.telefono || '—'}</span>
             </div>
             <div className="flex justify-between border-b border-line/60 py-1.5">
               <span className="text-muted">Talla</span>
@@ -105,9 +105,9 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
                     <TD className="pl-5">
                       <Badge tone={TIPO_TONE[p.tipo]}>{p.tipo}</Badge>
                     </TD>
-                    <TD className="font-mono text-xs">{p.detalle}</TD>
-                    <TD className="font-mono text-muted">{p.fecha}</TD>
-                    <TD className="pr-5 text-right font-mono tabular-nums">S/ {p.total.toFixed(2)}</TD>
+                    <TD className="tabular-nums text-xs">{p.detalle}</TD>
+                    <TD className="tabular-nums text-muted">{p.fecha}</TD>
+                    <TD className="pr-5 text-right tabular-nums">S/ {p.total.toFixed(2)}</TD>
                   </TR>
                 ))}
                 {pedidos.length === 0 && (

@@ -148,7 +148,7 @@ export function ActivoPicker({
                   deshabilitado ? 'cursor-not-allowed text-muted/60' : idx === hi ? 'bg-navy/10' : 'hover:bg-paper',
                 )}
               >
-                <span className={cn('font-mono', !deshabilitado && 'text-navy')}>{a.codigo}</span>
+                <span className={cn('tabular-nums', !deshabilitado && 'text-navy')}>{a.codigo}</span>
                 <span className="truncate text-xs text-muted">
                   {a.tipo} {a.talla} · {a.color}
                   {bloqueo && <> · ocupado por {bloqueo.codigo}</>}

@@ -25,8 +25,8 @@ export default async function ComprobantePago({ params }: { params: { id: string
           </div>
           <div className="text-right">
             <div className="text-sm font-semibold uppercase tracking-wide text-navy">Comprobante de pago</div>
-            <div className="mt-1 font-mono text-xs text-muted">N.º {p.id.slice(0, 8)}</div>
-            <div className="font-mono text-xs text-muted">{fecha}</div>
+            <div className="mt-1 tabular-nums text-xs text-muted">N.º {p.id.slice(0, 8)}</div>
+            <div className="tabular-nums text-xs text-muted">{fecha}</div>
           </div>
         </div>
 
@@ -38,7 +38,7 @@ export default async function ComprobantePago({ params }: { params: { id: string
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted">DNI</dt>
-            <dd className="font-mono text-navy">{p.empleadoDni || '—'}</dd>
+            <dd className="tabular-nums text-navy">{p.empleadoDni || '—'}</dd>
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-muted">Cargo</dt>
@@ -55,7 +55,7 @@ export default async function ComprobantePago({ params }: { params: { id: string
         {/* Monto */}
         <div className="mt-6 rounded-lg border border-gold/30 bg-gold/10 p-5 text-center">
           <div className="text-xs uppercase tracking-wide text-muted">Monto total</div>
-          <div className="font-mono text-3xl font-bold tabular-nums text-navy">S/ {p.monto.toFixed(2)}</div>
+          <div className="tabular-nums text-3xl font-bold text-navy">S/ {p.monto.toFixed(2)}</div>
           {(p.bonus > 0 || p.descuentos > 0) && (
             <div className="mt-1 text-xs text-muted">
               {p.bonus > 0 && <span>incluye bonus S/ {p.bonus.toFixed(2)}</span>}

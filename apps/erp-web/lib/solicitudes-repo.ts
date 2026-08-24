@@ -320,14 +320,12 @@ export async function deshacerSolicitud(id: string): Promise<void> {
   if (error) throw parsearErrorSolicitud(error);
 }
 
-// Marcar impreso: flag simple de una fila, sin reglas de estado — no necesita RPC, solo RLS
-// (mismo criterio que el resto de mutaciones triviales del proyecto, ej. incidencias-repo.ts).
+// Marcar impreso: era el único `update` plano que quedaba sobre la tabla. Desde la migración 0087
+// `solicitudes` no tiene política de UPDATE (toda transición pasa por RPC, hallazgo F29), y un
+// update sin política no da error: escribe cero filas y la pantalla diría "listo" sin haber
+// guardado nada. La RPC lleva la misma autoridad que la lectura: admin, almacén o sede propia.
 export async function marcarImpresoSolicitud(id: string, tipo: 'pedido' | 'confirmacion'): Promise<void> {
   const sb = getServerClient();
-  const campo =
-    tipo === 'pedido'
-      ? { pedido_impreso: true, fecha_pedido_impreso: new Date().toISOString() }
-      : { confirmacion_impresa: true, fecha_confirmacion_impresa: new Date().toISOString() };
-  const { error } = await sb.from('solicitudes').update(campo).eq('id', id);
-  if (error) throw new Error(error.message);
+  const { error } = await sb.rpc('solicitud_marcar_impreso', { p_id: id, p_tipo: tipo });
+  if (error) throw parsearErrorSolicitud(error);
 }

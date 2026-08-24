@@ -57,7 +57,7 @@ export function Ticket({
     <div className="sticky top-4 flex flex-col gap-4 rounded-lg border border-line bg-white p-4 shadow-card">
       <div>
         <p className="text-xs uppercase tracking-wide text-muted">Pedido nuevo</p>
-        <p className="font-mono text-sm text-navy">se genera el código al registrar</p>
+        <p className="tabular-nums text-sm text-navy">se genera el código al registrar</p>
       </div>
 
       <div className="max-h-56 space-y-1.5 overflow-y-auto border-y border-line/60 py-2">
@@ -67,14 +67,14 @@ export function Ticket({
             <span className="min-w-0 truncate text-navy">
               {l.cantidad}× {l.activoCodigo ?? l.descripcion ?? '—'}
             </span>
-            {l.esCortesia ? <Badge tone="green">CORTESÍA</Badge> : <span className="shrink-0 font-mono tabular-nums text-navy">{soles(l.cantidad * l.precioUnitario)}</span>}
+            {l.esCortesia ? <Badge tone="green">CORTESÍA</Badge> : <span className="shrink-0 tabular-nums text-navy">{soles(l.cantidad * l.precioUnitario)}</span>}
           </div>
         ))}
       </div>
 
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold uppercase tracking-wide text-navy">Total</span>
-        <span className="font-mono text-2xl font-bold tabular-nums text-gold-deep" data-testid="ticket-total">
+        <span className="tabular-nums text-2xl font-bold text-gold-deep" data-testid="ticket-total">
           {soles(total)}
         </span>
       </div>
@@ -90,7 +90,7 @@ export function Ticket({
         <p className="text-xs text-muted" data-testid="ticket-saldo">
           {saldo > 0 ? (
             <>
-              Saldo <span className="font-mono font-medium text-navy">{soles(saldo)}</span> · {cobroTipo === 'adelanto' ? 'ADELANTO' : cobroTipo?.toUpperCase()}
+              Saldo <span className="tabular-nums font-medium text-navy">{soles(saldo)}</span> · {cobroTipo === 'adelanto' ? 'ADELANTO' : cobroTipo?.toUpperCase()}
             </>
           ) : (
             <>Cobro completo</>
@@ -110,7 +110,7 @@ export function Ticket({
               value={montoApertura || ''}
               onChange={(e) => setMontoApertura(Number(e.target.value) || 0)}
               placeholder="Monto de apertura"
-              className="w-32 rounded-md border border-aviso-line bg-white px-2 py-1 text-right font-mono text-xs outline-none"
+              className="w-32 rounded-md border border-aviso-line bg-white px-2 py-1 text-right tabular-nums text-xs outline-none"
             />
             <Button type="button" variant="outline" pending={abriendoCaja} onClick={() => onAbrirCaja(montoApertura)} data-testid="abrir-caja-inline">
               Abrir caja
@@ -127,7 +127,7 @@ export function Ticket({
 
       <Button type="button" variant="gold" pending={registrando} disabled={Boolean(disabledMotivo)} onClick={onRegistrar} data-testid="registrar-pedido">
         {registrando ? 'Registrando…' : 'Registrar pedido'}
-        <span className="ml-1 hidden font-mono text-[10px] opacity-70 sm:inline">Ctrl+Enter</span>
+        <span className="ml-1 hidden tabular-nums text-[10px] opacity-70 sm:inline">Ctrl+Enter</span>
       </Button>
       {disabledMotivo && <p className="text-center text-[11px] text-muted">{disabledMotivo}</p>}
     </div>

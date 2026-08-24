@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Package, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, UsersRound, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Package, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, Truck, Fingerprint, UsersRound, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -25,6 +25,16 @@ type Item = {
    * R1.1, ver Personal más abajo).
    */
   modulosAlternos?: string[];
+  /**
+   * Exceptúa a esta entrada del filtro por perfil de sede (permiteModuloPerfil), sin exceptuarla
+   * del permiso: puede() se sigue evaluando igual. Sirve cuando UNA pantalla de un módulo con
+   * perfil sí corresponde al otro perfil — el caso es /pipeline/envios, que es la confirmación
+   * que hace la TIENDA de lo que le llegó del almacén, dentro del módulo 'pipeline' que
+   * MODULOS_SOLO_ALMACEN esconde en las sedes 'pos'. Se marca la entrada del menú y no se toca
+   * MODULOS_SOLO_ALMACEN: sacar 'pipeline' de esa lista devolvería además el kanban completo del
+   * almacén a las tres tiendas, que es justo lo que el perfil de sede quiere evitar.
+   */
+  neutralPerfil?: boolean;
 };
 
 const NAV: { section: string; items: Item[] }[] = [
@@ -40,6 +50,12 @@ const NAV: { section: string; items: Item[] }[] = [
       // MODULOS_SOLO_ALMACEN) a propósito — el plan pide que se vea en AMBOS perfiles de sede.
       { label: 'Solicitudes', href: '/solicitudes', icon: PackagePlus, modulo: 'solicitudes' },
       { label: 'Pipeline', href: '/pipeline', icon: Shirt, modulo: 'pipeline' },
+      // Única pantalla del módulo 'pipeline' que se usa DESDE la tienda: acá se acepta u observa
+      // lo que mandó el almacén. Sin entrada propia sólo se llegaba entrando al kanban, que en
+      // una sede 'pos' está escondido — la pantalla existía y no se podía alcanzar. El permiso
+      // 'pipeline' ya está concedido a encargado_tienda y a los dos ventas_junior en
+      // permisos_modulos; lo único que faltaba era la puerta.
+      { label: 'Envíos a tienda', href: '/pipeline/envios', icon: Truck, modulo: 'pipeline', neutralPerfil: true },
       // INVENTARIO SE QUEDA, aunque el resto de lo comercial salió del menú el 20-ago-2026.
       // Confirmado por Alexander el 21-ago: conectar el otro sistema va a tomar un tiempo y
       // mientras tanto el equipo tiene que poder trabajar con esto. Vive en «Interno» y no en una
@@ -88,6 +104,12 @@ const NAV: { section: string; items: Item[] }[] = [
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },
       { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle, modulo: 'incidencias' },
       { label: 'Dispositivos', href: '/dispositivos', icon: Laptop, modulo: 'dispositivos' },
+      // Único lugar donde se mapea un identificador del huellero a una persona, se ve la cola sin
+      // asignar y se ve si el equipo está al día; sin entrada de menú las marcas se acumulan sin
+      // que nadie las vea. Reusa el módulo 'dispositivos' —que no tiene fila en permisos_modulos,
+      // así que puede() sólo deja pasar a admin/dueño— porque es exactamente el mismo gate que la
+      // página ya aplica por dentro (page.tsx redirige a /asistencias a quien no es admin).
+      { label: 'Huellero', href: '/asistencias/huellero', icon: Fingerprint, modulo: 'dispositivos' },
       // Fase 13 tarea 4: sin filas propias en permisos_modulos (mismo criterio que empleados/
       // configuracion/dispositivos arriba) → puede() solo deja pasar a admin/dueño por mecanismo.
       { label: 'Auditoría', href: '/administracion/auditoria', icon: History, modulo: 'auditoria' },
@@ -113,6 +135,16 @@ const NAV: { section: string; items: Item[] }[] = [
 // `perfilSede` (Fase 2): además de puede(), un módulo debe tener sentido en el PERFIL de la sede
 // activa — pipeline no aparece en una sede 'pos' ni pedidos/caja/clientes en una 'almacen' (ver
 // permiteModuloPerfil() en @scilb/core). null/undefined (sede sin perfil resuelto) no filtra nada.
+// Con /pipeline y /pipeline/envios en el mismo menú, el startsWith de siempre marcaría las dos
+// filas a la vez. Gana la coincidencia más larga, así la ruta anidada se resalta sola y el padre
+// sólo cuando no hay una entrada más específica.
+const HREFS = NAV.flatMap((g) => g.items.map((i) => i.href));
+function hrefActivo(path: string): string | null {
+  const coinciden = HREFS.filter((h) => (h === '/' ? path === '/' : path.startsWith(h)));
+  if (coinciden.length === 0) return null;
+  return coinciden.reduce((a, b) => (b.length > a.length ? b : a));
+}
+
 export function SidebarNav({
   rol,
   matriz,
@@ -125,6 +157,7 @@ export function SidebarNav({
   perfilSede?: SedePerfil | null;
 }) {
   const path = usePathname();
+  const activo = hrefActivo(path ?? '');
   return (
     <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
       {NAV.map((group) => {
@@ -134,7 +167,9 @@ export function SidebarNav({
         const items = group.items.filter((it) => {
           const candidatos = [it.modulo, ...(it.modulosAlternos ?? [])];
           return candidatos.some(
-            (m) => puede(matriz, rol, m, 'ver', rolCod) && permiteModuloPerfil(m, perfilSede),
+            (m) =>
+              puede(matriz, rol, m, 'ver', rolCod) &&
+              (it.neutralPerfil || permiteModuloPerfil(m, perfilSede)),
           );
         });
         if (items.length === 0) return null;
@@ -145,7 +180,7 @@ export function SidebarNav({
             </div>
             <ul className="space-y-0.5">
               {items.map((it) => {
-                const active = it.href === '/' ? path === '/' : path.startsWith(it.href);
+                const active = it.href === activo;
                 const Icon = it.icon;
                 return (
                   <li key={it.href}>
@@ -180,10 +215,14 @@ export function SidebarNav({
   );
 }
 
+// El pie decía «Fase 1 · demo» en todas las pantallas, incluida la de un colaborador. Mientras el
+// sistema era una maqueta eso era honesto; ahora va a llevar sueldos de personas reales, y una
+// pantalla que se anuncia como demo invita a no confiar en lo que muestra. Queda el nombre de la
+// empresa, que es de quien es el sistema.
 export function SidebarFooter() {
   return (
     <div className="border-t border-white/10 px-6 py-4 text-[11px] leading-relaxed text-paper/40">
-      Fase 1 · demo
+      Sistema de Control Interno
       <br />
       Confecciones Aliaga E.I.R.L.
     </div>

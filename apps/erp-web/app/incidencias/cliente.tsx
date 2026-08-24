@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Trash2, Filter, AlertTriangle } from 'lucide-react';
-import { accionCrearIncidencia, accionEliminarIncidencia } from './actions';
+import { accionAsignarResponsableIncidencia, accionCrearIncidencia, accionEliminarIncidencia } from './actions';
 import type { Incidencia, TipoIncidencia } from '../../lib/incidencias-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
@@ -21,6 +21,11 @@ type Emp = { id: string; nombre: string };
 const NIVELES = ['Alto', 'Medio', 'Bajo'];
 const OPC_FILTRO_NIVEL: Opcion[] = [{ value: '', label: 'Todos los niveles' }, ...NIVELES.map((n) => ({ value: n, label: n }))];
 const fieldCls = campoCls;
+
+// Valor centinela del filtro por responsable: '' ya significa «todos», así que las incidencias
+// sin responsable necesitan un valor propio. No colisiona con ningún id porque los ids de
+// empleado son UUID.
+const SIN_RESPONSABLE = '__sin_responsable__';
 
 function NivelPill({ nivel }: { nivel: string }) {
   const cls =
@@ -63,6 +68,10 @@ export function IncidenciasCliente({
   const [fSede, setFSede] = useState('');
   const [fNivel, setFNivel] = useState('');
   const [fOrigen, setFOrigen] = useState('');
+  const [fResponsable, setFResponsable] = useState('');
+  // Qué fila está guardando su responsable: sin esto, el `pending` global de la transición
+  // deshabilitaría los diez selectores a la vez y no se sabría cuál se está guardando.
+  const [asignando, setAsignando] = useState<string | null>(null);
 
   const tiposPorCat = useMemo(() => {
     const m = new Map<string, TipoIncidencia[]>();
@@ -81,11 +90,18 @@ export function IncidenciasCliente({
       if (fSede && i.sedeCod !== fSede) return false;
       if (fNivel && i.nivel !== fNivel) return false;
       if (fOrigen && (i.origen ?? 'manual') !== fOrigen) return false;
+      if (fResponsable === SIN_RESPONSABLE) {
+        if (i.responsableId) return false;
+      } else if (fResponsable && i.responsableId !== fResponsable) return false;
       if (needle && !`${i.tipo} ${i.descripcion ?? ''} ${i.responsableNombre ?? ''}`.toLowerCase().includes(needle))
         return false;
       return true;
     });
-  }, [incidencias, q, fSede, fNivel, fOrigen]);
+  }, [incidencias, q, fSede, fNivel, fOrigen, fResponsable]);
+
+  // Las que se registraron con «— sin responsable (el admin investigará) —» y siguen sin asignar:
+  // es la cola de trabajo del admin y hasta ahora no había forma de encontrarlas.
+  const sinResponsable = useMemo(() => incidencias.filter((i) => !i.responsableId).length, [incidencias]);
 
   const resumen = useMemo(
     () => ({
@@ -126,6 +142,20 @@ export function IncidenciasCliente({
       setDescripcion('');
       setResponsable('');
       router.refresh();
+    });
+  }
+
+  // Asignar responsable NO pide confirmación a propósito: al contrario que eliminar, es
+  // reversible desde el mismo selector — basta con volver a elegir. Lo que sí hace es guardar al
+  // instante, porque un botón «Guardar» por fila en una tabla de 200 filas no se usa.
+  function asignarResponsable(id: string, responsableId: string) {
+    setErrorAccion('');
+    setAsignando(id);
+    startTransition(async () => {
+      const r = await accionAsignarResponsableIncidencia(id, responsableId || null);
+      setAsignando(null);
+      if (r.ok) router.refresh();
+      else setErrorAccion(r.error ?? 'No se pudo asignar el responsable.');
     });
   }
 
@@ -185,6 +215,20 @@ export function IncidenciasCliente({
             <option value="">Todo origen</option>
             <option value="manual">Manual</option>
             <option value="reporte">De reporte</option>
+          </select>
+          <select
+            value={fResponsable}
+            onChange={(e) => setFResponsable(e.target.value)}
+            className={fieldCls}
+            aria-label="Responsable"
+          >
+            <option value="">Todo responsable</option>
+            <option value={SIN_RESPONSABLE}>Sin responsable{sinResponsable > 0 ? ` (${sinResponsable})` : ''}</option>
+            {empleados.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.nombre}
+              </option>
+            ))}
           </select>
           <button
             type="button"
@@ -298,8 +342,8 @@ export function IncidenciasCliente({
             <TBody>
               {filtradas.map((i) => (
                 <TR key={i.id}>
-                  <TD className="pl-5 font-mono text-xs text-muted">{i.fecha}</TD>
-                  <TD className="font-mono">{i.sedeCod}</TD>
+                  <TD className="pl-5 tabular-nums text-xs text-muted">{i.fecha}</TD>
+                  <TD className="tabular-nums">{i.sedeCod}</TD>
                   <TD>
                     <div className="font-medium text-navy">{i.tipo}</div>
                     {i.descripcion && <div className="text-xs text-muted">{i.descripcion}</div>}
@@ -307,12 +351,31 @@ export function IncidenciasCliente({
                   <TD>
                     <NivelPill nivel={i.nivel} />
                   </TD>
-                  <TD>{i.responsableNombre ?? '—'}</TD>
+                  <TD>
+                    {esAdmin ? (
+                      <select
+                        value={i.responsableId ?? ''}
+                        onChange={(ev) => asignarResponsable(i.id, ev.target.value)}
+                        disabled={pending && asignando === i.id}
+                        className={cn(fieldCls, 'min-w-[10rem] max-w-[14rem]', !i.responsableId && 'border-aviso text-aviso-deep')}
+                        aria-label={`Responsable de la incidencia ${i.tipo} del ${i.fecha}`}
+                      >
+                        <option value="">— sin responsable —</option>
+                        {empleados.map((e) => (
+                          <option key={e.id} value={e.id}>
+                            {e.nombre}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      (i.responsableNombre ?? '—')
+                    )}
+                  </TD>
                   <TD>
                     {i.origen === 'reporte' && i.reporteId ? (
                       <Link
                         href={`/reportes/${i.reporteId}`}
-                        className="toque inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 font-mono text-[11px] text-navy transition hover:bg-navy/10"
+                        className="toque inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 tabular-nums text-[11px] text-navy transition hover:bg-navy/10"
                       >
                         reporte
                       </Link>
@@ -320,7 +383,7 @@ export function IncidenciasCliente({
                       <span className="text-xs text-muted">manual</span>
                     )}
                   </TD>
-                  <TD className="text-right font-mono tabular-nums">{i.puntosPenalidad || '—'}</TD>
+                  <TD className="text-right tabular-nums">{i.puntosPenalidad || '—'}</TD>
                   {esAdmin && (
                     <TD className="pr-5 text-right">
                       <button type="button" onClick={() => eliminar(i.id)} className="text-muted transition-colors hover:text-error" aria-label="Eliminar">
@@ -351,6 +414,17 @@ export function IncidenciasCliente({
           </Table>
         </CardContent>
       </Card>
+
+      {esAdmin && (
+        // La consecuencia se dice donde se toma la decisión: quien cambia el responsable está
+        // moviendo puntos de una evaluación a otra, y eso termina en el sueldo de alguien.
+        <p className="text-xs text-muted">
+          Elige el responsable en la columna correspondiente para asignarlo o cambiarlo; se guarda al
+          instante. Los puntos de penalidad descuentan de la evaluación mensual de quien quede como
+          responsable, así que un cambio mueve el descuento de una persona a la otra. Las
+          evaluaciones ya cerradas conservan la nota con la que se cerraron.
+        </p>
+      )}
     </div>
   );
 }

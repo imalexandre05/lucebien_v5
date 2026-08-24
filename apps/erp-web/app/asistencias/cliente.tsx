@@ -269,7 +269,7 @@ export function AsistenciasCliente({
             <TBody>
               {filtradas.map((a) => (
                 <TR key={a.id}>
-                  <TD className="pl-5 font-mono text-xs text-muted">{a.fecha}</TD>
+                  <TD className="pl-5 tabular-nums text-xs text-muted">{a.fecha}</TD>
                   <TD>
                     <div className="font-medium text-navy">{a.empleadoNombre ?? '—'}</div>
                     {a.obs && <div className="text-xs text-muted">{a.obs}</div>}
@@ -277,8 +277,8 @@ export function AsistenciasCliente({
                   <TD>
                     <Badge tone="navy">{a.turno}</Badge>
                   </TD>
-                  <TD className="font-mono text-xs">{a.horaEntrada ?? '—'}</TD>
-                  <TD className="font-mono text-xs">{a.horaSalida ?? '—'}</TD>
+                  <TD className="tabular-nums text-xs">{a.horaEntrada ?? '—'}</TD>
+                  <TD className="tabular-nums text-xs">{a.horaSalida ?? '—'}</TD>
                   <TD>
                     <Badge tone={CONDICION_TONE[a.condicion] ?? 'gray'}>
                       {CONDICION_LABEL[a.condicion] ?? a.condicion}

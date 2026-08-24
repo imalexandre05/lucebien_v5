@@ -119,11 +119,11 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
             ) : (
               data.ingresos.map((r) => (
                 <div key={r.fecha} className="flex items-center gap-3">
-                  <span className="w-12 shrink-0 font-mono text-xs text-muted">{diaCorto(r.fecha)}</span>
+                  <span className="w-12 shrink-0 tabular-nums text-xs text-muted">{diaCorto(r.fecha)}</span>
                   <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
                     <div className="h-full rounded bg-exito/70" style={{ width: `${Math.max(3, Math.round((r.ingresos / ingresosMax) * 100))}%` }} />
                   </div>
-                  <span className="w-24 text-right font-mono text-xs tabular-nums text-navy">{soles(r.ingresos)}</span>
+                  <span className="w-24 text-right tabular-nums text-xs text-navy">{soles(r.ingresos)}</span>
                 </div>
               ))
             )}
@@ -147,8 +147,8 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                   <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
                     <div className="h-full rounded bg-navy/70" style={{ width: `${Math.max(3, p.pct)}%` }} />
                   </div>
-                  <span className="w-14 text-right font-mono text-xs tabular-nums text-muted">{p.pct}%</span>
-                  <span className="w-24 text-right font-mono text-xs tabular-nums text-navy">{soles(p.total)}</span>
+                  <span className="w-14 text-right tabular-nums text-xs text-muted">{p.pct}%</span>
+                  <span className="w-24 text-right tabular-nums text-xs text-navy">{soles(p.total)}</span>
                 </div>
               ))
             )}
@@ -178,10 +178,10 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                 <TBody>
                   {productividad.map((r, i) => (
                     <TR key={r.empleadoId}>
-                      <TD className="pl-5 font-mono text-xs text-muted">{i + 1}</TD>
+                      <TD className="pl-5 tabular-nums text-xs text-muted">{i + 1}</TD>
                       <TD className="text-sm font-medium text-ink">{r.nombre}</TD>
-                      <TD className="text-right font-mono text-sm tabular-nums text-muted">{entero(r.acciones)}</TD>
-                      <TD className="pr-5 text-right font-mono text-sm font-bold tabular-nums text-gold-deep">{r.puntos}</TD>
+                      <TD className="text-right tabular-nums text-sm text-muted">{entero(r.acciones)}</TD>
+                      <TD className="pr-5 text-right tabular-nums text-sm font-bold text-gold-deep">{r.puntos}</TD>
                     </TR>
                   ))}
                 </TBody>
@@ -216,11 +216,11 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                     const pct = r.actTotal ? Math.round((r.actDone / r.actTotal) * 100) : 0;
                     return (
                       <TR key={r.sedeCod}>
-                        <TD className="pl-5 font-mono text-sm font-semibold text-navy">{r.sedeCod}</TD>
-                        <TD className="text-right font-mono text-sm tabular-nums text-muted">{r.reportes}</TD>
-                        <TD className="text-right font-mono text-xs tabular-nums text-muted">{r.actDone}/{r.actTotal}</TD>
-                        <TD className="text-right font-mono text-sm tabular-nums text-navy">{pct}%</TD>
-                        <TD className="pr-5 text-right font-mono text-sm tabular-nums text-gold-deep">{r.puntajeProm ?? '—'}</TD>
+                        <TD className="pl-5 tabular-nums text-sm font-semibold text-navy">{r.sedeCod}</TD>
+                        <TD className="text-right tabular-nums text-sm text-muted">{r.reportes}</TD>
+                        <TD className="text-right tabular-nums text-xs text-muted">{r.actDone}/{r.actTotal}</TD>
+                        <TD className="text-right tabular-nums text-sm text-navy">{pct}%</TD>
+                        <TD className="pr-5 text-right tabular-nums text-sm text-gold-deep">{r.puntajeProm ?? '—'}</TD>
                       </TR>
                     );
                   })}
@@ -253,10 +253,10 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                 <TBody>
                   {data.incidencias.map((r, i) => (
                     <TR key={`${r.sedeCod}-${r.nivel}-${i}`}>
-                      <TD className="pl-5 font-mono text-sm font-semibold text-navy">{r.sedeCod}</TD>
+                      <TD className="pl-5 tabular-nums text-sm font-semibold text-navy">{r.sedeCod}</TD>
                       <TD className={cn('text-sm capitalize', NIVEL_TONE[r.nivel] ?? 'text-ink')}>{r.nivel}</TD>
-                      <TD className="text-right font-mono text-sm tabular-nums text-navy">{r.n}</TD>
-                      <TD className="pr-5 text-right font-mono text-sm tabular-nums text-muted">{r.penalidad || '—'}</TD>
+                      <TD className="text-right tabular-nums text-sm text-navy">{r.n}</TD>
+                      <TD className="pr-5 text-right tabular-nums text-sm text-muted">{r.penalidad || '—'}</TD>
                     </TR>
                   ))}
                 </TBody>
@@ -282,7 +282,7 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                   <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
                     <div className="h-full rounded bg-gold/60" style={{ width: `${Math.max(3, Math.round((r.n / invMax) * 100))}%` }} />
                   </div>
-                  <span className="w-8 text-right font-mono text-sm tabular-nums text-navy">{r.n}</span>
+                  <span className="w-8 text-right tabular-nums text-sm text-navy">{r.n}</span>
                 </div>
               ))
             )}

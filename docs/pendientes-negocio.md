@@ -887,3 +887,100 @@ lo que sigue pendiente es que el dueño confirme cada default.
 | `metodo` como texto libre, sin validar contra el catálogo | Se acepta lo que venga | Editar el catálogo no debe invalidar pagos viejos; el costo es que «Otro» y «otro » convivan | Dueño |
 | `fecha` del pago sin cota | Acepta cualquier fecha | Nadie definió un rango (¿puede registrarse un pago de hace dos meses?) | Dueño |
 | Liquidación con `total ≤ 0` | No admite pagos; la pantalla la marca «sin monto a pagar», nunca «pagada» | Descuentos ≥ ingresos; «pagada» exige total > 0 y saldo 0 | — (técnica) |
+
+---
+
+## Auditoría del 23-ago-2026 — decisiones tomadas y preguntas abiertas
+
+Salieron de una auditoría de punta a punta del sistema, hecha antes de ponerlo en manos del equipo:
+nueve agentes mapearon los flujos por módulo, otros nueve intentaron refutar cada hallazgo contra la
+base viva, y lo que sobrevivió se corrigió. El detalle está en
+[docs/auditoria-2026-08-23.md](auditoria-2026-08-23.md).
+
+### Defaults que hubo que elegir para poder arreglar
+
+| Decisión | Qué se eligió | Por qué | Quién confirma |
+|---|---|---|---|
+| Un día con un tramo declarado y otro sin cerrar | **Se bloquea la liquidación** y se nombra la fecha (migración 0085) | Antes se pagaba sólo el tramo cerrado, en silencio: cuatro horas de un día de once. Todos los demás caminos del sistema cortan y nombran lo que falta; éste era el único que pagaba de menos sin avisar | Dueño |
+| Una marca de entrada sin salida en un día **no contratado** | No bloquea nada; esas horas no se pagan | Es lo mismo que pasaba antes. Arreglarlo pide decidir primero si una marca sin salida en un día libre es trabajo o es un error de marcación | Dueño |
+| Suspender a una persona | Además de la ficha, **se le banea el acceso** y se le corta la sesión abierta (migración 0083) | El diálogo ya prometía que «deja de poder entrar al sistema» y no era verdad | — (era una promesa rota, no una decisión) |
+| Suspender al último administrador activo | **Se niega** | Nadie podría volver a reactivarlo desde la aplicación: la empresa quedaría afuera de su propio sistema | Dueño |
+| Sede elegida al entrar que no es de esa persona | Se cae a su sede primaria en silencio | Antes se aceptaba y el turno no se podía registrar, con un error de Postgres en inglés. La alternativa —rechazar el ingreso— castiga a quien sólo se equivocó de botón | Dueño |
+| Quien es evaluado en Valores 360° | Deja de poder leer las filas que lo nombran; recibe sus puntajes por una función que no devuelve la autoría (migración 0082) | El anonimato dependía de que la aplicación no pidiera una columna. Cualquiera con su sesión podía pedirla | — (es el no-negociable 3) |
+| Edge Function `auto-cierre-reportes` | **Desactivada**: responde 410 y explica por qué | Seguía respondiendo, y la clave anónima que viaja en cada página del ERP alcanzaba para invocarla. CLAUDE.md dice que el auto-cierre está apagado a propósito | Dueño |
+
+### Preguntas que el sistema no puede contestar solo
+
+Ninguna de estas se inventó: quedan esperando respuesta y hasta entonces el sistema hace lo más
+conservador.
+
+1. **¿Todo el equipo debe tener acceso a las cuatro sedes?** Hoy las nueve personas de ventas tienen
+   AL, LB y ST en `empleado_tiendas` (Jordan y Marylin además TR). Mientras eso sea así, el
+   aislamiento por sede no aísla: cualquiera ve los reportes de todas las tiendas. Puede ser
+   correcto —la gente rota— o puede ser herencia de la carga inicial.
+2. **¿La nota mensual /20 debe modificar el monto de la liquidación, y con qué fórmula?** Hoy no lo
+   hace: `sueldo_liquidaciones` no tiene ninguna columna de evaluación y `EntradaLiquidacion`
+   tampoco. La cadena está descrita pero el último eslabón no existe.
+3. **¿El crédito de un turno es del encargado que firma el reporte, o de todo el equipo que figura
+   en `reporte_trabajadores`?** Hoy la nota sólo cuenta los reportes donde la persona fue
+   ENCARGADA, y los únicos dos encargados que existen son los dos administradores: para las nueve
+   personas de ventas, tres de los siete componentes de la nota salen en cero.
+4. **¿Una actividad no realizada cuenta como calificación 0, o no aplica ese día?** Hoy ni siquiera
+   existe como fila, así que nunca entra al divisor.
+5. **¿La puntualidad de la nota se deriva de la hora de entrada contra el horario contratado —como
+   ya hace el motor de sueldos— o se mantiene la carga manual de `minutos_tardanza`?** Esa columna
+   vale 0 en las 1.118 filas y nada la escribe.
+6. **¿Cuánto debe durar la reautenticación?** Hoy son 15 minutos. Quien liquida sueldos toda una
+   tarde vuelve a escribir su contraseña cada 15 minutos.
+7. **¿Los operativos deben ver el listado de incidencias de su sede?** La migración 0046 lo cerró a
+   administradores y la 0065 abrió el permiso de módulo a los operativos: las dos se contradicen.
+8. **El único contrato real de la base** (Marylin, 2026-05-22 a 2026-08-22, S/ 1.953) cubre tres
+   meses en una sola fila. Bajo el modelo vigente eso significa S/ 1.953 **por los tres meses**.
+   ¿Es lo que se quiso pactar?
+
+---
+
+## Ola B de la auditoría (23-ago-2026) — decisiones tomadas al corregir
+
+Diez lotes más. Ninguno inventó un parámetro de negocio: lo que sigue son las lecturas que hubo que
+elegir para que un arreglo fuera posible, y que conviene que Alexander confirme.
+
+| Decisión | Qué se eligió | Por qué | Quién confirma |
+|---|---|---|---|
+| Peso de la etapa **Recepción** en el pipeline | `pts_recepcion = 1`, sembrado y editable desde /configuración | **No es un número elegido**: es el que la RPC venía aplicando de hecho desde la 0009 porque la clave no existía y caía a su default. Sembrarlo no cambia ningún cálculo; lo vuelve visible y editable, que es lo que pide el no-negociable 5. Falta decir si 1 es el peso correcto frente a lavado (1), planchado (3) o compostura (5) | Dueño |
+| Los filtros de Personal (**«Con algo pendiente», «Listos para pagar», «Todos»**) | Significan «entre los activos» | Una persona suspendida nunca completa los cinco pasos del período: mezclarla la dejaría clavada arriba de «Con algo pendiente» para siempre. Los suspendidos tienen su propio filtro | Dueño — por si esperaba que «Todos» fuera literal |
+| Días sin declarar cuando **no hay calendario contratado legible** | Se cuenta como antes, por filas | Contar cero sería peor que contar de menos: diría «no falta nada» justo antes de pagar | — (técnica) |
+| Un activo **dado de baja** en inventario | Deja de borrarse físicamente: pasa a estado `baja` y **se queda en la lista** | No se pierde el rastro de una prenda que existió. El costo es que la lista se va a ensuciar con el tiempo; agregar un filtro que los oculte es una pantalla, no una regla | Dueño |
+| **Cambiar el responsable de una incidencia** | Se puede, y no pide confirmación | Mueve los puntos de penalidad de una evaluación a otra: el descuento se calcula en vivo sobre `incidencias.responsable_id`. Las evaluaciones ya cerradas conservan su nota. Es reversible desde el mismo selector | Dueño |
+| **Validación del retorno de lavandería** | Todas las prendas arrancan en «Bien»; la observación **no** es obligatoria cuando hay una con problema | El arranque en «Bien» replica cómo la base ya lee un ítem sin estado. No obligar la observación es deliberado: dejar a la encargada sin forma de cerrar la lista un sábado es peor que una nota vacía | Dueño |
+| Vocabulario del retorno | Dos valores: `bien` y `problema` | Es lo que entiende la RPC. Categorías intermedias («no volvió», «manchada», «rota») serían un catálogo nuevo | Dueño |
+| **Las ocho competencias** de la evaluación mensual | Hay que responderlas antes de guardar | Antes el formulario arrancaba con el nivel 0 —el peor de la rúbrica— pintado como si alguien lo hubiera elegido. Es el mismo criterio que ya se aprobó para Valores 360° | — (ya decidido en Valores) |
+| Que los **siete pesos de la nota sumen 1** | **No se fuerza** | Es la decisión 14, todavía abierta. El catálogo dice «deberían sumar 1» y nadie lo hace cumplir: hoy suman exactamente 1,00, pero nada impide que dejen de hacerlo | Dueño |
+| Parámetros **personalizados** de /configuración | Siguen sin validarse | No declaran tipo ni rango. Validarlos exige decidir si eso se guarda en la tabla `config` | Dueño |
+
+---
+
+## Decisión 14 — CONTESTADA el 24-ago-2026
+
+**Los siete pesos de la nota mensual y qué pasa si no suman 100 %.**
+
+Alexander eligió: **avisar ahora, bloquear más adelante.**
+
+| Etapa | Qué hace el sistema | Estado |
+|---|---|---|
+| Ahora | La pantalla avisa: «Los pesos suman 95 %: esta nota no está sobre 20 sino sobre 19». No bloquea nada; el administrador ve el número y decide | Construyéndose (spec [2026-08-24-nota-sin-ceros-silenciosos-design.md](superpowers/specs/evaluaciones/2026-08-24-nota-sin-ceros-silenciosos-design.md)) |
+| Más adelante | Configuración deja de aceptar pesos que no sumen 100 % | **Tarea pendiente**, ya no una pregunta |
+
+La segunda etapa no se construye sola: va **junto con el rediseño de la pantalla de pesos**, para
+editar los siete a la vez con el total a la vista mientras se escribe. Bloquear el guardado sobre la
+pantalla actual —donde se editan de a uno— obligaría a pasar por un estado inválido para llegar al
+válido, y produce una pantalla que pelea con quien la usa.
+
+**Se descartó** que el sistema los reescale solo. Nunca fallaría, pero el administrador escribiría
+20 % y el motor usaría 21 %: la pantalla mostrando un número y el motor usando otro es justo lo que
+esta auditoría vino a eliminar de un sistema que termina en un pago.
+
+**Por qué importaba.** Hoy los siete suman exactamente 100 % y nada lo sostiene. Bajar Competencias
+de 25 % a 20 % y no compensar hace que alguien perfecto saque 19 en vez de 20, y que quien estaba
+en 17,5 («Excelente») pase a 16,6 («Buen desempeño»). Todo el equipo baja a la vez, sin que nadie
+haya trabajado peor, y ninguna pantalla lo dice.

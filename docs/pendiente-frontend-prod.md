@@ -160,3 +160,55 @@ En el commit `47da235`, un `git add -A` arrastró dos cambios que no eran de esa
 
 Como todavía no se pusheó nada, las dos se pueden limpiar reescribiendo los commits. Después de
 pushear, ya no sale gratis.
+
+---
+
+## 6. Lo hecho el 21-ago-2026, después de probar en pantalla
+
+### Contrato de sueldo: del modal a la página (§3.3, cerrado)
+
+El editor de contrato vive ahora dentro del contenedor de contratos y reemplaza a la lista mientras
+se trabaja. **Sólo los parámetros quedan en modal**, con la cuenta de los que están pisados y sus
+valores como chips, para no tener que abrirlo para saber si hay algo distinto.
+
+Consecuencia conocida: el editor no es una ruta, así que el botón «atrás» del navegador sale de
+Contratos en vez de volver a la lista. Si molesta, se convierte en `?editar=<id>`.
+
+### Envío a Lavandería, rehecho con la estructura del sistema viejo
+
+Alexander probó la primera versión y la rechazó: *«el sistema anterior era así y lo entendían un
+poco mejor»*. La lección vale para todo lo que falta: **la disposición que el equipo ya usa no es
+deuda, es conocimiento** — lo que se cambia es la piel, no el orden en que se piensa el trabajo.
+
+La pantalla quedó: tipo de envío → Registrar prenda → Accesorios (conteo) → Responsables → barra de
+envío pegada abajo. Lo demás está en `docs/pendientes-negocio.md` §21-ago.
+
+### Sin tipografía monoespaciada (decisión de Alexander)
+
+Los códigos y los números iban en `font-mono`. **La familia ni siquiera estaba cargada**: no hay
+`next/font` ni un `<link>` en `app/layout.tsx`, así que el navegador caía en la monoespaciada del
+sistema y el ERP se veía como una terminal. Se sacaron las 338 apariciones en 75 archivos, se
+cambiaron por `tabular-nums` —que es lo único que hacía falta: que los números no bailen—, se quitó
+la familia de `tailwind.config.ts` y **el guard tiene una regla nueva** (`mono`) probada en las dos
+direcciones.
+
+### Avatares con identidad
+
+Todos eran el mismo disco dorado, así que una lista de dieciocho personas se veía como dieciocho
+discos iguales. Ahora el tono sale del nombre —seis, de los categóricos— y la misma persona sale
+del mismo color en toda la aplicación. Toca `Avatar`, `PersonaPicker`, la topbar, empleados y
+valores.
+
+---
+
+## 7. Lo que sigue abierto
+
+| Qué | Estado |
+|---|---|
+| **Pantalla de carga al cambiar de sección** | Pendiente pedido el 21-ago. Hay `loading.tsx` por ruta, pero en una navegación del cliente no se ve nada mientras el servidor responde: hace falta un indicador global de navegación |
+| **Tipo de envío (general / refacción)** | Ver `docs/pendientes-negocio.md`: hoy dice dos veces lo mismo que el destino por prenda |
+| **El 26 quedó en tallas de adulto** | Si es talla de niño, se mueve en `catalogos.ts` |
+| **Responsive a 360 px** | Sigue pendiente pantalla por pantalla (§3.1) |
+| **Flujos que se traban** | Alexander los está recorriendo; sin ejemplos concretos todavía (§3.5) |
+| **«Nuevo parámetro» en Configuración** | Sin decidir (§3.4) |
+| **Los dos archivos colados en `47da235`** | Sin decidir (§5) |

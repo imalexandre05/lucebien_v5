@@ -22,7 +22,7 @@ export default function ErrorSeccion({
         <AlertTriangle className="h-9 w-9 text-error" strokeWidth={1.25} aria-hidden />
         <p className="text-sm font-semibold text-navy">Esta sección no cargó</p>
         <p className="max-w-sm text-xs leading-relaxed text-muted">
-          El resto del módulo sigue disponible: podés cambiar de sección o de persona desde arriba
+          El resto del módulo sigue disponible: puedes cambiar de sección o de persona desde arriba
           sin perder el período que elegiste.
         </p>
         {error?.message && (

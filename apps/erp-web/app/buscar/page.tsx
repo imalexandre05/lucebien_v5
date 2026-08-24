@@ -90,7 +90,7 @@ export default async function BuscarPage({ searchParams }: { searchParams: { q?:
                   const estado = estadoTrazabilidad({ estadoActivo: activo.estado, enPipeline: activo.enPipeline, pedido });
                   return (
                     <TR key={activo.id}>
-                      <TD className="pl-5 font-mono font-medium text-navy">
+                      <TD className="pl-5 tabular-nums font-medium text-navy">
                         <Link href="/inventario" className="transition-colors hover:text-gold">
                           {activo.codigo}
                         </Link>
@@ -99,11 +99,11 @@ export default async function BuscarPage({ searchParams }: { searchParams: { q?:
                       <TD>
                         {activo.talla} · {activo.color}
                       </TD>
-                      <TD className="font-mono">{activo.sedeCod}</TD>
+                      <TD className="tabular-nums">{activo.sedeCod}</TD>
                       <TD>
                         <EstadoBadge estado={estado} />
                       </TD>
-                      <TD className="pr-5 font-mono text-muted">{estado.tipo === 'alquilado' ? estado.fechaDevolucion || '—' : '—'}</TD>
+                      <TD className="pr-5 tabular-nums text-muted">{estado.tipo === 'alquilado' ? estado.fechaDevolucion || '—' : '—'}</TD>
                     </TR>
                   );
                 })}
