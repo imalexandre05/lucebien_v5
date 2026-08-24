@@ -963,15 +963,31 @@ según la modalidad), sin esperar a que el contrato entero termine.
   totales con la esperanza de que se dividiera solo.
 - Un contrato de tres meses pasaría a tener **hasta tres liquidaciones**, una por mes, en vez de
   una sola que cubra todo el rango.
-- Hay que decidir qué pasa con un mes a medias (un contrato que arranca el 15): ¿se paga
-  proporcional a los días de ese mes, o el primer período es más corto y ya?
 
-**Por qué esto no se construye hoy, junto con el resto.** Es un cambio en el corazón del motor de
-sueldos —cómo se define «cuánto vale la hora» y «cuántas liquidaciones tiene un contrato»— y hay
-más de una forma razonable de resolver el punto del mes a medias. Equivocarse acá no es un error
-chico: es volver a tocar el cálculo de un pago real. Antes de escribir una sola línea, hace falta
-que Alexander confirme cómo se prorratea un período incompleto — se le va a preguntar aparte, con
-un par de ejemplos concretos, antes de tocar el motor.
+**24-ago, dos aclaraciones de Alexander que cambian el tamaño del problema:**
+
+1. **El límite entre períodos no es el mes calendario: es el ciclo por aniversario**, la misma
+   regla que ya usan las evaluaciones (fecha de ingreso → un día antes del próximo aniversario,
+   recortado al último día real cuando el mes siguiente es corto — ver
+   [2026-08-24-ciclo-aniversario-mes-corto-design.md](superpowers/specs/evaluaciones/2026-08-24-ciclo-aniversario-mes-corto-design.md)).
+   No hay «mes a medias» que prorratear: cada período, incluido el primero, es un ciclo completo
+   por aniversario. La pregunta que se le hizo sobre prorrateo estaba mal planteada — no era eso lo
+   que había que resolver.
+2. **El administrador casi siempre elige el período a mano**, como ya hacía en su Excel: un
+   calendario con una fecha de inicio y una de fin, con el que cuenta a la vez las horas trabajadas
+   (para el pago) y el desempeño (para la evaluación) de ese tramo. El cálculo automático del ciclo
+   por aniversario es sólo la **sugerencia** con la que arranca ese selector — el mismo patrón que
+   ya usa `evaluacion_componentes(p_empleado, p_desde, p_hasta)`, que recibe el período como
+   parámetro en vez de asumirlo. Esto simplifica bastante el diseño: `sueldo_entrada` necesitaría
+   el mismo tipo de parámetro (`p_desde`, `p_hasta`) en vez de tomar siempre el rango completo del
+   acuerdo, no un sistema nuevo de «el acuerdo genera N liquidaciones solo».
+
+**Por qué esto sigue sin construirse hoy, junto con el resto.** Sigue siendo un cambio en el
+corazón del motor de sueldos —qué es `sueldo_pactado`, cómo se relaciona con el rango que se
+liquida cada vez, cuántas liquidaciones puede tener un contrato— y aunque las dos aclaraciones de
+arriba lo simplifican, todavía no está escrito cómo conviven `sueldo_pactado` (que hoy es «para
+todo el rango del acuerdo») con liquidar sólo una parte de ese rango. Falta una spec completa antes
+de tocar `packages/core` o el esquema.
 
 ---
 
