@@ -80,8 +80,22 @@ const CODIGOS: readonly string[] = [
   'SALDO',
 ];
 
-function errorSueldo(error: { message?: string } | null): SueldoRpcError {
+function errorSueldo(error: { message?: string; code?: string } | null): SueldoRpcError {
   const msg = error?.message ?? 'Error desconocido';
+
+  // 23P01 = exclusion_violation. Es el código que dispara `sueldo_acuerdos_sin_solape`
+  // (restricción de exclusión desde el esquema original: dos contratos de la misma persona no
+  // pueden compartir un día de calendario). Sin este `if`, el mensaje que llegaba a la pantalla
+  // era el crudo de Postgres —«conflicting key value violates exclusion constraint...»— así que
+  // se traduce acá, igual que `config-repo.ts` e `incidencias-repo.ts` ya traducen `23505` a un
+  // mensaje propio.
+  if (error?.code === '23P01') {
+    return new SueldoRpcError(
+      'Esta persona ya tiene un contrato que cubre parte de este período. Cierra o edita el contrato existente antes de crear uno nuevo.',
+      'DATO',
+    );
+  }
+
   const m = msg.match(/^([A-Z_]+):([\s\S]+)$/);
   if (m && CODIGOS.includes(m[1])) return new SueldoRpcError(m[2], m[1] as CodigoSueldo);
   return new SueldoRpcError(msg);
