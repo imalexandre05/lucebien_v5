@@ -145,3 +145,61 @@ un sistema que termina en un pago.
 
 Con esto, la **decisión 14** queda contestada. Lo que sigue abierto no es una pregunta sino una
 tarea: construir el bloqueo junto con el rediseño de la pantalla de pesos.
+
+---
+
+## 7. Enmienda — 24-ago-2026, después de la primera implementación
+
+La spec se implementó completa y en verde (400 tests). Quien la escribió dejó anotadas tres cosas
+en vez de resolverlas por su cuenta, **y en las tres tuvo razón en no ampliar la spec sin permiso**.
+Acá quedan decididas.
+
+### E-1 — El corte de C-1 también cubre el descuento y el bono
+
+`descuentoIncidencias` y `bonusVentas` siguen entrando con `|| 0`. La prosa de C-1 decía «un
+componente o un peso», y esos dos no son ninguna de las dos cosas, así que quedaron fuera.
+
+**Se extiende C-1 a los dos.** Es exactamente el mismo defecto y la misma plata:
+
+- Un **descuento** roto se vuelve «no hay descuento»: la persona conserva puntos que perdió por una
+  incidencia real.
+- Un **bono** roto se vuelve «no hay bono»: la persona pierde puntos que se ganó.
+
+Los dos son silenciosos y los dos caen en la misma línea de la nota. Dejar la mitad de la función
+validada y la otra mitad no es peor que no haber validado nada, porque instala la idea de que ya
+está cubierta.
+
+Mensaje con la misma forma: `El descuento por incidencias no es un número (NaN). La nota no se
+puede calcular con un dato roto.`
+
+### E-2 — Que la nota corte no puede tumbar la pantalla entera
+
+`calcularNotaMensual` se llama dentro de un `useMemo` en el render de la pantalla de evaluaciones
+(`cliente.tsx:175`). Con el corte de C-1, un dato roto ya no devuelve un cero falso —eso es lo que
+buscábamos— pero sube hasta el error boundary de la aplicación, que reemplaza **toda** la pantalla,
+incluido el historial de evaluaciones, que no tiene nada que ver.
+
+**El corte se atrapa donde ocurre.** El panel «Nueva evaluación» muestra, en el lugar donde iría la
+nota, el mensaje del error tal cual —está escrito en español y para una persona— y el resto de la
+pantalla sigue en pie.
+
+El principio no cambia: **no se inventa un número**. Cambia el tamaño del cráter. Cortar y explicar
+en el panel es más honesto que cortar y borrar la pantalla, y deja al administrador viendo el
+historial mientras entiende qué se rompió.
+
+### E-3 — Un aviso que no puede detectar el problema no es un aviso
+
+`revisarPesos` compara `Math.abs(suma - 1) > 0.01`. Si un peso llega `NaN`, la suma es `NaN`, la
+comparación da `false`, y la función informa **`desviado: false`** — es decir, afirma que los pesos
+están bien justo cuando están rotos.
+
+Hoy es inalcanzable (`calcularNotaMensual` corta antes, en el mismo render), pero una función que
+miente cuando la llaman sola es una trampa esperando a que alguien la reutilice.
+
+`revisarPesos` pasa a devolver `desviado: true` cuando algún peso no es finito.
+
+### Lo que esta enmienda sigue sin hacer
+
+- **No** decide que los pesos deban sumar 1: eso ya está contestado en §6 (avisar ahora, bloquear
+  con el rediseño de la pantalla).
+- **No** amplía la validación a ninguna otra función del core.
