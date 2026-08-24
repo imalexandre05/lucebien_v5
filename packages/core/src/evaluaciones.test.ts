@@ -59,6 +59,28 @@ describe('calcularNotaMensual', () => {
     expect(() => calcularNotaMensual(c, PESOS_DEFAULT)).not.toThrow();
     expect(calcularNotaMensual(c, PESOS_DEFAULT)).toBe(18);
   });
+
+  // E-1 (enmienda §7 de la spec nota-sin-ceros-silenciosos): el mismo corte de C-1, extendido al
+  // descuento por incidencias y al bono por ventas — entraban con `|| 0` y quedaron afuera de la
+  // primera pasada porque la prosa original decía "un componente o un peso".
+  it('el descuento por incidencias en NaN corta con el mensaje exacto', () => {
+    const c: ComponentesEval = { ...base, descuentoIncidencias: NaN };
+    expect(() => calcularNotaMensual(c, PESOS_DEFAULT)).toThrow(
+      'El descuento por incidencias no es un número (NaN). La nota no se puede calcular con un dato roto.',
+    );
+  });
+
+  it('el descuento por incidencias en undefined también corta', () => {
+    const c = { ...base, descuentoIncidencias: undefined as unknown as number };
+    expect(() => calcularNotaMensual(c, PESOS_DEFAULT)).toThrow(/descuento por incidencias/);
+  });
+
+  it('el bono por ventas en NaN corta y el mensaje lo nombra', () => {
+    const c: ComponentesEval = { ...base, bonusVentas: NaN };
+    expect(() => calcularNotaMensual(c, PESOS_DEFAULT)).toThrow(
+      'El bono por ventas no es un número (NaN). La nota no se puede calcular con un dato roto.',
+    );
+  });
 });
 
 describe('revisarPesos', () => {
@@ -76,6 +98,13 @@ describe('revisarPesos', () => {
     // 1.0000000000000002 — muy por debajo de la tolerancia de 0.01, no debe marcarse desviado.
     const p = { competencias: 0.1, valores: 0.2, operaciones: 0.15, software: 0.15, limpieza: 0.1, examenes: 0.2, tardanza: 0.1 };
     expect(revisarPesos(p)).toEqual({ suma: 1, desviado: false });
+  });
+
+  // E-3 (enmienda §7): antes, un peso NaN volvía la suma NaN y `Math.abs(NaN - 1) > 0.01` daba
+  // false — la función afirmaba que los pesos estaban bien justo cuando estaban rotos.
+  it('un peso en NaN queda marcado como desviado', () => {
+    const p = { ...PESOS_DEFAULT, examenes: NaN };
+    expect(revisarPesos(p).desviado).toBe(true);
   });
 });
 

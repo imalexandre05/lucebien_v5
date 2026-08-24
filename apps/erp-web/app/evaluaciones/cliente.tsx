@@ -26,7 +26,7 @@ import { Button, buttonVariants } from '../../components/ui/button';
 import { OpcionBotones } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
-import { campoCls } from '../../components/ui/form';
+import { campoCls, Aviso } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
 
@@ -172,8 +172,21 @@ export function EvaluacionesCliente({
   );
 
   const compParaCalculo = useMemo(() => ({ ...comp, competencias: competenciaNota }), [comp, competenciaNota]);
-  const nota = useMemo(() => calcularNotaMensual(compParaCalculo, pesos), [compParaCalculo, pesos]);
-  const tramo = tramoEval(nota);
+  // E-2 (enmienda §7, spec nota-sin-ceros-silenciosos): calcularNotaMensual ahora puede lanzar
+  // (C-1/E-1) cuando un dato llega roto. Lanzar DENTRO de un useMemo de render sube al error
+  // boundary de la aplicación (app/error.tsx) y reemplaza TODA la pantalla, incluido el historial
+  // de evaluaciones de acá abajo, que no tiene nada que ver con el panel roto. El corte se atrapa
+  // donde ocurre: se guarda el mensaje en vez de dejarlo subir, y el panel lo muestra tal cual en
+  // el lugar donde iría la nota — no se inventa un número de reemplazo.
+  const notaResultado = useMemo((): { ok: true; valor: number } | { ok: false; mensaje: string } => {
+    try {
+      return { ok: true, valor: calcularNotaMensual(compParaCalculo, pesos) };
+    } catch (e) {
+      return { ok: false, mensaje: e instanceof Error ? e.message : String(e) };
+    }
+  }, [compParaCalculo, pesos]);
+  const nota = notaResultado.ok ? notaResultado.valor : null;
+  const tramo = nota !== null ? tramoEval(nota) : null;
   // C-2 (spec nota-sin-ceros-silenciosos): revisarPesos() no corrige nada — sólo hace visible
   // cuánto se alejan de 1 los pesos configurados, para que el administrador decida con el número
   // delante. La decisión de forzar que sumen 1 sigue abierta (decisión 14, pendientes-negocio.md).
@@ -259,7 +272,9 @@ export function EvaluacionesCliente({
   }
 
   function guardar() {
-    if (!ciclo) return;
+    // nota === null: el corte de calcularNotaMensual (C-1/E-1) está activo. No hay número que
+    // guardar — el botón ya está deshabilitado en ese estado, esto es defensa en profundidad.
+    if (!ciclo || nota === null) return;
     setError('');
     startTransition(async () => {
       const r = await accionCrearEvaluacion({
@@ -352,11 +367,21 @@ export function EvaluacionesCliente({
         <Card>
           <CardHeader>
             <CardTitle>Nueva evaluación</CardTitle>
-            <Badge tone={TRAMO_TONE[tramo]}>
-              {nota.toFixed(2)} · {TRAMO_LABEL[tramo]}
-            </Badge>
+            {nota !== null && tramo !== null ? (
+              <Badge tone={TRAMO_TONE[tramo]}>
+                {nota.toFixed(2)} · {TRAMO_LABEL[tramo]}
+              </Badge>
+            ) : (
+              <Badge tone="red">Nota no disponible</Badge>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
+            {!notaResultado.ok && (
+              // E-2: el mensaje tal cual, sin envolverlo ni inventar un título — es la explicación,
+              // no un adorno. tono="error" trae role="alert" (Aviso, components/ui/form.tsx): esto
+              // bloquea Guardar, no es un dato para mirar cuando haya tiempo.
+              <Aviso tono="error">{notaResultado.mensaje}</Aviso>
+            )}
             {revisionPesos.desviado && (
               <div className="flex items-start gap-3 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2.5 text-sm text-aviso-deep">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
@@ -498,16 +523,18 @@ export function EvaluacionesCliente({
               <Button
                 type="button"
                 onClick={guardar}
-                disabled={!empleadoId || !ciclo || competenciasFaltantes > 0}
+                disabled={!empleadoId || !ciclo || competenciasFaltantes > 0 || nota === null}
                 pending={pending}
                 aria-describedby="motivo-evaluacion"
               >
-                {pending ? 'Guardando…' : `Guardar · ${nota.toFixed(2)}`}
+                {pending ? 'Guardando…' : nota !== null ? `Guardar · ${nota.toFixed(2)}` : 'Guardar'}
               </Button>
               <span id="motivo-evaluacion" className="text-xs text-muted">
-                {competenciasFaltantes > 0
-                  ? `Faltan ${competenciasFaltantes} de ${competenciasConfig.length} competencias.`
-                  : 'La nota usa los pesos de Configuración y se guarda un snapshot.'}
+                {nota === null
+                  ? 'La nota no se pudo calcular: revisa el aviso de arriba.'
+                  : competenciasFaltantes > 0
+                    ? `Faltan ${competenciasFaltantes} de ${competenciasConfig.length} competencias.`
+                    : 'La nota usa los pesos de Configuración y se guarda un snapshot.'}
               </span>
             </div>
           </CardContent>
