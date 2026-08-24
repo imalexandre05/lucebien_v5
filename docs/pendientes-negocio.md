@@ -124,17 +124,23 @@ se registra.
   en `/evaluaciones` o `/mi-desempeño` depende de esa decisión pendiente**: si el dueño confirma que
   el catálogo vigente es el `XTR*` de la base o el `XR*`/`XP*` de `seed.js`, los puntos por extra
   (y por tanto esos totales informativos) pueden cambiar.
-- **Ciclo por aniversario: hereda una rareza de bordes de mes del sistema viejo, sin corregirla.**
-  `calcularCiclo()` (`packages/core/src/evaluaciones.ts`, puerto literal de
-  `routes/evaluaciones.js:98-127`) usa aritmética de calendario estándar de JavaScript
-  (`Date.UTC`), igual que el original. Para un empleado con `fecha_ingreso` en día 29, 30 o 31, si
-  el mes de destino tiene menos días, la fecha "rueda" al mes siguiente (ej.: aniversario día 31,
-  ciclo que cae en febrero de un año no bisiesto → arranca el 3 de marzo, no el 28 de febrero). Es
-  el mismo comportamiento que ya tenía `routes/evaluaciones.js` en el sistema viejo (no es un bug
-  nuevo de esta migración), pero **nadie confirmó si es el comportamiento deseado** o si el dueño
-  prefiere que el ciclo se "recorte" al último día del mes en esos casos. Cubierto con test
-  (`evaluaciones.test.ts`, caso "hereda el mismo rollover de calendario") para que cualquier cambio
-  futuro de este comportamiento sea deliberado, no accidental.
+- ✅ **Ciclo por aniversario: se recorta en un mes corto — implementado el 24-ago-2026.**
+  `calcularCiclo()` (`packages/core/src/evaluaciones.ts`) dejó de dejar que `Date.UTC` desborde
+  silenciosamente al mes siguiente cuando `fecha_ingreso` cae en día 29, 30 o 31. Alexander confirmó
+  la regla con ejemplos concretos — spec
+  [2026-08-24-ciclo-aniversario-mes-corto-design.md](superpowers/specs/evaluaciones/2026-08-24-ciclo-aniversario-mes-corto-design.md):
+  el ciclo se recorta al último día real del mes, nunca invade el mes siguiente ("entra el 31 de
+  enero, se paga el 28 de febrero", no el 2 o 3 de marzo). El único test que existía sobre el
+  comportamiento viejo (`evaluaciones.test.ts`, día 31) cambió de valor a propósito — es justo el
+  caso que esta spec vino a corregir, no una regresión.
+
+  **Un caso quedó sin resolver, detectado al implementar.** La fórmula exacta que dio Alexander
+  (`hasta = mín(díaDeseado − 1, últimoDíaDelMes)`) no distingue años bisiestos: alguien que entra el
+  29 de enero en un año bisiesto da `28-feb` con la fórmula tal cual, no `29-feb`, porque
+  `díaDeseado − 1 = 28` sin importar si el febrero de destino tiene 28 o 29 días. Ningún empleado
+  real tiene hoy `fecha_ingreso` el 29 de enero. **Pendiente: confirmar con Alexander si ese caso
+  puntual se paga el 28 o el 29** — mientras tanto el código aplica la fórmula sin excepción para
+  bisiestos, sin inventar una rama especial que la spec no pidió.
 - **Valores 360°: no se portó la ventana de habilitación por fecha del sistema viejo.**
   `routes/valores.js` tenía un interruptor `eval_valores_habilitado`/`eval_valores_modo`/
   `eval_valores_dias` (por defecto: solo días 25-28 de cada mes, o un flag manual on/off) que
