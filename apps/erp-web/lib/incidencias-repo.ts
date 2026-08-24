@@ -41,7 +41,11 @@ type Row = {
   created_at: string;
 };
 
-export async function listarIncidencias(): Promise<Incidencia[]> {
+// `esAdmin` decide si quién reportó la incidencia sale del servidor. Los operativos ya pueden ver
+// el listado (migración 0065), pero Alexander confirmó que no deben ver quién la reportó — solo el
+// administrador. Por defecto es `false` (falla cerrado): si algún llamador no lo pasa explícito,
+// las columnas de reportante quedan en null en vez de viajar igual sin que nadie las pida.
+export async function listarIncidencias(esAdmin: boolean = false): Promise<Incidencia[]> {
   const sb = getServerClient();
   const { data, error } = await sb
     .from('incidencias')
@@ -64,8 +68,8 @@ export async function listarIncidencias(): Promise<Incidencia[]> {
     nivel: r.nivel,
     responsableId: r.responsable_id,
     responsableNombre: n(r.responsable_id),
-    reportadoPorId: r.reportado_por_id,
-    reportadoPorNombre: n(r.reportado_por_id),
+    reportadoPorId: esAdmin ? r.reportado_por_id : null,
+    reportadoPorNombre: esAdmin ? n(r.reportado_por_id) : null,
     reporteId: r.reporte_id,
     puntosPenalidad: Number(r.puntos_penalidad ?? 0),
     origen: r.origen,

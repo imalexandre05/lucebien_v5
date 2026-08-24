@@ -124,17 +124,23 @@ se registra.
   en `/evaluaciones` o `/mi-desempeño` depende de esa decisión pendiente**: si el dueño confirma que
   el catálogo vigente es el `XTR*` de la base o el `XR*`/`XP*` de `seed.js`, los puntos por extra
   (y por tanto esos totales informativos) pueden cambiar.
-- **Ciclo por aniversario: hereda una rareza de bordes de mes del sistema viejo, sin corregirla.**
-  `calcularCiclo()` (`packages/core/src/evaluaciones.ts`, puerto literal de
-  `routes/evaluaciones.js:98-127`) usa aritmética de calendario estándar de JavaScript
-  (`Date.UTC`), igual que el original. Para un empleado con `fecha_ingreso` en día 29, 30 o 31, si
-  el mes de destino tiene menos días, la fecha "rueda" al mes siguiente (ej.: aniversario día 31,
-  ciclo que cae en febrero de un año no bisiesto → arranca el 3 de marzo, no el 28 de febrero). Es
-  el mismo comportamiento que ya tenía `routes/evaluaciones.js` en el sistema viejo (no es un bug
-  nuevo de esta migración), pero **nadie confirmó si es el comportamiento deseado** o si el dueño
-  prefiere que el ciclo se "recorte" al último día del mes en esos casos. Cubierto con test
-  (`evaluaciones.test.ts`, caso "hereda el mismo rollover de calendario") para que cualquier cambio
-  futuro de este comportamiento sea deliberado, no accidental.
+- ✅ **Ciclo por aniversario: se recorta en un mes corto — implementado el 24-ago-2026.**
+  `calcularCiclo()` (`packages/core/src/evaluaciones.ts`) dejó de dejar que `Date.UTC` desborde
+  silenciosamente al mes siguiente cuando `fecha_ingreso` cae en día 29, 30 o 31. Alexander confirmó
+  la regla con ejemplos concretos — spec
+  [2026-08-24-ciclo-aniversario-mes-corto-design.md](superpowers/specs/evaluaciones/2026-08-24-ciclo-aniversario-mes-corto-design.md):
+  el ciclo se recorta al último día real del mes, nunca invade el mes siguiente ("entra el 31 de
+  enero, se paga el 28 de febrero", no el 2 o 3 de marzo). El único test que existía sobre el
+  comportamiento viejo (`evaluaciones.test.ts`, día 31) cambió de valor a propósito — es justo el
+  caso que esta spec vino a corregir, no una regresión.
+
+  **Un caso quedó sin resolver, detectado al implementar.** La fórmula exacta que dio Alexander
+  (`hasta = mín(díaDeseado − 1, últimoDíaDelMes)`) no distingue años bisiestos: alguien que entra el
+  29 de enero en un año bisiesto da `28-feb` con la fórmula tal cual, no `29-feb`, porque
+  `díaDeseado − 1 = 28` sin importar si el febrero de destino tiene 28 o 29 días. Ningún empleado
+  real tiene hoy `fecha_ingreso` el 29 de enero. **Pendiente: confirmar con Alexander si ese caso
+  puntual se paga el 28 o el 29** — mientras tanto el código aplica la fórmula sin excepción para
+  bisiestos, sin inventar una rama especial que la spec no pidió.
 - **Valores 360°: no se portó la ventana de habilitación por fecha del sistema viejo.**
   `routes/valores.js` tenía un interruptor `eval_valores_habilitado`/`eval_valores_modo`/
   `eval_valores_dias` (por defecto: solo días 25-28 de cada mes, o un flag manual on/off) que
@@ -914,29 +920,80 @@ base viva, y lo que sobrevivió se corrigió. El detalle está en
 Ninguna de estas se inventó: quedan esperando respuesta y hasta entonces el sistema hace lo más
 conservador.
 
-1. **¿Todo el equipo debe tener acceso a las cuatro sedes?** Hoy las nueve personas de ventas tienen
-   AL, LB y ST en `empleado_tiendas` (Jordan y Marylin además TR). Mientras eso sea así, el
-   aislamiento por sede no aísla: cualquiera ve los reportes de todas las tiendas. Puede ser
-   correcto —la gente rota— o puede ser herencia de la carga inicial.
-2. **¿La nota mensual /20 debe modificar el monto de la liquidación, y con qué fórmula?** Hoy no lo
-   hace: `sueldo_liquidaciones` no tiene ninguna columna de evaluación y `EntradaLiquidacion`
-   tampoco. La cadena está descrita pero el último eslabón no existe.
-3. **¿El crédito de un turno es del encargado que firma el reporte, o de todo el equipo que figura
-   en `reporte_trabajadores`?** Hoy la nota sólo cuenta los reportes donde la persona fue
-   ENCARGADA, y los únicos dos encargados que existen son los dos administradores: para las nueve
-   personas de ventas, tres de los siete componentes de la nota salen en cero.
-4. **¿Una actividad no realizada cuenta como calificación 0, o no aplica ese día?** Hoy ni siquiera
+1. **¿Una actividad no realizada cuenta como calificación 0, o no aplica ese día?** Hoy ni siquiera
    existe como fila, así que nunca entra al divisor.
-5. **¿La puntualidad de la nota se deriva de la hora de entrada contra el horario contratado —como
-   ya hace el motor de sueldos— o se mantiene la carga manual de `minutos_tardanza`?** Esa columna
-   vale 0 en las 1.118 filas y nada la escribe.
-6. **¿Cuánto debe durar la reautenticación?** Hoy son 15 minutos. Quien liquida sueldos toda una
-   tarde vuelve a escribir su contraseña cada 15 minutos.
-7. **¿Los operativos deben ver el listado de incidencias de su sede?** La migración 0046 lo cerró a
-   administradores y la 0065 abrió el permiso de módulo a los operativos: las dos se contradicen.
-8. **El único contrato real de la base** (Marylin, 2026-05-22 a 2026-08-22, S/ 1.953) cubre tres
-   meses en una sola fila. Bajo el modelo vigente eso significa S/ 1.953 **por los tres meses**.
-   ¿Es lo que se quiso pactar?
+2. **¿Cómo se paga un contrato que dura varios meses?** Ver más abajo, §«Contratos de varios
+   meses» — es la más grande de todas y sigue en diseño.
+
+### Preguntas contestadas el 24-ago-2026
+
+| Pregunta | Respuesta de Alexander | Qué cambia |
+|---|---|---|
+| ¿Todo el equipo debe tener acceso a las cuatro sedes? | **Sí, a propósito.** No hay problema en que lo tengan; el horario de cada contrato dice en qué sede está cada quien. El acceso a varias sedes existe porque a veces rotan de imprevisto o por necesidad, pero es temporal | Ninguno. El aislamiento por sede no aísla nada hoy y **está bien que sea así** — no es un defecto, es cómo trabaja el equipo. Se cierra sin tocar código |
+| ¿La nota mensual /20 debe modificar el monto de la liquidación? | **No.** Es un indicador de rendimiento. Cuando se mida el promedio de puntajes del equipo, se le pondrá un valor en soles a cada punto que lo supere — eso vendrá después, no hoy | Ninguno todavía. Queda anotada la idea futura (ver «Bono por rendimiento sobre el promedio del equipo» más abajo) |
+| ¿El crédito de un turno es del encargado o de todo el equipo? | **De todo el equipo.** Sólo los puntos extras son individuales | Migración `0091_evaluacion_equipo_y_puntualidad` — spec en [2026-08-24-equipo-y-puntualidad-design.md](superpowers/specs/evaluaciones/2026-08-24-equipo-y-puntualidad-design.md) |
+| ¿La puntualidad de la nota se deriva del horario o de la carga manual? | **Se calcula sola, del horario.** | Misma migración `0091` que el punto anterior |
+| ¿Cuánto debe durar la reautenticación? | **15 minutos está bien**, sin cambios | Ninguno |
+| ¿Los operativos deben ver el listado de incidencias de su sede? | **Sí, pero no quién la reportó — eso lo ve sólo el administrador** | Spec en [2026-08-24-incidencias-reportante-solo-admin-design.md](superpowers/specs/almacen/2026-08-24-incidencias-reportante-solo-admin-design.md) |
+| El contrato viejo de Marylin (S/ 1.953 por tres meses) | **Fue un contrato mal cargado**, error de tipeo del propio Alexander, no un defecto del sistema | Ya corregido: contrato nuevo del 1-jul al 30-sep, S/ 1.800 (S/ 600/mes). Pero la pregunta abrió una más grande — ver abajo |
+
+### Bono por rendimiento sobre el promedio del equipo — idea futura, no construir todavía
+
+Cuando se tenga suficiente historial, se va a medir el promedio de puntajes del equipo y, a partir
+de ahí, se le va a poner un valor en soles a cada punto de nota que lo supere — así la nota /20 deja
+de ser sólo un indicador y empieza a pagar algo cuando el desempeño es alto. No hay fecha ni diseño
+todavía. Queda anotado para no perderlo, no para empezarlo.
+
+### Contratos de varios meses — la pregunta más grande, todavía en diseño
+
+**Lo que dijo Alexander, textual:** *«un contrato no se hace solo por un mes, pero tampoco implica
+que el admin paga cuando todo el contrato se termine»* y *«la idea es siempre verlo mensual o
+semanal (según modalidad)»*.
+
+**Lo que eso significa para el sistema, tal como está hoy.** Un contrato (`sueldo_acuerdos`) tiene
+una fecha de inicio, una de fin, una `modalidad` (mensual o semanal) y un `sueldo_pactado`. Hoy el
+motor trata esas tres cosas como una sola unidad: `sueldo_entrada(acuerdo)` siempre usa el rango
+completo del contrato como el período a liquidar, y `sueldo_pactado` es literalmente «lo que se
+paga por todo ese rango» — de ahí sale el valor de la hora (`sueldo_pactado ÷ horas del rango
+completo`). Un contrato de tres meses sólo se puede liquidar **una vez, entero**, al final.
+
+Eso es exactamente lo que Alexander dice que no quiere: el contrato puede —y a veces conviene que
+dure varios meses, por estabilidad— pero el **pago** tiene que poder salir cada mes (o cada semana,
+según la modalidad), sin esperar a que el contrato entero termine.
+
+**Lo que cambiaría, en criollo:**
+- `sueldo_pactado` dejaría de ser «el total del contrato» y pasaría a ser **la tarifa del período**:
+  si la modalidad es mensual, es lo que se paga POR MES, sin importar cuántos meses dure el
+  contrato completo. Con el contrato de Marylin que acabamos de cargar (modalidad mensual,
+  1-jul a 30-sep), esto ya está bien pensado por casualidad: pusimos S/ 600 mensuales, no S/ 1.800
+  totales con la esperanza de que se dividiera solo.
+- Un contrato de tres meses pasaría a tener **hasta tres liquidaciones**, una por mes, en vez de
+  una sola que cubra todo el rango.
+
+**24-ago, dos aclaraciones de Alexander que cambian el tamaño del problema:**
+
+1. **El límite entre períodos no es el mes calendario: es el ciclo por aniversario**, la misma
+   regla que ya usan las evaluaciones (fecha de ingreso → un día antes del próximo aniversario,
+   recortado al último día real cuando el mes siguiente es corto — ver
+   [2026-08-24-ciclo-aniversario-mes-corto-design.md](superpowers/specs/evaluaciones/2026-08-24-ciclo-aniversario-mes-corto-design.md)).
+   No hay «mes a medias» que prorratear: cada período, incluido el primero, es un ciclo completo
+   por aniversario. La pregunta que se le hizo sobre prorrateo estaba mal planteada — no era eso lo
+   que había que resolver.
+2. **El administrador casi siempre elige el período a mano**, como ya hacía en su Excel: un
+   calendario con una fecha de inicio y una de fin, con el que cuenta a la vez las horas trabajadas
+   (para el pago) y el desempeño (para la evaluación) de ese tramo. El cálculo automático del ciclo
+   por aniversario es sólo la **sugerencia** con la que arranca ese selector — el mismo patrón que
+   ya usa `evaluacion_componentes(p_empleado, p_desde, p_hasta)`, que recibe el período como
+   parámetro en vez de asumirlo. Esto simplifica bastante el diseño: `sueldo_entrada` necesitaría
+   el mismo tipo de parámetro (`p_desde`, `p_hasta`) en vez de tomar siempre el rango completo del
+   acuerdo, no un sistema nuevo de «el acuerdo genera N liquidaciones solo».
+
+**Por qué esto sigue sin construirse hoy, junto con el resto.** Sigue siendo un cambio en el
+corazón del motor de sueldos —qué es `sueldo_pactado`, cómo se relaciona con el rango que se
+liquida cada vez, cuántas liquidaciones puede tener un contrato— y aunque las dos aclaraciones de
+arriba lo simplifican, todavía no está escrito cómo conviven `sueldo_pactado` (que hoy es «para
+todo el rango del acuerdo») con liquidar sólo una parte de ese rango. Falta una spec completa antes
+de tocar `packages/core` o el esquema.
 
 ---
 

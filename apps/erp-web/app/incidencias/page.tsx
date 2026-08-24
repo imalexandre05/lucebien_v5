@@ -20,12 +20,12 @@ export default async function IncidenciasPage() {
   }
   if (!puede(matriz, sesion.usuario.rol, 'incidencias', 'ver', sesion.usuario.rolCod)) redirect('/reportes/nuevo');
 
+  const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
   const [incidencias, tipos, empleados] = await Promise.all([
-    listarIncidencias(),
+    listarIncidencias(esAdmin),
     listarTiposIncidencia(),
     listarEmpleados(),
   ]);
-  const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
 
   return (
     <div>
