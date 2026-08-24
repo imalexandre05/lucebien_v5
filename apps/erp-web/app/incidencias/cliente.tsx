@@ -353,20 +353,27 @@ export function IncidenciasCliente({
                   </TD>
                   <TD>
                     {esAdmin ? (
-                      <select
-                        value={i.responsableId ?? ''}
-                        onChange={(ev) => asignarResponsable(i.id, ev.target.value)}
-                        disabled={pending && asignando === i.id}
-                        className={cn(fieldCls, 'min-w-[10rem] max-w-[14rem]', !i.responsableId && 'border-aviso text-aviso-deep')}
-                        aria-label={`Responsable de la incidencia ${i.tipo} del ${i.fecha}`}
-                      >
-                        <option value="">— sin responsable —</option>
-                        {empleados.map((e) => (
-                          <option key={e.id} value={e.id}>
-                            {e.nombre}
-                          </option>
-                        ))}
-                      </select>
+                      <>
+                        <select
+                          value={i.responsableId ?? ''}
+                          onChange={(ev) => asignarResponsable(i.id, ev.target.value)}
+                          disabled={pending && asignando === i.id}
+                          className={cn(fieldCls, 'min-w-[10rem] max-w-[14rem]', !i.responsableId && 'border-aviso text-aviso-deep')}
+                          aria-label={`Responsable de la incidencia ${i.tipo} del ${i.fecha}`}
+                        >
+                          <option value="">— sin responsable —</option>
+                          {empleados.map((e) => (
+                            <option key={e.id} value={e.id}>
+                              {e.nombre}
+                            </option>
+                          ))}
+                        </select>
+                        {/* Sólo el administrador ve quién reportó (confirmado por Alexander): el
+                            repo ya deja reportadoPorNombre en null para cualquier otra sesión. */}
+                        {i.reportadoPorNombre && (
+                          <div className="mt-1 text-xs text-muted">Reportado por: {i.reportadoPorNombre}</div>
+                        )}
+                      </>
                     ) : (
                       (i.responsableNombre ?? '—')
                     )}
