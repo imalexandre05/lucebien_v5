@@ -957,3 +957,30 @@ elegir para que un arreglo fuera posible, y que conviene que Alexander confirme.
 | **Las ocho competencias** de la evaluación mensual | Hay que responderlas antes de guardar | Antes el formulario arrancaba con el nivel 0 —el peor de la rúbrica— pintado como si alguien lo hubiera elegido. Es el mismo criterio que ya se aprobó para Valores 360° | — (ya decidido en Valores) |
 | Que los **siete pesos de la nota sumen 1** | **No se fuerza** | Es la decisión 14, todavía abierta. El catálogo dice «deberían sumar 1» y nadie lo hace cumplir: hoy suman exactamente 1,00, pero nada impide que dejen de hacerlo | Dueño |
 | Parámetros **personalizados** de /configuración | Siguen sin validarse | No declaran tipo ni rango. Validarlos exige decidir si eso se guarda en la tabla `config` | Dueño |
+
+---
+
+## Decisión 14 — CONTESTADA el 24-ago-2026
+
+**Los siete pesos de la nota mensual y qué pasa si no suman 100 %.**
+
+Alexander eligió: **avisar ahora, bloquear más adelante.**
+
+| Etapa | Qué hace el sistema | Estado |
+|---|---|---|
+| Ahora | La pantalla avisa: «Los pesos suman 95 %: esta nota no está sobre 20 sino sobre 19». No bloquea nada; el administrador ve el número y decide | Construyéndose (spec [2026-08-24-nota-sin-ceros-silenciosos-design.md](superpowers/specs/evaluaciones/2026-08-24-nota-sin-ceros-silenciosos-design.md)) |
+| Más adelante | Configuración deja de aceptar pesos que no sumen 100 % | **Tarea pendiente**, ya no una pregunta |
+
+La segunda etapa no se construye sola: va **junto con el rediseño de la pantalla de pesos**, para
+editar los siete a la vez con el total a la vista mientras se escribe. Bloquear el guardado sobre la
+pantalla actual —donde se editan de a uno— obligaría a pasar por un estado inválido para llegar al
+válido, y produce una pantalla que pelea con quien la usa.
+
+**Se descartó** que el sistema los reescale solo. Nunca fallaría, pero el administrador escribiría
+20 % y el motor usaría 21 %: la pantalla mostrando un número y el motor usando otro es justo lo que
+esta auditoría vino a eliminar de un sistema que termina en un pago.
+
+**Por qué importaba.** Hoy los siete suman exactamente 100 % y nada lo sostiene. Bajar Competencias
+de 25 % a 20 % y no compensar hace que alguien perfecto saque 19 en vez de 20, y que quien estaba
+en 17,5 («Excelente») pase a 16,6 («Buen desempeño»). Todo el equipo baja a la vez, sin que nadie
+haya trabajado peor, y ninguna pantalla lo dice.
