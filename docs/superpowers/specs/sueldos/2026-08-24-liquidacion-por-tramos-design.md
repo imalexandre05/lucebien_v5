@@ -467,3 +467,18 @@ negocio— que no necesita volver a preguntarle a Alexander: es la lectura fiel 
 liquidación). Después F-6 (para que la prueba de verdad cubra F-2 y las conversiones de rango).
 F-5 es independiente, se puede hacer en cualquier momento. La corrección opcional de F-4 al final,
 si hay tiempo.
+
+### F-7 — `/personal` podía mostrar el pago de una liquidación al azar (corregido el 25-ago-2026)
+
+El mismo `verificador` marcó, aparte de los seis de arriba, un séptimo hallazgo de menor urgencia
+—se dejó a propósito para después de aplicar la migración—:
+`apps/erp-web/lib/colaboradores-repo.ts`, el hilo de `/personal`, tomaba «la primera liquidación
+cerrada cuyo rango se solapa» con el período mostrado, sin `ORDER BY`. Antes de esta spec no había
+ambigüedad real (una sola liquidación viva por acuerdo); con tramos, un período visto (un ciclo por
+aniversario de 15-jul a 14-ago, por ejemplo) puede solaparse de verdad con dos tramos mensuales
+cerrados a la vez, y quedarse con uno solo mostraba «Pagada» o «Falta: pago» según el orden que
+devolviera Postgres.
+
+**Corrección:** se suman el total y lo pagado de TODAS las liquidaciones cerradas que caen en el
+rango, en vez de elegir una. El tipo `EstadoPago` no cambió — no lleva ningún id de liquidación
+particular, así que sumar es compatible con todo lo que ya lo consume.
