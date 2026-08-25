@@ -1137,3 +1137,60 @@ la tasa siga vacía (`ventasSinTasa` en el RPC `private.evaluacion_componentes_d
 frenar a emitir una nota que calla que alguien vendió y el sistema no lo contó.
 
 **Falta confirmar con el administrador:** cuántos puntos vale un sol vendido.
+
+---
+
+### 🔴🔴 LA ESCALA ESTÁ SIN CALIBRAR, Y CON LOS DEFAULTS TODO EL EQUIPO SALE EN «RIESGO DE DESPIDO»
+
+**Esto no salió de las notas de la reunión. Salió de medir la base real el 25-ago-2026, después de
+aplicar la migración `0095`.** Es el hallazgo más importante del trabajo de ese día y hay que
+resolverlo **antes** de que el administrador mire una sola nota calculada por puntos.
+
+**Los números, medidos contra `scilb`, no estimados:**
+
+| Qué | Cuánto |
+|---|---|
+| Todo el histórico de `pipeline_puntos` | **323,40 puntos**, 179 eventos, del 14-abr al 30-jun-2026 |
+| Cuántas personas registraron alguna vez un avance | **2** (de once activas) |
+| El mejor mes-persona registrado | **126,45 puntos** (abril 2026) |
+| Filas en `sueldo_ventas` | **0** |
+| Filas en `reporte_extras` | 7 |
+
+**Qué nota da eso con la escala que quedó sembrada (5000 → 16):**
+
+```
+nota = 126,45 / 5000 × 16 = 0,40 / 20
+```
+
+La persona **más productiva del mejor mes que existe en la base** sacaría **0,40 sobre 20**, o sea
+muy por debajo del corte de 13 que el administrador definió como *«riesgo de despido»*. Con estos
+parámetros, el sistema le diría que **las once personas están en riesgo de despido**, todos los
+meses, para siempre.
+
+**Por qué pasa, dicho con honestidad — son dos cosas distintas y conviene no confundirlas:**
+
+1. **Los 5000 son hipotéticos.** El administrador los dio como ejemplo y lo dijo él mismo:
+   *«una cierta cantidad de puntos aún no definida (por ejemplo: 5000)»*. Nunca fueron una medición.
+2. **El pipeline casi no se usa.** Sólo 2 personas registraron avances, en 2 meses. Eso no dice que
+   la gente trabaje poco: dice que el módulo todavía no se adoptó (la adopción del ERP se midió en
+   4,4 % en agosto). Los puntos por actividades y extras, que la `0095` recién empieza a contar, van
+   a subir el total — pero de cientos a algunos cientos más, no a miles.
+
+**Lo que NO se hizo, a propósito.** No se bajaron los defaults a ~130 para que «los números den
+lindo». Sería inventar, en silencio, la vara con la que se mide a once personas — y con dos meses de
+datos de un módulo que casi nadie usa todavía, cualquier número que saliera de ahí sería igual de
+arbitrario que el 5000, sólo que con aspecto de medido.
+
+**Las dos salidas, para que el administrador elija:**
+
+- **(a) Bajar la escala** a lo que la operación real produce hoy (`eval_puntos_promedio` en el orden
+  de las centenas, no de los miles).
+- **(b) Subir cuánto vale cada cosa** — `pts_actividad_cumplida`, los diez `pts_*` del pipeline —
+  hasta que un mes normal de trabajo se acerque a los 5000 que él tenía en la cabeza.
+
+**Son la misma decisión mirada desde dos lados, y es exactamente la misma pregunta que «cuánto vale
+una venta»:** cuánto pesa cada tipo de trabajo, unos contra otros. Por eso las tres van juntas al
+administrador y ninguna se decide sin él.
+
+**Mientras tanto, la nota por puntos no se puede leer como un juicio sobre nadie.** El mecanismo
+está construido, aplicado y probado; la vara con la que mide, no.
