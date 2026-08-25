@@ -82,6 +82,14 @@ export function IncidenciasCliente({
     return [...m.entries()];
   }, [tipos]);
 
+  // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): el catálogo ya sabe la
+  // gravedad de cada tipo (nivel_default). Sólo el tipo de categoría 'Otros' —hoy, únicamente
+  // «Otro (especificar)»— deja elegir gravedad a mano, y en ese caso la descripción pasa a ser
+  // obligatoria: es la única forma de saber qué pasó cuando el catálogo no lo puede decidir solo.
+  const tipoSeleccionado = useMemo(() => tipos.find((t) => t.tipo === tipo), [tipos, tipo]);
+  const esOtros = tipoSeleccionado?.categoria === 'Otros';
+  const descripcionFalta = esOtros && !descripcion.trim();
+
   const sedes = useMemo(() => [...new Set(incidencias.map((i) => i.sedeCod))].sort(), [incidencias]);
 
   const filtradas = useMemo(() => {
@@ -275,49 +283,72 @@ export function IncidenciasCliente({
                 </select>
               </div>
             </div>
-            <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Gravedad</label>
-              <div className="grid grid-cols-3 gap-2">
-                {NIVELES.map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setNivel(n)}
-                    className={cn(
-                      'rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors duration-150',
-                      nivel === n
-                        ? n === 'Alto'
-                          ? 'border-error bg-error-soft text-error-deep'
-                          : n === 'Medio'
-                            ? 'border-aviso bg-aviso-soft text-aviso-deep'
-                            : 'border-muted bg-paper text-ink'
-                        : 'border-line bg-white text-muted hover:border-gold/60',
-                    )}
-                  >
-                    {n}
-                  </button>
-                ))}
+            {esOtros && (
+              // Sólo la categoría 'Otros' deja elegir gravedad a mano — en el resto de los 20
+              // tipos ya la trae el catálogo (nivel_default) y preguntarla de nuevo es redundante.
+              <div>
+                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Gravedad</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {NIVELES.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => setNivel(n)}
+                      className={cn(
+                        'rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors duration-150',
+                        nivel === n
+                          ? n === 'Alto'
+                            ? 'border-error bg-error-soft text-error-deep'
+                            : n === 'Medio'
+                              ? 'border-aviso bg-aviso-soft text-aviso-deep'
+                              : 'border-muted bg-paper text-ink'
+                          : 'border-line bg-white text-muted hover:border-gold/60',
+                      )}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción</label>
-              <input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} placeholder="Qué pasó…" className={cn(fieldCls, 'w-full')} />
+              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
+                Descripción
+                {esOtros && (
+                  <span className="ml-0.5 font-semibold text-gold-deep">
+                    *<span className="sr-only"> (obligatoria)</span>
+                  </span>
+                )}
+              </label>
+              <input
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                placeholder={esOtros ? 'Qué pasó… (obligatoria para este tipo)' : 'Qué pasó…'}
+                aria-invalid={descripcionFalta}
+                className={cn(fieldCls, 'w-full')}
+              />
             </div>
             {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 type="button"
                 onClick={registrar}
-                disabled={!tipo}
+                disabled={!tipo || descripcionFalta}
                 pending={pending}
-                aria-describedby={!tipo ? 'motivo-incidencia' : undefined}
+                aria-describedby={!tipo || descripcionFalta ? 'motivo-incidencia' : undefined}
               >
                 {pending ? 'Registrando…' : 'Registrar incidencia'}
               </Button>
-              {!tipo && (
+              {!tipo ? (
                 <span id="motivo-incidencia" className="text-xs font-medium text-aviso-deep">
                   Elige el tipo de incidencia para poder registrarla.
                 </span>
+              ) : (
+                descripcionFalta && (
+                  <span id="motivo-incidencia" className="text-xs font-medium text-aviso-deep">
+                    La descripción es obligatoria para este tipo de incidencia.
+                  </span>
+                )
               )}
             </div>
           </CardContent>

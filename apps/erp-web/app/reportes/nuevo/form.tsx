@@ -222,7 +222,23 @@ export function NuevoReporteForm({
   }, [zonas, limpieza, turno]);
 
   const totalPts = Math.round((actPts + limpiezaPts.got) * 10) / 10;
-  const puedeEnviar = Boolean(turno) && !conflicto && !pendienteAnterior && encargadoSel.length === 1 && !pending;
+
+  // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): el catálogo ya trae la
+  // gravedad de cada tipo (nivel_default). Sólo la categoría 'Otros' —hoy, únicamente
+  // «Otro (especificar)»— deja elegir gravedad a mano, y ahí la descripción pasa a ser
+  // obligatoria: es la única forma de saber qué pasó cuando el catálogo no lo puede decidir solo.
+  const incidenciaFalta = useMemo(
+    () =>
+      incidencias.some((i) => {
+        if (!i.tipo) return false;
+        const t = tiposIncidencia.find((x) => x.tipo === i.tipo);
+        return t?.categoria === 'Otros' && !i.descripcion.trim();
+      }),
+    [incidencias, tiposIncidencia],
+  );
+
+  const puedeEnviar =
+    Boolean(turno) && !conflicto && !pendienteAnterior && encargadoSel.length === 1 && !incidenciaFalta && !pending;
 
   // POR QUÉ ESTÁ GRIS EL BOTÓN.
   //
@@ -240,7 +256,9 @@ export function NuevoReporteForm({
         ? 'Ya existe un reporte para este turno.'
         : encargadoSel.length !== 1
           ? 'Selecciona al encargado del turno, que es quien lo firma.'
-          : null;
+          : incidenciaFalta
+            ? 'Falta la descripción de una incidencia que la requiere.'
+            : null;
 
   /**
    * Elegir al encargado del turno también lo marca como colaborador.
@@ -347,6 +365,10 @@ export function NuevoReporteForm({
     if (!turno) return;
     if (encargadoSel.length !== 1) {
       setError('Selecciona al encargado del turno (quien firma el reporte).');
+      return;
+    }
+    if (incidenciaFalta) {
+      setError('Completa la descripción de la incidencia marcada: este tipo la requiere.');
       return;
     }
     const id = idReporte(fecha, turno, sede);
@@ -668,7 +690,11 @@ export function NuevoReporteForm({
                 <p className="text-sm text-muted">Sin incidencias registradas.</p>
               ) : (
                 <div className="space-y-3">
-                  {incidencias.map((inc, i) => (
+                  {incidencias.map((inc, i) => {
+                    const tInfo = tiposIncidencia.find((x) => x.tipo === inc.tipo);
+                    const esOtros = tInfo?.categoria === 'Otros';
+                    const descripcionFalta = esOtros && !inc.descripcion.trim();
+                    return (
                     <div key={i} className="grid grid-cols-1 gap-2 border-b border-line/60 pb-3 sm:grid-cols-2">
                       <select
                         value={inc.tipo}
@@ -706,31 +732,42 @@ export function NuevoReporteForm({
                       <input
                         value={inc.descripcion}
                         onChange={(e) => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, descripcion: e.target.value } : x)))}
-                        placeholder="Descripción"
+                        placeholder={esOtros ? 'Descripción (obligatoria para este tipo)' : 'Descripción'}
+                        aria-invalid={descripcionFalta}
                         className={cn(fieldCls, 'w-full sm:col-span-2')}
                       />
+                      {/* Sólo la categoría 'Otros' deja elegir gravedad a mano — en el resto de
+                          los tipos ya la trae el catálogo (nivel_default) y preguntarla de nuevo
+                          es redundante. */}
                       <div className="flex items-center gap-2 sm:col-span-2">
-                        <div className="flex gap-1.5">
-                          {NIVELES_INC.map((n) => (
-                            <button
-                              key={n}
-                              type="button"
-                              onClick={() => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, nivel: n } : x)))}
-                              className={cn(
-                                'rounded-md border-2 px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
-                                inc.nivel === n
-                                  ? n === 'Alto'
-                                    ? 'border-error bg-error-soft text-error-deep'
-                                    : n === 'Medio'
-                                      ? 'border-aviso bg-aviso-soft text-aviso-deep'
-                                      : 'border-muted bg-paper text-ink'
-                                  : 'border-line bg-white text-muted hover:border-gold/60',
-                              )}
-                            >
-                              {n}
-                            </button>
-                          ))}
-                        </div>
+                        {esOtros && (
+                          <div className="flex gap-1.5">
+                            {NIVELES_INC.map((n) => (
+                              <button
+                                key={n}
+                                type="button"
+                                onClick={() => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, nivel: n } : x)))}
+                                className={cn(
+                                  'rounded-md border-2 px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
+                                  inc.nivel === n
+                                    ? n === 'Alto'
+                                      ? 'border-error bg-error-soft text-error-deep'
+                                      : n === 'Medio'
+                                        ? 'border-aviso bg-aviso-soft text-aviso-deep'
+                                        : 'border-muted bg-paper text-ink'
+                                    : 'border-line bg-white text-muted hover:border-gold/60',
+                                )}
+                              >
+                                {n}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {descripcionFalta && (
+                          <span className="text-xs font-medium text-aviso-deep">
+                            La descripción es obligatoria para este tipo.
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => setIncidencias((p) => p.filter((_, j) => j !== i))}
@@ -741,7 +778,8 @@ export function NuevoReporteForm({
                         </button>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>

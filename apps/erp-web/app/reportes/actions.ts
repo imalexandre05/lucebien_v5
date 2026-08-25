@@ -25,7 +25,7 @@ import {
   type ReportePendiente,
 } from '../../lib/reportes-repo';
 import { getSesion } from '../../lib/auth';
-import { crearIncidenciasDeReporte } from '../../lib/incidencias-repo';
+import { crearIncidenciasDeReporte, listarTiposIncidencia } from '../../lib/incidencias-repo';
 
 // Inicia el espacio de trabajo de un turno: catálogo de actividades + zonas de limpieza + draft.
 // `yaEnviado` = reporte si el turno ya se envió (para pasar a Evaluación, como el viejo).
@@ -84,6 +84,20 @@ export async function accionCrearReporte(
   input: CrearReporteInput,
 ): Promise<{ ok: boolean; id?: string; error?: string; bloqueoId?: string }> {
   try {
+    // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): la descripción es
+    // obligatoria sólo para incidencias del tipo de categoría 'Otros'. El formulario ya lo hace
+    // cumplir; esto es lo que de verdad lo exige — un cliente puede saltearse una validación de
+    // UI. Se comprueba ANTES de crear el reporte: si falta, no debe quedar nada a medio guardar.
+    if (input.incidencias.length) {
+      const tiposCatalogo = await listarTiposIncidencia();
+      const faltante = input.incidencias.find((i) => {
+        const t = tiposCatalogo.find((x) => x.tipo === i.tipo);
+        return t?.categoria === 'Otros' && !i.descripcion.trim();
+      });
+      if (faltante) {
+        return { ok: false, error: `Falta la descripción de la incidencia "${faltante.tipo}": este tipo la requiere.` };
+      }
+    }
     const id = await crearReporte(input);
     // Incidencias del turno → registradas ligadas al reporte (origen='reporte').
     if (input.incidencias.length) {
