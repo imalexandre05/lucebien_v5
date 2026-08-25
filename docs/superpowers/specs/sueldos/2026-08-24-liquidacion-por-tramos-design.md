@@ -110,14 +110,15 @@ díasDelTramo / díasDelAcuerdo`) — además de contradecir lo que pidió Alexa
 sin resolver: prorratear por días de calendario no es correcto cuando dos tramos tienen distinta
 cantidad de horas contratadas (un mes con más fines de semana no vale lo mismo que uno con menos).
 
-### 🔴 Esto es lo único que hace falta que Alexander confirme antes de tocar código
+### ✅ CONFIRMADO el 24-ago-2026
 
-**¿`sueldo_pactado` pasa a ser la cuota de CADA liquidación (recomendado, S/600 para Marylin), o
-sigue siendo el total del contrato completo (S/1.800), con cada tramo cobrando una fracción?**
-
-Si la respuesta es la segunda, esta spec queda incompleta: hay que volver a §2 y diseñar la fórmula
-de prorrateo dentro de `packages/core`, con su propio test y su propia verificación adversarial —
-no se improvisa acá. El resto de esta spec (§3 en adelante) asume que la respuesta es la primera.
+Alexander, textual: *«mi idea era que en los contratos se pone cuanto se le paga semanal o
+mensual... la idea es que mensualmente se pague 600, eso es todo»*. Es la opción A: `sueldo_pactado`
+es la cuota de CADA liquidación, no el total del contrato. El 1.800 cargado en el acuerdo real de
+Marylin fue una traducción mía de su respuesta anterior («S/1.800 — o sea S/600 al mes») al ÚNICO
+campo que existía en ese momento (uno solo, pensado para el contrato completo) — no fue una
+decisión suya de cobrar por el total. El resto de esta spec (§3 en adelante) queda confirmado tal
+como está escrito, sin necesidad de rediseñar nada.
 
 ---
 
@@ -266,7 +267,7 @@ sin necesidad de volver a esta spec por la redacción exacta.
 
 ## 6. Orden sugerido de implementación
 
-1. Confirmar §2 con Alexander. Sin esto, nada de lo que sigue es seguro escribir.
+1. ~~Confirmar §2 con Alexander.~~ ✅ Hecho el 24-ago-2026.
 2. `packages/db/pruebas/00XX_....prueba.sql` primero (Zone Guard: la prueba fija el contrato antes
    que el código lo cumpla), con los casos de §5.
 3. Migración: C-1 (índice → exclude) + C-2 (`sueldo_entrada` con rango), una sola migración —

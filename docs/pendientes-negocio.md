@@ -1002,8 +1002,14 @@ hoy «todo el acuerdo de una sola vez» son dos piezas puntuales: el índice ún
 `uq_sueldo_liq_acuerdo_vigente` (una sola liquidación viva POR ACUERDO, sin mirar fechas) y la
 firma de la RPC `sueldo_entrada(p_acuerdo uuid)` (sin parámetro de rango). Este hallazgo no estaba
 en este documento hasta hoy: lo que se pensaba «un cambio en el corazón del motor» resultó ser un
-ajuste acotado a dos piezas de infraestructura que ya estaba pensada para esto. Queda **una
-decisión de negocio sin confirmar** antes de implementar — ver la spec, §4.
+ajuste acotado a dos piezas de infraestructura que ya estaba pensada para esto.
+
+✅ **La única decisión de negocio que hacía falta (spec §2) quedó confirmada el mismo 24-ago-2026.**
+Alexander, textual: *«mi idea era que en los contratos se pone cuanto se le paga semanal o
+mensual... la idea es que mensualmente se pague 600, eso es todo»*. `sueldo_pactado` es la cuota de
+CADA liquidación (S/600 para Marylin), no el total del contrato — el 1.800 cargado en su acuerdo
+real fue una traducción mía de su respuesta anterior a la única casilla que existía en ese momento,
+no una decisión suya de cobrar por el total. Falta implementar; nada bloquea ya empezar.
 
 ---
 
