@@ -57,7 +57,7 @@ empezar.
 | A-5 | *«y con eso tomar decisiones, como darles cursos etc y retener a los empleados»* | ⏸️ | Consecuencia de A-4, no es código todavía |
 | A-6 | 🔴 *«considerar que a veces hay personas que no hacen pipeline y solo ventas, tenemos que ver cómo equiparar; si planchar 100 prendas vale 1000, ¿cuánto vale una venta?»* | 🔴 | **La pregunta más cara de toda la reunión.** Ver §2 |
 | A-7 | *«corregir las horas extras en reportes de actividades y en el desempeño/evaluación»* | ⏸️ | Falta que el administrador precise qué está mal — ver §2 |
-| A-8 | *«en el tema de evaluación debe ser automático, todos los usuarios deben evaluar a un usuario una semana antes del pago de éste, y que tengan un pendiente de evaluar a esa persona hasta su día de pago»* | 📐 | Spec propia pendiente (B-prioridad) |
+| A-8 | *«en el tema de evaluación debe ser automático, todos los usuarios deben evaluar a un usuario una semana antes del pago de éste, y que tengan un pendiente de evaluar a esa persona hasta su día de pago»* | 📐 **con bloqueo de datos** | Spec completa en [2026-08-25-evaluacion-automatica-antes-del-pago-design.md](evaluaciones/2026-08-25-evaluacion-automatica-antes-del-pago-design.md). **No se puede construir todavía:** todo cuelga del día de pago de cada persona, que sale de su `fecha_ingreso` — y **9 de las 11 personas reales no la tienen** (medido el 25-ago). Construirlo hoy daría una pantalla que no hace nada para nueve de once, y no lo diría. Lo que destraba esto es carga de datos, no código |
 | A-9 | *«diseñar parte de exámenes tanto para admin y usuarios»* | ⏸️ | Módulo nuevo, grande. Ya estaba anotado como pendiente desde el 14-ago (`valorCapacitacion` depende de esto) |
 
 ### B. Huellero y asistencias — donde el dato se vuelve plata
@@ -100,7 +100,39 @@ empezar.
 | E-2 | *«en incidencias no se puede ver el responsable para los colaboradores, solo administradores»* | ✅ hecho | PR #23, 24-ago-2026 |
 | E-3 | *«incidencias solo en "otros" se puede ver gravedad y requiere descripción»* | ✅ hecho | Aplicado en los **dos** formularios que registran incidencias (`/incidencias` y la sección del reporte de turno), con validación también del lado del servidor |
 | E-4 | *«incidencias en lo demás si tiene sus puntos en contra y ya tiene gravedad, es redundante»* | ✅ hecho | Ídem E-3, la otra mitad: los otros 20 tipos toman `nivel_default` del catálogo sin preguntarlo |
-| E-5 🆕 | **No lo pidió nadie — salió de implementar E-1.** `inc_insert` (migración `0046`) no exige `reportado_por_id = auth.uid()` en su `with check`. Hoy no se explota porque los dos server actions derivan el reportante de la sesión, nunca del cliente; pero alguien con acceso directo a la API podría registrar una incidencia **atribuyéndosela a otra persona** | ⏸️ | Se vuelve más caro con los puntos como moneda: una incidencia inventada baja la nota de alguien, y la nota es lo que el administrador va a mirar para decidir despidos y aumentos. El arreglo es el mismo patrón que ya usa `solicitudes` (`solicitante_id = auth.uid()`, migración `0087`). **Ojo:** `responsable_id` NO se restringe — reportar sobre otra persona es justamente el uso legítimo |
+| E-5 🆕 | **No lo pidió nadie — salió de implementar E-1.** `inc_insert` (migración `0046`) no exige `reportado_por_id = auth.uid()` en su `with check`. Alguien con acceso directo a la API podría registrar una incidencia **atribuyéndosela a otra persona** | ⏸️ **con un requisito previo, ver abajo** | Se vuelve más caro con los puntos como moneda: una incidencia inventada baja la nota de alguien, y la nota es lo que el administrador va a mirar para decidir despidos y aumentos |
+
+#### E-5 tiene un requisito previo que no se ve en la política — medido el 25-ago-2026
+
+Al ir a arreglarlo, la base contradijo la premisa. **13 de las 17 incidencias no tienen reportante**, y
+—esto es lo que importa— **tres de ellas son las más recientes**: `origen = 'reporte'`, creadas entre
+el 23 y el 26 de julio de 2026, después de las que sí lo tienen (28-29 de junio).
+
+La causa está en `apps/erp-web/app/reportes/actions.ts:109`:
+
+```ts
+reportadoPorId: sesion?.usuario.id ?? null,
+```
+
+Ese `?? null` es el agujero: cuando la sesión no resuelve, la incidencia se guarda **sin reportante,
+en silencio**, en vez de fallar.
+
+**Por eso E-5 no se puede hacer de una sola vez.** Agregar `reportado_por_id = auth.uid()` al
+`with check` sin tocar esa línea haría que ese mismo camino, en vez de guardar un null, empiece a
+devolver un 403 al operativo que está cerrando su turno — cambiaría una pérdida silenciosa de dato
+por una pantalla rota, que no es mejor.
+
+**El orden correcto, para cuando se retome:**
+1. Primero, que el reportante **no pueda ser null** cuando lo escribe una persona: sacar el
+   `?? null` y cortar con un error claro si no hay sesión (que no debería pasar nunca — la acción ya
+   valida sesión antes).
+2. Recién entonces, la política:
+   `with check (private.app_es_admin() or (reportado_por_id = auth.uid() and (private.app_es_almacen() or sede_cod in (select private.app_sedes()))))`.
+   El administrador conserva el paso libre; un no-administrador sólo puede reportar **como sí
+   mismo**. `responsable_id` **no** se restringe: reportar sobre otra persona es justamente el uso
+   legítimo.
+3. Las 13 filas históricas sin reportante **no se tocan**: son de antes, y con la `0094` ya sólo las
+   ve el administrador.
 
 ### F. Pantallas y administración
 
@@ -109,7 +141,7 @@ empezar.
 | F-1 | *«que se quede borrador en caso se cambie de pantalla»* | 📐 | Formularios largos que se pierden al navegar. Acotado, alto valor de uso |
 | F-2 | *«poner una página de métricas de todo tipo, dashboard de personal exclusivamente»* | 📐 | Pantalla nueva. Se alimenta sola de A-4 (el perfil) |
 | F-3 | *«poder deshabilitar y eliminar a personal»* | ✅ parcial | Suspender ya existe y banea el acceso (migración 0083). **Eliminar** ya se estudió: cuesta 48 referencias, decidido no borrar. Confirmar que la pantalla lo dice claro |
-| F-4 | *«MANDAR LISTA DE COSAS QUE TIENE QUE HACER JOVEN JORDAN»* | 📐 | Entregable propio, no código |
+| F-4 | *«MANDAR LISTA DE COSAS QUE TIENE QUE HACER JOVEN JORDAN»* | 🔴 | **Jordan es el otro administrador** (`rol = 'admin'` en `empleados`, verificado el 25-ago) — no un colaborador de piso. O sea que la lista es de tareas para quien administra el sistema, no para quien trabaja en tienda. Pero **qué tareas** no está en ninguna anotación. No se inventa una lista de trabajo para una persona real: ver §2 |
 
 ---
 
