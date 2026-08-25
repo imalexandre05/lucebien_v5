@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../lib/auth';
-import { actualizarResponsableIncidencia, crearIncidencia, eliminarIncidencia } from '../../lib/incidencias-repo';
+import { actualizarResponsableIncidencia, crearIncidencia, eliminarIncidencia, listarTiposIncidencia } from '../../lib/incidencias-repo';
 
 function fechaPeru(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
@@ -19,6 +19,14 @@ export async function accionCrearIncidencia(input: {
     const sesion = await getSesion();
     if (!sesion) return { ok: false, error: 'Sin sesión' };
     if (!input.tipo) return { ok: false, error: 'Elige un tipo' };
+    // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): la descripción es
+    // obligatoria sólo para el tipo de categoría 'Otros'. El formulario ya deshabilita el botón
+    // en ese caso; esto es lo que de verdad lo exige — el cliente puede saltearse un `disabled`.
+    const tipos = await listarTiposIncidencia();
+    const tipoInfo = tipos.find((t) => t.tipo === input.tipo);
+    if (tipoInfo?.categoria === 'Otros' && !input.descripcion.trim()) {
+      return { ok: false, error: 'La descripción es obligatoria para este tipo de incidencia.' };
+    }
     await crearIncidencia({
       sede: sesion.usuario.sede,
       fecha: fechaPeru(),
