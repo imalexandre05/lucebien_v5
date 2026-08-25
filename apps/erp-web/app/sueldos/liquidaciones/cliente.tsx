@@ -3,7 +3,7 @@
 import { Fragment, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Ban, Calculator, Eye, Lock, Save, Trash2 } from 'lucide-react';
-import type { LineaLiquidacion } from '@scilb/core';
+import { finDePeriodo, type LineaLiquidacion } from '@scilb/core';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -84,6 +84,49 @@ function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; con
   );
 }
 
+// El día siguiente a 'YYYY-MM-DD'. Aritmética en UTC para que la zona del proceso no la corra —
+// mismo patrón que `diaSiguiente()` de lib/colaboradores-repo.ts, duplicado acá a propósito: ese
+// archivo es de servidor (importa getServerClient) y no se puede traer a un componente cliente.
+const diaSiguiente = (dia: string): string =>
+  new Date(Date.parse(`${dia}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+
+/**
+ * La sugerencia de rango al elegir un contrato (spec liquidación-por-tramos, C-4). No es una regla
+ * de negocio: es un punto de partida editable, el administrador puede pisar cualquiera de las dos
+ * fechas.
+ *
+ * - Si el acuerdo ya tiene liquidaciones no anuladas, sugiere desde el día siguiente al
+ *   `periodoHasta` más reciente de ellas.
+ * - Si no tiene ninguna, sugiere desde `fechaInicio` del acuerdo.
+ * - El «hasta» sale de `finDePeriodo(desde, acuerdo.modalidad, acuerdo.fechaFin)` — UN tramo de la
+ *   modalidad del contrato (mensual o semanal) que arranca en `desde`, recortado a `fechaFin` si se
+ *   pasara del final. Addendum F-1/F-1b (revisión adversarial, 24-ago-2026): acá ANTES se usaba
+ *   `calcularCiclo(desde, hoyPeru())`, que contesta "¿qué ciclo contiene HOY?" y no "qué período
+ *   arranca en `desde`" — con un acuerdo vencido sugería el acuerdo ENTERO como un solo tramo, y
+ *   nunca miraba `modalidad` (una `semanal` recibía una sugerencia de un mes).
+ */
+function sugerirRango(
+  acuerdo: AcuerdoSueldo | undefined,
+  liquidaciones: LiquidacionResumen[],
+): { desde: string; hasta: string } {
+  if (!acuerdo) return { desde: '', hasta: '' };
+
+  const noAnuladas = liquidaciones.filter((l) => l.acuerdoId === acuerdo.id && l.estado !== 'anulada');
+  const ultimaHasta = noAnuladas.reduce<string | null>(
+    (max, l) => (max === null || l.periodoHasta > max ? l.periodoHasta : max),
+    null,
+  );
+  const desde = ultimaHasta ? diaSiguiente(ultimaHasta) : acuerdo.fechaInicio;
+
+  const hastaRecortado = finDePeriodo(desde, acuerdo.modalidad, acuerdo.fechaFin);
+  // Si el acuerdo ya está cubierto de punta a punta, el recorte puede dejar `hasta` antes que
+  // `desde`: es un contrato ya liquidado por completo, no hay un tramo sano que sugerir. Se evita
+  // mostrar un rango invertido por defecto; el administrador de todas formas puede editarlo.
+  const hasta = hastaRecortado < desde ? desde : hastaRecortado;
+
+  return { desde, hasta };
+}
+
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string | number }) {
   return (
     <div>
@@ -102,6 +145,9 @@ export function LiquidacionesCliente({
 }) {
   const router = useRouter();
   const [acuerdoId, setAcuerdoId] = useState(acuerdos[0]?.id ?? '');
+  // C-4 (liquidación por tramos): el rango que se va a liquidar, con una sugerencia calculada al
+  // elegir el contrato. Editable sin más restricción que la que ya impone la RPC/el trigger.
+  const [rango, setRango] = useState(() => sugerirRango(acuerdos[0], liquidaciones));
   const [preview, setPreview] = useState<Preview | null>(null);
   const [detalle, setDetalle] = useState<LiquidacionDetalle | null>(null);
   const [anulando, setAnulando] = useState<LiquidacionResumen | null>(null);
@@ -120,11 +166,18 @@ export function LiquidacionesCliente({
     setCodigo(null);
   };
 
+  const elegirAcuerdo = (id: string) => {
+    setAcuerdoId(id);
+    setPreview(null);
+    limpiar();
+    setRango(sugerirRango(acuerdos.find((a) => a.id === id), liquidaciones));
+  };
+
   const calcular = () => {
     limpiar();
     setPreview(null);
     empezar(async () => {
-      const r = await accionCalcular(acuerdoId);
+      const r = await accionCalcular(acuerdoId, rango.desde, rango.hasta);
       if (r.ok && r.datos) setPreview(r.datos);
       else fallo(r);
     });
@@ -133,7 +186,7 @@ export function LiquidacionesCliente({
   const guardarBorrador = () => {
     limpiar();
     empezar(async () => {
-      const r = await accionCrearBorrador(acuerdoId);
+      const r = await accionCrearBorrador(acuerdoId, rango.desde, rango.hasta);
       if (r.ok) {
         setPreview(null);
         router.refresh();
@@ -205,10 +258,6 @@ export function LiquidacionesCliente({
   };
 
   const liq = preview?.liquidacion;
-  // F2 (validador de flujo 23-ago-2026): el contrato que se está liquidando, para llevar su
-  // período al enlace de abajo — sin esto, "cárgalas en Ventas y metas" mandaba a la pantalla
-  // vacía, sin el período puesto, y había que volver a elegirlo a mano.
-  const acuerdoSeleccionado = acuerdos.find((a) => a.id === acuerdoId);
 
   return (
     <>
@@ -217,7 +266,7 @@ export function LiquidacionesCliente({
         <CardContent className="flex flex-wrap items-end gap-4 py-4">
           <div className="min-w-[20rem] flex-1">
             <Label htmlFor="acuerdo">Contrato a liquidar</Label>
-            <Select id="acuerdo" value={acuerdoId} onChange={(e) => setAcuerdoId(e.target.value)}>
+            <Select id="acuerdo" value={acuerdoId} onChange={(e) => elegirAcuerdo(e.target.value)}>
               {acuerdos.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.empleadoNombre ?? 'Sin nombre'} · {a.fechaInicio} → {a.fechaFin} ({a.estado})
@@ -225,7 +274,38 @@ export function LiquidacionesCliente({
               ))}
             </Select>
           </div>
-          <Button onClick={calcular} pending={pendiente} disabled={!acuerdoId}>
+          {/* C-4 (liquidación por tramos): un acuerdo largo se liquida tramo por tramo — el admin
+              elige el rango de esta vez, con una sugerencia (día siguiente a la última liquidación
+              no anulada del acuerdo, o el inicio del contrato si es la primera) que puede pisar. */}
+          <div className="w-40">
+            <Label htmlFor="rango-desde">Desde</Label>
+            <Input
+              id="rango-desde"
+              type="date"
+              value={rango.desde}
+              onChange={(e) => {
+                // F-5 (addendum, revisión adversarial 24-ago-2026): cambiar la fecha invalida el
+                // preview ya calculado — si no, se podía calcular julio, estirar "Hasta" hasta
+                // agosto sin recalcular, y guardar un borrador de un período que nadie vio en
+                // pantalla. Mismo patrón que ya usa elegirAcuerdo().
+                setRango((r) => ({ ...r, desde: e.target.value }));
+                setPreview(null);
+              }}
+            />
+          </div>
+          <div className="w-40">
+            <Label htmlFor="rango-hasta">Hasta</Label>
+            <Input
+              id="rango-hasta"
+              type="date"
+              value={rango.hasta}
+              onChange={(e) => {
+                setRango((r) => ({ ...r, hasta: e.target.value }));
+                setPreview(null);
+              }}
+            />
+          </div>
+          <Button onClick={calcular} pending={pendiente} disabled={!acuerdoId || !rango.desde || !rango.hasta}>
             <Calculator className="h-4 w-4" /> Calcular
           </Button>
         </CardContent>
@@ -254,7 +334,18 @@ export function LiquidacionesCliente({
         <Card className="mb-5">
           <CardHeader>
             <CardTitle>Vista previa — nada guardado todavía</CardTitle>
-            <Button onClick={guardarBorrador} pending={pendiente}>
+            <Button
+              onClick={guardarBorrador}
+              pending={pendiente}
+              // F-5: sólo se guarda el rango que de verdad se calculó. Sin este guard, cambiar
+              // Desde/Hasta después de "Calcular" (sin volver a apretarlo) guardaba un período que
+              // nadie vio en pantalla.
+              disabled={
+                !preview ||
+                preview.entrada.fechaInicio !== rango.desde ||
+                preview.entrada.fechaFin !== rango.hasta
+              }
+            >
               <Save className="h-4 w-4" /> Guardar borrador
             </Button>
           </CardHeader>
@@ -299,8 +390,12 @@ export function LiquidacionesCliente({
                         <a
                           className="underline"
                           href={
-                            acuerdoSeleccionado
-                              ? `/sueldos/ventas?desde=${acuerdoSeleccionado.fechaInicio}&hasta=${acuerdoSeleccionado.fechaFin}`
+                            // F2 (validador de flujo 23-ago-2026), actualizado para C-4 (liquidación
+                            // por tramos): el período del TRAMO que se está calculando ahora mismo
+                            // —no el del acuerdo completo—, para que "cárgalas en Ventas y metas" lo
+                            // lleve exacto y no a un rango más amplio que el que va a pagar.
+                            preview
+                              ? `/sueldos/ventas?desde=${preview.entrada.fechaInicio}&hasta=${preview.entrada.fechaFin}`
                               : '/sueldos/ventas'
                           }
                         >

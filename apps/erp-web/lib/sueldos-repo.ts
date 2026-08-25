@@ -24,9 +24,11 @@ import { leerConfigMap } from './config-repo';
  *    con el aislamiento es cómo se termina publicando el sueldo de todos.
  *
  * 2. **El navegador no manda plata.** El cliente puede pedir un preview, pero el borrador que se
- *    guarda lo calcula el servidor: `crearBorrador()` recibe un id de acuerdo y nada más, pide la
- *    entrada a la RPC y vuelve a correr `liquidarPeriodo()` acá. Ningún total viaja desde el
- *    formulario. Es el mismo patrón que `/evaluaciones`.
+ *    guarda lo calcula el servidor: `crearBorrador()` recibe un id de acuerdo y el rango del tramo
+ *    a liquidar (`desde`/`hasta`, spec liquidación-por-tramos) — nunca un total ni una liquidación
+ *    ya armada. Pide la entrada a la RPC con ese rango y vuelve a correr `liquidarPeriodo()` acá.
+ *    Elegir QUÉ RANGO liquidar es del cliente; calcular CUÁNTO da ese rango no. Es el mismo patrón
+ *    que `/evaluaciones`.
  *
  * 3. **Las escrituras del cierre pasan por RPC.** Cerrar y anular tocan cuatro tablas en una
  *    transacción y en un orden que no es libre (spec §8.1). Reproducir eso con `update` sueltos
@@ -565,15 +567,29 @@ export type EntradaConContexto = EntradaLiquidacion & {
 };
 
 /**
- * Arma la entrada del periodo desde la base. **No escribe nada.**
+ * Arma la entrada de UN TRAMO del acuerdo desde la base (spec liquidación-por-tramos, C-3).
+ * **No escribe nada.**
  *
- * Corta con `DATO` nombrando las fechas si algún día contratado quedó sin declarar. Ese corte es
- * la razón de ser de la columna `condicion`: un día sin cargar no es una falta, y confundirlos
- * cuesta dos días de sueldo por día.
+ * `desde`/`hasta` son el tramo que el administrador eligió liquidar esta vez — no necesariamente
+ * el acuerdo completo: `sueldo_entrada` (0093) exige que caigan dentro de
+ * `fecha_inicio`/`fecha_fin` del acuerdo, pero un acuerdo de tres meses se puede liquidar mes a
+ * mes, tramo por tramo.
+ *
+ * Corta con `DATO` nombrando las fechas si algún día contratado del TRAMO quedó sin declarar. Ese
+ * corte es la razón de ser de la columna `condicion`: un día sin cargar no es una falta, y
+ * confundirlos cuesta dos días de sueldo por día.
  */
-export async function entradaDeAcuerdo(acuerdoId: string): Promise<EntradaConContexto> {
+export async function entradaDeAcuerdo(
+  acuerdoId: string,
+  desde: string,
+  hasta: string,
+): Promise<EntradaConContexto> {
   const sb = getServerClient();
-  const { data, error } = await sb.rpc('sueldo_entrada', { p_acuerdo: acuerdoId });
+  const { data, error } = await sb.rpc('sueldo_entrada', {
+    p_acuerdo: acuerdoId,
+    p_desde: desde,
+    p_hasta: hasta,
+  });
   if (error) throw errorSueldo(error);
   return data as EntradaConContexto;
 }
@@ -586,23 +602,26 @@ export async function entradaDeAcuerdo(acuerdoId: string): Promise<EntradaConCon
  */
 export async function calcularPreview(
   acuerdoId: string,
+  desde: string,
+  hasta: string,
 ): Promise<{ entrada: EntradaConContexto; liquidacion: Liquidacion }> {
-  const entrada = await entradaDeAcuerdo(acuerdoId);
+  const entrada = await entradaDeAcuerdo(acuerdoId, desde, hasta);
   return { entrada, liquidacion: liquidarPeriodo(entrada) };
 }
 
 /**
- * Guarda el borrador del periodo.
+ * Guarda el borrador de UN TRAMO del acuerdo.
  *
- * **Recibe un id y nada más, a propósito.** La entrada la pide a la RPC y el cálculo lo corre acá,
- * en el servidor, con `liquidarPeriodo()`. Si esta función aceptara la liquidación ya calculada,
- * bastaría con manipular el formulario para escribir cualquier total en un pago.
+ * **Recibe un id de acuerdo y el rango del tramo, nada más, a propósito.** La entrada la pide a la
+ * RPC y el cálculo lo corre acá, en el servidor, con `liquidarPeriodo()`. Si esta función aceptara
+ * la liquidación ya calculada, bastaría con manipular el formulario para escribir cualquier total
+ * en un pago.
  *
  * Se guardan los tres snapshots (entrada, parámetros resueltos y resultado completo), no sólo el
  * total: el total es la suma de líneas ya redondeadas y no se llega a él de ninguna otra forma.
  */
-export async function crearBorrador(acuerdoId: string): Promise<string> {
-  const entrada = await entradaDeAcuerdo(acuerdoId);
+export async function crearBorrador(acuerdoId: string, desde: string, hasta: string): Promise<string> {
+  const entrada = await entradaDeAcuerdo(acuerdoId, desde, hasta);
   const liquidacion = liquidarPeriodo(entrada);
   const parametros = resolverParametros(entrada.parametros);
 
@@ -631,11 +650,22 @@ export async function crearBorrador(acuerdoId: string): Promise<string> {
     .single();
 
   if (error) {
-    // El índice único parcial deja UNA liquidación no anulada por acuerdo. El mensaje de Postgres
-    // ("duplicate key value violates unique constraint") no le dice nada a nadie.
-    if (/uq_sueldo_liq_acuerdo_vigente|duplicate key/i.test(error.message ?? '')) {
+    // La restricción de exclusión `sueldo_liq_periodo_sin_solape` (migración 0093, liquidación
+    // por tramos) reemplazó al índice único que dejaba UNA sola liquidación viva por acuerdo: ahora
+    // varios tramos del mismo acuerdo conviven, y sólo se rechaza si sus períodos se PISAN. Se
+    // comprueba por NOMBRE de la restricción, y este chequeo tiene que ir ANTES del `23P01`
+    // genérico de `errorSueldo()` más abajo: ese otro es para `sueldo_acuerdos_sin_solape` —dos
+    // ACUERDOS que se pisan—, un caso distinto que comparte el mismo código de Postgres. Si el
+    // orden se invirtiera, un choque entre dos liquidaciones del mismo acuerdo mostraría el
+    // mensaje de "ya tiene un contrato", que no es lo que pasó.
+    //
+    // Código 'ESTADO', no 'DATO': la pantalla (`liquidaciones/cliente.tsx`) muestra una ayuda extra
+    // fija para `codigo === 'DATO'` ("Faltan días por declarar... Andá a Declarar asistencia") que
+    // no tiene nada que ver con un solape de períodos — confundiría más de lo que ayuda. 'ESTADO'
+    // es también el código que ya usaba el mensaje anterior para este mismo tipo de choque.
+    if (/sueldo_liq_periodo_sin_solape/i.test(error.message ?? '')) {
       throw new SueldoRpcError(
-        'Este acuerdo ya tiene una liquidación. Para rehacerla hay que anular la anterior, con motivo.',
+        'El período que elegiste se superpone con otra liquidación de este mismo acuerdo. Elegí un rango que no se pise, o anulá la existente.',
         'ESTADO',
       );
     }

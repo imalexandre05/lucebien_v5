@@ -194,7 +194,10 @@ beforeAll(async () => {
     })),
   );
 
-  entrada = await rpc('sueldo_entrada', { p_acuerdo: acuerdoId });
+  // Migración 0093 (liquidación por tramos): sueldo_entrada ahora recibe el rango a liquidar en
+  // vez de derivarlo siempre del acuerdo completo. Acá el acuerdo ES de una sola semana, así que
+  // el tramo natural a pedir es exactamente DESDE..HASTA — igual que el comportamiento de antes.
+  entrada = await rpc('sueldo_entrada', { p_acuerdo: acuerdoId, p_desde: DESDE, p_hasta: HASTA });
 }, 120_000);
 
 afterAll(async () => {

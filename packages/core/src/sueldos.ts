@@ -390,6 +390,50 @@ export function diasDelPeriodo(desde: string, hasta: string): string[] {
   return dias;
 }
 
+// El día 0 del mes siguiente a (y, m0) es el último día real de (y, m0). Misma fórmula que ya usa
+// evaluaciones.ts, duplicada a propósito: este archivo no importa de otras capas del core por una
+// sola función de fecha — mismo criterio que ya usa diaSiguiente() en liquidaciones/cliente.tsx
+// para no cruzar capas que no corresponden. `m0` es 0-indexado (0 = enero); Date.UTC normaliza
+// solo el desborde de mes/año, así que no hace falta ninguna rama especial para diciembre.
+function ultimoDiaDelMes(y: number, m0: number): number {
+  return new Date(Date.UTC(y, m0 + 1, 0)).getUTCDate();
+}
+
+/**
+ * El último día de UN PERÍODO que arranca en `desde`, según `modalidad`, recortado a `limite` si
+ * el período se pasaría de ahí (spec liquidación-por-tramos, addendum F-1/F-1b).
+ *
+ * - `'semanal'`: 7 días inclusive (`desde` .. `desde` + 6), mismo criterio que `tramosSemanales()`.
+ * - `'mensual'`: "un mes menos un día", con el MISMO recorte de mes corto que ya usa
+ *   `calcularCiclo()` de `evaluaciones.ts` (`min(díaDeseado − 1, últimoDíaDelMes)`) — pero ANCLADO
+ *   en `desde`, nunca en "hoy". `calcularCiclo` contesta "¿qué ciclo contiene HOY?", una pregunta
+ *   distinta, siempre anclada en la fecha de hoy: por eso NO sirve para sugerir un período que
+ *   arranca en una fecha cualquiera. Verificado corriendo la función real contra un acuerdo vencido:
+ *   `calcularCiclo` sugería un "hasta" en el mes de HOY, lejísimos del contrato (ver addendum).
+ */
+export function finDePeriodo(desde: string, modalidad: 'mensual' | 'semanal', limite?: string): string {
+  const desdeMs = msDeFecha(validarFecha(desde, 'finDePeriodo: desde'));
+  let hasta: string;
+
+  if (modalidad === 'semanal') {
+    hasta = fmtFecha(desdeMs + 6 * MS_DIA);
+  } else if (modalidad === 'mensual') {
+    const [y, m, d] = desde.split('-').map(Number);
+    const m0 = m - 1; // 0-indexado: el mes en el que arranca `desde`, igual que evaluaciones.ts
+    const diaHasta = Math.min(d - 1, ultimoDiaDelMes(y, m0 + 1));
+    hasta = fmtFecha(Date.UTC(y, m0 + 1, diaHasta));
+  } else {
+    throw new Error(`finDePeriodo: modalidad desconocida "${String(modalidad)}". Se espera "mensual" o "semanal".`);
+  }
+
+  if (limite !== undefined) {
+    const limiteValido = validarFecha(limite, 'finDePeriodo: limite');
+    if (hasta > limiteValido) hasta = limiteValido;
+  }
+
+  return hasta;
+}
+
 function minutosDeHora(hora: unknown, donde: string): number {
   if (typeof hora !== 'string') throw new Error(`${donde}: hora inválida "${String(hora)}".`);
   const m = RE_HORA.exec(hora.trim());
