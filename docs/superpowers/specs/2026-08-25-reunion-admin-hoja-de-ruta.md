@@ -57,7 +57,7 @@ empezar.
 | A-5 | *«y con eso tomar decisiones, como darles cursos etc y retener a los empleados»* | ⏸️ | Consecuencia de A-4, no es código todavía |
 | A-6 | 🔴 *«considerar que a veces hay personas que no hacen pipeline y solo ventas, tenemos que ver cómo equiparar; si planchar 100 prendas vale 1000, ¿cuánto vale una venta?»* | 🔴 | **La pregunta más cara de toda la reunión.** Ver §2 |
 | A-7 | *«corregir las horas extras en reportes de actividades y en el desempeño/evaluación»* | ⏸️ | Falta que el administrador precise qué está mal — ver §2 |
-| A-8 | *«en el tema de evaluación debe ser automático, todos los usuarios deben evaluar a un usuario una semana antes del pago de éste, y que tengan un pendiente de evaluar a esa persona hasta su día de pago»* | 📐 | Spec propia pendiente (B-prioridad) |
+| A-8 | *«en el tema de evaluación debe ser automático, todos los usuarios deben evaluar a un usuario una semana antes del pago de éste, y que tengan un pendiente de evaluar a esa persona hasta su día de pago»* | 📐 **con bloqueo de datos** | Spec completa en [2026-08-25-evaluacion-automatica-antes-del-pago-design.md](evaluaciones/2026-08-25-evaluacion-automatica-antes-del-pago-design.md). **No se puede construir todavía:** todo cuelga del día de pago de cada persona, que sale de su `fecha_ingreso` — y **9 de las 11 personas reales no la tienen** (medido el 25-ago). Construirlo hoy daría una pantalla que no hace nada para nueve de once, y no lo diría. Lo que destraba esto es carga de datos, no código |
 | A-9 | *«diseñar parte de exámenes tanto para admin y usuarios»* | ⏸️ | Módulo nuevo, grande. Ya estaba anotado como pendiente desde el 14-ago (`valorCapacitacion` depende de esto) |
 
 ### B. Huellero y asistencias — donde el dato se vuelve plata
@@ -141,7 +141,7 @@ por una pantalla rota, que no es mejor.
 | F-1 | *«que se quede borrador en caso se cambie de pantalla»* | 📐 | Formularios largos que se pierden al navegar. Acotado, alto valor de uso |
 | F-2 | *«poner una página de métricas de todo tipo, dashboard de personal exclusivamente»* | 📐 | Pantalla nueva. Se alimenta sola de A-4 (el perfil) |
 | F-3 | *«poder deshabilitar y eliminar a personal»* | ✅ parcial | Suspender ya existe y banea el acceso (migración 0083). **Eliminar** ya se estudió: cuesta 48 referencias, decidido no borrar. Confirmar que la pantalla lo dice claro |
-| F-4 | *«MANDAR LISTA DE COSAS QUE TIENE QUE HACER JOVEN JORDAN»* | 📐 | Entregable propio, no código |
+| F-4 | *«MANDAR LISTA DE COSAS QUE TIENE QUE HACER JOVEN JORDAN»* | 🔴 | **Jordan es el otro administrador** (`rol = 'admin'` en `empleados`, verificado el 25-ago) — no un colaborador de piso. O sea que la lista es de tareas para quien administra el sistema, no para quien trabaja en tienda. Pero **qué tareas** no está en ninguna anotación. No se inventa una lista de trabajo para una persona real: ver §2 |
 
 ---
 
