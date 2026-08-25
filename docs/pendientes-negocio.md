@@ -1026,10 +1026,10 @@ C-7 recién descrito) — todos corregidos, ver el addendum §7 de la spec. Eso 
 que el core no hacía falta tocarlo, y era cierto para el diseño original — dejó de serlo al corregir
 la sugerencia de rango de la pantalla, que necesitaba su propia aritmética de fechas.
 
-**Pendiente, lo único que falta:** C-5 — corregir a mano el `sueldo_pactado` del acuerdo real de
-Marylin de 1.800 a 600 desde la pantalla de contratos, ahora que la migración ya está aplicada y
-probada. No se hizo todavía porque el pedido de esta sesión fue "implementar", no "tocar el dato de
-Marylin" — queda para cuando Alexander lo pida o confirme que corresponde hacerlo ya.
+✅ **C-5 hecho el 24-ago-2026.** `sueldo_acuerdos.sueldo_pactado` del acuerdo real de Marylin
+(`720e74f8-83e2-441f-ab89-16559776cbbd`) corregido de `1.800` a `600` contra `scilb`, con la
+migración ya aplicada y probada y 0 liquidaciones todavía sobre ese acuerdo (verificado antes de
+tocarlo). Liquidación por tramos: **cerrado de punta a punta**, spec §6 completa.
 
 ---
 

@@ -278,7 +278,9 @@ sin necesidad de volver a esta spec por la redacción exacta.
 6. Aplicar la migración y correr la prueba contra `scilb` real antes de dar por cerrado (mismo
    patrón que `0091`/`0092` esta sesión — un `implementador` no puede hacer este paso solo, ver
    `docs/aprendizajes.md`, sección «Coordinación entre agentes»).
-7. Recién ahí, C-5: corregir el acuerdo real de Marylin desde la pantalla. No antes.
+7. ~~Recién ahí, C-5: corregir el acuerdo real de Marylin desde la pantalla. No antes.~~ ✅ Hecho
+   el 24-ago-2026, después de aplicar y probar la migración: `sueldo_pactado` de
+   `720e74f8-83e2-441f-ab89-16559776cbbd` pasó de 1.800 a 600.
 8. C-6, la copia de `/sueldos/acuerdos`, se puede hacer junto con el paso 4.
 9. ~~Listo.~~ **No.** El paso 6 lo hizo un `verificador` adversarial en vez de la sesión principal
    directamente — ver §7 más abajo, seis fallos reales encontrados antes de tocar `scilb`. Falta
