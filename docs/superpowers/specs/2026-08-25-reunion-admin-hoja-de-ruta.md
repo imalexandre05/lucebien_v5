@@ -96,10 +96,11 @@ empezar.
 
 | # | Lo que dijo | Estado | Nota |
 |---|---|---|---|
-| E-1 | *«incidencias solo a su nombre»* + *«el admin sí puede ver de todos»* | 🔨 **contradice lo del 24-ago** | Ver §3: el 24-ago dijo que los operativos ven el listado de su sede; ahora dice sólo las propias |
+| E-1 | *«incidencias solo a su nombre»* + *«el admin sí puede ver de todos»* | ✅ hecho | Migración `0094`, aplicada y probada contra `scilb` (9/9 `[ok]`). `inc_select` = admin, o soy responsable, o yo la reporté |
 | E-2 | *«en incidencias no se puede ver el responsable para los colaboradores, solo administradores»* | ✅ hecho | PR #23, 24-ago-2026 |
-| E-3 | *«incidencias solo en "otros" se puede ver gravedad y requiere descripción»* | 📐 | Acotado, de pantalla |
-| E-4 | *«incidencias en lo demás si tiene sus puntos en contra y ya tiene gravedad, es redundante»* | 📐 | Ídem E-3, la otra mitad |
+| E-3 | *«incidencias solo en "otros" se puede ver gravedad y requiere descripción»* | ✅ hecho | Aplicado en los **dos** formularios que registran incidencias (`/incidencias` y la sección del reporte de turno), con validación también del lado del servidor |
+| E-4 | *«incidencias en lo demás si tiene sus puntos en contra y ya tiene gravedad, es redundante»* | ✅ hecho | Ídem E-3, la otra mitad: los otros 20 tipos toman `nivel_default` del catálogo sin preguntarlo |
+| E-5 🆕 | **No lo pidió nadie — salió de implementar E-1.** `inc_insert` (migración `0046`) no exige `reportado_por_id = auth.uid()` en su `with check`. Hoy no se explota porque los dos server actions derivan el reportante de la sesión, nunca del cliente; pero alguien con acceso directo a la API podría registrar una incidencia **atribuyéndosela a otra persona** | ⏸️ | Se vuelve más caro con los puntos como moneda: una incidencia inventada baja la nota de alguien, y la nota es lo que el administrador va a mirar para decidir despidos y aumentos. El arreglo es el mismo patrón que ya usa `solicitudes` (`solicitante_id = auth.uid()`, migración `0087`). **Ojo:** `responsable_id` NO se restringe — reportar sobre otra persona es justamente el uso legítimo |
 
 ### F. Pantallas y administración
 
