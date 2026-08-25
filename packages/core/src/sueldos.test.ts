@@ -6,6 +6,7 @@ import {
   tramosSemanales,
   diaSemanaISO,
   sueldoSugerido,
+  finDePeriodo,
   PARAMETROS_SUELDO_DEFAULT,
   type EntradaLiquidacion,
   type RegistroVenta,
@@ -409,6 +410,54 @@ describe('calendario', () => {
 
   it('tramosSemanales: un periodo más corto que una semana es una sola semana', () => {
     expect(tramosSemanales('2025-06-16', '2025-06-19')).toHaveLength(1);
+  });
+});
+
+// ── finDePeriodo (spec liquidación-por-tramos, addendum F-1/F-1b) ─────────────────────────────
+// sugerirRango() de liquidaciones/cliente.tsx usaba calcularCiclo(desde, hoyPeru()), que contesta
+// "¿qué ciclo contiene HOY?" y no "un período que arranca en `desde`". Estos casos fijan el
+// contrato real: el resultado depende sólo de `desde`, `modalidad` y `limite` — nunca de la fecha
+// de hoy.
+describe('finDePeriodo', () => {
+  it('semanal: 7 días inclusive, igual que un tramo de tramosSemanales()', () => {
+    expect(finDePeriodo('2026-08-24', 'semanal')).toBe('2026-08-30');
+    expect(diasDelPeriodo('2026-08-24', finDePeriodo('2026-08-24', 'semanal'))).toHaveLength(7);
+  });
+
+  it('mensual: un mes menos un día', () => {
+    expect(finDePeriodo('2026-07-01', 'mensual')).toBe('2026-07-31');
+  });
+
+  it('mensual con un mes corto de por medio se recorta, mismo caso que ya prueba calcularCiclo', () => {
+    // Mismo caso que evaluaciones.test.ts (aniversario en 29/30/31 de enero contra un febrero de
+    // 28 días, 2026 no es bisiesto): acá el 31 de enero es el `desde` directo, no un aniversario.
+    expect(finDePeriodo('2026-01-31', 'mensual')).toBe('2026-02-28');
+    expect(finDePeriodo('2026-01-30', 'mensual')).toBe('2026-02-28');
+    expect(finDePeriodo('2026-01-29', 'mensual')).toBe('2026-02-28');
+  });
+
+  it('mensual cruza el fin de año', () => {
+    expect(finDePeriodo('2026-12-31', 'mensual')).toBe('2027-01-30');
+  });
+
+  it('se recorta a `limite` cuando el período se pasaría de ahí', () => {
+    expect(finDePeriodo('2026-07-01', 'mensual', '2026-07-20')).toBe('2026-07-20');
+    expect(finDePeriodo('2026-08-24', 'semanal', '2026-08-27')).toBe('2026-08-27');
+  });
+
+  it('no recorta cuando el período no se pasa de `limite`', () => {
+    expect(finDePeriodo('2026-07-01', 'mensual', '2026-12-31')).toBe('2026-07-31');
+  });
+
+  it('el "hasta" de un acuerdo vencido no salta al mes de hoy — el bug real que corrige F-1', () => {
+    // Caso del addendum: un acuerdo mensual de mayo a julio, liquidado recién en agosto.
+    // calcularCiclo(desde, hoyPeru()) daba 2026-08-31 (el ciclo que contiene HOY); finDePeriodo
+    // tiene que seguir devolviendo un tramo de MAYO, sin que importe cuándo se calcule.
+    expect(finDePeriodo('2026-05-01', 'mensual', '2026-07-31')).toBe('2026-05-31');
+  });
+
+  it('rechaza una modalidad desconocida', () => {
+    expect(() => finDePeriodo('2026-07-01', 'diaria' as never)).toThrow(/modalidad desconocida/);
   });
 });
 
