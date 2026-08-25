@@ -580,6 +580,36 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '0.5',
     min: 0,
   },
+  // Migración 0096 (spec asistencias/2026-08-25-huellero-decide-por-horario-design.md §3, C-2).
+  // Default elegido por el implementador, no confirmado: es el umbral más chico que resuelve el
+  // caso que nombró el administrador ("8:00 y 8:01, se queda el más temprano") sin comerse la
+  // pausa real de arriba. Anotado en docs/pendientes-negocio.md.
+  {
+    clave: 'huellero_doble_marca_minutos',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Minutos para considerar dos marcas como un solo toque',
+    descripcion:
+      'Dos marcas del huellero separadas por menos de esto son la MISMA persona apoyando el dedo dos veces (el primer toque no sonó): se guarda la más temprana y se descarta la otra, tanto al llegar como al irse. Tiene que ser menor que "Minutos para que un hueco cuente como pausa" — si son dos marcas de verdad distintas (salió y volvió), esa otra regla sigue decidiendo.',
+    tipo: 'numero',
+    default: '2',
+    min: 0,
+    step: 1,
+  },
+  // Migración 0097 (spec asistencias/2026-08-25-huellero-decide-por-horario-design.md §3, C-4).
+  // Default elegido por el implementador, no confirmado: las faltas reales son individuales, las
+  // caídas del equipo son colectivas — dos personas faltando el mismo día es normal, once no lo
+  // es nunca. Anotado en docs/pendientes-negocio.md.
+  {
+    clave: 'huellero_falta_auto_max_personas',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Freno de la falta automática (máximo de personas)',
+    descripcion:
+      'Si en un mismo día hay MÁS personas que esto con turno contratado y cero marcas del huellero, el sistema NO declara falta a ninguna: asume que el equipo falló, deja esos días en "sin declarar" con el motivo escrito, y el administrador los revisa a mano. Con esta cantidad o menos, sí se declara falta automáticamente (marcada como puesta por el sistema, sin justificar).',
+    tipo: 'numero',
+    default: '2',
+    min: 0,
+    step: 1,
+  },
 ];
 
 export const CONFIG_CATALOGO_MAP: Map<string, ConfigCatalogoItem> = new Map(CONFIG_CATALOGO.map((i) => [i.clave, i]));

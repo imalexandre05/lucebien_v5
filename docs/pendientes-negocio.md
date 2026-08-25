@@ -1194,3 +1194,72 @@ administrador y ninguna se decide sin él.
 
 **Mientras tanto, la nota por puntos no se puede leer como un juicio sobre nadie.** El mecanismo
 está construido, aplicado y probado; la vara con la que mide, no.
+
+---
+
+## Huellero decide por horario (25-ago-2026) — parámetros provisionales y el disparador sin decidir
+
+Spec completa: [2026-08-25-huellero-decide-por-horario-design.md](superpowers/specs/asistencias/2026-08-25-huellero-decide-por-horario-design.md).
+Implementado en las migraciones `0096_huellero_decide_por_horario.sql` (C-1 horario contratado,
+C-2 doble marca, y las columnas `entrada_estimada`/`salida_estimada`) y
+`0097_huellero_relleno_estimado_y_falta.sql` (C-3 relleno estimado, C-4 falta automática con
+freno). `packages/core/src/huellero.ts` se borró en el mismo commit que la 0096 (C-5): no tenía
+llamadores fuera de sus propios tests, verificado con grep en todo el repo antes de borrarlo.
+
+### Los dos parámetros nuevos (`config-catalogo.ts`, sección "Sueldos")
+
+| Clave | Default | De dónde sale ese default |
+|---|---|---|
+| `huellero_doble_marca_minutos` | `2` | Elegido por el implementador. Es el umbral más chico que resuelve el caso que nombró el administrador (*"8:00 y 8:01, se queda el más temprano"*) sin comerse la pausa real de 15 minutos (`sueldo_pausa_minima_minutos`, sin cambios) |
+| `huellero_falta_auto_max_personas` | `2` | Elegido por el implementador. Las faltas reales son individuales; las caídas del equipo son colectivas — dos personas faltando el mismo día es normal, once no lo es nunca |
+
+Ninguno de los dos está confirmado por el administrador. Los dos son editables desde
+`/configuracion` sin volver a migrar.
+
+### 🔴 Sin decidir — quién dispara `huellero_declarar_faltas_del_dia`
+
+C-4 (cero marcas → falta, con freno) vive en una función NUEVA y separada,
+`huellero_declarar_faltas_del_dia(p_fecha date)`, no dentro de `huellero_derivar_asistencia`. La
+razón: esa función es por `(empleado, fecha)` y sólo se invoca —desde `huellero_registrar_marcas`—
+para quien SÍ dejó alguna marca ese día. El freno necesita lo contrario: contar, para una fecha, a
+cuántas personas con turno contratado no les llegó ni una marca. Ese conteo no cabe en una función
+que arranca sabiendo el empleado.
+
+**El problema real: un día sin ninguna marca no aparece en NINGÚN lote del colector** —no hay
+ninguna marca que lo mencione—, así que no existe ninguna forma de disparar
+`huellero_declarar_faltas_del_dia` desde el flujo de ingesta actual. Hace falta un disparador que
+mire el calendario, no las marcas. Dos caminos, y ninguno se implementó:
+
+- **(a) Un cron diario** que, ya pasado el día (hora Perú), llame a la función para "ayer". Este
+  repo tiene precedente de **no** reactivar crones sin que la regla de negocio que los rodea esté
+  cerrada (el cron de auto-cierre de reportes sigue desprogramado a propósito — ver
+  `docs/mapa-verificado.md` §2 y el "No tocar" de `CLAUDE.md`). Antes de programar éste hace falta
+  decidir a qué hora Perú se considera "cerrado" el día (¿medianoche? ¿una hora después del cierre
+  de turno más tardío?), porque correrlo temprano declararía falta a alguien que todavía puede
+  marcar más tarde.
+- **(b) Un botón manual** en `/asistencias/huellero` para que el administrador lo dispare él mismo,
+  fecha por fecha, cuando quiera revisar un día. Más lento, pero sin el riesgo de un cron mal
+  calibrado declarando faltas de madrugada.
+
+**Se dejó la función construida, probada y seguramente segura de invocar** (guard de administrador,
+`revoke`/`grant` explícitos, nunca pisa una hora u otra declaración ya cargada — probado en
+`packages/db/pruebas/0097_huellero_relleno_estimado_y_falta.prueba.sql`, caso 9), pero **sin
+ningún disparador conectado**. No es código muerto —el administrador ya podría invocarla a mano
+por RPC si hiciera falta hoy mismo— pero tampoco corre sola todavía. Falta que el administrador
+elija (a) o (b), y con qué hora, antes de que esto reemplace en la práctica al `sin_dato` de hoy.
+
+### Detalle honesto de la pantalla
+
+Se hizo lo mínimo verificable: `apps/erp-web/lib/asistencias-repo.ts` expone
+`entradaEstimada`/`salidaEstimada` (`Asistencia` y `AsistenciaDia`), y las dos pantallas que el
+encargo señaló —`/asistencias` (lista general) y `/sueldos/asistencia` (declarar asistencia)—
+muestran un badge "estimado" con tooltip al lado de la hora que el sistema propuso, y bajan la
+bandera sola en cuanto una persona la corrige a mano (`crearAsistencia()`/`declararDia()`, mismo
+lugar donde ya se bajaba `huellero_puso_entrada`/`huellero_puso_salida`).
+
+**Lo que NO se tocó, a propósito:** el detalle de una liquidación (el recibo que ve quien firma el
+pago) no muestra todavía qué horas fueron estimadas. La spec lo pide (*"el detalle de la
+liquidación la nombra, para que quien firma el pago sepa qué se estimó"*) pero es una pantalla
+distinta, de zona crítica de sueldos, que no se exploró en esta tarea — tocarla a ciegas para
+agregar un aviso hubiera sido ampliar el alcance sin la spec ni la lectura previa que esa zona
+exige. Queda pendiente como una tarea de pantalla acotada, con la data ya disponible en la base.
