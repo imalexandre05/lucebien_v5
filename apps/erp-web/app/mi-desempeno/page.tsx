@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation';
-import { TURNO_LABEL, tramoEval, TRAMO_LABEL, type TramoEval } from '@scilb/core';
+import { TURNO_LABEL, tramoEval, TRAMO_LABEL, bandaDesdeNota, BANDA_LABEL, type TramoEval, type BandaEval } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
 import { miDesempeno } from '../../lib/desempeno-repo';
+import { leerPesosEval, leerEscalaPuntos } from '../../lib/evaluaciones-repo';
 import { mesPeru } from '../../lib/fechas';
 import { tieneReauth } from '../../lib/reauth';
 import { PageHeader } from '../../components/shell/page-header';
@@ -11,6 +12,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
+import { PerfilComponentes } from '../../components/ui/perfil-componentes';
 import { ClipboardList, Award, AlertTriangle } from 'lucide-react';
 
 const TRAMO_TONE: Record<TramoEval, Tone> = {
@@ -18,6 +20,16 @@ const TRAMO_TONE: Record<TramoEval, Tone> = {
   bueno: 'navy',
   mejorar: 'amber',
   bajo: 'gray',
+};
+
+// Spec docs/superpowers/specs/evaluaciones/2026-08-25-puntos-como-moneda-design.md §2 C-3/C-5 —
+// mismo mapeo que app/evaluaciones/cliente.tsx (BANDA_TONE), duplicado a propósito: TRAMO_TONE de
+// arriba ya seguía ese mismo patrón de no compartirse entre pantallas.
+const BANDA_TONE: Record<BandaEval, Tone> = {
+  riesgo: 'red',
+  en_desarrollo: 'amber',
+  ideal: 'green',
+  sobresaliente: 'gold',
 };
 
 // Panel individual (Fase 3): cada usuario ve SOLO sus propios movimientos del mes — reportes
@@ -45,9 +57,18 @@ export default async function MiDesempenoPage() {
   const desde = `${mes}-01`;
   const hasta = `${mes}-${String(ultimoDia).padStart(2, '0')}`;
 
-  const d = await miDesempeno(sesion.usuario.id, desde, hasta);
+  const [d, pesos, escala] = await Promise.all([
+    miDesempeno(sesion.usuario.id, desde, hasta),
+    leerPesosEval(),
+    leerEscalaPuntos(),
+  ]);
   const extrasTotal = d.extras.reduce((s, e) => s + e.montoTotal, 0);
-  const tramo = d.ultimaEvaluacion ? tramoEval(d.ultimaEvaluacion.notaFinal) : null;
+  // Spec puntos-como-moneda §2 C-5: la última evaluación se lee con el sistema con el que se
+  // guardó — banda si 'puntos' (desde el 25-ago-2026), tramo si 'ponderado' (todo lo de antes).
+  // La nota (notaFinal) NUNCA se recalcula acá: sale tal cual quedó congelada al guardarse.
+  const esPuntos = d.ultimaEvaluacion?.metodo === 'puntos';
+  const banda = d.ultimaEvaluacion && esPuntos ? bandaDesdeNota(d.ultimaEvaluacion.notaFinal, escala.bandaRiesgo, escala.bandaIdeal) : null;
+  const tramo = d.ultimaEvaluacion && !esPuntos ? tramoEval(d.ultimaEvaluacion.notaFinal) : null;
 
   return (
     <div>
@@ -60,16 +81,33 @@ export default async function MiDesempenoPage() {
         <StatBox index={3} label="Incidencias" valor={d.incidencias.length} tone="neutro" />
       </div>
 
-      {d.ultimaEvaluacion && tramo && (
+      {d.ultimaEvaluacion && (banda || tramo) && (
         <Card className="mt-4">
           <CardHeader>
             <CardTitle>Última evaluación</CardTitle>
-            <Badge tone={TRAMO_TONE[tramo]}>
-              {d.ultimaEvaluacion.notaFinal.toFixed(2)} · {TRAMO_LABEL[tramo]}
-            </Badge>
+            {banda ? (
+              <Badge tone={BANDA_TONE[banda]}>
+                {d.ultimaEvaluacion.notaFinal.toFixed(2)} · {BANDA_LABEL[banda]}
+              </Badge>
+            ) : (
+              tramo && (
+                <Badge tone={TRAMO_TONE[tramo]}>
+                  {d.ultimaEvaluacion.notaFinal.toFixed(2)} · {TRAMO_LABEL[tramo]}
+                </Badge>
+              )
+            )}
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <p className="text-sm text-muted">Mes evaluado: {d.ultimaEvaluacion.mes}</p>
+            {/* Perfil propio (spec §2 C-4): en qué es fuerte y en qué flaquea — ya no decide la
+                nota, que sale de los puntos del período (o del promedio ponderado en evaluaciones
+                viejas). Sin `componentes` guardado (evaluación muy vieja, previa a la migración
+                0027) no hay nada que mostrar acá, y se omite en vez de dibujar barras en cero. */}
+            {d.ultimaEvaluacion.componentes && (
+              <div className="border-t border-line/60 pt-3">
+                <PerfilComponentes componentes={d.ultimaEvaluacion.componentes} pesos={d.ultimaEvaluacion.pesosUsados ?? (pesos as unknown as Record<string, number>)} />
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -3,6 +3,7 @@ import { puede, type MatrizPermisos } from '@scilb/core';
 import {
   listarEvaluaciones,
   leerPesosEval,
+  leerEscalaPuntos,
   empleadosParaEvaluacion,
   listarCompetenciasConfig,
   type CompetenciaConfig,
@@ -43,20 +44,22 @@ export default async function EvaluacionesPage() {
   // — se degrada a [] en vez de tumbar toda la página (lección de la Fase 4/7). El resto de la
   // herramienta (auto-cálculo, guardar, pago) sigue funcionando; solo la rúbrica de competencias
   // queda vacía con un aviso, ver EvaluacionesCliente.
-  const [evaluaciones, empleados, pesos, competenciasConfig] = await Promise.all([
+  const [evaluaciones, empleados, pesos, escala, competenciasConfig] = await Promise.all([
     listarEvaluaciones(),
     empleadosParaEvaluacion(),
     leerPesosEval(),
+    leerEscalaPuntos(),
     listarCompetenciasConfig().catch(() => [] as CompetenciaConfig[]),
   ]);
 
   return (
     <div>
-      <PageHeader title="Evaluaciones mensuales" subtitle={`${evaluaciones.length} registradas · pesos editables en Configuración`} />
+      <PageHeader title="Evaluaciones mensuales" subtitle={`${evaluaciones.length} registradas · la nota sale de los puntos, editable en Configuración`} />
       <EvaluacionesCliente
         evaluaciones={evaluaciones}
         empleados={empleados}
         pesos={pesos}
+        escala={escala}
         esAdmin={esAdmin}
         competenciasConfig={competenciasConfig}
       />

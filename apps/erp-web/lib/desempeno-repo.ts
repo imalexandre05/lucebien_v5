@@ -27,7 +27,16 @@ const diaSiguiente = (dia: string): string =>
 export type MiReporte = { id: string; fecha: string; turno: string; evaluado: boolean; puntajeEval: number | null };
 export type MiExtra = { id: string; fecha: string; nombre: string; montoTotal: number };
 export type MiIncidencia = { id: string; fecha: string; tipo: string; nivel: string };
-export type MiEvaluacion = { mes: string; notaFinal: number } | null;
+// metodo/componentes/pesosUsados (0095, spec puntos-como-moneda §2 C-4/C-5): la pantalla necesita
+// saber CON QUÉ sistema se leyó esta evaluación (banda si 'puntos', tramo si 'ponderado' — igual
+// criterio que el historial de /evaluaciones) y el desglose para mostrar el perfil propio.
+export type MiEvaluacion = {
+  mes: string;
+  notaFinal: number;
+  metodo: 'ponderado' | 'puntos';
+  componentes: Record<string, number> | null;
+  pesosUsados: Record<string, number> | null;
+} | null;
 
 export type MiDesempeno = {
   reportes: MiReporte[];
@@ -52,7 +61,10 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
       .eq('empleado_id', empleadoId)
       .gte('fecha', inicioDiaPeru(desde))
       .lt('fecha', inicioDiaPeru(diaSiguiente(hasta))),
-    sb.from('evaluaciones_mensuales').select('mes, nota_final').eq('empleado_id', empleadoId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    // select('*') a propósito (mismo criterio que el resto de esta función, y que evaluaciones-
+    // repo.ts): si la 0095 todavía no corrió, faltan metodo/componentes/pesos_usados y esto sigue
+    // devolviendo lo que ya devolvía antes, no un 500.
+    sb.from('evaluaciones_mensuales').select('*').eq('empleado_id', empleadoId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
   ]);
   for (const r of [repRes, extRes, incRes, pipeRes, evalRes]) {
     if (r.error) throw new Error(r.error.message);
@@ -82,8 +94,18 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
 
   const puntosPipeline = ((pipeRes.data as { puntos: number }[]) ?? []).reduce((s, p) => s + Number(p.puntos ?? 0), 0);
 
-  const evalRow = evalRes.data as { mes: string; nota_final: number } | null;
-  const ultimaEvaluacion: MiEvaluacion = evalRow ? { mes: evalRow.mes, notaFinal: Number(evalRow.nota_final) } : null;
+  const evalRow = evalRes.data as Record<string, unknown> | null;
+  const ultimaEvaluacion: MiEvaluacion = evalRow
+    ? {
+        mes: String(evalRow.mes ?? ''),
+        notaFinal: Number(evalRow.nota_final ?? 0),
+        // undefined (0095 sin aplicar) cae en 'ponderado', igual que el default de la columna en
+        // la base — una fila vieja sin `metodo` ES una evaluación 'ponderado'.
+        metodo: (evalRow.metodo as 'ponderado' | 'puntos' | undefined) ?? 'ponderado',
+        componentes: (evalRow.componentes as Record<string, number> | null) ?? null,
+        pesosUsados: (evalRow.pesos_usados as Record<string, number> | null) ?? null,
+      }
+    : null;
 
   return { reportes, extras, incidencias, puntosPipeline: Math.round(puntosPipeline * 100) / 100, ultimaEvaluacion };
 }

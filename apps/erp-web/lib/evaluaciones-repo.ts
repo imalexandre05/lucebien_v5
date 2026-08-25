@@ -1,7 +1,13 @@
-import type { PesosEval } from '@scilb/core';
+import type { PesosEval, EscalaPuntos } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import { leerConfigMap } from './config-repo';
 import { mapaNombres } from './directorio';
+
+// 'ponderado' (hasta el 24-ago-2026, Σ componente×peso) o 'puntos' (desde la 0095, notaDesdePuntos
+// sobre puntosTotal) — spec docs/superpowers/specs/evaluaciones/2026-08-25-puntos-como-moneda-
+// design.md §2 C-5. Las filas guardadas antes de la 0095 no tienen `metodo` como tal: la migración
+// las deja en 'ponderado' por default de columna, así que el valor siempre llega poblado.
+export type MetodoEvaluacion = 'ponderado' | 'puntos';
 
 export type Evaluacion = {
   id: string;
@@ -15,6 +21,8 @@ export type Evaluacion = {
   cicloDesde: string | null;
   cicloHasta: string | null;
   createdAt: string;
+  metodo: MetodoEvaluacion;
+  puntosTotal: number | null;
 };
 
 // Pesos de evaluación desde config (editables). Defaults si falta alguna clave.
@@ -42,6 +50,28 @@ export async function leerPesosEval(): Promise<PesosEval> {
   };
 }
 
+// Escala puntos → nota (notaDesdePuntos de @scilb/core), desde config. Mismo patrón de lectura
+// segura que leerPesosEval: un valor vacío o roto cae al default del catálogo (config-catalogo.ts)
+// en vez de colarse como 0 (Number('') es 0 y finito — docs/aprendizajes.md). Ninguno de los 5 está
+// confirmado por el administrador: son los ejemplos textuales de la reunión, ver
+// docs/pendientes-negocio.md.
+export async function leerEscalaPuntos(): Promise<EscalaPuntos> {
+  const m = await leerConfigMap();
+  const num = (k: string, d: number) => {
+    const crudo = m[k];
+    if (crudo == null || crudo.trim() === '') return d;
+    const v = Number(crudo);
+    return Number.isFinite(v) ? v : d;
+  };
+  return {
+    puntosPromedio: num('eval_puntos_promedio', 5000),
+    notaPromedio: num('eval_nota_promedio', 16),
+    puntosExcelente: num('eval_puntos_excelente', 7500),
+    bandaRiesgo: num('eval_banda_riesgo', 13),
+    bandaIdeal: num('eval_banda_ideal', 18),
+  };
+}
+
 export async function listarEvaluaciones(): Promise<Evaluacion[]> {
   const sb = getServerClient();
   const { data, error } = await sb
@@ -65,16 +95,43 @@ export async function listarEvaluaciones(): Promise<Evaluacion[]> {
     cicloDesde: (r.ciclo_desde as string | null) ?? null,
     cicloHasta: (r.ciclo_hasta as string | null) ?? null,
     createdAt: String(r.created_at ?? ''),
+    // `select('*')` a propósito (mismo criterio de esta función): si la 0095 todavía no corrió,
+    // `r.metodo` viene undefined y cae al default seguro 'ponderado' — la fila es de antes de que
+    // el método existiera, así que es exactamente lo que habría guardado la migración.
+    metodo: (r.metodo as MetodoEvaluacion | undefined) ?? 'ponderado',
+    puntosTotal: r.puntos_total == null ? null : Number(r.puntos_total),
   }));
 }
 
-// Componentes auto-calculados desde la data (reportes evaluados como encargado, asistencias,
-// incidencias) para un rango. Devuelve { operaciones, software, limpieza, tardanza, descuento }.
-export async function componentesEvaluacion(
-  empleadoId: string,
-  desde: string,
-  hasta: string,
-): Promise<Record<string, number>> {
+// Componentes auto-calculados desde la data (reportes evaluados/del equipo, asistencias,
+// incidencias, pipeline, extras, ventas) para un rango. Devuelve el jsonb tal cual lo arma
+// private.evaluacion_componentes_datos — ver esa función (packages/db/migrations/
+// 0095_puntos_como_moneda.sql) para el significado exacto de cada clave. `ventasSinTasa` es el
+// único campo booleano; el resto son numéricos (o null para 'valores' sin datos ese mes).
+export type ComponentesRPC = {
+  operaciones: number;
+  software: number;
+  limpieza: number;
+  tardanza: number;
+  descuento: number;
+  puntosPipeline: number;
+  extrasMonto: number;
+  extrasCantidad: number;
+  extrasPuntos: number;
+  valores: number | null;
+  valoresCantidad: number;
+  bonusVentas: number;
+  // 🆕 spec 2026-08-25-puntos-como-moneda-design.md — desglose de puntos (migración 0095). Quedan
+  // `undefined` (no `0`) si esa migración todavía no corrió: notaDesdePuntos() los rechaza con un
+  // mensaje claro en vez de calcular con un 0 que no es real (mismo principio que ya sigue
+  // calcularNotaMensual con datos rotos).
+  puntosActividades?: number;
+  puntosVentas?: number;
+  ventasSinTasa?: boolean;
+  puntosTotal?: number;
+};
+
+export async function componentesEvaluacion(empleadoId: string, desde: string, hasta: string): Promise<ComponentesRPC> {
   const sb = getServerClient();
   const { data, error } = await sb.rpc('evaluacion_componentes', {
     p_empleado: empleadoId,
@@ -82,7 +139,7 @@ export async function componentesEvaluacion(
     p_hasta: hasta,
   });
   if (error) throw new Error(error.message);
-  return (data as Record<string, number>) ?? {};
+  return (data as ComponentesRPC) ?? ({} as ComponentesRPC);
 }
 
 // Empleados con fecha de ingreso + salario base (Fase 12): la herramienta única de ciclo
@@ -132,6 +189,12 @@ export async function listarCompetenciasConfig(): Promise<CompetenciaConfig[]> {
 
 // Devuelve el id (Fase 12): la herramienta única de ciclo lo necesita para enlazar el pago que
 // se registra justo después (pagos.evaluacion_id) sin una segunda consulta.
+//
+// `metodo`/`puntosTotal` (0095, spec puntos-como-moneda §2 C-5): quien llama decide el método —
+// desde el 25-ago-2026 la pantalla siempre guarda 'puntos' para evaluaciones nuevas, pero el
+// parámetro queda explícito (no hardcodeado acá) para que este repo no sea el que decide la regla
+// de negocio. Con 'ponderado' (compatibilidad, no usado hoy por la pantalla), `puntosTotal` debe
+// venir null: es justo lo que la columna espera para una evaluación que no vino de puntos.
 export async function crearEvaluacion(p: {
   empleadoId: string;
   mes: string;
@@ -140,6 +203,8 @@ export async function crearEvaluacion(p: {
   pesos: PesosEval;
   cicloDesde: string | null;
   cicloHasta: string | null;
+  metodo: MetodoEvaluacion;
+  puntosTotal: number | null;
 }): Promise<string> {
   const sb = getServerClient();
   const { data, error } = await sb
@@ -152,6 +217,8 @@ export async function crearEvaluacion(p: {
       pesos_usados: p.pesos,
       ciclo_desde: p.cicloDesde,
       ciclo_hasta: p.cicloHasta,
+      metodo: p.metodo,
+      puntos_total: p.puntosTotal,
     })
     .select('id')
     .single();
