@@ -37,6 +37,27 @@ function primerErrorDeCatalogo(items: { clave: string; valor: string }[]): strin
   return null;
 }
 
+/**
+ * Un parámetro de `config` cambia el comportamiento de MEDIO SISTEMA, no de esta pantalla.
+ *
+ * Hasta el 25-ago-2026 acá sólo se hacía `revalidatePath('/configuracion')`, así que el valor nuevo
+ * se guardaba bien en la base pero las OTRAS once pantallas que leen parámetros seguían sirviendo
+ * su render cacheado con el valor viejo. Alexander lo reportó con un caso concreto: cambiaron
+ * `sueldo_tolerancia_minutos` a 0 y «los cambios no se aplicaron» — verificado contra `scilb`, el 0
+ * SÍ estaba guardado; lo que no se había refrescado era todo lo demás.
+ *
+ * Las once, hoy: `/` (landing), `/evaluaciones`, `/mi-desempeno`, `/valores`,
+ * `/personal/[id]/evaluacion`, `/personal/[id]/asistencias`, `/sueldos/asistencia`,
+ * `/sueldos/ventas`, `/reportes/nuevo`, más lo que consumen `sueldos-repo` y `pos-config`.
+ * Enumerarlas una por una sería una lista que se desactualiza sola: se revalida la raíz con
+ * `'layout'`, que es exactamente lo que ya hacía `/configuracion/permisos` desde antes —ahí el
+ * mismo problema se había resuelto bien, dos carpetas más allá, y esta pantalla no lo copió.
+ */
+function revalidarTodoLoQueLeeConfig(): void {
+  revalidatePath('/configuracion');
+  revalidatePath('/', 'layout');
+}
+
 export async function accionGuardarConfig(items: { clave: string; valor: string }[]): Promise<R> {
   try {
     const bloqueo = await exigirAdmin();
@@ -44,7 +65,7 @@ export async function accionGuardarConfig(items: { clave: string; valor: string 
     const invalido = primerErrorDeCatalogo(items);
     if (invalido) return { ok: false, error: invalido };
     await guardarConfig(items);
-    revalidatePath('/configuracion');
+    revalidarTodoLoQueLeeConfig();
     return { ok: true };
   } catch (e) {
     return fallo(e);
@@ -74,7 +95,7 @@ export async function accionCrearParametroConfig(p: {
       return { ok: false, error: 'Una lista necesita al menos 2 opciones.' };
     }
     await crearParametroConfig({ ...p, clave });
-    revalidatePath('/configuracion');
+    revalidarTodoLoQueLeeConfig();
     return { ok: true };
   } catch (e) {
     return fallo(e);
@@ -86,7 +107,7 @@ export async function accionEliminarParametroConfig(clave: string): Promise<R> {
     const bloqueo = await exigirAdmin();
     if (bloqueo) return bloqueo;
     await eliminarParametroConfig(clave);
-    revalidatePath('/configuracion');
+    revalidarTodoLoQueLeeConfig();
     return { ok: true };
   } catch (e) {
     return fallo(e);
