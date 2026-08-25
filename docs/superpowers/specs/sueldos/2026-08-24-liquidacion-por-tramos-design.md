@@ -1,0 +1,281 @@
+# SPEC — Un contrato de varios meses se liquida en tramos, no de una sola vez
+
+> **Qué es.** Hoy un `sueldo_acuerdo` (un contrato) sólo se puede liquidar **una vez, completo**:
+> si dura tres meses, hay que esperar a que termine para emitir un pago. Esta spec deja que el
+> administrador liquide un acuerdo largo en varios tramos — típicamente uno por mes o uno por
+> semana, según la `modalidad` — cada uno con su propio rango de fechas elegido a mano, tal como ya
+> lo hacía en su Excel.
+>
+> **De dónde sale.** Alexander lo pidió explícito, en dos mensajes del 24-ago-2026: *«un contrato
+> no se hace solo por un mes, pero tampoco implica que el admin paga cuando todo el contrato se
+> termine»*, *«la idea es siempre verlo mensual o semanal (según modalidad)»*, y *«el admin en su
+> excel lo que hacía era poner una fecha a otra manualmente... la idea con el sistema es que
+> funcione asi, que cuente por días, tanto las horas, como actividades y eso se vaya sumando
+> registrando, cuando el admin delimita una fecha ahi recien se hacen los cálculos»*.
+>
+> **Zona de rigor: spec completa.** Es la cadena del sueldo (no-negociable 1) — un error acá le
+> paga de menos o de más a una persona real. La buena noticia, verificada contra el código antes de
+> proponer nada (§1): el motor de cálculo **no necesita cambiar**. Lo que cambia es más acotado de
+> lo que parecía.
+
+---
+
+## 1. Lo que pasa hoy, verificado contra el código real — no contra memoria ni contra otro documento
+
+Antes de diseñar se mapeó el código real (no-negociable 7). El resultado es mejor de lo esperado:
+**la mayor parte de la infraestructura para liquidar por tramos ya existe**, escrita así desde el
+diseño original de la `0072`, y sólo dos piezas puntuales fuerzan hoy «todo el acuerdo de una sola
+vez».
+
+| Pieza | ¿Ya está lista para tramos? | Evidencia |
+|---|---|---|
+| `packages/core/src/sueldos.ts` → `liquidarPeriodo()` | **Sí.** Recibe `fechaInicio`/`fechaFin` como parte de `EntradaLiquidacion` — nunca los derivó de ningún acuerdo; el core ni siquiera conoce esa tabla | `sueldos.ts:252-253` (la interfaz), `sueldos.ts:540` (`diasDelPeriodo(entrada.fechaInicio, entrada.fechaFin)`) |
+| `valorPorHora = sueldoPactado / horasContratadas` | **Sí**, ya opera sobre el rango que le llegue, cualquiera sea | `sueldos.ts:561`, `horasContratadas` sale de sumar sólo los días de `dias = diasDelPeriodo(...)` |
+| `sueldo_liquidaciones` (schema) | **Sí.** Tiene columnas propias `periodo_desde`/`periodo_hasta`, **separadas** de las del acuerdo, desde el diseño original | `0072_sueldos_esquema.sql:318-319` |
+| Trigger `sueldo_liq_coherente` | **Sí.** Ya tolera un sub-rango: sólo rechaza si el período se sale de los bordes del acuerdo (`periodo_desde < fecha_inicio or periodo_hasta > fecha_fin`), no exige que coincida exacto | `0072_sueldos_esquema.sql:440-443` |
+| RPC `sueldo_liquidacion_cerrar` | **Sí.** Ya lee `periodo_desde`/`periodo_hasta` de la propia fila de `sueldo_liquidaciones`, no del acuerdo | `0073_sueldos_rpc.sql:334,342-343,347,383,389` |
+| Fuentes de datos (`asistencias`, `reporte_actividades`, `pipeline_puntos`) | **Sí.** Granulares por día/evento desde la `0001`, sin ninguna pre-agregación por período en las 92 migraciones | `0001_init.sql:129-221` |
+| Índice `uq_sueldo_liq_acuerdo_vigente` | **No.** `unique (acuerdo_id) where estado <> 'anulada'` — bloquea una segunda liquidación viva por acuerdo **sin mirar fechas**, así que hoy da lo mismo si el segundo tramo pisa al primero o no: ninguno de los dos entra | `0072_sueldos_esquema.sql:370-371` |
+| RPC `sueldo_entrada(p_acuerdo uuid)` | **No.** Firma sin `p_desde`/`p_hasta`; usa `a.fecha_inicio`/`a.fecha_fin` en cada consulta y en la salida | vigente en `0085_sueldo_entrada_dia_mixto.sql:30,64,99,153,189,197-198` |
+| Pantalla `/sueldos/liquidaciones` | **No.** El admin elige un `<Select>` de acuerdo (que muestra sus fechas fijas, no editables) y aprieta «Calcular» — ningún input de fecha propio en todo el flujo | `apps/erp-web/app/sueldos/liquidaciones/cliente.tsx:220-230` |
+
+**Lo que esto significa:** no hace falta tocar `packages/core` ni el congelado (§8 de la `0072`,
+las cuatro guardas). El cambio real es acotado a un índice, una RPC y la pantalla que la llama —
+mucho más chico que lo que este mismo documento decía hasta hoy («un cambio en el corazón del
+motor»). Esa frase era una suposición sin verificar; se corrige acá.
+
+Dato de riesgo (verificado contra `scilb` el 24-ago-2026, antes de proponer el diseño): **hay un
+solo `sueldo_acuerdo` en toda la base** (el de Marylin) **y cero `sueldo_liquidaciones`**. No hay
+ningún pago emitido que una migración pueda romper. El único dato real a corregir es el propio
+`sueldo_pactado` de Marylin — ver §3, C-5.
+
+---
+
+## 2. El fork real: qué significa `sueldo_pactado` cuando un acuerdo se liquida en tramos
+
+Esto es lo único que de verdad hace falta decidir antes de escribir código. El resto del diseño
+(§3) es mecánico una vez que esto está resuelto.
+
+**El problema.** `valorPorHora = sueldoPactado / horasContratadas(rango)`. Hoy el rango es siempre
+el acuerdo completo, así que `sueldoPactado` funciona sea cual sea su significado: es un número que
+se divide entre las horas de TODO el acuerdo, una sola vez. En cuanto el acuerdo se pueda liquidar
+en tramos, `sueldoPactado` tiene que significar una sola cosa de las dos siguientes — y las dos
+tienen evidencia real, contradictoria, en este mismo repo:
+
+**Evidencia a favor de «`sueldo_pactado` es la tarifa de CADA tramo» (opción recomendada):**
+- El campo del formulario ya dice **«Sueldo pactado del periodo»**, no «del contrato»
+  (`apps/erp-web/app/sueldos/acuerdos/cliente.tsx:586`).
+- `SPEC-esquema-sueldos.md:158-161` ya lo documentaba así desde el 14-ago: *"`sueldo_pactado` es lo
+  acordado para **un** periodo, input manual e irrepetible"*.
+- Es literalmente lo que dijo Alexander este mismo 24-ago: *"la idea es siempre verlo mensual o
+  semanal (según modalidad)"* — no «ver una aproximación mensual de un total», sino que el pago
+  **es** mensual o semanal, como unidad real, no como cálculo derivado.
+- Contrapone explícitamente esta idea a **«el admin paga cuando todo el contrato se termine»** —
+  que es exactamente lo que pasaría si `sueldo_pactado` seguiera siendo el total del acuerdo
+  completo y cada tramo cobrara una fracción de él.
+
+**Evidencia a favor de «`sueldo_pactado` es el TOTAL del acuerdo completo» (la que rige hoy):**
+- El acuerdo real de Marylin tiene `sueldo_pactado = 1.800` para un contrato de 3 meses (verificado
+  contra `scilb` el 24-ago-2026) — el total, no la cuota mensual de 600.
+- La propia pantalla de contratos ya distingue dos cifras a propósito: **«Pago del periodo»**
+  (`sueldoPactado` tal cual, `cliente.tsx:656-658`) y **«Pago mensual (aprox.)»**, una cifra
+  DERIVADA dividiendo `sueldoPactado / (días del acuerdo / 30)` — con el comentario explícito
+  `// sueldo / (dias/30) — aproximado siempre (decisión 23-ago)` (`cliente.tsx:175,244`). Esa
+  decisión, de un día antes de esta spec, trató a `sueldoPactado` sin ambigüedad como el total del
+  rango completo del acuerdo, con el mensual como una referencia aproximada, nunca como el número
+  real que se paga.
+
+**Por qué se recomienda igual la primera lectura.** El campo `pagoMensual` de la decisión del
+23-ago es, mirado con lo que Alexander pidió el 24-ago, precisamente el parche que esta spec viene
+a reemplazar: como ayer sólo se podía liquidar el acuerdo completo de una sola vez al final, lo
+único que se podía ofrecer era una cifra aproximada de referencia mientras tanto — el propio
+comentario dice **«aproximado siempre»**, no «el monto real». Con tramos de verdad, esa
+aproximación deja de hacer falta: el monto real de cada mes vuelve a ser, otra vez, un número
+exacto y no una división. Es coherente con lo que ya decía el documento original de la `0072` y con
+el label del formulario, que nunca se llegaron a corregir cuando la `0072` sólo dejaba liquidar de
+una vez.
+
+**Lo que se propone, en concreto:**
+`sueldo_acuerdos.sueldo_pactado` pasa a significar **«lo que se paga en CADA liquidación de este
+acuerdo»** (la cuota mensual si `modalidad = 'mensual'`, la semanal si `'semanal'`), aplicado **tal
+cual, sin escalar**, sea cual sea la duración exacta del tramo que el administrador elija liquidar
+esa vez — exactamente la misma fórmula de hoy (`sueldoPactado / horasContratadas(rango)`), sin
+ningún cambio en `packages/core`. Un acuerdo de tres meses mensual con `sueldo_pactado = 600` se
+liquida hasta tres veces, y cada una calcula contra las horas de SU propio tramo, no contra un
+total prorrateado.
+
+**No se considera la alternativa de prorratear un total** (`montoDelTramo = sueldoPactado ×
+díasDelTramo / díasDelAcuerdo`) — además de contradecir lo que pidió Alexander, exigiría tocar
+`packages/core/src/sueldos.ts` (zona sagrada) con una fórmula nueva, y arrastra su propio problema
+sin resolver: prorratear por días de calendario no es correcto cuando dos tramos tienen distinta
+cantidad de horas contratadas (un mes con más fines de semana no vale lo mismo que uno con menos).
+
+### 🔴 Esto es lo único que hace falta que Alexander confirme antes de tocar código
+
+**¿`sueldo_pactado` pasa a ser la cuota de CADA liquidación (recomendado, S/600 para Marylin), o
+sigue siendo el total del contrato completo (S/1.800), con cada tramo cobrando una fracción?**
+
+Si la respuesta es la segunda, esta spec queda incompleta: hay que volver a §2 y diseñar la fórmula
+de prorrateo dentro de `packages/core`, con su propio test y su propia verificación adversarial —
+no se improvisa acá. El resto de esta spec (§3 en adelante) asume que la respuesta es la primera.
+
+---
+
+## 3. El diseño (asumiendo que Alexander confirma §2 como «cuota por tramo»)
+
+### C-1 — El índice que bloquea una segunda liquidación se cambia por uno que sólo bloquea el solape
+
+Se reemplaza el índice único parcial por una restricción de exclusión, mismo patrón que
+`sueldo_acuerdos_sin_solape` (que ya usa `btree_gist`, ya habilitada):
+
+```sql
+drop index if exists uq_sueldo_liq_acuerdo_vigente;
+
+alter table sueldo_liquidaciones add constraint sueldo_liq_periodo_sin_solape
+  exclude using gist (
+    acuerdo_id with =,
+    daterange(periodo_desde, periodo_hasta, '[]') with &&
+  ) where (estado <> 'anulada');
+```
+
+Efecto: un acuerdo puede tener varias liquidaciones vivas, siempre que sus períodos no se pisen.
+Dos liquidaciones de julio y agosto conviven; dos que ambas toquen el 15 de julio, no — el choque
+lo resuelve la base, no la pantalla, mismo criterio que ya usa `sueldo_acuerdos_sin_solape` para
+los acuerdos entre sí.
+
+**El mensaje de error se traduce, no se muestra crudo** (mismo patrón que se acaba de aplicar esta
+sesión para `sueldo_acuerdos_sin_solape`, commit `00ba01d`). El check inline de
+`crearBorrador()` (`sueldos-repo.ts:636`) hoy busca `uq_sueldo_liq_acuerdo_vigente|duplicate key` en
+el mensaje: pasa a buscar `sueldo_liq_periodo_sin_solape`, con un mensaje propio —
+*"El período que elegiste se superpone con otra liquidación de este mismo acuerdo. Elegí un rango
+que no se pise, o anulá la existente."* — distinto del mensaje que ya existe para
+`sueldo_acuerdos_sin_solape` en `errorSueldo()` (`sueldos-repo.ts:92-97`), que sigue intacto y sigue
+siendo el correcto para cuando lo que se pisa son dos ACUERDOS, no dos liquidaciones del mismo
+acuerdo. Ojo al implementar: los dos errores comparten código Postgres `23P01`
+(`exclusion_violation`) — el orden de los `if` importa, y el check por nombre de restricción tiene
+que ganarle al `if (error?.code === '23P01')` genérico para que no se muestre el mensaje
+equivocado.
+
+### C-2 — `sueldo_entrada` acepta el rango como parámetro, igual que `evaluacion_componentes`
+
+Nueva firma: `public.sueldo_entrada(p_acuerdo uuid, p_desde date, p_hasta date)` — **parámetros
+obligatorios, sin default**. No hace falta tolerar «sin rango = el acuerdo completo»: verificado que
+hoy no hay ningún otro llamador de esta RPC además de `sueldos-repo.ts`, así que no hay nada que
+mantener retrocompatible. Es la misma forma que ya usa `evaluacion_componentes(p_empleado, p_desde,
+p_hasta)` — mismo patrón, para las dos cadenas de datos que alimentan un pago.
+
+Cambios dentro de la función (`0085_sueldo_entrada_dia_mixto.sql` es la versión vigente a
+reemplazar con `create or replace function`):
+
+- Al principio, después de cargar `a`: validar `p_hasta >= p_desde` y que el rango caiga dentro del
+  acuerdo (`p_desde >= a.fecha_inicio and p_hasta <= a.fecha_fin`), cortando con `DATO:` y un
+  mensaje legible — el trigger de la `0072` ya lo comprobaría al insertar, pero fallar acá, antes de
+  armar todo el `jsonb`, da un mensaje mejor y más rápido, mismo criterio que ya usa esta función
+  para sus otros cortes.
+- Todas las referencias a `a.fecha_inicio`/`a.fecha_fin` que hoy delimitan qué se lee (líneas 64, 99
+  del `generate_series` de los controles de día sin declarar y día mixto; 153 del `between` de
+  asistencias; 189 del `between` de `sueldo_ventas`; 197-198 de la salida `fechaInicio`/`fechaFin`;
+  y los tres `private.sueldo_movimientos_*` de 208-212) pasan a usar `p_desde`/`p_hasta`.
+- Lo que NO cambia: todo lo que consulta `sueldo_acuerdo_turnos` por día de la semana (el horario
+  contratado no depende de qué tramo se esté liquidando), y `a.modalidad`/`a.sueldo_pactado` en la
+  salida (`a.sueldo_pactado` sigue siendo la cuota, se manda tal cual — es el motor, no la RPC,
+  quien la divide entre las horas del tramo).
+
+### C-3 — El repo pasa el rango
+
+`entradaDeAcuerdo(acuerdoId, desde, hasta)`, `calcularPreview(acuerdoId, desde, hasta)`,
+`crearBorrador(acuerdoId, desde, hasta)` (`apps/erp-web/lib/sueldos-repo.ts:574,587,604`) reciben
+`desde`/`hasta` y se los pasan a `.rpc('sueldo_entrada', { p_acuerdo, p_desde, p_hasta })`.
+`crearBorrador` sigue sin cambios en la parte que arma el `insert`: ya lee `periodo_desde`/
+`periodo_hasta` de `entrada.fechaInicio`/`entrada.fechaFin`, que ahora vienen del RPC con el tramo
+correcto.
+
+### C-4 — La pantalla deja elegir el rango, con una sugerencia
+
+`/sueldos/liquidaciones/cliente.tsx` agrega dos `<input type="date">` (Desde/Hasta) junto al
+selector de acuerdo, editables sin más restricción que la que ya impone C-2/el trigger.
+
+**Sugerencia de default**, calculada en el servidor al elegir un acuerdo (no forzada, el admin la
+puede pisar):
+- Si el acuerdo ya tiene liquidaciones no-anuladas, sugerir desde el día siguiente al
+  `periodo_hasta` más reciente (`max(periodo_hasta) + 1 día`).
+- Si no tiene ninguna, sugerir desde `fecha_inicio` del acuerdo.
+- El «hasta» sugerido sale de `calcularCiclo(desdeSugerido, hoyPeru())` (`packages/core/src/
+  evaluaciones.ts`, ya existe, ya tiene el recorte de mes corto de esta misma sesión) — recortado
+  además a `fecha_fin` del acuerdo si el ciclo se pasara del final del contrato. Mismo patrón que
+  ya usa la evaluación para sugerir un período: acá es sugerencia, ahí también.
+
+`accionCalcular`/`accionCrearBorrador` (`app/sueldos/liquidaciones/actions.ts:49,60`) reciben
+`desde`/`hasta` además de `acuerdoId`.
+
+### C-5 — Corregir el contrato de Marylin (dato, no código)
+
+Con `sueldo_pactado` significando ahora «la cuota mensual», el acuerdo real de Marylin
+(`720e74f8-83e2-441f-ab89-16559776cbbd`, `sueldo_pactado = 1.800`) queda mal: hay que corregirlo a
+`600` antes de su primera liquidación real. Es un `update` de una fila, no una migración de datos —
+se hace a mano desde la pantalla de contratos (ya existe la edición) una vez que C-1 a C-4 estén
+aplicados, no antes: si se corrige primero, cualquier intento de liquidar el acuerdo completo de una
+sola vez con el código viejo (todavía en producción) pagaría **la sexta parte** de lo que
+corresponde por los tres meses.
+
+### C-6 — Ajustar la copia de la pantalla de contratos
+
+`pagoMensual` (`app/sueldos/acuerdos/cliente.tsx:175,244`, la aproximación `sueldo/(días/30)`, con
+el comentario propio `«aproximado siempre»`) deja de tener sentido tal como está: si `sueldoPactado`
+ya es la cuota mensual, «Pago mensual (aprox.)» pasa a ser el mismo número que «Pago del periodo»,
+sin ninguna aproximación. No es una regla de negocio, es texto que quedaría confuso — se ajusta la
+etiqueta (algo como «Esto es lo que se paga en cada liquidación», sin el «(aprox.)») al implementar,
+sin necesidad de volver a esta spec por la redacción exacta.
+
+---
+
+## 4. Lo que esta spec NO hace
+
+- **No** toca `packages/core/src/sueldos.ts`. Confirmado en §1: el motor ya es agnóstico al rango.
+  Si Alexander responde §2 con la opción de prorratear un total, esto deja de ser cierto y hace
+  falta una spec nueva para esa fórmula.
+- **No** construye una pantalla combinada que liquide sueldo y evaluación de un mismo rango elegido
+  una sola vez, aunque Alexander mencionó que en su Excel contaba «tanto las horas... como también
+  su desempeño» del mismo calendario. `evaluacion_componentes` ya acepta `p_desde`/`p_hasta` desde
+  antes de esta spec y no necesita ningún cambio — unificar las dos pantallas en una sola es una
+  mejora de UX a futuro, no parte de esta spec.
+- **No** cambia el congelado (§8 de la `0072`, las cuatro guardas) ni `sueldo_liquidacion_cerrar`:
+  ya operan por fila y por el período de la propia liquidación, no del acuerdo.
+- **No** define qué pasa si el administrador quiere liquidar el acuerdo completo de una sola vez
+  (por ejemplo, un contrato corto de menos de un mes): sigue siendo posible — es sólo un tramo que
+  resulta ser igual de largo que el acuerdo entero — pero con `sueldo_pactado` como cuota mensual,
+  eso pagaría sólo un mes de un contrato de tres. No es un caso que esta spec deba resolver: el
+  admin, con el rango a la vista, decide cuánto tramo liquidar cada vez.
+- **No** valida que la suma de las liquidaciones de un acuerdo termine cubriendo exactamente
+  `fecha_inicio`..`fecha_fin` sin huecos ni sobras — el mismo criterio que ya rige hoy para los días
+  contratados sin asistencia declarada (corta nombrando lo que falta) no se extiende acá; se puede
+  hacer en una fase futura si hace falta, no es parte del pedido de esta spec.
+
+## 5. Casos de prueba
+
+| # | Caso | Resultado esperado |
+|---|---|---|
+| 1 | Acuerdo mensual de 3 meses, `sueldo_pactado = 600` tras C-5, liquidar sólo julio | El total ronda un mes de sueldo, no tres |
+| 2 | Mismo acuerdo: liquidar julio, cerrar, después liquidar agosto | Las dos conviven; la segunda no choca con la primera |
+| 3 | Mismo acuerdo: intentar liquidar 15-jul a 15-ago cuando julio ya está cerrado | Rechaza con el mensaje traducido de C-1, no con el texto crudo de Postgres |
+| 4 | `sueldo_entrada` llamado con `p_desde`/`p_hasta` iguales a `fecha_inicio`/`fecha_fin` del acuerdo | Idéntico al resultado de hoy (llamando sin esos parámetros), ningún regresión |
+| 5 | `p_desde`/`p_hasta` que se sale de los bordes del acuerdo | Corta con `DATO:` claro, sin llegar al trigger |
+| 6 | Anular la liquidación de julio y volver a liquidarlo | Funciona, mismo patrón que ya existe hoy para un acuerdo entero |
+| 7 | Agosto sin asistencia declarada todavía, liquidar sólo julio | No exige declarar agosto — el control de «día sin declarar» de la `0085` sólo mira el rango pedido |
+| 8 | Día partido en tramos dentro del rango elegido (mañana en un tramo del rango, tarde en el tramo siguiente que NO se está liquidando) | Fuera de alcance: un acuerdo se liquida por fechas completas, no por medio día — anotar como caso a vigilar si aparece en la práctica, no bloquea esta spec |
+
+## 6. Orden sugerido de implementación
+
+1. Confirmar §2 con Alexander. Sin esto, nada de lo que sigue es seguro escribir.
+2. `packages/db/pruebas/00XX_....prueba.sql` primero (Zone Guard: la prueba fija el contrato antes
+   que el código lo cumpla), con los casos de §5.
+3. Migración: C-1 (índice → exclude) + C-2 (`sueldo_entrada` con rango), una sola migración —
+   `bash tools/reservar-migracion.sh liquidacion-por-tramos` para el número.
+4. `sueldos-repo.ts` (C-3), después `actions.ts` + `cliente.tsx` (C-4) de
+   `/sueldos/liquidaciones`.
+5. `bash tools/verificar-local.sh` completo.
+6. Aplicar la migración y correr la prueba contra `scilb` real antes de dar por cerrado (mismo
+   patrón que `0091`/`0092` esta sesión — un `implementador` no puede hacer este paso solo, ver
+   `docs/aprendizajes.md`, sección «Coordinación entre agentes»).
+7. Recién ahí, C-5: corregir el acuerdo real de Marylin desde la pantalla. No antes.
+8. C-6, la copia de `/sueldos/acuerdos`, se puede hacer junto con el paso 4.
