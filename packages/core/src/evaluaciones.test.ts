@@ -223,14 +223,13 @@ describe('calcularCiclo', () => {
     });
   });
 
-  // La spec §5 dice, en prosa, "29 de febrero (el mes sí tiene ese día)" para este caso. La
-  // fórmula del §3 aplicada literalmente no da eso: hasta = min(díaDeseado − 1, últimoDíaDelMes)
-  // con díaDeseado = 29 es min(28, últimoDíaDelMes), y últimoDíaDelMes de febrero nunca baja de
-  // 28 — bisiesto o no, el resultado es siempre 28 (2028 es bisiesto: Date.UTC(2028,2,0) da día
-  // 29, y aun así min(28, 29) = 28). Se implementa la fórmula tal cual el §3, sin inventar una
-  // rama especial para bisiestos que la spec no describe; la discrepancia con la prosa del §5
-  // queda anotada en el informe de esta tarea, no resuelta acá.
-  it('ingresa el 29 de enero en año bisiesto → el ciclo termina el 28 de febrero (ver informe)', () => {
+  // La prosa de la spec §5 decía "29 de febrero (el mes sí tiene ese día)" para este caso, pero la
+  // fórmula del §3 aplicada literalmente da 28: hasta = min(díaDeseado − 1, últimoDíaDelMes) con
+  // díaDeseado = 29 es min(28, últimoDíaDelMes), y últimoDíaDelMes de febrero nunca baja de 28 —
+  // bisiesto o no (2028 es bisiesto: Date.UTC(2028,2,0) da día 29, y aun así min(28, 29) = 28).
+  // Alexander confirmó el 24-ago-2026, preguntado directamente: "si tambien el 28 se paga" — el
+  // mismo día en año bisiesto o no. La fórmula sin rama especial para bisiestos es la correcta.
+  it('ingresa el 29 de enero en año bisiesto → el ciclo termina el 28 de febrero, confirmado', () => {
     expect(calcularCiclo('2028-01-29', '2028-01-29')).toEqual({
       desde: '2028-01-29',
       hasta: '2028-02-28',

@@ -134,13 +134,13 @@ se registra.
   comportamiento viejo (`evaluaciones.test.ts`, día 31) cambió de valor a propósito — es justo el
   caso que esta spec vino a corregir, no una regresión.
 
-  **Un caso quedó sin resolver, detectado al implementar.** La fórmula exacta que dio Alexander
-  (`hasta = mín(díaDeseado − 1, últimoDíaDelMes)`) no distingue años bisiestos: alguien que entra el
-  29 de enero en un año bisiesto da `28-feb` con la fórmula tal cual, no `29-feb`, porque
-  `díaDeseado − 1 = 28` sin importar si el febrero de destino tiene 28 o 29 días. Ningún empleado
-  real tiene hoy `fecha_ingreso` el 29 de enero. **Pendiente: confirmar con Alexander si ese caso
-  puntual se paga el 28 o el 29** — mientras tanto el código aplica la fórmula sin excepción para
-  bisiestos, sin inventar una rama especial que la spec no pidió.
+  ✅ **El caso de años bisiestos — CONFIRMADO el 24-ago-2026.** La fórmula exacta que dio Alexander
+  (`hasta = mín(díaDeseado − 1, últimoDíaDelMes)`) no distinguía años bisiestos: alguien que entra
+  el 29 de enero en un año bisiesto da `28-feb`, no `29-feb`, porque `díaDeseado − 1 = 28` sin
+  importar si el febrero de destino tiene 28 o 29 días. Alexander confirmó, preguntado
+  directamente: *"si tambien el 28 se paga"* — el mismo día en año bisiesto o no. La fórmula tal
+  cual está implementada ya es la correcta; no hace falta ninguna rama especial. Cerrado, sin
+  cambios de código.
 - **Valores 360°: no se portó la ventana de habilitación por fecha del sistema viejo.**
   `routes/valores.js` tenía un interruptor `eval_valores_habilitado`/`eval_valores_modo`/
   `eval_valores_dias` (por defecto: solo días 25-28 de cada mes, o un flag manual on/off) que
@@ -964,9 +964,12 @@ según la modalidad), sin esperar a que el contrato entero termine.
 **Lo que cambiaría, en criollo:**
 - `sueldo_pactado` dejaría de ser «el total del contrato» y pasaría a ser **la tarifa del período**:
   si la modalidad es mensual, es lo que se paga POR MES, sin importar cuántos meses dure el
-  contrato completo. Con el contrato de Marylin que acabamos de cargar (modalidad mensual,
-  1-jul a 30-sep), esto ya está bien pensado por casualidad: pusimos S/ 600 mensuales, no S/ 1.800
-  totales con la esperanza de que se dividiera solo.
+  contrato completo. **Corrección sobre lo que decía antes este párrafo:** con el contrato de
+  Marylin que cargamos (modalidad mensual, 1-jul a 30-sep) pusimos `sueldo_pactado = 1.800`, el
+  TOTAL de los tres meses — verificado contra `scilb` el 24-ago-2026, no los S/ 600 mensuales que
+  esta misma sección afirmaba antes por error (no-negociable 7: eso no se verificó contra la base
+  cuando se escribió). Bajo la semántica nueva ese valor queda mal: hay que corregirlo a `600` antes
+  de la primera liquidación real de Marylin — ver la tarea en la spec de abajo.
 - Un contrato de tres meses pasaría a tener **hasta tres liquidaciones**, una por mes, en vez de
   una sola que cubra todo el rango.
 
@@ -988,12 +991,19 @@ según la modalidad), sin esperar a que el contrato entero termine.
    el mismo tipo de parámetro (`p_desde`, `p_hasta`) en vez de tomar siempre el rango completo del
    acuerdo, no un sistema nuevo de «el acuerdo genera N liquidaciones solo».
 
-**Por qué esto sigue sin construirse hoy, junto con el resto.** Sigue siendo un cambio en el
-corazón del motor de sueldos —qué es `sueldo_pactado`, cómo se relaciona con el rango que se
-liquida cada vez, cuántas liquidaciones puede tener un contrato— y aunque las dos aclaraciones de
-arriba lo simplifican, todavía no está escrito cómo conviven `sueldo_pactado` (que hoy es «para
-todo el rango del acuerdo») con liquidar sólo una parte de ese rango. Falta una spec completa antes
-de tocar `packages/core` o el esquema.
+**✅ Spec completa escrita el 24-ago-2026:**
+[2026-08-24-liquidacion-por-tramos-design.md](superpowers/specs/sueldos/2026-08-24-liquidacion-por-tramos-design.md).
+El mapeo del código real (no memoria) que la precedió trajo una sorpresa: **el motor
+(`packages/core/src/sueldos.ts`) no necesita ningún cambio** — `liquidarPeriodo()` ya recibe
+`fechaInicio`/`fechaFin` como parámetros explícitos, nunca los derivó del acuerdo. Tampoco
+`sueldo_liquidaciones` (ya tiene `periodo_desde`/`periodo_hasta` propios, separados del acuerdo,
+desde la migración original `0072`) ni el trigger de coherencia ni el cierre. Lo único que fuerza
+hoy «todo el acuerdo de una sola vez» son dos piezas puntuales: el índice único
+`uq_sueldo_liq_acuerdo_vigente` (una sola liquidación viva POR ACUERDO, sin mirar fechas) y la
+firma de la RPC `sueldo_entrada(p_acuerdo uuid)` (sin parámetro de rango). Este hallazgo no estaba
+en este documento hasta hoy: lo que se pensaba «un cambio en el corazón del motor» resultó ser un
+ajuste acotado a dos piezas de infraestructura que ya estaba pensada para esto. Queda **una
+decisión de negocio sin confirmar** antes de implementar — ver la spec, §4.
 
 ---
 
