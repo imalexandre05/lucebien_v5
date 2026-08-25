@@ -41,26 +41,40 @@ function comoResultado(e: unknown): Resultado<never> {
 export type Preview = { entrada: EntradaConContexto; liquidacion: Liquidacion };
 
 /**
- * Calcula el periodo sin escribir nada. Es lo que se mira antes de decidir.
+ * Calcula UN TRAMO del periodo sin escribir nada. Es lo que se mira antes de decidir.
  *
- * Corta con `DATO` nombrando las fechas si algún día contratado quedó sin declarar: un día sin
- * dato no es una falta, y darlo por falta costaría dos días de sueldo.
+ * `desde`/`hasta` son el rango que el administrador eligió liquidar esta vez (spec liquidación-
+ * por-tramos, C-4) — no necesariamente el acuerdo completo: un contrato de tres meses se puede
+ * liquidar mes a mes. Corta con `DATO` nombrando las fechas si algún día contratado del tramo
+ * quedó sin declarar: un día sin dato no es una falta, y darlo por falta costaría dos días de
+ * sueldo.
  */
-export async function accionCalcular(acuerdoId: string): Promise<Resultado<Preview>> {
+export async function accionCalcular(
+  acuerdoId: string,
+  desde: string,
+  hasta: string,
+): Promise<Resultado<Preview>> {
   try {
     if (!(await esAdmin())) return { ok: false, error: 'Sólo el administrador o el dueño liquidan.' };
-    const datos = await calcularPreview(acuerdoId);
+    const datos = await calcularPreview(acuerdoId, desde, hasta);
     return { ok: true, datos };
   } catch (e) {
     return comoResultado(e);
   }
 }
 
-/** Guarda el borrador. Recibe un id de acuerdo: el total lo calcula el servidor de nuevo. */
-export async function accionCrearBorrador(acuerdoId: string): Promise<Resultado<{ id: string }>> {
+/**
+ * Guarda el borrador de un tramo. Recibe un id de acuerdo y el rango: el total lo calcula el
+ * servidor de nuevo.
+ */
+export async function accionCrearBorrador(
+  acuerdoId: string,
+  desde: string,
+  hasta: string,
+): Promise<Resultado<{ id: string }>> {
   try {
     if (!(await esAdmin())) return { ok: false, error: 'Sólo el administrador o el dueño liquidan.' };
-    const id = await crearBorrador(acuerdoId);
+    const id = await crearBorrador(acuerdoId, desde, hasta);
     revalidatePath('/sueldos/liquidaciones');
     return { ok: true, datos: { id } };
   } catch (e) {

@@ -8,6 +8,7 @@ import {
   PARAMETROS_SUELDO_DEFAULT,
   diaSemanaISO,
   diasDelPeriodo,
+  finDePeriodo,
   resumirHorario,
   sueldoSugerido,
   type ParametrosSueldo,
@@ -172,7 +173,11 @@ function analizar(b: Borrador): {
   dias: number;
   valorHora: number | null;
   sugerido: number | null;
-  pagoMensual: number | null; // sueldo / (dias/30) — aproximado siempre (decisión 23-ago)
+  // C-6 (spec liquidación-por-tramos, 24-ago-2026): `sueldoPactado` pasa a ser la cuota de CADA
+  // liquidación (mensual o semanal, según `modalidad`), no el total del contrato — ya no hay nada
+  // que prorratear. Se muestra tal cual, igual que "Pago del periodo" (no es un alias por accidente:
+  // hasta que se corrija C-5 el dato real del acuerdo puede seguir siendo el total viejo).
+  pagoMensual: number | null;
   horasMensuales: number | null; // horas / (dias/30)
   almuerzoPeriodo: number | null; // techo: días con horario "completo" × valor almuerzo
   almuerzoMensual: number | null;
@@ -198,6 +203,18 @@ function analizar(b: Borrador): {
     const fechas = diasDelPeriodo(b.fechaInicio, b.fechaFin);
     const horas = fechas.reduce((s, f) => s + (porDia.get(diaSemanaISO(f))?.horas ?? 0), 0);
     const pactado = Number(b.sueldoPactado);
+
+    // F-4 (addendum liquidación-por-tramos, 24-ago-2026): `valorHora` y `sugerido` se calculan
+    // contra las horas de UNA UNIDAD de la modalidad (un mes o una semana, según corresponda) desde
+    // `fechaInicio` — no contra las horas de TODO el contrato. Con `sueldoPactado` como la cuota de
+    // CADA liquidación (C-6), dividirla entre las horas del contrato completo la encogía a una
+    // fracción varias veces menor que la real; y `sugerido` (tarifaHora × horas) sugería varias
+    // veces la cuota real — si el administrador copiaba esa sugerencia al campo, pagaba de más cada
+    // mes. `dias`, `horasMensuales`, `almuerzoPeriodo`/`almuerzoMensual` siguen del contrato
+    // completo: son informativos sobre el contrato y siguen siendo correctos así.
+    const hastaTramo = finDePeriodo(b.fechaInicio, b.modalidad, b.fechaFin);
+    const fechasTramo = diasDelPeriodo(b.fechaInicio, hastaTramo);
+    const horasTramo = fechasTramo.reduce((s, f) => s + (porDia.get(diaSemanaISO(f))?.horas ?? 0), 0);
 
     const meses = fechas.length / 30;
     const horasMin = b.parametros.horasMinimasAlmuerzo ?? PARAMETROS_SUELDO_DEFAULT.horasMinimasAlmuerzo;
@@ -239,9 +256,11 @@ function analizar(b: Borrador): {
     return {
       horas,
       dias: fechas.length,
-      valorHora: horas > 0 && pactado > 0 ? pactado / horas : null,
-      sugerido: b.escala && horas > 0 ? sueldoSugerido(Number(b.escala), horas) : null,
-      pagoMensual: pactado > 0 && meses > 0 ? pactado / meses : null,
+      valorHora: horasTramo > 0 && pactado > 0 ? pactado / horasTramo : null,
+      sugerido: b.escala && horasTramo > 0 ? sueldoSugerido(Number(b.escala), horasTramo) : null,
+      // Ya no se divide entre `meses` (C-6): `pactado` ES la cuota de cada liquidación, dividirla
+      // otra vez por la duración del contrato completo la encogería a una fracción que nadie paga.
+      pagoMensual: pactado > 0 ? pactado : null,
       horasMensuales: horas > 0 && meses > 0 ? horas / meses : null,
       almuerzoPeriodo: horas > 0 ? almuerzoPeriodo : null,
       almuerzoMensual: horas > 0 && meses > 0 ? almuerzoPeriodo / meses : null,
@@ -659,7 +678,10 @@ export function AcuerdosCliente({
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Pago mensual (aprox.)</p>
+                      {/* C-6 (spec liquidación-por-tramos): ya no es una aproximación. Con
+                          `sueldoPactado` como cuota de CADA liquidación, este número es el mismo
+                          que "Pago del periodo" — sin dividir por la duración del contrato. */}
+                      <p className="text-xs text-muted">Pago por liquidación</p>
                       <p className="tabular-nums text-navy">
                         {analisis.pagoMensual == null ? '—' : soles(analisis.pagoMensual)}
                       </p>
