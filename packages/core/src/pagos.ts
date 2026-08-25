@@ -17,6 +17,15 @@ export function sugerirMontoPago(
 ): number {
   const base = Math.max(0, salarioBase || 0);
   if (notaFinal == null) return Math.round(base * 100) / 100;
-  const monto = base * (notaFinal / 20) + (bonus || 0) - (descuentos || 0);
+  // Techo del factor de nota (spec docs/superpowers/specs/evaluaciones/2026-08-25-puntos-como-
+  // moneda-design.md §3). Desde que la nota puede salir de puntos (notaDesdePuntos, en
+  // ./evaluaciones) ya no tiene techo en 20: alguien "sobresaliente" puede sacar 22,40. La nota
+  // sirve para LEER el desempeño, no para multiplicar el sueldo sola — un aumento automático por
+  // pasar de 20 es una decisión del administrador ("se evalúa poder mejorar sus condiciones
+  // laborales o línea de carrera"), no una fórmula. El factor se limita a 1,00; el piso en 0 de
+  // abajo no cambia. Con la nota vieja (tope 20 de hecho) este cambio no altera ningún monto ya
+  // sugerido: el factor nunca pasaba de 1 de todos modos.
+  const factor = Math.min(notaFinal / 20, 1);
+  const monto = base * factor + (bonus || 0) - (descuentos || 0);
   return Math.round(Math.max(0, monto) * 100) / 100;
 }

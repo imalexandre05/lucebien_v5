@@ -126,6 +126,105 @@ export const TRAMO_LABEL: Record<TramoEval, string> = {
   bajo: 'Bajo rendimiento',
 };
 
+// ── Puntos como moneda (spec docs/superpowers/specs/evaluaciones/2026-08-25-puntos-como-moneda-
+// design.md) ──────────────────────────────────────────────────────────────────────────────────
+// Desde el 25-ago-2026 la nota mensual deja de ser sólo Σ(componente × peso) y pasa a poder leerse
+// también desde los PUNTOS acumulados del período (pipeline + extras + actividades + ventas −
+// incidencias, sumados por el RPC private.evaluacion_componentes_datos). calcularNotaMensual() de
+// arriba NO se toca — evaluaciones ya guardadas con metodo='ponderado' se siguen mostrando con esa
+// fórmula (spec §2 C-5) — esto es un camino nuevo y paralelo, no un reemplazo.
+
+/** Las cuatro bandas de C-3. El orden de los cortes es riesgo < en_desarrollo < ideal < sobresaliente. */
+export type BandaEval = 'riesgo' | 'en_desarrollo' | 'ideal' | 'sobresaliente';
+
+export const BANDA_LABEL: Record<BandaEval, string> = {
+  riesgo: 'Riesgo',
+  en_desarrollo: 'En desarrollo',
+  ideal: 'Ideal',
+  sobresaliente: 'Sobresaliente',
+};
+
+// Los cinco números de la recta quebrada + las bandas, todos editables desde /configuración
+// (config-catalogo.ts, sección "Evaluación mensual") — nada queda quemado acá.
+export type EscalaPuntos = {
+  puntosPromedio: number; // spec: el ejemplo del administrador es 5000 → notaPromedio
+  notaPromedio: number; // spec: 16
+  puntosExcelente: number; // spec: 7500 → nota 20
+  bandaRiesgo: number; // spec: <13 "riesgo de despido"
+  bandaIdeal: number; // spec: >18 "ideal y perfección"
+};
+
+// El corte entre 'ideal' y 'sobresaliente' NO es un parámetro de config: es la nota 20 en sí misma
+// ("si pasa de 7500 es mayor todavía... es alguien sobresaliente"), la misma ancla que ya fija
+// notaDesdePuntos(). Los dos cortes editables son sólo bandaRiesgo y bandaIdeal (spec §2 C-3).
+//
+// Exportada aparte (no sólo usada adentro de notaDesdePuntos): las evaluaciones YA GUARDADAS
+// (metodo='ponderado' o 'puntos', spec §2 C-5) tienen su nota_final congelada — clasificarla en
+// una banda para mostrarla en el historial/mi-desempeño no debe recalcular puntos → nota de nuevo
+// (eso podría dar una nota DISTINTA a la que se guardó si la escala de config cambió desde
+// entonces), sólo leer el número ya congelado contra los cortes ACTUALES de bandaRiesgo/bandaIdeal
+// — mismo espíritu que ya usa tramoEval(nota) para el sistema viejo.
+export function bandaDesdeNota(nota: number, bandaRiesgo: number, bandaIdeal: number): BandaEval {
+  if (nota < bandaRiesgo) return 'riesgo';
+  if (nota > 20) return 'sobresaliente';
+  if (nota >= bandaIdeal) return 'ideal';
+  return 'en_desarrollo';
+}
+
+/**
+ * Puntos → nota /20, spec §2 C-2/C-3. Recta quebrada con el codo en `puntosPromedio` (dos anclas:
+ * el promedio da `notaPromedio`, `puntosExcelente` da 20) y SIN techo — pasar de `puntosExcelente`
+ * sigue subiendo la nota más allá de 20 (eso es "sobresaliente", C-3), a diferencia de
+ * calcularNotaMensual() que nunca pasaba de 20 en la práctica.
+ *
+ *   puntos ≤ puntosPromedio:  nota = puntos / puntosPromedio × notaPromedio
+ *   puntos >  puntosPromedio: nota = notaPromedio + (puntos − puntosPromedio) × (20 − notaPromedio)
+ *                                                    / (puntosExcelente − puntosPromedio)
+ *
+ * La nota nunca es negativa (puntos negativos por incidencias que superan el trabajo del período
+ * dan 0,00, no un número negativo — spec §7 caso 7): se recorta ANTES de redondear.
+ *
+ * Puede lanzar: si `puntosExcelente === puntosPromedio` la segunda pendiente divide por cero, y si
+ * `puntosPromedio === 0` es la primera la que divide por cero — mismo defecto en las dos ramas de
+ * la misma recta. Antes de este chequeo el resultado sería Infinity/NaN en silencio; se corta con
+ * un mensaje claro, mismo principio que ya sigue calcularNotaMensual con esNumeroValido/
+ * validarNumero: un dato de config roto no se disfraza de resultado (spec §7 caso 8).
+ */
+export function notaDesdePuntos(puntos: number, escala: EscalaPuntos): { nota: number; banda: BandaEval } {
+  const { puntosPromedio, notaPromedio, puntosExcelente, bandaRiesgo, bandaIdeal } = escala;
+  const campos: [string, number][] = [
+    ['puntos', puntos],
+    ['puntosPromedio', puntosPromedio],
+    ['notaPromedio', notaPromedio],
+    ['puntosExcelente', puntosExcelente],
+    ['bandaRiesgo', bandaRiesgo],
+    ['bandaIdeal', bandaIdeal],
+  ];
+  for (const [nombre, valor] of campos) {
+    if (!esNumeroValido(valor)) {
+      throw new Error(`"${nombre}" no es un número (${String(valor)}). La nota no se puede calcular con un dato roto.`);
+    }
+  }
+  if (puntosExcelente === puntosPromedio) {
+    throw new Error(
+      `La escala de puntos no es válida: puntosExcelente y puntosPromedio son iguales (${puntosPromedio}). La segunda mitad de la recta no tiene pendiente — no se puede calcular la nota sin dividir por cero.`,
+    );
+  }
+  if (puntosPromedio === 0) {
+    throw new Error(
+      'La escala de puntos no es válida: puntosPromedio es 0. La primera mitad de la recta no se puede calcular sin dividir por cero.',
+    );
+  }
+
+  const nota =
+    puntos <= puntosPromedio
+      ? (puntos / puntosPromedio) * notaPromedio
+      : notaPromedio + ((puntos - puntosPromedio) * (20 - notaPromedio)) / (puntosExcelente - puntosPromedio);
+
+  const notaFinal = Math.round(Math.max(0, nota) * 100) / 100;
+  return { nota: notaFinal, banda: bandaDesdeNota(notaFinal, bandaRiesgo, bandaIdeal) };
+}
+
 // ── Ciclo por aniversario (Fase 12 tarea 3) ──────────────────────────────────────────────────
 // Puerto literal de calcularCiclo() en routes/evaluaciones.js:98-127 (sistema viejo, nunca
 // migrado): el periodo de evaluación arranca el día del mes de `fecha_ingreso` (aniversario) y

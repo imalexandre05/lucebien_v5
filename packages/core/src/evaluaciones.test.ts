@@ -5,8 +5,11 @@ import {
   tramoEval,
   calcularCiclo,
   revisarPesos,
+  notaDesdePuntos,
+  bandaDesdeNota,
   PESOS_DEFAULT,
   type ComponentesEval,
+  type EscalaPuntos,
 } from './evaluaciones';
 
 const base: ComponentesEval = {
@@ -120,6 +123,74 @@ describe('tramoEval', () => {
     expect(tramoEval(15)).toBe('bueno');
     expect(tramoEval(12)).toBe('mejorar');
     expect(tramoEval(9)).toBe('bajo');
+  });
+});
+
+// Spec docs/superpowers/specs/evaluaciones/2026-08-25-puntos-como-moneda-design.md §2 C-2/C-3 y
+// §7: los 8 casos de la tabla son obligatorios, incluido el #8 (división por cero).
+describe('notaDesdePuntos', () => {
+  // Los defaults textuales del administrador: 5000 puntos → nota 16 (el promedio), 7500 → 20.
+  const escala: EscalaPuntos = {
+    puntosPromedio: 5000,
+    notaPromedio: 16,
+    puntosExcelente: 7500,
+    bandaRiesgo: 13,
+    bandaIdeal: 18,
+  };
+
+  it('caso 1: 0 puntos → nota 0,00, banda riesgo', () => {
+    expect(notaDesdePuntos(0, escala)).toEqual({ nota: 0, banda: 'riesgo' });
+  });
+
+  it('caso 2: el promedio exacto (5000) → nota 16,00, banda en desarrollo', () => {
+    expect(notaDesdePuntos(5000, escala)).toEqual({ nota: 16, banda: 'en_desarrollo' });
+  });
+
+  it('caso 3: el excelente exacto (7500) → nota 20,00, banda ideal', () => {
+    expect(notaDesdePuntos(7500, escala)).toEqual({ nota: 20, banda: 'ideal' });
+  });
+
+  it('caso 4: 9000 puntos → nota 22,40, banda sobresaliente (sin techo)', () => {
+    expect(notaDesdePuntos(9000, escala)).toEqual({ nota: 22.4, banda: 'sobresaliente' });
+  });
+
+  it('caso 5: 4000 puntos → nota 12,80, banda riesgo (< 13)', () => {
+    expect(notaDesdePuntos(4000, escala)).toEqual({ nota: 12.8, banda: 'riesgo' });
+  });
+
+  it('caso 6: 6250 puntos → nota 18,00, banda ideal (el borde exacto)', () => {
+    expect(notaDesdePuntos(6250, escala)).toEqual({ nota: 18, banda: 'ideal' });
+  });
+
+  it('caso 7: puntos negativos (incidencias > trabajo) → nota 0,00, nunca negativa, banda riesgo', () => {
+    expect(notaDesdePuntos(-1000, escala)).toEqual({ nota: 0, banda: 'riesgo' });
+  });
+
+  it('caso 8: puntosExcelente == puntosPromedio corta con error claro, no divide por cero', () => {
+    const escalaRota: EscalaPuntos = { ...escala, puntosExcelente: 5000 };
+    // Al lanzar, la función nunca llega al `return`: no hay forma de que escape un Infinity/NaN.
+    expect(() => notaDesdePuntos(6000, escalaRota)).toThrow(/puntosExcelente.*puntosPromedio.*iguales/);
+  });
+
+  it('puntosPromedio en 0 también corta (mismo defecto, la otra rama de la recta)', () => {
+    const escalaRota: EscalaPuntos = { ...escala, puntosPromedio: 0 };
+    expect(() => notaDesdePuntos(100, escalaRota)).toThrow(/puntosPromedio/);
+  });
+
+  it('un componente de la escala en NaN corta y el mensaje lo nombra', () => {
+    const escalaRota: EscalaPuntos = { ...escala, bandaIdeal: NaN };
+    expect(() => notaDesdePuntos(100, escalaRota)).toThrow(/"bandaIdeal"/);
+  });
+});
+
+// bandaDesdeNota se exporta aparte para clasificar una nota_final YA CONGELADA (historial,
+// mi-desempeño) sin recalcular puntos → nota — ver el comentario en evaluaciones.ts.
+describe('bandaDesdeNota', () => {
+  it('clasifica una nota vieja (metodo ponderado) contra los cortes actuales de config', () => {
+    expect(bandaDesdeNota(17.5, 13, 18)).toBe('en_desarrollo');
+    expect(bandaDesdeNota(9, 13, 18)).toBe('riesgo');
+    expect(bandaDesdeNota(20, 13, 18)).toBe('ideal');
+    expect(bandaDesdeNota(20.01, 13, 18)).toBe('sobresaliente');
   });
 });
 

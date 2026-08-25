@@ -130,6 +130,94 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     step: 0.5,
   },
 
+  // ── Puntos como moneda (Fase 25-ago-2026, migración 0095, spec docs/superpowers/specs/
+  // evaluaciones/2026-08-25-puntos-como-moneda-design.md §5) — la nota mensual además se puede
+  // leer desde los puntos acumulados del período (notaDesdePuntos(), packages/core/src/
+  // evaluaciones.ts), en vez de sólo el promedio ponderado de arriba. Los 5 primeros son la recta
+  // quebrada + las bandas; los últimos 2 son las dos fuentes de puntos nuevas que suma el RPC
+  // private.evaluacion_componentes_datos. NINGUNO está confirmado por el administrador: son los
+  // ejemplos textuales que él mismo marcó como provisionales — ver docs/pendientes-negocio.md.
+  {
+    clave: 'eval_puntos_promedio',
+    seccion: SECCION_EVALUACION,
+    etiqueta: 'Puntos del período que son "el promedio"',
+    descripcion:
+      'Cuántos puntos acumulados en el período equivalen a la nota de "Nota que corresponde al promedio" de abajo. Ejemplo textual del administrador ("por ejemplo: 5000"), no un número confirmado.',
+    tipo: 'numero',
+    default: '5000',
+    min: 0,
+    step: 1,
+  },
+  {
+    clave: 'eval_nota_promedio',
+    seccion: SECCION_EVALUACION,
+    etiqueta: 'Nota que corresponde al promedio',
+    descripcion:
+      'La nota /20 que recibe quien llega exactamente a "Puntos del período que son el promedio". El administrador dio 16 como ejemplo.',
+    tipo: 'numero',
+    default: '16',
+    min: 0,
+    max: 20,
+    step: 0.5,
+  },
+  {
+    clave: 'eval_puntos_excelente',
+    seccion: SECCION_EVALUACION,
+    etiqueta: 'Puntos del período que son "excelente" (nota 20)',
+    descripcion:
+      'Cuántos puntos acumulados en el período dan nota 20 ("excelente o perfección", palabras del administrador). Pasar de este número sigue subiendo la nota más allá de 20 — así se define "sobresaliente". Ejemplo textual, no confirmado ("por ejemplo: 7500").',
+    tipo: 'numero',
+    default: '7500',
+    min: 0,
+    step: 1,
+  },
+  {
+    clave: 'eval_banda_riesgo',
+    seccion: SECCION_EVALUACION,
+    etiqueta: 'Nota bajo la cual es "riesgo de despido"',
+    descripcion:
+      'Por debajo de esta nota /20, la pantalla marca a la persona en la banda "Riesgo". Es sólo una etiqueta informativa: no dispara ninguna acción sola. Palabra del administrador: "<13 riesgo de despido".',
+    tipo: 'numero',
+    default: '13',
+    min: 0,
+    max: 20,
+    step: 0.5,
+  },
+  {
+    clave: 'eval_banda_ideal',
+    seccion: SECCION_EVALUACION,
+    etiqueta: 'Nota desde la cual es "ideal"',
+    descripcion:
+      'Desde esta nota /20 (y hasta 20) la banda es "Ideal". Por encima de 20 pasa a ser "Sobresaliente" — ese corte no es editable, es la nota máxima en sí misma. Palabra del administrador: ">18 ideal y perfección".',
+    tipo: 'numero',
+    default: '18',
+    min: 0,
+    max: 20,
+    step: 0.5,
+  },
+  {
+    clave: 'pts_actividad_cumplida',
+    seccion: SECCION_EVALUACION,
+    etiqueta: 'Puntos por actividad cumplida (reportes)',
+    descripcion:
+      'Puntos que suma cada actividad de un reporte de turno (limpieza, software, operaciones), multiplicados por su calificación (0 a 1: media calificación, medio punto). Default deliberadamente conservador — el administrador dijo que las actividades dan puntos pero no cuántos; subilo si un turno bien hecho debería pesar más frente al promedio del período.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    step: 0.5,
+  },
+  {
+    clave: 'pts_por_sol_vendido',
+    seccion: SECCION_EVALUACION,
+    etiqueta: 'Puntos por cada sol vendido',
+    descripcion:
+      'Cuántos puntos vale cada sol de venta registrada, para que quien vende y no toca el pipeline también pueda acumular puntos. VACÍO A PROPÓSITO: nadie confirmó cuánto vale una venta frente al trabajo del pipeline (el administrador dio media referencia: "si planchar 100 prendas vale 1000"). Con la clave vacía, las ventas suman 0 puntos y la pantalla avisa que falta definir esto — no se inventa un número.',
+    tipo: 'numero',
+    default: '',
+    min: 0,
+    step: 0.5,
+  },
+
   // ── Reportes de turno (Fase 4, migración 0052 — pendiente de aplicar) ──────────────────────
   {
     clave: 'turno_m_cierre',

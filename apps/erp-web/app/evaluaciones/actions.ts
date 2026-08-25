@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import type { PesosEval } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
-import { crearEvaluacion, componentesEvaluacion } from '../../lib/evaluaciones-repo';
+import { crearEvaluacion, componentesEvaluacion, type ComponentesRPC, type MetodoEvaluacion } from '../../lib/evaluaciones-repo';
 
 async function esAdmin() {
   const s = await getSesion();
@@ -31,7 +31,7 @@ export async function accionComponentesEval(
   empleadoId: string,
   desde: string,
   hasta: string,
-): Promise<{ ok: boolean; comp?: Record<string, number>; error?: string }> {
+): Promise<{ ok: boolean; comp?: ComponentesRPC; error?: string }> {
   try {
     if (!(await esAdmin())) return { ok: false, error: 'Solo admin/dueño' };
     if (!empleadoId) return { ok: false, error: 'Elige un empleado' };
@@ -55,6 +55,8 @@ export async function accionCrearEvaluacion(input: {
   pesos: PesosEval;
   cicloDesde: string | null;
   cicloHasta: string | null;
+  metodo: MetodoEvaluacion;
+  puntosTotal: number | null;
 }): Promise<{ ok: boolean; id?: string; error?: string }> {
   try {
     const sesion = await getSesion();
@@ -69,6 +71,8 @@ export async function accionCrearEvaluacion(input: {
       pesos: input.pesos,
       cicloDesde: input.cicloDesde,
       cicloHasta: input.cicloHasta,
+      metodo: input.metodo,
+      puntosTotal: input.puntosTotal,
     });
     revalidatePath('/evaluaciones');
     return { ok: true, id };

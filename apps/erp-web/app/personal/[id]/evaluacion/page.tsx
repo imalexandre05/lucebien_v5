@@ -4,6 +4,7 @@ import { obtenerColaborador } from '../../../../lib/colaboradores-repo';
 import {
   listarEvaluaciones,
   leerPesosEval,
+  leerEscalaPuntos,
   listarCompetenciasConfig,
   type CompetenciaConfig,
 } from '../../../../lib/evaluaciones-repo';
@@ -27,9 +28,10 @@ export default async function EvaluacionColaboradorPage({ params }: { params: { 
 
   // competenciasConfig llegó con la 0057: si no está aplicada la tabla ni existe, y se degrada a
   // lista vacía en vez de tumbar la sección entera (lección de la Fase 4/7).
-  const [todas, pesos, competenciasConfig] = await Promise.all([
+  const [todas, pesos, escala, competenciasConfig] = await Promise.all([
     listarEvaluaciones(),
     leerPesosEval(),
+    leerEscalaPuntos(),
     listarCompetenciasConfig().catch(() => [] as CompetenciaConfig[]),
   ]);
 
@@ -39,7 +41,7 @@ export default async function EvaluacionColaboradorPage({ params }: { params: { 
     <div className="space-y-3">
       <SeccionHeader
         seccion="evaluacion"
-        nota="La nota se calcula con los pesos que estén cargados en Configuración, y se guarda un snapshot de los pesos usados: cambiar un peso mañana no reescribe una nota de ayer."
+        nota="La nota sale de los puntos del período (pipeline, extras, actividades, ventas, incidencias), editables en Configuración; se guarda un snapshot del desglose por componente como perfil, y cambiar un parámetro mañana no reescribe una nota de ayer."
       />
       <EvaluacionesCliente
         evaluaciones={evaluaciones}
@@ -52,6 +54,7 @@ export default async function EvaluacionColaboradorPage({ params }: { params: { 
           },
         ]}
         pesos={pesos}
+        escala={escala}
         esAdmin={esAdmin}
         competenciasConfig={competenciasConfig}
       />

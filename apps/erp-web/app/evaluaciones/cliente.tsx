@@ -6,15 +6,19 @@ import Link from 'next/link';
 import { Plus, Filter, ChevronRight, Award, AlertTriangle } from 'lucide-react';
 import {
   COMPONENTES,
-  calcularNotaMensual,
   calcularCiclo,
   notaCompetencias,
   revisarPesos,
   tramoEval,
   TRAMO_LABEL,
+  notaDesdePuntos,
+  bandaDesdeNota,
+  BANDA_LABEL,
   type ComponentesEval,
   type PesosEval,
+  type EscalaPuntos,
   type TramoEval,
+  type BandaEval,
   type Ciclo,
 } from '@scilb/core';
 import { accionCrearEvaluacion, accionComponentesEval } from './actions';
@@ -27,59 +31,13 @@ import { OpcionBotones } from '../../components/ui/opcion-botones';
 import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
 import { campoCls, Aviso } from '../../components/ui/form';
+import { PerfilComponentes } from '../../components/ui/perfil-componentes';
 import { cn } from '../../lib/cn';
 import { hoyPeru } from '../../lib/fechas';
-
-// Perfil por componente (§4C): barras sobrias /20 con el peso usado al lado.
-// Los valores van siempre en texto (la barra es refuerzo, nunca el único canal).
-// Los snapshots antiguos guardaron pesos en % (25) y los nuevos en fracción (0.25):
-// se normaliza solo la presentación.
-const fmtPeso = (p: number | undefined | null) =>
-  p == null ? '—' : p > 1 ? `${p}%` : `${Math.round(p * 100)}%`;
 
 // Aviso de C-2 (spec nota-sin-ceros-silenciosos): comas de miles/decimales al estilo peruano,
 // mismo criterio que el resto de la pantalla (S/ en app/estadisticas, app/compras, etc.).
 const fmtSuma = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 });
-
-function PerfilComponentes({
-  componentes,
-  pesos,
-}: {
-  componentes: Record<string, number>;
-  pesos: Record<string, number>;
-}) {
-  const descuento = Number(componentes.descuentoIncidencias ?? 0);
-  const bonus = Number(componentes.bonusVentas ?? 0);
-  return (
-    <div className="animate-fade">
-      <div className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
-        {COMPONENTES.map(({ key, label }) => {
-          const v = Number(componentes[key] ?? 0);
-          const pct = Math.max(0, Math.min(100, (v / 20) * 100));
-          return (
-            <div key={key}>
-              <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs text-ink">
-                  {label}
-                  <span className="ml-1.5 tabular-nums text-[10px] text-muted">{fmtPeso(pesos[key])}</span>
-                </span>
-                <span className="tabular-nums text-xs font-semibold text-navy">{v.toFixed(1)}</span>
-              </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line/60">
-                <div className="h-full rounded-full bg-navy" style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      {(descuento !== 0 || bonus !== 0) && (
-        <p className="mt-3 border-t border-line/60 pt-2 text-[11px] text-muted">
-          Ajustes: −{descuento.toFixed(1)} por incidencias · +{bonus.toFixed(1)} bonus por ventas
-        </p>
-      )}
-    </div>
-  );
-}
 
 const TRAMO_TONE: Record<TramoEval, Tone> = {
   excelente: 'green',
@@ -88,6 +46,17 @@ const TRAMO_TONE: Record<TramoEval, Tone> = {
   bajo: 'gray',
 };
 const TRAMOS: TramoEval[] = ['excelente', 'bueno', 'mejorar', 'bajo'];
+
+// Bandas de la nota "puntos como moneda" (spec docs/superpowers/specs/evaluaciones/2026-08-25-
+// puntos-como-moneda-design.md §2 C-3) — distintas de TRAMO_TONE de arriba, que sigue usándose SÓLO
+// para evaluaciones viejas metodo='ponderado' (spec §2 C-5: lo ya guardado no cambia de sistema de
+// lectura). 'sobresaliente' en gold: es la única banda sin techo, "más que perfección".
+const BANDA_TONE: Record<BandaEval, Tone> = {
+  riesgo: 'red',
+  en_desarrollo: 'amber',
+  ideal: 'green',
+  sobresaliente: 'gold',
+};
 const fieldCls = campoCls;
 
 const CERO: ComponentesEval = {
@@ -109,6 +78,7 @@ type EvalGuardada = {
   empleadoId: string;
   nombre: string;
   notaFinal: number;
+  banda: BandaEval;
   cicloDesde: string;
   cicloHasta: string;
 };
@@ -117,12 +87,14 @@ export function EvaluacionesCliente({
   evaluaciones,
   empleados,
   pesos,
+  escala,
   esAdmin,
   competenciasConfig,
 }: {
   evaluaciones: Evaluacion[];
   empleados: EmpleadoParaEvaluacion[];
   pesos: PesosEval;
+  escala: EscalaPuntos;
   esAdmin: boolean;
   competenciasConfig: CompetenciaConfig[];
 }) {
@@ -138,10 +110,21 @@ export function EvaluacionesCliente({
   // Competencias (Fase 12 tarea 2): nivel 0-4 elegido por competencia, cod → nivel. La nota se
   // deriva con notaCompetencias() y se mezcla en compParaCalculo, no se edita como número suelto.
   const [competenciaSel, setCompetenciaSel] = useState<Record<string, number>>({});
-  // Contexto informativo (no entra a la fórmula: no hay regla de negocio confirmada para
-  // convertir puntos de pipeline o soles de extras a la escala /20). El admin lo ve al lado
-  // de los componentes editables y lo pondera con su propio criterio.
-  const [infoExtra, setInfoExtra] = useState<{ puntosPipeline: number; extrasMonto: number; extrasCantidad: number; extrasPuntos: number } | null>(null);
+  // Desglose de puntos del período (spec docs/superpowers/specs/evaluaciones/2026-08-25-puntos-
+  // como-moneda-design.md §2 C-1): desde el 25-ago-2026 esto YA NO es sólo contexto — puntosTotal
+  // es lo que decide la nota (notaDesdePuntos, más abajo). null hasta que se calcula desde la data;
+  // no hay forma manual de cargarlo (sale de pipeline/extras/actividades/ventas/incidencias reales).
+  const [infoExtra, setInfoExtra] = useState<{
+    puntosPipeline: number;
+    extrasMonto: number;
+    extrasCantidad: number;
+    extrasPuntos: number;
+    puntosActividades: number;
+    puntosVentas: number;
+    ventasSinTasa: boolean;
+    descuento: number;
+    puntosTotal: number;
+  } | null>(null);
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
 
@@ -172,24 +155,37 @@ export function EvaluacionesCliente({
   );
 
   const compParaCalculo = useMemo(() => ({ ...comp, competencias: competenciaNota }), [comp, competenciaNota]);
-  // E-2 (enmienda §7, spec nota-sin-ceros-silenciosos): calcularNotaMensual ahora puede lanzar
-  // (C-1/E-1) cuando un dato llega roto. Lanzar DENTRO de un useMemo de render sube al error
-  // boundary de la aplicación (app/error.tsx) y reemplaza TODA la pantalla, incluido el historial
-  // de evaluaciones de acá abajo, que no tiene nada que ver con el panel roto. El corte se atrapa
-  // donde ocurre: se guarda el mensaje en vez de dejarlo subir, y el panel lo muestra tal cual en
-  // el lugar donde iría la nota — no se inventa un número de reemplazo.
-  const notaResultado = useMemo((): { ok: true; valor: number } | { ok: false; mensaje: string } => {
+  // Spec puntos-como-moneda §2 C-2/C-4: la nota deja de salir de compParaCalculo × pesos y pasa a
+  // salir de puntosTotal (notaDesdePuntos). compParaCalculo/pesos siguen existiendo — alimentan el
+  // perfil de PerfilComponentes de abajo, ya no la nota — y calcularNotaMensual() queda sin usar en
+  // este panel (sigue viva para leer evaluaciones viejas metodo='ponderado' en el historial).
+  //
+  // null mientras no haya puntosTotal (no se calculó desde la data todavía): no hay número que
+  // mostrar, así que no se inventa uno. Si notaDesdePuntos lanza (config rota, ver evaluaciones.ts
+  // caso 8), el mensaje se atrapa acá — mismo criterio E-2 que ya usaba este panel con
+  // calcularNotaMensual: lanzar DENTRO de un useMemo de render sube al error boundary y reemplaza
+  // TODA la pantalla, incluido el historial de abajo que no tiene nada que ver con el panel roto.
+  const notaResultado = useMemo((): { ok: true; valor: number; banda: BandaEval } | { ok: false; mensaje: string } => {
+    if (infoExtra === null) {
+      return { ok: false, mensaje: 'Calculá desde la data para obtener los puntos del período y la nota.' };
+    }
     try {
-      return { ok: true, valor: calcularNotaMensual(compParaCalculo, pesos) };
+      const { nota: valor, banda } = notaDesdePuntos(infoExtra.puntosTotal, escala);
+      return { ok: true, valor, banda };
     } catch (e) {
       return { ok: false, mensaje: e instanceof Error ? e.message : String(e) };
     }
-  }, [compParaCalculo, pesos]);
+  }, [infoExtra, escala]);
   const nota = notaResultado.ok ? notaResultado.valor : null;
-  const tramo = nota !== null ? tramoEval(nota) : null;
+  const banda = notaResultado.ok ? notaResultado.banda : null;
+  // Ventas en el período sin puntos por venta definidos (spec §4): frenar antes que emitir una
+  // nota que calla que hubo ventas y el sistema no las contó.
+  const ventasSinTasa = infoExtra?.ventasSinTasa === true;
   // C-2 (spec nota-sin-ceros-silenciosos): revisarPesos() no corrige nada — sólo hace visible
   // cuánto se alejan de 1 los pesos configurados, para que el administrador decida con el número
-  // delante. La decisión de forzar que sumen 1 sigue abierta (decisión 14, pendientes-negocio.md).
+  // delante. Los pesos ya no deciden la nota (C-4 de la spec puntos-como-moneda la volvió sólo
+  // informativa: sigue mostrándose porque el perfil de abajo la usa como etiqueta de contexto),
+  // pero la decisión de forzar que sumen 1 sigue abierta igual (decisión 14, pendientes-negocio.md).
   const revisionPesos = useMemo(() => revisarPesos(pesos), [pesos]);
 
   const meses = useMemo(() => [...new Set(evaluaciones.map((e) => e.mes))].sort().reverse(), [evaluaciones]);
@@ -259,22 +255,36 @@ export function EvaluacionesCliente({
         valores: c.valores ?? p.valores,
         bonusVentas: c.bonusVentas ?? p.bonusVentas,
       }));
-      // Solo aparece si la migración 0044+ ya está aplicada (campos nuevos en el RPC).
-      if (c.puntosPipeline != null || c.extrasMonto != null) {
+      // puntosTotal (0095) es lo único que de verdad hace falta para poder guardar: sin él no hay
+      // nota que mostrar (notaResultado cae al mensaje "Calculá desde la data..." de arriba). El
+      // resto de las claves puede faltar si esa migración todavía no corrió (undefined, no 0 — un
+      // 0 real y "no lo sé" no son lo mismo) y en ese caso simplemente no se completa infoExtra.
+      if (c.puntosTotal != null) {
         setInfoExtra({
           puntosPipeline: c.puntosPipeline ?? 0,
           extrasMonto: c.extrasMonto ?? 0,
           extrasCantidad: c.extrasCantidad ?? 0,
           extrasPuntos: c.extrasPuntos ?? 0,
+          puntosActividades: c.puntosActividades ?? 0,
+          puntosVentas: c.puntosVentas ?? 0,
+          ventasSinTasa: c.ventasSinTasa === true,
+          // El valor QUE DE VERDAD entra en puntosTotal, congelado tal como lo devolvió el RPC —
+          // no comp.descuentoIncidencias, que sigue siendo editable a mano después de este cálculo
+          // y ya no tiene ningún efecto sobre la nota (sólo sobre el perfil que se guarda).
+          descuento: c.descuento ?? 0,
+          puntosTotal: c.puntosTotal,
         });
+      } else {
+        setInfoExtra(null);
       }
     });
   }
 
   function guardar() {
-    // nota === null: el corte de calcularNotaMensual (C-1/E-1) está activo. No hay número que
-    // guardar — el botón ya está deshabilitado en ese estado, esto es defensa en profundidad.
-    if (!ciclo || nota === null) return;
+    // nota === null: sin puntosTotal, o notaDesdePuntos cortó (config rota). ventasSinTasa: la
+    // spec §4 pide frenar, no sólo avisar. No hay nada que guardar en ninguno de los dos casos —
+    // el botón ya está deshabilitado, esto es defensa en profundidad.
+    if (!ciclo || nota === null || banda === null || ventasSinTasa || infoExtra === null) return;
     setError('');
     startTransition(async () => {
       const r = await accionCrearEvaluacion({
@@ -285,6 +295,10 @@ export function EvaluacionesCliente({
         pesos,
         cicloDesde: ciclo.desde,
         cicloHasta: ciclo.hasta,
+        // Spec puntos-como-moneda §2 C-5: toda evaluación nueva se guarda con metodo='puntos' — el
+        // valor 'ponderado' de MetodoEvaluacion queda para leer lo que ya existía antes de la 0095.
+        metodo: 'puntos',
+        puntosTotal: infoExtra.puntosTotal,
       });
       if (!r.ok || !r.id) {
         setError(r.error ?? 'Error al guardar');
@@ -296,6 +310,7 @@ export function EvaluacionesCliente({
         empleadoId,
         nombre: emp?.nombre ?? '',
         notaFinal: nota,
+        banda,
         cicloDesde: ciclo.desde,
         cicloHasta: ciclo.hasta,
       });
@@ -367,9 +382,9 @@ export function EvaluacionesCliente({
         <Card>
           <CardHeader>
             <CardTitle>Nueva evaluación</CardTitle>
-            {nota !== null && tramo !== null ? (
-              <Badge tone={TRAMO_TONE[tramo]}>
-                {nota.toFixed(2)} · {TRAMO_LABEL[tramo]}
+            {nota !== null && banda !== null ? (
+              <Badge tone={BANDA_TONE[banda]}>
+                {nota.toFixed(2)} · {BANDA_LABEL[banda]}
               </Badge>
             ) : (
               <Badge tone="red">Nota no disponible</Badge>
@@ -381,6 +396,17 @@ export function EvaluacionesCliente({
               // no un adorno. tono="error" trae role="alert" (Aviso, components/ui/form.tsx): esto
               // bloquea Guardar, no es un dato para mirar cuando haya tiempo.
               <Aviso tono="error">{notaResultado.mensaje}</Aviso>
+            )}
+            {ventasSinTasa && (
+              // Spec §4: la persona tuvo ventas en el período y pts_por_sol_vendido está vacío —
+              // frenar antes de emitir una nota que calla que hubo ventas sin contar.
+              <Aviso tono="error">
+                Las ventas todavía no suman puntos: falta definir cuántos puntos vale un sol vendido.{' '}
+                <Link href="/configuracion" className="font-medium underline decoration-2 underline-offset-2">
+                  Definir en Configuración
+                </Link>
+                .
+              </Aviso>
             )}
             {revisionPesos.desviado && (
               <div className="flex items-start gap-3 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2.5 text-sm text-aviso-deep">
@@ -433,34 +459,53 @@ export function EvaluacionesCliente({
                 Calcular desde la data
               </Button>
               <span className="text-xs text-muted">
-                Llena operaciones/software/limpieza/valores (del ciclo elegido), tardanza y descuento.
+                Trae los puntos del período (pipeline, extras, actividades, ventas, incidencias) que dan la nota, y llena
+                operaciones/software/limpieza/valores/tardanza del perfil.
               </span>
             </div>
 
             {infoExtra && (
               <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line/60 bg-paper/60 px-3 py-2 text-xs text-muted">
                 <span>
-                  Puntos de pipeline en el ciclo <span className="tabular-nums font-semibold text-navy">{infoExtra.puntosPipeline}</span>
+                  Pipeline <span className="tabular-nums font-semibold text-navy">{infoExtra.puntosPipeline} pts</span>
                 </span>
                 <span>
-                  Extras registrados <span className="tabular-nums font-semibold text-navy">{infoExtra.extrasCantidad}</span>
+                  Extras <span className="tabular-nums font-semibold text-navy">{infoExtra.extrasCantidad}</span>
                   {' · '}
                   <span className="tabular-nums font-semibold text-navy">S/ {infoExtra.extrasMonto.toFixed(2)}</span>
                   {' · '}
                   <span className="tabular-nums font-semibold text-navy">{infoExtra.extrasPuntos} pts</span>
                 </span>
-                <span className="italic">No entran a la fórmula — contexto para tu criterio.</span>
+                <span>
+                  Actividades <span className="tabular-nums font-semibold text-navy">{infoExtra.puntosActividades} pts</span>
+                </span>
+                <span>
+                  Ventas <span className="tabular-nums font-semibold text-navy">{infoExtra.puntosVentas} pts</span>
+                </span>
+                <span>
+                  Descuento por incidencias{' '}
+                  <span className="tabular-nums font-semibold text-navy">−{infoExtra.descuento} pts</span>
+                </span>
+                <span className="font-semibold text-navy">
+                  Total del período <span className="tabular-nums">{infoExtra.puntosTotal} pts</span>
+                </span>
               </div>
             )}
 
-            <div className="text-xs uppercase tracking-wide text-muted">Componentes (escala /20)</div>
+            {/* Perfil (spec §2 C-4): los 7 componentes ya NO deciden la nota — de acá sale sólo el
+                dato de en qué es fuerte la persona y en qué flaquea, al lado de la nota de arriba. */}
+            <div className="border-t border-line/60 pt-3">
+              <div className="mb-2 text-xs uppercase tracking-wide text-muted">Perfil (no entra a la nota)</div>
+              <PerfilComponentes componentes={compParaCalculo as unknown as Record<string, number>} pesos={pesos as unknown as Record<string, number>} />
+            </div>
+
+            {/* Ya no pesan sobre la nota (por eso sin "×peso" al lado, a diferencia del perfil de
+                arriba): son la carga a mano de los mismos siete componentes que arma el perfil. */}
+            <div className="text-xs uppercase tracking-wide text-muted">Componentes (escala /20) — perfil, no fórmula</div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {COMPONENTES.filter(({ key }) => key !== 'competencias').map(({ key, label }) => (
                 <div key={key} className="flex items-center gap-2">
-                  <label className="flex-1 text-sm text-navy">
-                    {label}
-                    <span className="ml-1 tabular-nums text-[10px] text-muted">×{pesos[key]}</span>
-                  </label>
+                  <label className="flex-1 text-sm text-navy">{label}</label>
                   <input
                     type="number"
                     step="0.5"
@@ -478,9 +523,7 @@ export function EvaluacionesCliente({
                 competencias_config — nunca hardcodeado. La nota se deriva, no se escribe a mano. */}
             <div className="border-t border-line/60 pt-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wide text-muted">
-                  Competencias <span className="ml-1 tabular-nums text-[10px] text-muted">×{pesos.competencias}</span>
-                </span>
+                <span className="text-xs uppercase tracking-wide text-muted">Competencias</span>
                 <span className="tabular-nums text-sm font-semibold text-navy">{competenciaNota.toFixed(1)}/20</span>
               </div>
               {competenciasConfig.length === 0 ? (
@@ -523,7 +566,7 @@ export function EvaluacionesCliente({
               <Button
                 type="button"
                 onClick={guardar}
-                disabled={!empleadoId || !ciclo || competenciasFaltantes > 0 || nota === null}
+                disabled={!empleadoId || !ciclo || competenciasFaltantes > 0 || nota === null || ventasSinTasa}
                 pending={pending}
                 aria-describedby="motivo-evaluacion"
               >
@@ -532,9 +575,11 @@ export function EvaluacionesCliente({
               <span id="motivo-evaluacion" className="text-xs text-muted">
                 {nota === null
                   ? 'La nota no se pudo calcular: revisa el aviso de arriba.'
-                  : competenciasFaltantes > 0
-                    ? `Faltan ${competenciasFaltantes} de ${competenciasConfig.length} competencias.`
-                    : 'La nota usa los pesos de Configuración y se guarda un snapshot.'}
+                  : ventasSinTasa
+                    ? 'No se puede guardar con ventas sin puntos definidos: revisa el aviso de arriba.'
+                    : competenciasFaltantes > 0
+                      ? `Faltan ${competenciasFaltantes} de ${competenciasConfig.length} competencias.`
+                      : 'La nota sale de los puntos del período; los componentes se guardan como perfil.'}
               </span>
             </div>
           </CardContent>
@@ -551,8 +596,8 @@ export function EvaluacionesCliente({
         <Card>
           <CardHeader>
             <CardTitle>Evaluación guardada — {evalGuardada.nombre}</CardTitle>
-            <Badge tone={TRAMO_TONE[tramoEval(evalGuardada.notaFinal)]}>
-              {evalGuardada.notaFinal.toFixed(2)} · {TRAMO_LABEL[tramoEval(evalGuardada.notaFinal)]}
+            <Badge tone={BANDA_TONE[evalGuardada.banda]}>
+              {evalGuardada.notaFinal.toFixed(2)} · {BANDA_LABEL[evalGuardada.banda]}
             </Badge>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -587,12 +632,18 @@ export function EvaluacionesCliente({
                 <TH>Mes</TH>
                 <TH>Empleado</TH>
                 <TH className="text-right">Nota</TH>
-                <TH className="pr-5">Tramo</TH>
+                <TH className="pr-5">Tramo / banda</TH>
               </TR>
             </THead>
             <TBody>
               {filtradas.map((e) => {
-                const t = tramoEval(e.notaFinal);
+                // Spec §2 C-5: lo ya guardado no cambia de sistema de lectura. Una evaluación vieja
+                // (metodo='ponderado', incluidas las de antes de que 'metodo' existiera — quedan en
+                // ese default) se sigue leyendo con tramoEval; una nueva (metodo='puntos') se lee
+                // con la banda, contra los cortes ACTUALES de config (ver bandaDesdeNota).
+                const esPuntos = e.metodo === 'puntos';
+                const banda = esPuntos ? bandaDesdeNota(e.notaFinal, escala.bandaRiesgo, escala.bandaIdeal) : null;
+                const t = esPuntos ? null : tramoEval(e.notaFinal);
                 const abierta = expandida === e.id;
                 return (
                   <Fragment key={e.id}>
@@ -621,7 +672,11 @@ export function EvaluacionesCliente({
                       <TD className="font-medium text-navy">{e.empleadoNombre ?? '—'}</TD>
                       <TD className="text-right tabular-nums text-base font-bold text-navy">{e.notaFinal.toFixed(2)}</TD>
                       <TD className="pr-5">
-                        <Badge tone={TRAMO_TONE[t]}>{TRAMO_LABEL[t]}</Badge>
+                        {banda ? (
+                          <Badge tone={BANDA_TONE[banda]}>{BANDA_LABEL[banda]}</Badge>
+                        ) : t ? (
+                          <Badge tone={TRAMO_TONE[t]}>{TRAMO_LABEL[t]}</Badge>
+                        ) : null}
                       </TD>
                     </TR>
                     {abierta && (

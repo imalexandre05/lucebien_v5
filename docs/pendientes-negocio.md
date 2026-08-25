@@ -1077,3 +1077,120 @@ esta auditoría vino a eliminar de un sistema que termina en un pago.
 de 25 % a 20 % y no compensar hace que alguien perfecto saque 19 en vez de 20, y que quien estaba
 en 17,5 («Excelente») pase a 16,6 («Buen desempeño»). Todo el equipo baja a la vez, sin que nadie
 haya trabajado peor, y ninguna pantalla lo dice.
+
+---
+
+## Puntos como moneda (25-ago-2026) — parámetros provisionales y las dos preguntas abiertas
+
+Spec completa: [2026-08-25-puntos-como-moneda-design.md](superpowers/specs/evaluaciones/2026-08-25-puntos-como-moneda-design.md).
+Implementado en la migración `0095_puntos_como_moneda.sql` (RPC `private.evaluacion_componentes_datos`)
+y `packages/core/src/evaluaciones.ts` (`notaDesdePuntos`). Ninguno de los 7 parámetros de abajo está
+confirmado por el administrador: son los ejemplos textuales que él mismo marcó como provisionales en
+la reunión del 25-ago-2026 (*"una cierta cantidad de puntos aún no definida (por ejemplo: 5000)"*).
+
+### Los 7 parámetros nuevos (`config-catalogo.ts`, sección "Evaluación mensual")
+
+| Clave | Default | De dónde sale ese default |
+|---|---|---|
+| `eval_puntos_promedio` | `5000` | Ejemplo textual del administrador |
+| `eval_nota_promedio` | `16` | Ídem |
+| `eval_puntos_excelente` | `7500` | Ídem |
+| `eval_banda_riesgo` | `13` | *«<13 riesgo de despido»* |
+| `eval_banda_ideal` | `18` | *«>18 ideal»* |
+| `pts_actividad_cumplida` | `1` | Elegido por el implementador — el más chico que hace que una actividad cuente algo sin inflar la nota de nadie (spec §5) |
+| `pts_por_sol_vendido` | **vacío** | No se inventa — ver la pregunta 2 |
+
+Ninguno se sembró como fila de `config`: viven sólo en el catálogo de código, con el mismo `coalesce`
+al default que ya usan `eval_tardanza_min_por_punto`/`sueldo_tolerancia_minutos` en la misma función.
+
+### 🔴 Pregunta 1 (spec §3) — el techo de `sugerirMontoPago()`
+
+Con la nota nueva sin techo en 20, alguien "sobresaliente" con más de `eval_puntos_excelente` puntos
+daría un factor mayor a 1 en `sugerirMontoPago(salarioBase, notaFinal, ...)`
+(`packages/core/src/pagos.ts`) — la pantalla de pago sugeriría más del sueldo pactado, sin que nadie
+lo haya decidido.
+
+**Se implementó con el factor limitado a 1,00** (interpretación del implementador, no una decisión
+del administrador): la nota puede pasar de 20 para *leerse*, pero no multiplica el sueldo sola. El
+administrador dijo qué pasa con alguien sobresaliente y no es un aumento automático: *"se evalúa
+poder mejorar sus condiciones laborales o línea de carrera"* — es una conversación, no una fórmula.
+Con la nota vieja (tope 20 de hecho) este cambio no altera ningún monto ya sugerido.
+
+**Falta confirmar con el administrador:** si el techo en 1,00 es lo correcto, o si en algún caso sí
+quiere que una nota sobresaliente aumente el pago sugerido automáticamente.
+
+### 🔴 Pregunta 2 (spec §4) — cuánto vale un sol vendido
+
+Textual, en la reunión: *"considerar que a veces hay personas que no hacen pipeline y solo ventas,
+tenemos que ver cómo equiparar; si planchar 100 prendas vale 1000, ¿cuánto vale una venta?"*.
+
+Es la pregunta más cara de toda la reunión: sin ella, quien sólo vende no acumula casi ningún punto
+y su nota sale baja aunque venda perfecto. El administrador ya dio media ancla (*"si planchar 100
+prendas vale 1000"* → 10 puntos por prenda planchada — ojo: no coincide con el `pts_planchado = 3`
+que hay hoy en config, otra cosa a confirmar de paso), pero no dio la otra mitad.
+
+**Mientras tanto:** `pts_por_sol_vendido` queda vacía a propósito (sin fila en `config`). Con la
+clave vacía, las ventas suman 0 puntos y `/evaluaciones` lo dice con todas las letras («Las ventas
+todavía no suman puntos: falta definir cuántos puntos vale un sol vendido»), con enlace a
+Configuración — y no deja guardar la evaluación de alguien que sí tuvo ventas en el período mientras
+la tasa siga vacía (`ventasSinTasa` en el RPC `private.evaluacion_componentes_datos`). Es preferible
+frenar a emitir una nota que calla que alguien vendió y el sistema no lo contó.
+
+**Falta confirmar con el administrador:** cuántos puntos vale un sol vendido.
+
+---
+
+### 🔴🔴 LA ESCALA ESTÁ SIN CALIBRAR, Y CON LOS DEFAULTS TODO EL EQUIPO SALE EN «RIESGO DE DESPIDO»
+
+**Esto no salió de las notas de la reunión. Salió de medir la base real el 25-ago-2026, después de
+aplicar la migración `0095`.** Es el hallazgo más importante del trabajo de ese día y hay que
+resolverlo **antes** de que el administrador mire una sola nota calculada por puntos.
+
+**Los números, medidos contra `scilb`, no estimados:**
+
+| Qué | Cuánto |
+|---|---|
+| Todo el histórico de `pipeline_puntos` | **323,40 puntos**, 179 eventos, del 14-abr al 30-jun-2026 |
+| Cuántas personas registraron alguna vez un avance | **2** (de once activas) |
+| El mejor mes-persona registrado | **126,45 puntos** (abril 2026) |
+| Filas en `sueldo_ventas` | **0** |
+| Filas en `reporte_extras` | 7 |
+
+**Qué nota da eso con la escala que quedó sembrada (5000 → 16):**
+
+```
+nota = 126,45 / 5000 × 16 = 0,40 / 20
+```
+
+La persona **más productiva del mejor mes que existe en la base** sacaría **0,40 sobre 20**, o sea
+muy por debajo del corte de 13 que el administrador definió como *«riesgo de despido»*. Con estos
+parámetros, el sistema le diría que **las once personas están en riesgo de despido**, todos los
+meses, para siempre.
+
+**Por qué pasa, dicho con honestidad — son dos cosas distintas y conviene no confundirlas:**
+
+1. **Los 5000 son hipotéticos.** El administrador los dio como ejemplo y lo dijo él mismo:
+   *«una cierta cantidad de puntos aún no definida (por ejemplo: 5000)»*. Nunca fueron una medición.
+2. **El pipeline casi no se usa.** Sólo 2 personas registraron avances, en 2 meses. Eso no dice que
+   la gente trabaje poco: dice que el módulo todavía no se adoptó (la adopción del ERP se midió en
+   4,4 % en agosto). Los puntos por actividades y extras, que la `0095` recién empieza a contar, van
+   a subir el total — pero de cientos a algunos cientos más, no a miles.
+
+**Lo que NO se hizo, a propósito.** No se bajaron los defaults a ~130 para que «los números den
+lindo». Sería inventar, en silencio, la vara con la que se mide a once personas — y con dos meses de
+datos de un módulo que casi nadie usa todavía, cualquier número que saliera de ahí sería igual de
+arbitrario que el 5000, sólo que con aspecto de medido.
+
+**Las dos salidas, para que el administrador elija:**
+
+- **(a) Bajar la escala** a lo que la operación real produce hoy (`eval_puntos_promedio` en el orden
+  de las centenas, no de los miles).
+- **(b) Subir cuánto vale cada cosa** — `pts_actividad_cumplida`, los diez `pts_*` del pipeline —
+  hasta que un mes normal de trabajo se acerque a los 5000 que él tenía en la cabeza.
+
+**Son la misma decisión mirada desde dos lados, y es exactamente la misma pregunta que «cuánto vale
+una venta»:** cuánto pesa cada tipo de trabajo, unos contra otros. Por eso las tres van juntas al
+administrador y ninguna se decide sin él.
+
+**Mientras tanto, la nota por puntos no se puede leer como un juicio sobre nadie.** El mecanismo
+está construido, aplicado y probado; la vara con la que mide, no.
