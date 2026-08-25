@@ -277,8 +277,26 @@ export function AsistenciasCliente({
                   <TD>
                     <Badge tone="navy">{a.turno}</Badge>
                   </TD>
-                  <TD className="tabular-nums text-xs">{a.horaEntrada ?? '—'}</TD>
-                  <TD className="tabular-nums text-xs">{a.horaSalida ?? '—'}</TD>
+                  <TD className="tabular-nums text-xs">
+                    {a.horaEntrada ?? '—'}
+                    {Boolean(a.entradaEstimada) && (
+                      <span title="El sistema propuso esta hora con el horario contratado: no hubo marca de entrada.">
+                        <Badge tone="info" className="ml-1.5 normal-case align-middle">
+                          estimado
+                        </Badge>
+                      </span>
+                    )}
+                  </TD>
+                  <TD className="tabular-nums text-xs">
+                    {a.horaSalida ?? '—'}
+                    {Boolean(a.salidaEstimada) && (
+                      <span title="El sistema propuso esta hora con el horario contratado: no hubo marca de salida.">
+                        <Badge tone="info" className="ml-1.5 normal-case align-middle">
+                          estimado
+                        </Badge>
+                      </span>
+                    )}
+                  </TD>
                   <TD>
                     <Badge tone={CONDICION_TONE[a.condicion] ?? 'gray'}>
                       {CONDICION_LABEL[a.condicion] ?? a.condicion}

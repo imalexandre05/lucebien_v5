@@ -33,6 +33,13 @@ type Borrador = {
   turno?: string;
   /** De dónde salió el dato: 'manual', 'reporte' y mañana 'huellero'. */
   fuente?: string;
+  /**
+   * La hora que se ve en el campo la propuso el sistema con el horario contratado, no salió de
+   * una marca del huellero (migración 0097). Se muestra distinta para que quien declara sepa que
+   * todavía no es un dato real — y al guardar, `declararDia()` la baja sola (asistencias-repo.ts).
+   */
+  entradaEstimada: boolean;
+  salidaEstimada: boolean;
   sucio: boolean;
 };
 
@@ -43,6 +50,8 @@ const vacio = (): Borrador => ({
   tardanzaJustificada: false,
   faltaJustificada: false,
   motivo: '',
+  entradaEstimada: false,
+  salidaEstimada: false,
   sucio: false,
 });
 
@@ -55,6 +64,8 @@ const deFila = (f: AsistenciaDia): Borrador => ({
   motivo: f.motivoJustificacion ?? '',
   turno: f.turno,
   fuente: f.fuente,
+  entradaEstimada: f.entradaEstimada,
+  salidaEstimada: f.salidaEstimada,
   sucio: false,
 });
 
@@ -342,24 +353,46 @@ export function AsistenciaCliente({
                       </Select>
                     </TD>
                     <TD>
-                      <Input
-                        type="time"
-                        className="w-28"
-                        value={b.horaEntrada}
-                        disabled={b.condicion !== 'trabajado'}
-                        onChange={(e) => set(d.fecha, { horaEntrada: e.target.value })}
-                        aria-label={`Entrada del ${d.fecha}`}
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="time"
+                          className="w-28"
+                          value={b.horaEntrada}
+                          disabled={b.condicion !== 'trabajado'}
+                          onChange={(e) =>
+                            set(d.fecha, { horaEntrada: e.target.value, entradaEstimada: false })
+                          }
+                          aria-label={`Entrada del ${d.fecha}`}
+                        />
+                        {Boolean(b.entradaEstimada) && (
+                          <span title="El sistema propuso esta hora con el horario contratado: no hubo marca de entrada. Se guarda como real en cuanto la corrijas.">
+                            <Badge tone="info" className="normal-case">
+                              estimado
+                            </Badge>
+                          </span>
+                        )}
+                      </div>
                     </TD>
                     <TD>
-                      <Input
-                        type="time"
-                        className="w-28"
-                        value={b.horaSalida}
-                        disabled={b.condicion !== 'trabajado'}
-                        onChange={(e) => set(d.fecha, { horaSalida: e.target.value })}
-                        aria-label={`Salida del ${d.fecha}`}
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          type="time"
+                          className="w-28"
+                          value={b.horaSalida}
+                          disabled={b.condicion !== 'trabajado'}
+                          onChange={(e) =>
+                            set(d.fecha, { horaSalida: e.target.value, salidaEstimada: false })
+                          }
+                          aria-label={`Salida del ${d.fecha}`}
+                        />
+                        {Boolean(b.salidaEstimada) && (
+                          <span title="El sistema propuso esta hora con el horario contratado: no hubo marca de salida. Se guarda como real en cuanto la corrijas.">
+                            <Badge tone="info" className="normal-case">
+                              estimado
+                            </Badge>
+                          </span>
+                        )}
+                      </div>
                     </TD>
                     <TD>
                       <div className="flex flex-col gap-1">

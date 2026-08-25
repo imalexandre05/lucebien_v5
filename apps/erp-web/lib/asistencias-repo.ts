@@ -14,6 +14,13 @@ export type Asistencia = {
   /** 'sin_dato' | 'trabajado' | 'falta'. Decide si el día entra en la liquidación. */
   condicion: string;
   obs: string | null;
+  /**
+   * true cuando la hora NO salió de una marca: la propuso el sistema con el horario contratado
+   * porque faltó la marca real (migración 0097, spec asistencias/2026-08-25-huellero-decide-
+   * por-horario-design.md §3 C-3). La pantalla la tiene que mostrar distinta de una hora real.
+   */
+  entradaEstimada: boolean;
+  salidaEstimada: boolean;
 };
 
 type Row = {
@@ -27,6 +34,8 @@ type Row = {
   fuente: string;
   condicion: string | null;
   obs: string | null;
+  entrada_estimada: boolean | null;
+  salida_estimada: boolean | null;
 };
 
 export async function listarAsistencias(): Promise<Asistencia[]> {
@@ -53,6 +62,8 @@ export async function listarAsistencias(): Promise<Asistencia[]> {
     fuente: r.fuente,
     condicion: r.condicion ?? 'sin_dato',
     obs: r.obs,
+    entradaEstimada: Boolean(r.entrada_estimada),
+    salidaEstimada: Boolean(r.salida_estimada),
   }));
 }
 
@@ -90,15 +101,18 @@ export async function crearAsistencia(p: {
 
   if (existente) {
     // Las horas pasan a ser de quien las escribió acá: se bajan las banderas del huellero para
-    // que la reversión no se las lleve.
+    // que la reversión no se las lleve, y también `*_estimada` — una hora que acaba de escribir
+    // una persona no es una hora que el sistema propuso (migración 0097, spec asistencias/2026-
+    // 08-25-huellero-decide-por-horario-design.md §3 C-3: "el administrador la pisa con la hora
+    // real cuando la sepa, y la bandera vuelve a false — mismo lugar, misma idea").
     const { error } = await sb
       .from('asistencias')
       .update({
         hora_entrada: p.horaEntrada || null,
         hora_salida: p.horaSalida || null,
         minutos_tardanza: p.minutosTardanza,
-        ...(p.horaEntrada ? { huellero_puso_entrada: false } : {}),
-        ...(p.horaSalida ? { huellero_puso_salida: false } : {}),
+        ...(p.horaEntrada ? { huellero_puso_entrada: false, entrada_estimada: false } : {}),
+        ...(p.horaSalida ? { huellero_puso_salida: false, salida_estimada: false } : {}),
         ...(p.obs ? { obs: p.obs } : {}),
       })
       .eq('id', (existente as { id: string }).id);
@@ -164,6 +178,9 @@ export type AsistenciaDia = {
   faltaJustificada: boolean;
   motivoJustificacion: string | null;
   fuente: string;
+  /** Ídem `Asistencia.entradaEstimada`/`salidaEstimada`: la puso el sistema, no una marca. */
+  entradaEstimada: boolean;
+  salidaEstimada: boolean;
 };
 
 type RowDia = Row & {
@@ -191,7 +208,7 @@ export async function listarAsistenciasPeriodo(
   const { data, error } = await sb
     .from('asistencias')
     .select(
-      'id, empleado_id, fecha, turno, hora_entrada, hora_salida, minutos_tardanza, fuente, obs, condicion, tardanza_justificada, falta_justificada, motivo_justificacion',
+      'id, empleado_id, fecha, turno, hora_entrada, hora_salida, minutos_tardanza, fuente, obs, condicion, tardanza_justificada, falta_justificada, motivo_justificacion, entrada_estimada, salida_estimada',
     )
     .eq('empleado_id', empleadoId)
     .gte('fecha', desde)
@@ -211,6 +228,8 @@ export async function listarAsistenciasPeriodo(
     faltaJustificada: Boolean(r.falta_justificada),
     motivoJustificacion: r.motivo_justificacion,
     fuente: r.fuente,
+    entradaEstimada: Boolean(r.entrada_estimada),
+    salidaEstimada: Boolean(r.salida_estimada),
   }));
 }
 
@@ -264,6 +283,12 @@ export async function declararDia(d: DeclaracionDia): Promise<void> {
   // Sólo cuando hay hora: el sello protege una hora, y sobre una hora en `null` no protege nada
   // (la derivación la rellena igual por el `coalesce` de 0079:270-273). En la rama de `insert`
   // este mismo objeto alcanza: si no hay hora, la columna toma su `default false`.
+  //
+  // Lo mismo con `entrada_estimada`/`salida_estimada` (migración 0097): una hora que acaba de
+  // escribir el administrador no es una hora que el sistema propuso con el horario contratado.
+  // Sin bajar la bandera acá, una hora estimada corregida a mano seguiría mostrándose como
+  // estimada en /asistencias y en /sueldos/asistencia hasta que el huellero volviera a derivar
+  // ese día (spec asistencias/2026-08-25-huellero-decide-por-horario-design.md §3 C-3).
   const declaracion = {
     condicion: d.condicion,
     hora_entrada: d.horaEntrada || null,
@@ -271,8 +296,8 @@ export async function declararDia(d: DeclaracionDia): Promise<void> {
     tardanza_justificada: d.tardanzaJustificada,
     falta_justificada: d.faltaJustificada,
     motivo_justificacion: d.motivoJustificacion?.trim() || null,
-    ...(d.horaEntrada ? { huellero_puso_entrada: false } : {}),
-    ...(d.horaSalida ? { huellero_puso_salida: false } : {}),
+    ...(d.horaEntrada ? { huellero_puso_entrada: false, entrada_estimada: false } : {}),
+    ...(d.horaSalida ? { huellero_puso_salida: false, salida_estimada: false } : {}),
   };
 
   // QUÉ FILA SE DECLARA, Y POR QUÉ NO SIEMPRE UNA NUEVA.
