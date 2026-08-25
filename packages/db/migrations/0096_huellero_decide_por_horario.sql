@@ -1,0 +1,16 @@
+-- 0096_huellero_decide_por_horario.sql — <qué hace, en una línea>
+--
+-- Implementa <docs/superpowers/specs/.../SPEC-....md §N>.
+--
+-- Idempotente: se puede reaplicar sin fallar. Cada `create` lleva su `if not exists` y cada
+-- restricción que no lo soporta va envuelta en un `do $$ ... $$` que consulta pg_constraint.
+--
+-- Recordatorios que este repo pagó caros:
+--   · Los helpers de RLS viven en el schema `private` desde la 0037. SIEMPRE con el prefijo.
+--   · NUNCA `private.app_es_almacen()` sobre datos de personas: devuelve true para
+--     'confeccionista' además de 'encargado_almacen' (0006_pipeline_rls.sql:22-25).
+--   · Toda tabla con RLS necesita policy de LECTURA **y** de ESCRITURA. Con RLS activa y sólo
+--     select, las escrituras fallan en silencio.
+--   · Todo default de negocio va comentado como provisional y anotado en
+--     docs/pendientes-negocio.md (no-negociable 5).
+
