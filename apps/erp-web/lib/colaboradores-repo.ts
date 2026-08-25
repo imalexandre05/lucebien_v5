@@ -329,17 +329,26 @@ export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<s
       .eq('estado', 'cerrada');
     if (eLiq) throw new Error(eLiq.message);
 
-    // La liquidación de ESTE período por persona: la primera cerrada cuyo rango se solapa, mismo
-    // criterio de "primera que calza" que ya usan 'contrato' y 'evaluación' arriba. Con las
-    // liquidaciones mensuales de hoy no hay ambigüedad real; si algún día se solapan dos, gana la
-    // que la consulta trajo primero.
-    const liqPorEmpleado = new Map<string, { id: string; total: number }>();
+    // Las liquidaciones CERRADAS de ESTE período por persona: TODAS las que se solapan, no "la
+    // primera que calza" (así estaba hasta el 25-ago-2026, sin ORDER BY — el propio comentario de
+    // entonces avisaba "si algún día se solapan dos, gana la que la consulta trajo primero", y con
+    // la liquidación por tramos dejó de ser hipotético: un período visto acá (p. ej. un ciclo por
+    // aniversario de 15-jul a 14-ago) puede solaparse de verdad con DOS tramos mensuales cerrados
+    // a la vez, y quedarse con uno solo — al azar según el orden de Postgres — mostraba "Pagada"
+    // o "Falta: pago" según qué tramo tocara. Se suman: el total y lo pagado de TODAS las que
+    // caen en el rango, nunca se elige una entre varias.
+    const liqPorEmpleado = new Map<string, { ids: string[]; total: number }>();
     for (const r of (liqs as Fila[]) ?? []) {
       const empId = String(r.empleado_id ?? '');
-      if (!mapa.has(empId) || liqPorEmpleado.has(empId)) continue;
+      if (!mapa.has(empId)) continue;
       const desde = String(r.periodo_desde ?? '').slice(0, 10);
       const hasta = String(r.periodo_hasta ?? '').slice(0, 10);
-      if (desde <= p.hasta && hasta >= p.desde) liqPorEmpleado.set(empId, { id: String(r.id), total: Number(r.total ?? 0) });
+      if (desde <= p.hasta && hasta >= p.desde) {
+        const acc = liqPorEmpleado.get(empId) ?? { ids: [], total: 0 };
+        acc.ids.push(String(r.id));
+        acc.total += Number(r.total ?? 0);
+        liqPorEmpleado.set(empId, acc);
+      }
     }
 
     if (liqPorEmpleado.size > 0) {
@@ -347,7 +356,7 @@ export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<s
         // Segunda consulta, en lote: lo pagado de TODAS las liquidaciones encontradas, de un
         // saque — no una por persona. `listarPagosDeLiquidaciones` es la versión sin nombres de
         // `listarPagosLiquidacion` (lib/sueldos-repo.ts), pensada justo para este cruce por lote.
-        const pagos = await listarPagosDeLiquidaciones([...liqPorEmpleado.values()].map((v) => v.id));
+        const pagos = await listarPagosDeLiquidaciones([...liqPorEmpleado.values()].flatMap((v) => v.ids));
         const pagadoPorLiq = new Map<string, number>();
         for (const pago of pagos) {
           pagadoPorLiq.set(pago.liquidacionId, (pagadoPorLiq.get(pago.liquidacionId) ?? 0) + pago.monto);
@@ -356,7 +365,8 @@ export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<s
         for (const [empId, liq] of liqPorEmpleado) {
           const e = mapa.get(empId);
           if (!e) continue;
-          const pagado = Math.round((pagadoPorLiq.get(liq.id) ?? 0) * 100) / 100;
+          const pagadoCrudo = liq.ids.reduce((s, id) => s + (pagadoPorLiq.get(id) ?? 0), 0);
+          const pagado = Math.round(pagadoCrudo * 100) / 100;
           if (liq.total <= 0) e.pago = { tipo: 'sin_monto' };
           else if (pagado >= liq.total) e.pago = { tipo: 'pagada', total: liq.total, pagado };
           else e.pago = { tipo: 'pendiente', total: liq.total, pagado };
