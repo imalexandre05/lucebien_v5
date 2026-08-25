@@ -231,6 +231,20 @@ export interface RegistroAsistencia {
   faltaJustificada?: boolean;
   motivoJustificacion?: string;
   observacion?: string;
+  /**
+   * true cuando esa hora la propuso el sistema a partir del horario contratado, porque no hubo
+   * marca real del huellero (migración 0098, que expone lo que 0096/0097 ya escriben en
+   * `asistencias.entrada_estimada`/`salida_estimada`; spec asistencias/2026-08-25-huellero-
+   * decide-por-horario-design.md §3 C-3). Opcionales para no romper ningún snapshot congelado
+   * anterior a esta migración, que nunca tuvo estas claves.
+   *
+   * No cambian NINGÚN cálculo: la hora estimada ya viaja en `horaIngreso`/`horaSalida` (o en
+   * `tramos`) como cualquier otra y se paga igual. Sólo alimentan la advertencia de
+   * `liquidarPeriodo()` que le avisa a quien firma el pago — mismo motivo que existe la 0085: un
+   * dato que nadie declaró no se paga en silencio.
+   */
+  entradaEstimada?: boolean;
+  salidaEstimada?: boolean;
 }
 
 /** Una sola tabla de ventas; los totales por semana y la base de comisión se derivan (spec §3.5). */
@@ -818,6 +832,27 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   if (fueraDelPeriodoExtra.length > 0) {
     advertencias.push(
       `${fueraDelPeriodoExtra.length} registro(s) de horas fuera de contrato quedaron fuera del periodo y no se pagaron: ${primeros(fueraDelPeriodoExtra)}.`,
+    );
+  }
+
+  // ── Aviso: la hora la puso el sistema, no una marca ni una carga a mano (migración 0098) ────
+  // No cambia ningún cálculo: una hora estimada ya viaja en horaIngreso/horaSalida como cualquier
+  // otra y se paga igual (spec asistencias/2026-08-25-huellero-decide-por-horario-design.md §3,
+  // C-3: "el detalle de la liquidación la nombra, para que quien firma el pago sepa qué se
+  // estimó"). Esto sólo junta las fechas — mismo motivo que existe la 0085: un dato que nadie
+  // declaró no se paga en silencio. Se miran las dos listas de RegistroAsistencia (dentro del
+  // horario contratado y fuera de él, tal como las separa `sueldo_entrada`): ambas comparten el
+  // mismo tipo y la RPC arma el mismo jsonb para las dos, así que cualquiera podría traer la
+  // marca. `asistencia`/`fueraDeContrato` ya están validadas por los dos bucles de arriba (sin
+  // fechas repetidas ni inválidas: cualquiera de los dos habría cortado antes de llegar acá).
+  const fechasConHoraEstimada = [...new Set(
+    [...asistencia, ...fueraDeContrato]
+      .filter((r) => enPeriodo(r.fecha) && (r.entradaEstimada === true || r.salidaEstimada === true))
+      .map((r) => r.fecha),
+  )].sort();
+  if (fechasConHoraEstimada.length > 0) {
+    advertencias.push(
+      `${fechasConHoraEstimada.length} día(s) tienen una hora puesta por el sistema, no por una marca ni una carga a mano: ${primeros(fechasConHoraEstimada)}. Revisá antes de pagar.`,
     );
   }
 

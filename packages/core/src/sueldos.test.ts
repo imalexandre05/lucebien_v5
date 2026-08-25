@@ -1004,3 +1004,66 @@ describe('parámetros configurables (spec §3.3)', () => {
     expect(fija.total).toBe(751.7);
   });
 });
+
+// ── Aviso de horas puestas por el sistema (RPC sueldo_entrada, migración 0098) ────────────────
+// `entradaEstimada`/`salidaEstimada` no son un cálculo: son metadatos que liquidarPeriodo() sólo
+// lee para juntar fechas en UNA advertencia (spec asistencias/2026-08-25-huellero-decide-por-
+// horario-design.md §3, "el detalle de la liquidación la nombra"). Cada caso comprueba también
+// que el total no se mueve ni un céntimo — es la garantía de que esto no toca la cadena del
+// sueldo, sólo la hace visible antes de firmar el pago.
+describe('aviso de horas estimadas por el sistema (RPC sueldo_entrada, migración 0098)', () => {
+  const base = liquidarPeriodo(GOLDEN);
+
+  it('sin ningún día estimado no hay ninguna advertencia de este tipo (es el snapshot de siempre)', () => {
+    // armarAsistencia() nunca puso estas claves: GOLDEN ES el snapshot de antes de la 0098, y el
+    // golden test de arriba ya fija que su desglose no cambia.
+    expect(base.advertencias.some((a) => a.includes('hora puesta por el sistema'))).toBe(false);
+  });
+
+  it('un día con salidaEstimada nombra la fecha y no cambia el total', () => {
+    const l = liquidarPeriodo({
+      ...GOLDEN,
+      asistencia: armarAsistencia().map((r) => (r.fecha === '2025-06-16' ? { ...r, salidaEstimada: true } : r)),
+    });
+    const aviso = l.advertencias.find((a) => a.includes('hora puesta por el sistema'));
+    expect(aviso).toMatch(/^1 día\(s\) tienen una hora puesta por el sistema.*2025-06-16/);
+    expect(l.total).toBe(base.total); // ningún cálculo cambia, sólo se agrega la advertencia
+  });
+
+  it('un día con las dos horas estimadas (entrada y salida) se cuenta una sola vez', () => {
+    const l = liquidarPeriodo({
+      ...GOLDEN,
+      asistencia: armarAsistencia().map((r) =>
+        r.fecha === '2025-06-16' ? { ...r, entradaEstimada: true, salidaEstimada: true } : r,
+      ),
+    });
+    const aviso = l.advertencias.find((a) => a.includes('hora puesta por el sistema'))!;
+    expect(aviso).toMatch(/^1 día\(s\)/);
+  });
+
+  it('varios días estimados se listan todos, ordenados por fecha', () => {
+    const l = liquidarPeriodo({
+      ...GOLDEN,
+      asistencia: armarAsistencia().map((r) =>
+        ['2025-07-01', '2025-06-18'].includes(r.fecha) ? { ...r, entradaEstimada: true } : r,
+      ),
+    });
+    const aviso = l.advertencias.find((a) => a.includes('hora puesta por el sistema'))!;
+    expect(aviso).toMatch(/^2 día\(s\)/);
+    expect(aviso.indexOf('2025-06-18')).toBeGreaterThan(-1);
+    expect(aviso.indexOf('2025-07-01')).toBeGreaterThan(aviso.indexOf('2025-06-18'));
+    expect(l.total).toBe(base.total);
+  });
+
+  it('también avisa un día estimado en horas fuera de contrato (RN-17)', () => {
+    const l = liquidarPeriodo({
+      ...GOLDEN,
+      horasFueraDeContrato: [
+        { fecha: '2025-07-10', horaIngreso: '08:00', horaSalida: '14:00', entradaEstimada: true },
+      ],
+    });
+    const aviso = l.advertencias.find((a) => a.includes('hora puesta por el sistema'));
+    expect(aviso).toMatch(/^1 día\(s\) tienen una hora puesta por el sistema.*2025-07-10/);
+    expect(l.total).toBe(base.total);
+  });
+});
