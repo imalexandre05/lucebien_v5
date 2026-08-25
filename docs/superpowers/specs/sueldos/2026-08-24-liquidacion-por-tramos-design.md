@@ -280,3 +280,188 @@ sin necesidad de volver a esta spec por la redacción exacta.
    `docs/aprendizajes.md`, sección «Coordinación entre agentes»).
 7. Recién ahí, C-5: corregir el acuerdo real de Marylin desde la pantalla. No antes.
 8. C-6, la copia de `/sueldos/acuerdos`, se puede hacer junto con el paso 4.
+9. ~~Listo.~~ **No.** El paso 6 lo hizo un `verificador` adversarial en vez de la sesión principal
+   directamente — ver §7 más abajo, seis fallos reales encontrados antes de tocar `scilb`. Falta
+   corregirlos, con su propio orden, antes de que el paso 6 de arriba se pueda hacer de verdad.
+
+## 7. Addendum — 24-ago-2026: seis fallos reales que encontró la revisión adversarial
+
+C-1 a C-4 y C-6 se implementaron y pasaron `verificar-local.sh` en verde — pero verde ahí sólo
+significa "no rompió lo que ya existía", no "hace lo que promete" (es justamente la lección de
+`docs/aprendizajes.md`, sección "Base de datos y migraciones": *"verificar una migración mirando
+que las tablas existan... eso comprueba que corrió, no que funcione"*). Un `verificador` adversarial
+encontró seis fallos reales antes de aplicar nada contra `scilb`. Cinco los causó ESTA SPEC, no
+quien implementó — quedan corregidos acá, con Zone Guard: primero el texto, después el código.
+
+### F-1 / F-1b — `sugerirRango()` no puede usar `calcularCiclo()` (C-4 estaba mal especificado)
+
+**Lo que decía la spec (§3, C-4):** *"El «hasta» sugerido sale de `calcularCiclo(desdeSugerido,
+hoyPeru())`... Mismo patrón que ya usa la evaluación para sugerir un período."* **Es falso.**
+`calcularCiclo(fechaIngreso, hoyStr)` sólo usa el DÍA del primer parámetro; el año y el mes del
+ciclo salen de `hoyStr` — la función contesta *"¿qué ciclo contiene HOY?"*, no *"dame un período que
+arranque en esta fecha"*. Verificado corriendo la función real:
+
+```
+desde=2026-05-01 (acuerdo ya vencido el 2026-07-31) hoy=2026-08-24
+  -> calcularCiclo da hasta=2026-08-31, MUY lejos de fechaFin del acuerdo
+```
+
+Recortado a `fechaFin` del acuerdo (2026-07-31, como ya hace `sugerirRango`), el resultado es
+**todo el acuerdo de 3 meses sugerido como un solo tramo** — exactamente lo que esta spec existe
+para evitar. Con `sueldo_pactado` como cuota (F-1 se combina con la decisión del §2: confirmada), la
+persona cobraría un tercio de lo que corresponde si el administrador acepta la sugerencia tal cual.
+
+**F-1b, el mismo síntoma por otra causa:** `sugerirRango()` nunca lee `acuerdo.modalidad`. Un
+acuerdo `semanal` recibe una sugerencia de UN MES, no de una semana.
+
+**La corrección — un helper nuevo en `packages/core/src/sueldos.ts` (no en `evaluaciones.ts`,
+que no sirve para esto):**
+
+```ts
+/**
+ * El último día de UN PERÍODO que arranca en `desde`, según `modalidad`, recortado a `limite` si
+ * el período se pasaría de ahí. 'semanal' son 7 días (desde..desde+6). 'mensual' es "un mes menos
+ * un día", con el mismo recorte de mes corto que ya usa `calcularCiclo()` de evaluaciones.ts, pero
+ * ANCLADO EN `desde` — calcularCiclo resuelve "¿qué ciclo contiene hoy?", una pregunta distinta,
+ * anclada siempre en la fecha de hoy, y por eso no sirve para esto.
+ */
+export function finDePeriodo(desde: string, modalidad: 'mensual' | 'semanal', limite?: string): string
+```
+
+Reusa las funciones de fecha que ya tiene este archivo (`msDeFecha`, `fmtFecha`, `validarFecha`);
+necesita agregar un `ultimoDiaDelMes(y, m0)` local, mismo cálculo exacto que ya existe en
+`evaluaciones.ts` (duplicado a propósito, mismo criterio que ya usa `diaSiguiente()` en
+`liquidaciones/cliente.tsx` para no importar entre capas que no corresponde).
+
+`sugerirRango()` pasa a usar `finDePeriodo(desde, acuerdo.modalidad, acuerdo.fechaFin)` en vez de
+`calcularCiclo(desde, hoyPeru())` — deja de necesitar `hoyPeru()` para esto (aunque puede seguir
+haciendo falta para otra cosa si el helper lo requiere en el futuro).
+
+**Va con test.** `packages/core/src/sueldos.test.ts`, casos mínimos: semanal (7 días exactos),
+mensual con mes corto de por medio (igual que el caso bisiesto/mes-corto que ya se probó para
+`calcularCiclo`), y el recorte a `limite` cuando el período se pasaría del final del acuerdo.
+
+### F-2 — `sueldo_liquidacion_cerrar` marca el ACUERDO COMPLETO como liquidado al cerrar CUALQUIER tramo
+
+**Lo que decía la spec (§4, "Lo que esta spec NO hace"):** *"No cambia... ni
+`sueldo_liquidacion_cerrar`: ya operan por fila y por el período de la propia liquidación, no del
+acuerdo."* **Es incompleto.** Cierto para el congelado y para el sellado de movimientos/ventas —
+falso para esta línea puntual, verificada en `packages/db/migrations/0073_sueldos_rpc.sql:397`:
+
+```sql
+update sueldo_acuerdos set estado = 'liquidado' where id = l.acuerdo_id;
+```
+
+Sin condición de ningún tipo. Cerrar julio de un acuerdo de tres meses marca el acuerdo ENTERO como
+`'liquidado'`. Consecuencia verificada en cadena: `sueldo_acuerdos.estado <> 'liquidado'` es el
+filtro que usa `/sueldos/asistencia` para decidir qué contratos muestra
+(`app/sueldos/asistencia/page.tsx:46`) — el contrato desaparece de "Declarar asistencia" y agosto
+queda sin forma de cargarse. Sin asistencia declarada, liquidar agosto corta con `DATO:` sin que
+ninguna pantalla lo pueda resolver. El acuerdo queda inoperable después del primer tramo — exacto lo
+opuesto de lo que pide esta spec.
+
+**Corrección**, `create or replace function` sobre `sueldo_liquidacion_cerrar` (mismo archivo,
+mismo cuerpo salvo esta línea):
+
+```sql
+update sueldo_acuerdos
+   set estado = 'liquidado'
+ where id = l.acuerdo_id
+   and l.periodo_hasta >= (select fecha_fin from sueldo_acuerdos where id = l.acuerdo_id);
+```
+
+Sólo pasa a `'liquidado'` cuando el tramo que se cierra llega hasta el final real del acuerdo — el
+mismo criterio, aplicado ahora que "cerrar una liquidación" y "terminar de pagar el acuerdo" dejan
+de ser la misma cosa. Es C-7 de esta spec: va en la MISMA migración `0093` (agrega una función más,
+no una migración nueva — sigue siendo el mismo tema).
+
+**No hace falta tocar `sueldo_liquidacion_anular`** (revierte a `'vigente'` en cualquier
+anulación, sin condición): es la dirección segura — reabrir de más nunca bloquea un pago, sólo lo
+deja editable antes de lo estrictamente necesario. Se queda así.
+
+**Va con test.** Caso nuevo en `0093_liquidacion_por_tramos.prueba.sql`: cerrar julio (tramo 1 de
+3) y comprobar que el acuerdo sigue `'vigente'`; cerrar el tramo que llega hasta `fecha_fin` y
+comprobar que pasa a `'liquidado'`.
+
+### F-3 — la migración rompe la única prueba de punta a punta de la cadena del sueldo
+
+`tools/pruebas/cadena-sueldo.test.ts:197` llama `rpc('sueldo_entrada', { p_acuerdo: acuerdoId })`
+— la firma vieja. Después de esta migración esa llamada devuelve `PGRST202` (función no
+encontrada). Es el único test que corre la cadena completa contra una base real (packages/core
++ RPC), y no corre en `tools/verificar-local.sh` ni en CI — se rompería en silencio.
+
+**Corrección, una línea:** el escenario de ese archivo ya es un acuerdo de una sola semana con
+constantes `DESDE`/`HASTA` que coinciden exacto con `fecha_inicio`/`fecha_fin` del acuerdo que
+arma — el tramo natural a pedir es el acuerdo completo:
+
+```ts
+entrada = await rpc('sueldo_entrada', { p_acuerdo: acuerdoId, p_desde: DESDE, p_hasta: HASTA });
+```
+
+Los `.prueba.sql` de `0073`/`0078`/`0085` que también llaman `sueldo_entrada(ac)` con un solo
+argumento **no se tocan**: son artefactos históricos de sus propias migraciones, ya corridos una
+vez cuando esas migraciones se aplicaron, y este repo no los vuelve a correr — no son parte de
+ninguna regresión continua.
+
+### F-4 — `/sueldos/acuerdos` sigue sugiriendo (y mostrando) cifras del contrato completo
+
+C-6 corrigió `pagoMensual`, pero dos cifras más de `analizar()`
+(`apps/erp-web/app/sueldos/acuerdos/cliente.tsx`) siguen calculadas contra las horas de TODO el
+acuerdo, no contra una unidad de la modalidad:
+
+- `valorHora: pactado / horas` — con `pactado` ahora como cuota, esto muestra un valor por hora
+  varias veces menor que el real de cada liquidación.
+- `sugerido: sueldoSugerido(escala, horas)` (`packages/core/src/sueldos.ts:501-508`, `tarifaHora ×
+  horas`) — sugiere varias veces la cuota real. Si el administrador copia esa sugerencia al campo
+  "Sueldo pactado del periodo", paga de más cada mes, no de menos: es la imagen en espejo de F-1.
+
+**Corrección:** las dos cuentas pasan a usar las horas de **una unidad de la modalidad** desde
+`fechaInicio` (mismo `finDePeriodo()` de F-1, con `resumirHorario()` acotado a esos días), no las
+del contrato completo. `dias`, `horasMensuales`, `almuerzoPeriodo`/`almuerzoMensual` no cambian: son
+informativos sobre el contrato completo y siguen siendo correctos como tales.
+
+**Mejora menor, opcional, mismo archivo:** "Pago del periodo" (línea ~656) hoy sólo repite
+`sueldoPactado` formateado — con `sueldoPactado` como cuota, va a mostrar el MISMO número que "Pago
+por liquidación" (C-6), lo cual es redundante sin ser incorrecto. Si hay tiempo, repropósito a
+"Total estimado del contrato" = `pactado × cantidad de unidades de modalidad en el rango completo`,
+etiquetado como estimado. Si no hay tiempo, se deja para después — no es un fallo, es una
+oportunidad de claridad.
+
+### F-5 — se puede guardar un tramo que nunca se vio en el "Calcular"
+
+En `liquidaciones/cliente.tsx`, cambiar las fechas de Desde/Hasta **no** limpia el `preview`, y
+"Guardar borrador" no comprueba que el rango actual sea el mismo que se calculó. Se puede calcular
+julio, mirar los números, después estirar "Hasta" hasta agosto sin volver a apretar "Calcular", y
+guardar un borrador de un período que nadie vio en pantalla.
+
+**Corrección:** los dos `onChange` de fecha llaman `setPreview(null)` (igual que ya hace
+`elegirAcuerdo`), y el botón "Guardar borrador" se deshabilita salvo que `preview` exista Y
+`preview.entrada.fechaInicio === rango.desde && preview.entrada.fechaFin === rango.hasta`.
+
+### F-6 — la prueba de `0093` no ejerce 4 de las 6 conversiones de rango que hace la migración
+
+El montaje de `0093_liquidacion_por_tramos.prueba.sql` no tiene ninguna fila en `sueldo_movimientos`
+ni en `sueldo_ventas`, y agosto/septiembre quedan totalmente vacíos (sin ninguna fila, ni siquiera
+`'sin_dato'`). Eso significa que si alguna de las cinco llamadas a
+`private.sueldo_movimientos_lista`/`_conteo`, o el `between` de `sueldo_ventas`, o el `between` del
+control de "día a medio declarar" (`v_mixtos`) se hubiera dejado sin convertir a `p_desde`/`p_hasta`
+por error, **los 8 casos existentes seguirían dando `[ok]` igual** — la prueba no puede atrapar
+exactamente el tipo de error que esta migración más necesita que se atrape.
+
+**Corrección, sumar al montaje:** una fila de `sueldo_movimientos` (tipo `adelanto`) fechada en
+agosto; una fila de `sueldo_ventas` fechada en agosto; un día de agosto con una fila `'trabajado'`
+Y una `'sin_dato'` a la vez (dispara `v_mixtos` si el rango pedido lo alcanza). Nuevo caso: liquidar
+sólo julio (`sueldo_entrada(ac, '2099-07-01','2099-07-31')`) devuelve `adelantos: []` y `ventas: []`
+(el de agosto no se cuela) y NO corta por "tramos sin cerrar" (el día mixto de agosto queda fuera
+del rango pedido). Sumar también los dos casos de F-2 (arriba).
+
+---
+
+**Orden de implementación de este addendum:** F-3 primero (una línea, desbloquea poder seguir
+verificando con la prueba de punta a punta corriendo). Después F-1/F-1b y F-4 juntos (comparten el
+helper `finDePeriodo()`). Después F-2 (además de la migración, es una decisión técnica —no de
+negocio— que no necesita volver a preguntarle a Alexander: es la lectura fiel de qué significaba
+`'liquidado'` desde antes de esta spec, aplicada ahora que un acuerdo puede tener más de una
+liquidación). Después F-6 (para que la prueba de verdad cubra F-2 y las conversiones de rango).
+F-5 es independiente, se puede hacer en cualquier momento. La corrección opcional de F-4 al final,
+si hay tiempo.
