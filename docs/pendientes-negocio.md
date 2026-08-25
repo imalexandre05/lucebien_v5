@@ -1077,3 +1077,63 @@ esta auditoría vino a eliminar de un sistema que termina en un pago.
 de 25 % a 20 % y no compensar hace que alguien perfecto saque 19 en vez de 20, y que quien estaba
 en 17,5 («Excelente») pase a 16,6 («Buen desempeño»). Todo el equipo baja a la vez, sin que nadie
 haya trabajado peor, y ninguna pantalla lo dice.
+
+---
+
+## Puntos como moneda (25-ago-2026) — parámetros provisionales y las dos preguntas abiertas
+
+Spec completa: [2026-08-25-puntos-como-moneda-design.md](superpowers/specs/evaluaciones/2026-08-25-puntos-como-moneda-design.md).
+Implementado en la migración `0095_puntos_como_moneda.sql` (RPC `private.evaluacion_componentes_datos`)
+y `packages/core/src/evaluaciones.ts` (`notaDesdePuntos`). Ninguno de los 7 parámetros de abajo está
+confirmado por el administrador: son los ejemplos textuales que él mismo marcó como provisionales en
+la reunión del 25-ago-2026 (*"una cierta cantidad de puntos aún no definida (por ejemplo: 5000)"*).
+
+### Los 7 parámetros nuevos (`config-catalogo.ts`, sección "Evaluación mensual")
+
+| Clave | Default | De dónde sale ese default |
+|---|---|---|
+| `eval_puntos_promedio` | `5000` | Ejemplo textual del administrador |
+| `eval_nota_promedio` | `16` | Ídem |
+| `eval_puntos_excelente` | `7500` | Ídem |
+| `eval_banda_riesgo` | `13` | *«<13 riesgo de despido»* |
+| `eval_banda_ideal` | `18` | *«>18 ideal»* |
+| `pts_actividad_cumplida` | `1` | Elegido por el implementador — el más chico que hace que una actividad cuente algo sin inflar la nota de nadie (spec §5) |
+| `pts_por_sol_vendido` | **vacío** | No se inventa — ver la pregunta 2 |
+
+Ninguno se sembró como fila de `config`: viven sólo en el catálogo de código, con el mismo `coalesce`
+al default que ya usan `eval_tardanza_min_por_punto`/`sueldo_tolerancia_minutos` en la misma función.
+
+### 🔴 Pregunta 1 (spec §3) — el techo de `sugerirMontoPago()`
+
+Con la nota nueva sin techo en 20, alguien "sobresaliente" con más de `eval_puntos_excelente` puntos
+daría un factor mayor a 1 en `sugerirMontoPago(salarioBase, notaFinal, ...)`
+(`packages/core/src/pagos.ts`) — la pantalla de pago sugeriría más del sueldo pactado, sin que nadie
+lo haya decidido.
+
+**Se implementó con el factor limitado a 1,00** (interpretación del implementador, no una decisión
+del administrador): la nota puede pasar de 20 para *leerse*, pero no multiplica el sueldo sola. El
+administrador dijo qué pasa con alguien sobresaliente y no es un aumento automático: *"se evalúa
+poder mejorar sus condiciones laborales o línea de carrera"* — es una conversación, no una fórmula.
+Con la nota vieja (tope 20 de hecho) este cambio no altera ningún monto ya sugerido.
+
+**Falta confirmar con el administrador:** si el techo en 1,00 es lo correcto, o si en algún caso sí
+quiere que una nota sobresaliente aumente el pago sugerido automáticamente.
+
+### 🔴 Pregunta 2 (spec §4) — cuánto vale un sol vendido
+
+Textual, en la reunión: *"considerar que a veces hay personas que no hacen pipeline y solo ventas,
+tenemos que ver cómo equiparar; si planchar 100 prendas vale 1000, ¿cuánto vale una venta?"*.
+
+Es la pregunta más cara de toda la reunión: sin ella, quien sólo vende no acumula casi ningún punto
+y su nota sale baja aunque venda perfecto. El administrador ya dio media ancla (*"si planchar 100
+prendas vale 1000"* → 10 puntos por prenda planchada — ojo: no coincide con el `pts_planchado = 3`
+que hay hoy en config, otra cosa a confirmar de paso), pero no dio la otra mitad.
+
+**Mientras tanto:** `pts_por_sol_vendido` queda vacía a propósito (sin fila en `config`). Con la
+clave vacía, las ventas suman 0 puntos y `/evaluaciones` lo dice con todas las letras («Las ventas
+todavía no suman puntos: falta definir cuántos puntos vale un sol vendido»), con enlace a
+Configuración — y no deja guardar la evaluación de alguien que sí tuvo ventas en el período mientras
+la tasa siga vacía (`ventasSinTasa` en el RPC `private.evaluacion_componentes_datos`). Es preferible
+frenar a emitir una nota que calla que alguien vendió y el sistema no lo contó.
+
+**Falta confirmar con el administrador:** cuántos puntos vale un sol vendido.
