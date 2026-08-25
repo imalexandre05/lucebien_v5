@@ -1257,9 +1257,34 @@ muestran un badge "estimado" con tooltip al lado de la hora que el sistema propu
 bandera sola en cuanto una persona la corrige a mano (`crearAsistencia()`/`declararDia()`, mismo
 lugar donde ya se bajaba `huellero_puso_entrada`/`huellero_puso_salida`).
 
-**Lo que NO se tocó, a propósito:** el detalle de una liquidación (el recibo que ve quien firma el
-pago) no muestra todavía qué horas fueron estimadas. La spec lo pide (*"el detalle de la
-liquidación la nombra, para que quien firma el pago sepa qué se estimó"*) pero es una pantalla
-distinta, de zona crítica de sueldos, que no se exploró en esta tarea — tocarla a ciegas para
-agregar un aviso hubiera sido ampliar el alcance sin la spec ni la lectura previa que esa zona
-exige. Queda pendiente como una tarea de pantalla acotada, con la data ya disponible en la base.
+**Lo que NO se tocó, a propósito (en esta tarea):** el detalle de una liquidación (el recibo que ve
+quien firma el pago) no mostraba todavía qué horas fueron estimadas. La spec lo pide (*"el detalle
+de la liquidación la nombra, para que quien firma el pago sepa qué se estimó"*) pero era una
+pantalla distinta, de zona crítica de sueldos, que no se exploró en esa tarea — tocarla a ciegas
+para agregar un aviso hubiera sido ampliar el alcance sin la spec ni la lectura previa que esa zona
+exige. Quedó pendiente como una tarea de pantalla acotada, con la data ya disponible en la base.
+
+✅ **RESUELTO el 25-ago-2026 — la pieza que frenaba la 0097.** Migración `0098` (nueva, todavía sin
+aplicar junto con la 0097: ver el aviso de cabecera de esa migración) hace que `sueldo_entrada`
+agregue `entradaEstimada`/`salidaEstimada` a cada día de `asistencia`/`horasFueraDeContrato`
+(`bool_or` agrupado por fecha — un día con dos tramos donde sólo uno está estimado sale marcado
+entero, no a medias). `packages/core/src/sueldos.ts`: `RegistroAsistencia` suma esos dos campos
+opcionales (no rompen ningún snapshot congelado anterior, que nunca los tuvo) y `liquidarPeriodo()`
+agrega **una advertencia** nombrando las fechas — con test (`sueldos.test.ts`, describe "aviso de
+horas estimadas por el sistema") que fija además que el total NO cambia ni un céntimo: esto es
+metadato, no cálculo.
+
+**Las tres pantallas del encargo original (`/sueldos/liquidaciones` vista previa y detalle, y su
+comprobante) NO necesitaron ningún cambio de código.** Ya renderizaban `advertencias`/
+`resultado.advertencias` de forma genérica y sin filtrar (`cliente.tsx` en la vista previa —
+bloque `otrasAdvertencias` — y en el modal de detalle; `comprobante/page.tsx` en su sección
+"Observaciones"), el mismo mecanismo que ya muestra, por ejemplo, "No hay ninguna venta
+registrada". La advertencia nueva aparece ahí solo con que `liquidarPeriodo()` la agregue: se
+verificó leyendo las tres pantallas, no se dedujo. Es la aplicación literal de "mínimo honesto: que
+se vea y se entienda, no hace falta rediseñar nada" — el mismo criterio con el que `/asistencias` y
+`/sueldos/asistencia` ya venían mostrando el badge "estimado" por día (ver más arriba, "Detalle
+honesto de la pantalla").
+
+Sigue pendiente, sin cambios respecto de lo anotado arriba: aplicar 0096+0097+0098 juntas (no
+aplicadas todavía) y decidir el disparador de `huellero_declarar_faltas_del_dia` (cron vs. botón
+manual).
