@@ -1,25 +1,17 @@
--- ⛔ NO APLICADA A PRODUCCIÓN — a propósito, 25-ago-2026. LEER ESTO ANTES DE APLICARLA.
+-- ✅ APLICADA el 25-ago-2026, JUNTO CON LA 0098 — y ese «junto con» no es casual.
 --
--- Está escrita, revisada y con su prueba, pero NO se aplicó contra `scilb`. Falta una pieza, y sin
--- ella esta migración reintroduce exactamente el defecto que la `0085` vino a cerrar:
+-- Esta migración estuvo deliberadamente frenada unas horas: C-3 hace que un día con una hora
+-- estimada DEJE DE CORTAR la liquidación (antes quedaba `sin_dato` y la cortaba, nombrando la
+-- fecha). Eso es lo que pidió el administrador y está bien — pero mientras el detalle de la
+-- liquidación no nombrara esas horas, se habría pagado un día cuya hora puso la máquina sin que
+-- quien firma el pago lo viera al firmarlo. La `0085` existe justamente porque un día a medio
+-- declarar antes se pagaba en silencio.
 --
---   C-3 hace que un día con una hora estimada DEJE DE CORTAR la liquidación (hoy queda `sin_dato`
---   y la corta, nombrando la fecha). Eso es lo que pidió el administrador y está bien — PERO el
---   detalle de la liquidación todavía NO nombra las horas estimadas. O sea: se pagaría un día cuya
---   hora inventó la máquina, y quien firma el pago no lo vería en el momento de firmarlo. Lo vería
---   sólo si entra aparte a la pantalla de asistencia.
+-- La `0098` cerró esa pieza: `sueldo_entrada` ahora emite `entradaEstimada`/`salidaEstimada` por
+-- día, el motor arma una advertencia con las fechas, y la vista previa, el detalle y el
+-- comprobante la muestran. Recién con eso las dos se aplicaron, en el mismo movimiento.
 --
---   La `0085` existe justamente porque un día a medio declarar antes se pagaba en silencio, y era
---   el único camino del sistema que pagaba de menos sin avisar. Aplicar esta migración sin que el
---   detalle de la liquidación diga «esta hora la puso el sistema» sería volver a abrir esa puerta,
---   ahora del otro lado (pagando de más, o pagando algo que nadie declaró).
---
--- QUÉ FALTA, EXACTAMENTE: que el detalle de una liquidación —`/sueldos/liquidaciones`, la vista de
--- una liquidación cerrada y su comprobante— nombre los días con `entrada_estimada` o
--- `salida_estimada` en true. Cuando eso esté, esta migración se aplica y se corre su prueba.
---
--- Está commiteada igual, en vez de quedarse suelta, porque el código ya está revisado y perderlo
--- sería peor. El estado también está anotado en docs/pendientes-negocio.md.
+-- **Si alguna vez hay que reaplicar esta migración a una base nueva, la 0098 va sí o sí.**
 -- ─────────────────────────────────────────────────────────────────────────────────────────────
 --
 -- 0097_huellero_relleno_estimado_y_falta.sql — rellena lo que falta con el horario contratado
