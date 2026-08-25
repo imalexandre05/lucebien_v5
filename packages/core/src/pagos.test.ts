@@ -26,4 +26,11 @@ describe('sugerirMontoPago', () => {
   it('salario base negativo se trata como 0', () => {
     expect(sugerirMontoPago(-100, null)).toBe(0);
   });
+
+  // Spec docs/superpowers/specs/evaluaciones/2026-08-25-puntos-como-moneda-design.md §3/§7 caso 9:
+  // desde que la nota puede salir de puntos y pasar de 20 ("sobresaliente"), el factor se limita a
+  // 1,00 — la nota nunca multiplica el sueldo por más de una vez.
+  it('nota sobresaliente (>20, spec puntos-como-moneda): el factor se limita a 1, no paga de más', () => {
+    expect(sugerirMontoPago(1500, 22.4)).toBe(1500);
+  });
 });
