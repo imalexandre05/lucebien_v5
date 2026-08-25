@@ -1009,7 +1009,27 @@ Alexander, textual: *«mi idea era que en los contratos se pone cuanto se le pag
 mensual... la idea es que mensualmente se pague 600, eso es todo»*. `sueldo_pactado` es la cuota de
 CADA liquidación (S/600 para Marylin), no el total del contrato — el 1.800 cargado en su acuerdo
 real fue una traducción mía de su respuesta anterior a la única casilla que existía en ese momento,
-no una decisión suya de cobrar por el total. Falta implementar; nada bloquea ya empezar.
+no una decisión suya de cobrar por el total.
+
+✅ **C-1 a C-4, C-6 y C-7 implementados y APLICADOS el 24-ago-2026.** Migración
+`0093_liquidacion_por_tramos.sql` aplicada contra `scilb` y probada con los 12 casos de
+`packages/db/pruebas/0093_liquidacion_por_tramos.prueba.sql` (§5 + addendum §7): los 12 dieron
+`[ok]` contra la base real. Incluye: el índice → restricción de exclusión
+`sueldo_liq_periodo_sin_solape`, `sueldo_entrada` con `p_desde`/`p_hasta`, y `sueldo_liquidacion_cerrar`
+corregida (C-7) para que sólo marque el acuerdo `'liquidado'` cuando el tramo que se cierra llega al
+final real del contrato — sin esto, cerrar el primer tramo de tres dejaba el acuerdo inoperable.
+
+Un `verificador` adversarial encontró 6 fallos reales antes de aplicar (dos graves: la sugerencia de
+fecha del selector podía terminar liquidando un contrato vencido de un solo tramo, y el problema de
+C-7 recién descrito) — todos corregidos, ver el addendum §7 de la spec. Eso sí tocó
+`packages/core/src/sueldos.ts` (nueva función `finDePeriodo()`, con test): la spec original decía
+que el core no hacía falta tocarlo, y era cierto para el diseño original — dejó de serlo al corregir
+la sugerencia de rango de la pantalla, que necesitaba su propia aritmética de fechas.
+
+**Pendiente, lo único que falta:** C-5 — corregir a mano el `sueldo_pactado` del acuerdo real de
+Marylin de 1.800 a 600 desde la pantalla de contratos, ahora que la migración ya está aplicada y
+probada. No se hizo todavía porque el pedido de esta sesión fue "implementar", no "tocar el dato de
+Marylin" — queda para cuando Alexander lo pida o confirme que corresponde hacerlo ya.
 
 ---
 
