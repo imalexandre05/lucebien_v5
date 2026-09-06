@@ -90,7 +90,7 @@ empezar.
 |---|---|---|---|
 | D-1 | ⚠️ *«las liquidaciones cuando se cierran que se pueda editar, todo debe ser editable "por si las moscas"»* | 📐 con **interpretación** | **Choca de frente con el congelado.** Ver §3 — se resuelve sin romperlo |
 | D-2 | *«las liquidaciones y pagos y todo eso se debe registrar el método (yape, efectivo etc)»* | ✅ **ya existe** | `sueldo_liquidacion_pagos` (migración 0080) ya guarda el método. Verificar en pantalla y confirmarlo |
-| D-3 | *«los cambios en configuración deben aplicarse»* | ⏸️ | Suena a defecto real: algo se edita en /configuración y no surte efecto. **Falta reproducirlo** — ver §2 |
+| D-3 | *«los cambios en configuración deben aplicarse»* | ✅ **hecho — era un defecto real** | Alexander dio la reproducción el 25-ago: cambiaron `sueldo_tolerancia_minutos` a 0 y no pasó nada. Verificado contra `scilb`: **el 0 sí estaba guardado**; lo que no se refrescaba eran las otras once pantallas que leen parámetros — las tres acciones de `/configuracion` sólo revalidaban su propia ruta. El arreglo ya existía dos carpetas más allá (`/configuracion/permisos` revalida la raíz con `'layout'` desde antes). PR #32 |
 
 ### E. Incidencias
 
@@ -141,9 +141,19 @@ por una pantalla rota, que no es mejor.
 | F-1 | *«que se quede borrador en caso se cambie de pantalla»* | 📐 | Formularios largos que se pierden al navegar. Acotado, alto valor de uso |
 | F-2 | *«poner una página de métricas de todo tipo, dashboard de personal exclusivamente»* | 📐 | Pantalla nueva. Se alimenta sola de A-4 (el perfil) |
 | F-3 | *«poder deshabilitar y eliminar a personal»* | ✅ parcial | Suspender ya existe y banea el acceso (migración 0083). **Eliminar** ya se estudió: cuesta 48 referencias, decidido no borrar. Confirmar que la pantalla lo dice claro |
-| F-4 | *«MANDAR LISTA DE COSAS QUE TIENE QUE HACER JOVEN JORDAN»* | 🔴 | **Jordan es el otro administrador** (`rol = 'admin'` en `empleados`, verificado el 25-ago) — no un colaborador de piso. O sea que la lista es de tareas para quien administra el sistema, no para quien trabaja en tienda. Pero **qué tareas** no está en ninguna anotación. No se inventa una lista de trabajo para una persona real: ver §2 |
+| F-4 | *«MANDAR LISTA DE COSAS QUE TIENE QUE HACER JOVEN JORDAN»* | ✅ **cerrado, no era una tarea del sistema** | Alexander lo aclaró el 25-ago: **Jordan es el administrador real** del negocio; Alexander es el administrador del sistema (desarrolla y prueba). *«no le corresponden tareas más que las administrativas, que es ajeno al sistema; él usa el sistema para monitorear, pagar, etc»*. No hay lista que construir acá |
 
 ---
+
+## 1.bis Lo que Alexander contestó el 25-ago, después de la primera vuelta
+
+| Pregunta que estaba abierta | Respuesta | Qué cambia |
+|---|---|---|
+| ¿Quién es Jordan y qué le toca hacer? | **Es el administrador real del negocio.** Alexander es el administrador del sistema (desarrolla, prueba). Jordan *«usa el sistema para monitorear, pagar, etc»* y sus tareas son administrativas, ajenas al sistema | F-4 se cierra: no hay lista que construir |
+| ¿Qué cambio de configuración no se aplicó? | La tolerancia | Reproducido, diagnosticado y arreglado — ver D-3 |
+| Los puntos promedio | *«todavía no sabemos, por eso primero mediríamos»*, y **tiene que ser editable desde Configuración con efecto inmediato** | La escala se queda con los defaults del ejemplo hasta que midan. Lo editable ya funciona (`listarConfig` muestra el catálogo aunque no haya fila) y lo inmediato lo arregló D-3 |
+| Las nueve fechas de ingreso | *«ya las colocará el admin pronto»* | A-8 sigue esperando ese dato, sin nada más que hacer de este lado |
+| ¿Cómo se declara una falta? | *«se pone como falta si no se marca su huella en el día y ya»* | Es lo implementado. Lo que falta no es la regla sino **cuándo corre**: nada despierta al sistema un día sin marcas. Ver §2 |
 
 ## 2. 🔴 Las preguntas que nadie puede contestar por el administrador
 
