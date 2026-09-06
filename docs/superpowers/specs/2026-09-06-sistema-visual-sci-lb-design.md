@@ -5,6 +5,10 @@
 > documento dice sobre color, `toque`, `hover-fine` y movimiento reducido sigue vigente tal cual.
 >
 > **Fecha:** 6 de septiembre de 2026.
+> **Revisión del mismo día:** tras ver las primeras maquetas, Alexander pidió más vida, más color
+> y más movimiento. Cambiaron §3.2 (acento por módulo), §3.8 y §6 (tres presupuestos de
+> movimiento), §4 (el hilo pasa a dos tramos) y §7 (capa de visualización de datos). El resto se
+> mantiene tal como se aprobó.
 > **Estado:** aprobada en diseño. Sin implementar.
 > **Alcance del rigor:** zona de presentación. No toca la cadena del sueldo, ni RLS, ni esquema de
 > base. Ninguna regla de negocio cambia.
@@ -52,6 +56,8 @@ Tomadas con Alexander el 6 de septiembre de 2026.
 | **Movimiento** | Expresivo con momentos destacados | Mínimo funcional |
 | **Firma** | Hilo dorado, tipografía con voz, superficies con materia, crest presente | — |
 | **Tokens** | Variables CSS como fuente única | Seguir espejando dos archivos a mano |
+| **Color** | Acento por módulo, sobre familia categórica ampliada a siete | Color sólo dentro de los datos; repintado completo |
+| **Animación** | Tres presupuestos, veintidós piezas enumeradas | Máximo movimiento; mantener el tope único de 300 ms |
 
 **Sobre «escritorio manda».** Se eligió a sabiendas de que la mitad del equipo llena el ERP de pie y
 con el teléfono. La densidad y la jerarquía se calibran para escritorio, pero rige un **piso duro
@@ -111,7 +117,7 @@ Cambian exactamente dos archivos.
 **El precio, que hay que conocer:** los canales RGB no se leen como un color. Cada token lleva el
 hexadecimal en un comentario al lado, que es lo que ya hace el pipeline con sus tintes por columna.
 
-### 3.2 Color: qué se agrega
+### 3.2 Color: superficies
 
 Nada de lo que existe cambia de valor. Se suman dos superficies, que son la razón de que hoy todo se
 lea plano — `paper` `#f6f4ef` y una tarjeta blanca son casi el mismo color:
@@ -124,7 +130,69 @@ lea plano — `paper` `#f6f4ef` y una tarjeta blanca son casi el mismo color:
 La jerarquía completa queda en cuatro planos: `navy-deep` (shell) → `paper` (fondo de trabajo) →
 `superficie` (tarjeta) → `superficie-hundida` (hueco dentro de la tarjeta).
 
-### 3.3 Tipografía
+### 3.3 Color: el acento por módulo
+
+El sistema tiene hoy tres familias categóricas —lila, arcilla y mar— usadas casi sólo en los chips de
+rol. Se amplían a **siete**, y con navy y `gold-deep` completan **nueve acentos**: uno por cada tipo
+de trabajo que hace el ERP.
+
+**El acento no es decoración: es orientación.** Dice de qué clase de trabajo es la pantalla antes de
+que se lea el título, y lo dice igual en el menú, en la cabecera, en los tiles y en los gráficos.
+
+| Familia | `soft` | `line` | *(base)* | `deep` | Tono |
+|---|---|---|---|---|---|
+| `cat-mar` | `#e8f3f4` | `#c0dee1` | `#2f7f88` | `#1e5a61` | 187° verde azulado *(existente)* |
+| `cat-lila` | `#f2eef9` | `#d7cbee` | `#6f5aa8` | `#4e3d7d` | 265° violeta *(existente)* |
+| `cat-arcilla` | `#fbeee9` | `#f0cfc1` | `#b5643f` | `#8a462a` | 18° terracota *(existente)* |
+| `cat-oliva` | `#f1f4e7` | `#d5deb9` | `#6d8438` | `#4b5c23` | 82° verde oliva **nuevo** |
+| `cat-ciruela` | `#f7edf7` | `#e3c9e4` | `#8f4f92` | `#67356a` | 297° ciruela **nuevo** |
+| `cat-humo` | `#eef1f4` | `#ccd5de` | `#5b7086` | `#3c4d5e` | 210° azul grisáceo frío **nuevo** |
+| `cat-piedra` | `#f4f1eb` | `#ded6c8` | `#8a7a63` | `#5d5140` | 40° gris cálido **nuevo** |
+
+`deep` sobre `soft` pasa 4.5:1 en las siete. **La base no es para texto largo**: es superficie, punto
+de gráfico y trazo.
+
+**Por qué siete y no doce.** El espacio de tono utilizable es más chico de lo que parece: el oro
+ocupa los 54°, el aviso los 35°, el error los 0°, el éxito los 155°, el info los 207° y el navy los
+226°. Un categórico que caiga encima de cualquiera de ésos enseña a leer mal el sistema entero — es
+el mismo error que ya se cometió pintando los chips de rol con el verde de éxito, porque **un
+encargado no es un acierto**. Las cuatro familias nuevas se eligieron por hueco libre, no por gusto:
+oliva a 82°, ciruela a 297°, y dos neutrales de distinto temple —humo frío y piedra cálida— que no
+compiten con ningún semántico porque casi no tienen saturación.
+
+**El mapa de módulos.** Nueve grupos, nueve acentos. El grupo, y no la ruta, es lo que lleva color:
+así `/pipeline`, `/pipeline/metricas` y `/pipeline/envios` se leen como el mismo lugar.
+
+| Grupo | Rutas | Acento | Por qué |
+|---|---|---|---|
+| Inicio | `/`, `/buscar` | `navy` | Lo institucional no necesita distinguirse de sí mismo |
+| Sueldos | `/sueldos`, `/pagos` | `gold-deep` | El oro es el hilo, y el hilo termina en el pago |
+| Pipeline | `/pipeline*` | `cat-mar` | El agua de la lavandería, el recorrido de la prenda |
+| Solicitudes | `/solicitudes*` | `cat-oliva` | Lo que la tienda pide y el almacén despacha |
+| Inventario | `/inventario` | `cat-arcilla` | La materia: dónde está físicamente cada prenda |
+| Lavandería | `/envio-lavanderia` | `cat-ciruela` | Distinto del pipeline, aunque desemboque en él |
+| Personas | `/colaboradores`, `/personal`, `/empleados`, `/asistencias`, `/incidencias` | `cat-humo` | Neutral a propósito: son datos de gente, y el color no debe opinar |
+| Desempeño | `/reportes*`, `/evaluaciones`, `/valores`, `/mi-desempeno` | `cat-lila` | La cadena que termina en la nota |
+| Sistema | `/configuracion*`, `/dispositivos`, `/notificaciones`, `/administracion/auditoria` | `cat-piedra` | Lo que sostiene y no se toca a diario |
+
+**Personas y Sueldos en neutro y en oro, no en un color vivo, es deliberado.** Son las dos zonas con
+datos de personas reales: la nota de alguien, su sueldo, sus faltas. Un color alegre alrededor de un
+número que decide cuánto cobra alguien es exactamente el tipo de señal que el sistema no debe dar.
+
+**Qué pinta el acento, y qué no.**
+
+| Pinta | No pinta |
+|---|---|
+| El tramo corto del `hilo-titulo`, junto al oro (§4) | Ningún estado: correcto, error, aviso e información salen siempre de los semánticos |
+| El `hilo-activo` y el punto del ítem de menú del grupo | El texto de cuerpo, que sigue en `ink` |
+| El borde superior de 2 px de los tiles del módulo | Los botones primarios, que siguen en navy |
+| La serie principal de todo gráfico del módulo | El fondo de una pantalla completa |
+| El anillo de foco… **no.** El foco es dorado siempre | |
+
+**El foco no cambia de color con el módulo.** Es la única señal de accesibilidad del sistema, y una
+señal que cambia de aspecto según dónde estés deja de ser una señal.
+
+### 3.4 Tipografía
 
 Inter en los pesos que ya se cargan. Nueve tamaños con nombre semántico; **ningún componente vuelve
 a elegir un tamaño de Tailwind**.
@@ -149,7 +217,7 @@ agregar un color más.
 Se conserva sin cambios: **nada monoespaciado en el ERP** (guard vigente desde el 21-ago-2026). Las
 cifras se alinean con `tabular-nums`, que ya viene dentro de `text-cifra` y `text-dato`.
 
-### 3.4 Espaciado
+### 3.5 Espaciado
 
 Rejilla de 4. Cuatro tokens de ritmo vertical, para que dejen de convivir `mb-7`, `mb-6`, `mt-4` y
 `gap-4` sin criterio:
@@ -164,7 +232,7 @@ Rejilla de 4. Cuatro tokens de ritmo vertical, para que dejen de convivir `mb-7`
 Relleno interno, fijo por pieza y no por pantalla: tarjeta `20`, celda de tabla `12 / 10`, campo
 `12 / 10`, modal `24`.
 
-### 3.5 Elevación
+### 3.6 Elevación
 
 Cuatro niveles. **La sombra se deriva de `ink` (`32 40 63`), nunca es negra**: una sombra negra sobre
 papel cálido se lee sucia.
@@ -179,7 +247,7 @@ papel cálido se lee sucia.
 **Regla:** la elevación sube al interactuar y vuelve. Nunca es decorativa, nunca queda permanente
 por encima de `elev-1`.
 
-### 3.6 Radio
+### 3.7 Radio
 
 | Token | px | Para |
 |---|---|---|
@@ -189,7 +257,7 @@ por encima de `elev-1`.
 
 Hoy conviven `rounded-md`, `rounded-lg` y `rounded-xl` sin que la diferencia signifique nada.
 
-### 3.7 Foco
+### 3.8 Foco
 
 **Un solo anillo en todo el sistema.** Se define una vez, como clase de componente:
 
@@ -208,18 +276,32 @@ sigue el radio del elemento.
 Hoy el foco es el del navegador salvo en `stat-box.tsx`, que lo define a mano. Sobre navy,
 directamente no se ve.
 
-### 3.8 Movimiento
+### 3.9 Movimiento
+
+**Tres presupuestos, no uno.** Un único tope de 300 ms deja al sistema rápido y rígido: la misma
+duración para confirmar un toque que para cambiar de pestaña hace que ninguna de las dos cosas se
+entienda. Lo que se cobra distinto es la frecuencia — cuanto más veces por minuto ocurre algo, más
+corto tiene que ser.
+
+| Presupuesto | Tope | Qué entra | Regla |
+|---|---|---|---|
+| **Repetitiva** | 300 ms | Lo que ocurre muchas veces por minuto: presión, hover, entrada de fila, cruce de esqueleto | Si molesta al trabajo repetitivo, sobra |
+| **Contexto** | 450 ms | Lo que ocurre al cambiar de lugar: pestaña, panel, modal, navegación entre lista y ficha | Explica de dónde vino y adónde fue lo que se movió |
+| **Momento** | 600 ms | Los cuatro cierres, y el dibujado inicial de un gráfico | Enumerado y cerrado. Nada más lo usa |
 
 | Token | Valor | Para |
 |---|---|---|
 | `--dur-instante` | 90 ms | Presión sobre un control |
 | `--dur-rapido` | 180 ms | Cruce esqueleto a contenido, aparición sin desplazamiento |
-| `--dur-base` | 250 ms | Casi todo |
-| `--dur-tope` | 300 ms | Máximo para interfaz repetitiva |
-| `--dur-momento` | 450 ms | **Sólo los cuatro momentos de cierre** de §6 |
+| `--dur-base` | 250 ms | Casi todo lo repetitivo |
+| `--dur-tope` | 300 ms | Máximo del presupuesto repetitivo |
+| `--dur-contexto` | 450 ms | Máximo del presupuesto de contexto |
+| `--dur-momento` | 600 ms | Máximo del presupuesto de momento |
 | `--escalon` | 40 ms | Retraso entre elementos de una entrada escalonada |
+| `--escalon-viz` | 60 ms | Retraso entre series de un gráfico que se dibuja |
 | `--curva-salida` | `cubic-bezier(.23, 1, .32, 1)` | Todo lo que entra o sale (ya existe) |
 | `--curva-estado` | `cubic-bezier(.4, 0, .2, 1)` | Cambios bidireccionales: abrir y cerrar, activar y desactivar |
+| `--curva-viz` | `cubic-bezier(.33, 1, .68, 1)` | Trazos que se dibujan: línea, anillo, barra |
 
 ---
 
@@ -230,15 +312,25 @@ mismo: esto es lo que importa acá**.
 
 | Pieza | Forma | Dónde |
 |---|---|---|
-| `hilo-titulo` | 2 px horizontal, tramo dorado de 2.5 rem sobre `line` | `PageHeader`. Es la `gold-rule` actual, sin cambios |
-| `hilo-activo` | 3 px vertical a la izquierda | Ítem activo de sidebar, pestaña activa. **Reemplaza el fondo tintado** |
+| `hilo-titulo` | 2 px horizontal: **2.5 rem de oro, 1.5 rem del acento del módulo**, y el resto en `line` | `PageHeader` |
+| `hilo-activo` | 3 px vertical a la izquierda, del acento del módulo | Ítem activo de sidebar, pestaña activa. **Reemplaza el fondo tintado** |
 | `hilo-progreso` | 3 px horizontal, `scaleX` con `origin-left` sobre pista `line` | Toda barra de progreso del sistema |
-| `hilo-fila` | 2 px vertical a la izquierda | Fila enfocada o seleccionada de una tabla |
-| `hilo-cierre` | 2 px que se enhebra de izquierda a derecha | Los cuatro momentos de cierre de §6 |
+| `hilo-fila` | 2 px vertical a la izquierda, dorado | Fila enfocada o seleccionada de una tabla |
+| `hilo-cierre` | 2 px que se enhebra de izquierda a derecha, dorado | Los cuatro momentos de cierre de §6 |
 
-**Por qué `hilo-activo` reemplaza al fondo tintado.** Un fondo dorado tenue detrás del ítem activo
-compite con el fondo tintado que ya usan los estados semánticos, y a media opacidad sobre navy se
-lee como suciedad. Un trazo no compite con nada y se lee igual de rápido.
+**El hilo pasa a tener dos tramos, y ése es todo el cambio de §4.** El oro va primero porque es la
+marca y no se negocia; el acento va pegado a continuación porque es el módulo, y cambia. La forma
+—una regla fina bajo el título, con un tramo corto encendido— es idéntica a la que ya existe, así
+que nadie tiene que reaprender nada: lo que se gana es que la cabecera de Pipeline y la de Sueldos
+dejan de ser la misma imagen.
+
+**Cuando se navega entre módulos, el tramo del acento recolorea en 450 ms** (presupuesto de
+contexto). Es la única transición de color de pantalla completa del sistema, y existe porque explica
+que cambiaste de lugar, no sólo de página.
+
+**Por qué `hilo-activo` reemplaza al fondo tintado.** Un fondo tenue detrás del ítem activo compite
+con el fondo tintado que ya usan los estados semánticos, y a media opacidad sobre navy se lee como
+suciedad. Un trazo no compite con nada y se lee igual de rápido.
 
 ### El crest
 
@@ -269,6 +361,11 @@ Grilla: 2 columnas en escritorio, 1 apilada bajo 900 px.
 
 **Tipografía.** La cifra en `text-cifra`, el rótulo del tile en `text-rotulo`, el pie en
 `text-apoyo`. El delta lleva flecha y color semántico, nunca sólo color.
+
+**Forma, no sólo número.** Cada tile lleva su borde superior de 2 px en el acento del módulo y, donde
+hay historia, una `Chispa` debajo de la cifra. Un panel de cuatro números sueltos es exactamente lo
+que hace que un ERP se vea viejo: el número dice cuánto, la forma dice hacia dónde. Las tarjetas de
+abajo llevan `Anillo` o `Barras` según lo que muestren, y todas se dibujan una sola vez al montar.
 
 **Estados.** Carga con `SkeletonStat` de la misma silueta.
 **Un panel nunca está vacío**: muestra ceros y explica por qué están en cero («Todavía no hay
@@ -344,9 +441,10 @@ números, no trabajo.
 
 ### El presupuesto
 
-**250 ms base, 300 ms de tope** para todo lo que se repite. Una sola excepción, cerrada y
-enumerada: **hasta 450 ms en los cuatro momentos de cierre**, que son los únicos lugares donde el
-sistema tiene derecho a hacerse notar porque algo terminó y no tiene vuelta atrás:
+Tres tramos, según cuántas veces por minuto ocurre la cosa: **repetitiva 300 ms · contexto 450 ms ·
+momento 600 ms** (§3.9). El presupuesto de momento está **enumerado y cerrado**: son los cuatro
+lugares donde el sistema tiene derecho a hacerse notar porque algo terminó y no tiene vuelta atrás,
+más el dibujado inicial de un gráfico.
 
 1. Liquidación cerrada
 2. Reporte de turno enviado
@@ -370,15 +468,55 @@ Escalón de 40 ms. Toda pantalla entra en el mismo orden, y ese orden es la jera
 Máximo 6 elementos escalonados. A partir del séptimo entran junto con el sexto: si no, la última
 fila aparece medio segundo tarde y se lee como que la página se colgó.
 
-### Movimiento nuevo
+### El catálogo: veintidós piezas
 
-| Qué | Cómo | Por qué |
-|---|---|---|
-| **Presión** | Todo lo tocable baja a `scale(.985)` en 90 ms | Hoy sólo lo hace `Card interactive`. En una pantalla táctil sin `:hover`, es la única confirmación de que el toque llegó |
-| **Cambio de valor** | `count-up` (la pieza ya existe) más un destello dorado de 400 ms sobre el fondo del tile | Una cifra que cambia sin avisar no se ve; la persona vuelve a mirar y ya cambió |
-| **Prenda que avanza** | Sale por el borde derecho de su columna y entra por el izquierdo de la siguiente, 280 ms | La prenda no desaparece y reaparece: se mueve, que es lo que de verdad pasó |
-| **Vista compartida** | Avatar y nombre persisten entre lista y ficha (View Transitions API) | Elimina el parpadeo de identidad al navegar |
-| **Esqueleto a contenido** | Cruce de opacidad de 180 ms, sin desplazamiento | El esqueleto ya tiene la silueta correcta, así que no hace falta que nada salte |
+Enumeradas porque un catálogo cerrado es lo que separa «el sistema tiene movimiento» de «cada
+pantalla anima lo que se le ocurre». Las ocho que ya existen se conservan; las catorce nuevas están
+marcadas.
+
+**Repetitiva — tope 300 ms**
+
+| # | Pieza | Duración | Qué hace |
+|---|---|---|---|
+| 1 | `presion` **nueva** | 90 ms | Todo lo tocable baja a `scale(.985)`. En pantalla táctil no hay `:hover`: es la única confirmación de que el toque llegó |
+| 2 | `hover-color` | 180 ms | Fondo y borde de una fila o control al pasar. Sin gatear: un color pegado no engaña a nadie |
+| 3 | `hover-levanta` **nueva** | 240 ms | Tarjeta que sube 2 px y enciende su borde superior con el acento. Gateada con `hover-fine` |
+| 4 | `animate-fade` | 220 ms | Aparición sin desplazamiento |
+| 5 | `animate-rise` | 280 ms | Entrada de una tarjeta o una fila |
+| 6 | `animate-grow-y` | 280 ms | Barra que crece desde la base |
+| 7 | `animate-draw-x` | 260 ms | Línea que se enhebra |
+| 8 | `cruce-esqueleto` **nueva** | 180 ms | Esqueleto a contenido, en opacidad y sin desplazamiento: la silueta ya coincide |
+| 9 | `animate-shimmer` | 1.4 s `linear` | Barrido del esqueleto. Lineal porque un esqueleto que titubea parece colgado |
+| 10 | `chip-entra` **nueva** | 200 ms | Un chip de estado que aparece al filtrar o al cambiar de estado |
+| 11 | `destello-valor` **nueva** | 400 ms | Fondo del tile cuando su cifra cambió. Es color, no desplazamiento: cabe en el presupuesto |
+
+**Contexto — tope 450 ms**
+
+| # | Pieza | Duración | Qué hace |
+|---|---|---|---|
+| 12 | `animate-page-enter` | 300 ms | Entrada de pantalla, con la coreografía escalonada de abajo |
+| 13 | `pestana-desliza` **nueva** | 360 ms | El `hilo-activo` se desliza de una pestaña a la otra en vez de saltar. Dice cuál dejaste |
+| 14 | `animate-scale-in` | 240 ms | Modal o aviso que irrumpe |
+| 15 | `animate-drawer-in` | 240 ms | Drawer móvil |
+| 16 | `panel-entra` **nueva** | 340 ms | Panel lateral o detalle que se abre al costado |
+| 17 | `grupo-expande` **nueva** | 300 ms | Un grupo que se despliega, animando `grid-template-rows` de `0fr` a `1fr` — sin medir alto a mano |
+| 18 | `vista-compartida` **nueva** | 420 ms | Avatar y nombre persisten entre lista y ficha |
+| 19 | `prenda-avanza` **nueva** | 320 ms | Sale por el borde derecho de su columna y entra por el izquierdo de la siguiente. La prenda se mueve, no desaparece y reaparece |
+| 20 | `filtros-pegan` **nueva** | 240 ms | La barra de filtros gana `elev-1` al despegarse |
+
+**Momento — tope 600 ms**
+
+| # | Pieza | Duración | Qué hace |
+|---|---|---|---|
+| 21 | `hilo-cierre` **nueva** | 600 ms | Se enhebra bajo el título de lo que se cerró. **Sólo cuatro lugares:** liquidación cerrada, reporte de turno enviado, prenda entregada, evaluación firmada |
+| 22 | `viz-dibuja` **nueva** | 600 ms, escalón 60 ms | Todo gráfico se dibuja al entrar: la línea se traza, el anillo se llena, las barras crecen desde la base. Una sola vez, al montar — nunca al re-renderizar |
+
+`count-up`, que ya existe, corre junto a `destello-valor` y `viz-dibuja` según dónde esté la cifra.
+
+**Cómo se hace cumplir un catálogo cerrado.** Las veintidós viven como utilidades en
+`tailwind.config.ts` y `globals.css`, y ninguna pantalla escribe `@keyframes` propios. La regla
+`movimiento` del guard (§9) falla si aparece un `@keyframes` o un `transition-duration` literal
+fuera de esos dos archivos.
 
 **Reserva de la vista compartida.** Donde la View Transitions API no exista, el navegador ignora la
 propiedad y la navegación queda como está hoy. No hay ruta condicional ni detección: es degradación
@@ -393,7 +531,7 @@ gatear. `prefers-reduced-motion` quita el desplazamiento y conserva color y opac
 
 ## 7. Componentes
 
-### Seis nuevos
+### Seis de estructura
 
 | Pieza | Qué resuelve | Reemplaza a |
 |---|---|---|
@@ -412,6 +550,32 @@ pantalla y no se escribiría.
 **`Cifra` no formatea sola.** El formato de moneda y de porcentaje sale de donde ya vive; `Cifra`
 recibe el texto ya formateado más el valor numérico para animar. Duplicar el formateo en una pieza
 de presentación es exactamente cómo se cuela una diferencia entre lo que se muestra y lo que se paga.
+
+### Cuatro de visualización
+
+Es la capa que hoy no existe, y de donde de verdad sale la sensación de sistema moderno: un ERP se
+ve viejo no por sus colores, sino porque muestra números sueltos donde debería mostrar una forma.
+
+| Pieza | Qué es | Dónde |
+|---|---|---|
+| `Chispa` | Línea de tendencia de 64 × 20, con relleno de área al 12 % del acento y el último punto marcado. Sin ejes ni etiquetas | Dentro de un `StatBox`: puntos del turno, prendas por día, nota por mes |
+| `Anillo` | Arco de progreso en SVG con `stroke-dasharray`, la cifra en el centro | Nota sobre 20, avance de una tanda de confección, porcentaje de asistencia |
+| `Barras` | Serie corta de barras que crecen desde la base, escalonadas 60 ms, con la barra de hoy destacada | Reportes por sede, prendas por etapa, incidencias por semana |
+| `Medidor` | Escala continua con bandas de color y una aguja: dice dónde cae un valor dentro de un rango | Nota mensual dentro de sus tramos, carga de una sede respecto de su capacidad |
+
+**Cuatro reglas para las cuatro, y ninguna es cosmética:**
+
+1. **Una sola escala por gráfico**, y toda etiqueta nombra un valor que el gráfico alcanza.
+2. **El color no es la única codificación.** Una barra en rojo lleva además su cifra; una aguja
+   lleva su número. La mitad del equipo mira esto en un teléfono al sol.
+3. **La serie principal usa el acento del módulo**; los estados —bien, atención, mal— usan los
+   semánticos. Un gráfico nunca mezcla las dos gramáticas.
+4. **Se dibujan una vez, al montar.** Un gráfico que se re-anima en cada actualización de datos
+   convierte una pantalla de trabajo en una pantalla que parpadea.
+
+`Medidor` es la única de las cuatro que **entra sin consumidor confirmado**: sirve para la nota
+mensual, pero eso lo decide la pantalla de desempeño. Si al llegar a la fase 3 no tiene un consumidor
+real, no entra — la misma regla que borró a `Field` el mismo día que se creó.
 
 ### Ocho afinados
 
@@ -456,8 +620,14 @@ Cinco reglas nuevas en `tools/guard-reglas.sh`, todas sobre `apps/erp-web`:
 | `elevacion` | `shadow-sm`, `shadow`, `shadow-md`, `shadow-lg`, `shadow-xl` | `elev-0` a `elev-3` |
 | `foco` | `focus-visible:ring-`, `focus:ring-`, y `outline-none` sin `anillo` en la misma cadena de clases | `anillo` |
 | `carga` | Una ruta con `page.tsx` que consulta datos y no tiene `loading.tsx` hermano | Un `loading.tsx` por ruta |
+| `movimiento` | Un `@keyframes` o un `transition-duration` literal fuera de `globals.css` y `tailwind.config.ts` | Las veintidós utilidades del catálogo de §6 |
+| `acento` | Una clase `cat-*` escrita a mano en una pantalla | El acento se toma del grupo de módulo (§3.3), no se elige por pantalla |
 
-**Las cinco van con línea base congelada.** Hoy fallan en decenas de archivos: las 72 pantallas
+La regla `acento` es la que impide que esto se convierta en lo mismo que ya pasó con el color: siete
+familias sueltas en 72 pantallas son siete oportunidades de que cada una elija la suya. El acento
+sale de una tabla —ruta a grupo, grupo a familia— y de ningún otro lugar.
+
+**Las siete van con línea base congelada.** Hoy fallan en decenas de archivos: las 72 pantallas
 usan `text-sm` y `rounded-lg` en todas partes. Sin línea base el guard queda en rojo permanente y
 alguien lo apaga, y entonces no protege nada. Con línea base, la violación conocida se tolera, **no
 puede crecer**, y cada pantalla propagada se descuenta de la lista — que es el mismo mecanismo con
@@ -478,7 +648,7 @@ direcciones**: con una violación inyectada tiene que fallar con código 1, y si
 | **0** | Canvas navegable con los cuatro arquetipos, el catálogo de componentes y las escalas | Alexander lo mira y aprueba o corrige |
 | **1** | Tokens: `globals.css` como fuente única, `tailwind.config.ts` derivado, familias nuevas | Las utilidades de token existentes siguen presentes en el CSS compilado, una por una |
 | **2** | `anillo`, `elev-*`, `hilo-*` y las clases de componente en `globals.css` | `next build` y comprobación de presencia en el CSS compilado |
-| **3** | Seis componentes nuevos | Typecheck, `next build`, y **cada uno con al menos un consumidor real en la misma tanda** |
+| **3** | Diez componentes nuevos: seis de estructura, cuatro de visualización | Typecheck, `next build`, y **cada uno con al menos un consumidor real en la misma tanda** |
 | **4** | Ocho componentes afinados | Typecheck, `next build`, guard, y revisión en pantalla de las cuatro faro |
 | **5** | Shell: sidebar, topbar, `PageHeader`, navegación móvil | Revisión en pantalla a 360 px y a 1440 px |
 | **6** | Las cuatro pantallas faro | Revisión en pantalla, incluyendo carga, vacío y error |
@@ -514,8 +684,11 @@ Una por pantalla, en la fase 8:
 | **Nadie mira una pantalla renderizada**, que es la limitación que ya pesó en la pasada de agosto | El canvas de la fase 0 es lo primero, y las fases 4 a 6 exigen revisión en pantalla como criterio de cierre |
 | La conversión de hexadecimal a canales RGB rompe un color en silencio | Comprobar las utilidades de token una por una en el CSS compilado, como se hizo con las 105 del 20-ago |
 | El guard nuevo queda en rojo y alguien lo apaga | Línea base congelada desde el primer commit de la fase 7 |
-| Seis componentes nuevos sin consumidores reales | Cada uno entra con al menos un consumidor en la misma tanda, o no entra |
-| Los momentos de 450 ms se propagan | Están enumerados: cuatro, y `--dur-momento` no se usa en ningún otro lugar. Es revisable con una búsqueda |
+| Diez componentes nuevos sin consumidores reales | Cada uno entra con al menos un consumidor en la misma tanda, o no entra. `Medidor` es el candidato a quedarse afuera |
+| Los momentos de 600 ms se propagan | Están enumerados: cuatro cierres más el dibujado de gráficos, y la regla `movimiento` del guard impide declarar duraciones fuera del catálogo |
+| **Siete familias categóricas se convierten en siete verdes distintos** — el error que este repo ya pagó, ahora multiplicado | El acento sale de una tabla ruta-a-grupo, nunca de la pantalla, y la regla `acento` del guard falla si una pantalla escribe una clase `cat-*` a mano |
+| Un acento cae encima de un semántico y el sistema enseña a leer mal | Las cuatro familias nuevas se eligieron por hueco de tono libre, con los seis tonos ocupados (oro 54°, aviso 35°, error 0°, éxito 155°, info 207°, navy 226°) declarados en §3.3 |
+| Veintidós animaciones pesan en las laptops del mostrador | Sólo `transform` y `opacity`; los gráficos se dibujan una vez al montar y nunca al re-renderizar; `prefers-reduced-motion` sigue quitando todo el desplazamiento |
 | «Escritorio manda» empeora la adopción, que ya está en 4,4 % | El piso móvil de §2 es duro y está en la checklist como punto 5 |
 | La vista compartida no existe en algún navegador del equipo | Degrada sola. No hay ruta condicional que mantener |
 
