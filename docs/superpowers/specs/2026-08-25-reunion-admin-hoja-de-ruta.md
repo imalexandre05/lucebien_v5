@@ -155,6 +155,22 @@ por una pantalla rota, que no es mejor.
 | Las nueve fechas de ingreso | *«ya las colocará el admin pronto»* | A-8 sigue esperando ese dato, sin nada más que hacer de este lado |
 | ¿Cómo se declara una falta? | *«se pone como falta si no se marca su huella en el día y ya»* | Es lo implementado. Lo que falta no es la regla sino **cuándo corre**: nada despierta al sistema un día sin marcas. Ver §2 |
 
+## 1.ter Segunda tanda de respuestas — 25-ago-2026
+
+| Pregunta | Respuesta | Qué cambia |
+|---|---|---|
+| ¿Cuántos puntos vale una venta? | **Medir primero**, igual que la escala | `pts_por_sol_vendido` sigue **vacía a propósito** — que es exactamente lo que ya está. Sin nada que construir. Y hoy no bloquea a nadie: `sueldo_ventas` tiene **cero filas**, el módulo de ventas todavía no se usa |
+| Tolerancia 0: ¿la tardanza cuenta desde la hora pactada o desde 10 minutos antes? | **Desde la hora pactada.** Los 10 minutos antes son expectativa cultural, no algo que el sistema mida ni descuente | **Confirma lo que ya corre.** Con `sueldo_tolerancia_minutos = 0`, quien entra 14:00 y llega 14:01 tiene 1 minuto de tardanza. Nada que cambiar |
+| ¿Hasta dónde llega «eliminar personal»? | **Si no tiene pagos ni evaluaciones** — se puede borrar aunque tenga algo de asistencia o reportes sueltos | Acota F-3. Ver la spec propia |
+| ¿Qué módulos en paralelo? | **Notificaciones, eliminar personal, y mejorar el lector de huellas.** Exámenes **no** todavía | El de exámenes queda fuera por ahora |
+| ¿Quién es Jordan? | El administrador real; Alexander administra el sistema | F-4 cerrado |
+
+**Sobre el defecto de las actividades extra**, encontrado midiendo la base el 25-ago mientras se investigaba
+A-7 (*«corregir las horas extras»*): el catálogo tiene pesos reales (michi = 10 puntos, pañuelo = 10,
+pantalón nuevo = 6) pero **las 13 filas de `reporte_extras` tienen `peso_unitario = 0`**, así que todo
+el trabajo extra registrado vale cero — en el reporte y en la nota. Pesa más desde la `0095`, que hizo
+que los extras entren a la nota. En arreglo; falta que Alexander confirme que era eso lo que veía mal.
+
 ## 2. 🔴 Las preguntas que nadie puede contestar por el administrador
 
 Estas quedan **abiertas a propósito**. Ninguna se rellena con un default inventado (no-negociable 5);
