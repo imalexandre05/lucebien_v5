@@ -72,7 +72,7 @@ empezar.
 | B-6 | *«en caso si no se marca ni una huella ya es falta»* | 📐 | Hoy queda `sin_dato` (que no es falta). Es un cambio de regla real |
 | B-7 | *«¿cómo se marca en las asistencias cuando es doble turno?»* | 🔴 | Pregunta del administrador, no pedido. Ver §2 |
 | B-8 | *«tratar de mejorar el reconocimiento del huellero para que no tenga tantos errores»* · *«entrenar al huellero para reconocer marcas, a veces los colaboradores fallan»* | ⏸️ | Es hardware/configuración del Hikvision, no del ERP. Va a la lista de Jordan |
-| B-9 | *«notificaciones en caso de declaraciones falla»* | ⏸️ | Necesita definir por dónde notifica (¿pantalla? ¿WhatsApp?) |
+| B-9 | *«notificaciones en caso de declaraciones falla»* | 📐 | **El módulo ya existe y corre** (dos cron diarios, migraciones `0041`/`0042`) pero cuatro de sus cinco reglas son del comercial: sin novedades desde el 26-ago. Canal decidido: dentro del sistema. Spec en [notificaciones/2026-09-06-...](notificaciones/2026-09-06-notificaciones-de-control-interno-design.md), con dos agujeros de aislamiento que se cierran primero |
 | B-10 | *«que en declarar asistencias solo se vea lo que pone del período»* | 📐 | Pantalla, acotado |
 | B-11 | *«cómo hacer para registrar persona y conectar huellero»* | ⏸️ | Es procedimiento, no código: va a la lista de Jordan + un documento de «cómo dar de alta a alguien» |
 
@@ -289,7 +289,18 @@ Por radio de daño y por lo que el administrador subrayó, no por lo que es más
   sobre qué se evalúa, quién arma las preguntas y qué pasa con el resultado.
 - **Mejorar el reconocimiento del huellero** (B-8): es configuración del equipo Hikvision, no del
   ERP. Va a la lista de Jordan.
-- **Notificaciones** (B-9): falta decidir el canal antes de construir nada.
-- **Eliminar personal** (F-3, la parte de «eliminar»): ya se estudió el 14-ago y se decidió que no
-  se borra —cuesta 48 referencias y se lleva historia de la empresa—. Se suspende. Si el
-  administrador insiste, es una conversación aparte con ese costo sobre la mesa.
+- ~~**Notificaciones** (B-9): falta decidir el canal antes de construir nada.~~
+  **Resuelto el 6-sep.** El canal se decidió —dentro del sistema, ver la spec §4— y al ir a medirlo
+  apareció que el módulo **ya existe y corre**: dos cron diarios que terminan bien y no producen una
+  notificación nueva desde el 26-ago, porque cuatro de sus cinco reglas son del módulo comercial.
+  Spec en [notificaciones/2026-09-06-notificaciones-de-control-interno-design.md](notificaciones/2026-09-06-notificaciones-de-control-interno-design.md).
+  **Trae dos agujeros de aislamiento medidos** (`destinatario_rol` que la RLS nunca consulta, y un
+  `with check` que deja a cualquiera crear un aviso global): se cierran antes de agregar la primera
+  regla que nombre a una persona.
+- ~~**Eliminar personal** (F-3, la parte de «eliminar»): ya se estudió el 14-ago y se decidió que no
+  se borra —cuesta 48 referencias y se lleva historia de la empresa—. Se suspende.~~
+  **Acotado el 25-ago** a «deshacer un alta hecha por error», que no es lo mismo que borrar a alguien
+  que trabajó: spec en
+  [empleados/2026-08-25-borrar-alta-por-error-design.md](empleados/2026-08-25-borrar-alta-por-error-design.md).
+  Suspender sigue siendo la respuesta para todo lo demás. La §7 de esa spec corrige el número: no son
+  48 referencias sino **50 columnas en 35 tablas**, medidas contra la base.
