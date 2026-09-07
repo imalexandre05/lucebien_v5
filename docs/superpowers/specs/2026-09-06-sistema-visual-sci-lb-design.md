@@ -64,7 +64,7 @@ Tomadas con Alexander el 6 de septiembre de 2026.
 | **Firma** | Hilo dorado, tipografía con voz, superficies con materia, crest presente | — |
 | **Tokens** | Variables CSS como fuente única | Seguir espejando dos archivos a mano |
 | **Color** | Acento por módulo, sobre familia categórica ampliada a siete | Color sólo dentro de los datos; repintado completo |
-| **Animación** | Tres presupuestos, treinta piezas enumeradas | Máximo movimiento; mantener el tope único de 300 ms |
+| **Animación** | Tres presupuestos, treinta y seis piezas enumeradas | Máximo movimiento; mantener el tope único de 300 ms |
 | **Carácter** | Modo vibrante: banda de módulo en color pleno, radios generosos, sombra teñida, display propio | La sobriedad corporativa del manual §3 |
 | **Superficies** | Dos: operario sin teclado y administración densa (§3.11) | Una sola interfaz para los dos públicos |
 
@@ -481,6 +481,20 @@ elige por el fondo, nunca por gusto**:
 La marca de agua del `EmptyState` es la que más cambia el carácter del sistema: hoy un hueco vacío
 muestra un ícono gris de la librería y se lee como un error del navegador.
 
+**Tercera pasada del sello, y es la que cierra el asunto.** La marca **ya trae su propio marco**:
+el retazo de tela con el borde cortado en zigzag, que es el corte de tijera de pinking de la
+sastrería. Meterlo dentro de una chapa redondeada con filete dorado lo enmarcaba dos veces, y a
+34 px el león se volvía una mancha.
+
+**Desde ahora el sello va suelto sobre el fondo que le corresponde**, en cuatro tamaños: 26 en la
+barra móvil, 34 en la sidebar, 44 en una cabecera, 64 en el login —donde lleva un aura dorada, que
+es la única licencia—. La chapa sobrevive sólo donde el fondo no se controla (una foto, un fondo de
+sede configurable) o donde el sello tiene que leerse como una etiqueta física, y ahí va **sin filete
+interior** y con el sello al 84 %.
+
+En la sidebar del pliego y en el login, el lockup completo reemplaza a chapa más texto: escribir
+«LuceBien» al lado de un logotipo que ya dice «LUCEBIEN» era decir lo mismo dos veces.
+
 **Defecto encontrado el 6 de septiembre, que se corrige en la fase 5.**
 `components/brand/logo.tsx` define `LOCKUP_RATIO = 677 / 203` y lo aplica a las **dos** variantes del
 lockup. Pero `logo_full_color.png` mide **1937 × 1796** — es el sello cuadrado, no el lockup
@@ -612,10 +626,10 @@ Escalón de 40 ms. Toda pantalla entra en el mismo orden, y ese orden es la jera
 Máximo 6 elementos escalonados. A partir del séptimo entran junto con el sexto: si no, la última
 fila aparece medio segundo tarde y se lee como que la página se colgó.
 
-### El catálogo: treinta piezas
+### El catálogo: treinta y seis piezas
 
 Enumeradas porque un catálogo cerrado es lo que separa «el sistema tiene movimiento» de «cada
-pantalla anima lo que se le ocurre». Las ocho que ya existen se conservan; las veintidós nuevas están
+pantalla anima lo que se le ocurre». Las ocho que ya existen se conservan; las veintiocho nuevas están
 marcadas.
 
 Las dos últimas son del modo vibrante: **`icono-pop`** (100 ms) hace que el glifo dentro de su
@@ -667,6 +681,12 @@ cierres, que tienen su propio hilo.
 | 28 | `check-dibuja` **nueva** | 700 ms · momento | El check de una confirmación se traza en vez de aparecer. Sólo en la confirmación grande de operario (§3.11) |
 | 29 | `chapa-brillo` **nueva** | 700 ms · momento | Un barrido de luz cruza la chapa del sello. **Sólo en el login**, una vez |
 | 30 | `progreso-vivo` **nueva** | 1.8 s en bucle | Un brillo recorre la barra de progreso mientras la operación corre. Se apaga al llegar al final |
+| 31 | `menu-desliza` **nueva** | 400 ms · contexto | El fondo del ítem activo **se desliza** por la sidebar en vez de saltar. Dice de dónde venís |
+| 32 | `numero-rueda` **nueva** | 500 ms · contexto | Los dígitos giran como un odómetro cuando la cifra cambia por una acción, no por una recarga |
+| 33 | `fondo-respira` **nueva** | 9 s en bucle | La banda de módulo respira muy lento. Es ambiental: nadie lo mira, y sin él la banda se lee como una imagen pegada |
+| 34 | `arrastre-eleva` **nueva** | 200 ms · repetitiva | La prenda se levanta, se inclina 1,5° y proyecta `elev-3` al agarrarla en el kanban |
+| 35 | `error-sacude` **nueva** | 300 ms · repetitiva | Sacudida corta del motivo de bloqueo cuando alguien toca un botón deshabilitado. **Lleva el motivo consigo**: no es la sacudida sola |
+| 36 | `panel-cortina` **nueva** | 400 ms · contexto | El contenido de una pestaña entra como cortina con `clip-path`. Reemplaza el parpadeo al cambiar de pestaña |
 
 `count-up`, que ya existe, corre junto a `destello-valor` y `viz-dibuja` según dónde esté la cifra.
 
@@ -816,7 +836,7 @@ Cinco reglas nuevas en `tools/guard-reglas.sh`, todas sobre `apps/erp-web`:
 | `elevacion` | `shadow-sm`, `shadow`, `shadow-md`, `shadow-lg`, `shadow-xl` | `elev-0` a `elev-3` |
 | `foco` | `focus-visible:ring-`, `focus:ring-`, y `outline-none` sin `anillo` en la misma cadena de clases | `anillo` |
 | `carga` | Una ruta con `page.tsx` que consulta datos y no tiene `loading.tsx` hermano | Un `loading.tsx` por ruta |
-| `movimiento` | Un `@keyframes` o un `transition-duration` literal fuera de `globals.css` y `tailwind.config.ts` | Las treinta utilidades del catálogo de §6 |
+| `movimiento` | Un `@keyframes` o un `transition-duration` literal fuera de `globals.css` y `tailwind.config.ts` | Las treinta y seis utilidades del catálogo de §6 |
 | `acento` | Una clase `cat-*` escrita a mano en una pantalla | El acento se toma del grupo de módulo (§3.3), no se elige por pantalla |
 
 La regla `acento` es la que impide que esto se convierta en lo mismo que ya pasó con el color: siete
@@ -888,7 +908,7 @@ Una por pantalla, en la fase 8:
 | Los momentos de 600 ms se propagan | Están enumerados: cuatro cierres más el dibujado de gráficos, y la regla `movimiento` del guard impide declarar duraciones fuera del catálogo |
 | **Siete familias categóricas se convierten en siete verdes distintos** — el error que este repo ya pagó, ahora multiplicado | El acento sale de una tabla ruta-a-grupo, nunca de la pantalla, y la regla `acento` del guard falla si una pantalla escribe una clase `cat-*` a mano |
 | Un acento cae encima de un semántico y el sistema enseña a leer mal | Las cuatro familias nuevas se eligieron por hueco de tono libre, con los seis tonos ocupados (oro 54°, aviso 35°, error 0°, éxito 155°, info 207°, navy 226°) declarados en §3.3 |
-| Treinta animaciones pesan en las laptops del mostrador | Sólo `transform` y `opacity`; los gráficos se dibujan una vez al montar y nunca al re-renderizar; `prefers-reduced-motion` sigue quitando todo el desplazamiento |
+| Treinta y seis animaciones pesan en las laptops del mostrador | Sólo `transform` y `opacity`; los gráficos se dibujan una vez al montar y nunca al re-renderizar; `prefers-reduced-motion` sigue quitando todo el desplazamiento |
 | «Escritorio manda» empeora la adopción, que ya está en 4,4 % | El piso móvil de §2 es duro y está en la checklist como punto 5 |
 | La vista compartida no existe en algún navegador del equipo | Degrada sola. No hay ruta condicional que mantener |
 
