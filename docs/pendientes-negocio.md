@@ -1288,3 +1288,52 @@ honesto de la pantalla").
 Sigue pendiente, sin cambios respecto de lo anotado arriba: aplicar 0096+0097+0098 juntas (no
 aplicadas todavía) y decidir el disparador de `huellero_declarar_faltas_del_dia` (cron vs. botón
 manual).
+
+**Corrección del 07-sep-2026:** lo anterior quedó viejo. Verificado contra `scilb` con
+`list_migrations`: las tres (`0096`, `0097`, `0098`) **están aplicadas**, del 25-ago-2026. Sigue
+sin decidir el disparador de `huellero_declarar_faltas_del_dia` — eso no cambió.
+
+---
+
+## Auditoría del 07-sep-2026 — identidades duplicadas, y qué encontró el verificador sobre ellas
+
+Al revisar el estado general del sistema se encontraron **tres personas reales representadas por
+dos filas cada una** en `empleados`: `Mary`/`Marylin`, `Yessi`/`Yessica`, `Elthom`/`Elthon`. El
+historial del pipeline (migrado del SQLite legacy) había quedado en una fila y la asistencia en
+vivo del huellero en la otra — el 80% de todos los puntos que existen en el sistema (5.169 de
+6.472) estaba atrapado en filas que nunca iban a acumular asistencia ni a evaluarse.
+
+Corregido con la migración `0102` (spec en
+[empleados/2026-09-07-identidades-duplicadas-design.md](superpowers/specs/empleados/2026-09-07-identidades-duplicadas-design.md)):
+se fusionó el historial en la fila que el huellero alimenta hoy, y la fila vieja quedó
+`activo = false` con una nota, sin borrarse. Un subagente verificador revisó la spec, la migración
+y la prueba contra `scilb` en vivo antes de aplicar y encontró tres bloqueos reales (la
+justificación citaba una lectura del código que no era cierta, la prueba no cubría las diez
+columnas por igual, y el alias del ETL que decía prevenir el problema en realidad lo habría
+revertido en el siguiente `--run`) — los tres se corrigieron antes de aplicar. **Aplicar la
+migración quedó pendiente de una confirmación explícita** (el clasificador de modo automático del
+entorno bloquea escrituras directas contra la base de producción); si esta línea sigue así al
+leerla, `0102_identidades_duplicadas_empleados.sql` todavía no corrió contra `scilb`.
+
+🔴 **Hallazgo aparte, sin resolver: el `sueldo_acuerdos` y la `evaluaciones_mensuales` de Marylin
+parecen ser datos de prueba, no un acuerdo real.** El verificador encontró que ese acuerdo
+(cod `7073`) lo creó `creado_por = Prueba Admin` (cod `9901`, cuya propia `notas` dice
+*"CUENTA DE PRUEBA E2E - borrar al terminar"*), el 24-ago-2026, en la misma ventana que el resto de
+las filas de prueba de esta rama. La evaluación mensual asociada (17,9, método `ponderado`,
+componentes de aspecto sembrado) tiene la misma pinta. No se tocó porque está fuera del alcance de
+la `0102` (que no mueve nada hacia esa tabla) y porque tocar zona crítica de sueldos sin spec propia
+violaría el no-negociable 6. **Falta que alguien con el contexto del E2E que las creó confirme si
+son de prueba y hay que anularlas** (con el camino sancionado — motivo + reemitir, nunca borrar un
+`sueldo_acuerdos`/`sueldo_liquidaciones` a mano) **o si son reales y hay que dejarlas.**
+
+Además, medido en la misma auditoría: de las 24 filas `activo = true` en `empleados` contra los
+**18 empleados** que dice `CLAUDE.md`, 6 eran de más — las tres duplicadas de arriba (ya resueltas)
+y `Alexito prueba`, `Prueba Admin`, `Prueba Colaborador` (altas de prueba con nombre explícito,
+`Alexito prueba` con 105 asistencias fabricadas, 93 de ellas con fecha futura hasta diciembre de
+2026). Estas tres últimas quedaron **fuera del alcance de la `0102`** a propósito: no son
+identidades partidas de una persona real, y una sección paralela ya está construyendo el mecanismo
+general para deshacer un alta hecha por error
+([empleados/2026-08-25-borrar-alta-por-error-design.md](superpowers/specs/empleados/2026-08-25-borrar-alta-por-error-design.md),
+migración `0099` reservada) — son candidatas naturales para ese mecanismo, no para una migración
+aparte que compita con él. La cuarta fila ambigua, `Alexito` (cod `0000`), se dejó sin tocar: no
+tiene ninguna fila "hermana" y desactivarla dejaría el conteo en 17, no en 18.
