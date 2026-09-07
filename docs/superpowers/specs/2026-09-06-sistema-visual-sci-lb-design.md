@@ -408,17 +408,35 @@ que cambiaste de lugar, no sólo de página.
 con el fondo tintado que ya usan los estados semánticos, y a media opacidad sobre navy se lee como
 suciedad. Un trazo no compite con nada y se lee igual de rápido.
 
-### El crest
+### El sello, y qué archivo va en qué fondo
+
+La marca es un león dentro de un retazo de tela con el borde en zigzag —el corte de tijera de
+pinking que se usa en sastrería—, con «LB» al pie. Hay cuatro archivos en juego, y **la variante se
+elige por el fondo, nunca por gusto**:
+
+| Archivo | Medida | Dónde |
+|---|---|---|
+| `logo_lion_white.png` | 211 × 202 | Dentro de la chapa navy: sidebar, topbar móvil, `/dispositivo` |
+| `logo_lion_black.png` | 211 × 202 | Marca de agua al 7 % en `EmptyState`, sobre papel |
+| `logo_full_white.png` | 677 × 203 | Login, sobre el navy a pantalla completa |
+| `logo_full_black.png` | 677 × 203 | Cabecera de todo documento imprimible |
 
 | Regla | Valor |
 |---|---|
 | Tamaño mínimo | 24 px de alto |
-| Aire alrededor | Media altura del escudo, en los cuatro lados |
-| Dónde aparece | Login · cabecera de todo documento imprimible · marca de agua al 4 % en `EmptyState` · cabecera de sidebar (ya está) |
+| Aire alrededor | Media altura del sello, en los cuatro lados |
+| La chapa | El sello blanco es para fondos oscuros, así que vive dentro de una chapa navy con filete dorado al 55 % y a 3.5 px del borde. Así se ve igual sobre la sidebar que sobre el papel del topbar, sin depender de lo que tenga alrededor |
 | Dónde no | Dentro de una tarjeta de contenido, dentro de un modal, repetido en una lista |
 
 La marca de agua del `EmptyState` es la que más cambia el carácter del sistema: hoy un hueco vacío
 muestra un ícono gris de la librería y se lee como un error del navegador.
+
+**Defecto encontrado el 6 de septiembre, que se corrige en la fase 5.**
+`components/brand/logo.tsx` define `LOCKUP_RATIO = 677 / 203` y lo aplica a las **dos** variantes del
+lockup. Pero `logo_full_color.png` mide **1937 × 1796** — es el sello cuadrado, no el lockup
+horizontal. Sobre fondo claro el logo sale aplastado unas tres veces. Salidas posibles: usar
+`logo_full_black.png` para fondo claro, que sí es 677 × 203; o generar el lockup a color en esa
+proporción y reemplazar el archivo. Se decide con Alexander, porque es material de marca.
 
 ---
 
@@ -680,6 +698,24 @@ real, no entra — la misma regla que borró a `Field` el mismo día que se cre�
 | `PageHeader` | Coreografía de entrada, ranura de migas, subtítulo en `text-apoyo` |
 | `Modal` | `elev-3`, `r-grande`, entrada de 240 ms. Los dos defectos de foco y de alto ya están cerrados |
 
+### El papel: la única salida del sistema que alguien firma
+
+El documento imprimible —constancia de liquidación, comprobante de entrega— **no lleva modo
+vibrante**. Cinco reglas, y ninguna es de gusto:
+
+1. **Lockup negro a 38 px**, arriba a la izquierda. El sello a color no va: en una láser se
+   convierte en una mancha.
+2. **Sin acento de módulo.** En papel el único contraste garantizado es negro sobre blanco.
+3. **Sin sombras.** Ya está en `globals.css` (`box-shadow: none !important` en `@media print`).
+   Una sombra impresa es un rectángulo gris sucio.
+4. **Cifras tabulares.** Es la columna que alguien va a sumar a mano para comprobar.
+5. **Margen de 14 mm** por `@page`, que ya existe. Debajo de eso, media impresora recorta la
+   última fila.
+
+Esta constancia es lo que una persona firma para decir que recibió su sueldo, y el único artefacto
+del sistema que sobrevive fuera de la pantalla. Que se vea serio no es estética: ahí la seriedad
+**es** la función.
+
 ### Lo que no se agrega
 
 Pestañas, migas, línea de tiempo, cajón lateral, paginación y avisos flotantes **no** entran en esta
@@ -740,8 +776,8 @@ direcciones**: con una violación inyectada tiene que fallar con código 1, y si
 | **2** | `anillo`, `elev-*`, `hilo-*` y las clases de componente en `globals.css` | `next build` y comprobación de presencia en el CSS compilado |
 | **3** | Doce componentes nuevos: seis de estructura, dos de carácter, cuatro de visualización | Typecheck, `next build`, y **cada uno con al menos un consumidor real en la misma tanda** |
 | **4** | Ocho componentes afinados | Typecheck, `next build`, guard, y revisión en pantalla de las cuatro faro |
-| **5** | Shell: sidebar, topbar, `PageHeader`, navegación móvil | Revisión en pantalla a 360 px y a 1440 px |
-| **6** | Las cuatro pantallas faro | Revisión en pantalla, incluyendo carga, vacío y error |
+| **5** | Shell, banda de módulo, mapa de acentos por ruta, y la corrección de la proporción del lockup a color | Revisión a 360 px y a 1440 px, los nueve grupos recorridos, y el blanco verificado sobre las siete familias |
+| **6** | Las cuatro pantallas faro, más login, estados e impreso | Revisión en pantalla, y **una impresión de verdad** de la constancia |
 | **7** | Reglas del guard con línea base congelada | La regla falla con violación inyectada y pasa sin ella |
 | **8** | Propagación al alcance vivo, pantalla por pantalla | Checklist de §11 por pantalla, y la línea base baja en cada una |
 
