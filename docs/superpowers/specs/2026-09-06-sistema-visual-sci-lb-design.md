@@ -64,8 +64,9 @@ Tomadas con Alexander el 6 de septiembre de 2026.
 | **Firma** | Hilo dorado, tipografía con voz, superficies con materia, crest presente | — |
 | **Tokens** | Variables CSS como fuente única | Seguir espejando dos archivos a mano |
 | **Color** | Acento por módulo, sobre familia categórica ampliada a siete | Color sólo dentro de los datos; repintado completo |
-| **Animación** | Tres presupuestos, veinticuatro piezas enumeradas | Máximo movimiento; mantener el tope único de 300 ms |
+| **Animación** | Tres presupuestos, treinta piezas enumeradas | Máximo movimiento; mantener el tope único de 300 ms |
 | **Carácter** | Modo vibrante: banda de módulo en color pleno, radios generosos, sombra teñida, display propio | La sobriedad corporativa del manual §3 |
+| **Superficies** | Dos: operario sin teclado y administración densa (§3.11) | Una sola interfaz para los dos públicos |
 
 **Sobre «escritorio manda».** Se eligió a sabiendas de que la mitad del equipo llena el ERP de pie y
 con el teléfono. La densidad y la jerarquía se calibran para escritorio, pero rige un **piso duro
@@ -381,6 +382,55 @@ la primera fila de una tabla fuera de la vista en un portátil de 768 px de alto
 
 ---
 
+### 3.11 Dos superficies: operario y administración
+
+**El ERP no tiene un solo público, y hasta ahora lo trataba como si lo tuviera.** Un encargado que
+audita sueldos en una laptop y una persona que registra prendas de pie en el almacén con el teléfono
+en una mano no necesitan la misma interfaz. La densidad que sirve a uno es la que hace fallar al
+otro.
+
+Desde esta revisión, **cada ruta declara su superficie**, y la superficie decide tamaños, densidad y
+cuánto texto se permite. No lo decide la pantalla.
+
+| | **Operario** | **Administración** |
+|---|---|---|
+| Rutas | `/reportes/nuevo` · `/envio-lavanderia` · `/pipeline/registrar` · `/valores` · `/solicitudes/nueva` · marcado de asistencia | `/colaboradores` · `/sueldos` · `/evaluaciones` · `/administracion/*` · `/configuracion/*` · `/pagos` |
+| Alto mínimo tocable | **56 px** | 40 px |
+| Control por defecto | Botón con ícono y palabra | Campo, tabla, filtro |
+| Texto de instrucción | **Máximo cinco palabras.** «¿Qué prenda?», no «Selecciona el tipo de prenda que vas a enviar» | Frases completas cuando hagan falta |
+| Estructura | Un paso por pantalla, con barra de avance | Todo a la vista, con pestañas |
+| Teclado | **Sólo para nombres propios y observaciones libres** | Libre |
+| Tablas | Ninguna | Sí |
+| Migas y filtros | Ninguno | Sí |
+
+**La regla que ordena todo lo demás: cero teclado.** Todo dato que salga de un conjunto conocido se
+elige tocando. Todo número se sube y se baja con `+` y `−`, o se marca en un teclado numérico propio
+de doce teclas grandes — nunca el del sistema operativo, que tapa media pantalla y obliga a cerrar
+antes de ver qué se escribió.
+
+**Por qué esto importa más que cualquier color.** La adopción está en 4,4 %. La mitad del equipo
+llena esto de pie, en el mostrador, muchas veces con las manos ocupadas. Cada desplegable es un
+teclado que se abre; cada campo de texto es una oportunidad de escribir mal el nombre de una prenda
+y perderla en el pipeline; cada párrafo de instrucción es algo que nadie va a leer dos veces.
+
+**Lo que la superficie de operario prohíbe, y no es negociable:**
+
+1. Ningún campo de texto libre donde exista una lista.
+2. Ninguna tabla.
+3. Ningún párrafo de más de cinco palabras como instrucción.
+4. Ningún control por debajo de 56 px de alto.
+5. Ningún paso que muestre dos preguntas a la vez.
+
+**Y una cosa que sí exige:** al terminar, una **confirmación grande** —disco verde, check que se
+traza, y qué pasó en una línea—. Hoy el reporte se envía y la pantalla apenas cambia; quien lo mandó
+no sabe si salió, así que lo vuelve a mandar.
+
+**«Escritorio manda» sigue vigente, y no se contradice con esto.** La densidad de administración se
+calibra para escritorio. La superficie de operario nunca fue una versión reducida de esa densidad:
+es otra cosa, con su propia escala.
+
+---
+
 ## 4. El hilo dorado como gramática
 
 El oro deja de ser un adorno del título y pasa a ser **un mismo trazo que significa siempre lo
@@ -562,10 +612,10 @@ Escalón de 40 ms. Toda pantalla entra en el mismo orden, y ese orden es la jera
 Máximo 6 elementos escalonados. A partir del séptimo entran junto con el sexto: si no, la última
 fila aparece medio segundo tarde y se lee como que la página se colgó.
 
-### El catálogo: veinticuatro piezas
+### El catálogo: treinta piezas
 
 Enumeradas porque un catálogo cerrado es lo que separa «el sistema tiene movimiento» de «cada
-pantalla anima lo que se le ocurre». Las ocho que ya existen se conservan; las dieciséis nuevas están
+pantalla anima lo que se le ocurre». Las ocho que ya existen se conservan; las veintidós nuevas están
 marcadas.
 
 Las dos últimas son del modo vibrante: **`icono-pop`** (100 ms) hace que el glifo dentro de su
@@ -610,7 +660,13 @@ cierres, que tienen su propio hilo.
 | # | Pieza | Duración | Qué hace |
 |---|---|---|---|
 | 21 | `hilo-cierre` **nueva** | 600 ms | Se enhebra bajo el título de lo que se cerró. **Sólo cuatro lugares:** liquidación cerrada, reporte de turno enviado, prenda entregada, evaluación firmada |
-| 22 | `viz-dibuja` **nueva** | 600 ms, escalón 60 ms | Todo gráfico se dibuja al entrar: la línea se traza, el anillo se llena, las barras crecen desde la base. Una sola vez, al montar — nunca al re-renderizar |
+| 22 | `viz-dibuja` **nueva** | 700 ms, escalón 70 ms | Todo gráfico se dibuja al entrar: la línea se traza, el anillo se llena, las barras crecen desde la base. Una sola vez, al montar — nunca al re-renderizar |
+| 25 | `banda-entra` **nueva** | 500 ms · contexto | La banda de módulo baja y aparece al montar la pantalla. Es lo primero de la coreografía |
+| 26 | `hilo-recorre` **nueva** | 1.6 s en bucle | Un destello dorado recorre el hilo de asiento **mientras algo está en curso**, y se detiene al terminar. Es el único bucle además del esqueleto |
+| 27 | `lista-cascada` **nueva** | 320 ms, escalón 40 ms | Las filas de una tabla entran una tras otra, hasta la sexta |
+| 28 | `check-dibuja` **nueva** | 700 ms · momento | El check de una confirmación se traza en vez de aparecer. Sólo en la confirmación grande de operario (§3.11) |
+| 29 | `chapa-brillo` **nueva** | 700 ms · momento | Un barrido de luz cruza la chapa del sello. **Sólo en el login**, una vez |
+| 30 | `progreso-vivo` **nueva** | 1.8 s en bucle | Un brillo recorre la barra de progreso mientras la operación corre. Se apaga al llegar al final |
 
 `count-up`, que ya existe, corre junto a `destello-valor` y `viz-dibuja` según dónde esté la cifra.
 
@@ -658,6 +714,20 @@ de presentación es exactamente cómo se cuela una diferencia entre lo que se mu
 |---|---|---|
 | `BandaModulo` | La cabecera de color pleno de §3.10, con migas, título, subtítulo, acción y el hilo de asiento | Sin una pieza propia, cada pantalla escribiría su degradado y a la tercera habría tres |
 | `IconoTinta` | El glifo dentro de un cuadrado redondeado de `acento-soft` con el trazo en `acento-deep`, en tres tamaños (28, 36, 44) | Es lo que más amabiliza una interfaz densa: un ícono suelto sobre papel se lee como decoración de sistema; el mismo ícono con su fondo se lee como un objeto. Lleva `icono-pop` al activarse |
+
+### Tres de operario
+
+Existen sólo dentro de la superficie de operario (§3.11), y su razón es la misma: **sacar el teclado
+del medio**.
+
+| Pieza | Qué es | Por qué |
+|---|---|---|
+| `PasoAsistente` | Una pregunta por pantalla, con barra de avance arriba y un solo botón grande abajo. Cierra con la confirmación grande | Un formulario de nueve grupos en una columna se lee como un trámite. Partido en pasos, cada pantalla tiene una sola cosa que hacer |
+| `ContadorMas` | Nombre e ícono a la izquierda, y `−` `valor` `+` en discos de 48 px a la derecha. Se enciende en oro cuando pasa de cero | Escribir «4» en un campo abre el teclado del sistema, que tapa media pantalla. Dos toques no |
+| `TecladoNumerico` | Doce teclas de 56 px propias del sistema, para códigos y cantidades largas | El teclado del sistema operativo no se puede estilar, tapa el contexto, y en el celular obliga a cerrarlo para ver qué se escribió |
+
+`ContadorMas` y `TecladoNumerico` **no se usan en administración**: ahí un campo con teclado es más
+rápido para quien está sentado con un mouse.
 
 ### Cuatro de visualización
 
@@ -746,7 +816,7 @@ Cinco reglas nuevas en `tools/guard-reglas.sh`, todas sobre `apps/erp-web`:
 | `elevacion` | `shadow-sm`, `shadow`, `shadow-md`, `shadow-lg`, `shadow-xl` | `elev-0` a `elev-3` |
 | `foco` | `focus-visible:ring-`, `focus:ring-`, y `outline-none` sin `anillo` en la misma cadena de clases | `anillo` |
 | `carga` | Una ruta con `page.tsx` que consulta datos y no tiene `loading.tsx` hermano | Un `loading.tsx` por ruta |
-| `movimiento` | Un `@keyframes` o un `transition-duration` literal fuera de `globals.css` y `tailwind.config.ts` | Las veinticuatro utilidades del catálogo de §6 |
+| `movimiento` | Un `@keyframes` o un `transition-duration` literal fuera de `globals.css` y `tailwind.config.ts` | Las treinta utilidades del catálogo de §6 |
 | `acento` | Una clase `cat-*` escrita a mano en una pantalla | El acento se toma del grupo de módulo (§3.3), no se elige por pantalla |
 
 La regla `acento` es la que impide que esto se convierta en lo mismo que ya pasó con el color: siete
@@ -774,7 +844,7 @@ direcciones**: con una violación inyectada tiene que fallar con código 1, y si
 | **0** | Canvas navegable con los cuatro arquetipos, el catálogo de componentes y las escalas | Alexander lo mira y aprueba o corrige |
 | **1** | Tokens: `globals.css` como fuente única, `tailwind.config.ts` derivado, familias nuevas | Las utilidades de token existentes siguen presentes en el CSS compilado, una por una |
 | **2** | `anillo`, `elev-*`, `hilo-*` y las clases de componente en `globals.css` | `next build` y comprobación de presencia en el CSS compilado |
-| **3** | Doce componentes nuevos: seis de estructura, dos de carácter, cuatro de visualización | Typecheck, `next build`, y **cada uno con al menos un consumidor real en la misma tanda** |
+| **3** | Quince componentes nuevos: seis de estructura, dos de carácter, cuatro de visualización, tres de operario | Typecheck, `next build`, y **cada uno con al menos un consumidor real en la misma tanda** |
 | **4** | Ocho componentes afinados | Typecheck, `next build`, guard, y revisión en pantalla de las cuatro faro |
 | **5** | Shell, banda de módulo, mapa de acentos por ruta, y la corrección de la proporción del lockup a color | Revisión a 360 px y a 1440 px, los nueve grupos recorridos, y el blanco verificado sobre las siete familias |
 | **6** | Las cuatro pantallas faro, más login, estados e impreso | Revisión en pantalla, y **una impresión de verdad** de la constancia |
@@ -810,7 +880,7 @@ Una por pantalla, en la fase 8:
 | **Nadie mira una pantalla renderizada**, que es la limitación que ya pesó en la pasada de agosto | El canvas de la fase 0 es lo primero, y las fases 4 a 6 exigen revisión en pantalla como criterio de cierre |
 | La conversión de hexadecimal a canales RGB rompe un color en silencio | Comprobar las utilidades de token una por una en el CSS compilado, como se hizo con las 105 del 20-ago |
 | El guard nuevo queda en rojo y alguien lo apaga | Línea base congelada desde el primer commit de la fase 7 |
-| Doce componentes nuevos sin consumidores reales | Cada uno entra con al menos un consumidor en la misma tanda, o no entra. `Medidor` es el candidato a quedarse afuera |
+| Quince componentes nuevos sin consumidores reales | Cada uno entra con al menos un consumidor en la misma tanda, o no entra. `Medidor` es el candidato a quedarse afuera |
 | **La banda de módulo empuja la primera fila de la tabla fuera de la vista** en un portátil de 768 px de alto | Se mira en la fase 6, en un equipo real del mostrador. Si pasa, la banda baja a 72 px y pierde el subtítulo |
 | El blanco sobre una de las siete familias no llega a 4.5:1 en la banda | Se verifica familia por familia con el paso `deep`, antes de la fase 5. No se supone |
 | El modo vibrante envejece mal y en un año se lee como una moda | Todo lo vibrante son tokens: radio, curva, tinte de sombra y familia de display. Volver atrás es un bloque de variables, no un rediseño |
@@ -818,7 +888,7 @@ Una por pantalla, en la fase 8:
 | Los momentos de 600 ms se propagan | Están enumerados: cuatro cierres más el dibujado de gráficos, y la regla `movimiento` del guard impide declarar duraciones fuera del catálogo |
 | **Siete familias categóricas se convierten en siete verdes distintos** — el error que este repo ya pagó, ahora multiplicado | El acento sale de una tabla ruta-a-grupo, nunca de la pantalla, y la regla `acento` del guard falla si una pantalla escribe una clase `cat-*` a mano |
 | Un acento cae encima de un semántico y el sistema enseña a leer mal | Las cuatro familias nuevas se eligieron por hueco de tono libre, con los seis tonos ocupados (oro 54°, aviso 35°, error 0°, éxito 155°, info 207°, navy 226°) declarados en §3.3 |
-| Veintidós animaciones pesan en las laptops del mostrador | Sólo `transform` y `opacity`; los gráficos se dibujan una vez al montar y nunca al re-renderizar; `prefers-reduced-motion` sigue quitando todo el desplazamiento |
+| Treinta animaciones pesan en las laptops del mostrador | Sólo `transform` y `opacity`; los gráficos se dibujan una vez al montar y nunca al re-renderizar; `prefers-reduced-motion` sigue quitando todo el desplazamiento |
 | «Escritorio manda» empeora la adopción, que ya está en 4,4 % | El piso móvil de §2 es duro y está en la checklist como punto 5 |
 | La vista compartida no existe en algún navegador del equipo | Degrada sola. No hay ruta condicional que mantener |
 
