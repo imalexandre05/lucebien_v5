@@ -5,10 +5,17 @@
 > documento dice sobre color, `toque`, `hover-fine` y movimiento reducido sigue vigente tal cual.
 >
 > **Fecha:** 6 de septiembre de 2026.
-> **Revisión del mismo día:** tras ver las primeras maquetas, Alexander pidió más vida, más color
-> y más movimiento. Cambiaron §3.2 (acento por módulo), §3.8 y §6 (tres presupuestos de
-> movimiento), §4 (el hilo pasa a dos tramos) y §7 (capa de visualización de datos). El resto se
-> mantiene tal como se aprobó.
+> **Revisión 2, el mismo día:** tras ver las primeras maquetas, Alexander pidió más vida, más color
+> y más movimiento. Cambiaron §3.3 (acento por módulo), §3.9 y §6 (tres presupuestos de
+> movimiento), §4 (el hilo pasa a dos tramos) y §7 (capa de visualización de datos).
+>
+> **Revisión 3, el mismo día — «modo vibrante».** Alexander pidió ir más lejos: menos corporativo,
+> más amigable, más colorido y más movido. Esto **revierte dos decisiones anteriores y hay que
+> saberlo**: la estética «seria y sobria» del manual de marca §3, y la tipografía única de la Fase 4
+> («sin serifas en el sistema», Inter para todo). Lo que no se toca: la paleta sigue siendo la de
+> LuceBien, y los siete no-negociables del repo siguen intactos. Cambian §3.4 (Outfit como display),
+> §3.6 (sombra teñida), §3.7 (radios generosos y pastilla), §3.9 (presupuestos más largos y curva
+> con rebote), la nueva §3.10 (banda de módulo) y §7 (dos piezas más).
 > **Estado:** aprobada en diseño. Sin implementar.
 > **Alcance del rigor:** zona de presentación. No toca la cadena del sueldo, ni RLS, ni esquema de
 > base. Ninguna regla de negocio cambia.
@@ -57,7 +64,8 @@ Tomadas con Alexander el 6 de septiembre de 2026.
 | **Firma** | Hilo dorado, tipografía con voz, superficies con materia, crest presente | — |
 | **Tokens** | Variables CSS como fuente única | Seguir espejando dos archivos a mano |
 | **Color** | Acento por módulo, sobre familia categórica ampliada a siete | Color sólo dentro de los datos; repintado completo |
-| **Animación** | Tres presupuestos, veintidós piezas enumeradas | Máximo movimiento; mantener el tope único de 300 ms |
+| **Animación** | Tres presupuestos, veinticuatro piezas enumeradas | Máximo movimiento; mantener el tope único de 300 ms |
+| **Carácter** | Modo vibrante: banda de módulo en color pleno, radios generosos, sombra teñida, display propio | La sobriedad corporativa del manual §3 |
 
 **Sobre «escritorio manda».** Se eligió a sabiendas de que la mitad del equipo llena el ERP de pie y
 con el teléfono. La densidad y la jerarquía se calibran para escritorio, pero rige un **piso duro
@@ -194,20 +202,33 @@ señal que cambia de aspecto según dónde estés deja de ser una señal.
 
 ### 3.4 Tipografía
 
-Inter en los pesos que ya se cargan. Nueve tamaños con nombre semántico; **ningún componente vuelve
-a elegir un tamaño de Tailwind**.
+**Dos tipografías, con trabajos distintos.** Inter para todo lo que se lee en cantidad y para todo
+número —es la que tiene las cifras tabulares que hacen que una columna no baile—, y **Outfit** para
+lo que da carácter: títulos, cifras protagonistas y rótulos.
 
-| Token | Tamaño / interlínea | Peso | Otros | Uso |
+Es la reversión consciente de la Fase 4. Inter sola es exactamente el aspecto corporativo por
+defecto: legible, competente y anónima. Outfit es geométrica, de terminaciones redondeadas y anchura
+generosa, así que un título deja de leerse como una etiqueta de sistema. Está en Google Fonts, que es
+de donde ya se cargan las fuentes.
+
+Nueve tamaños con nombre semántico; **ningún componente vuelve a elegir un tamaño de Tailwind**.
+
+| Token | Tamaño / interlínea | Familia · peso | Otros | Uso |
 |---|---|---|---|---|
-| `text-cifra` | 40 / 1 | 600 | `tabular-nums`, `tracking -.02em` | La cifra protagonista de un `StatBox` |
-| `text-titulo` | 30 / 1.1 | 600 | `tracking -.015em` | `h1` de pantalla |
-| `text-seccion` | 20 / 1.25 | 600 | `tracking -.01em` | `h2`, `CardTitle` |
-| `text-sub` | 16 / 1.4 | 500 | — | `h3`, subtítulo de bloque |
-| `text-cuerpo` | 14 / 1.55 | 400 | — | Texto normal, celda de texto |
-| `text-dato` | 14 / 1.4 | 500 | `tabular-nums` | Celda numérica, monto en línea |
-| `text-apoyo` | 13 / 1.45 | 400 | — | Subtítulo de cabecera, ayuda de campo |
-| `text-rotulo` | 11 / 1.2 | 600 | `tracking .08em`, mayúsculas | Cabecera de tabla, `LabelGrupo`, sección de sidebar |
-| `text-micro` | 11 / 1.3 | 500 | — | `Badge`, metadato, marca de tiempo |
+| `text-cifra` | 48 / .95 | Outfit 700 | `tabular-nums`, `tracking -.03em` | La cifra protagonista de un `StatBox` |
+| `text-titulo` | 34 / 1.05 | Outfit 700 | `tracking -.02em` | `h1` de pantalla |
+| `text-seccion` | 21 / 1.25 | Outfit 600 | `tracking -.015em` | `h2`, `CardTitle` |
+| `text-sub` | 16 / 1.4 | Inter 600 | — | `h3`, subtítulo de bloque |
+| `text-cuerpo` | 14 / 1.55 | Inter 400 | — | Texto normal, celda de texto |
+| `text-dato` | 14 / 1.4 | Inter 500 | `tabular-nums` | Celda numérica, monto en línea |
+| `text-apoyo` | 13 / 1.45 | Inter 400 | — | Subtítulo de cabecera, ayuda de campo |
+| `text-rotulo` | 11 / 1.2 | Outfit 600 | `tracking .1em`, mayúsculas | Cabecera de tabla, `LabelGrupo`, sección de sidebar |
+| `text-micro` | 11 / 1.3 | Inter 500 | — | `Badge`, metadato, marca de tiempo |
+
+**El corte está en la cantidad de texto, no en la jerarquía.** Todo lo que se lee de un vistazo
+—título, cifra, rótulo— es Outfit. Todo lo que se lee de verdad —una celda, una ayuda, un mensaje de
+error— es Inter, que es la que resiste párrafos y tablas densas. Poner Outfit en una tabla de
+dieciocho filas costaría legibilidad para ganar nada.
 
 **`text-rotulo` es la voz que falta.** Hoy una cabecera de tabla y la fecha de un metadato usan el
 mismo `text-xs text-muted`, así que nada rotula nada y todo lo chico se lee igual de secundario. El
@@ -234,15 +255,19 @@ Relleno interno, fijo por pieza y no por pantalla: tarjeta `20`, celda de tabla 
 
 ### 3.6 Elevación
 
-Cuatro niveles. **La sombra se deriva de `ink` (`32 40 63`), nunca es negra**: una sombra negra sobre
-papel cálido se lee sucia.
+Cuatro niveles, y **la sombra se tiñe con el acento del módulo**, nunca es negra ni gris.
 
 | Token | Sombra | Cuándo |
 |---|---|---|
 | `elev-0` | ninguna, más borde de `line` | Tarjeta plana, contenedor de agrupación |
-| `elev-1` | `0 1px 2px ink/4%`, `0 1px 3px ink/6%` | Tarjeta en reposo, barra de filtros despegada |
-| `elev-2` | `0 2px 4px ink/5%`, `0 6px 12px ink/8%` | Tarjeta levantada al pasar, popover, menú |
-| `elev-3` | `0 8px 16px ink/8%`, `0 24px 48px ink/12%` | Modal, drawer |
+| `elev-1` | `0 1px 2px acento/8%`, `0 2px 6px acento/8%` | Tarjeta en reposo, barra de filtros despegada |
+| `elev-2` | `0 2px 6px acento/10%`, `0 10px 24px acento/14%` | Tarjeta levantada al pasar, popover, menú |
+| `elev-3` | `0 10px 24px acento/14%`, `0 32px 64px ink/16%` | Modal, drawer |
+
+**Por qué teñida.** Una sombra gris sobre papel cálido se lee sucia; una sombra del color de lo que
+tiene encima se lee como luz. Es el detalle más barato del sistema y el que más separa una interfaz
+que parece cara de una que parece una plantilla. `elev-3` conserva un tramo de `ink` porque un modal
+tiene que despegarse del fondo de verdad, y sólo con el acento no despega.
 
 **Regla:** la elevación sube al interactuar y vuelve. Nunca es decorativa, nunca queda permanente
 por encima de `elev-1`.
@@ -251,11 +276,17 @@ por encima de `elev-1`.
 
 | Token | px | Para |
 |---|---|---|
-| `r-chico` | 6 | `Badge`, campo, botón chico, chip |
-| `r-medio` | 10 | Tarjeta, botón, `StatBox` |
-| `r-grande` | 16 | Modal, drawer, panel de página |
+| `r-chico` | 8 | Campo, celda, contenedor chico |
+| `r-medio` | 14 | Tarjeta, `StatBox`, grupo de formulario |
+| `r-grande` | 22 | Modal, drawer, panel de página, banda de módulo |
+| `r-pastilla` | 999 | **Nuevo.** Chip, badge, botón, opción, avatar, contador |
 
 Hoy conviven `rounded-md`, `rounded-lg` y `rounded-xl` sin que la diferencia signifique nada.
+
+**La pastilla es el cambio de carácter más grande después del color.** Un botón de esquina viva a
+6 px se lee como un control de sistema; el mismo botón en pastilla se lee como algo que se toca. Va
+en todo lo pequeño y accionable —chips, badges, botones, opciones, avatares, contadores— y **no** en
+las superficies, que conservan sus esquinas para que la rejilla siga leyéndose como rejilla.
 
 ### 3.8 Foco
 
@@ -285,23 +316,68 @@ corto tiene que ser.
 
 | Presupuesto | Tope | Qué entra | Regla |
 |---|---|---|---|
-| **Repetitiva** | 300 ms | Lo que ocurre muchas veces por minuto: presión, hover, entrada de fila, cruce de esqueleto | Si molesta al trabajo repetitivo, sobra |
-| **Contexto** | 450 ms | Lo que ocurre al cambiar de lugar: pestaña, panel, modal, navegación entre lista y ficha | Explica de dónde vino y adónde fue lo que se movió |
-| **Momento** | 600 ms | Los cuatro cierres, y el dibujado inicial de un gráfico | Enumerado y cerrado. Nada más lo usa |
+| **Repetitiva** | 320 ms | Lo que ocurre muchas veces por minuto: presión, hover, entrada de fila, cruce de esqueleto | Si molesta al trabajo repetitivo, sobra |
+| **Contexto** | 500 ms | Lo que ocurre al cambiar de lugar: pestaña, panel, modal, navegación entre lista y ficha | Explica de dónde vino y adónde fue lo que se movió |
+| **Momento** | 700 ms | Los cuatro cierres, y el dibujado inicial de un gráfico | Enumerado y cerrado. Nada más lo usa |
 
 | Token | Valor | Para |
 |---|---|---|
-| `--dur-instante` | 90 ms | Presión sobre un control |
-| `--dur-rapido` | 180 ms | Cruce esqueleto a contenido, aparición sin desplazamiento |
-| `--dur-base` | 250 ms | Casi todo lo repetitivo |
-| `--dur-tope` | 300 ms | Máximo del presupuesto repetitivo |
-| `--dur-contexto` | 450 ms | Máximo del presupuesto de contexto |
-| `--dur-momento` | 600 ms | Máximo del presupuesto de momento |
-| `--escalon` | 40 ms | Retraso entre elementos de una entrada escalonada |
-| `--escalon-viz` | 60 ms | Retraso entre series de un gráfico que se dibuja |
-| `--curva-salida` | `cubic-bezier(.23, 1, .32, 1)` | Todo lo que entra o sale (ya existe) |
+| `--dur-instante` | 100 ms | Presión sobre un control |
+| `--dur-rapido` | 190 ms | Cruce esqueleto a contenido, aparición sin desplazamiento |
+| `--dur-base` | 260 ms | Casi todo lo repetitivo |
+| `--dur-tope` | 320 ms | Máximo del presupuesto repetitivo |
+| `--dur-contexto` | 500 ms | Máximo del presupuesto de contexto |
+| `--dur-momento` | 700 ms | Máximo del presupuesto de momento |
+| `--escalon` | 60 ms | Retraso entre elementos de una entrada escalonada |
+| `--escalon-viz` | 70 ms | Retraso entre series de un gráfico que se dibuja |
+| `--curva-rebote` | `cubic-bezier(.34, 1.42, .64, 1)` | **Nueva.** Todo lo que entra: tile, tarjeta, fila, chip, panel |
+| `--curva-salida` | `cubic-bezier(.23, 1, .32, 1)` | Lo que sale, y lo que no debe rebotar: modal, drawer |
 | `--curva-estado` | `cubic-bezier(.4, 0, .2, 1)` | Cambios bidireccionales: abrir y cerrar, activar y desactivar |
 | `--curva-viz` | `cubic-bezier(.33, 1, .68, 1)` | Trazos que se dibujan: línea, anillo, barra |
+
+**`--curva-rebote` es la pieza que cambia el carácter del movimiento.** Sobrepasa el destino un 4 %
+y vuelve, y esa sobrecarga mínima es literalmente la diferencia entre «el elemento apareció» y «el
+elemento llegó». `ease-out-expo` frena perfecto y por eso se lee como maquinaria; el rebote se lee
+como algo que tiene peso.
+
+**Dónde no rebota nunca:** modales, drawers y todo lo que sale de pantalla. Un modal que rebota al
+abrirse convierte una decisión en un juguete, y el modal del ERP es lo que precede a cerrar una
+liquidación.
+
+---
+
+### 3.10 La banda de módulo
+
+El gesto estructural del modo vibrante, y el que más cambia la primera impresión de una pantalla.
+
+**La cabecera deja de ser texto sobre papel y pasa a ser una banda de color pleno.** Ocupa el ancho
+del área de contenido, mide entre 96 y 128 px de alto, lleva un degradado diagonal de
+`acento-deep` a `acento`, y encima van las migas, el título en Outfit blanco, el subtítulo y la
+acción primaria. **Los tiles se montan sobre su borde inferior, solapándolo 24 px.**
+
+| Regla | Valor |
+|---|---|
+| Alto | 96 px sin subtítulo, 128 px con subtítulo. **Nunca más** |
+| Fondo | `linear-gradient(135deg, acento-deep, acento)` |
+| Texto | Blanco puro sobre el degradado; el subtítulo a 78 % de opacidad |
+| Radio | `r-grande` abajo, cuadrado arriba: nace pegada al shell |
+| Solape | Los tiles suben 24 px sobre el borde inferior |
+| Acción | Un solo botón, en `superficie` con texto del `acento-deep` — invierte la relación y por eso se ve |
+| Contraste | El blanco sobre las siete familias en su paso `deep` pasa 4.5:1. **Se verifica familia por familia**, no se supone |
+
+**Lo que la banda reemplaza.** El `hilo-titulo` de dos tramos sigue existiendo, pero se muda: ya no
+va bajo el título, va **bajo la banda**, como línea de asiento. Así la firma dorada no compite con
+un fondo de color, que es donde se habría perdido.
+
+**Dónde no va la banda.** En los formularios operativos, que son una columna centrada de 640 px: una
+banda a todo el ancho ahí deja el trabajo pequeño en el medio de una pantalla vacía. Ahí la cabecera
+sigue siendo texto sobre papel, con su hilo de dos tramos.
+
+**El costo, dicho de frente:** la banda gasta entre 96 y 128 px de alto que antes eran contenido, y
+la decisión de este proyecto fue que manda el escritorio, o sea la densidad. Se acepta porque se
+gasta **una vez por pantalla** y devuelve orientación inmediata; si en la fase 6 resulta que empuja
+la primera fila de una tabla fuera de la vista en un portátil de 768 px de alto, la banda baja a
+72 px y pierde el subtítulo. Eso se decide mirando, no acá.
 
 ---
 
@@ -312,7 +388,7 @@ mismo: esto es lo que importa acá**.
 
 | Pieza | Forma | Dónde |
 |---|---|---|
-| `hilo-titulo` | 2 px horizontal: **2.5 rem de oro, 1.5 rem del acento del módulo**, y el resto en `line` | `PageHeader` |
+| `hilo-titulo` | 2 px horizontal: **2.5 rem de oro, 1.5 rem del acento del módulo**, y el resto en `line` | Bajo la banda de módulo (§3.10), como línea de asiento. En los formularios, bajo el título |
 | `hilo-activo` | 3 px vertical a la izquierda, del acento del módulo | Ítem activo de sidebar, pestaña activa. **Reemplaza el fondo tintado** |
 | `hilo-progreso` | 3 px horizontal, `scaleX` con `origin-left` sobre pista `line` | Toda barra de progreso del sistema |
 | `hilo-fila` | 2 px vertical a la izquierda, dorado | Fila enfocada o seleccionada de una tabla |
@@ -468,11 +544,18 @@ Escalón de 40 ms. Toda pantalla entra en el mismo orden, y ese orden es la jera
 Máximo 6 elementos escalonados. A partir del séptimo entran junto con el sexto: si no, la última
 fila aparece medio segundo tarde y se lee como que la página se colgó.
 
-### El catálogo: veintidós piezas
+### El catálogo: veinticuatro piezas
 
 Enumeradas porque un catálogo cerrado es lo que separa «el sistema tiene movimiento» de «cada
-pantalla anima lo que se le ocurre». Las ocho que ya existen se conservan; las catorce nuevas están
+pantalla anima lo que se le ocurre». Las ocho que ya existen se conservan; las dieciséis nuevas están
 marcadas.
+
+Las dos últimas son del modo vibrante: **`icono-pop`** (100 ms) hace que el glifo dentro de su
+cuadrado tintado dé un salto a `scale(1.14)` y vuelva cuando su opción se activa — es lo que
+convierte un botón de opción en algo que responde; y **`pulso-acento`** (500 ms) expande un halo del
+acento desde el control que acaba de completar algo corto: una prenda contada, un accesorio sumado,
+una fila marcada. No es confeti: no hay partículas, no hay sonido, y no se dispara en los cuatro
+cierres, que tienen su propio hilo.
 
 **Repetitiva — tope 300 ms**
 
@@ -551,6 +634,13 @@ pantalla y no se escribiría.
 recibe el texto ya formateado más el valor numérico para animar. Duplicar el formateo en una pieza
 de presentación es exactamente cómo se cuela una diferencia entre lo que se muestra y lo que se paga.
 
+### Dos de carácter
+
+| Pieza | Qué es | Por qué |
+|---|---|---|
+| `BandaModulo` | La cabecera de color pleno de §3.10, con migas, título, subtítulo, acción y el hilo de asiento | Sin una pieza propia, cada pantalla escribiría su degradado y a la tercera habría tres |
+| `IconoTinta` | El glifo dentro de un cuadrado redondeado de `acento-soft` con el trazo en `acento-deep`, en tres tamaños (28, 36, 44) | Es lo que más amabiliza una interfaz densa: un ícono suelto sobre papel se lee como decoración de sistema; el mismo ícono con su fondo se lee como un objeto. Lleva `icono-pop` al activarse |
+
 ### Cuatro de visualización
 
 Es la capa que hoy no existe, y de donde de verdad sale la sensación de sistema moderno: un ERP se
@@ -620,7 +710,7 @@ Cinco reglas nuevas en `tools/guard-reglas.sh`, todas sobre `apps/erp-web`:
 | `elevacion` | `shadow-sm`, `shadow`, `shadow-md`, `shadow-lg`, `shadow-xl` | `elev-0` a `elev-3` |
 | `foco` | `focus-visible:ring-`, `focus:ring-`, y `outline-none` sin `anillo` en la misma cadena de clases | `anillo` |
 | `carga` | Una ruta con `page.tsx` que consulta datos y no tiene `loading.tsx` hermano | Un `loading.tsx` por ruta |
-| `movimiento` | Un `@keyframes` o un `transition-duration` literal fuera de `globals.css` y `tailwind.config.ts` | Las veintidós utilidades del catálogo de §6 |
+| `movimiento` | Un `@keyframes` o un `transition-duration` literal fuera de `globals.css` y `tailwind.config.ts` | Las veinticuatro utilidades del catálogo de §6 |
 | `acento` | Una clase `cat-*` escrita a mano en una pantalla | El acento se toma del grupo de módulo (§3.3), no se elige por pantalla |
 
 La regla `acento` es la que impide que esto se convierta en lo mismo que ya pasó con el color: siete
@@ -648,7 +738,7 @@ direcciones**: con una violación inyectada tiene que fallar con código 1, y si
 | **0** | Canvas navegable con los cuatro arquetipos, el catálogo de componentes y las escalas | Alexander lo mira y aprueba o corrige |
 | **1** | Tokens: `globals.css` como fuente única, `tailwind.config.ts` derivado, familias nuevas | Las utilidades de token existentes siguen presentes en el CSS compilado, una por una |
 | **2** | `anillo`, `elev-*`, `hilo-*` y las clases de componente en `globals.css` | `next build` y comprobación de presencia en el CSS compilado |
-| **3** | Diez componentes nuevos: seis de estructura, cuatro de visualización | Typecheck, `next build`, y **cada uno con al menos un consumidor real en la misma tanda** |
+| **3** | Doce componentes nuevos: seis de estructura, dos de carácter, cuatro de visualización | Typecheck, `next build`, y **cada uno con al menos un consumidor real en la misma tanda** |
 | **4** | Ocho componentes afinados | Typecheck, `next build`, guard, y revisión en pantalla de las cuatro faro |
 | **5** | Shell: sidebar, topbar, `PageHeader`, navegación móvil | Revisión en pantalla a 360 px y a 1440 px |
 | **6** | Las cuatro pantallas faro | Revisión en pantalla, incluyendo carga, vacío y error |
@@ -684,7 +774,11 @@ Una por pantalla, en la fase 8:
 | **Nadie mira una pantalla renderizada**, que es la limitación que ya pesó en la pasada de agosto | El canvas de la fase 0 es lo primero, y las fases 4 a 6 exigen revisión en pantalla como criterio de cierre |
 | La conversión de hexadecimal a canales RGB rompe un color en silencio | Comprobar las utilidades de token una por una en el CSS compilado, como se hizo con las 105 del 20-ago |
 | El guard nuevo queda en rojo y alguien lo apaga | Línea base congelada desde el primer commit de la fase 7 |
-| Diez componentes nuevos sin consumidores reales | Cada uno entra con al menos un consumidor en la misma tanda, o no entra. `Medidor` es el candidato a quedarse afuera |
+| Doce componentes nuevos sin consumidores reales | Cada uno entra con al menos un consumidor en la misma tanda, o no entra. `Medidor` es el candidato a quedarse afuera |
+| **La banda de módulo empuja la primera fila de la tabla fuera de la vista** en un portátil de 768 px de alto | Se mira en la fase 6, en un equipo real del mostrador. Si pasa, la banda baja a 72 px y pierde el subtítulo |
+| El blanco sobre una de las siete familias no llega a 4.5:1 en la banda | Se verifica familia por familia con el paso `deep`, antes de la fase 5. No se supone |
+| El modo vibrante envejece mal y en un año se lee como una moda | Todo lo vibrante son tokens: radio, curva, tinte de sombra y familia de display. Volver atrás es un bloque de variables, no un rediseño |
+| El rebote se propaga a los modales y una decisión irreversible se lee como un juguete | `--curva-rebote` está prohibida en modal y drawer, y eso lo mira la regla `movimiento` del guard |
 | Los momentos de 600 ms se propagan | Están enumerados: cuatro cierres más el dibujado de gráficos, y la regla `movimiento` del guard impide declarar duraciones fuera del catálogo |
 | **Siete familias categóricas se convierten en siete verdes distintos** — el error que este repo ya pagó, ahora multiplicado | El acento sale de una tabla ruta-a-grupo, nunca de la pantalla, y la regla `acento` del guard falla si una pantalla escribe una clase `cat-*` a mano |
 | Un acento cae encima de un semántico y el sistema enseña a leer mal | Las cuatro familias nuevas se eligieron por hueco de tono libre, con los seis tonos ocupados (oro 54°, aviso 35°, error 0°, éxito 155°, info 207°, navy 226°) declarados en §3.3 |
