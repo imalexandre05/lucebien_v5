@@ -25,7 +25,6 @@ import { fileURLToPath } from 'node:url';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dir, '../../..');
-const SQLITE = resolve(ROOT, 'database/lucebien.db');
 const ENV_FILE = resolve(ROOT, 'apps/erp-web/.env.local');
 const IDMAP = resolve(__dir, '_idmap.json');
 const EMAIL_DOMAIN = 'lucebien.local';
@@ -37,6 +36,8 @@ const onlyIdx = argv.indexOf('--only');
 const ONLY = onlyIdx >= 0 ? argv[onlyIdx + 1] : null;
 const DRY = !RUN && !ONLY;
 const LIVE = RUN || !!ONLY; // escribe?
+const sqliteArgIdx = argv.indexOf('--sqlite');
+const SQLITE = sqliteArgIdx >= 0 ? resolve(argv[sqliteArgIdx + 1]) : resolve(ROOT, 'database/lucebien.db');
 
 // ── env ───────────────────────────────────────────────────────────
 const env = {};
@@ -95,6 +96,40 @@ async function pgUpsert(table, row, onConflict) {
   });
   if (!r.ok) throw new Error(`pg.${table} ${r.status}: ${await r.text()}`);
 }
+// Reconciliación de placeholder: mismo nombre ya existe con otro cod (ej. altas del huellero del
+// 19-ago con código temporal). Se reusa su uuid: se pisan sus datos con los reales del origen y
+// se migra su login (Auth) del cod temporal al cod real. Nunca crea una fila nueva.
+async function findEmpleadoIdPorNombre(nombre) {
+  const r = await fetch(`${SB_URL}/rest/v1/empleados?nombre=ilike.${encodeURIComponent(nombre)}&select=id`, { headers: H });
+  if (!r.ok) return null;
+  const rows = await r.json();
+  return rows[0]?.id || null;
+}
+// Una fila que quedó `activo = false` por una decisión posterior a los datos del origen (ej. la
+// migración 0102, que fusionó una identidad partida entre este ETL y el huellero en vivo) no
+// debe reactivarse ni perder su nota sólo porque el SQLite legacy la sigue mostrando activa: esa
+// desactivación es más nueva que el origen. Se lee el estado actual, nunca el idmap.
+async function estaDesactivadaAMano(filtro) {
+  const r = await fetch(`${SB_URL}/rest/v1/empleados?${filtro}&select=activo`, { headers: H });
+  if (!r.ok) return false;
+  const rows = await r.json();
+  return rows.length > 0 && rows[0].activo === false;
+}
+async function empleadoPatch(uuid, row) {
+  const { id, ...rest } = row;
+  const r = await fetch(`${SB_URL}/rest/v1/empleados?id=eq.${uuid}`, {
+    method: 'PATCH',
+    headers: { ...H, Prefer: 'return=minimal' },
+    body: JSON.stringify(rest),
+  });
+  if (!r.ok) throw new Error(`pg.empleados.patch ${r.status}: ${await r.text()}`);
+}
+async function authUpdateLogin(uuid, emp) {
+  const body = { email: emailDe(emp.cod), user_metadata: { cod: emp.cod, nombre: emp.nombre, rol: emp.rol } };
+  if (emp.cod_hash) body.password_hash = emp.cod_hash;
+  const r = await fetch(`${SB_URL}/auth/v1/admin/users/${uuid}`, { method: 'PUT', headers: H, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error(`auth.update ${r.status}: ${await r.text()}`);
+}
 
 function mapEmpleado(emp, uuid) {
   const sedes = tiendasPorEmp[emp.id] || [];
@@ -142,19 +177,40 @@ for (const emp of empleados) {
   }
 
   try {
-    // 1) usuario Auth (reusa si ya existe)
-    let uuid = idmap[emp.id];
-    const existente = await authFindByEmail(email);
-    if (existente) {
-      uuid = existente.id;
-    } else {
-      uuid = uuid || randomUUID();
-      uuid = await authCreate(emp, uuid);
+    // 0) reconciliación: si ya existe un empleado con este nombre bajo otro cod (placeholder,
+    //    ej. alta del huellero 19-ago con código temporal), se reusa su uuid en vez de crear
+    //    un usuario Auth nuevo. Se comprueba ANTES de tocar Auth para no dejar cuentas huérfanas.
+    const placeholderId = await findEmpleadoIdPorNombre(emp.nombre);
+    let uuid;
+    if (placeholderId && (await estaDesactivadaAMano(`id=eq.${placeholderId}`))) {
+      console.log(`  ⏭ ${emp.id} (${emp.nombre}) saltado: el placeholder ${placeholderId} está desactivado a mano, no se reconcilia`);
+      continue;
     }
-    idmap[emp.id] = uuid;
+    if (placeholderId) {
+      uuid = placeholderId;
+      idmap[emp.id] = uuid;
+      await authUpdateLogin(uuid, emp);
+      await empleadoPatch(uuid, mapEmpleado(emp, uuid)); // la fila ya existe con este id → PATCH, nunca INSERT
+      console.log(`  ↻ ${emp.id} reconciliado con placeholder existente (${emp.nombre}) → ${uuid}, login=${email}`);
+    } else {
+      if (await estaDesactivadaAMano(`cod=eq.${emp.cod}`)) {
+        console.log(`  ⏭ ${emp.id} (cod=${emp.cod}) saltado: la fila destino está desactivada a mano, no se reactiva desde el ETL`);
+        continue;
+      }
+      // 1) usuario Auth (reusa si ya existe)
+      uuid = idmap[emp.id];
+      const existente = await authFindByEmail(email);
+      if (existente) {
+        uuid = existente.id;
+      } else {
+        uuid = uuid || randomUUID();
+        uuid = await authCreate(emp, uuid);
+      }
+      idmap[emp.id] = uuid;
 
-    // 2) empleado (id == auth uid)
-    await pgUpsert('empleados', mapEmpleado(emp, uuid), 'cod');
+      // 2) empleado (id == auth uid)
+      await pgUpsert('empleados', mapEmpleado(emp, uuid), 'cod');
+    }
 
     // 3) empleado_tiendas
     for (const tienda of sedes) {

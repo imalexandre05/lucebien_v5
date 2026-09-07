@@ -29,7 +29,6 @@ import { fileURLToPath } from 'node:url';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dir, '../../..');
-const SQLITE = resolve(ROOT, 'database/lucebien.db');
 const ENV_FILE = resolve(ROOT, 'apps/erp-web/.env.local');
 const IDMAP = resolve(__dir, '_idmap.json');
 const REPMAP = resolve(__dir, '_reportes_idmap.json');
@@ -37,6 +36,8 @@ const REPMAP = resolve(__dir, '_reportes_idmap.json');
 // ── args ──────────────────────────────────────────────────────────
 const RUN = process.argv.slice(2).includes('--run');
 const DRY = !RUN;
+const sqliteArgIdx = process.argv.indexOf('--sqlite');
+const SQLITE = sqliteArgIdx >= 0 ? resolve(process.argv[sqliteArgIdx + 1]) : resolve(ROOT, 'database/lucebien.db');
 
 // ── env ───────────────────────────────────────────────────────────
 const env = {};
@@ -110,6 +111,15 @@ for (const e of empSql) {
   if (e.cod) codToUuid[String(e.cod)] = uuid;
   const n = norm(e.nombre);
   if (n) nombreToUuid[n] = nombreToUuid[n] && nombreToUuid[n] !== uuid ? 'AMBIG' : uuid; // homónimos → no resolver por nombre
+}
+// Una fila que una migración desactivó a mano (ej. la 0102, fusión de una identidad que había
+// quedado partida entre este ETL y el huellero en vivo) no debe volver a recibir escrituras en
+// un re-run: el idmap no sabe de esa decisión posterior, así que se lee el estado actual.
+{
+  const r = await fetch(`${SB_URL}/rest/v1/empleados?activo=eq.false&select=id`, { headers: H });
+  const inactivos = new Set(r.ok ? (await r.json()).map((row) => row.id) : []);
+  for (const [k, v] of Object.entries(codToUuid)) if (inactivos.has(v)) delete codToUuid[k];
+  for (const [k, v] of Object.entries(nombreToUuid)) if (inactivos.has(v)) delete nombreToUuid[k];
 }
 // Alias de nombres mal escritos en el origen (confirmados con el responsable) → nombre canónico.
 // 'Marylin' es la misma persona que 'Mary' (E06): el origen guarda ambas grafías.
