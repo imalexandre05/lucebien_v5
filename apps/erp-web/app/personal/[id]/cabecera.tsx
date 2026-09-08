@@ -9,6 +9,7 @@ import type { Colaborador } from '../../../lib/colaboradores-repo';
 import { Avatar } from '../../../components/colaboradores/avatar';
 import { campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
+import { BotonDeshacerAlta } from './deshacer-alta';
 
 // La cabecera de la persona: quién es, y el cambio rápido a otra.
 //
@@ -24,9 +25,16 @@ import { cn } from '../../../lib/cn';
 export function CabeceraColaborador({
   persona,
   personas,
+  esAdmin,
 }: {
   persona: Colaborador;
   personas: Colaborador[];
+  /** «Deshacer alta» (C-3 de la spec 2026-08-25-borrar-alta-por-error-design.md): mismo público
+      que «Suspender» — sólo administrador/dueño. Se recibe ya resuelto desde el layout en vez de
+      leer la sesión acá: es el mismo criterio que `soloAdmin` de colaboradores-secciones.ts, pero
+      la cabecera se muestra en TODAS las secciones (no sólo Datos), así que necesita su propio
+      guard en vez de heredar el de una pestaña. */
+  esAdmin: boolean;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -83,6 +91,11 @@ export function CabeceraColaborador({
           ))}
         </select>
       </div>
+
+      {/* Sólo admin/dueño, mismo público que Suspender (pestaña Datos). Ícono y texto distintos
+          a propósito (Undo2 + «Deshacer alta») — no se puede confundir con esa acción, que corta
+          el acceso y conserva todo, con ésta, que borra la fila sin vuelta atrás. */}
+      {esAdmin && <BotonDeshacerAlta personaId={persona.id} personaNombre={persona.nombre} />}
     </div>
   );
 }

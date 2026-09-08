@@ -7,8 +7,11 @@ import {
   establecerContrasenaEmpleado,
   actualizarEmpleado,
   crearEmpleado,
+  empleadoBorrarAltaPrevio,
+  empleadoBorrarAlta,
   type EditarEmpleadoInput,
   type NuevoEmpleadoInput,
+  type BorrarAltaPrevio,
 } from '../../lib/empleados-repo';
 import { togglePosCobro } from '../../lib/permisos-repo';
 import { subirDocumento, eliminarDocumento, urlFirmadaDocumento, type DocumentoEmpleado } from '../../lib/documentos-repo';
@@ -59,6 +62,34 @@ export async function accionCrearEmpleado(
     const { id, cod } = await crearEmpleado(p);
     revalidatePath('/personal');
     return { ok: true, id, cod };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error' };
+  }
+}
+
+// Deshacer un alta hecha por error (docs/superpowers/specs/empleados/
+// 2026-08-25-borrar-alta-por-error-design.md). `accionBorrarAltaPrevio` sólo lee, para el diálogo
+// de C-1 que muestra el costo ANTES de confirmar. Las dos delegan el guard de admin en la RPC
+// (0099) igual que el resto de este archivo — `exigirAdmin()` acá es sólo un mensaje legible antes
+// de intentar, no la única cerradura.
+export async function accionBorrarAltaPrevio(
+  id: string,
+): Promise<{ ok: boolean; error?: string; datos?: BorrarAltaPrevio }> {
+  try {
+    await exigirAdmin();
+    const datos = await empleadoBorrarAltaPrevio(id);
+    return { ok: true, datos };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error' };
+  }
+}
+
+export async function accionBorrarAlta(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await exigirAdmin();
+    await empleadoBorrarAlta(id);
+    revalidatePath('/personal');
+    return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error' };
   }

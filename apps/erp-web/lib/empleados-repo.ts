@@ -226,6 +226,42 @@ export type NuevoEmpleadoInput = {
   password: string;
 };
 
+// Deshacer un alta de personal hecha por error (docs/superpowers/specs/empleados/
+// 2026-08-25-borrar-alta-por-error-design.md, migración 0099). NO reimplementa nada acá: las dos
+// funciones sólo llaman a las RPC `empleado_borrar_alta_previo`/`empleado_borrar_alta`, que ya
+// llevan adentro el guard de admin y toda la lógica de qué bloquea y qué se borra o se vacía —
+// tocarla es zona crítica y ya está aplicada y probada contra `scilb` (17 casos).
+//
+// `empleado_borrar_alta_previo` es SOLO LECTURA (C-1): alimenta el diálogo con lo que se perdería
+// ANTES de confirmar. `bloqueos` vacío es la señal de que se puede borrar; `conteos` ya viene
+// filtrado por la RPC a lo que efectivamente se borraría o se vaciaría para ESTA persona (nunca
+// un total de tabla) — la pantalla sólo tiene que mostrar las claves con valor > 0.
+export type BorrarAltaPrevio = {
+  bloqueos: string[];
+  conteos: Record<string, number>;
+};
+
+export async function empleadoBorrarAltaPrevio(id: string): Promise<BorrarAltaPrevio> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('empleado_borrar_alta_previo', { p_empleado: id });
+  if (error) throw new Error(error.message);
+  const r = (data ?? {}) as { bloqueos?: unknown; conteos?: unknown };
+  return {
+    bloqueos: Array.isArray(r.bloqueos) ? r.bloqueos.map((b) => String(b)) : [],
+    conteos: (r.conteos as Record<string, number> | undefined) ?? {},
+  };
+}
+
+// Borra. Irreversible — la RPC vuelve a comprobar los bloqueos y el guard de admin ella misma, no
+// confía en que la pantalla haya llamado a empleadoBorrarAltaPrevio() antes. El registro en
+// audit_log lo escribe el trigger existente (trg_audit_empleados, 0058) al hacer el delete, no hay
+// nada que escribir a mano acá.
+export async function empleadoBorrarAlta(id: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('empleado_borrar_alta', { p_empleado: id });
+  if (error) throw new Error(error.message);
+}
+
 export async function crearEmpleado(p: NuevoEmpleadoInput): Promise<{ id: string; cod: string }> {
   const admin = getAdminClient();
   const nombre = p.nombre.trim();
