@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../lib/auth';
 import { guardarConfig, crearParametroConfig, eliminarParametroConfig } from '../../lib/config-repo';
 import { CONFIG_CATALOGO_MAP, type ConfigTipo } from '../../lib/config-catalogo';
+import { actualizarAlertaRegla } from '../../lib/notificaciones-repo';
 
 type R = { ok: boolean; error?: string };
 const fallo = (e: unknown): R => ({ ok: false, error: e instanceof Error ? e.message : 'Error' });
@@ -107,6 +108,24 @@ export async function accionEliminarParametroConfig(clave: string): Promise<R> {
     const bloqueo = await exigirAdmin();
     if (bloqueo) return bloqueo;
     await eliminarParametroConfig(clave);
+    revalidarTodoLoQueLeeConfig();
+    return { ok: true };
+  } catch (e) {
+    return fallo(e);
+  }
+}
+
+// C-6 de la spec de notificaciones: enciende/apaga una regla de `alertas_reglas` y ajusta su
+// umbral. Sólo esos dos campos — `actualizarAlertaRegla()` en notificaciones-repo.ts ya deja
+// afuera `destinatario_rol` a propósito, ver el comentario ahí.
+export async function accionActualizarAlertaRegla(tipo: string, p: { activa: boolean; umbral: number | null }): Promise<R> {
+  try {
+    const bloqueo = await exigirAdmin();
+    if (bloqueo) return bloqueo;
+    if (p.umbral !== null && (!Number.isFinite(p.umbral) || p.umbral < 0)) {
+      return { ok: false, error: 'El umbral debe ser un número ≥ 0.' };
+    }
+    await actualizarAlertaRegla(tipo, p);
     revalidarTodoLoQueLeeConfig();
     return { ok: true };
   } catch (e) {

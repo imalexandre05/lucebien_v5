@@ -77,3 +77,48 @@ export async function generarAlertas(): Promise<number> {
   if (error) throw new Error(error.message);
   return Number(data ?? 0);
 }
+
+// ── Catálogo de reglas (alertas_reglas, 0041) — C-6 de la spec: editable desde /configuracion ────
+//
+// `destinatario_rol` se lee para MOSTRAR, nunca para editar: las seis reglas de control interno
+// (0107) lo llevan literal ('admin') dentro del INSERT de generar_alertas(), no lo leen de esta
+// columna — cambiarlo acá no movería nada para ellas, y para las cinco reglas viejas reabriría a
+// mano un reparto de destinatario que hoy nadie pide tocar. Por eso `actualizarAlertaRegla` sólo
+// toca `activa` y `umbral` (ver docs/pendientes-negocio.md, sección "Notificaciones de control
+// interno").
+export type AlertaRegla = {
+  tipo: string;
+  descripcion: string;
+  severidad: 'info' | 'warn' | 'critica';
+  umbral: number | null;
+  activa: boolean;
+  destinatarioRol: string | null;
+};
+
+function fromReglaRow(r: Record<string, unknown>): AlertaRegla {
+  const sev = r.severidad;
+  return {
+    tipo: String(r.tipo),
+    descripcion: String(r.descripcion ?? ''),
+    severidad: sev === 'critica' || sev === 'warn' ? sev : 'info',
+    umbral: r.umbral === null || r.umbral === undefined ? null : Number(r.umbral),
+    activa: Boolean(r.activa),
+    destinatarioRol: (r.destinatario_rol as string | null) ?? null,
+  };
+}
+
+export async function listarAlertasReglas(): Promise<AlertaRegla[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('alertas_reglas')
+    .select('tipo, descripcion, severidad, umbral, activa, destinatario_rol')
+    .order('tipo');
+  if (error) throw new Error(error.message);
+  return ((data as Record<string, unknown>[]) ?? []).map(fromReglaRow);
+}
+
+export async function actualizarAlertaRegla(tipo: string, p: { activa: boolean; umbral: number | null }): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.from('alertas_reglas').update({ activa: p.activa, umbral: p.umbral }).eq('tipo', tipo);
+  if (error) throw new Error(error.message);
+}
