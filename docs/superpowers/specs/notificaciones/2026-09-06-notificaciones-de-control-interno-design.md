@@ -255,7 +255,12 @@ inmediato — el mismo criterio que el resto de los parámetros, y la correcció
    PostgREST (`current_setting('request.jwt.claims', true) is not null`). Los tres casos —
    no-admin bloqueado, admin permitido, sin impersonar (el camino del cron) permitido — dan `[ok]`.
    Detalle en `docs/aprendizajes.md`.
-5. ⏸️ **C-6**: la sección en `/configuracion`. Sin empezar.
+5. ✅ **C-6**: la sección en `/configuracion`. `/configuracion/notificaciones` — 11 reglas
+   agrupadas en "Control interno" (las 6 de la 0107) y "Módulo comercial" (las 5 de la 0041/0046),
+   toggle `activa` y campo `umbral` (donde la regla lo usa) con efecto inmediato, sin migración
+   nueva. `destinatario_rol` se muestra de sólo lectura, nunca editable — ver el porqué en el
+   comentario de `notificaciones-repo.ts`. Sin pruebas manuales contra un navegador real: sin
+   acceso a él desde esta sesión, ver `docs/pendientes-negocio.md`.
 
 Los pasos 1 y 2 valen por sí solos aunque no se haga ninguno de los demás: uno cierra dos fugas y el
 otro convierte una lista que sólo crece en una que dice la verdad.

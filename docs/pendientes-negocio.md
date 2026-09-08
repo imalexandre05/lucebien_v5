@@ -1415,9 +1415,9 @@ persona, como dos filas separadas de `notificaciones`.
 | `periodo_liquidable` | `3` (días de gracia) | Elegido por el implementador. La spec (§5 C-4) sólo dice "días de gracia" sin número — 3 días es un margen chico, suficiente para que el administrador cierre el tramo sin que el aviso se dispare el mismo día en que el contrato vence |
 | `dia_sin_marca` | `7` (días hacia atrás) | Elegido por el implementador. La spec sólo dice "días hacia atrás" sin número — una semana es la ventana mínima que cubre un ciclo semanal completo de turnos sin acumular demasiado ruido |
 
-Ninguno de los dos está confirmado por el administrador. Los dos son editables desde
-`alertas_reglas.umbral` hoy (vía SQL); la pantalla de `/configuracion` para tocarlos sin migrar es
-C-6 (paso 5 de la spec, sin empezar).
+Ninguno de los dos está confirmado por el administrador — siguen siendo el default elegido por el
+implementador, ahora editable sin migrar desde `/configuracion/notificaciones` (C-6, paso 5 de la
+spec, cerrado el 08-sep-2026).
 
 Las otras cuatro reglas nuevas (`declaracion_incompleta`, `dia_con_hora_estimada`,
 `extra_sin_valor`, `falta_fecha_ingreso`) no llevan umbral (`null`): la spec no pide ninguno para
@@ -1430,9 +1430,10 @@ ellas y no se inventó uno.
 cinco reglas viejas, pensadas para ser reasignables a otro rol de tienda/almacén). Es a propósito:
 la spec §5 C-5 es una garantía de aislamiento del no-negociable 3 ("un aviso que nombra a una
 persona es del administrador y de esa persona, de nadie más"), no un parámetro de negocio libre. La
-pantalla de Configuración (C-6) va a poder tocar `activa`/`umbral` de estas seis filas, pero nunca
-debería poder tocar a quién llegan — eso reabriría el agujero que cerraron las migraciones
-`0100`/`0101`.
+pantalla de Configuración (`/configuracion/notificaciones`, C-6, cerrada el 08-sep-2026) toca
+`activa`/`umbral` de las once filas de `alertas_reglas` pero nunca `destinatario_rol`: se muestra
+de sólo lectura a propósito —`actualizarAlertaRegla()` en `notificaciones-repo.ts` sólo acepta esos
+dos campos— para no reabrir el agujero que cerraron las migraciones `0100`/`0101`.
 
 ### Ambigüedades resueltas al implementar, sin decisión de negocio nueva involucrada
 
@@ -1451,3 +1452,17 @@ debería poder tocar a quién llegan — eso reabriría el agujero que cerraron 
   incluir el día de hoy después de las 20h (cierre habitual de turno) — no se implementó así porque
   el sistema no tiene una noción configurable de "hora de cierre del día" para asistencia (distinta
   de los cierres de turno de reportes, que sí la tienen en `config`).
+
+### C-6 — pantalla de Configuración (08-sep-2026)
+
+`/configuracion/notificaciones` (`apps/erp-web/app/configuracion/notificaciones/`) muestra las 11
+filas de `alertas_reglas` agrupadas en "Control interno" (las 6 de la `0107`) y "Módulo comercial"
+(las 5 de la `0041`/`0046`, con nota de que 4 de las 5 están apagadas). Sin migración nueva: la
+tabla y sus columnas ya existían. `actualizarAlertaRegla()` (`notificaciones-repo.ts`) sólo
+escribe `activa` y `umbral` — nunca `destinatario_rol`, que se muestra de sólo lectura.
+
+No se probó a mano contra un navegador (`npm run dev`): esta sesión no tiene esa capacidad. Quedó
+verificado por lectura contra `tools/verificar-local.sh` (guard, typecheck, tests) en verde, y
+contra el esquema real de `alertas_reglas` (columnas y valores confirmados en las migraciones
+`0041`/`0107`, no supuestos). Falta la comprobación visual en el navegador antes de darla por
+cerrada del todo.
