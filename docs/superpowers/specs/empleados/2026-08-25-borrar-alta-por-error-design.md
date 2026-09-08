@@ -116,11 +116,20 @@ si no, no queda ninguna forma de saber a quién se eliminó. `password_hash` **n
 
 ## 6. Orden de implementación
 
-1. La RPC `empleado_borrar_alta(p_empleado uuid)` y su hermana de sólo lectura
-   `empleado_borrar_alta_previo(p_empleado uuid)` — la que cuenta sin borrar, para C-1.
-2. La prueba de migración con los 10 casos.
-3. `apps/erp-web/lib/empleados-repo.ts` y la pantalla: el diálogo que muestra la cuenta antes de
-   confirmar.
+1. ✅ La RPC `empleado_borrar_alta(p_empleado uuid)` y su hermana de sólo lectura
+   `empleado_borrar_alta_previo(p_empleado uuid)` — la que cuenta sin borrar, para C-1. Migración
+   `0099`, aplicada contra `scilb` el 8-sep. Corrigió sobre la marcha un bug real de PL/pgSQL
+   (`text[] || 'texto'` sin cast, ver `docs/aprendizajes.md`) que sólo apareció al ejecutarla contra
+   la base — quedó documentado en el encabezado de la migración.
+2. ✅ La prueba de migración: 13 casos (los 10 de §5 más 3 extra que salieron de §7 —
+   `huellero_mapeos`, `prenda_pasada` como lavadora, y `evaluaciones_valores` en los dos roles), más
+   6 de refuerzo tras el fix del cast. Los 17, `[ok]` contra `scilb`.
+3. ✅ `apps/erp-web/lib/empleados-repo.ts` y la pantalla: el botón «Deshacer alta» vive en la
+   cabecera del expediente de `/personal/[id]` (visible en cualquier sección, no sólo en Datos, para
+   no chocar con el trabajo en paralelo sobre esa pestaña). El diálogo de dos pasos: consulta
+   `empleado_borrar_alta_previo()` al abrir, lista los bloqueos con el botón de confirmar
+   deshabilitado si hay alguno (y remite a «Suspender»), o los conteos traducidos a texto llano si
+   no hay ninguno, con el botón de borrado en rojo. `bash tools/verificar-local.sh` en verde.
 
 ---
 

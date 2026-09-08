@@ -306,5 +306,6 @@ Por radio de daño y por lo que el administrador subrayó, no por lo que es más
   Suspender sigue siendo la respuesta para todo lo demás. La §7 de esa spec corrigió el número: no son
   48 referencias sino **50 columnas en 35 tablas**, medidas contra la base. `empleado_borrar_alta()` y
   `empleado_borrar_alta_previo()` (migración `0099`) aplicadas y verificadas contra `scilb` — 17 casos,
-  todos `[ok]`. **Falta sólo la pantalla**: el diálogo de `apps/erp-web` que muestra la cuenta previa
-  antes de confirmar (paso 3 de la spec) no está hecho todavía.
+  todos `[ok]`. **✅ Completo el 8-sep**: el botón «Deshacer alta» vive en la cabecera del expediente
+  de `/personal/[id]` (visible en cualquier sección), con el diálogo de dos pasos de C-1 — muestra la
+  cuenta antes de confirmar, y si hay algo que bloquea, remite a «Suspender» en su lugar.
