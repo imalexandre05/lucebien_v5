@@ -290,8 +290,10 @@ el administrador puede cargar.**
 **Fuera de este orden pero avanzado en paralelo, a pedido de Alexander del 25-ago** (*«podríamos
 avanzarlo en paralelo en otras sesiones»* + su elección del 6-sep de notificaciones/eliminar
 personal/huellero):
-- ✅ **Notificaciones** (B-9), pasos 1-2 de 5: los dos agujeros de aislamiento cerrados y las
-  alertas ya se retiran solas. Pasos 3-5 (seis reglas nuevas, motor único, pantalla de
+- ✅ **Notificaciones** (B-9), pasos 1-3 de 5: los dos agujeros de aislamiento cerrados, las
+  alertas ya se retiran solas, y las seis reglas nuevas de control interno están sumadas y
+  verificadas. Al probar el paso 3 apareció **un tercer agujero de aislamiento**, propio, en la
+  misma RLS de la `0100`: cerrado en el momento (`0108`). Pasos 4-5 (motor único, pantalla de
   configuración) sin empezar.
 - ✅ **Eliminar personal** (F-3, acotado a «deshacer un alta por error»): backend + pantalla,
   aplicado y verificado de punta a punta.
@@ -315,8 +317,12 @@ personal/huellero):
   Los **dos agujeros de aislamiento** medidos (`destinatario_rol` que la RLS nunca consultaba, y un
   `with check` que dejaba a cualquiera crear un aviso global) **ya están cerrados** (`0100`), y las
   alertas **ya se retiran solas** en vez de acumularse (`0101`) — las dos migraciones aplicadas y
-  verificadas contra `scilb`. Quedan sin empezar: las seis reglas nuevas del control interno, unificar
-  el motor (hoy sigue habiendo dos), y la pantalla en `/configuracion`.
+  verificadas contra `scilb`. Las seis reglas nuevas de control interno están sumadas (`0107`), y al
+  probarlas contra `scilb` apareció **un tercer agujero, en la propia `0100`**: la rama de "aviso
+  global" no excluía que el aviso también tuviera `destinatario_id` puesto, así que un aviso
+  personal se colaba para cualquiera con sesión — cerrado en el momento (`0108`), verificado sin
+  regresión. Quedan sin empezar: unificar el motor (hoy sigue habiendo dos) y la pantalla en
+  `/configuracion`.
 - ~~**Eliminar personal** (F-3, la parte de «eliminar»): ya se estudió el 14-ago y se decidió que no
   se borra —cuesta 48 referencias y se lleva historia de la empresa—. Se suspende.~~
   **Acotado el 25-ago y construido el 8-sep.** No es lo mismo que borrar a alguien que trabajó: spec

@@ -226,11 +226,16 @@ inmediato — el mismo criterio que el resto de los parámetros, y la correcció
 2. ✅ **C-1 y C-2** —retirar y refrescar— sobre las reglas que ya existen. Migración `0101`, aplicada
    y verificada — casos 1 a 6 y 13 dan `[ok]`. Las cuatro comerciales quedaron `activa = false`,
    `reporte_sin_evaluar` sigue activa.
-3. ⏸️ **C-4**: las seis reglas nuevas, con su alcance de C-5. Casos 9 a 12. Sin empezar.
+3. ✅ **C-4**: las seis reglas nuevas, con su alcance de C-5. Migración `0107`, aplicada y verificada
+   contra `scilb` el 8-sep — casos 9 a 12 dan `[ok]`. **Al probar el caso 9 apareció un agujero real
+   en la RLS de la propia `0100`** (la rama de "aviso global" no excluía `destinatario_id`, así que
+   un aviso personal se colaba para cualquiera con sesión) — cerrado en la migración `0108`,
+   verificado el mismo caso pasando a `[ok]` y sin regresión sobre los casos de la `0100`. Detalle en
+   `docs/aprendizajes.md`.
 4. ⏸️ **C-3**: el botón manual pasa a llamar `generar_alertas()`; se borra `core/alertas.ts`. Sin
    empezar — importante para quien lo tome: la definición vigente de `generar_alertas()` hoy es la
-   de la `0101` (que partió de la `0046`, no de la `0042`), confirmarlo con `pg_get_functiondef`
-   antes de tocarla de nuevo.
+   de la `0107` (que partió de la `0101`, que a su vez partió de la `0046`, no de la `0042`),
+   confirmarlo con `pg_get_functiondef` antes de tocarla de nuevo.
 5. ⏸️ **C-6**: la sección en `/configuracion`. Sin empezar.
 
 Los pasos 1 y 2 valen por sí solos aunque no se haga ninguno de los demás: uno cierra dos fugas y el
