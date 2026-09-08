@@ -25,7 +25,18 @@ import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import type { AcuerdoSueldo, EstadoAcuerdo, ModalidadAcuerdo } from '../../../lib/sueldos-repo';
 import { accionActualizarAcuerdo, accionCambiarEstado, accionCrearAcuerdo, type AcuerdoForm } from './actions';
 
-type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
+// C-2: dni/telefono/recomendaciones sólo llegan poblados cuando este tipo se usa como
+// `personaFija` (app/personal/[id]/contrato/page.tsx) — el arreglo `empleados` del picker no los
+// necesita, por eso son opcionales en vez de forzar a poblarlos en los dos usos.
+type Emp = {
+  id: string;
+  nombre: string;
+  rol: string;
+  sedeCod: string | null;
+  dni?: string | null;
+  telefono?: string | null;
+  recomendaciones?: string | null;
+};
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const DIAS_CORTO = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
@@ -468,6 +479,22 @@ export function AcuerdosCliente({
               <div>
                 <LabelGrupo>Persona</LabelGrupo>
                 <p className="text-sm font-medium text-navy">Contrato de {personaFija.nombre}</p>
+                {/* C-2: cel/DNI/recomendaciones en el contrato — vacío se ve como «—», nunca se
+                    oculta la línea (spec §4: lo que falta se ve como falta, no desaparece). */}
+                <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-2">
+                  <div className="flex gap-1">
+                    <dt className="shrink-0 font-medium text-ink">DNI:</dt>
+                    <dd>{personaFija.dni || '—'}</dd>
+                  </div>
+                  <div className="flex gap-1">
+                    <dt className="shrink-0 font-medium text-ink">Teléfono:</dt>
+                    <dd>{personaFija.telefono || '—'}</dd>
+                  </div>
+                  <div className="col-span-full flex gap-1">
+                    <dt className="shrink-0 font-medium text-ink">Recomendaciones:</dt>
+                    <dd>{personaFija.recomendaciones || '—'}</dd>
+                  </div>
+                </dl>
               </div>
             ) : (
               <div>

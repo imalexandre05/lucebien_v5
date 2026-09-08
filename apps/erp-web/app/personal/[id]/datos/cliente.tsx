@@ -60,6 +60,7 @@ export function DatosCliente({
   const [telefono, setTelefono] = useState(emp.telefono ?? '');
   const [dni, setDni] = useState(emp.dni ?? '');
   const [direccion, setDireccion] = useState(emp.direccion ?? '');
+  const [recomendaciones, setRecomendaciones] = useState(emp.recomendaciones ?? '');
   const [error, setError] = useState('');
   const [guardado, setGuardado] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -88,6 +89,7 @@ export function DatosCliente({
         telefono,
         dni,
         direccion,
+        recomendaciones,
         // El sueldo ya no se edita acá (R3/T7): la RPC empleado_actualizar (0050) recibe
         // p_salario_base como parámetro obligatorio y hace `coalesce(p_salario_base, 0)`, así que
         // omitirlo o mandar null pondría la columna en 0. Se manda el valor YA guardado, sin
@@ -213,6 +215,8 @@ export function DatosCliente({
             setDni={setDni}
             direccion={direccion}
             setDireccion={setDireccion}
+            recomendaciones={recomendaciones}
+            setRecomendaciones={setRecomendaciones}
           />
 
           {/* Sueldo único (R3/T7): manda solo el contrato. Acá donde antes vivía el input de

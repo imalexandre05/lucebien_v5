@@ -190,6 +190,8 @@ export function ContactoCampos({
   setDni,
   direccion,
   setDireccion,
+  recomendaciones,
+  setRecomendaciones,
 }: {
   telefono: string;
   setTelefono: (v: string) => void;
@@ -197,6 +199,10 @@ export function ContactoCampos({
   setDni: (v: string) => void;
   direccion: string;
   setDireccion: (v: string) => void;
+  /** C-2: referencias/recomendaciones en texto libre — no existía ningún dato capturado antes de
+      esto, así que es opcional a propósito (llamadores viejos de esta pieza no lo rompen). */
+  recomendaciones?: string;
+  setRecomendaciones?: (v: string) => void;
 }) {
   return (
     <>
@@ -214,6 +220,17 @@ export function ContactoCampos({
         <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección</label>
         <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className={cn(fieldCls, 'w-full')} />
       </div>
+      {setRecomendaciones && (
+        <div>
+          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Recomendaciones</label>
+          <textarea
+            value={recomendaciones ?? ''}
+            onChange={(e) => setRecomendaciones(e.target.value)}
+            rows={3}
+            className={cn(fieldCls, 'w-full')}
+          />
+        </div>
+      )}
     </>
   );
 }

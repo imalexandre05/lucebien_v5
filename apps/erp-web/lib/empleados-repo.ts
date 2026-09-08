@@ -23,11 +23,13 @@ export type EmpleadoAdmin = {
   fechaIngreso: string | null;
   salarioBase: number;
   notas: string | null;
+  /** C-2: referencias/recomendaciones en texto libre, sin fuente automática. */
+  recomendaciones: string | null;
   tiendas: string[];
 };
 
 const COLS =
-  'id, nombre, iniciales, rol, rol_cod, sede_cod, activo, estado, telefono, dni, direccion, fecha_ingreso, salario_base, notas';
+  'id, nombre, iniciales, rol, rol_cod, sede_cod, activo, estado, telefono, dni, direccion, fecha_ingreso, salario_base, notas, recomendaciones';
 
 type Row = Record<string, unknown>;
 
@@ -47,6 +49,7 @@ function fromRow(r: Row, tiendas: string[]): EmpleadoAdmin {
     fechaIngreso: r.fecha_ingreso ? String(r.fecha_ingreso).slice(0, 10) : null,
     salarioBase: Number(r.salario_base ?? 0),
     notas: (r.notas as string | null) ?? null,
+    recomendaciones: (r.recomendaciones as string | null) ?? null,
     tiendas,
   };
 }
@@ -173,6 +176,10 @@ export type EditarEmpleadoInput = {
   dni: string;
   direccion: string;
   salarioBase: number;
+  /** C-2: RPC aparte (empleado_actualizar_recomendaciones) — ver actualizarEmpleado() abajo. No
+      forma parte de los parámetros de empleado_actualizar (0050): agregarle uno con `create or
+      replace` no la reemplaza, crea una sobrecarga ambigua porque cambia la firma completa. */
+  recomendaciones: string;
 };
 
 export async function actualizarEmpleado(id: string, p: EditarEmpleadoInput): Promise<void> {
@@ -192,6 +199,12 @@ export async function actualizarEmpleado(id: string, p: EditarEmpleadoInput): Pr
     p_salario_base: p.salarioBase,
   });
   if (error) throw new Error(error.message);
+
+  const { error: errorRecom } = await sb.rpc('empleado_actualizar_recomendaciones', {
+    p_id: id,
+    p_texto: p.recomendaciones,
+  });
+  if (errorRecom) throw new Error(errorRecom.message);
 }
 
 // Crear un colaborador nuevo (Fase 1): provisiona el usuario de Supabase Auth (email interno
