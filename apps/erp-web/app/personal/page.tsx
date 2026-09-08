@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Award, CalendarCheck, Coins, FileSignature, Plus, ShoppingBag, Wallet, type LucideIcon } from 'lucide-react';
+import { Award, BarChart3, CalendarCheck, Coins, FileSignature, Plus, ShoppingBag, Wallet, type LucideIcon } from 'lucide-react';
 import { puede, type MatrizPermisos } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
@@ -50,6 +50,7 @@ const HERRAMIENTAS: Herramienta[] = [
   { href: '/sueldos/liquidaciones', icono: Coins, label: 'Liquidar el periodo', gate: 'admin' },
   { href: '/evaluaciones', icono: Award, label: 'Evaluaciones del mes', gate: 'evaluaciones' },
   { href: '/sueldos/acuerdos', icono: FileSignature, label: 'Contratos', gate: 'admin' },
+  { href: '/personal/dashboard', icono: BarChart3, label: 'Dashboard de personal', gate: 'admin' },
 ];
 
 export default async function ColaboradoresPage({
