@@ -1,16 +1,29 @@
--- 0104_empleados_recomendaciones.sql — <qué hace, en una línea>
+-- 0104_empleados_recomendaciones.sql — columna `recomendaciones` + RPC chica para guardarla (C-2).
 --
--- Implementa <docs/superpowers/specs/.../SPEC-....md §N>.
+-- Implementa docs/superpowers/specs/empleados/2026-09-08-contrato-datos-completos-design.md.
 --
--- Idempotente: se puede reaplicar sin fallar. Cada `create` lleva su `if not exists` y cada
--- restricción que no lo soporta va envuelta en un `do $$ ... $$` que consulta pg_constraint.
+-- RPC nueva, no extiende `empleado_actualizar` (spec §3): agregarle un parámetro con `create or
+-- replace` no la reemplaza, crea una sobrecarga nueva al lado de la vieja porque cambia la firma
+-- completa — y PostgREST resolviendo por nombres de JSON es exactamente la ambigüedad que este
+-- repo ya aprendió a evitar. Se agrega una RPC separada, chica, con el mismo guard de admin.
 --
--- Recordatorios que este repo pagó caros:
---   · Los helpers de RLS viven en el schema `private` desde la 0037. SIEMPRE con el prefijo.
---   · NUNCA `private.app_es_almacen()` sobre datos de personas: devuelve true para
---     'confeccionista' además de 'encargado_almacen' (0006_pipeline_rls.sql:22-25).
---   · Toda tabla con RLS necesita policy de LECTURA **y** de ESCRITURA. Con RLS activa y sólo
---     select, las escrituras fallan en silencio.
---   · Todo default de negocio va comentado como provisional y anotado en
---     docs/pendientes-negocio.md (no-negociable 5).
+-- Idempotente: `add column if not exists` y `create or replace function` sobre una firma que no
+-- cambia.
 
+alter table empleados add column if not exists recomendaciones text default '';
+
+create or replace function empleado_actualizar_recomendaciones(p_id uuid, p_texto text)
+returns void language plpgsql security invoker set search_path = public as $$
+begin
+  if not private.app_es_admin() then
+    raise exception 'Solo administradores pueden editar colaboradores';
+  end if;
+  if not exists (select 1 from empleados where id = p_id) then
+    raise exception 'Colaborador no encontrado';
+  end if;
+
+  update empleados set recomendaciones = coalesce(p_texto, '') where id = p_id;
+end;
+$$;
+revoke execute on function empleado_actualizar_recomendaciones(uuid, text) from public;
+grant execute on function empleado_actualizar_recomendaciones(uuid, text) to authenticated;
