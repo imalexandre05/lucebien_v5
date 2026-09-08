@@ -1397,3 +1397,57 @@ de ruta quedaron hechos. D-1 lo cerró la sesión "Rediseño frontend sistema de
 confirmado que D-1 ya estaba a salvo — el borrador de un contrato nuevo en `localStorage`, nunca
 para uno que ya existe. Ninguno de los dos se duplicó: se coordinó por mensaje directo entre
 sesiones antes de tocar los archivos compartidos.
+
+---
+
+## Notificaciones de control interno — C-4/C-5, paso 3 (08-sep-2026)
+
+Spec completa: [2026-09-06-notificaciones-de-control-interno-design.md](superpowers/specs/notificaciones/2026-09-06-notificaciones-de-control-interno-design.md)
+§5. Implementado en la migración `0107_notificaciones_reglas_control_interno.sql`: las seis reglas
+nuevas dentro de `generar_alertas()`, con su alcance de aislamiento (C-5) — cuatro sólo para el
+administrador, dos (`dia_con_hora_estimada`, `dia_sin_marca`) para el administrador **y** la
+persona, como dos filas separadas de `notificaciones`.
+
+### Los dos umbrales nuevos (`alertas_reglas.umbral`)
+
+| `tipo` | Default | De dónde sale ese default |
+|---|---|---|
+| `periodo_liquidable` | `3` (días de gracia) | Elegido por el implementador. La spec (§5 C-4) sólo dice "días de gracia" sin número — 3 días es un margen chico, suficiente para que el administrador cierre el tramo sin que el aviso se dispare el mismo día en que el contrato vence |
+| `dia_sin_marca` | `7` (días hacia atrás) | Elegido por el implementador. La spec sólo dice "días hacia atrás" sin número — una semana es la ventana mínima que cubre un ciclo semanal completo de turnos sin acumular demasiado ruido |
+
+Ninguno de los dos está confirmado por el administrador. Los dos son editables desde
+`alertas_reglas.umbral` hoy (vía SQL); la pantalla de `/configuracion` para tocarlos sin migrar es
+C-6 (paso 5 de la spec, sin empezar).
+
+Las otras cuatro reglas nuevas (`declaracion_incompleta`, `dia_con_hora_estimada`,
+`extra_sin_valor`, `falta_fecha_ingreso`) no llevan umbral (`null`): la spec no pide ninguno para
+ellas y no se inventó uno.
+
+### Una decisión de aislamiento que NO es un parámetro de negocio
+
+`destinatario_rol='admin'` para las seis reglas nuevas va **literal** dentro del `insert` de
+`generar_alertas()`, no leído desde `alertas_reglas.destinatario_rol` (que sí es la fuente para las
+cinco reglas viejas, pensadas para ser reasignables a otro rol de tienda/almacén). Es a propósito:
+la spec §5 C-5 es una garantía de aislamiento del no-negociable 3 ("un aviso que nombra a una
+persona es del administrador y de esa persona, de nadie más"), no un parámetro de negocio libre. La
+pantalla de Configuración (C-6) va a poder tocar `activa`/`umbral` de estas seis filas, pero nunca
+debería poder tocar a quién llegan — eso reabriría el agujero que cerraron las migraciones
+`0100`/`0101`.
+
+### Ambigüedades resueltas al implementar, sin decisión de negocio nueva involucrada
+
+- **`sueldo_acuerdos.estado` para "vigente"**: confirmado contra el `check` de la `0072`
+  (`sueldo_acuerdos_estado_chk`) que los tres valores son `'borrador' | 'vigente' | 'liquidado'` —
+  coincide exacto con lo que la spec asumía para `periodo_liquidable`. No hubo que decidir nada.
+- **Agrupación de `dia_con_hora_estimada` sin liquidación en borrador**: la spec sugería "mes
+  calendario" como default razonable si la persona no tiene una liquidación `'borrador'` vigente que
+  cubra el día. Se implementó tal cual: el período de agrupación es el mes calendario completo
+  (primer y último día) de la fecha de cada asistencia con hora estimada, calculado con
+  `date_trunc('month', ...)`. No es una regla de negocio nueva — es sólo una forma de agrupar avisos
+  para que no se dupliquen día por día, no afecta ningún cálculo de sueldo.
+- **`dia_sin_marca`, ventana de días**: interpretado como `[hoy - umbral, hoy - 1]`, es decir SIN
+  contar el día de hoy (todavía en curso, no puede considerarse "pasado" y candidato a falta hasta
+  que termine). La spec no lo decía explícito; se documenta acá por si el administrador prefiere
+  incluir el día de hoy después de las 20h (cierre habitual de turno) — no se implementó así porque
+  el sistema no tiene una noción configurable de "hora de cierre del día" para asistencia (distinta
+  de los cierres de turno de reportes, que sí la tienen en `config`).
