@@ -290,11 +290,12 @@ el administrador puede cargar.**
 **Fuera de este orden pero avanzado en paralelo, a pedido de Alexander del 25-ago** (*«podríamos
 avanzarlo en paralelo en otras sesiones»* + su elección del 6-sep de notificaciones/eliminar
 personal/huellero):
-- ✅ **Notificaciones** (B-9), pasos 1-3 de 5: los dos agujeros de aislamiento cerrados, las
-  alertas ya se retiran solas, y las seis reglas nuevas de control interno están sumadas y
-  verificadas. Al probar el paso 3 apareció **un tercer agujero de aislamiento**, propio, en la
-  misma RLS de la `0100`: cerrado en el momento (`0108`). Pasos 4-5 (motor único, pantalla de
-  configuración) sin empezar.
+- ✅ **Notificaciones** (B-9), pasos 1-4 de 5: los dos agujeros de aislamiento cerrados, las
+  alertas ya se retiran solas, las seis reglas nuevas de control interno sumadas y verificadas, y
+  el botón manual y el cron ya son un solo motor. Dos hallazgos propios en el camino, los dos
+  cerrados el mismo día: un tercer agujero de aislamiento en la RLS de la `0100` (`0108`), y un
+  guard que habría apagado el cron de producción (`0109`, corregido antes de aplicar). Sólo queda
+  el paso 5: la pantalla en `/configuracion`.
 - ✅ **Eliminar personal** (F-3, acotado a «deshacer un alta por error»): backend + pantalla,
   aplicado y verificado de punta a punta.
 - ✅ **Mejorar el lector de huellas** (B-8/B-11): medido y documentado — no era código. El hallazgo

@@ -247,10 +247,14 @@ inmediato — el mismo criterio que el resto de los parámetros, y la correcció
    un aviso personal se colaba para cualquiera con sesión) — cerrado en la migración `0108`,
    verificado el mismo caso pasando a `[ok]` y sin regresión sobre los casos de la `0100`. Detalle en
    `docs/aprendizajes.md`.
-4. ⏸️ **C-3**: el botón manual pasa a llamar `generar_alertas()`; se borra `core/alertas.ts`. Sin
-   empezar — importante para quien lo tome: la definición vigente de `generar_alertas()` hoy es la
-   de la `0107` (que partió de la `0101`, que a su vez partió de la `0046`, no de la `0042`),
-   confirmarlo con `pg_get_functiondef` antes de tocarla de nuevo.
+4. ✅ **C-3**: el botón manual pasa a llamar `generar_alertas()`; `core/alertas.ts` borrado. Migración
+   `0109`, aplicada y verificada contra `scilb` el 8-sep. **Al escribirla apareció que el Addendum
+   del propio C-3 tenía un error**: el guard `private.app_es_admin()` tal cual se pidió habría
+   bloqueado también al cron (depende de `auth.uid()` ← `request.jwt.claims`, un GUC que una
+   conexión directa nunca fija). Corregido: el guard sólo rige cuando existe un contexto de
+   PostgREST (`current_setting('request.jwt.claims', true) is not null`). Los tres casos —
+   no-admin bloqueado, admin permitido, sin impersonar (el camino del cron) permitido — dan `[ok]`.
+   Detalle en `docs/aprendizajes.md`.
 5. ⏸️ **C-6**: la sección en `/configuracion`. Sin empezar.
 
 Los pasos 1 y 2 valen por sí solos aunque no se haga ninguno de los demás: uno cierra dos fugas y el
