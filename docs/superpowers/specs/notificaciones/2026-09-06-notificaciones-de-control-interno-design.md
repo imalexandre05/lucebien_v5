@@ -221,12 +221,17 @@ inmediato — el mismo criterio que el resto de los parámetros, y la correcció
 
 ## 8. Orden de implementación
 
-1. **La RLS: A-1 y A-2.** Migración propia, sin ninguna regla nueva. Casos 7 y 8.
-2. **C-1 y C-2** —retirar y refrescar— sobre las reglas que ya existen. Casos 1 a 6.
-   Apagar las cuatro comerciales (caso 13).
-3. **C-4**: las seis reglas nuevas, con su alcance de C-5. Casos 9 a 12.
-4. **C-3**: el botón manual pasa a llamar `generar_alertas()`; se borra `core/alertas.ts`.
-5. **C-6**: la sección en `/configuracion`.
+1. ✅ **La RLS: A-1 y A-2.** Migración `0100`, aplicada y verificada contra `scilb` el 8-sep — los
+   casos 7, 8 y el extra de marcar-leído dan `[ok]`. Nuevo helper `private.app_mi_rol()`.
+2. ✅ **C-1 y C-2** —retirar y refrescar— sobre las reglas que ya existen. Migración `0101`, aplicada
+   y verificada — casos 1 a 6 y 13 dan `[ok]`. Las cuatro comerciales quedaron `activa = false`,
+   `reporte_sin_evaluar` sigue activa.
+3. ⏸️ **C-4**: las seis reglas nuevas, con su alcance de C-5. Casos 9 a 12. Sin empezar.
+4. ⏸️ **C-3**: el botón manual pasa a llamar `generar_alertas()`; se borra `core/alertas.ts`. Sin
+   empezar — importante para quien lo tome: la definición vigente de `generar_alertas()` hoy es la
+   de la `0101` (que partió de la `0046`, no de la `0042`), confirmarlo con `pg_get_functiondef`
+   antes de tocarla de nuevo.
+5. ⏸️ **C-6**: la sección en `/configuracion`. Sin empezar.
 
 Los pasos 1 y 2 valen por sí solos aunque no se haga ninguno de los demás: uno cierra dos fugas y el
 otro convierte una lista que sólo crece en una que dice la verdad.
