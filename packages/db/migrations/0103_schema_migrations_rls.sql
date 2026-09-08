@@ -1,16 +1,16 @@
--- 0103_schema_migrations_rls.sql — <qué hace, en una línea>
+-- 0103_schema_migrations_rls.sql — activa RLS en public.schema_migrations, sin policy.
 --
--- Implementa <docs/superpowers/specs/.../SPEC-....md §N>.
+-- Implementa docs/superpowers/specs/2026-09-08-schema-migrations-rls-design.md.
 --
--- Idempotente: se puede reaplicar sin fallar. Cada `create` lleva su `if not exists` y cada
--- restricción que no lo soporta va envuelta en un `do $$ ... $$` que consulta pg_constraint.
+-- El advisor de seguridad de Supabase marca esta tabla (ERROR): RLS deshabilitada, lo que deja
+-- valer los grants amplios de todo proyecto nuevo — anon/authenticated tenían select/insert/
+-- update/delete/truncate vía PostgREST. Es un registro casero de migraciones aplicadas (17 filas,
+-- `version, aplicada_en`) de antes de que el proyecto adoptara el tracking nativo de Supabase; sin
+-- referencias en apps/erp-web ni en tools/.
 --
--- Recordatorios que este repo pagó caros:
---   · Los helpers de RLS viven en el schema `private` desde la 0037. SIEMPRE con el prefijo.
---   · NUNCA `private.app_es_almacen()` sobre datos de personas: devuelve true para
---     'confeccionista' además de 'encargado_almacen' (0006_pipeline_rls.sql:22-25).
---   · Toda tabla con RLS necesita policy de LECTURA **y** de ESCRITURA. Con RLS activa y sólo
---     select, las escrituras fallan en silencio.
---   · Todo default de negocio va comentado como provisional y anotado en
---     docs/pendientes-negocio.md (no-negociable 5).
+-- Sin policy a propósito: nada la lee, así que no hace falta abrirle lectura a nadie. Mismo patrón
+-- que asistencias_respaldo_0075/asistencias_respaldo_20260821 (RLS activa, cero policies).
+--
+-- Idempotente: `enable row level security` no falla si ya estaba activa.
 
+alter table if exists public.schema_migrations enable row level security;
