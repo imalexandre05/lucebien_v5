@@ -3,11 +3,12 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Info, UserCheck, UserX, Wallet } from 'lucide-react';
+import { Info, UserCheck, UserX, Wallet, Paperclip, Trash2, ExternalLink, Upload } from 'lucide-react';
 import type { MatrizPermisos } from '@scilb/core';
 import type { EmpleadoAdmin } from '../../../../lib/empleados-repo';
 import type { Sede } from '../../../../lib/sedes-repo';
 import type { RolDerivado } from '../../../../lib/roles-repo';
+import type { DocumentoEmpleado } from '../../../../lib/documentos-repo';
 import { rutaSeccion } from '../../../../lib/colaboradores-secciones';
 import {
   CamposPerfil,
@@ -16,7 +17,13 @@ import {
   ContrasenaForm,
   opcionesRol,
 } from '../../../empleados/cliente';
-import { accionEditarEmpleado, accionEstadoEmpleado } from '../../../empleados/actions';
+import {
+  accionEditarEmpleado,
+  accionEstadoEmpleado,
+  accionSubirDocumento,
+  accionEliminarDocumento,
+  accionUrlDocumento,
+} from '../../../empleados/actions';
 import { Card, CardContent } from '../../../../components/ui/card';
 import { Button } from '../../../../components/ui/button';
 import { Aviso } from '../../../../components/ui/form';
@@ -40,6 +47,7 @@ export function DatosCliente({
   rolesDerivados,
   matrizPermisos,
   sueldoVigente,
+  documentosIniciales,
 }: {
   emp: EmpleadoAdmin;
   sedes: Sede[];
@@ -47,6 +55,8 @@ export function DatosCliente({
   matrizPermisos: MatrizPermisos;
   /** `sueldoPactado` del contrato vigente de esta persona, o null si no tiene (R3/T7, spec §2.5). */
   sueldoVigente: number | null;
+  /** C-3 (migración 0105): DNI, CV, imágenes. Sólo admin/dueño — esta pantalla entera ya lo es. */
+  documentosIniciales: DocumentoEmpleado[];
 }) {
   const router = useRouter();
   const opciones = useMemo(() => opcionesRol(rolesDerivados), [rolesDerivados]);
@@ -271,6 +281,150 @@ export function DatosCliente({
           <ContrasenaForm empleadoId={emp.id} />
         </CardContent>
       </Card>
+
+      <DocumentosCard empleadoId={emp.id} documentosIniciales={documentosIniciales} />
     </div>
   );
+}
+
+// C-3 (migración 0105): DNI, CV, imágenes — solo admin/dueño (esta pantalla entera ya lo es, sin
+// gate propio acá). 10 MB, jpg/png/webp/pdf (mismos límites que el bucket, comprobados también acá
+// para un mensaje legible antes de intentar subir). Sin previsualización ni categorías (spec §6):
+// nombre, tamaño, fecha, un enlace de descarga con URL firmada de corta duración, y borrar.
+function DocumentosCard({
+  empleadoId,
+  documentosIniciales,
+}: {
+  empleadoId: string;
+  documentosIniciales: DocumentoEmpleado[];
+}) {
+  const [documentos, setDocumentos] = useState(documentosIniciales);
+  const [error, setError] = useState('');
+  const [subiendo, startSubida] = useTransition();
+  const [borrandoId, setBorrandoId] = useState<string | null>(null);
+  const [pendingBorrado, startBorrado] = useTransition();
+  const conf = useConfirmacion();
+
+  function alElegirArchivo(e: React.ChangeEvent<HTMLInputElement>) {
+    const archivo = e.target.files?.[0];
+    e.target.value = ''; // permite volver a elegir el mismo archivo si hubo error
+    if (!archivo) return;
+    setError('');
+    const formData = new FormData();
+    formData.set('archivo', archivo);
+    startSubida(async () => {
+      const r = await accionSubirDocumento(empleadoId, formData);
+      if (!r.ok || !r.documento) {
+        setError(r.error ?? 'No se pudo subir el documento');
+        return;
+      }
+      // Estado local, sin router.refresh(): esta tarjeta lleva su propia lista, y refrescar la
+      // ruta entera tiraría abajo el resto del formulario si alguien estaba editando otro campo.
+      setDocumentos((prev) => [r.documento!, ...prev]);
+    });
+  }
+
+  function verDocumento(storagePath: string) {
+    abrirDocumento(storagePath, setError);
+  }
+
+  function borrar(doc: DocumentoEmpleado) {
+    conf.pedir({
+      titulo: `¿Borrar "${doc.nombreArchivo}"?`,
+      detalle: 'No se puede deshacer. El archivo se elimina del almacenamiento.',
+      confirmarLabel: 'Borrar',
+      tono: 'peligro',
+      alConfirmar: () =>
+        startBorrado(async () => {
+          setBorrandoId(doc.id);
+          setError('');
+          const r = await accionEliminarDocumento(doc.id, empleadoId);
+          setBorrandoId(null);
+          if (!r.ok) {
+            setError(r.error ?? 'No se pudo borrar el documento');
+            return;
+          }
+          setDocumentos((prev) => prev.filter((d) => d.id !== doc.id));
+          conf.cerrar();
+        }),
+    });
+  }
+
+  return (
+    <Card>
+      <DialogoConfirmar {...conf.props} pending={pendingBorrado} />
+      <CardContent className="space-y-3 pt-4">
+        <div className="flex items-center justify-between gap-3 border-b border-line/60 pb-3">
+          <p className="flex items-center gap-1.5 text-sm font-medium text-navy">
+            <Paperclip className="h-4 w-4" strokeWidth={1.75} /> Documentos
+          </p>
+          <label
+            className={cn(
+              'inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-navy transition hover:bg-navy/5',
+              subiendo && 'pointer-events-none opacity-60',
+            )}
+          >
+            <Upload className="h-3.5 w-3.5" strokeWidth={2} /> {subiendo ? 'Subiendo…' : 'Adjuntar'}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              className="hidden"
+              disabled={subiendo}
+              onChange={alElegirArchivo}
+            />
+          </label>
+        </div>
+
+        {error && <Aviso tono="error">{error}</Aviso>}
+
+        {documentos.length === 0 ? (
+          <p className="py-3 text-center text-sm text-muted">Sin documentos adjuntos.</p>
+        ) : (
+          <ul className="divide-y divide-line/60">
+            {documentos.map((d) => (
+              <li key={d.id} className="flex items-center justify-between gap-3 py-2.5">
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-ink">{d.nombreArchivo}</p>
+                  <p className="text-xs text-muted">
+                    {(d.tamanoBytes / 1024).toFixed(0)} KB · {d.subidoEn.slice(0, 10)}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => verDocumento(d.storagePath)}
+                    className="rounded-md p-1.5 text-muted transition hover:bg-navy/5 hover:text-navy"
+                    title="Ver / descargar"
+                  >
+                    <ExternalLink className="h-4 w-4" strokeWidth={2} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => borrar(d)}
+                    disabled={pendingBorrado && borrandoId === d.id}
+                    className="rounded-md p-1.5 text-muted transition hover:bg-error-soft hover:text-error-deep"
+                    title="Borrar"
+                  >
+                    <Trash2 className="h-4 w-4" strokeWidth={2} />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="text-[11px] text-muted">Máximo 10 MB por archivo — imágenes o PDF.</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Aparte de DocumentosCard porque abre una pestaña nueva apenas la Action devuelve la URL firmada
+// — no hay un estado de "pending" que valga la pena mostrar en la lista por esto, sólo el error.
+async function abrirDocumento(storagePath: string, setError: (v: string) => void) {
+  const r = await accionUrlDocumento(storagePath);
+  if (!r.ok || !r.url) {
+    setError(r.error ?? 'No se pudo abrir el documento');
+    return;
+  }
+  window.open(r.url, '_blank', 'noopener,noreferrer');
 }
