@@ -66,6 +66,13 @@
 --
 -- Idempotente: las dos son `create or replace function`. No tocan datos ni esquema.
 --
+-- Corregido el 8-sep-2026 al correr la prueba contra `scilb`: `v_bloqueos || 'texto'` sin cast
+-- fallaba con "malformed array literal" apenas un bloqueo real se disparaba (los casos 1-3, sin
+-- bloqueo, no lo mostraban). En PL/pgSQL, `text[] || literal_sin_tipo` puede resolver al operador
+-- `array || array` en vez de `array || elemento`, y entonces intenta parsear el string plano como
+-- si fuera `{...}`. Las 11 líneas llevan `::text` explícito ahora. Ningún `implementador` puede
+-- detectar esto sin acceso a la base real (docs/aprendizajes.md) — se encontró recién acá.
+--
 -- Recordatorios que este repo pagó caros:
 --   · Los helpers de RLS viven en el schema `private` desde la 0037. SIEMPRE con el prefijo.
 --   · NUNCA `private.app_es_almacen()` sobre datos de personas.
@@ -105,38 +112,38 @@ begin
   -- (evaluaciones_valores.evaluado_id/evaluador_id) son `on delete cascade` y la base los dejaría
   -- pasar en silencio si no se bloquean acá.
   if exists (select 1 from sueldo_liquidaciones where empleado_id = p_empleado) then
-    v_bloqueos := v_bloqueos || 'Tiene al menos una liquidación de sueldo emitida.';
+    v_bloqueos := v_bloqueos || 'Tiene al menos una liquidación de sueldo emitida.'::text;
   end if;
   if exists (select 1 from sueldo_acuerdos where empleado_id = p_empleado) then
-    v_bloqueos := v_bloqueos || 'Tiene un contrato (acuerdo de sueldo) registrado.';
+    v_bloqueos := v_bloqueos || 'Tiene un contrato (acuerdo de sueldo) registrado.'::text;
   end if;
   if exists (select 1 from sueldo_movimientos where empleado_id = p_empleado) then
-    v_bloqueos := v_bloqueos || 'Tiene adelantos, descuentos o bonos registrados.';
+    v_bloqueos := v_bloqueos || 'Tiene adelantos, descuentos o bonos registrados.'::text;
   end if;
   if exists (select 1 from sueldo_ventas where empleado_id = p_empleado) then
-    v_bloqueos := v_bloqueos || 'Tiene ventas atribuidas.';
+    v_bloqueos := v_bloqueos || 'Tiene ventas atribuidas.'::text;
   end if;
   if exists (select 1 from pagos where empleado_id = p_empleado) then
-    v_bloqueos := v_bloqueos || 'Tiene pagos registrados en el sistema anterior.';
+    v_bloqueos := v_bloqueos || 'Tiene pagos registrados en el sistema anterior.'::text;
   end if;
   if exists (select 1 from evaluaciones_mensuales where empleado_id = p_empleado) then
-    v_bloqueos := v_bloqueos || 'Tiene una evaluación mensual emitida.';
+    v_bloqueos := v_bloqueos || 'Tiene una evaluación mensual emitida.'::text;
   end if;
   if exists (select 1 from evaluaciones_valores where evaluado_id = p_empleado) then
-    v_bloqueos := v_bloqueos || 'Fue evaluada por al menos una persona en Valores 360°.';
+    v_bloqueos := v_bloqueos || 'Fue evaluada por al menos una persona en Valores 360°.'::text;
   end if;
   if exists (select 1 from evaluaciones_valores where evaluador_id = p_empleado) then
     v_bloqueos := v_bloqueos
-      || 'Evaluó a alguien en Valores 360°: borrarla movería el promedio de esa persona.';
+      || 'Evaluó a alguien en Valores 360°: borrarla movería el promedio de esa persona.'::text;
   end if;
   if exists (select 1 from solicitudes where solicitante_id = p_empleado) then
-    v_bloqueos := v_bloqueos || 'Tiene solicitudes al almacén hechas a su nombre.';
+    v_bloqueos := v_bloqueos || 'Tiene solicitudes al almacén hechas a su nombre.'::text;
   end if;
   if exists (select 1 from mt_consentimiento where registrado_por = p_empleado) then
-    v_bloqueos := v_bloqueos || 'Registró un consentimiento de Mi Talla.';
+    v_bloqueos := v_bloqueos || 'Registró un consentimiento de Mi Talla.'::text;
   end if;
   if exists (select 1 from mt_medicion_real where tomada_por = p_empleado) then
-    v_bloqueos := v_bloqueos || 'Tomó una medición real de Mi Talla.';
+    v_bloqueos := v_bloqueos || 'Tomó una medición real de Mi Talla.'::text;
   end if;
 
   -- §7.2/§7.3/§7.4 — sólo lo que efectivamente se borraría o se vaciaría para ESTE empleado,
