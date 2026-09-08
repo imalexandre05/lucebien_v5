@@ -290,17 +290,21 @@ Por radio de daño y por lo que el administrador subrayó, no por lo que es más
 - **Mejorar el reconocimiento del huellero** (B-8): es configuración del equipo Hikvision, no del
   ERP. Va a la lista de Jordan.
 - ~~**Notificaciones** (B-9): falta decidir el canal antes de construir nada.~~
-  **Resuelto el 6-sep.** El canal se decidió —dentro del sistema, ver la spec §4— y al ir a medirlo
-  apareció que el módulo **ya existe y corre**: dos cron diarios que terminan bien y no producen una
-  notificación nueva desde el 26-ago, porque cuatro de sus cinco reglas son del módulo comercial.
-  Spec en [notificaciones/2026-09-06-notificaciones-de-control-interno-design.md](notificaciones/2026-09-06-notificaciones-de-control-interno-design.md).
-  **Trae dos agujeros de aislamiento medidos** (`destinatario_rol` que la RLS nunca consulta, y un
-  `with check` que deja a cualquiera crear un aviso global): se cierran antes de agregar la primera
-  regla que nombre a una persona.
+  **Resuelto el 6-sep, pasos 1-2 aplicados el 8-sep.** El canal se decidió —dentro del sistema, ver
+  la spec §4— y al ir a medirlo apareció que el módulo **ya existía y corría** mirando sólo el
+  módulo comercial. Spec en
+  [notificaciones/2026-09-06-notificaciones-de-control-interno-design.md](notificaciones/2026-09-06-notificaciones-de-control-interno-design.md).
+  Los **dos agujeros de aislamiento** medidos (`destinatario_rol` que la RLS nunca consultaba, y un
+  `with check` que dejaba a cualquiera crear un aviso global) **ya están cerrados** (`0100`), y las
+  alertas **ya se retiran solas** en vez de acumularse (`0101`) — las dos migraciones aplicadas y
+  verificadas contra `scilb`. Quedan sin empezar: las seis reglas nuevas del control interno, unificar
+  el motor (hoy sigue habiendo dos), y la pantalla en `/configuracion`.
 - ~~**Eliminar personal** (F-3, la parte de «eliminar»): ya se estudió el 14-ago y se decidió que no
   se borra —cuesta 48 referencias y se lleva historia de la empresa—. Se suspende.~~
-  **Acotado el 25-ago** a «deshacer un alta hecha por error», que no es lo mismo que borrar a alguien
-  que trabajó: spec en
-  [empleados/2026-08-25-borrar-alta-por-error-design.md](empleados/2026-08-25-borrar-alta-por-error-design.md).
-  Suspender sigue siendo la respuesta para todo lo demás. La §7 de esa spec corrige el número: no son
-  48 referencias sino **50 columnas en 35 tablas**, medidas contra la base.
+  **Acotado el 25-ago y construido el 8-sep.** No es lo mismo que borrar a alguien que trabajó: spec
+  en [empleados/2026-08-25-borrar-alta-por-error-design.md](empleados/2026-08-25-borrar-alta-por-error-design.md).
+  Suspender sigue siendo la respuesta para todo lo demás. La §7 de esa spec corrigió el número: no son
+  48 referencias sino **50 columnas en 35 tablas**, medidas contra la base. `empleado_borrar_alta()` y
+  `empleado_borrar_alta_previo()` (migración `0099`) aplicadas y verificadas contra `scilb` — 17 casos,
+  todos `[ok]`. **Falta sólo la pantalla**: el diálogo de `apps/erp-web` que muestra la cuenta previa
+  antes de confirmar (paso 3 de la spec) no está hecho todavía.
