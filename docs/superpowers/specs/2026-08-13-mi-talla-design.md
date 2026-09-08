@@ -151,48 +151,61 @@ interface VectorRasgos {
 
 ## 5. Persistencia (Supabase `scilb`)
 
+Implementado en las migraciones **0068** (esquema, prefijo `mt_` para no
+colisionar con las 53 tablas del ERP en el mismo proyecto), **0069** (bucket
+`mi-talla` + policies de storage) y **0070** (endurecimiento tras el
+verificador: aislamiento por sede/origen, timestamps no insertables, tamaños
+acotados).
+
 ```sql
 -- estimación del motor; inmutable una vez creada
-medicion (
+mt_medicion (
   id uuid pk, cliente_id uuid null,          -- auth.uid() (anónimo o permanente)
+  cliente_nombre text null, cliente_dni text null,  -- solo origen taller
   motor text, version_calibracion text,
   entrada jsonb,                             -- formulario: altura, peso, edad, sexo
   medidas jsonb, confianza jsonb,
   vector_rasgos jsonb null,
   origen text check (origen in ('web','taller')),
-  sede text null, creada_en timestamptz
+  sede text null, creada_en timestamptz default now()  -- no insertable (0070)
 )
 
 -- verdad de cinta métrica; tabla aparte a propósito
-medicion_real (
+mt_medicion_real (
   id uuid pk, medicion_id uuid fk,
   tomada_por uuid,                           -- sastre (auth.users)
-  medidas jsonb, tomada_en timestamptz
+  medidas jsonb, observacion text null, tomada_en timestamptz default now()
 )
 
 -- consentimiento explícito, Ley 29733
-consentimiento (
+mt_consentimiento (
   id uuid pk, nombre text, dni text,
-  texto_version text, aceptado_en timestamptz, sede text
+  texto_version text, registrado_por uuid, aceptado_en timestamptz, sede text
 )
 
 -- solo taller, siempre con consentimiento
-medicion_imagen (
+mt_medicion_imagen (
   id uuid pk, medicion_id uuid fk,
   storage_path text,                         -- bucket privado
   vista text check (vista in ('frontal','lateral','video')),
   consentimiento_id uuid fk not null,
-  borrar_despues_de date not null
+  borrar_despues_de date not null            -- default +24 meses, no insertable
 )
+
+-- tallas y umbrales editables (lectura pública, escritura admin)
+mt_config (clave text pk, valor jsonb, descripcion text)
 ```
 
-**Patrón de acceso (validado contra doc oficial, § 11.3):**
+**Patrón de acceso (validado contra doc oficial, § 11.3; RLS final en 0070):**
 
 - Visitante web: `signInAnonymously` + Cloudflare Turnstile (anti-abuso) →
-  RLS `with check (cliente_id = auth.uid())` para INSERT, `using (cliente_id
-  = auth.uid())` para SELECT. Rol `anon` puro no inserta nada.
-- Sastre: rol `taller` (tabla de roles o claim) → acceso a mediciones de
-  origen taller y a `medicion_real`.
+  RLS `with check (cliente_id = auth.uid())` para INSERT (tope 20/día por
+  uid), `using (cliente_id = auth.uid())` para SELECT. Rol `anon` puro no
+  inserta nada.
+- Sastre: **empleado ACTIVO del ERP** (`private.app_es_empleado()`, mismo
+  usuario Supabase que ya tiene; login en /taller con su código +
+  contraseña) → SOLO mediciones de `origen='taller'` de SUS sedes
+  (`private.app_sedes()`); admin/dueño ve todo. No existe rol nuevo.
 - **Keys nuevas desde el día 1:** `sb_publishable_...` (cliente) y
   `sb_secret_...` (servidor). Las legacy anon/service_role quedan deprecadas
   a fines de 2026 — nacer con ellas es nacer con deuda.
@@ -331,14 +344,48 @@ F1. Mitigación: la captura debe costar <60 s por cliente y estar dentro del
 flujo que el sastre ya hace (la cinta la toma igual); el dueño debe respaldar
 el hábito.
 
-## 9. Conexión futura con inventario (contrato, no implementación)
+## 9. Conexión con el inventario — IMPLEMENTADA (corrección del 15-ago-2026)
 
-Cuando exista el sistema comercial (otro proveedor), la consulta de
-disponibilidad será: `Medidas + tolerancias → lista de prendas compatibles`.
-Lo único que este proyecto exige de ese sistema: que cada prenda registre
-talla nominal **y** medidas reales (pecho, hombro, cintura, largo) en cm — el
-hombro incluido, porque es el filtro duro de asignación (§7). Este doc es la
-referencia del contrato para esa conversación.
+> **Corrección.** La versión anterior de esta sección decía que el inventario
+> no existía y dejaba la conexión como contrato futuro. Era falso: se escribió
+> contra la nota del 13-ago sobre el cambio de alcance, sin verificar la base.
+> Exactamente el error que prohíbe el no-negociable 7. Verificado el
+> 15-ago-2026 contra `scilb`: **`inventario_activo` existe**, con `talla`,
+> `color`, `estado`, `sede_cod`, precios, `foto_url`, `publicable` y
+> `descripcion_publica`; y una vista interna `v_activo_disponible` que ya
+> calcula el bloqueo por pieza hermana.
+
+**Lo que el dueño quería desde el principio** (confirmado por Alexander el
+15-ago): el cliente se mide en la web, ve qué hay disponible **en su talla**,
+reserva, y el pedido aterriza en SCI-LB para preparar la prenda. La medición
+no es un fin: es la puerta del catálogo.
+
+Implementación (migración **0074**): la vista `v_catalogo_publico` expone al
+rol `anon` un subconjunto explícito de `inventario_activo` — solo filas
+`publicable = true`, `estado = 'disponible'` y sin pieza hermana alquilada; y
+solo columnas públicas. **No** expone `precio_base` (costo interno) ni
+`usos_acumulados` (desgaste). Las policies del ERP (`inv_select`/`inv_write`,
+que limitan todo a admin o empleado de la sede) quedan intactas: la web lee la
+vista, nunca la tabla.
+
+Encaje afortunado: `inventario_activo.talla` guarda pulgadas US (`'38'`,
+`'40'`, `'42'`), el mismo formato que produce `tallas.ts`. Sin traducción.
+
+En LB-Web, `lib/supabase/catalogo.ts` busca por talla y `DisponibleEnTuTalla`
+lo muestra bajo el resultado. Regla del filtro (con test): el número significa
+cosas distintas según la prenda — 40 es pecho en un saco y cintura en un
+pantalón —, así que jamás se ofrece un pantalón de cintura 40 a quien usa saco
+40 (le corresponde 34).
+
+**Lo que falta y no es código:** hoy `inventario_activo` tiene 4 filas de
+prueba y ninguna con `publicable = true`, sin fotos ni descripciones. Mientras
+no se cargue stock real desde el ERP, la web dice con honestidad "todavía no
+tenemos el catálogo publicado en línea" e invita a la tienda.
+
+**Pendiente para asignación fina:** el hombro por prenda. Hoy el inventario
+guarda talla nominal pero no medidas reales de cada saco; el filtro duro de
+hombro (§7) no puede aplicarse hasta que existan. Ese sigue siendo el pedido
+al dueño de la tabla.
 
 ## 10. Métricas
 

@@ -735,6 +735,29 @@ sigue siendo una entrada propia del menú.
 
 ---
 
+## Mi Talla — F1/F2 (migración 0068, 14-ago-2026)
+
+Módulo de medición corporal para la web pública (código en LB-Web; spec en
+`docs/superpowers/specs/2026-08-13-mi-talla-design.md`). Todos estos defaults se sembraron en
+`mt_config` (editables por SQL/admin) o viven comentados como PROVISIONAL en el código de LB-Web:
+
+| Parámetro | Default | Por qué |
+|---|---|---|
+| `mt_config.tabla_saco` → `hombro_cm` por talla | 45.5 cm en US 38, ±1 cm por talla | Progresión típica de sastrería; nadie midió los sacos reales de LuceBien. Es el filtro duro del algoritmo (el hombro no se altera) |
+| `mt_config.umbrales_drop` | ≥7 slim · 5–6 regular · ≤4 executive | Convención US mainstream; cada marca usa umbrales distintos |
+| `mt_config.largos_saco` | S ≤167 cm · R ≤182 · L resto | Corte estándar retail; sin dato propio de LuceBien |
+| `mt_config.tolerancia_hombro_cm` | 1 cm | Tolerancia del filtro de hombro entre dos tallas |
+| `mt_config.retencion_imagenes_meses` | 24 | Retención de fotos de taller; sin política legal escrita del negocio |
+| Tope anti-spam de mediciones web | 20 por día por usuario | Número inventado; vive en la policy `mt_medicion_insert_web` |
+| `largo_saco_cm = 0.385 × altura` | regla fija en `estadistico.ts` (LB-Web) | ANSUR II no mide largo de saco; regla aproximada de sastre |
+| Offset de hombros `+3.0 cm` | `cal-2026-08-lb-v1` (LB-Web) | ANSUR mide biacromial (hueso a hueso); el saco se mide costura-costura. Se recalibra con los pares de cinta de F2 |
+| Fracciones anatómicas de visión (F2) | pecho 0.30 · cintura 0.62 · cadera 0.95 del segmento hombro→cadera | Constantes provisionales hasta calibrar con pares reales |
+| Sede piloto del taller | `LB` (Calle Real 380), constante `SEDE_PILOTO` en `MedirFlow.tsx` (LB-Web) | Decisión de Alexander 13-ago-2026; cuando el piloto se extienda, pasa a `mt_config` |
+| Meta de pares visible al sastre | 80, constante `META_PARES` en `MedirFlow.tsx` (LB-Web) | Umbral "señal" del spec §8 (250 = confianza); número de diseño estadístico, no de negocio |
+
+Pendiente de confirmar con el dueño: medir el hombro real de los sacos del stock (reemplaza la
+progresión inventada de `tabla_saco`) y definir la política de retención de imágenes.
+
 _Agregar aquí, por fase, cualquier parámetro nuevo que se sembró con un default sin confirmar._
 
 ---
