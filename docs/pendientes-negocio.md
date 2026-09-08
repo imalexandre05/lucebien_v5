@@ -1360,3 +1360,33 @@ general para deshacer un alta hecha por error
 migración `0099` reservada) — son candidatas naturales para ese mecanismo, no para una migración
 aparte que compita con él. La cuarta fila ambigua, `Alexito` (cod `0000`), se dejó sin tocar: no
 tiene ninguna fila "hermana" y desactivarla dejaría el conteo en 17, no en 18.
+
+---
+
+## Avance del 08-sep-2026 sobre el orden de trabajo (roadmap del 25-ago §4)
+
+- ✅ **F-2 (dashboard de personal)** — hecho. `/personal/dashboard`, tabla de sólo lectura ordenada
+  por nota ascendente con el desglose de puntos (pipeline/actividades/ventas/extras/descuento) por
+  persona. Sigue sin resolverse la escala sin calibrar (§ arriba): la nota que muestra no es
+  todavía un juicio sobre nadie.
+- ✅ **C-2 (contrato con todos los datos)** — hecho. DNI/teléfono ya existían y se editaban en la
+  ficha; sólo faltaba traerlos a la pantalla del contrato. "Recomendaciones" es campo nuevo (texto
+  libre, migración `0104`).
+- ✅ **C-3 (adjuntar DNI/CV/imágenes)** — hecho. Tabla `empleado_documentos` + bucket privado
+  `empleado-documentos` (migración `0105`), sólo admin/dueño en las dos capas de RLS, 10 MB,
+  imágenes+PDF. Primera migración de Storage con policies propias que se escribe sabiendo del
+  precedente ya aplicado (`0069`, el bucket `mi-talla`) — la primera versión de la `0105` no lo
+  sabía y el verificador lo encontró antes de aplicar (ver `docs/aprendizajes.md`).
+- 🔶 **D-1 (corregir liquidación en un paso)** — **en curso por otra sesión**, no por ésta. Se
+  encontraron cambios sin commitear en `apps/erp-web/app/sueldos/liquidaciones/{actions.ts,cliente.tsx}`
+  y `apps/erp-web/lib/sueldos-repo.ts` con una función `accionCorregir(id, motivo)` que por el
+  nombre es exactamente esto (anular + clonar en borrador, pidiendo motivo). Sin commitear todavía
+  al momento de escribir esto — avisado a esa sesión para que lo commitee antes de que se pierda en
+  el directorio de trabajo compartido.
+- ⏸️ **F-1 (borrador que sobrevive al cambiar de pantalla)** — sin empezar. Pendiente de confirmar
+  con la sesión de arriba si también lo tiene en curso, para no duplicar.
+
+**Nota sobre el entorno de esta tarea:** varias sesiones de Claude Code trabajaron en paralelo sobre
+el mismo directorio físico (no worktrees separados) — `feat/sueldos-motor` recibió commits
+intercalados de al menos tres sesiones distintas el mismo día. Ver `docs/aprendizajes.md` para el
+detalle de qué se aprendió de esa coordinación.
