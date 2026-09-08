@@ -148,6 +148,9 @@ guardada con el `nivel_default` y los `puntos_default` de ese tipo.
 
 ## 6. Addendum (8-sep-2026) — C-1 dependía de un dato que a veces no llegaba a guardarse
 
+> **✅ Aplicado y verificado contra `scilb` el 8-sep.** Migración `0106` + el cambio en
+> `incidencias-repo.ts`. Los 3 casos de la tabla de abajo, `[ok]`.
+
 > **La `0094` (C-1) ya está aplicada.** Este addendum es un hallazgo posterior: la RLS que exige
 > `reportado_por_id = auth.uid()` para que un colaborador vea lo que él mismo reportó **depende de
 > que esa columna se haya guardado bien**, y no siempre pasa.
