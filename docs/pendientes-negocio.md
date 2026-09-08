@@ -1390,3 +1390,10 @@ tiene ninguna fila "hermana" y desactivarla dejaría el conteo en 17, no en 18.
 el mismo directorio físico (no worktrees separados) — `feat/sueldos-motor` recibió commits
 intercalados de al menos tres sesiones distintas el mismo día. Ver `docs/aprendizajes.md` para el
 detalle de qué se aprendió de esa coordinación.
+
+**Cierre, más tarde el mismo 08-sep-2026:** los cinco ítems del orden de trabajo del §4 de la hoja
+de ruta quedaron hechos. D-1 lo cerró la sesión "Rediseño frontend sistema de sueldos"
+(`45148bc`, botón «Corregir esta liquidación»). F-1 lo cerró esta sesión (`5787720`) una vez
+confirmado que D-1 ya estaba a salvo — el borrador de un contrato nuevo en `localStorage`, nunca
+para uno que ya existe. Ninguno de los dos se duplicó: se coordinó por mensaje directo entre
+sesiones antes de tocar los archivos compartidos.
