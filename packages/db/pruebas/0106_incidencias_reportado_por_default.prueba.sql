@@ -91,9 +91,25 @@ begin
   end if;
 
   -- ── 8) Mismo insert, pero mandando reportado_por_id explícito a OTRA persona distinta ───────
-  insert into incidencias (sede_cod, fecha, tipo, nivel, origen, puntos_penalidad, reportado_por_id)
-    values (v_sede, '2099-02-21', 'Prueba 0106', 'Bajo', 'reporte', 1, operativo_b)
-    returning id, reportado_por_id into inc_id, v_reportado;
+  --
+  -- OJO: sin `returning` acá. Con `returning`, Postgres revalida la fila insertada contra la
+  -- policy de SELECT (inc_select: admin OR responsable_id=auth.uid() OR reportado_por_id=auth.uid())
+  -- antes de poder devolverla — y operativo_a (quien inserta) no es ninguna de las dos cuando el
+  -- reportado_por_id que él mismo puso es OTRA persona (operativo_b), así que el `returning`
+  -- fallaría con el mismo texto de error que una violación de `with check`, aunque el `insert` en
+  -- sí sea perfectamente válido para `inc_insert`. Es exactamente lo que hace la app real: el
+  -- insert de `crearIncidenciasDeReporte()` NO pide `.select()` de vuelta. Se relee después como
+  -- administrador, que sí puede verla.
+  insert into incidencias (id, sede_cod, fecha, tipo, nivel, origen, puntos_penalidad, reportado_por_id)
+    values (gen_random_uuid(), v_sede, '2099-02-21', 'Prueba 0106', 'Bajo', 'reporte', 1, operativo_b);
+
+  execute 'reset role';
+  select reportado_por_id into v_reportado
+    from incidencias where sede_cod = v_sede and fecha = '2099-02-21' and tipo = 'Prueba 0106';
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    json_build_object('sub', operativo_a, 'role', 'authenticated')::text, true);
+
   if v_reportado = operativo_b then
     r := r || '[ok] caso 8: un reportado_por_id explicito distinto se respeta, el default no lo pisa;';
   else
