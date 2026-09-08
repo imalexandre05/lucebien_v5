@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Ban, Calculator, Eye, Lock, Save, Trash2 } from 'lucide-react';
+import { AlertTriangle, Ban, Calculator, Eye, Lock, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { finDePeriodo, type LineaLiquidacion } from '@scilb/core';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -16,6 +16,7 @@ import {
   accionAnular,
   accionCalcular,
   accionCerrar,
+  accionCorregir,
   accionCrearBorrador,
   accionEliminarBorrador,
   accionVerDetalle,
@@ -152,6 +153,17 @@ export function LiquidacionesCliente({
   const [detalle, setDetalle] = useState<LiquidacionDetalle | null>(null);
   const [anulando, setAnulando] = useState<LiquidacionResumen | null>(null);
   const [motivo, setMotivo] = useState('');
+  // «Corregir esta liquidación» (spec 2026-08-25-reunion-admin-hoja-de-ruta.md §3.1): estado propio,
+  // deliberadamente separado del de anular — son dos modales distintos y no deben cruzarse el
+  // motivo ni el error de uno con el del otro.
+  const [corrigiendo, setCorrigiendo] = useState<LiquidacionResumen | null>(null);
+  const [motivoCorregir, setMotivoCorregir] = useState('');
+  // El modal es una superposición de pantalla completa (components/ui/modal.tsx): mientras está
+  // abierto, el banner de error de arriba de la página queda tapado por el overlay. Si "corregir"
+  // falla ANTES de anular (nada se escribió todavía) el modal se queda abierto para reintentar, así
+  // que ese error necesita mostrarse ACÁ adentro — error/codigo (el banner de arriba) es para
+  // cuando el modal ya se cerró.
+  const [errorCorregir, setErrorCorregir] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [codigo, setCodigo] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
@@ -257,6 +269,61 @@ export function LiquidacionesCliente({
     });
   };
 
+  const abrirCorregir = (l: LiquidacionResumen) => {
+    setErrorCorregir(null);
+    setMotivoCorregir('');
+    setCorrigiendo(l);
+  };
+
+  const cerrarModalCorregir = () => {
+    setCorrigiendo(null);
+    setMotivoCorregir('');
+    setErrorCorregir(null);
+  };
+
+  /**
+   * Anula la liquidación cerrada y crea, en el mismo paso, el borrador de reemplazo (spec
+   * 2026-08-25-reunion-admin-hoja-de-ruta.md §3.1). Tres desenlaces, no dos:
+   *
+   * 1. Sale bien: se cierra el modal, se refresca la lista y se deja al administrador parado en el
+   *    borrador nuevo (el mismo modal de "Ver el desglose" que ya existe), listo para revisar y
+   *    cerrar.
+   * 2. Falla ANTES de anular (nada se escribió): el modal se queda abierto, como ya hace "Anular",
+   *    y el error se muestra adentro — reintentar tiene sentido acá.
+   * 3. Anula y el borrador nuevo NO se pudo crear (`r.parcial`): la anulación ya quedó firme y no
+   *    hay forma de deshacerla, así que reintentar ACÁ no tiene sentido — el modal se cierra, se
+   *    refresca la lista para que la anulación se vea en el acto, y el contrato + período exactos
+   *    quedan cargados arriba, en el selector de "Calcular", que es el camino de vuelta.
+   */
+  const corregir = () => {
+    if (!corrigiendo) return;
+    setErrorCorregir(null);
+    empezar(async () => {
+      const r = await accionCorregir(corrigiendo.id, motivoCorregir);
+
+      if (r.ok && r.nuevoBorradorId) {
+        cerrarModalCorregir();
+        router.refresh();
+        const d = await accionVerDetalle(r.nuevoBorradorId);
+        if (d.ok && d.datos) setDetalle(d.datos);
+        return;
+      }
+
+      if (r.parcial) {
+        cerrarModalCorregir();
+        router.refresh();
+        if (r.acuerdoId) setAcuerdoId(r.acuerdoId);
+        if (r.periodoDesde && r.periodoHasta) setRango({ desde: r.periodoDesde, hasta: r.periodoHasta });
+        setPreview(null);
+        setError(r.error ?? 'Error desconocido.');
+        setCodigo('PARCIAL');
+        return;
+      }
+
+      setErrorCorregir(r.error ?? 'Error desconocido.');
+    });
+  };
+
   const liq = preview?.liquidacion;
 
   return (
@@ -324,6 +391,14 @@ export function LiquidacionesCliente({
             <p className="mt-1 text-xs">
               Se cargó algo después de calcular. Descartá el borrador, volvé a calcular y cerrá de
               nuevo: si no, esa fila quedaría sellada sin estar en el pago.
+            </p>
+          )}
+          {codigo === 'PARCIAL' && (
+            <p className="mt-1 text-xs font-medium">
+              La anulación SÍ se aplicó — ya figura como «anulada» en la lista de abajo, con el
+              motivo que pusiste. El contrato y el período quedaron cargados arriba: apretá{' '}
+              <strong>Calcular</strong> y, si el número es el que esperás, <strong>Guardar
+              borrador</strong>.
             </p>
           )}
         </div>
@@ -487,6 +562,14 @@ export function LiquidacionesCliente({
                             >
                               Resumen
                             </a>
+                            {/* «Corregir esta liquidación» (spec 2026-08-25-reunion-admin-hoja-de-
+                                ruta.md §3.1, D-1): no es editar la cerrada — es anular + reemitir en
+                                un solo paso, el mismo camino que ya existe hecho evidente. Con texto
+                                visible, no sólo ícono: es una acción poco común y no debe
+                                confundirse con "Anular" a secas. */}
+                            <Button variant="outline" onClick={() => abrirCorregir(l)}>
+                              <RefreshCw className="h-4 w-4" /> Corregir
+                            </Button>
                             <Button variant="ghost" onClick={() => setAnulando(l)} aria-label="Anular">
                               <Ban className="h-4 w-4" />
                             </Button>
@@ -566,6 +649,44 @@ export function LiquidacionesCliente({
           </Button>
           <Button onClick={anular} pending={pendiente} disabled={motivo.trim().length === 0}>
             Anular
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* ── Corrección: anula y vuelve a emitir en un solo paso (spec 2026-08-25 §3.1) ─────────── */}
+      <Modal
+        open={corrigiendo != null}
+        onClose={cerrarModalCorregir}
+        title="Corregir esta liquidación"
+        subtitle="Anula esta liquidación y crea, en el momento, un borrador nuevo para el mismo contrato y el mismo período — recalculado con los datos de hoy."
+      >
+        <ModalBody>
+          {errorCorregir && (
+            <div role="alert" className="mb-3 rounded-md bg-error/10 px-3 py-2 text-sm text-error-deep">
+              {errorCorregir}
+            </div>
+          )}
+          <p className="mb-3 text-xs text-muted">
+            Una liquidación cerrada no se edita: corregir es esto — anularla, con motivo, y volver a
+            emitirla desde cero. Las dos quedan en la lista, con el rastro completo.
+          </p>
+          <Label htmlFor="motivo-corregir">Motivo de la corrección</Label>
+          <Input
+            id="motivo-corregir"
+            value={motivoCorregir}
+            onChange={(e) => setMotivoCorregir(e.target.value)}
+            placeholder="Qué estaba mal en esta liquidación…"
+          />
+          <p className="mt-2 text-xs text-muted">
+            Es el motivo con el que queda anulada la liquidación actual. Sin él no se puede continuar.
+          </p>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="outline" onClick={cerrarModalCorregir}>
+            Cancelar
+          </Button>
+          <Button onClick={corregir} pending={pendiente} disabled={motivoCorregir.trim().length === 0}>
+            <RefreshCw className="h-4 w-4" /> Corregir
           </Button>
         </ModalFooter>
       </Modal>
