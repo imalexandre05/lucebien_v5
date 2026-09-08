@@ -1,24 +1,107 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* Fuente única de los tokens (spec §3.1, docs/superpowers/specs/2026-09-06-sistema-visual-sci-lb-design.md).
+   Canales RGB sin `rgb()`, para poder componer opacidad en el punto de uso: `rgb(var(--gold) / .5)`.
+   tailwind.config.ts los consume con `rgb(var(--x) / <alpha-value>)` — nombres de clase intactos
+   (`bg-navy`, `text-gold-deep`...), así que ninguna pantalla existente se entera del cambio.
+   Los dos archivos se editan juntos: si no, uno de los dos empieza a mentir. */
 :root {
-  --navy: #2e3e6e;
-  --navy-deep: #1b2440;
-  --gold: #b8a515;
-  --gold-deep: #8a7c10;
-  --paper: #f6f4ef;
-  --ink: #20283f;
-  --line: #e6e0d4;
+  --navy: 46 62 110; /* #2e3e6e */
+  --navy-dark: 38 51 90; /* #26335a */
+  --navy-deep: 27 36 64; /* #1b2440 */
+  --gold: 184 165 21; /* #b8a515 */
+  --gold-soft: 212 191 30; /* #d4bf1e */
+  --gold-deep: 138 124 16; /* #8a7c10 */
+  --paper: 246 244 239; /* #f6f4ef */
+  --ink: 32 40 63; /* #20283f */
+  --line: 230 224 212; /* #e6e0d4 */
+  --muted: 128 122 108; /* #807a6c */
+  /* Nuevas (revisión 1 de la segunda pasada): paper y una tarjeta blanca eran casi el mismo
+     color, así que todo se leía plano. superficie es blanco cálido, no blanco puro. */
+  --superficie: 255 253 249; /* #fffdf9 */
+  --superficie-hundida: 239 236 228; /* #efece4 */
 
-  /* Semánticos del manual de marca §6. Espejo de tailwind.config.ts: los dos archivos se editan
-     juntos, si no uno de los dos empieza a mentir. Acá sólo van los que hacen falta fuera de las
-     clases de Tailwind (CSS suelto, scrollbars, print). */
-  --exito: #2d9e6b;
-  --aviso: #e08c1a;
-  --error: #c94040;
-  --info: #3a7fc1;
+  /* Semánticos del manual de marca §6 — ESTADO, nunca identidad. Cuatro pasos por familia:
+     soft (fondo) · line (borde) · DEFAULT (punto/barra/relleno) · deep (texto sobre soft, 4.5:1). */
+  --exito-soft: 234 246 240; /* #eaf6f0 */
+  --exito-line: 191 227 209; /* #bfe3d1 */
+  --exito: 45 158 107; /* #2d9e6b */
+  --exito-deep: 29 107 72; /* #1d6b48 */
+  --aviso-soft: 253 243 227; /* #fdf3e3 */
+  --aviso-line: 245 217 168; /* #f5d9a8 */
+  --aviso: 224 140 26; /* #e08c1a */
+  --aviso-deep: 149 89 10; /* #95590a */
+  --error-soft: 252 236 236; /* #fcecec */
+  --error-line: 242 195 195; /* #f2c3c3 */
+  --error: 201 64 64; /* #c94040 */
+  --error-deep: 153 45 45; /* #992d2d */
+  --info-soft: 234 242 250; /* #eaf2fa */
+  --info-line: 188 215 238; /* #bcd7ee */
+  --info: 58 127 193; /* #3a7fc1 */
+  --info-deep: 37 90 143; /* #255a8f */
+
+  /* Categóricos — IDENTIDAD, nunca estado (spec §3.3). Siete familias: tres existentes (mar, lila,
+     arcilla) y cuatro nuevas (oliva, ciruela, humo, piedra), elegidas por hueco de tono libre para
+     que ninguna caiga encima de un semántico (oro 54° · aviso 35° · error 0° · éxito 155° ·
+     info 207° · navy 226°). Un acento por grupo de módulo lo asigna la fase 5; acá sólo el color. */
+  --cat-mar-soft: 232 243 244; /* #e8f3f4 */
+  --cat-mar-line: 192 222 225; /* #c0dee1 */
+  --cat-mar: 47 127 136; /* #2f7f88 */
+  --cat-mar-deep: 30 90 97; /* #1e5a61 */
+  --cat-lila-soft: 242 238 249; /* #f2eef9 */
+  --cat-lila-line: 215 203 238; /* #d7cbee */
+  --cat-lila: 111 90 168; /* #6f5aa8 */
+  --cat-lila-deep: 78 61 125; /* #4e3d7d */
+  --cat-arcilla-soft: 251 238 233; /* #fbeee9 */
+  --cat-arcilla-line: 240 207 193; /* #f0cfc1 */
+  --cat-arcilla: 181 100 63; /* #b5643f */
+  --cat-arcilla-deep: 138 70 42; /* #8a462a */
+  --cat-oliva-soft: 241 244 231; /* #f1f4e7 */
+  --cat-oliva-line: 213 222 185; /* #d5deb9 */
+  --cat-oliva: 109 132 56; /* #6d8438 */
+  --cat-oliva-deep: 75 92 35; /* #4b5c23 */
+  --cat-ciruela-soft: 247 237 247; /* #f7edf7 */
+  --cat-ciruela-line: 227 201 228; /* #e3c9e4 */
+  --cat-ciruela: 143 79 146; /* #8f4f92 */
+  --cat-ciruela-deep: 103 53 106; /* #67356a */
+  --cat-humo-soft: 238 241 244; /* #eef1f4 */
+  --cat-humo-line: 204 213 222; /* #ccd5de */
+  --cat-humo: 91 112 134; /* #5b7086 */
+  --cat-humo-deep: 60 77 94; /* #3c4d5e */
+  --cat-piedra-soft: 244 241 235; /* #f4f1eb */
+  --cat-piedra-line: 222 214 200; /* #ded6c8 */
+  --cat-piedra: 138 122 99; /* #8a7a63 */
+  --cat-piedra-deep: 93 81 64; /* #5d5140 */
+
+  /* El acento del módulo (spec §3.3/§3.6). Una ruta lo fija con una clase `.m-*` que la fase 5
+     define, con sus cuatro pasos —soft/line/DEFAULT/deep, igual que un categórico—. Hasta
+     entonces, y en cualquier pantalla que todavía no tenga su clase, cae en navy: el mismo
+     default que ya usan `elev-*` y `.hilo-activo`. */
+  --acento: var(--navy);
+  --acento-soft: 230 233 242;
+  --acento-line: 198 205 226;
+  --acento-deep: var(--navy-deep);
+
+  /* Movimiento (spec §3.9): tres presupuestos según cuántas veces por minuto ocurre la cosa, no
+     un tope único. Cada pieza nombrada del catálogo (§6) usa su propia duración, siempre por
+     debajo del techo de su presupuesto. Viven acá —no sólo en tailwind.config.ts— porque una
+     transición compuesta a mano (`transition: transform var(--dur-instante) var(--curva-rebote)`)
+     también tiene que poder tomarlos. */
+  --dur-instante: 100ms; /* presión sobre un control */
+  --dur-rapido: 190ms; /* cruce esqueleto→contenido */
+  --dur-base: 260ms; /* casi todo lo repetitivo */
+  --dur-tope: 320ms; /* techo del presupuesto repetitivo */
+  --dur-contexto: 500ms; /* techo del presupuesto de contexto */
+  --dur-momento: 700ms; /* techo del presupuesto de momento — cuatro cierres + gráficos */
+  --escalon: 60ms; /* retraso entre elementos de una entrada escalonada */
+  --escalon-viz: 70ms; /* retraso entre series de un gráfico que se dibuja */
+  --curva-rebote: cubic-bezier(0.34, 1.42, 0.64, 1); /* todo lo que entra: sobrepasa el destino 4% y vuelve. Nunca en modal/drawer */
+  --curva-salida: cubic-bezier(0.23, 1, 0.32, 1); /* lo que sale, y lo que no debe rebotar. Mismo valor que `ease-out-expo` de Tailwind */
+  --curva-estado: cubic-bezier(0.4, 0, 0.2, 1); /* cambios bidireccionales: abrir/cerrar, activar/desactivar */
+  --curva-viz: cubic-bezier(0.33, 1, 0.68, 1); /* trazos que se dibujan: línea, anillo, barra */
 }
 
 @layer base {
@@ -26,9 +109,10 @@
     @apply bg-paper text-ink font-body antialiased;
     text-rendering: optimizeLegibility;
   }
-  /* Sin serifas en el sistema (Fase 4): la Cormorant Garamond queda solo en el logo, y desde la
-     Fase 3 ni siquiera como clase CSS — el wordmark real (components/brand/logo.tsx) es un PNG
-     oficial (docs/manual-de-marca.md), la tipografía ya viene grabada en el archivo. */
+  /* Sin serifas en el sistema (Fase 4, ago-2026): la Cormorant Garamond queda solo en el logo,
+     como PNG oficial (components/brand/logo.tsx) — la tipografía ya viene grabada en el archivo,
+     no como webfont. `font-display` (antes Cormorant) pasa a Outfit en la segunda pasada visual:
+     sigue siendo la voz de título, ya no la serifa. */
   h1,
   h2,
   h3,
@@ -43,7 +127,7 @@
      tanto sobre el navy de la sidebar como sobre el papel del resto del ERP. */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--gold) transparent;
+    scrollbar-color: rgb(var(--gold)) transparent;
   }
   ::-webkit-scrollbar {
     width: 10px;
@@ -53,13 +137,13 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background-color: var(--gold);
+    background-color: rgb(var(--gold));
     border: 2px solid transparent;
     border-radius: 999px;
     background-clip: padding-box;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background-color: var(--navy);
+    background-color: rgb(var(--navy));
   }
 }
 
@@ -95,10 +179,119 @@
     }
   }
 
-  /* Hairline dorada: el divisor-firma del "atelier". */
+  /* Hairline dorada: el divisor-firma del "atelier". Usada hoy por PageHeader y 15 pantallas más
+     (loading.tsx de varios módulos) — se queda tal cual hasta que la fase 5 la reemplace por
+     `.hilo-titulo` de abajo, componente por componente. */
   .gold-rule {
     height: 2px;
-    background: linear-gradient(90deg, var(--gold) 0, var(--gold) 2.5rem, var(--line) 2.5rem, var(--line) 100%);
+    background: linear-gradient(
+      90deg,
+      rgb(var(--gold)) 0,
+      rgb(var(--gold)) 2.5rem,
+      rgb(var(--line)) 2.5rem,
+      rgb(var(--line)) 100%
+    );
+  }
+
+  /* ── El hilo dorado como gramática (spec §4) ──────────────────────────────────────────────
+     Un solo trazo con cinco trabajos, y siempre el mismo significado: esto es lo que importa acá.
+     Nuevas — sin consumidor todavía, la fase 3+ las usa al construir BandaModulo/Table/Tabs. */
+
+  /* 1 · Bajo el título o la banda: 2.5rem de oro (la marca, fija) + 1.5rem del acento del módulo
+     (el lugar, cambia) + el resto en `line`. Reemplaza a `.gold-rule` donde haya banda de módulo. */
+  .hilo-titulo {
+    position: relative;
+    height: 2px;
+    border-radius: 2px;
+    background: rgb(var(--line));
+  }
+  .hilo-titulo::before,
+  .hilo-titulo::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 2px;
+  }
+  .hilo-titulo::before {
+    left: 0;
+    width: 2.5rem;
+    background: rgb(var(--gold));
+  }
+  .hilo-titulo::after {
+    left: 2.5rem;
+    width: 1.5rem;
+    background: rgb(var(--acento));
+    transition: background-color var(--dur-contexto) var(--curva-estado);
+  }
+
+  /* 2 · Ítem activo de sidebar, pestaña activa. Pastilla u orla en el acento — el color exacto
+     y la forma los define el componente; acá sólo el trazo mínimo de 3px para quien lo use suelto. */
+  .hilo-activo {
+    position: relative;
+  }
+  .hilo-activo::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    border-radius: 0 2px 2px 0;
+    background: rgb(var(--acento));
+    transition: background-color var(--dur-contexto) var(--curva-estado);
+  }
+
+  /* 3 · Toda barra de progreso del sistema: `scaleX` con `origin-left`, nunca `width`. */
+  .hilo-progreso {
+    height: 3px;
+    border-radius: 999px;
+    background: rgb(var(--line));
+    overflow: hidden;
+  }
+  .hilo-progreso > i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: rgb(var(--gold));
+    transform-origin: left;
+  }
+
+  /* 4 · Fila enfocada o seleccionada de una tabla. Siempre dorado — es una señal del sistema,
+     no del módulo. */
+  .hilo-fila {
+    position: relative;
+  }
+  .hilo-fila::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 5px;
+    bottom: 5px;
+    width: 2px;
+    border-radius: 2px;
+    background: rgb(var(--gold));
+  }
+
+  /* 5 · El trazo que se enhebra al cerrar algo irreversible. Sólo cuatro lugares (spec §6):
+     liquidación cerrada, reporte de turno enviado, prenda entregada, evaluación firmada. */
+  .hilo-cierre {
+    position: relative;
+    height: 2px;
+    border-radius: 2px;
+    background: rgb(var(--gold));
+    transform-origin: left;
+    animation: hilo-cierre var(--dur-momento) var(--curva-salida) both;
+  }
+
+  /* ── Foco (spec §3.8) ──────────────────────────────────────────────────────────────────────
+     Un solo anillo en todo el sistema. Dorado siempre — es la única señal de accesibilidad, y
+     una señal que cambia de color según el módulo deja de ser una señal. `outline`, no
+     `box-shadow`: no participa del layout y sigue el radio real del elemento. */
+  .anillo:focus-visible {
+    outline: 2px solid rgb(var(--gold));
+    outline-offset: 2px;
+    border-radius: inherit;
   }
 }
 
@@ -111,7 +304,8 @@
  *
  * Lo que se va es el desplazamiento; lo que se queda es todo lo que no se mueve. Las animaciones de
  * keyframes terminan al instante y, como todas llevan `both` o `backwards`, aterrizan en su estado
- * final sin pasar por el recorrido. */
+ * final sin pasar por el recorrido. El rebote (`--curva-rebote`) es lo primero que pierde sentido
+ * sin desplazamiento, así que se va con el resto. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -123,7 +317,9 @@
   }
 }
 
-/* Impresión (§4F FR-01): papel limpio, sin sombras, colores fieles para el crest navy. */
+/* Impresión (§4F FR-01): papel limpio, sin sombras, colores fieles para el crest navy. El modo
+   vibrante no aplica acá — es la única salida del sistema que alguien firma, y ahí manda la tinta,
+   no el acento del módulo (spec: "El papel: la única salida del sistema que alguien firma"). */
 @page {
   margin: 14mm;
 }
