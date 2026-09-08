@@ -24,12 +24,12 @@ declare
   v_firmas_actualizar int;
   v_fallas text := '';
 begin
-  insert into empleados (nombre, cod, rol, activo, sede_cod)
-    values ('Admin Prueba 0104', '0104a', 'admin', true, 'AL') returning id into adm;
-  insert into empleados (nombre, cod, rol, activo, sede_cod)
-    values ('Colaborador Prueba 0104', '0104b', 'ventas_junior', true, 'AL') returning id into col;
-  insert into empleados (nombre, cod, rol, activo, sede_cod)
-    values ('Persona Prueba 0104', '0104c', 'ventas_junior', true, 'AL') returning id into v_test;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales)
+    values ('Admin Prueba 0104', '0104a', 'admin', true, 'AL', 'AP') returning id into adm;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales)
+    values ('Colaborador Prueba 0104', '0104b', 'ventas_junior', true, 'AL', 'CP') returning id into col;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales)
+    values ('Persona Prueba 0104', '0104c', 'ventas_junior', true, 'AL', 'PP') returning id into v_test;
 
   -- 1) Como admin: guardar recomendaciones debe funcionar.
   set local role authenticated;
