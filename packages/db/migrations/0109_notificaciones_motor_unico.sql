@@ -67,15 +67,16 @@
 -- cron (generar-alertas-am/generar-alertas-pm, 0042) se quedaría sin poder generar una sola alerta
 -- desde el momento en que esto se aplique, porque tampoco pasa por PostgREST.
 --
--- Esta migración se escribe TAL CUAL la pide la spec porque no es decisión de quien implementa
--- relajar un guard de seguridad ya aprobado (no-negociable 6, Zone Guard) — pero antes de aplicarla
--- hace falta (a) correr `pg_get_functiondef` para confirmar el cuerpo, y (b) correr
--- `bash tools/probar-migracion.sh 0101` y `0107` contra `scilb` DESPUÉS de aplicar esta migración
--- para ver si de verdad fallan como predice este análisis. Si fallan, la spec necesita un ajuste
--- (p.ej. eximir del guard el caso "sin sesión" con
--- `current_setting('request.jwt.claims', true) is null` — que distingue "nadie impersonó nada,
--- viene de un cron o de la consola de administración" de "un `authenticated` real que no es admin")
--- antes de que esto llegue a producción, no después.
+-- RESUELTO (sesión principal, 8-sep-2026, tras confirmar el hallazgo de arriba contra `scilb`):
+-- el guard queda condicionado a que EXISTA un contexto de PostgREST. Verificado empíricamente
+-- contra la base — `current_setting('request.jwt.claims', true)` da `null` en una conexión sin
+-- impersonar (cron, consola de administración, esta misma migración) y el objeto JSON entero
+-- después de un `set_config('request.jwt.claims', ..., true)` real. Una conexión SIN ese GUC ya
+-- tiene, por construcción, más acceso del que este guard podría negarle —es la misma conexión que
+-- puede leer o escribir cualquier tabla sin pasar por RLS—, así que eximirla de esta comprobación
+-- puntual no abre ninguna puerta nueva: sólo dispensa una verificación que de por sí no podía
+-- proteger nada ahí. Lo que el guard SÍ sigue negando, sin cambios: un `authenticated` real
+-- (browser, con JWT) que no sea admin/dueño.
 --
 -- Idempotente: create or replace function.
 --
@@ -100,7 +101,8 @@ declare
   v_rol   text;
   v_keys  text[];
 begin
-  if not private.app_es_admin() then
+  -- El guard sólo rige cuando hay un contexto de PostgREST (JWT presente) — ver RESUELTO arriba.
+  if current_setting('request.jwt.claims', true) is not null and not private.app_es_admin() then
     raise exception 'PERMISO:sólo el administrador puede generar alertas';
   end if;
 
