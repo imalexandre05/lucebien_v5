@@ -310,6 +310,39 @@ function borradorNuevo(personaFija: Emp | undefined, fechaIngresoPersona: string
   };
 }
 
+// F-1 (spec docs/superpowers/specs/empleados/2026-09-08-borrador-persistente-design.md): sólo para
+// un contrato NUEVO — editar uno que ya existe carga siempre desde la base (deAcuerdo), nunca de
+// acá. try/catch en las tres funciones porque localStorage puede faltar (SSR, navegación privada,
+// cuota llena) y eso no puede tirar abajo el editor: sin borrador es exactamente el comportamiento
+// de hoy.
+const claveBorrador = (personaFija: Emp | undefined) => `sueldos-acuerdo-borrador:${personaFija?.id ?? 'picker'}`;
+
+function leerBorrador(personaFija: Emp | undefined): Borrador | null {
+  try {
+    const crudo = localStorage.getItem(claveBorrador(personaFija));
+    return crudo ? (JSON.parse(crudo) as Borrador) : null;
+  } catch {
+    return null;
+  }
+}
+
+function guardarBorrador(personaFija: Emp | undefined, b: Borrador): void {
+  try {
+    localStorage.setItem(claveBorrador(personaFija), JSON.stringify(b));
+  } catch {
+    // Cuota llena o localStorage inaccesible: se sigue trabajando sin borrador, sin avisar en cada
+    // tecla — el aviso sería más ruido que la pérdida ocasional que esto mismo existe para evitar.
+  }
+}
+
+function borrarBorrador(personaFija: Emp | undefined): void {
+  try {
+    localStorage.removeItem(claveBorrador(personaFija));
+  } catch {
+    /* nada que limpiar si ni siquiera se pudo leer */
+  }
+}
+
 export function AcuerdosCliente({
   acuerdos,
   empleados,
@@ -341,9 +374,26 @@ export function AcuerdosCliente({
   const [editando, setEditando] = useState<string | null>(null);
   const [enEditor, setEnEditor] = useState(arrancaEnEditor);
   const [parametrosAbierto, setParametrosAbierto] = useState(false);
+  // F-1: si al arrancar directo en el editor (alta encadenada) hay un borrador guardado, se
+  // restaura en vez de empezar vacío — `leerBorrador` es null en el server (sin localStorage), así
+  // que el primer render en SSR siempre es el vacío y el cliente lo corrige en el montaje si hace
+  // falta (ver el useEffect de abajo), sin desajuste de hidratación visible: el usuario no llega a
+  // ver el formulario vacío antes del reemplazo.
   const [b, setB] = useState<Borrador>(() =>
     arrancaEnEditor ? borradorNuevo(personaFija, fechaIngresoPersona, true) : VACIO,
   );
+  const [borradorRestaurado, setBorradorRestaurado] = useState(false);
+
+  useEffect(() => {
+    if (!arrancaEnEditor || editando) return;
+    const guardado = leerBorrador(personaFija);
+    if (guardado) {
+      setB(guardado);
+      setBorradorRestaurado(true);
+    }
+    // Sólo al montar: abrirNuevo()/abrirEdicion() ya manejan su propio caso al hacer clic.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [error, setError] = useState<string | null>(null);
   // El error de una acción de la lista —poner vigente— no puede vivir en el error del formulario:
   // cuando se dispara, el formulario no está en pantalla y el mensaje se renderizaría donde nadie
@@ -362,24 +412,52 @@ export function AcuerdosCliente({
 
   const abrirNuevo = () => {
     setEditando(null);
-    // C-2: el PRIMER contrato de la persona arranca en su fecha de ingreso, editable. Una
-    // renovación no: tiene su propia fecha y atarla al ingreso original la pisaría.
-    setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0));
+    // F-1: un borrador sin guardar de un contrato nuevo gana al vacío — es exactamente el caso que
+    // esto existe para cubrir (cambiar de pantalla y volver a «Nuevo contrato»).
+    const guardado = leerBorrador(personaFija);
+    if (guardado) {
+      setB(guardado);
+      setBorradorRestaurado(true);
+    } else {
+      // C-2: el PRIMER contrato de la persona arranca en su fecha de ingreso, editable. Una
+      // renovación no: tiene su propia fecha y atarla al ingreso original la pisaría.
+      setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0));
+      setBorradorRestaurado(false);
+    }
     setError(null);
     setEnEditor(true);
   };
 
   const abrirEdicion = (a: AcuerdoSueldo) => {
+    // F-1 (spec §2): un contrato que YA EXISTE carga siempre desde la base, nunca de un borrador
+    // sin guardar — el que hubiera para "nuevo contrato" no le corresponde a este id.
     setEditando(a.id);
     setB(deAcuerdo(a));
+    setBorradorRestaurado(false);
     setError(null);
     setEnEditor(true);
+  };
+
+  const descartarBorrador = () => {
+    borrarBorrador(personaFija);
+    setBorradorRestaurado(false);
+    setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0));
   };
 
   const volver = () => {
     setParametrosAbierto(false);
     setEnEditor(false);
   };
+
+  // F-1: se guarda mientras se edita un contrato NUEVO (no una edición existente — spec §2). Sin
+  // debounce: `b` es un objeto chico, escribirlo en cada tecla no se nota.
+  useEffect(() => {
+    if (!enEditor || editando) return;
+    guardarBorrador(personaFija, b);
+    // personaFija no cambia dentro de la vida de este componente; incluirlo en las dependencias
+    // sólo agregaría ruido a la lista sin cambiar cuándo corre esto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [b, enEditor, editando]);
 
   const guardar = () => {
     setError(null);
@@ -395,8 +473,12 @@ export function AcuerdosCliente({
       turnos: b.turnos,
     };
     empezar(async () => {
+      const eraNuevo = !editando;
       const r = editando ? await accionActualizarAcuerdo(editando, form) : await accionCrearAcuerdo(form);
       if (r.ok) {
+        // F-1: el borrador cumplió su función — guardarlo después de esto pisaría el próximo
+        // contrato nuevo con lo que ya se guardó.
+        if (eraNuevo) borrarBorrador(personaFija);
         volver();
         // ROTURA 3 (validador de flujo 23-ago-2026): las acciones sólo revalidan la ruta vieja
         // /sueldos/acuerdos. Montado en /personal/[id]/contrato nadie volvía a pedirle datos al
@@ -475,6 +557,16 @@ export function AcuerdosCliente({
           </CardHeader>
 
           <CardContent className="space-y-6 border-t border-line pt-5">
+            {/* F-1: sólo aparece para un contrato nuevo (borradorRestaurado nunca se prende en
+                abrirEdicion, spec §2). */}
+            {borradorRestaurado && (
+              <Aviso tono="info">
+                Se restauró un borrador sin guardar.{' '}
+                <button type="button" onClick={descartarBorrador} className="font-medium underline underline-offset-2">
+                  Descartar y empezar de cero
+                </button>
+              </Aviso>
+            )}
             {personaFija ? (
               <div>
                 <LabelGrupo>Persona</LabelGrupo>
