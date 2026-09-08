@@ -148,6 +148,21 @@ Es una pérdida real de tests unitarios, y hay que decirlo: la lógica pasa a co
 `packages/db/pruebas/`, contra la base, que es donde de verdad corre. Un test verde sobre la copia
 que nadie ejecuta vale menos que ninguno, porque da confianza falsa.
 
+**Addendum (8-sep-2026) — cómo se autoriza el llamado.** `generar_alertas()` (0107) está
+`revoke ... from public, anon, authenticated; grant ... to service_role` — a propósito, porque hasta
+ahora sólo la llamaba el cron (que corre como `postgres`, superusuario, y no necesita ningún grant).
+Un botón de PostgREST corre como `authenticated`, así que llamarla tal cual hoy falla con
+`permission denied`.
+
+La opción **no** es `getAdminClient()` (no-negociable 3: bypassa RLS, restringido a los 6 archivos
+que hoy lo usan, y esto no es una de esas seis razones). La opción es el mismo patrón que ya usan
+`empleado_borrar_alta`/`sueldo_entrada`/`huellero_declarar_faltas_del_dia`: el guard vive **adentro**
+de la función (`private.app_es_admin()`, `raise exception 'PERMISO:...'` si no), y **entonces** se
+puede otorgar `grant execute ... to authenticated` sin abrir la puerta a nadie más — el guard de
+`generarAlertasAction()` en TS (`sesion.usuario.rol !== 'admin' && !== 'dueno'`) queda como cinturón,
+la función como tirantes. `service_role` se mantiene además (no hace daño, y cubre un cron
+reconfigurado a futuro que no corra como superusuario).
+
 ### C-4 — Las reglas nuevas
 
 Las seis, todas con su `activa` y su `umbral` en `alertas_reglas`, todas apuntando al control
