@@ -268,18 +268,36 @@ Lo que **no** se hace: rellenar sin marcar que se rellenó. Eso sería exactamen
 
 Por radio de daño y por lo que el administrador subrayó, no por lo que es más fácil.
 
-1. **Puntos como moneda + nota visual** (A-1 a A-4). Es el núcleo, y todo lo demás de evaluación
-   cuelga de él. Spec escrita.
-2. **Incidencias: las tres correcciones juntas** (E-1, E-3, E-4). Chico, acotado, y E-1 toca datos
-   de personas.
-3. **Huellero: emparejado inteligente** (B-2, B-3, B-4, B-5, B-6). Un solo cambio de fondo, cinco
-   pedidos.
-4. **Evaluación automática con pendiente** (A-8). Depende de 1.
-5. **Dashboard de personal** (F-2). Depende de 1 — es la pantalla donde el perfil de A-4 se vuelve
-   útil.
-6. **Contratos: datos completos + adjuntos** (C-2, C-3).
-7. **Corregir liquidación en un paso** (D-1) y **borrador que sobrevive** (F-1).
-8. **Lista de Jordan** (F-4) — se puede escribir en cualquier momento, no depende de nada.
+**Estado al 8-sep-2026: los 8 pasos están resueltos, salvo el único bloqueado por un dato que sólo
+el administrador puede cargar.**
+
+1. ✅ **Puntos como moneda + nota visual** (A-1 a A-4). Migración `0095`, aplicada.
+2. ✅ **Incidencias: las tres correcciones juntas** (E-1, E-3, E-4). Migración `0094`, aplicada.
+   Además, un hallazgo posterior (E-5, §6 de la spec de incidencias) que haría fallar E-1 en
+   silencio para quien reportara: corregido y aplicado el 8-sep (migración `0106`).
+3. ✅ **Huellero: emparejado inteligente** (B-2, B-3, B-4, B-5, B-6). Migraciones `0096`/`0097`,
+   aplicadas. Cerró de rebote el defecto de derivación abierto desde el 19-ago.
+4. ⛔ **Evaluación automática con pendiente** (A-8). **Sigue bloqueada**: 9 de 11 personas reales no
+   tienen `fecha_ingreso`. Spec completa y lista para construir en cuanto el administrador cargue
+   esas fechas — no es código lo que falta.
+5. ✅ **Dashboard de personal** (F-2). Hecho por la sesión en paralelo.
+6. ✅ **Contratos: datos completos + adjuntos** (C-2, C-3). Hecho por la sesión en paralelo.
+7. ✅ **Corregir liquidación en un paso** (D-1) y **borrador que sobrevive** (F-1). D-1 aplicado y
+   verificado el 8-sep; F-1 hecho por la sesión en paralelo.
+8. ✅ **Lista de Jordan** (F-4) — cerrada sin lista: Jordan es el administrador real del negocio, no
+   le corresponden tareas del sistema (ver la fila F-4 de la tabla maestra).
+
+**Fuera de este orden pero avanzado en paralelo, a pedido de Alexander del 25-ago** (*«podríamos
+avanzarlo en paralelo en otras sesiones»* + su elección del 6-sep de notificaciones/eliminar
+personal/huellero):
+- ✅ **Notificaciones** (B-9), pasos 1-2 de 5: los dos agujeros de aislamiento cerrados y las
+  alertas ya se retiran solas. Pasos 3-5 (seis reglas nuevas, motor único, pantalla de
+  configuración) sin empezar.
+- ✅ **Eliminar personal** (F-3, acotado a «deshacer un alta por error»): backend + pantalla,
+  aplicado y verificado de punta a punta.
+- ✅ **Mejorar el lector de huellas** (B-8/B-11): medido y documentado — no era código. El hallazgo
+  real (13 identificadores sin asignar, 5 de personas activas, 2 vivos hoy) queda como tarea para
+  el administrador en `huellero-identificadores-sin-asignar-06-sep.md`.
 
 ---
 
