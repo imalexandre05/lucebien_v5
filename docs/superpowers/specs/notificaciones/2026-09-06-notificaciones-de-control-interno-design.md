@@ -259,8 +259,11 @@ inmediato — el mismo criterio que el resto de los parámetros, y la correcció
    agrupadas en "Control interno" (las 6 de la 0107) y "Módulo comercial" (las 5 de la 0041/0046),
    toggle `activa` y campo `umbral` (donde la regla lo usa) con efecto inmediato, sin migración
    nueva. `destinatario_rol` se muestra de sólo lectura, nunca editable — ver el porqué en el
-   comentario de `notificaciones-repo.ts`. Sin pruebas manuales contra un navegador real: sin
-   acceso a él desde esta sesión, ver `docs/pendientes-negocio.md`.
+   comentario de `notificaciones-repo.ts`. La policy `reglas_rw` (`0041`) ya cubre `update` para
+   admin, verificado contra `scilb`. **Verificación parcial**: el `implementador` no probó en
+   navegador; la sesión principal confirmó contra `erp-dev` (PM2, puerto 3005) que la ruta compila y
+   el gate de admin redirige a `/login` sin sesión (307, no un 500) — falta la comprobación visual
+   completa (clickear un toggle, ver el número guardarse) con una sesión de administrador real.
 
 Los pasos 1 y 2 valen por sí solos aunque no se haga ninguno de los demás: uno cierra dos fugas y el
 otro convierte una lista que sólo crece en una que dice la verdad.
