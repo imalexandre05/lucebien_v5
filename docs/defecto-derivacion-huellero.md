@@ -1,8 +1,13 @@
-# Defecto en `huellero_derivar_asistencia()` — pendiente para la sesión de `packages/db`
+# Defecto en `huellero_derivar_asistencia()` — RESUELTO
 
 > **Encontrado:** 19-ago-2026, derivando las 3.084 marcas reales del huellero en producción.
-> **Estado:** sin corregir. **No hay datos malos en la base**: la restricción
-> `asistencias_trabajado_chk` (migración `0073`) aborta la transacción antes de escribir.
+> **Estado: resuelto**, verificado el 8-sep-2026 contra `scilb` — ver
+> [huellero-identificadores-sin-asignar-06-sep.md §0](huellero-identificadores-sin-asignar-06-sep.md).
+> **No fue un arreglo dirigido a esto**: las migraciones `0096` y `0097` (25-ago) reescribieron
+> `huellero_derivar_asistencia()` de punta a punta para otra cosa —que el huellero decida solo si
+> una marca es entrada o salida— y de paso cerraron los dos problemas de abajo. Se comprueba
+> releyendo los cuatro días citados en «Cómo reproducirlo»: los cuatro están hoy en `asistencias`
+> con `condicion='trabajado'` y las dos horas cargadas, sin haber abortado ninguna transacción.
 > **Zona:** crítica — es la función que convierte marcas en días pagados.
 
 ---
@@ -60,13 +65,18 @@ select huellero_derivar_asistencia(
 
 Otras fechas que sirven: 2026-01-22 (4 marcas), 2026-01-28, 2026-06-03, 2026-06-27.
 
-## Qué exige el arreglo
+## Qué exige el arreglo — ya cumplido, por otra migración
 
-Zona crítica (no-negociable 1): spec corregida antes que el código, y un test que cubra los dos
-casos que hoy no cubre ninguno de los 40 de `packages/core/src/huellero.test.ts`:
+Los dos casos que pedía esta sección quedaron cubiertos por la versión viva de la función
+(migraciones `0096`/`0097`), verificados el 8-sep contra `scilb`:
 
-1. Día con número impar de marcas: la fila resultante no puede quedar en `'trabajado'`.
-2. Fila previa declarada con las dos horas + una sola marca del huellero ese día: las horas
-   declaradas tienen que sobrevivir intactas.
+1. Día con número impar de marcas: la condición se decide con
+   `case when v_ent is not null and v_sal is not null and v_motivo is null then 'trabajado' else
+   'sin_dato' end` — nunca queda `'trabajado'` con una hora faltante.
+2. Fila previa declarada con las dos horas + una sola marca del huellero ese día: la `SALVAGUARDA (b)`
+   sólo completa lo que está vacío, y la `REGLA 2` (0079) nunca pisa una hora ya cargada con `null`.
 
-Verificador antes de mergear.
+`packages/core/src/huellero.ts` y su test **ya no existen**: se borraron en la `0096` por ser código
+muerto, sin llamador real y ya divergido de la SQL viva (`docs/aprendizajes.md`). La cobertura de
+estos dos casos hoy vive en `packages/db/pruebas/0096_huellero_decide_por_horario.sql` y
+`0097_huellero_relleno_estimado_y_falta.sql`, contra la base real — no en un test unitario.
