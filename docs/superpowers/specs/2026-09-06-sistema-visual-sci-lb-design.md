@@ -632,7 +632,7 @@ Enumeradas porque un catálogo cerrado es lo que separa «el sistema tiene movim
 pantalla anima lo que se le ocurre». Las ocho que ya existen se conservan; las veintiocho nuevas están
 marcadas.
 
-Las dos últimas son del modo vibrante: **`icono-pop`** (100 ms) hace que el glifo dentro de su
+Las dos últimas son del modo vibrante: **`icono-pop`** (300 ms) hace que el glifo dentro de su
 cuadrado tintado dé un salto a `scale(1.14)` y vuelva cuando su opción se activa — es lo que
 convierte un botón de opción en algo que responde; y **`pulso-acento`** (500 ms) expande un halo del
 acento desde el control que acaba de completar algo corto: una prenda contada, un accesorio sumado,
@@ -675,6 +675,8 @@ cierres, que tienen su propio hilo.
 |---|---|---|---|
 | 21 | `hilo-cierre` **nueva** | 600 ms | Se enhebra bajo el título de lo que se cerró. **Sólo cuatro lugares:** liquidación cerrada, reporte de turno enviado, prenda entregada, evaluación firmada |
 | 22 | `viz-dibuja` **nueva** | 700 ms, escalón 70 ms | Todo gráfico se dibuja al entrar: la línea se traza, el anillo se llena, las barras crecen desde la base. Una sola vez, al montar — nunca al re-renderizar |
+| 23 | `icono-pop` **nueva** | 300 ms · momento | El glifo de un `IconoTinta` da un salto a `scale(1.16)` con leve rotación cuando su opción se activa. Corrige la duración de la primera mención (100 ms): la maqueta la construyó y aprobó en 300 ms |
+| 24 | `pulso-acento` **nueva** | 500 ms · momento | Expande un halo del acento desde el control que acaba de completar algo corto: una prenda contada, un accesorio sumado, una fila marcada. No confeti — sin partículas, sin sonido — y no se dispara en los cuatro cierres, que tienen su propio hilo |
 | 25 | `banda-entra` **nueva** | 500 ms · contexto | La banda de módulo baja y aparece al montar la pantalla. Es lo primero de la coreografía |
 | 26 | `hilo-recorre` **nueva** | 1.6 s en bucle | Un destello dorado recorre el hilo de asiento **mientras algo está en curso**, y se detiene al terminar. Es el único bucle además del esqueleto |
 | 27 | `lista-cascada` **nueva** | 320 ms, escalón 40 ms | Las filas de una tabla entran una tras otra, hasta la sexta |
