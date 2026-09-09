@@ -2,6 +2,8 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '../../lib/cn';
+import { Rotulo } from './rotulo';
+import { Cifra } from './cifra';
 
 // Tile de resumen ("StatBox"): estaba duplicado idéntico en 9 páginas. Centralizado aquí para
 // consistencia total y una sola entrada con vida (rise). `size` ajusta la escala del número
@@ -50,7 +52,6 @@ export function StatBox({
   align?: 'center' | 'left';
   className?: string;
 }) {
-  const numero = { md: 'text-xl', lg: 'text-2xl', xl: 'text-3xl' }[size];
   const colores = (tone && TONOS[tone]) ?? tone;
   const tile = (
     <div
@@ -64,29 +65,23 @@ export function StatBox({
       )}
       style={{ animationDelay: `${Math.min(index, 8) * 50}ms` }}
     >
-      <div
-        className={cn(
-          'text-[10px] font-semibold uppercase tracking-wide text-muted',
-          Icon && 'flex items-center gap-2',
-          Icon && align === 'center' && 'justify-center',
-        )}
+      <Rotulo
+        as="div"
+        className={cn(Icon && 'flex items-center gap-2', Icon && align === 'center' && 'justify-center')}
       >
         {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />}
         <span>{label}</span>
-      </div>
-      <div className={cn('tabular-nums font-bold', numero, size === 'xl' && 'mt-1.5')}>
+      </Rotulo>
+      <Cifra size={size} className={cn('text-current', size === 'xl' && 'mt-1.5')}>
         {valor}
-      </div>
-      {sub != null && <div className={cn('text-[10px] text-muted', size === 'xl' && 'mt-1')}>{sub}</div>}
+      </Cifra>
+      {sub != null && <div className={cn('text-micro text-muted', size === 'xl' && 'mt-1')}>{sub}</div>}
     </div>
   );
 
   if (!href) return tile;
   return (
-    <Link
-      href={href}
-      className="block rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-gold/70 focus-visible:ring-offset-2 focus-visible:ring-offset-paper"
-    >
+    <Link href={href} className="anillo block rounded-xl outline-none">
       {tile}
     </Link>
   );
