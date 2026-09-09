@@ -208,11 +208,19 @@ const config: Config = {
           '0%': { transform: 'scaleX(0)' },
           '100%': { transform: 'scaleX(1)' },
         },
-        // Trazo de un path/circle con `pathLength="1"` — línea de un gráfico, anillo de progreso,
-        // el check de una confirmación (mismo mecanismo que `check-dibuja` reutiliza abajo).
+        // Trazo de un path con `pathLength="1"` — línea de un gráfico, el check de una
+        // confirmación (mismo mecanismo que `check-dibuja` reutiliza abajo). Siempre dibuja
+        // completo (1 → 0): para un arco PARCIAL, ver `anillo-llena`.
         trazar: {
           '0%': { strokeDashoffset: '1' },
           '100%': { strokeDashoffset: '0' },
+        },
+        // El anillo de progreso no siempre se llena entero — `AnilloProgreso` conoce su propia
+        // fracción (`nota / 20`, `avance / total`) y la pasa como `--p` por `style`. Sin `0%`
+        // explícito: CSS interpola desde el valor inicial real (`stroke-dashoffset: 1`, puesto
+        // por el componente vía `style`) hasta este único paso.
+        'anillo-llena': {
+          '100%': { strokeDashoffset: 'calc(1 - var(--p, 0))' },
         },
         'icono-pop': {
           '0%': { transform: 'scale(1) rotate(0deg)' },
@@ -301,6 +309,7 @@ const config: Config = {
         // Mismo trazo que `viz-dibuja` (arriba): el check de una confirmación es un `path` con
         // `pathLength="1"`, igual que una línea de gráfico.
         'check-dibuja': 'trazar var(--dur-momento) var(--curva-viz) forwards',
+        'anillo-llena': 'anillo-llena var(--dur-momento) var(--curva-viz) forwards',
         'icono-pop': 'icono-pop 300ms var(--curva-rebote)',
         'pulso-acento': 'pulso-acento var(--dur-contexto) var(--curva-salida)',
         'hilo-recorre': 'hilo-recorre 1.6s var(--curva-estado) infinite',
