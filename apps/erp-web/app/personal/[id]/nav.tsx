@@ -46,7 +46,7 @@ export function NavSecciones({
                 href={query ? `${href}?${query}` : href}
                 aria-current={activa ? 'page' : undefined}
                 className={cn(
-                  'relative flex items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-sm outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-gold/60',
+                  'anillo relative flex items-center gap-1.5 whitespace-nowrap px-3 py-2.5 text-sm transition-colors duration-150',
                   activa ? 'font-semibold text-navy' : 'text-muted hover:text-navy',
                 )}
               >

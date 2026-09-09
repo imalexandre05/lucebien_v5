@@ -276,26 +276,14 @@ radio|apps/erp-web/components/ui/skeleton.tsx
 radio|apps/erp-web/components/ui/stat-box.tsx
 
 # -- elevacion: shadow-none bajo print: (comprobantes) o shadow suelto (toggle) -----------
-elevacion|apps/erp-web/app/pagos/[id]/comprobante/page.tsx
-elevacion|apps/erp-web/app/pedidos/[id]/contrato/page.tsx
-elevacion|apps/erp-web/app/reportes/nuevo/form.tsx
-elevacion|apps/erp-web/app/solicitudes/[id]/imprimir/page.tsx
-elevacion|apps/erp-web/app/sueldos/liquidaciones/[id]/comprobante/page.tsx
 
 # -- foco: ring-* escrito a mano en vez de la clase .anillo --------------------------------
-foco|apps/erp-web/app/evaluaciones/cliente.tsx
-foco|apps/erp-web/app/page.tsx
-foco|apps/erp-web/app/personal/[id]/deshacer-alta.tsx
-foco|apps/erp-web/app/personal/[id]/nav.tsx
-foco|apps/erp-web/app/personal/cliente.tsx
-foco|apps/erp-web/app/reportes/[id]/acciones.tsx
-foco|apps/erp-web/app/reportes/layout-map.tsx
-foco|apps/erp-web/components/colaboradores/barra-periodo.tsx
-foco|apps/erp-web/components/colaboradores/hilo-pago.tsx
-foco|apps/erp-web/components/shell/mobile-nav.tsx
-foco|apps/erp-web/components/shell/notificaciones-popover.tsx
-foco|apps/erp-web/components/shell/sede-popover.tsx
-foco|apps/erp-web/components/shell/topbar.tsx
+# form.tsx (campoBase) se queda A PROPÓSITO, no es deuda pendiente de migrar mecánicamente:
+# el anillo de un campo de texto va en foco simple (mouse incluido, no sólo :focus-visible,
+# para que se vea dónde está escribiendo) y cambia a rojo bajo aria-invalid. `.anillo` es un
+# solo anillo dorado sólo-:focus-visible — aplicarlo acá perdería el color de error y el
+# anillo al hacer clic. Usado por 27+ pantallas vía campoCls/Input/Select/Textarea: decisión
+# de diseño para revisar en su propia spec si hace falta un `.anillo-campo`, no un swap ciego.
 foco|apps/erp-web/components/ui/form.tsx
 
 # -- carga: page.tsx asíncrona sin loading.tsx hermano --------------------------------------
@@ -348,4 +336,3 @@ carga|apps/erp-web/app/sueldos/movimientos/page.tsx
 carga|apps/erp-web/app/sueldos/ventas/page.tsx
 
 # -- movimiento: duración de animación literal en vez del token --dur-* --------------------
-movimiento|apps/erp-web/app/personal/[id]/valores/page.tsx

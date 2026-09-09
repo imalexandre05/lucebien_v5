@@ -458,8 +458,8 @@ export function LayoutMap({
                 aria-expanded={tieneSolape ? dropdownAbierto : undefined}
                 style={{ background: bg, border: ring, opacity, boxShadow: glow || undefined }}
                 className={cn(
-                  'relative flex h-full w-full items-center justify-center overflow-visible outline-none transition-[background-color,box-shadow,opacity] duration-150',
-                  readOnly || !miTurno ? 'cursor-default' : 'hover:brightness-105 focus-visible:ring-2 focus-visible:ring-gold',
+                  'anillo relative flex h-full w-full items-center justify-center overflow-visible transition-[background-color,box-shadow,opacity] duration-150',
+                  readOnly || !miTurno ? 'cursor-default' : 'hover:brightness-105',
                 )}
               >
                 {texturaZona(z)}

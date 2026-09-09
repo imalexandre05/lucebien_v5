@@ -19,7 +19,7 @@ export default async function ContratoPage({ params }: { params: { id: string } 
         <PrintButton />
       </div>
 
-      <article className="rounded-lg border border-line bg-white p-10 shadow-card print:border-0 print:shadow-none">
+      <article className="rounded-lg border border-line bg-white p-10 shadow-card print:border-0 print:shadow-elev-0">
         <header className="border-b-2 border-navy pb-4">
           <div className="text-3xl font-semibold text-navy">LuceBien</div>
           <div className="mt-1 tabular-nums text-[10px] tracking-brand text-gold">CONTRATO DE ALQUILER · SCI-LB</div>

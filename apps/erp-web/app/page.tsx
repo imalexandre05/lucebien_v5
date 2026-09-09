@@ -315,7 +315,7 @@ export default async function Dashboard() {
                         href="/pipeline"
                         title={`${n} prenda(s) en ${ETAPA_LABEL[e]}`}
                         aria-label={`${ETAPA_LABEL[e]}: ${n} prenda(s)`}
-                        className="group flex-1 rounded-t-lg px-1 pt-2 text-center outline-none transition-colors duration-150 hover:bg-navy/[0.04] focus-visible:ring-2 focus-visible:ring-gold/70"
+                        className="anillo group flex-1 rounded-t-lg px-1 pt-2 text-center transition-colors duration-150 hover:bg-navy/[0.04]"
                       >
                         <div
                           className={cn(

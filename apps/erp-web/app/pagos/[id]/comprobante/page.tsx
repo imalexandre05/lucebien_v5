@@ -13,7 +13,7 @@ export default async function ComprobantePago({ params }: { params: { id: string
     <div className="mx-auto max-w-[700px]">
       <AccionesComprobante />
 
-      <div className="rounded-lg border border-line bg-white p-8 shadow-card print:border-0 print:shadow-none">
+      <div className="rounded-lg border border-line bg-white p-8 shadow-card print:border-0 print:shadow-elev-0">
         {/* Encabezado */}
         <div className="flex items-start justify-between border-b-2 border-navy pb-4">
           <div>

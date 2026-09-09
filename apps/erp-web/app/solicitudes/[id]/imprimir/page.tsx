@@ -36,7 +36,7 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
     <div className="mx-auto max-w-3xl">
       <ImprimirAcciones id={s.id} tipo={tipo} yaImpreso={yaImpreso} />
 
-      <article className="rounded-lg border border-line bg-white p-10 shadow-card print:border-0 print:shadow-none">
+      <article className="rounded-lg border border-line bg-white p-10 shadow-card print:border-0 print:shadow-elev-0">
         <header className="flex items-start justify-between border-b-2 border-navy pb-4">
           <div>
             <div className="text-3xl font-semibold text-navy">LuceBien</div>

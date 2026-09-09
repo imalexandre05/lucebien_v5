@@ -73,7 +73,7 @@ export function BarraPeriodo({
       title={titulo}
       aria-pressed={esIgual(p)}
       className={cn(
-        'cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60',
+        'anillo cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
         esIgual(p) ? 'bg-navy text-paper' : 'text-navy hover:bg-navy/5',
       )}
     >

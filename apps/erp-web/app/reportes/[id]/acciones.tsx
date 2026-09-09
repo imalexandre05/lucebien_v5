@@ -53,7 +53,7 @@ function Estado3({
             aria-label={nombre ? `${o.label} — ${nombre}` : o.label}
             title={o.label}
             className={cn(
-              'flex h-10 w-11 items-center justify-center border-l border-line outline-none transition-colors duration-150 first:border-l-0 focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/70',
+              'anillo flex h-10 w-11 items-center justify-center border-l border-line transition-colors duration-150 first:border-l-0 focus-visible:z-10',
               active ? o.on : 'bg-white text-muted hover:bg-paper',
             )}
           >

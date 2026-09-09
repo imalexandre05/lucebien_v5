@@ -77,7 +77,7 @@ export async function Topbar() {
             href="/buscar"
             title="Buscar un terno (código, tipo, talla, color)"
             aria-label="Buscar"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-[0.97]"
+            className="anillo flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
           >
             <Search className="h-4 w-4" strokeWidth={1.75} />
           </Link>
@@ -95,7 +95,7 @@ export async function Topbar() {
             title="Mi desempeño"
             aria-label="Mi desempeño"
             className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold outline-none transition-transform duration-150 hover-fine:scale-105 focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-95',
+              'anillo flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-transform duration-150 hover-fine:scale-105 active:scale-95',
               tonoAvatar(nombre),
             )}
           >
@@ -107,7 +107,7 @@ export async function Topbar() {
             <button
               title="Cerrar sesión"
               aria-label="Cerrar sesión"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-[0.97]"
+              className="anillo flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
             >
               <LogOut className="h-4 w-4" strokeWidth={1.75} />
             </button>

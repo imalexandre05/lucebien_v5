@@ -128,7 +128,7 @@ export function HiloPago({
             {href ? (
               <Link
                 href={href}
-                className="flex flex-col items-center rounded-md px-1 py-1 outline-none transition-colors duration-150 hover:bg-paper/70 focus-visible:ring-2 focus-visible:ring-gold/60"
+                className="anillo flex flex-col items-center rounded-md px-1 py-1 transition-colors duration-150 hover:bg-paper/70"
               >
                 {contenido}
               </Link>

@@ -660,7 +660,7 @@ export function EvaluacionesCliente({
                             ev.stopPropagation();
                             setExpandida(abierta ? null : e.id);
                           }}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/70"
+                          className="anillo flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy"
                         >
                           <ChevronRight
                             className={cn('h-4 w-4 transition-transform duration-200 ease-out-expo', abierta && 'rotate-90')}

@@ -75,7 +75,7 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
     >
       <span
         className={cn(
-          'inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-150 ease-out-expo',
+          'inline-block h-6 w-6 transform rounded-full bg-white shadow-elev-1 transition-transform duration-150 ease-out-expo',
           on ? 'translate-x-5' : 'translate-x-0.5',
         )}
       />

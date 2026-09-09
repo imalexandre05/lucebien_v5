@@ -121,7 +121,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
         title="Notificaciones"
         aria-label={noLeidas > 0 ? `Notificaciones, ${noLeidas} sin leer` : 'Notificaciones'}
         aria-expanded={abierto}
-        className="relative flex h-8 w-8 items-center justify-center rounded-full text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-[0.97]"
+        className="anillo relative flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
       >
         <Bell className="h-4 w-4" strokeWidth={1.75} />
         {noLeidas > 0 && (

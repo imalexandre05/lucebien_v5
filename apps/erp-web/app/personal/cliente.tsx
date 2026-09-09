@@ -127,7 +127,7 @@ export function ListaColaboradores({
               onClick={() => setFiltro(f.clave)}
               aria-pressed={filtroActivo === f.clave}
               className={cn(
-                'cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60',
+                'anillo cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
                 filtroActivo === f.clave ? 'bg-navy text-paper' : 'text-navy hover:bg-navy/5',
               )}
             >
@@ -162,7 +162,7 @@ export function ListaColaboradores({
                 // clic). Mismo patrón que ya usa el hilo completo de Resumen (rutaSeccion + la
                 // sección del paso), sólo que acá decide el destino de toda la fila.
                 href={corte ? rutaSeccion(c.id, corte.seccion, query) : `/personal/${c.id}?${query}`}
-                className="group grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 outline-none transition-colors duration-150 hover:bg-paper/70 focus-visible:bg-paper/70 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/60 active:bg-line/50 active:duration-75 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
+                className="anillo group grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 transition-colors duration-150 hover:bg-paper/70 focus-visible:bg-paper/70 active:bg-line/50 active:duration-75 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
               >
                 <Avatar nombre={c.nombre} iniciales={c.iniciales} />
 
