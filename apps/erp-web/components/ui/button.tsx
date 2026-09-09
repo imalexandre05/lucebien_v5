@@ -11,12 +11,22 @@ const variants: Record<Variant, string> = {
   ghost: 'text-navy hover:bg-navy/5',
 };
 
-// transition acotada (no `all`) + curva propia + feedback al presionar (scale 0.97).
+// transition acotada (no `all`) + curva propia + feedback al presionar. `duration-instante` +
+// `scale(.985)` son la pieza `presion` del catálogo de movimiento (spec §6, ítem 1): en
+// pantalla táctil no hay `:hover`, así que esto es la única confirmación de que el toque llegó.
+// El foco es `.anillo` — dorado siempre, es la única señal de accesibilidad del sistema.
 const base =
-  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-[transform,background-color,color] duration-150 ease-out-expo active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-[transform,background-color,color] duration-instante ease-estado active:scale-[.985] anillo disabled:cursor-not-allowed disabled:opacity-50';
 
-export function buttonVariants({ variant = 'primary' }: { variant?: Variant } = {}) {
-  return cn(base, variants[variant]);
+// `grande` (44px de alto tocable) es para lo que se llena de pie — formularios de operario
+// (spec §3.11). El tamaño por defecto no cambia: sigue siendo el de siempre.
+const tamanos = {
+  normal: '',
+  grande: 'min-h-[44px] px-5 text-base',
+};
+
+export function buttonVariants({ variant = 'primary', size = 'normal' }: { variant?: Variant; size?: keyof typeof tamanos } = {}) {
+  return cn(base, variants[variant], tamanos[size]);
 }
 
 // `pending` (Fase 3): antes NINGÚN botón del proyecto mostraba que una acción estaba en curso —
@@ -26,15 +36,16 @@ export function buttonVariants({ variant = 'primary' }: { variant?: Variant } = 
 // spinner es un añadido, no un reemplazo del label.
 export function Button({
   variant = 'primary',
+  size = 'normal',
   pending = false,
   disabled,
   className,
   children,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; pending?: boolean }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: keyof typeof tamanos; pending?: boolean }) {
   return (
     <button
-      className={cn(buttonVariants({ variant }), className)}
+      className={cn(buttonVariants({ variant, size }), className)}
       disabled={disabled || pending}
       aria-busy={pending || undefined}
       {...props}
