@@ -785,7 +785,7 @@ real, no entra — la misma regla que borró a `Field` el mismo día que se cre�
 | `StatBox` | Usa `Cifra` y `Rotulo`. Foco por `anillo`. Se va el `text-[10px]` |
 | `Table` | Cabecera en `text-rotulo` y pegajosa, `hilo-fila`, cebra, celdas numéricas en `text-dato` |
 | `Button` | Presión de 90 ms, `anillo`, tamaño `grande` de 44 px para lo que se llena de pie |
-| `Badge` | `text-micro`, `r-chico` |
+| `Badge` | `text-micro`, `r-pastilla` — §3.7 ya lo lista ahí; esta fila decía `r-chico` |
 | `EmptyState` | Crest de agua al 4 %, título en `text-sub`, cuerpo en `text-apoyo` |
 | `PageHeader` | Coreografía de entrada, ranura de migas, subtítulo en `text-apoyo` |
 | `Modal` | `elev-3`, `r-grande`, entrada de 240 ms. Los dos defectos de foco y de alto ya están cerrados |
