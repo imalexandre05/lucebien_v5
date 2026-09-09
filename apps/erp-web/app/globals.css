@@ -258,19 +258,11 @@
   }
 
   /* 4 · Fila enfocada o seleccionada de una tabla. Siempre dorado — es una señal del sistema,
-     no del módulo. */
+     no del módulo.
+     `box-shadow: inset`, no `::before`: es para un `<tr>`, y los pseudo-elementos sobre
+     elementos con `display: table-row` no rinden parejo entre navegadores. Un inset-shadow sí. */
   .hilo-fila {
-    position: relative;
-  }
-  .hilo-fila::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 5px;
-    bottom: 5px;
-    width: 2px;
-    border-radius: 2px;
-    background: rgb(var(--gold));
+    box-shadow: inset 2px 0 0 0 rgb(var(--gold));
   }
 
   /* 5 · El trazo que se enhebra al cerrar algo irreversible. Sólo cuatro lugares (spec §6):

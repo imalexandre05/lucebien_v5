@@ -93,7 +93,7 @@ export function Modal({
           //
           // Columna flex: la cabecera y el pie quedan fijos y lo único que scrollea es el cuerpo.
           // Un modal donde el título se va al scrollear pierde de qué estabas hablando.
-          'flex w-full max-h-[calc(100dvh-2rem)] flex-col animate-scale-in rounded-2xl border border-line bg-white shadow-lift outline-none',
+          'flex w-full max-h-[calc(100dvh-2rem)] flex-col animate-scale-in rounded-r-grande border border-line bg-superficie shadow-elev-3 outline-none',
           SIZES[size],
           className,
         )}
