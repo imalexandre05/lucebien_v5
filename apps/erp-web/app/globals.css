@@ -104,6 +104,67 @@
   --curva-viz: cubic-bezier(0.33, 1, 0.68, 1); /* trazos que se dibujan: línea, anillo, barra */
 }
 
+/* El acento por grupo de módulo (spec §3.3, fase 5). Nueve clases, una por grupo — nunca una
+   familia `cat-*` escrita a mano en una pantalla; el mapeo ruta→grupo vive en
+   `lib/modulo-grupo.ts` y se aplica una sola vez, en `ModuloAcento` (shell). Los cuatro pasos de
+   cada grupo reusan las familias categóricas de arriba, salvo Inicio y Sueldos, que son la marca
+   (navy, oro) y no tienen paso `soft`/`line` propio — se los da la banda de módulo (fase 3).
+   `.m-inicio` repite el default de `:root` a propósito, para que quede escrito qué grupo es. */
+.m-inicio {
+  --acento: var(--navy);
+  --acento-soft: 230 233 242;
+  --acento-line: 198 205 226;
+  --acento-deep: var(--navy-deep);
+}
+.m-sueldos {
+  --acento: var(--gold-deep);
+  --acento-soft: 250 246 224;
+  --acento-line: 232 222 158;
+  --acento-deep: 106 95 12;
+}
+.m-pipeline {
+  --acento: var(--cat-mar);
+  --acento-soft: var(--cat-mar-soft);
+  --acento-line: var(--cat-mar-line);
+  --acento-deep: var(--cat-mar-deep);
+}
+.m-solicitudes {
+  --acento: var(--cat-oliva);
+  --acento-soft: var(--cat-oliva-soft);
+  --acento-line: var(--cat-oliva-line);
+  --acento-deep: var(--cat-oliva-deep);
+}
+.m-inventario {
+  --acento: var(--cat-arcilla);
+  --acento-soft: var(--cat-arcilla-soft);
+  --acento-line: var(--cat-arcilla-line);
+  --acento-deep: var(--cat-arcilla-deep);
+}
+.m-lavanderia {
+  --acento: var(--cat-ciruela);
+  --acento-soft: var(--cat-ciruela-soft);
+  --acento-line: var(--cat-ciruela-line);
+  --acento-deep: var(--cat-ciruela-deep);
+}
+.m-personas {
+  --acento: var(--cat-humo);
+  --acento-soft: var(--cat-humo-soft);
+  --acento-line: var(--cat-humo-line);
+  --acento-deep: var(--cat-humo-deep);
+}
+.m-desempeno {
+  --acento: var(--cat-lila);
+  --acento-soft: var(--cat-lila-soft);
+  --acento-line: var(--cat-lila-line);
+  --acento-deep: var(--cat-lila-deep);
+}
+.m-sistema {
+  --acento: var(--cat-piedra);
+  --acento-soft: var(--cat-piedra-soft);
+  --acento-line: var(--cat-piedra-line);
+  --acento-deep: var(--cat-piedra-deep);
+}
+
 @layer base {
   body {
     @apply bg-paper text-ink font-body antialiased;
