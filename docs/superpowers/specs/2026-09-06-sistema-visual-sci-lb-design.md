@@ -439,7 +439,7 @@ mismo: esto es lo que importa acá**.
 | Pieza | Forma | Dónde |
 |---|---|---|
 | `hilo-titulo` | 2 px horizontal: **2.5 rem de oro, 1.5 rem del acento del módulo**, y el resto en `line` | Bajo la banda de módulo (§3.10), como línea de asiento. En los formularios, bajo el título |
-| `hilo-activo` | 3 px vertical a la izquierda, del acento del módulo | Ítem activo de sidebar, pestaña activa. **Reemplaza el fondo tintado** |
+| `hilo-activo` | 3 px vertical a la izquierda, del acento del módulo | Pestaña activa. **Reemplaza el fondo tintado.** En la sidebar NO — ver nota abajo |
 | `hilo-progreso` | 3 px horizontal, `scaleX` con `origin-left` sobre pista `line` | Toda barra de progreso del sistema |
 | `hilo-fila` | 2 px vertical a la izquierda, dorado | Fila enfocada o seleccionada de una tabla |
 | `hilo-cierre` | 2 px que se enhebra de izquierda a derecha, dorado | Los cuatro momentos de cierre de §6 |
@@ -457,6 +457,13 @@ que cambiaste de lugar, no sólo de página.
 **Por qué `hilo-activo` reemplaza al fondo tintado.** Un fondo tenue detrás del ítem activo compite
 con el fondo tintado que ya usan los estados semánticos, y a media opacidad sobre navy se lee como
 suciedad. Un trazo no compite con nada y se lee igual de rápido.
+
+**Excepción encontrada en la fase 5, al implementar: la sidebar NO usa el acento del módulo para
+su ítem activo.** El grupo Inicio tiene `--acento: var(--navy)` — el mismo color que el fondo de
+la sidebar—, así que un trazo en acento se vuelve invisible justo en la pantalla que más se
+visita. La sidebar sigue con su trazo dorado fijo (`bg-gold`), que ya tenía desde antes de esta
+pasada y no hizo falta tocar. `hilo-activo` en acento se queda para las pestañas —que viven sobre
+`paper`/`superficie`, nunca sobre el fondo de su propio acento— donde el problema no existe.
 
 ### El sello, y qué archivo va en qué fondo
 
