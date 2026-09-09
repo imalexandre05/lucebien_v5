@@ -29,6 +29,7 @@ import { TRANSICIONES } from '@scilb/core';
 import type { RankingItem } from '../../lib/pipeline-repo';
 import { cn } from '../../lib/cn';
 import { OpcionBotones } from '../../components/ui/opcion-botones';
+import { BandaModulo } from '../../components/ui/banda-modulo';
 import {
   avanzarPrenda,
   enviarTandaPrendas,
@@ -285,29 +286,32 @@ export function TableroPipeline({
     // (y cada columna, internamente), nunca la página entera. `relative` es el ancla de la
     // barra de avance (tarea 5), que se posiciona `absolute` sobre este contenedor.
     <div className="relative flex h-[calc(100vh-6.5rem)] flex-col overflow-hidden sm:h-[calc(100vh-7.5rem)]">
-      {/* ── Banda de cabecera (navy) ── */}
-      <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
-        <div>
-          <div className="text-xl font-semibold leading-none">Prendas recibidas</div>
-          <div className="mt-1 tabular-nums text-[11px] uppercase tracking-widest text-gold">Almacén Central</div>
-        </div>
-        <div className="flex items-center gap-5">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium">
-            <span className="h-1.5 w-1.5 rounded-full bg-exito" /> En vivo
-          </span>
-          <div className="text-right">
-            <div className="text-[10px] uppercase tracking-wide text-paper/50">Sesión</div>
-            <div className="inline-flex items-center gap-1 tabular-nums text-lg font-bold text-gold">
-              <Zap className="h-4 w-4" strokeWidth={2.5} /> {sesionPts}
+      {/* ── Banda de cabecera: arquetipo B (spec §5) ── */}
+      <div className="mb-4 shrink-0">
+        <BandaModulo
+          titulo="Prendas recibidas"
+          subtitulo="Almacén Central"
+          icono={Shirt}
+          accion={
+            <div className="flex items-center gap-5 text-paper">
+              <span className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-paper/15 px-3 py-1 text-micro font-medium">
+                <span className="h-1.5 w-1.5 rounded-full bg-exito" /> En vivo
+              </span>
+              <div className="text-right">
+                <div className="text-micro uppercase tracking-wide text-paper/60">Sesión</div>
+                <div className="inline-flex items-center gap-1 text-lg font-display font-bold tabular-nums text-gold">
+                  <Zap className="h-4 w-4" strokeWidth={2.5} /> {sesionPts}
+                </div>
+              </div>
+              {operario && (
+                <div className="text-right">
+                  <div className="text-micro uppercase tracking-wide text-paper/60">Operario</div>
+                  <div className="text-apoyo font-medium">{operario}</div>
+                </div>
+              )}
             </div>
-          </div>
-          {operario && (
-            <div className="text-right">
-              <div className="text-[10px] uppercase tracking-wide text-paper/50">Operario</div>
-              <div className="text-sm font-medium">{operario}</div>
-            </div>
-          )}
-        </div>
+          }
+        />
       </div>
 
       {/* ── Pestañas ── */}

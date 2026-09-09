@@ -9,6 +9,7 @@ import type { Colaborador } from '../../../lib/colaboradores-repo';
 import { Avatar } from '../../../components/colaboradores/avatar';
 import { campoCls } from '../../../components/ui/form';
 import { cn } from '../../../lib/cn';
+import { Superficie } from '../../../components/ui/superficie';
 import { BotonDeshacerAlta } from './deshacer-alta';
 
 // La cabecera de la persona: quién es, y el cambio rápido a otra.
@@ -50,10 +51,12 @@ export function CabeceraColaborador({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+    // Cabecera de identidad sobre superficie (spec, arquetipo C): la ficha empieza dejando en
+    // claro quién es, antes de la primera pestaña.
+    <Superficie elev={1} radio="grande" className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
       <Link
         href={query ? `/personal?${query}` : '/personal'}
-        className="toque inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/60"
+        className="anillo toque inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
         Todos
@@ -62,10 +65,10 @@ export function CabeceraColaborador({
       <div className="flex min-w-0 items-center gap-3">
         <Avatar nombre={persona.nombre} iniciales={persona.iniciales} size="lg" />
         <div className="min-w-0">
-          <h1 className="truncate font-display text-3xl font-semibold leading-tight text-navy">
+          <h1 className="truncate text-titulo font-display font-bold leading-tight text-navy">
             {persona.nombre}
           </h1>
-          <p className="truncate text-xs text-muted">
+          <p className="truncate text-apoyo text-muted">
             {ROL_LABEL[persona.rol as Rol] ?? persona.rol}
             {persona.sedeCod ? ` · ${persona.sedeCod}` : ''}
             {persona.fechaIngreso ? ` · ingresó el ${persona.fechaIngreso}` : ''}
@@ -74,7 +77,7 @@ export function CabeceraColaborador({
       </div>
 
       <div className="ml-auto">
-        <label htmlFor="cambiar-colaborador" className="block text-[11px] font-medium uppercase tracking-wide text-muted">
+        <label htmlFor="cambiar-colaborador" className="block text-rotulo font-display text-muted">
           Ver a otra persona
         </label>
         <select
@@ -96,6 +99,6 @@ export function CabeceraColaborador({
           a propósito (Undo2 + «Deshacer alta») — no se puede confundir con esa acción, que corta
           el acceso y conserva todo, con ésta, que borra la fila sin vuelta atrás. */}
       {esAdmin && <BotonDeshacerAlta personaId={persona.id} personaNombre={persona.nombre} />}
-    </div>
+    </Superficie>
   );
 }
