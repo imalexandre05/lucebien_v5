@@ -26,7 +26,9 @@ export function PageHeader({
         </div>
         {action}
       </div>
-      <div className="gold-rule mt-4" />
+      {/* Dos tramos: 2.5rem de oro (la marca, fija) + 1.5rem del acento del módulo (el lugar,
+          cambia; fase 5). Reemplaza a `.gold-rule` acá — sigue viva para quien la use suelta. */}
+      <div className="hilo-titulo mt-4" />
     </div>
   );
 }

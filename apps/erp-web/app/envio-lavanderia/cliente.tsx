@@ -604,19 +604,19 @@ export function EnvioLavanderiaCliente({
           * a subir para seguir. Pegada, el total de lo que se va a mandar y el botón están siempre a
           * la vista — que es además la única forma de darse cuenta de que uno se olvidó de los
           * accesorios. */}
-        <div className="sticky bottom-0 z-20 space-y-2 rounded-lg border border-line bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
+        <div className="sticky bottom-0 z-20 space-y-2 rounded-r-grande border border-line bg-superficie/95 px-4 py-3 shadow-elev-2 backdrop-blur">
           {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
           {/* El acierto también se anuncia. Antes era un párrafo mudo: con lector de pantalla la
               lista se enviaba y no pasaba nada audible, que es indistinguible de que fallara. */}
           {ok && <Aviso tono="exito" className="text-sm">{ok}</Aviso>}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-sm text-muted">
-              <span className="tabular-nums font-semibold text-navy">{items.length}</span>{' '}
+            <span className="text-apoyo">
+              <span className="text-dato font-semibold text-navy">{items.length}</span>{' '}
               {items.length === 1 ? 'prenda' : 'prendas'} en lista
               {tipo === 'LAV' && (
                 <>
                   {' · '}
-                  <span className="tabular-nums font-semibold text-navy">{totalGenerales}</span>{' '}
+                  <span className="text-dato font-semibold text-navy">{totalGenerales}</span>{' '}
                   {totalGenerales === 1 ? 'accesorio' : 'accesorios'}
                 </>
               )}
@@ -624,17 +624,18 @@ export function EnvioLavanderiaCliente({
             <div className="flex flex-col items-stretch gap-1 sm:items-end">
               <Button
                 type="button"
+                size="grande"
                 onClick={enviar}
                 disabled={!puedeEnviar}
                 pending={pending}
                 aria-describedby={motivoBloqueo ? 'motivo-envio-lav' : undefined}
-                className="justify-center py-2.5"
+                className="justify-center"
               >
                 {!pending && <Send className="h-4 w-4" strokeWidth={2} />}
                 {pending ? 'Enviando…' : tipo === 'REF' ? 'Enviar a compostura' : 'Enviar a lavandería'}
               </Button>
               {motivoBloqueo && (
-                <span id="motivo-envio-lav" className="text-xs font-medium text-aviso-deep">
+                <span id="motivo-envio-lav" className="text-micro font-medium text-aviso-deep">
                   {motivoBloqueo}
                 </span>
               )}
