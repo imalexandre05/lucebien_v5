@@ -9,6 +9,7 @@ import {
   Trophy,
   Activity,
   LayoutGrid,
+  LayoutDashboard,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -32,14 +33,14 @@ import { getSesion } from '../lib/auth';
 import { listarSedes } from '../lib/sedes-repo';
 import { leerMatrizPermisos } from '../lib/permisos-repo';
 import { leerConfigMap, CIERRE_TURNO_DEFAULT } from '../lib/config-repo';
-import { hoyPeru, fechaLargaPeru, etiquetaDia, saludoPeru, tiempoRelativo, fechaHoraCorta } from '../lib/fechas';
-import { LogoMark } from '../components/brand/logo';
+import { hoyPeru, fechaLargaPeru, saludoPeru, tiempoRelativo, fechaHoraCorta } from '../lib/fechas';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table';
 import { Badge, type Tone } from '../components/ui/badge';
 import { StatBox } from '../components/ui/stat-box';
 import { CountUp } from '../components/ui/count-up';
 import { EmptyState } from '../components/ui/empty-state';
+import { BandaModulo } from '../components/ui/banda-modulo';
 import { cn } from '../lib/cn';
 
 const ETAPA_LABEL: Record<string, string> = {
@@ -57,9 +58,11 @@ const ETAPA_LABEL: Record<string, string> = {
   dividido: 'Dividida',
 };
 
-const KPI_TONE = 'border-line bg-white text-navy shadow-card';
+// Segunda pasada visual: el tile pasa a la superficie/sombra teñida del acento del módulo
+// (--acento, fase 5 -- en `/` es navy) en vez del blanco liso de antes.
+const KPI_TONE = 'border-acento-line bg-acento-soft text-acento-deep shadow-elev-1';
 // Semáforo (Fase 6 tarea 3): mismo tile, solo cambia de tono cuando el valor amerita atención.
-const KPI_TONE_AMBER = 'border-aviso-line bg-aviso-soft text-aviso-deep shadow-card';
+const KPI_TONE_AMBER = 'border-aviso-line bg-aviso-soft text-aviso-deep shadow-elev-1';
 
 // Badge de estado por color (Fase 6 tarea 1) — icono circular de la fila de "Actividad reciente"
 // y Badge de texto comparten la misma paleta para que se lean como el mismo estado.
@@ -135,7 +138,6 @@ export default async function Dashboard() {
   const ahora = new Date();
   const primerNombre = sesion?.nombre.trim().split(/\s+/)[0] ?? '';
   const sede = sesion?.usuario.sede ?? '';
-  const dia = etiquetaDia(ahora);
 
   // KPIs del día (§4A del brief): pipeline, evaluación, caja, incidencias.
   const etapas = ETAPAS_PIPELINE as readonly string[];
@@ -227,48 +229,20 @@ export default async function Dashboard() {
     .sort((a, b) => b.ts.localeCompare(a.ts))
     .slice(0, 8);
 
+  // BandaModulo (arquetipo A, spec §5): el saludo y la fecha ya decían todo lo que el
+  // recuadro-espejo del día repetía como adorno — se cae sin perder dato. La sede se suma al
+  // final del subtítulo en vez de vivir en un chip aparte.
+  const saludo = `${saludoPeru(ahora)}${primerNombre ? `, ${primerNombre}` : ''}`;
+  const subtituloBanda = sede
+    ? `${fechaLargaPeru(ahora)} · Sede ${SEDE_NOMBRE[sede] ?? sede}`
+    : fechaLargaPeru(ahora);
+
   return (
     <div>
-      {/* ── Hero: crest + saludo + fecha + sede ── */}
-      <header className="mb-7">
-        <div className="flex items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <LogoMark size="lg" className="animate-scale-in" />
-            <div>
-              <h1 className="animate-rise text-3xl font-semibold leading-none text-navy sm:text-4xl">
-                {saludoPeru(ahora)}
-                {primerNombre ? `, ${primerNombre}` : ''}
-              </h1>
-              <p className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 animate-rise text-sm text-muted [animation-delay:60ms]">
-                {fechaLargaPeru(ahora)}
-                {sede && (
-                  <span className="rounded-full border border-line bg-white px-2.5 py-0.5 text-xs font-medium text-navy">
-                    Sede · {SEDE_NOMBRE[sede] ?? sede}
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-          {/* Etiqueta del día: espejo en blanco del crest (recuadro + filete gold). */}
-          <div
-            aria-hidden="true"
-            className="relative hidden h-20 w-20 shrink-0 animate-scale-in rounded-2xl border border-line bg-white shadow-card sm:block"
-          >
-            <div className="pointer-events-none absolute inset-[5px] rounded-[9px] border border-gold/45" />
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-semibold leading-none text-navy">{dia.dia}</span>
-              <span className="mt-1 tabular-nums text-[9px] uppercase tracking-[0.18em] text-muted">
-                {dia.mes} {dia.anio}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="gold-rule mt-5" />
-      </header>
+      <BandaModulo titulo={saludo} subtitulo={subtituloBanda} icono={LayoutDashboard} />
 
-      {/* ── KPIs del día ── */}
-      <section aria-label="Indicadores del día">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Interno</div>
+      {/* ── KPIs del día: los tiles se montan sobre el borde inferior de la banda (spec §3.10). ── */}
+      <section aria-label="Indicadores del día" className="relative z-10 -mt-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatBox
             index={0}
