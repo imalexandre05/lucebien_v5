@@ -287,52 +287,5 @@ radio|apps/erp-web/components/ui/stat-box.tsx
 foco|apps/erp-web/components/ui/form.tsx
 
 # -- carga: page.tsx asíncrona sin loading.tsx hermano --------------------------------------
-carga|apps/erp-web/app/asistencias/huellero/page.tsx
-carga|apps/erp-web/app/buscar/page.tsx
-carga|apps/erp-web/app/caja/historial/page.tsx
-carga|apps/erp-web/app/clientes/[id]/page.tsx
-carga|apps/erp-web/app/clientes/page.tsx
-carga|apps/erp-web/app/compras/nueva/page.tsx
-carga|apps/erp-web/app/compras/page.tsx
-carga|apps/erp-web/app/configuracion/actividades/page.tsx
-carga|apps/erp-web/app/configuracion/layout/page.tsx
-carga|apps/erp-web/app/configuracion/notificaciones/page.tsx
-carga|apps/erp-web/app/configuracion/permisos/page.tsx
-carga|apps/erp-web/app/configuracion/sedes/page.tsx
-carga|apps/erp-web/app/configuracion/tipos-incidencia/page.tsx
-carga|apps/erp-web/app/configuracion/tipos-producto/page.tsx
-carga|apps/erp-web/app/dispositivo/page.tsx
-carga|apps/erp-web/app/envio-lavanderia/page.tsx
-carga|apps/erp-web/app/finanzas/page.tsx
-carga|apps/erp-web/app/login/page.tsx
-carga|apps/erp-web/app/materiales/page.tsx
-carga|apps/erp-web/app/pagos/[id]/comprobante/page.tsx
-carga|apps/erp-web/app/pedidos/[id]/contrato/page.tsx
-carga|apps/erp-web/app/pedidos/[id]/page.tsx
-carga|apps/erp-web/app/pedidos/devoluciones/page.tsx
-carga|apps/erp-web/app/pedidos/historial/page.tsx
-carga|apps/erp-web/app/personal/[id]/asistencias/page.tsx
-carga|apps/erp-web/app/personal/[id]/contrato/page.tsx
-carga|apps/erp-web/app/personal/[id]/datos/page.tsx
-carga|apps/erp-web/app/personal/[id]/evaluacion/page.tsx
-carga|apps/erp-web/app/personal/[id]/movimientos/page.tsx
-carga|apps/erp-web/app/personal/[id]/pago/page.tsx
-carga|apps/erp-web/app/personal/[id]/valores/page.tsx
-carga|apps/erp-web/app/personal/dashboard/page.tsx
-carga|apps/erp-web/app/personal/nuevo/page.tsx
-carga|apps/erp-web/app/pipeline/accesorios/page.tsx
-carga|apps/erp-web/app/pipeline/envios/page.tsx
-carga|apps/erp-web/app/pipeline/metricas/page.tsx
-carga|apps/erp-web/app/pipeline/registrar/page.tsx
-carga|apps/erp-web/app/proveedores/page.tsx
-carga|apps/erp-web/app/reportes/[id]/page.tsx
-carga|apps/erp-web/app/reportes/nuevo/page.tsx
-carga|apps/erp-web/app/solicitudes/[id]/imprimir/page.tsx
-carga|apps/erp-web/app/sueldos/acuerdos/page.tsx
-carga|apps/erp-web/app/sueldos/asistencia/page.tsx
-carga|apps/erp-web/app/sueldos/liquidaciones/[id]/comprobante/page.tsx
-carga|apps/erp-web/app/sueldos/liquidaciones/page.tsx
-carga|apps/erp-web/app/sueldos/movimientos/page.tsx
-carga|apps/erp-web/app/sueldos/ventas/page.tsx
 
 # -- movimiento: duración de animación literal en vez del token --dur-* --------------------
