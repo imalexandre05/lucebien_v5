@@ -52,7 +52,7 @@ function Puntaje({ r }: { r: Reporte }) {
   if (!r.evaluado) return <span className="text-muted">—</span>;
   const p = r.puntajeEval ?? r.puntaje;
   const cls = p >= 85 ? 'bg-exito/10 text-exito-deep' : p >= 60 ? 'bg-gold/20 text-gold-deep' : 'bg-error-soft text-error-deep';
-  return <span className={cn('rounded-full px-2.5 py-0.5 tabular-nums text-xs font-bold', cls)}>{p}%</span>;
+  return <span className={cn('rounded-r-pastilla px-2.5 py-0.5 tabular-nums text-xs font-bold', cls)}>{p}%</span>;
 }
 
 export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
@@ -163,7 +163,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                       {r.trabajadores.length > 0 ? (
                         <span
                           title={r.trabajadores.join(', ')}
-                          className="inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 tabular-nums text-xs text-navy"
+                          className="inline-flex items-center rounded-r-pastilla bg-navy/5 px-2 py-0.5 tabular-nums text-xs text-navy"
                         >
                           {r.trabajadores.length}
                         </span>

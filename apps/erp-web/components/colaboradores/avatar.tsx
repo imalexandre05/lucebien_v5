@@ -67,7 +67,7 @@ export function Avatar({
     <span
       aria-hidden
       className={cn(
-        'flex shrink-0 select-none items-center justify-center rounded-full font-semibold tracking-wide',
+        'flex shrink-0 select-none items-center justify-center rounded-r-pastilla font-semibold tracking-wide',
         tonoAvatar(nombre),
         tamanos[size],
         className,

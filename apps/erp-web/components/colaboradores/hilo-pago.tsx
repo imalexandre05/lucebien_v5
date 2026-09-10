@@ -71,7 +71,7 @@ export function HiloPago({
             key={p.clave}
             aria-hidden
             className={cn(
-              'h-1.5 w-6 rounded-full transition-colors duration-200',
+              'h-1.5 w-6 rounded-r-pastilla transition-colors duration-200',
               est[i] === 'listo' ? 'bg-gold' : est[i] === 'corte' ? 'bg-aviso' : 'bg-line',
             )}
           />
@@ -92,7 +92,7 @@ export function HiloPago({
           <>
             <span
               className={cn(
-                'relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 tabular-nums text-xs font-semibold transition-colors duration-200',
+                'relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-r-pastilla border-2 tabular-nums text-xs font-semibold transition-colors duration-200',
                 TONO[e].circulo,
               )}
             >

@@ -402,7 +402,7 @@ export function EnvioLavanderiaCliente({
               <div className="relative">
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border border-ink/20"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 rounded-r-pastilla border border-ink/20"
                   style={{ background: hexColorPrenda[itemColor] ?? PUNTO_OTROS }}
                 />
                 <Select

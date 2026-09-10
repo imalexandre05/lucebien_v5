@@ -34,7 +34,7 @@ function NivelPill({ nivel }: { nivel: string }) {
       : nivel === 'Medio'
         ? 'bg-aviso-soft text-aviso-deep'
         : 'bg-paper text-muted';
-  return <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', cls)}>{nivel}</span>;
+  return <span className={cn('rounded-r-pastilla px-2.5 py-0.5 text-xs font-medium', cls)}>{nivel}</span>;
 }
 
 export function IncidenciasCliente({
@@ -413,7 +413,7 @@ export function IncidenciasCliente({
                     {i.origen === 'reporte' && i.reporteId ? (
                       <Link
                         href={`/reportes/${i.reporteId}`}
-                        className="toque inline-flex items-center rounded-full bg-navy/5 px-2 py-0.5 tabular-nums text-[11px] text-navy transition hover:bg-navy/10"
+                        className="toque inline-flex items-center rounded-r-pastilla bg-navy/5 px-2 py-0.5 tabular-nums text-[11px] text-navy transition hover:bg-navy/10"
                       >
                         reporte
                       </Link>

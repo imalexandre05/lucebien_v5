@@ -187,7 +187,7 @@ function FilaPrenda({
             {dot && (
               <span
                 aria-hidden
-                className="pointer-events-none absolute left-2 h-2.5 w-2.5 rounded-full border border-black/10"
+                className="pointer-events-none absolute left-2 h-2.5 w-2.5 rounded-r-pastilla border border-black/10"
                 style={{ background: dot }}
               />
             )}

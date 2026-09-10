@@ -40,8 +40,8 @@ export function PerfilComponentes({
                 </span>
                 <span className="tabular-nums text-xs font-semibold text-navy">{v.toFixed(1)}</span>
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line/60">
-                <div className="h-full rounded-full bg-navy" style={{ width: `${pct}%` }} />
+              <div className="mt-1 h-1.5 overflow-hidden rounded-r-pastilla bg-line/60">
+                <div className="h-full rounded-r-pastilla bg-navy" style={{ width: `${pct}%` }} />
               </div>
             </div>
           );

@@ -140,7 +140,7 @@ export function ValoresCliente({
             type="button"
             onClick={() => setVista('evaluar')}
             className={cn(
-              'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+              'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
               vista === 'evaluar' ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
             )}
           >
@@ -150,7 +150,7 @@ export function ValoresCliente({
             type="button"
             onClick={() => setVista('seguimiento')}
             className={cn(
-              'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+              'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
               vista === 'seguimiento' ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
             )}
           >
@@ -187,7 +187,7 @@ export function ValoresCliente({
                     >
                       <span
                         className={cn(
-                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-r-pastilla text-xs font-semibold',
                           tonoAvatar(c.nombre),
                         )}
                       >
@@ -279,7 +279,7 @@ export function ValoresCliente({
           {/* El progreso de los seis, arriba de todo: es lo que explica por qué el botón está
               gris, y lo dice antes de que la persona llegue abajo a descubrirlo. */}
           <div className="flex items-center gap-3">
-            <div className="h-1 flex-1 overflow-hidden rounded-full bg-line/70">
+            <div className="h-1 flex-1 overflow-hidden rounded-r-pastilla bg-line/70">
               <div
                 className="h-full origin-left bg-gold transition-transform duration-200 ease-out-expo"
                 style={{ transform: `scaleX(${contestados / VALORES.length})` }}
@@ -296,7 +296,7 @@ export function ValoresCliente({
                 key={v}
                 type="button"
                 onClick={() => todosA(v)}
-                className="rounded-full border border-line px-2.5 py-1 text-xs text-navy transition-colors hover:border-gold"
+                className="rounded-r-pastilla border border-line px-2.5 py-1 text-xs text-navy transition-colors hover:border-gold"
               >
                 Todos a {v}
               </button>

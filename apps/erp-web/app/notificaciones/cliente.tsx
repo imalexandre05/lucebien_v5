@@ -155,7 +155,7 @@ export function NotificacionesCliente({ notificaciones, esAdmin }: { notificacio
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={cn('text-sm font-semibold', !n.leida ? 'text-navy' : 'text-ink')}>{n.titulo}</span>
                       {n.sede && <Badge tone="navy">{n.sede}</Badge>}
-                      {!n.leida && <span className="h-1.5 w-1.5 rounded-full bg-gold" aria-label="sin leer" />}
+                      {!n.leida && <span className="h-1.5 w-1.5 rounded-r-pastilla bg-gold" aria-label="sin leer" />}
                     </div>
                     <p className="mt-0.5 text-sm text-muted">{n.mensaje}</p>
                     {href && (

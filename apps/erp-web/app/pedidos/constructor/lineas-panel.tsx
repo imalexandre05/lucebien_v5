@@ -88,7 +88,7 @@ export function LineasPanel({
               title={TIPO_ATAJO[t]}
               onClick={() => onTipoActivoChange(t)}
               className={cn(
-                'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
                 tipoActivo === t ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
               )}
             >
@@ -191,7 +191,7 @@ export function LineasPanel({
                   data-testid="linea-cortesia-toggle"
                   onClick={() => onUpdate(l.key, { esCortesia: !l.esCortesia })}
                   className={cn(
-                    'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                    'rounded-r-pastilla border px-2.5 py-1 text-[11px] font-medium transition-colors',
                     l.esCortesia ? 'border-exito bg-exito/10 text-exito-deep' : 'border-line text-muted hover:border-gold',
                   )}
                 >

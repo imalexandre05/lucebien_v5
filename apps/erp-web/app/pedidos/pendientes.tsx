@@ -28,7 +28,7 @@ function Chip({ label, count, active, onClick, testId }: { label: string; count:
       data-testid={testId}
       onClick={onClick}
       className={cn(
-        'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+        'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
         active ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
       )}
     >

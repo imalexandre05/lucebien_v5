@@ -93,7 +93,7 @@ export default async function DevolucionesPage() {
                     <TD className="tabular-nums text-xs text-navy">{p.fechaDevolucion}</TD>
                     <TD className="capitalize">{p.estado}</TD>
                     <TD className="pr-5">
-                      <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', a.cls)}>
+                      <span className={cn('inline-flex items-center rounded-r-pastilla px-2.5 py-0.5 text-xs font-medium', a.cls)}>
                         {a.label}
                       </span>
                     </TD>

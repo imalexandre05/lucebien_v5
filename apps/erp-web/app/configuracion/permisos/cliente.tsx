@@ -309,7 +309,7 @@ function RolesDerivados({ roles, onCambio }: { roles: RolDerivado[]; onCambio: (
                 disabled={pending}
                 title={`Basado en ${r.rolBase} · clic para ${r.activo ? 'desactivar' : 'activar'}`}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                  'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
                   r.activo ? 'border-navy bg-navy/5 text-navy' : 'border-line bg-white text-muted line-through',
                 )}
               >
@@ -340,7 +340,7 @@ function RolesDerivados({ roles, onCambio }: { roles: RolDerivado[]; onCambio: (
                     onClick={() => setRolBase(r.rol)}
                     aria-pressed={rolBase === r.rol}
                     className={cn(
-                      'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                      'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
                       rolBase === r.rol ? 'border-navy bg-navy text-paper' : 'border-line bg-white text-navy hover:border-gold/60',
                     )}
                   >

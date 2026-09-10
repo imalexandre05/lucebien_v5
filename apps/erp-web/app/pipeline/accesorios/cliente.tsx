@@ -150,7 +150,7 @@ export function AccesoriosCliente({
             <CardHeader>
               <CardTitle>
                 Por validar en tienda{' '}
-                <span className="ml-1 rounded-full bg-navy/5 px-2 py-0.5 tabular-nums text-xs text-navy">
+                <span className="ml-1 rounded-r-pastilla bg-navy/5 px-2 py-0.5 tabular-nums text-xs text-navy">
                   {pendientes.length}
                 </span>
               </CardTitle>

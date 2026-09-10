@@ -295,7 +295,7 @@ export function TableroPipeline({
           accion={
             <div className="flex items-center gap-5 text-paper">
               <span className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-paper/15 px-3 py-1 text-micro font-medium">
-                <span className="h-1.5 w-1.5 rounded-full bg-exito" /> En vivo
+                <span className="h-1.5 w-1.5 rounded-r-pastilla bg-exito" /> En vivo
               </span>
               <div className="text-right">
                 <div className="text-micro uppercase tracking-wide text-paper/60">Sesión</div>
@@ -335,8 +335,8 @@ export function TableroPipeline({
           ),
         )}
         <div className="ml-auto flex items-center gap-2 pb-1.5">
-          <span className="rounded-full bg-navy/5 px-2.5 py-1 text-xs font-medium text-navy">{enProceso} en proceso</span>
-          <span className="rounded-full bg-exito/10 px-2.5 py-1 text-xs font-medium text-exito-deep">{enviados} enviados</span>
+          <span className="rounded-r-pastilla bg-navy/5 px-2.5 py-1 text-xs font-medium text-navy">{enProceso} en proceso</span>
+          <span className="rounded-r-pastilla bg-exito/10 px-2.5 py-1 text-xs font-medium text-exito-deep">{enviados} enviados</span>
         </div>
       </div>
 
@@ -424,7 +424,7 @@ export function TableroPipeline({
             <Trophy className="h-4 w-4 text-gold" strokeWidth={2} /> Puntos de hoy
           </span>
           {ranking.map((r, i) => (
-            <span key={r.nombre} className="inline-flex items-center gap-1.5 rounded-full bg-navy/5 px-2.5 py-1 text-xs">
+            <span key={r.nombre} className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-navy/5 px-2.5 py-1 text-xs">
               <span className="tabular-nums text-[10px] text-muted">#{i + 1}</span>
               <span className="font-medium text-navy">{r.nombre}</span>
               <span className="tabular-nums font-bold text-gold-deep">{r.total}</span>
@@ -448,7 +448,7 @@ export function TableroPipeline({
                   {col.n}
                 </span>
                 <span
-                  className="ml-auto rounded-full bg-white px-2 py-0.5 tabular-nums text-xs font-semibold"
+                  className="ml-auto rounded-r-pastilla bg-white px-2 py-0.5 tabular-nums text-xs font-semibold"
                   style={{ color: col.tint }}
                 >
                   {items.length}
@@ -544,7 +544,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
       type="button"
       onClick={onClick}
       className={cn(
-        'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+        'rounded-r-pastilla px-3 py-1 text-xs font-medium transition-colors',
         on ? 'bg-navy text-paper' : 'border border-line bg-white text-navy hover:border-gold',
       )}
     >
@@ -593,7 +593,7 @@ function Tarjeta({
     >
       <div className="flex items-center gap-1.5">
         <span
-          className="h-3 w-3 shrink-0 rounded-full border border-black/10"
+          className="h-3 w-3 shrink-0 rounded-r-pastilla border border-black/10"
           style={{ background: COL_MAP[p.color ?? ''] ?? '#cbd5e1' }}
           title={p.color ?? ''}
         />

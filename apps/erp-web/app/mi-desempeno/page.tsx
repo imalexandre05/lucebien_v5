@@ -201,10 +201,10 @@ export default async function MiDesempenoPage() {
                       <span
                         className={
                           i.nivel === 'Alto'
-                            ? 'rounded-full bg-error-soft px-2.5 py-0.5 text-xs font-medium text-error-deep'
+                            ? 'rounded-r-pastilla bg-error-soft px-2.5 py-0.5 text-xs font-medium text-error-deep'
                             : i.nivel === 'Medio'
-                              ? 'rounded-full bg-aviso-soft px-2.5 py-0.5 text-xs font-medium text-aviso-deep'
-                              : 'rounded-full bg-paper px-2.5 py-0.5 text-xs font-medium text-muted'
+                              ? 'rounded-r-pastilla bg-aviso-soft px-2.5 py-0.5 text-xs font-medium text-aviso-deep'
+                              : 'rounded-r-pastilla bg-paper px-2.5 py-0.5 text-xs font-medium text-muted'
                         }
                       >
                         {i.nivel}

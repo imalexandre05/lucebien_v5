@@ -292,7 +292,7 @@ export function LayoutMap({
               title={`${z.nombre} · ${z.peso} pts`}
               style={esEval ? { borderColor: ev.borde, color: ev.borde, background: `${ev.bg}44` } : undefined}
               className={cn(
-                'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors duration-150',
+                'inline-flex items-center gap-1 rounded-r-pastilla border px-2.5 py-1 text-xs transition-colors duration-150',
                 !esEval && (on ? 'border-exito bg-exito/10 text-exito-deep' : 'border-line bg-white text-muted hover:border-gold'),
                 readOnly && 'cursor-default',
               )}
@@ -302,7 +302,7 @@ export function LayoutMap({
             </button>
           );
         })}
-        <span className="ml-auto rounded-full bg-exito/10 px-3 py-1 tabular-nums text-xs font-bold text-exito-deep">
+        <span className="ml-auto rounded-r-pastilla bg-exito/10 px-3 py-1 tabular-nums text-xs font-bold text-exito-deep">
           {r1(ganados)} / {r1(totalPts)} pts
         </span>
       </div>
@@ -400,7 +400,7 @@ export function LayoutMap({
             ring = '2px solid #15803d';
             glow = '0 0 6px rgba(22,163,74,.35)';
             chip = (
-              <span className="absolute -right-1 -top-1 z-[6] flex h-3.5 w-3.5 animate-scale-in items-center justify-center rounded-full border border-white bg-exito-deep text-white">
+              <span className="absolute -right-1 -top-1 z-[6] flex h-3.5 w-3.5 animate-scale-in items-center justify-center rounded-r-pastilla border border-white bg-exito-deep text-white">
                 <Check className="h-2 w-2" strokeWidth={4} />
               </span>
             );
@@ -413,7 +413,7 @@ export function LayoutMap({
             glow = `0 0 5px ${ev.borde}44`;
             chip = (
               <span
-                className="absolute -right-1 -top-1 z-[6] flex h-3.5 w-3.5 items-center justify-center rounded-full border border-white text-white"
+                className="absolute -right-1 -top-1 z-[6] flex h-3.5 w-3.5 items-center justify-center rounded-r-pastilla border border-white text-white"
                 style={{ background: ev.chip }}
               >
                 <IconoEstado v={estado} className="h-2 w-2" />
@@ -474,14 +474,14 @@ export function LayoutMap({
                   {z.cod}
                 </span>
                 {z.sobreCod && (
-                  <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-full bg-navy-deep px-1 py-px tabular-nums text-[6px] leading-tight text-paper/90">
+                  <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-r-pastilla bg-navy-deep px-1 py-px tabular-nums text-[6px] leading-tight text-paper/90">
                     s/{z.sobreCod}
                   </span>
                 )}
                 {tieneSolape && !dropdownAbierto && (
                   <span
                     aria-hidden
-                    className="absolute -left-1.5 -top-1.5 z-[7] flex h-4 w-4 items-center justify-center rounded-full border border-white bg-navy-deep tabular-nums text-[8px] font-bold text-paper"
+                    className="absolute -left-1.5 -top-1.5 z-[7] flex h-4 w-4 items-center justify-center rounded-r-pastilla border border-white bg-navy-deep tabular-nums text-[8px] font-bold text-paper"
                   >
                     {grupo!.size}
                   </span>
@@ -549,7 +549,7 @@ export function LayoutMap({
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-[2px] bg-[#eab308]" /> AM</span>
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-[2px] bg-[#2563eb]" /> PM</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2 bg-[#facc15]" style={{ borderRadius: '50% 50% 2px 2px' }} /> Maniquí</span>
-        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-exito" /> Hecho</span>
+        <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-r-pastilla bg-exito" /> Hecho</span>
         {esEval && (
           <span className="ml-auto inline-flex items-center gap-1.5">
             Clic:
@@ -574,9 +574,9 @@ export function LayoutMap({
         <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">
           Calificación limpieza
         </div>
-        <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-line/60">
+        <div className="mb-3 h-1.5 overflow-hidden rounded-r-pastilla bg-line/60">
           <div
-            className={cn('h-full rounded-full transition-[width] duration-300', frac >= 1 ? 'bg-exito' : frac >= 0.5 ? 'bg-aviso' : 'bg-error')}
+            className={cn('h-full rounded-r-pastilla transition-[width] duration-300', frac >= 1 ? 'bg-exito' : frac >= 0.5 ? 'bg-aviso' : 'bg-error')}
             style={{ width: `${Math.round(frac * 100)}%` }}
           />
         </div>

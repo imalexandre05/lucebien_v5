@@ -69,7 +69,7 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
             </div>
             <div className="flex items-center justify-between border-b border-line/60 py-1.5">
               <span className="text-muted">Segmento</span>
-              <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', SEG_CLS[m.segmento])}>
+              <span className={cn('inline-flex items-center rounded-r-pastilla px-2.5 py-0.5 text-xs font-medium', SEG_CLS[m.segmento])}>
                 {SEG_LABEL[m.segmento]}
               </span>
             </div>

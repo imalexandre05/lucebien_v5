@@ -285,7 +285,7 @@ export default async function Dashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2.5">
             Pipeline de lavandería
-            <span className="rounded-full bg-navy/5 px-2.5 py-0.5 tabular-nums text-xs font-semibold text-navy">
+            <span className="rounded-r-pastilla bg-navy/5 px-2.5 py-0.5 tabular-nums text-xs font-semibold text-navy">
               {totalFlujo} en proceso
             </span>
           </CardTitle>
@@ -342,7 +342,7 @@ export default async function Dashboard() {
                   })}
                 </div>
                 {/* El hilo del atelier: riel que se enhebra bajo el flujo al montar. */}
-                <div className="h-0.5 overflow-hidden rounded-full bg-line/70">
+                <div className="h-0.5 overflow-hidden rounded-r-pastilla bg-line/70">
                   <div className="h-full origin-left animate-draw-x bg-gradient-to-r from-gold via-gold/80 to-gold/40" />
                 </div>
                 <div className="flex" aria-hidden="true">
@@ -431,7 +431,7 @@ export default async function Dashboard() {
                         href={ev.href}
                         className="group flex items-center gap-3 px-5 py-3 outline-none transition-colors duration-150 hover:bg-navy/[0.03] focus-visible:bg-navy/[0.05]"
                       >
-                        <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full', chipCls)}>
+                        <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-r-pastilla', chipCls)}>
                           <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                         </span>
                         <span className="min-w-0 flex-1">
@@ -497,9 +497,9 @@ export default async function Dashboard() {
                         {r.total}
                       </span>
                     </div>
-                    <div className="ml-8 mt-1.5 h-1.5 overflow-hidden rounded-full bg-paper">
+                    <div className="ml-8 mt-1.5 h-1.5 overflow-hidden rounded-r-pastilla bg-paper">
                       <div
-                        className={cn('h-full rounded-full', i === 0 ? 'bg-gold' : 'bg-navy')}
+                        className={cn('h-full rounded-r-pastilla', i === 0 ? 'bg-gold' : 'bg-navy')}
                         style={{ width: `${Math.round((r.total / maxPts) * 100)}%` }}
                       />
                     </div>
@@ -526,7 +526,7 @@ function PuntajePill({ puntaje }: { puntaje: number }) {
         ? 'bg-gold/20 text-gold-deep'
         : 'bg-error/15 text-error-deep';
   return (
-    <span className={cn('rounded-full px-2 py-0.5 tabular-nums text-[10px] font-bold', cls)}>
+    <span className={cn('rounded-r-pastilla px-2 py-0.5 tabular-nums text-[10px] font-bold', cls)}>
       {puntaje}%
     </span>
   );

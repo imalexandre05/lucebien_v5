@@ -36,7 +36,7 @@ export function BandaModulo({
           subtitulo ? 'py-6' : 'py-5',
         )}
       >
-        <div className="pointer-events-none absolute -right-14 -top-16 h-56 w-56 rounded-full bg-paper/10" />
+        <div className="pointer-events-none absolute -right-14 -top-16 h-56 w-56 rounded-r-pastilla bg-paper/10" />
         {migas && <div className="relative mb-2 text-apoyo text-paper/75">{migas}</div>}
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -53,7 +53,7 @@ export function BandaModulo({
           módulo, cambia). Se muda acá abajo de la banda a propósito — sobre el fondo de color
           la firma dorada se habría perdido. Reemplaza a `.gold-rule`/`.hilo-titulo` en cualquier
           pantalla que use `BandaModulo`. */}
-      <div className="mt-4 flex h-0.5 overflow-hidden rounded-full bg-line">
+      <div className="mt-4 flex h-0.5 overflow-hidden rounded-r-pastilla bg-line">
         <span className="h-full w-10 bg-gold" />
         <span className="h-full w-6 bg-acento transition-colors duration-contexto ease-estado" />
       </div>

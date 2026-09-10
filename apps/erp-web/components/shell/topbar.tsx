@@ -77,7 +77,7 @@ export async function Topbar() {
             href="/buscar"
             title="Buscar un terno (código, tipo, talla, color)"
             aria-label="Buscar"
-            className="anillo flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
+            className="anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
           >
             <Search className="h-4 w-4" strokeWidth={1.75} />
           </Link>
@@ -85,7 +85,7 @@ export async function Topbar() {
         {sesion && <NotificacionesBell notificaciones={notificaciones} />}
         {sesion && <SedePopover sedeActual={sede} sedes={sedesDisponibles} />}
         {rol && (
-          <span className="hidden rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-gold-deep md:inline">
+          <span className="hidden rounded-r-pastilla border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-gold-deep md:inline">
             {ROL_LABEL[rol] ?? rol}
           </span>
         )}
@@ -95,7 +95,7 @@ export async function Topbar() {
             title="Mi desempeño"
             aria-label="Mi desempeño"
             className={cn(
-              'anillo flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-transform duration-150 hover-fine:scale-105 active:scale-95',
+              'anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-xs font-semibold transition-transform duration-150 hover-fine:scale-105 active:scale-95',
               tonoAvatar(nombre),
             )}
           >
@@ -107,7 +107,7 @@ export async function Topbar() {
             <button
               title="Cerrar sesión"
               aria-label="Cerrar sesión"
-              className="anillo flex h-8 w-8 items-center justify-center rounded-full text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
+              className="anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
             >
               <LogOut className="h-4 w-4" strokeWidth={1.75} />
             </button>

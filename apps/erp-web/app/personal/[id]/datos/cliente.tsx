@@ -158,11 +158,11 @@ export function DatosCliente({
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3">
             <span
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium',
+                'inline-flex items-center gap-1.5 rounded-r-pastilla px-2.5 py-1 text-xs font-medium',
                 emp.activo ? 'bg-exito-soft text-exito-deep' : 'bg-ink/10 text-muted',
               )}
             >
-              <span className={cn('h-1.5 w-1.5 rounded-full', emp.activo ? 'bg-exito' : 'bg-muted')} />
+              <span className={cn('h-1.5 w-1.5 rounded-r-pastilla', emp.activo ? 'bg-exito' : 'bg-muted')} />
               {emp.activo ? 'Activo' : 'Suspendido'}
             </span>
             <button

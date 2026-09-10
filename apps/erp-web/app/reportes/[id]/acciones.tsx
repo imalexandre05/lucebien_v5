@@ -136,7 +136,7 @@ export function EvaluarPanel({
         <h2 className="flex items-center gap-2 text-xl font-semibold text-navy">
           <Star className="h-5 w-5 text-gold" strokeWidth={2} /> Evaluar reporte
         </h2>
-        <span className="rounded-full bg-gold/15 px-3 py-1 tabular-nums text-base font-bold text-gold-deep">
+        <span className="rounded-r-pastilla bg-gold/15 px-3 py-1 tabular-nums text-base font-bold text-gold-deep">
           {puntaje}%
         </span>
       </div>
@@ -146,7 +146,7 @@ export function EvaluarPanel({
           <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={2} />
           <span>El evaluante no puede haber estado en el turno:</span>
           {trabajadores.map((t) => (
-            <span key={t} className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-aviso-deep">
+            <span key={t} className="rounded-r-pastilla bg-white px-2 py-0.5 text-xs font-medium text-aviso-deep">
               {t}
             </span>
           ))}

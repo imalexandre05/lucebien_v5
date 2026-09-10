@@ -22,14 +22,14 @@ export default function Loading() {
       <div className="mt-4 divide-y divide-line/60 overflow-hidden rounded-lg border border-line bg-white shadow-card">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3 px-4 py-3">
-            <Skeleton className="h-10 w-10 shrink-0 rounded-full" />
+            <Skeleton className="h-10 w-10 shrink-0 rounded-r-pastilla" />
             <div className="min-w-0 flex-1">
               <Skeleton className="h-3.5 w-40 max-w-full" />
               <Skeleton className="mt-1.5 h-2.5 w-24" />
             </div>
             <div className="hidden items-center gap-1 sm:flex">
               {Array.from({ length: 5 }).map((_, j) => (
-                <Skeleton key={j} className="h-1.5 w-6 rounded-full" />
+                <Skeleton key={j} className="h-1.5 w-6 rounded-r-pastilla" />
               ))}
             </div>
             <Skeleton className="hidden h-5 w-10 sm:block" />

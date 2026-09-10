@@ -57,7 +57,7 @@ export function NavSecciones({
                 <span
                   aria-hidden
                   className={cn(
-                    'absolute inset-x-2 -bottom-px h-0.5 origin-center rounded-full bg-gold transition-transform duration-200 ease-out-expo',
+                    'absolute inset-x-2 -bottom-px h-0.5 origin-center rounded-r-pastilla bg-gold transition-transform duration-200 ease-out-expo',
                     activa ? 'scale-x-100' : 'scale-x-0',
                   )}
                 />

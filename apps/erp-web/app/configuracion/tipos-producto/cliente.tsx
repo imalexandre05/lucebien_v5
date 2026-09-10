@@ -256,7 +256,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
             {form.atributosSugeridos.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {form.atributosSugeridos.map((k) => (
-                  <span key={k} className="inline-flex items-center gap-1 rounded-full bg-navy/5 px-2.5 py-1 text-xs text-navy">
+                  <span key={k} className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy/5 px-2.5 py-1 text-xs text-navy">
                     {k}
                     <button type="button" onClick={() => quitarClave(k)} aria-label={`Quitar ${k}`} className="text-muted hover:text-error">
                       <X className="h-3 w-3" strokeWidth={2.5} />

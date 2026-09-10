@@ -438,7 +438,7 @@ export function LayoutEditor({
                     {z.cod}
                   </span>
                   {z.sobreCod && (
-                    <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-full bg-navy-deep px-1 py-px tabular-nums text-[6px] leading-tight text-paper/90">
+                    <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-r-pastilla bg-navy-deep px-1 py-px tabular-nums text-[6px] leading-tight text-paper/90">
                       s/{z.sobreCod}
                     </span>
                   )}
@@ -646,7 +646,7 @@ export function LayoutEditor({
                         <span className="w-10 shrink-0 tabular-nums text-[10px] font-semibold text-navy">{z.cod}</span>
                         <span className="min-w-0 flex-1 truncate text-xs text-ink">{z.nombre}</span>
                         {z.sobreCod && (
-                          <span className="shrink-0 rounded-full bg-navy-deep px-1.5 py-px tabular-nums text-[8px] text-paper/90">
+                          <span className="shrink-0 rounded-r-pastilla bg-navy-deep px-1.5 py-px tabular-nums text-[8px] text-paper/90">
                             s/{z.sobreCod}
                           </span>
                         )}

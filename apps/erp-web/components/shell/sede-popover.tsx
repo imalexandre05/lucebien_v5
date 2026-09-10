@@ -41,7 +41,7 @@ export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: 
     const label = sedes[0]?.cod ?? sedeActual;
     if (!label) return null;
     return (
-      <span className="hidden rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-navy sm:inline">
+      <span className="hidden rounded-r-pastilla border border-line bg-white px-3 py-1 text-xs font-medium text-navy sm:inline">
         Sede · {label}
       </span>
     );
@@ -65,7 +65,7 @@ export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: 
         aria-expanded={abierto}
         disabled={pending}
         title="Cambiar de sede"
-        className="anillo inline-flex items-center gap-1 rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+        className="anillo inline-flex items-center gap-1 rounded-r-pastilla border border-line bg-white px-3 py-1 text-xs font-medium text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <MapPin className="h-3 w-3 text-gold" strokeWidth={2} aria-hidden />
         Sede · {sedeActual || '—'}

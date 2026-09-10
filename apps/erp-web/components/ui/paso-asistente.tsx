@@ -52,7 +52,7 @@ export function PasoAsistente({
 export function ConfirmacionGrande({ mensaje, detalle, children }: { mensaje: string; detalle?: string; children?: ReactNode }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-1 py-6 text-center">
-      <div className="mb-4 grid h-[92px] w-[92px] place-items-center rounded-full border-[3px] border-exito bg-exito-soft">
+      <div className="mb-4 grid h-[92px] w-[92px] place-items-center rounded-r-pastilla border-[3px] border-exito bg-exito-soft">
         <svg viewBox="0 0 24 24" className="h-11 w-11" fill="none" stroke="rgb(var(--exito-deep))" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round">
           <path d="M20 6.5 9.5 17.5 4 12" pathLength={1} className="animate-check-dibuja" style={{ strokeDasharray: 1, strokeDashoffset: 1 }} />
         </svg>

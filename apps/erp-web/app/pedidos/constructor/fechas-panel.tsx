@@ -48,7 +48,7 @@ function FechaRapida({
             data-testid={`${testId}-${o.label}`}
             onClick={() => onChange(fecha)}
             className={cn(
-              'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+              'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
               value === fecha ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
             )}
           >

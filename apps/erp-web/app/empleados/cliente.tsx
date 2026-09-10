@@ -37,7 +37,7 @@ function Pill({
       disabled={disabled}
       aria-pressed={active}
       className={cn(
-        'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+        'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
         active ? 'border-navy bg-navy text-paper' : 'border-line bg-white text-navy hover:border-gold/60',
       )}
     >
@@ -306,7 +306,7 @@ export function OperaCajaToggle({
           disabled={posCobroPending}
           aria-pressed={operaCaja}
           className={cn(
-            'shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+            'shrink-0 rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
             operaCaja ? 'border-exito bg-exito-soft text-exito-deep' : 'border-line bg-white text-muted hover:border-gold/60',
           )}
         >

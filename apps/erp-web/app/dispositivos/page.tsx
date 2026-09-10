@@ -103,7 +103,7 @@ export default async function DispositivosPage() {
                           aria-pressed={d.sedeCod === s.cod}
                           title={`Pre-marcar ${s.nombre} en el login de este equipo`}
                           className={cn(
-                            'rounded-full border px-2 py-0.5 tabular-nums text-[11px] font-medium transition-colors',
+                            'rounded-r-pastilla border px-2 py-0.5 tabular-nums text-[11px] font-medium transition-colors',
                             d.sedeCod === s.cod ? 'border-navy bg-navy text-paper' : 'border-line text-muted hover:border-gold hover:text-navy',
                           )}
                         >

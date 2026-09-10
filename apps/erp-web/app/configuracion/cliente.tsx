@@ -390,7 +390,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
               {form.opciones.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {form.opciones.map((o) => (
-                    <span key={o} className="inline-flex items-center gap-1 rounded-full bg-navy/5 px-2.5 py-1 text-xs text-navy">
+                    <span key={o} className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy/5 px-2.5 py-1 text-xs text-navy">
                       {o}
                       <button type="button" onClick={() => quitarOpcion(o)} aria-label={`Quitar ${o}`} className="text-muted hover:text-error">
                         <X className="h-3 w-3" strokeWidth={2.5} />

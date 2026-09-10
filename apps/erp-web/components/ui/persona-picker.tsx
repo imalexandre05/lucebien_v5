@@ -92,7 +92,7 @@ export function PersonaPicker({
             >
               <span
                 className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-r-pastilla text-xs font-bold',
                   tonoAvatar(e.nombre),
                 )}
               >
@@ -127,7 +127,7 @@ export function PersonaPicker({
             return (
               <span
                 key={id}
-                className="inline-flex items-center gap-1 rounded-full bg-navy px-2.5 py-1 text-xs font-medium text-paper"
+                className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy px-2.5 py-1 text-xs font-medium text-paper"
               >
                 {e?.nombre ?? '—'}
                 <button

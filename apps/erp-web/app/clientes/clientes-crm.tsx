@@ -107,13 +107,13 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
                     <TD className="tabular-nums text-xs text-muted">
                       {c.ultimoPedido ?? '—'}
                       {c.seguir && (
-                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-aviso-soft px-1.5 py-0.5 text-[10px] font-medium text-aviso-deep">
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-r-pastilla bg-aviso-soft px-1.5 py-0.5 text-[10px] font-medium text-aviso-deep">
                           <RefreshCw className="h-2.5 w-2.5" strokeWidth={2.5} /> reactivar
                         </span>
                       )}
                     </TD>
                     <TD>
-                      <span className={cn('inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium', seg.cls)}>
+                      <span className={cn('inline-flex items-center gap-1 rounded-r-pastilla px-2.5 py-0.5 text-xs font-medium', seg.cls)}>
                         {c.segmento === 'vip' && <Star className="h-3 w-3" strokeWidth={2.5} />}
                         {seg.label}
                       </span>

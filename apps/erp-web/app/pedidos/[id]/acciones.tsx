@@ -74,7 +74,7 @@ export function PedidoAcciones({ pedido }: { pedido: Pedido }) {
                 disabled={pending}
                 onClick={() => avanzarEtapa(linea.id, e)}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                  'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
                   linea.etapaConfeccion === e ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
                   pending && 'opacity-60',
                 )}

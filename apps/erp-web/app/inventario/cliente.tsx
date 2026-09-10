@@ -336,7 +336,7 @@ export function InventarioCliente({
                           onChange={(e) => guardarInline(a, { estado: e.target.value as EstadoActivo })}
                           disabled={pending}
                           className={cn(
-                            'rounded-full border-0 px-2.5 py-1 text-xs font-medium outline-none',
+                            'rounded-r-pastilla border-0 px-2.5 py-1 text-xs font-medium outline-none',
                             tonoEstado(a.estado) === 'green' && 'bg-exito-soft text-exito-deep',
                             tonoEstado(a.estado) === 'amber' && 'bg-aviso-soft text-aviso-deep',
                             tonoEstado(a.estado) === 'navy' && 'bg-navy/10 text-navy',
@@ -468,7 +468,7 @@ export function InventarioCliente({
                           aria-pressed={modal.form.tipo.toUpperCase() === t.prefijo.toUpperCase()}
                           onClick={() => setCampo('tipo', t.prefijo)}
                           className={cn(
-                            'rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                            'rounded-r-pastilla border px-2 py-0.5 text-[11px] font-medium transition-colors',
                             modal.form.tipo.toUpperCase() === t.prefijo.toUpperCase()
                               ? 'border-navy bg-navy text-paper'
                               : 'border-line text-muted hover:border-gold hover:text-navy',

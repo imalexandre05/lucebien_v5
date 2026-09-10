@@ -116,9 +116,9 @@ export default async function ValoresColaboradorPage({
                         {v == null ? '—' : `${v.toFixed(2)} / 5`}
                       </span>
                     </div>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line/60">
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-r-pastilla bg-line/60">
                       <div
-                        className="h-full origin-left animate-draw-x rounded-full bg-navy motion-reduce:animate-none"
+                        className="h-full origin-left animate-draw-x rounded-r-pastilla bg-navy motion-reduce:animate-none"
                         style={{ width: `${pct}%` }}
                       />
                     </div>

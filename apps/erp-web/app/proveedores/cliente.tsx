@@ -95,7 +95,7 @@ export function ProveedoresCliente({ proveedores, categorias }: { proveedores: P
                 <TR key={p.id} className={cn(!p.activo && 'opacity-60')}>
                   <TD className="pl-5">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy/5 text-navy">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-r-pastilla bg-navy/5 text-navy">
                         <Truck className="h-4 w-4" strokeWidth={1.75} />
                       </span>
                       <div className="min-w-0">

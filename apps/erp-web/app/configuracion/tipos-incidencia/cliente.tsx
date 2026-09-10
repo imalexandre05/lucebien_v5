@@ -32,7 +32,7 @@ const NIVELES: Opcion[] = [
 function NivelPill({ nivel }: { nivel: string }) {
   const cls =
     nivel === 'Alto' ? 'bg-error-soft text-error-deep' : nivel === 'Medio' ? 'bg-aviso-soft text-aviso-deep' : 'bg-paper text-muted';
-  return <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', cls)}>{nivel}</span>;
+  return <span className={cn('inline-flex items-center rounded-r-pastilla px-2.5 py-0.5 text-xs font-medium', cls)}>{nivel}</span>;
 }
 
 const VACIO: TipoIncidenciaInput = { tipo: '', categoria: '', nivelDefault: 'Medio', puntosDefault: 2 };
@@ -223,7 +223,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
                     key={c}
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, categoria: c }))}
-                    className="rounded-full border border-line px-2.5 py-0.5 text-[11px] text-muted hover:border-gold hover:text-navy"
+                    className="rounded-r-pastilla border border-line px-2.5 py-0.5 text-[11px] text-muted hover:border-gold hover:text-navy"
                   >
                     {c}
                   </button>

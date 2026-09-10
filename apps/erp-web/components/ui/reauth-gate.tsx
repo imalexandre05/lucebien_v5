@@ -39,7 +39,7 @@ export function ReauthGate({ mensaje }: { mensaje?: string }) {
     <div className="mx-auto max-w-sm py-16">
       <Card>
         <CardContent className="space-y-4 py-8 text-center">
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-navy/5 text-navy">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-r-pastilla bg-navy/5 text-navy">
             <ShieldCheck className="h-6 w-6" strokeWidth={1.75} />
           </span>
           <div>

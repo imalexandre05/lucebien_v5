@@ -47,7 +47,7 @@ export default async function DispositivoPage({
 
             {aprobado ? (
               <div className="flex flex-col items-center gap-4 py-4 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-exito/10 text-exito-deep">
+                <span className="flex h-12 w-12 items-center justify-center rounded-r-pastilla bg-exito/10 text-exito-deep">
                   <ShieldCheck className="h-6 w-6" strokeWidth={2} />
                 </span>
                 <p className="text-sm text-muted">Este equipo está autorizado para usar SCI-LB.</p>

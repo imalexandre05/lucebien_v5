@@ -44,7 +44,7 @@ export function ContadorMas({
           aria-label={`Quitar uno de ${nombre}`}
           disabled={valor <= min}
           onClick={() => onChange(Math.max(min, valor - 1))}
-          className="anillo grid h-[46px] w-[46px] place-items-center rounded-full bg-acento-soft text-2xl font-bold leading-none text-acento-deep transition-transform duration-instante ease-rebote active:scale-[.88] disabled:opacity-40"
+          className="anillo grid h-[46px] w-[46px] place-items-center rounded-r-pastilla bg-acento-soft text-2xl font-bold leading-none text-acento-deep transition-transform duration-instante ease-rebote active:scale-[.88] disabled:opacity-40"
         >
           −
         </button>
@@ -56,7 +56,7 @@ export function ContadorMas({
           aria-label={`Sumar uno a ${nombre}`}
           disabled={valor >= max}
           onClick={() => onChange(Math.min(max, valor + 1))}
-          className="anillo grid h-[46px] w-[46px] place-items-center rounded-full bg-acento-soft text-2xl font-bold leading-none text-acento-deep transition-transform duration-instante ease-rebote active:scale-[.88] disabled:opacity-40"
+          className="anillo grid h-[46px] w-[46px] place-items-center rounded-r-pastilla bg-acento-soft text-2xl font-bold leading-none text-acento-deep transition-transform duration-instante ease-rebote active:scale-[.88] disabled:opacity-40"
         >
           +
         </button>

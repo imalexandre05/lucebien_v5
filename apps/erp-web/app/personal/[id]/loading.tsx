@@ -5,7 +5,7 @@ export default function Loading() {
   return (
     <div className="animate-fade space-y-4">
       <div className="flex flex-wrap items-center gap-4">
-        <Skeleton className="h-14 w-14 shrink-0 rounded-full" />
+        <Skeleton className="h-14 w-14 shrink-0 rounded-r-pastilla" />
         <div>
           <Skeleton className="h-7 w-52 max-w-full" />
           <Skeleton className="mt-2 h-2.5 w-64 max-w-full" />
@@ -27,7 +27,7 @@ export default function Loading() {
         <div className="mt-6 flex items-start justify-between gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex flex-1 flex-col items-center gap-2">
-              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-8 w-8 rounded-r-pastilla" />
               <Skeleton className="h-2.5 w-16" />
               <Skeleton className="h-2 w-20" />
             </div>

@@ -242,7 +242,7 @@ export function ActividadesCliente({
       <TD className="pl-5 tabular-nums text-xs text-muted">{i + 1}</TD>
       <TD>
         <div className="flex items-center gap-2">
-          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', a.activa ? 'bg-exito' : 'bg-error')} />
+          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-r-pastilla', a.activa ? 'bg-exito' : 'bg-error')} />
           <div className="min-w-0">
             <div className="truncate text-sm font-medium text-navy">{a.nombre}</div>
             <div className="tabular-nums text-[10px] text-muted">{a.cod}</div>

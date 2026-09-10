@@ -69,13 +69,13 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
       aria-checked={on}
       onClick={onClick}
       className={cn(
-        'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-150 ease-out-expo',
+        'relative inline-flex h-7 w-12 shrink-0 items-center rounded-r-pastilla transition-colors duration-150 ease-out-expo',
         on ? 'bg-exito' : 'bg-line',
       )}
     >
       <span
         className={cn(
-          'inline-block h-6 w-6 transform rounded-full bg-white shadow-elev-1 transition-transform duration-150 ease-out-expo',
+          'inline-block h-6 w-6 transform rounded-r-pastilla bg-white shadow-elev-1 transition-transform duration-150 ease-out-expo',
           on ? 'translate-x-5' : 'translate-x-0.5',
         )}
       />
@@ -821,7 +821,7 @@ export function NuevoReporteForm({
                               onClick={() => agregarCatalogo(c)}
                               title={tipoAct === 'remunerada' && c.precioUnitario > 0 ? `S/ ${c.precioUnitario.toFixed(2)} / ${c.unidad}` : c.nombre}
                               className={cn(
-                                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
+                                'inline-flex items-center gap-1.5 rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
                                 enLista
                                   ? 'border-exito bg-exito/10 text-exito-deep'
                                   : 'border-line bg-white text-navy hover:border-gold/70',
@@ -969,7 +969,7 @@ export function NuevoReporteForm({
                   </span>
                 </span>
               )}
-              <span className="rounded-full bg-gold/15 px-3 py-1 text-xs text-muted">
+              <span className="rounded-r-pastilla bg-gold/15 px-3 py-1 text-xs text-muted">
                 Total{' '}
                 <span className="tabular-nums text-base font-bold text-gold-deep">{totalPts}</span>{' '}
                 pts
@@ -979,7 +979,7 @@ export function NuevoReporteForm({
               {minutosRestantes !== null && (
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2.5 py-1 tabular-nums text-xs font-medium',
+                    'inline-flex items-center gap-1 rounded-r-pastilla px-2.5 py-1 tabular-nums text-xs font-medium',
                     minutosRestantes <= 0
                       ? 'bg-error-soft text-error-deep'
                       : minutosRestantes <= 30
