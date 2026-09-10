@@ -72,7 +72,7 @@ export default async function PagoColaboradorPage({ params }: { params: { id: st
         migrado={migrado}
       />
 
-      <details className="group rounded-lg border border-line bg-white">
+      <details className="group rounded-r-medio border border-line bg-white">
         <summary className="cursor-pointer select-none px-5 py-3 text-sm font-medium text-navy marker:content-none">
           Pagos registrados antes del sistema de liquidaciones
         </summary>

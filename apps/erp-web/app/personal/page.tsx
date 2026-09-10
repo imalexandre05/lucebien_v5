@@ -133,7 +133,7 @@ export default async function ColaboradoresPage({
                 <Link key={h.href} href={h.href} className="animate-rise" style={{ animationDelay: `${i * 40}ms` }}>
                   <Card interactive className="h-full">
                     <CardContent className="flex flex-col items-center gap-2 p-3 text-center">
-                      <span className="rounded-lg bg-navy/5 p-2 text-navy">
+                      <span className="rounded-r-chico bg-navy/5 p-2 text-navy">
                         <Icono className="h-4 w-4" aria-hidden="true" />
                       </span>
                       <span className="text-xs font-medium text-navy">{h.label}</span>

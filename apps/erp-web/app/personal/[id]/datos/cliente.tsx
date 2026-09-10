@@ -170,7 +170,7 @@ export function DatosCliente({
               onClick={toggleEstado}
               disabled={estadoPending}
               className={cn(
-                'inline-flex items-center gap-1 rounded-md border px-2.5 py-1.5 text-xs font-medium transition',
+                'inline-flex items-center gap-1 rounded-r-pastilla border px-2.5 py-1.5 text-xs font-medium transition',
                 emp.activo
                   ? 'border-error-line text-error-deep hover:bg-error-soft'
                   : 'border-exito-line text-exito-deep hover:bg-exito-soft',
@@ -188,7 +188,7 @@ export function DatosCliente({
             </button>
           </div>
 
-          <p className="flex items-start gap-1.5 rounded-md bg-navy/5 px-3 py-2 text-[11px] text-muted">
+          <p className="flex items-start gap-1.5 rounded-r-chico bg-navy/5 px-3 py-2 text-[11px] text-muted">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} />
             El código de acceso (4 dígitos) es fijo y no se muestra ni se edita aquí — es la
             credencial interna de Supabase Auth. El login usa nombre + contraseña.
@@ -234,7 +234,7 @@ export function DatosCliente({
               pestaña Contrato — nunca se edita desde la ficha. */}
           <div>
             <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Sueldo</label>
-            <div className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-paper/40 px-3 py-2">
+            <div className="flex flex-wrap items-center gap-2 rounded-r-chico border border-line bg-paper/40 px-3 py-2">
               <Wallet className="h-4 w-4 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />
               {sueldoVigente != null ? (
                 <>
@@ -360,7 +360,7 @@ function DocumentosCard({
           </p>
           <label
             className={cn(
-              'inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-navy transition hover:bg-navy/5',
+              'inline-flex cursor-pointer items-center gap-1.5 rounded-r-pastilla border border-line px-2.5 py-1.5 text-xs font-medium text-navy transition hover:bg-navy/5',
               subiendo && 'pointer-events-none opacity-60',
             )}
           >
@@ -393,7 +393,7 @@ function DocumentosCard({
                   <button
                     type="button"
                     onClick={() => verDocumento(d.storagePath)}
-                    className="rounded-md p-1.5 text-muted transition hover:bg-navy/5 hover:text-navy"
+                    className="rounded-r-pastilla p-1.5 text-muted transition hover:bg-navy/5 hover:text-navy"
                     title="Ver / descargar"
                   >
                     <ExternalLink className="h-4 w-4" strokeWidth={2} />
@@ -402,7 +402,7 @@ function DocumentosCard({
                     type="button"
                     onClick={() => borrar(d)}
                     disabled={pendingBorrado && borrandoId === d.id}
-                    className="rounded-md p-1.5 text-muted transition hover:bg-error-soft hover:text-error-deep"
+                    className="rounded-r-pastilla p-1.5 text-muted transition hover:bg-error-soft hover:text-error-deep"
                     title="Borrar"
                   >
                     <Trash2 className="h-4 w-4" strokeWidth={2} />

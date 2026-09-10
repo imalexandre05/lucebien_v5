@@ -56,7 +56,7 @@ export function CabeceraColaborador({
     <Superficie elev={1} radio="grande" className="flex flex-wrap items-center gap-x-4 gap-y-3 p-4">
       <Link
         href={query ? `/personal?${query}` : '/personal'}
-        className="anillo toque inline-flex items-center gap-1.5 rounded-md px-1.5 py-1 text-xs font-medium text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy"
+        className="anillo toque inline-flex items-center gap-1.5 rounded-r-pastilla px-1.5 py-1 text-xs font-medium text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy"
       >
         <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
         Todos

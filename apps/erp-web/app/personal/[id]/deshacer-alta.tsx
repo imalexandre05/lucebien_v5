@@ -129,7 +129,7 @@ export function BotonDeshacerAlta({ personaId, personaNombre }: { personaId: str
       <button
         type="button"
         onClick={abrir}
-        className="anillo toque inline-flex items-center gap-1.5 whitespace-nowrap rounded-md border border-line px-2.5 py-1.5 text-xs font-medium text-muted transition-colors duration-150 hover:border-error-line hover:bg-error-soft hover:text-error-deep"
+        className="anillo toque inline-flex items-center gap-1.5 whitespace-nowrap rounded-r-pastilla border border-line px-2.5 py-1.5 text-xs font-medium text-muted transition-colors duration-150 hover:border-error-line hover:bg-error-soft hover:text-error-deep"
         title="Deshacer un alta de personal hecha por error. Sólo funciona si la persona no tiene pagos, contratos ni evaluaciones."
       >
         <Undo2 className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />

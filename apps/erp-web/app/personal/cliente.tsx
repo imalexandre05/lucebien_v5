@@ -127,7 +127,7 @@ export function ListaColaboradores({
               onClick={() => setFiltro(f.clave)}
               aria-pressed={filtroActivo === f.clave}
               className={cn(
-                'anillo cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
+                'anillo cursor-pointer rounded-r-pastilla px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
                 filtroActivo === f.clave ? 'bg-navy text-paper' : 'text-navy hover:bg-navy/5',
               )}
             >
@@ -144,7 +144,7 @@ export function ListaColaboradores({
       </div>
 
       {visibles.length === 0 ? (
-        <div className="rounded-lg border border-line bg-white shadow-card">
+        <div className="rounded-r-medio border border-line bg-white shadow-card">
           <EmptyState icon={Users} titulo={filtroActivo === 'pendientes' ? 'No falta nada en este período' : 'Nadie coincide'}>
             {filtroActivo === 'pendientes'
               ? 'Los cinco pasos están resueltos para todo el equipo en el rango elegido.'
@@ -152,7 +152,7 @@ export function ListaColaboradores({
           </EmptyState>
         </div>
       ) : (
-        <ul className="divide-y divide-line/60 overflow-hidden rounded-lg border border-line bg-white shadow-card">
+        <ul className="divide-y divide-line/60 overflow-hidden rounded-r-medio border border-line bg-white shadow-card">
           {visibles.map(({ c, e, pasos, corte }, i) => (
             <li key={c.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
               <Link

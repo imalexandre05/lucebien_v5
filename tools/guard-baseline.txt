@@ -197,13 +197,6 @@ radio|apps/erp-web/app/page.tsx
 radio|apps/erp-web/app/pagos/cliente.tsx
 radio|apps/erp-web/app/pedidos/[id]/page.tsx
 radio|apps/erp-web/app/pedidos/pendientes.tsx
-radio|apps/erp-web/app/personal/[id]/cabecera.tsx
-radio|apps/erp-web/app/personal/[id]/datos/cliente.tsx
-radio|apps/erp-web/app/personal/[id]/deshacer-alta.tsx
-radio|apps/erp-web/app/personal/[id]/error.tsx
-radio|apps/erp-web/app/personal/[id]/pago/page.tsx
-radio|apps/erp-web/app/personal/cliente.tsx
-radio|apps/erp-web/app/personal/page.tsx
 radio|apps/erp-web/app/pipeline/accesorios/cliente.tsx
 radio|apps/erp-web/app/pipeline/envios/cliente.tsx
 radio|apps/erp-web/app/pipeline/metricas/page.tsx
