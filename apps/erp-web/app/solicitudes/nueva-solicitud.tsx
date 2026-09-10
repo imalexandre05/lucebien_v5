@@ -81,7 +81,7 @@ function aItemInput(row: ItemDraft): ItemSolicitudInput {
 
 function Stepper({ value, onChange, min = 1 }: { value: number; onChange: (v: number) => void; min?: number }) {
   return (
-    <div className="inline-flex items-center gap-0.5 rounded-md border border-line bg-white px-1">
+    <div className="inline-flex items-center gap-0.5 rounded-r-chico border border-line bg-white px-1">
       <button
         type="button"
         onClick={() => onChange(Math.max(min, value - 1))}
@@ -161,7 +161,7 @@ function FilaPrenda({
   }
 
   return (
-    <div className="rounded-lg border border-line bg-paper/50 p-3">
+    <div className="rounded-r-chico border border-line bg-paper/50 p-3">
       <div className="mb-2 flex items-center justify-between">
         <Badge tone="navy">Prenda</Badge>
         <button type="button" onClick={onRemove} aria-label="Quitar ítem" className="text-muted transition-colors hover:text-error">
@@ -245,7 +245,7 @@ function FilaArticulo({
 }) {
   const sinCatalogo = grupos.length === 0;
   return (
-    <div className="rounded-lg border border-line bg-paper/50 p-3">
+    <div className="rounded-r-chico border border-line bg-paper/50 p-3">
       <div className="mb-2 flex items-center justify-between">
         <Badge tone="gold">Artículo</Badge>
         <button type="button" onClick={onRemove} aria-label="Quitar ítem" className="text-muted transition-colors hover:text-error">
@@ -390,7 +390,7 @@ export function NuevaSolicitudModal({
             // lo referencia, en vez de repetirlo en dos lugares que después se desincronizan.
             <p
               id="motivo-solicitud"
-              className="rounded-md border border-dashed border-line px-3 py-6 text-center text-sm text-muted"
+              className="rounded-r-chico border border-dashed border-line px-3 py-6 text-center text-sm text-muted"
             >
               Agrega una prenda o un artículo para poder enviar la solicitud.
             </p>

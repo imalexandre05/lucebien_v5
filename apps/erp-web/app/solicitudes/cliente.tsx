@@ -102,7 +102,7 @@ export function SolicitudesCliente({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar ítem, solicitante u observación…"
-            className="min-w-[13rem] flex-1 rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold"
+            className="min-w-[13rem] flex-1 rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold"
           />
           <OpcionBotones opciones={OPC_ESTADO} value={fEstado} onChange={setFEstado} ariaLabel="Estado" />
           <OpcionBotones opciones={OPC_URGENCIA} value={fUrgencia} onChange={setFUrgencia} ariaLabel="Urgencia" />
@@ -110,7 +110,7 @@ export function SolicitudesCliente({
             <select
               value={fSede}
               onChange={(e) => setFSede(e.target.value)}
-              className="rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
+              className="rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
               aria-label="Sede"
             >
               <option value="">Todas las sedes</option>

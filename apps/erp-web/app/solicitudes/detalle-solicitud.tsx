@@ -218,7 +218,7 @@ function Contenido({
 
         <div className="space-y-1.5">
           {solicitud.obs && (
-            <div className="rounded-md bg-paper px-2.5 py-1.5 text-xs text-ink">
+            <div className="rounded-r-chico bg-paper px-2.5 py-1.5 text-xs text-ink">
               <b>Obs.:</b> {solicitud.obs}
             </div>
           )}
@@ -245,7 +245,7 @@ function Contenido({
           )}
         </div>
 
-        <div className="overflow-x-auto rounded-md border border-line">
+        <div className="overflow-x-auto rounded-r-chico border border-line">
           <Table>
             <THead>
               <TR>
@@ -294,7 +294,7 @@ function Contenido({
                           value={cantidadesEnviar[i.id] ?? i.cantidad}
                           onFocus={(e) => e.target.select()}
                           onChange={(e) => setCantidadesEnviar((p) => ({ ...p, [i.id]: clamp(Number(e.target.value) || 0, 0, i.cantidad) }))}
-                          className="w-16 rounded-md border border-line bg-white px-1.5 py-1 text-right text-sm outline-none focus:border-gold"
+                          className="w-16 rounded-r-chico border border-line bg-white px-1.5 py-1 text-right text-sm outline-none focus:border-gold"
                         />
                       </TD>
                     )}
@@ -320,7 +320,7 @@ function Contenido({
                             onChange={(e) =>
                               setCantidadesRecibir((p) => ({ ...p, [i.id]: clamp(Number(e.target.value) || 0, 0, i.cantidadEnviada) }))
                             }
-                            className="w-16 rounded-md border border-line bg-white px-1.5 py-1 text-right text-sm outline-none focus:border-gold"
+                            className="w-16 rounded-r-chico border border-line bg-white px-1.5 py-1 text-right text-sm outline-none focus:border-gold"
                           />
                         </TD>
                         <TD>
@@ -328,7 +328,7 @@ function Contenido({
                             value={obsRecepcion[i.id] ?? ''}
                             onChange={(e) => setObsRecepcion((p) => ({ ...p, [i.id]: e.target.value }))}
                             placeholder="Obs."
-                            className="w-full rounded-md border border-line bg-white px-1.5 py-1 text-xs outline-none focus:border-gold"
+                            className="w-full rounded-r-chico border border-line bg-white px-1.5 py-1 text-xs outline-none focus:border-gold"
                           />
                         </TD>
                       </>
@@ -353,26 +353,26 @@ function Contenido({
               value={obsRespuesta}
               onChange={(e) => setObsRespuesta(e.target.value)}
               placeholder="Ej: no hay stock talla XL"
-              className="w-full rounded-md border border-line bg-white px-2.5 py-2 text-sm outline-none focus:border-gold"
+              className="w-full rounded-r-chico border border-line bg-white px-2.5 py-2 text-sm outline-none focus:border-gold"
             />
           </div>
         )}
 
         {rechazando && (
-          <div className="rounded-md border border-error-line bg-error-soft p-3">
+          <div className="rounded-r-chico border border-error-line bg-error-soft p-3">
             <label className="mb-1 block text-xs uppercase tracking-wide text-error-deep">Motivo del rechazo (obligatorio)</label>
             <input
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Ej: no hay stock"
               autoFocus
-              className="w-full rounded-md border border-error-line bg-white px-2.5 py-2 text-sm outline-none focus:border-error"
+              className="w-full rounded-r-chico border border-error-line bg-white px-2.5 py-2 text-sm outline-none focus:border-error"
             />
           </div>
         )}
 
         {entregando && (
-          <div className="space-y-3 rounded-md border border-line bg-paper/60 p-3">
+          <div className="space-y-3 rounded-r-chico border border-line bg-paper/60 p-3">
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Quién recibe en {solicitud.sedeCod}</label>
               {empleadosDeSede.length > 0 && (
@@ -396,7 +396,7 @@ function Contenido({
                 value={recibeEnTienda}
                 onChange={(e) => setRecibeEnTienda(e.target.value)}
                 placeholder="O escribe el nombre de quien recibe…"
-                className="w-full rounded-md border border-line bg-white px-2.5 py-2 text-sm outline-none focus:border-gold"
+                className="w-full rounded-r-chico border border-line bg-white px-2.5 py-2 text-sm outline-none focus:border-gold"
               />
             </div>
             {solicitud.items.some((i) => i.categoria === 'prenda' && i.cantidadEnviada > 0) && (
@@ -407,7 +407,7 @@ function Contenido({
                 {solicitud.items
                   .filter((i) => i.categoria === 'prenda' && i.cantidadEnviada > 0)
                   .map((i) => (
-                    <div key={i.id} className="mb-2 rounded-md border border-line bg-white p-2.5">
+                    <div key={i.id} className="mb-2 rounded-r-chico border border-line bg-white p-2.5">
                       <div className="mb-1.5 flex items-center justify-between text-xs">
                         <span className="font-semibold text-navy">
                           {i.tipo} {i.color} {i.talla}
@@ -421,7 +421,7 @@ function Contenido({
                             value={codigos[i.id]?.[k] ?? ''}
                             onChange={(e) => setCodigo(i.id, k, e.target.value.toUpperCase())}
                             placeholder={`Código ${k + 1}`}
-                            className="rounded-md border border-line bg-white px-2 py-1.5 tabular-nums text-xs uppercase tracking-wide outline-none focus:border-gold"
+                            className="rounded-r-chico border border-line bg-white px-2 py-1.5 tabular-nums text-xs uppercase tracking-wide outline-none focus:border-gold"
                           />
                         ))}
                       </div>

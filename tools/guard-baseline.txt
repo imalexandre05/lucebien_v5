@@ -214,10 +214,11 @@ radio|apps/erp-web/app/reportes/[id]/acciones.tsx
 radio|apps/erp-web/app/reportes/layout-map.tsx
 radio|apps/erp-web/app/reportes/lista.tsx
 radio|apps/erp-web/app/reportes/nuevo/form.tsx
-radio|apps/erp-web/app/solicitudes/cliente.tsx
+# Los cuatro callouts (líneas 226/232/237/242) usan `rounded-r-md`: Tailwind DIRECCIONAL (sólo
+# esquinas derechas), no nuestro token -- coincide en el prefijo "r-" por casualidad. Son cajas
+# con `border-l-2` de acento a la izquierda; ponerles un token compuesto (r-chico etc.) redondea
+# las CUATRO esquinas y rompe la forma. Mismo caso que `rounded-r-full` de sidebar.tsx.
 radio|apps/erp-web/app/solicitudes/detalle-solicitud.tsx
-radio|apps/erp-web/app/solicitudes/nueva-solicitud.tsx
-radio|apps/erp-web/app/solicitudes/page.tsx
 radio|apps/erp-web/app/valores/page.tsx
 # logo.tsx (LogoMark) se queda A PROPÓSITO: rOuter/rInner son geometría de marca, no una
 # superficie genérica -- cada tamaño (sm/md/lg/xl) empareja un radio externo con uno interno
