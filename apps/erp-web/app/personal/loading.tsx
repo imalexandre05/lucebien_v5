@@ -12,14 +12,14 @@ export default function Loading() {
         <div className="gold-rule mt-4" />
       </div>
 
-      <Skeleton className="h-[4.5rem] w-full rounded-lg" />
+      <Skeleton className="h-[4.5rem] w-full rounded-r-medio" />
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <Skeleton className="h-8 flex-1 rounded-md" />
-        <Skeleton className="h-8 w-40 rounded-md" />
+        <Skeleton className="h-8 flex-1 rounded-r-chico" />
+        <Skeleton className="h-8 w-40 rounded-r-chico" />
       </div>
 
-      <div className="mt-4 divide-y divide-line/60 overflow-hidden rounded-lg border border-line bg-white shadow-card">
+      <div className="mt-4 divide-y divide-line/60 overflow-hidden rounded-r-medio border border-line bg-white shadow-card">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3 px-4 py-3">
             <Skeleton className="h-10 w-10 shrink-0 rounded-r-pastilla" />

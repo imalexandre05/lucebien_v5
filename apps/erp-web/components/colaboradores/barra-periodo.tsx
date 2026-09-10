@@ -73,7 +73,7 @@ export function BarraPeriodo({
       title={titulo}
       aria-pressed={esIgual(p)}
       className={cn(
-        'anillo cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
+        'anillo cursor-pointer rounded-r-pastilla px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
         esIgual(p) ? 'bg-navy text-paper' : 'text-navy hover:bg-navy/5',
       )}
     >
@@ -84,7 +84,7 @@ export function BarraPeriodo({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-end gap-x-3 gap-y-2 rounded-lg border border-line bg-white px-4 py-3 shadow-card',
+        'flex flex-wrap items-end gap-x-3 gap-y-2 rounded-r-medio border border-line bg-white px-4 py-3 shadow-card',
         pendiente && 'opacity-60',
         className,
       )}

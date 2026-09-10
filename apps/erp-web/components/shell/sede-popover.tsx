@@ -76,7 +76,7 @@ export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: 
         <div
           role="menu"
           aria-label="Cambiar de sede"
-          className="absolute right-0 top-full z-30 mt-1.5 w-52 animate-fade overflow-hidden rounded-lg border border-line bg-white py-1 shadow-lift"
+          className="absolute right-0 top-full z-30 mt-1.5 w-52 animate-fade overflow-hidden rounded-r-medio border border-line bg-white py-1 shadow-lift"
         >
           {sedes.map((s) => (
             <button

@@ -192,7 +192,6 @@ radio|apps/erp-web/app/evaluaciones/cliente.tsx
 radio|apps/erp-web/app/evaluar-reportes/page.tsx
 radio|apps/erp-web/app/incidencias/cliente.tsx
 radio|apps/erp-web/app/inventario/cliente.tsx
-radio|apps/erp-web/app/inventario/loading.tsx
 radio|apps/erp-web/app/login/page.tsx
 radio|apps/erp-web/app/materiales/cliente.tsx
 radio|apps/erp-web/app/notificaciones/cliente.tsx
@@ -207,20 +206,16 @@ radio|apps/erp-web/app/pedidos/constructor/fechas-panel.tsx
 radio|apps/erp-web/app/pedidos/constructor/garantia-panel.tsx
 radio|apps/erp-web/app/pedidos/constructor/lineas-panel.tsx
 radio|apps/erp-web/app/pedidos/constructor/ticket.tsx
-radio|apps/erp-web/app/pedidos/loading.tsx
 radio|apps/erp-web/app/pedidos/pendientes.tsx
 radio|apps/erp-web/app/personal/[id]/cabecera.tsx
 radio|apps/erp-web/app/personal/[id]/datos/cliente.tsx
 radio|apps/erp-web/app/personal/[id]/deshacer-alta.tsx
 radio|apps/erp-web/app/personal/[id]/error.tsx
-radio|apps/erp-web/app/personal/[id]/loading.tsx
 radio|apps/erp-web/app/personal/[id]/pago/page.tsx
 radio|apps/erp-web/app/personal/cliente.tsx
-radio|apps/erp-web/app/personal/loading.tsx
 radio|apps/erp-web/app/personal/page.tsx
 radio|apps/erp-web/app/pipeline/accesorios/cliente.tsx
 radio|apps/erp-web/app/pipeline/envios/cliente.tsx
-radio|apps/erp-web/app/pipeline/loading.tsx
 radio|apps/erp-web/app/pipeline/metricas/page.tsx
 radio|apps/erp-web/app/pipeline/registrar/form.tsx
 radio|apps/erp-web/app/pipeline/tablero.tsx
@@ -228,7 +223,6 @@ radio|apps/erp-web/app/proveedores/cliente.tsx
 radio|apps/erp-web/app/reportes/[id]/acciones.tsx
 radio|apps/erp-web/app/reportes/layout-map.tsx
 radio|apps/erp-web/app/reportes/lista.tsx
-radio|apps/erp-web/app/reportes/loading.tsx
 radio|apps/erp-web/app/reportes/nuevo/form.tsx
 radio|apps/erp-web/app/solicitudes/[id]/imprimir/page.tsx
 radio|apps/erp-web/app/solicitudes/cliente.tsx
@@ -242,15 +236,14 @@ radio|apps/erp-web/app/sueldos/liquidaciones/cliente.tsx
 radio|apps/erp-web/app/sueldos/movimientos/cliente.tsx
 radio|apps/erp-web/app/sueldos/ventas/cliente.tsx
 radio|apps/erp-web/app/valores/page.tsx
+# logo.tsx (LogoMark) se queda A PROPÓSITO: rOuter/rInner son geometría de marca, no una
+# superficie genérica -- cada tamaño (sm/md/lg/xl) empareja un radio externo con uno interno
+# exactamente 1-2px menor para dejar un filete de ancho constante alrededor del sello (ver
+# comentario del archivo, "chapa"). Forzar chico/medio/grande rompería esa proporción calculada
+# a mano. No es deuda pendiente de migrar mecánicamente.
 radio|apps/erp-web/components/brand/logo.tsx
-radio|apps/erp-web/components/colaboradores/barra-periodo.tsx
-radio|apps/erp-web/components/colaboradores/hilo-pago.tsx
-radio|apps/erp-web/components/print-button.tsx
-radio|apps/erp-web/components/shell/mobile-nav.tsx
 radio|apps/erp-web/components/shell/notificaciones-popover.tsx
-radio|apps/erp-web/components/shell/sede-popover.tsx
 radio|apps/erp-web/components/shell/sidebar.tsx
-radio|apps/erp-web/components/shell/stub-note.tsx
 radio|apps/erp-web/components/ui/persona-picker.tsx
 
 # -- elevacion: shadow-none bajo print: (comprobantes) o shadow suelto (toggle) -----------

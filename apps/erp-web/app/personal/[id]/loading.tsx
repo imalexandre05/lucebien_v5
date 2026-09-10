@@ -4,16 +4,16 @@ import { Skeleton, SkeletonStat, SkeletonCard } from '../../../components/ui/ske
 export default function Loading() {
   return (
     <div className="animate-fade space-y-4">
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-r-grande border border-line bg-superficie p-4 shadow-elev-1">
         <Skeleton className="h-14 w-14 shrink-0 rounded-r-pastilla" />
         <div>
           <Skeleton className="h-7 w-52 max-w-full" />
           <Skeleton className="mt-2 h-2.5 w-64 max-w-full" />
         </div>
-        <Skeleton className="ml-auto h-9 w-52 rounded-md" />
+        <Skeleton className="ml-auto h-9 w-52 rounded-r-chico" />
       </div>
 
-      <Skeleton className="h-[4.5rem] w-full rounded-lg" />
+      <Skeleton className="h-[4.5rem] w-full rounded-r-medio" />
 
       <div className="flex gap-1 border-b border-line pb-2">
         {Array.from({ length: 7 }).map((_, i) => (
@@ -22,7 +22,7 @@ export default function Loading() {
       </div>
 
       {/* El hilo: cinco nodos con su etiqueta. */}
-      <div className="rounded-lg border border-line bg-white p-5 shadow-card">
+      <div className="rounded-r-medio border border-line bg-white p-5 shadow-card">
         <Skeleton className="h-4 w-64 max-w-full" />
         <div className="mt-6 flex items-start justify-between gap-2">
           {Array.from({ length: 5 }).map((_, i) => (

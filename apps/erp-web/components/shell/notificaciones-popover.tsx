@@ -145,7 +145,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
                 visibility: coords.top === null ? 'hidden' : 'visible',
                 maxHeight: 'calc(100vh - 1rem)',
               }}
-              className="fixed z-30 w-80 max-w-[calc(100vw-1rem)] animate-fade overflow-y-auto rounded-xl border border-line bg-white shadow-lift"
+              className="fixed z-30 w-80 max-w-[calc(100vw-1rem)] animate-fade overflow-y-auto rounded-r-medio border border-line bg-white shadow-lift"
             >
               <div className="flex items-center justify-between border-b border-line/60 px-3.5 py-2.5">
                 <span className="text-sm font-semibold text-navy">Notificaciones</span>
@@ -183,7 +183,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
                             onClick={() => marcar(n.id)}
                             title="Marcar como leída"
                             aria-label="Marcar como leída"
-                            className="shrink-0 rounded-md p-1 text-muted transition-colors hover:bg-navy/5 hover:text-navy"
+                            className="shrink-0 rounded-r-pastilla p-1 text-muted transition-colors hover:bg-navy/5 hover:text-navy"
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={2} />
                           </button>

@@ -10,7 +10,7 @@ export default function Loading() {
         <Skeleton className="mt-3 h-3 w-52" />
         <div className="gold-rule mt-4" />
       </div>
-      <div className="mb-5 rounded-lg border border-line bg-white p-5">
+      <div className="mb-5 rounded-r-medio border border-line bg-white p-5">
         <Skeleton className="h-4 w-32" />
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Skeleton className="h-9 w-full" />
