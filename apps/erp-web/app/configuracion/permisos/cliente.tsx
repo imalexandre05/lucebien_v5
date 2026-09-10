@@ -222,7 +222,7 @@ export function PermisosCliente({
                                   aria-pressed={on}
                                   title={`${titulo} — ${label} — ${labelColumna(rolKey)}`}
                                   className={cn(
-                                    'flex h-6 w-6 items-center justify-center rounded border text-[10px] font-bold transition-colors duration-150 active:scale-95',
+                                    'flex h-6 w-6 items-center justify-center rounded-r-chico border text-[10px] font-bold transition-colors duration-150 active:scale-95',
                                     on
                                       ? 'border-exito bg-exito-soft text-exito-deep'
                                       : 'border-line bg-white text-muted/50 hover:border-gold/50',
@@ -320,14 +320,14 @@ function RolesDerivados({ roles, onCambio }: { roles: RolDerivado[]; onCambio: (
         )}
 
         {abierto && (
-          <div className="space-y-3 rounded-md border border-line bg-paper/40 p-3">
+          <div className="space-y-3 rounded-r-chico border border-line bg-paper/40 p-3">
             <div>
               <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Nombre del rol</label>
               <input
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Ej. Vendedor Senior"
-                className="w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
+                className="w-full rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
               />
             </div>
             <div>

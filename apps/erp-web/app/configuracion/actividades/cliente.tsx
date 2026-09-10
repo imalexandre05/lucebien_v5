@@ -77,7 +77,7 @@ function Segmento<T extends string>({
           aria-pressed={valor === o.v}
           onClick={() => onChange(o.v)}
           className={cn(
-            'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
+            'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
             valor === o.v
               ? 'border-navy bg-navy text-paper'
               : 'border-line bg-white text-muted hover:border-gold',
@@ -265,7 +265,7 @@ export function ActividadesCliente({
           onClick={() => toggleActiva(a)}
           disabled={pending}
           className={cn(
-            'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
+            'rounded-r-pastilla border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
             a.activa
               ? 'border-line text-muted hover:border-error-line hover:text-error'
               : 'border-exito-line bg-exito-soft text-exito-deep hover:bg-exito-soft',
@@ -279,7 +279,7 @@ export function ActividadesCliente({
           <button
             type="button"
             onClick={() => abrirEditar(a)}
-            className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
+            className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
           >
             <Pencil className="h-3 w-3" strokeWidth={2} /> Editar
           </button>
@@ -287,7 +287,7 @@ export function ActividadesCliente({
             type="button"
             onClick={() => setEliminar(a)}
             aria-label={`Eliminar ${a.nombre}`}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
+            className="flex h-7 w-7 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
           >
             <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
           </button>
@@ -307,7 +307,7 @@ export function ActividadesCliente({
               href={`/configuracion/actividades?sede=${s.cod}`}
               aria-current={s.cod === sede ? 'page' : undefined}
               className={cn(
-                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150',
+                'rounded-r-pastilla px-3 py-1.5 text-sm font-medium transition-colors duration-150',
                 s.cod === sede ? 'bg-navy text-paper' : 'text-muted hover:bg-navy/5 hover:text-navy',
               )}
             >
@@ -527,7 +527,7 @@ export function ActividadesCliente({
                   aria-pressed={formSedes.includes(s.cod)}
                   onClick={() => toggleSedeForm(s.cod)}
                   className={cn(
-                    'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
+                    'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
                     formSedes.includes(s.cod)
                       ? 'border-navy bg-navy/10 text-navy'
                       : 'border-line bg-white text-muted hover:border-gold',
@@ -591,7 +591,7 @@ export function ActividadesCliente({
                             aria-pressed={on}
                             onClick={() => toggleDia(d)}
                             className={cn(
-                              'h-8 w-9 rounded-md border tabular-nums text-xs font-semibold transition-colors duration-150 active:scale-[0.97]',
+                              'h-8 w-9 rounded-r-pastilla border tabular-nums text-xs font-semibold transition-colors duration-150 active:scale-[0.97]',
                               on ? 'border-navy bg-navy text-paper' : 'border-line bg-white text-muted hover:border-gold',
                             )}
                           >
@@ -621,7 +621,7 @@ export function ActividadesCliente({
                 onClick={() => setForm((f) => ({ ...f, acumula: !f.acumula }))}
                 aria-pressed={form.acumula}
                 className={cn(
-                  'w-full rounded-lg border p-3 text-left transition-colors duration-150',
+                  'w-full rounded-r-medio border p-3 text-left transition-colors duration-150',
                   form.acumula ? 'border-exito-line bg-exito-soft' : 'border-line bg-paper/60',
                 )}
               >

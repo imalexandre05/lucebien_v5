@@ -89,7 +89,7 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
               {sedes.map((s) => (
                 <TR key={s.cod}>
                   <TD className="pl-5">
-                    <span className="inline-block rounded-md bg-navy px-2.5 py-1 tabular-nums text-xs font-semibold text-paper">
+                    <span className="inline-block rounded-r-pastilla bg-navy px-2.5 py-1 tabular-nums text-xs font-semibold text-paper">
                       {s.cod}
                     </span>
                   </TD>
@@ -102,7 +102,7 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
                     <button
                       type="button"
                       onClick={() => abrir('editar', s)}
-                      className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
+                      className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
                     >
                       <Pencil className="h-3 w-3" strokeWidth={2} /> Editar
                     </button>

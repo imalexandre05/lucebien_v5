@@ -148,7 +148,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                         onClick={() => toggleActivo(t)}
                         disabled={pending}
                         className={cn(
-                          'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
+                          'rounded-r-pastilla border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
                           t.activo
                             ? 'border-line text-muted hover:border-error-line hover:text-error'
                             : 'border-exito-line bg-exito-soft text-exito-deep hover:bg-exito-soft',
@@ -162,7 +162,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                         <button
                           type="button"
                           onClick={() => abrirEditar(t)}
-                          className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
+                          className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
                         >
                           <Pencil className="h-3 w-3" strokeWidth={2} /> Editar
                         </button>
@@ -170,7 +170,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                           type="button"
                           onClick={() => setEliminar(t)}
                           aria-label={`Eliminar ${t.nombre}`}
-                          className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
+                          className="flex h-7 w-7 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
                         >
                           <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
                         </button>

@@ -86,7 +86,7 @@ function ControlTipado({
             value={hexValido ? valor : '#2e3e6e'}
             disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
-            className="h-8 w-10 cursor-pointer rounded border border-line bg-white p-0.5 disabled:cursor-not-allowed"
+            className="h-8 w-10 cursor-pointer rounded-r-chico border border-line bg-white p-0.5 disabled:cursor-not-allowed"
             aria-label="Color"
           />
           <span className="tabular-nums text-xs text-muted">{valor || '—'}</span>
@@ -155,7 +155,7 @@ function ParametroFila({
               type="button"
               onClick={onEliminar}
               aria-label={`Eliminar ${item.etiqueta}`}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
             >
               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
             </button>

@@ -293,7 +293,7 @@ export function LayoutEditor({
                 if (dirty && !confirm('Hay cambios sin guardar. ¿Cambiar de sede igual?')) e.preventDefault();
               }}
               className={cn(
-                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150',
+                'rounded-r-pastilla px-3 py-1.5 text-sm font-medium transition-colors duration-150',
                 s.cod === sede ? 'bg-navy text-paper' : 'text-muted hover:bg-navy/5 hover:text-navy',
               )}
             >
@@ -308,7 +308,7 @@ export function LayoutEditor({
               aria-pressed={filtro === f}
               onClick={() => setFiltro(f)}
               className={cn(
-                'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors duration-150',
+                'rounded-r-pastilla border px-2.5 py-1 text-xs font-medium transition-colors duration-150',
                 filtro === f ? 'border-navy bg-navy/10 text-navy' : 'border-line text-muted hover:border-gold',
               )}
             >
@@ -346,7 +346,7 @@ export function LayoutEditor({
       {(error || okMsg) && (
         <p
           className={cn(
-            'flex animate-fade items-center gap-1.5 rounded-md px-3 py-2 text-sm',
+            'flex animate-fade items-center gap-1.5 rounded-r-chico px-3 py-2 text-sm',
             error ? 'bg-error-soft text-error-deep' : 'bg-exito-soft text-exito-deep',
           )}
         >
@@ -357,7 +357,7 @@ export function LayoutEditor({
       {/* Fase 5 tarea 2: aviso de solapes (no bloquea — el mapa de limpieza los resuelve con el
           desplegable de "zonas ocultas aquí"). Solo pares NO explicados por nivel=sobre+sobreCod. */}
       {solapesInesperados.length > 0 && (
-        <div className="flex items-start gap-2 rounded-md border border-aviso-line bg-aviso-soft px-3 py-2 text-xs text-aviso-deep">
+        <div className="flex items-start gap-2 rounded-r-chico border border-aviso-line bg-aviso-soft px-3 py-2 text-xs text-aviso-deep">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
           <p>
             <span className="font-semibold">{solapesInesperados.length} solape(s) sin declarar:</span>{' '}
@@ -383,7 +383,7 @@ export function LayoutEditor({
             onClick={(e) => {
               if (e.target === e.currentTarget) setSelKey(null);
             }}
-            className="relative w-full touch-none overflow-hidden rounded-xl border border-line bg-paper"
+            className="relative w-full touch-none overflow-hidden rounded-r-medio border border-line bg-paper"
             style={{
               aspectRatio: `${LIENZO_W} / ${LIENZO_H}`,
               backgroundImage:
@@ -475,10 +475,10 @@ export function LayoutEditor({
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-lg font-semibold text-navy">Zona {sel.cod}</span>
                   <div className="flex items-center gap-1">
-                    <button type="button" onClick={() => duplicarZona(sel.key)} aria-label="Duplicar zona" title="Duplicar zona" className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-navy/5 hover:text-navy">
+                    <button type="button" onClick={() => duplicarZona(sel.key)} aria-label="Duplicar zona" title="Duplicar zona" className="flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors hover:bg-navy/5 hover:text-navy">
                       <CopyPlus className="h-4 w-4" strokeWidth={1.75} />
                     </button>
-                    <button type="button" onClick={() => eliminarZona(sel.key)} aria-label="Eliminar zona" title="Eliminar zona" className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-error-soft hover:text-error">
+                    <button type="button" onClick={() => eliminarZona(sel.key)} aria-label="Eliminar zona" title="Eliminar zona" className="flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors hover:bg-error-soft hover:text-error">
                       <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                     </button>
                   </div>
@@ -532,7 +532,7 @@ export function LayoutEditor({
                             aria-pressed={sel.turno === t}
                             onClick={() => cambiarTurno(sel, t)}
                             className={cn(
-                              'rounded-md border px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-150',
+                              'rounded-r-pastilla border px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-150',
                               sel.turno === t ? 'border-navy bg-navy text-paper' : 'border-line text-muted hover:border-gold',
                             )}
                           >
@@ -552,7 +552,7 @@ export function LayoutEditor({
                             aria-label={`Color ${c}`}
                             aria-pressed={sel.color === c}
                             onClick={() => set(sel.key, { color: c })}
-                            className={cn('h-6 w-6 rounded-md border transition-transform', sel.color === c ? 'scale-110 border-navy ring-2 ring-gold/50' : 'border-line')}
+                            className={cn('h-6 w-6 rounded-r-chico border transition-transform', sel.color === c ? 'scale-110 border-navy ring-2 ring-gold/50' : 'border-line')}
                             style={{ background: c }}
                           />
                         ))}
@@ -615,7 +615,7 @@ export function LayoutEditor({
                     selKey === z.key && 'bg-gold/10',
                   )}
                 >
-                  <span className="w-12 shrink-0 rounded bg-navy px-1.5 py-0.5 text-center tabular-nums text-[10px] font-semibold text-paper">
+                  <span className="w-12 shrink-0 rounded-r-pastilla bg-navy px-1.5 py-0.5 text-center tabular-nums text-[10px] font-semibold text-paper">
                     {z.cod}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs text-ink">{z.nombre}</span>
