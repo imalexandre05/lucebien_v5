@@ -379,7 +379,7 @@ export function LiquidacionesCliente({
       </Card>
 
       {error && (
-        <div className="mb-5 rounded-md bg-error/10 px-4 py-3 text-sm text-error-deep">
+        <div className="mb-5 rounded-r-chico bg-error/10 px-4 py-3 text-sm text-error-deep">
           <p>{error}</p>
           {codigo === 'DATO' && (
             <p className="mt-1 text-xs">
@@ -456,7 +456,7 @@ export function LiquidacionesCliente({
                   {sinVentas && (
                     <div
                       role="alert"
-                      className="mb-4 rounded-lg border border-error-line bg-error-soft px-4 py-3 text-sm text-error-deep"
+                      className="mb-4 rounded-r-chico border border-error-line bg-error-soft px-4 py-3 text-sm text-error-deep"
                     >
                       <p className="font-medium">Este período no tiene ninguna venta cargada.</p>
                       <p className="mt-1">
@@ -481,7 +481,7 @@ export function LiquidacionesCliente({
                     </div>
                   )}
                   {otrasAdvertencias.length > 0 && (
-                    <div role="status" className="rounded-md bg-aviso/10 px-3 py-2">
+                    <div role="status" className="rounded-r-chico bg-aviso/10 px-3 py-2">
                       {otrasAdvertencias.map((a) => (
                         <p key={a} className="flex gap-2 text-sm text-aviso-deep">
                           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
@@ -606,7 +606,7 @@ export function LiquidacionesCliente({
               </p>
               <Desglose lineas={detalle.lineas.length > 0 ? detalle.lineas : detalle.resultado.lineas} />
               {detalle.resultado.advertencias.length > 0 && (
-                <div className="mt-3 rounded-md bg-aviso/10 px-3 py-2">
+                <div className="mt-3 rounded-r-chico bg-aviso/10 px-3 py-2">
                   {detalle.resultado.advertencias.map((a) => (
                     <p key={a} className="text-sm text-aviso-deep">
                       {a}
@@ -662,7 +662,7 @@ export function LiquidacionesCliente({
       >
         <ModalBody>
           {errorCorregir && (
-            <div role="alert" className="mb-3 rounded-md bg-error/10 px-3 py-2 text-sm text-error-deep">
+            <div role="alert" className="mb-3 rounded-r-chico bg-error/10 px-3 py-2 text-sm text-error-deep">
               {errorCorregir}
             </div>
           )}

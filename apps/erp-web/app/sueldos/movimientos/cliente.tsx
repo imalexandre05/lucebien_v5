@@ -96,7 +96,7 @@ export function MovimientosCliente({
 
   return (
     <div className="space-y-6">
-      {error && <p className="rounded-md bg-error/10 px-3 py-2 text-sm text-error-deep">{error}</p>}
+      {error && <p className="rounded-r-chico bg-error/10 px-3 py-2 text-sm text-error-deep">{error}</p>}
 
       {/* ── Movimientos ──────────────────────────────────────────────────────────────────── */}
       <Card>

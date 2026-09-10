@@ -13,7 +13,7 @@ export default async function ComprobantePago({ params }: { params: { id: string
     <div className="mx-auto max-w-[700px]">
       <AccionesComprobante />
 
-      <div className="rounded-lg border border-line bg-white p-8 shadow-card print:border-0 print:shadow-elev-0">
+      <div className="rounded-r-medio border border-line bg-white p-8 shadow-card print:border-0 print:shadow-elev-0">
         {/* Encabezado */}
         <div className="flex items-start justify-between border-b-2 border-navy pb-4">
           <div>
@@ -53,7 +53,7 @@ export default async function ComprobantePago({ params }: { params: { id: string
         </dl>
 
         {/* Monto */}
-        <div className="mt-6 rounded-lg border border-gold/30 bg-gold/10 p-5 text-center">
+        <div className="mt-6 rounded-r-chico border border-gold/30 bg-gold/10 p-5 text-center">
           <div className="text-xs uppercase tracking-wide text-muted">Monto total</div>
           <div className="tabular-nums text-3xl font-bold text-navy">S/ {p.monto.toFixed(2)}</div>
           {(p.bonus > 0 || p.descuentos > 0) && (

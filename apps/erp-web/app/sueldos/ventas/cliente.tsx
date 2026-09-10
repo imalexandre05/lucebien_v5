@@ -33,7 +33,7 @@ function TarjetaSemana({ s }: { s: SemanaMeta }) {
   return (
     <div
       className={cn(
-        'rounded-lg border p-4',
+        'rounded-r-medio border p-4',
         s.cumplida ? 'border-exito-line bg-exito-soft text-exito-deep' : 'border-line bg-paper text-muted',
       )}
     >

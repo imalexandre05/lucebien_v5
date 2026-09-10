@@ -194,9 +194,7 @@ radio|apps/erp-web/app/login/page.tsx
 radio|apps/erp-web/app/materiales/cliente.tsx
 radio|apps/erp-web/app/notificaciones/cliente.tsx
 radio|apps/erp-web/app/page.tsx
-radio|apps/erp-web/app/pagos/[id]/comprobante/page.tsx
 radio|apps/erp-web/app/pagos/cliente.tsx
-radio|apps/erp-web/app/pedidos/[id]/contrato/page.tsx
 radio|apps/erp-web/app/pedidos/[id]/page.tsx
 radio|apps/erp-web/app/pedidos/pendientes.tsx
 radio|apps/erp-web/app/personal/[id]/cabecera.tsx
@@ -216,17 +214,10 @@ radio|apps/erp-web/app/reportes/[id]/acciones.tsx
 radio|apps/erp-web/app/reportes/layout-map.tsx
 radio|apps/erp-web/app/reportes/lista.tsx
 radio|apps/erp-web/app/reportes/nuevo/form.tsx
-radio|apps/erp-web/app/solicitudes/[id]/imprimir/page.tsx
 radio|apps/erp-web/app/solicitudes/cliente.tsx
 radio|apps/erp-web/app/solicitudes/detalle-solicitud.tsx
 radio|apps/erp-web/app/solicitudes/nueva-solicitud.tsx
 radio|apps/erp-web/app/solicitudes/page.tsx
-radio|apps/erp-web/app/sueldos/acuerdos/cliente.tsx
-radio|apps/erp-web/app/sueldos/asistencia/cliente.tsx
-radio|apps/erp-web/app/sueldos/liquidaciones/[id]/comprobante/page.tsx
-radio|apps/erp-web/app/sueldos/liquidaciones/cliente.tsx
-radio|apps/erp-web/app/sueldos/movimientos/cliente.tsx
-radio|apps/erp-web/app/sueldos/ventas/cliente.tsx
 radio|apps/erp-web/app/valores/page.tsx
 # logo.tsx (LogoMark) se queda A PROPÓSITO: rOuter/rInner son geometría de marca, no una
 # superficie genérica -- cada tamaño (sm/md/lg/xl) empareja un radio externo con uno interno

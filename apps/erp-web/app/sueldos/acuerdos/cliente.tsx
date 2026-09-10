@@ -647,14 +647,14 @@ export function AcuerdosCliente({
                     .map((t, i) => ({ t, i }))
                     .filter(({ t }) => t.diaSemana === dia);
                   return (
-                    <div key={dia} className="flex flex-wrap items-center gap-2 rounded-md border border-line px-3 py-2">
+                    <div key={dia} className="flex flex-wrap items-center gap-2 rounded-r-chico border border-line px-3 py-2">
                       <span className="w-24 shrink-0 text-sm font-medium text-navy">{nombre}</span>
                       {/* Barra 06:00–22:00: cada turno es un segmento. Estática a propósito. */}
-                      <div className="relative h-4 w-full max-w-[16rem] shrink-0 overflow-hidden rounded bg-paper sm:w-40" aria-hidden>
+                      <div className="relative h-4 w-full max-w-[16rem] shrink-0 overflow-hidden rounded-r-pastilla bg-paper sm:w-40" aria-hidden>
                         {delDia.map(({ t, i }) => (
                           <span
                             key={i}
-                            className="absolute inset-y-0 rounded-sm bg-gold/60"
+                            className="absolute inset-y-0 rounded-r-pastilla bg-gold/60"
                             style={{ left: `${pctBarra(t.horaInicio)}%`, width: `${Math.max(pctBarra(t.horaFin) - pctBarra(t.horaInicio), 1)}%` }}
                           />
                         ))}
@@ -763,7 +763,7 @@ export function AcuerdosCliente({
             </div>
 
             {/* ── Vista previa ──────────────────────────────────────────────────────────── */}
-            <div className="rounded-md border border-line bg-paper px-4 py-3">
+            <div className="rounded-r-chico border border-line bg-paper px-4 py-3">
               <p className="mb-2 text-sm font-medium text-navy">Resumen del contrato</p>
               {analisis.error ? (
                 <p className="text-sm text-error-deep">{analisis.error}</p>
@@ -844,7 +844,7 @@ export function AcuerdosCliente({
             </div>
 
             {/* ── Parámetros propios: lo único que sigue siendo un modal ─────────────────── */}
-            <div className="rounded-md border border-line px-4 py-3">
+            <div className="rounded-r-chico border border-line px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-navy">Parámetros propios de este contrato</p>

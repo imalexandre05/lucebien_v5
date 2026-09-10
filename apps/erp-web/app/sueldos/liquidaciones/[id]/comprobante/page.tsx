@@ -61,7 +61,7 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
   return (
     <div className="mx-auto max-w-3xl">
       <ImprimirResumen />
-      <article className="rounded-lg border border-line bg-white p-10 shadow-card print:border-0 print:shadow-elev-0">
+      <article className="rounded-r-medio border border-line bg-white p-10 shadow-card print:border-0 print:shadow-elev-0">
         <header className="flex items-start justify-between border-b-2 border-navy pb-4">
           <div>
             <div className="text-3xl font-semibold text-navy">LuceBien</div>
@@ -152,7 +152,7 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
         </section>
 
         {/* 3. El total, destacado */}
-        <div className="mt-6 rounded-lg border border-gold/30 bg-gold/10 p-5 text-center">
+        <div className="mt-6 rounded-r-chico border border-gold/30 bg-gold/10 p-5 text-center">
           <div className="text-xs uppercase tracking-wide text-muted">Total de la liquidación</div>
           <div className="tabular-nums text-3xl font-bold text-navy">{soles(liq.total)}</div>
           {(liq.ingresos != null || liq.descuentos != null) && (

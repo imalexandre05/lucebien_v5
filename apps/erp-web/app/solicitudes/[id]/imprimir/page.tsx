@@ -36,7 +36,7 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
     <div className="mx-auto max-w-3xl">
       <ImprimirAcciones id={s.id} tipo={tipo} yaImpreso={yaImpreso} />
 
-      <article className="rounded-lg border border-line bg-white p-10 shadow-card print:border-0 print:shadow-elev-0">
+      <article className="rounded-r-medio border border-line bg-white p-10 shadow-card print:border-0 print:shadow-elev-0">
         <header className="flex items-start justify-between border-b-2 border-navy pb-4">
           <div>
             <div className="text-3xl font-semibold text-navy">LuceBien</div>
@@ -71,12 +71,12 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
         </section>
 
         {s.obs && (
-          <p className="mt-4 rounded-md bg-navy/5 px-3 py-2 text-xs text-ink">
+          <p className="mt-4 rounded-r-chico bg-navy/5 px-3 py-2 text-xs text-ink">
             <b>Observación:</b> {s.obs}
           </p>
         )}
         {s.obsRespuesta && (
-          <p className="mt-2 rounded-md bg-gold/10 px-3 py-2 text-xs text-ink">
+          <p className="mt-2 rounded-r-chico bg-gold/10 px-3 py-2 text-xs text-ink">
             <b>Respuesta de almacén:</b> {s.obsRespuesta}
           </p>
         )}
@@ -122,7 +122,7 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
           </p>
         )}
         {s.motivoRechazo && (
-          <p className="mt-4 rounded-md bg-error-soft px-3 py-2 text-xs text-error-deep">
+          <p className="mt-4 rounded-r-chico bg-error-soft px-3 py-2 text-xs text-error-deep">
             <b>Rechazada</b> por {s.rechazadoPorNombre ?? '—'} — {s.motivoRechazo}
           </p>
         )}
