@@ -340,7 +340,7 @@ export function EvaluacionesCliente({
       {/* Filtros + acción */}
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-4">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
           <input
@@ -535,7 +535,7 @@ export function EvaluacionesCliente({
                       <div className="mb-1 flex items-baseline justify-between gap-2">
                         <span className="text-xs font-medium text-navy">{c.nombre}</span>
                         {competenciaSel[c.cod] === undefined && (
-                          <span className="text-[11px] text-muted">sin responder</span>
+                          <span className="text-micro text-muted">sin responder</span>
                         )}
                       </div>
                       <OpcionBotones

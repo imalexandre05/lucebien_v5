@@ -461,7 +461,7 @@ export function LayoutEditor({
               );
             })}
           </div>
-          <p className="mt-2 text-[11px] text-muted">
+          <p className="mt-2 text-micro text-muted">
             Arrastra para mover · esquinas para redimensionar · flechas del teclado mueven (Shift = fino) ·
             Supr elimina · grilla de {GRID}px
           </p>
@@ -486,16 +486,16 @@ export function LayoutEditor({
 
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block">
-                    <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Código</span>
+                    <span className="mb-1 block text-rotulo uppercase text-muted">Código</span>
                     <input value={sel.cod} onChange={(e) => set(sel.key, { cod: e.target.value.toUpperCase() })} className={cn(fieldCls, 'w-full tabular-nums uppercase')} />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Peso (pts)</span>
+                    <span className="mb-1 block text-rotulo uppercase text-muted">Peso (pts)</span>
                     <input type="number" step="0.1" min={0} value={sel.peso} onChange={(e) => set(sel.key, { peso: Number(e.target.value) })} className={cn(fieldCls, 'w-full text-right')} />
                   </label>
                 </div>
                 <label className="block">
-                  <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Nombre</span>
+                  <span className="mb-1 block text-rotulo uppercase text-muted">Nombre</span>
                   <input value={sel.nombre} onChange={(e) => set(sel.key, { nombre: e.target.value })} className={cn(fieldCls, 'w-full')} />
                 </label>
 
@@ -503,7 +503,7 @@ export function LayoutEditor({
                   <>
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block">
-                        <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Tipo</span>
+                        <span className="mb-1 block text-rotulo uppercase text-muted">Tipo</span>
                         <select value={sel.tipo} onChange={(e) => set(sel.key, { tipo: e.target.value })} className={cn(fieldCls, 'w-full')}>
                           {TIPOS.map((t) => (
                             <option key={t} value={t}>
@@ -513,7 +513,7 @@ export function LayoutEditor({
                         </select>
                       </label>
                       <label className="block">
-                        <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Forma</span>
+                        <span className="mb-1 block text-rotulo uppercase text-muted">Forma</span>
                         <select value={sel.forma} onChange={(e) => set(sel.key, { forma: e.target.value })} className={cn(fieldCls, 'w-full')}>
                           <option value="rect">Rectángulo</option>
                           <option value="circle">Círculo</option>
@@ -523,7 +523,7 @@ export function LayoutEditor({
                     </div>
 
                     <div>
-                      <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Turno</span>
+                      <span className="mb-1 block text-rotulo uppercase text-muted">Turno</span>
                       <div className="flex gap-1.5">
                         {['ambos', 'mañana', 'tarde'].map((t) => (
                           <button
@@ -543,7 +543,7 @@ export function LayoutEditor({
                     </div>
 
                     <div>
-                      <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Color</span>
+                      <span className="mb-1 block text-rotulo uppercase text-muted">Color</span>
                       <div className="flex items-center gap-1.5">
                         {SWATCHES.map((c) => (
                           <button
@@ -561,7 +561,7 @@ export function LayoutEditor({
 
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block">
-                        <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Nivel</span>
+                        <span className="mb-1 block text-rotulo uppercase text-muted">Nivel</span>
                         <select
                           value={sel.nivel === 'sobre' ? 'sobre' : 'piso'}
                           onChange={(e) => set(sel.key, { nivel: e.target.value, sobreCod: e.target.value === 'piso' ? '' : sel.sobreCod })}
@@ -573,7 +573,7 @@ export function LayoutEditor({
                       </label>
                       {sel.nivel === 'sobre' && (
                         <label className="block">
-                          <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Sobre</span>
+                          <span className="mb-1 block text-rotulo uppercase text-muted">Sobre</span>
                           <select value={sel.sobreCod} onChange={(e) => set(sel.key, { sobreCod: e.target.value })} className={cn(fieldCls, 'w-full tabular-nums')}>
                             <option value="">—</option>
                             {muebles.map((m) => (
@@ -601,7 +601,7 @@ export function LayoutEditor({
           <Card>
             <CardContent className="max-h-[480px] overflow-y-auto px-0 py-2">
               {especiales.length > 0 && (
-                <div className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-muted">
+                <div className="px-4 pb-1 pt-2 text-rotulo font-semibold uppercase text-muted">
                   Tarjetas del mapa
                 </div>
               )}
@@ -615,11 +615,11 @@ export function LayoutEditor({
                     selKey === z.key && 'bg-gold/10',
                   )}
                 >
-                  <span className="w-12 shrink-0 rounded-r-pastilla bg-navy px-1.5 py-0.5 text-center tabular-nums text-[10px] font-semibold text-paper">
+                  <span className="w-12 shrink-0 rounded-r-pastilla bg-navy px-1.5 py-0.5 text-center tabular-nums text-micro font-semibold text-paper">
                     {z.cod}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-xs text-ink">{z.nombre}</span>
-                  <span className="shrink-0 tabular-nums text-[11px] font-semibold text-navy">{z.peso}</span>
+                  <span className="shrink-0 tabular-nums text-micro font-semibold text-navy">{z.peso}</span>
                 </button>
               ))}
               {TIPOS.map((tipo) => {
@@ -629,7 +629,7 @@ export function LayoutEditor({
                 if (!grupo.length) return null;
                 return (
                   <div key={tipo}>
-                    <div className="px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-widest text-muted">
+                    <div className="px-4 pb-1 pt-3 text-rotulo font-semibold uppercase text-muted">
                       {TIPO_LABEL[tipo]} ({grupo.length})
                     </div>
                     {grupo.map((z) => (
@@ -643,14 +643,14 @@ export function LayoutEditor({
                         )}
                       >
                         <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px] border border-black/10" style={{ background: z.color }} />
-                        <span className="w-10 shrink-0 tabular-nums text-[10px] font-semibold text-navy">{z.cod}</span>
+                        <span className="w-10 shrink-0 tabular-nums text-micro font-semibold text-navy">{z.cod}</span>
                         <span className="min-w-0 flex-1 truncate text-xs text-ink">{z.nombre}</span>
                         {z.sobreCod && (
                           <span className="shrink-0 rounded-r-pastilla bg-navy-deep px-1.5 py-px tabular-nums text-[8px] text-paper/90">
                             s/{z.sobreCod}
                           </span>
                         )}
-                        <span className="shrink-0 tabular-nums text-[11px] text-muted">{z.peso}</span>
+                        <span className="shrink-0 tabular-nums text-micro text-muted">{z.peso}</span>
                       </button>
                     ))}
                   </div>

@@ -450,7 +450,7 @@ export function NuevoReporteForm({
                   >
                     <Icon className={cn('h-7 w-7', on ? 'text-gold' : 'text-navy/70')} strokeWidth={1.6} />
                     <span className="text-base font-semibold">{label}</span>
-                    <span className={cn('text-[11px]', on ? 'text-paper/70' : 'text-muted')}>{sub}</span>
+                    <span className={cn('text-micro', on ? 'text-paper/70' : 'text-muted')}>{sub}</span>
                   </button>
                 );
               })}
@@ -646,10 +646,10 @@ export function NuevoReporteForm({
                         on ? 'border-navy/15 bg-navy/[0.03]' : 'border-line bg-white',
                       )}
                     >
-                      <span className="w-10 shrink-0 tabular-nums text-[11px] text-muted">{a.cod}</span>
+                      <span className="w-10 shrink-0 tabular-nums text-micro text-muted">{a.cod}</span>
                       <div className="min-w-0 flex-1">
                         <span className="text-[13px] font-medium leading-snug text-navy">{a.nombre}</span>
-                        {a.peso > 0 && <span className="ml-1.5 tabular-nums text-[10px] text-muted">{a.peso}pts</span>}
+                        {a.peso > 0 && <span className="ml-1.5 tabular-nums text-micro text-muted">{a.peso}pts</span>}
                         {a.pendienteAcumulado && (
                           <Badge tone="amber" className="ml-1.5">
                             pendiente
@@ -807,7 +807,7 @@ export function NuevoReporteForm({
                   const Icon = tipoAct === 'remunerada' ? Wallet : Star;
                   return (
                     <div key={tipoAct}>
-                      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                      <div className="mb-1.5 flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
                         <Icon className="h-3.5 w-3.5" strokeWidth={2} />
                         {tipoAct === 'remunerada' ? 'Remuneradas' : 'Por puntos'}
                       </div>
@@ -829,7 +829,7 @@ export function NuevoReporteForm({
                             >
                               {enLista ? <Check className="h-3 w-3" strokeWidth={2.5} /> : <Plus className="h-3 w-3" strokeWidth={2.5} />}
                               {c.nombre}
-                              {enLista && <span className="tabular-nums text-[11px] font-bold">×{enLista.cantidad}</span>}
+                              {enLista && <span className="tabular-nums text-micro font-bold">×{enLista.cantidad}</span>}
                             </button>
                           );
                         })}
@@ -950,7 +950,7 @@ export function NuevoReporteForm({
                 <span className="tabular-nums text-sm font-bold text-exito-deep">
                   {limpiezaPts.got}
                 </span>
-                <span className="tabular-nums text-[11px] text-muted">/{limpiezaPts.tot}</span>
+                <span className="tabular-nums text-micro text-muted">/{limpiezaPts.tot}</span>
               </span>
               <span className="text-xs text-muted">
                 Actividades{' '}

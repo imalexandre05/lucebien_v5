@@ -47,7 +47,7 @@ export function tonoAvatar(clave: string): string {
 }
 
 const tamanos = {
-  sm: 'h-8 w-8 text-[11px]',
+  sm: 'h-8 w-8 text-micro',
   md: 'h-10 w-10 text-xs',
   lg: 'h-14 w-14 text-base',
 } as const;

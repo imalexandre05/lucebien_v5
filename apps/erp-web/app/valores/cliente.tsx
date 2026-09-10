@@ -290,7 +290,7 @@ export function ValoresCliente({
             </span>
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Atajo</span>
+            <span className="text-rotulo font-semibold uppercase text-muted">Atajo</span>
             {[1, 2, 3, 4, 5].map((v) => (
               <button
                 key={v}
@@ -306,7 +306,7 @@ export function ValoresCliente({
             <div key={key}>
               <div className="mb-1.5 flex items-baseline justify-between gap-2">
                 <span className="text-sm font-medium text-navy">{label}</span>
-                {puntaje[key] == null && <span className="text-[11px] text-muted">sin responder</span>}
+                {puntaje[key] == null && <span className="text-micro text-muted">sin responder</span>}
               </div>
               <OpcionBotones
                 opciones={OPC_LIKERT}

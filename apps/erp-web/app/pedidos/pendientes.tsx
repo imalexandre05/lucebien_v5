@@ -158,7 +158,7 @@ export function PedidosPendientes({
                             type="button"
                             data-testid="accion-cobrar-saldo"
                             onClick={() => abrirCobro(p)}
-                            className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-navy transition-colors hover:border-gold"
+                            className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-micro font-medium text-navy transition-colors hover:border-gold"
                           >
                             <Wallet className="h-3.5 w-3.5" strokeWidth={2} /> Cobrar saldo
                           </button>
@@ -169,7 +169,7 @@ export function PedidosPendientes({
                             data-testid="accion-devolver"
                             disabled={pending}
                             onClick={() => devolver(p)}
-                            className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-navy transition-colors hover:border-gold disabled:opacity-50"
+                            className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-micro font-medium text-navy transition-colors hover:border-gold disabled:opacity-50"
                           >
                             <Undo2 className="h-3.5 w-3.5" strokeWidth={2} /> Devolver
                           </button>
@@ -177,7 +177,7 @@ export function PedidosPendientes({
                         {p.items.some((i) => i.tipo === 'alquiler') && (
                           <Link
                             href={`/pedidos/${p.id}/contrato`}
-                            className="toque inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-navy transition-colors hover:border-gold"
+                            className="toque inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-micro font-medium text-navy transition-colors hover:border-gold"
                           >
                             <FileText className="h-3.5 w-3.5" strokeWidth={2} /> Contrato
                           </Link>

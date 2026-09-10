@@ -36,7 +36,7 @@ export function PerfilComponentes({
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-xs text-ink">
                   {label}
-                  <span className="ml-1.5 tabular-nums text-[10px] text-muted">{fmtPeso(pesos[key])}</span>
+                  <span className="ml-1.5 tabular-nums text-micro text-muted">{fmtPeso(pesos[key])}</span>
                 </span>
                 <span className="tabular-nums text-xs font-semibold text-navy">{v.toFixed(1)}</span>
               </div>
@@ -48,7 +48,7 @@ export function PerfilComponentes({
         })}
       </div>
       {(descuento !== 0 || bonus !== 0) && (
-        <p className="mt-3 border-t border-line/60 pt-2 text-[11px] text-muted">
+        <p className="mt-3 border-t border-line/60 pt-2 text-micro text-muted">
           Ajustes: −{descuento.toFixed(1)} por incidencias · +{bonus.toFixed(1)} bonus por ventas
         </p>
       )}

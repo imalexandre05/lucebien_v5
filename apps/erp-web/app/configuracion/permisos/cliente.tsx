@@ -193,11 +193,11 @@ export function PermisosCliente({
             <table className="w-full min-w-[720px] border-collapse text-sm">
               <thead>
                 <tr className="border-b border-line bg-paper/60">
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted">
+                  <th className="px-4 py-2.5 text-left text-rotulo font-semibold uppercase text-muted">
                     {grupo.seccion}
                   </th>
                   {columnas.map((rolKey) => (
-                    <th key={rolKey} className="px-2 py-2.5 text-center text-[11px] font-semibold text-navy">
+                    <th key={rolKey} className="px-2 py-2.5 text-center text-micro font-semibold text-navy">
                       {labelColumna(rolKey)}
                     </th>
                   ))}
@@ -222,7 +222,7 @@ export function PermisosCliente({
                                   aria-pressed={on}
                                   title={`${titulo} — ${label} — ${labelColumna(rolKey)}`}
                                   className={cn(
-                                    'flex h-6 w-6 items-center justify-center rounded-r-chico border text-[10px] font-bold transition-colors duration-150 active:scale-95',
+                                    'flex h-6 w-6 items-center justify-center rounded-r-chico border text-micro font-bold transition-colors duration-150 active:scale-95',
                                     on
                                       ? 'border-exito bg-exito-soft text-exito-deep'
                                       : 'border-line bg-white text-muted/50 hover:border-gold/50',

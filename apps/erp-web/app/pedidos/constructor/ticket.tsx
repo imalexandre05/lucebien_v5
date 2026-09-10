@@ -127,9 +127,9 @@ export function Ticket({
 
       <Button type="button" variant="gold" pending={registrando} disabled={Boolean(disabledMotivo)} onClick={onRegistrar} data-testid="registrar-pedido">
         {registrando ? 'Registrando…' : 'Registrar pedido'}
-        <span className="ml-1 hidden tabular-nums text-[10px] opacity-70 sm:inline">Ctrl+Enter</span>
+        <span className="ml-1 hidden tabular-nums text-micro opacity-70 sm:inline">Ctrl+Enter</span>
       </Button>
-      {disabledMotivo && <p className="text-center text-[11px] text-muted">{disabledMotivo}</p>}
+      {disabledMotivo && <p className="text-center text-micro text-muted">{disabledMotivo}</p>}
     </div>
   );
 }

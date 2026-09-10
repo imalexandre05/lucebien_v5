@@ -57,7 +57,7 @@ export function MaterialesCliente({
     <div className="space-y-4">
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-4">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
           <input
@@ -123,7 +123,7 @@ export function MaterialesCliente({
                       <span className={cn('tabular-nums text-sm font-semibold', bajo ? 'text-error' : 'text-navy')}>
                         {nfmt(m.stockActual)}
                       </span>
-                      <span className="ml-1 text-[10px] text-muted">{m.unidad}</span>
+                      <span className="ml-1 text-micro text-muted">{m.unidad}</span>
                       {bajo && (
                         <Badge tone="amber" className="ml-2">
                           bajo

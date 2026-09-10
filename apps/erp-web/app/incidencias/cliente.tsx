@@ -201,7 +201,7 @@ export function IncidenciasCliente({
       {/* Filtros + acción */}
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-4">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
           <input
@@ -413,7 +413,7 @@ export function IncidenciasCliente({
                     {i.origen === 'reporte' && i.reporteId ? (
                       <Link
                         href={`/reportes/${i.reporteId}`}
-                        className="toque inline-flex items-center rounded-r-pastilla bg-navy/5 px-2 py-0.5 tabular-nums text-[11px] text-navy transition hover:bg-navy/10"
+                        className="toque inline-flex items-center rounded-r-pastilla bg-navy/5 px-2 py-0.5 tabular-nums text-micro text-navy transition hover:bg-navy/10"
                       >
                         reporte
                       </Link>

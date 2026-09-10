@@ -81,13 +81,13 @@ export default async function DispositivosPage() {
                   <TD className="pl-5">
                     <div className="font-medium text-navy">{d.nombre || 'Equipo sin nombre'}</div>
                     {d.userAgent && (
-                      <div className="max-w-[16rem] truncate text-[11px] text-muted" title={d.userAgent}>
+                      <div className="max-w-[16rem] truncate text-micro text-muted" title={d.userAgent}>
                         {d.userAgent}
                       </div>
                     )}
                   </TD>
                   <TD>
-                    <span className="tabular-nums text-[11px] text-muted" title={d.deviceId}>
+                    <span className="tabular-nums text-micro text-muted" title={d.deviceId}>
                       …{d.deviceId.slice(-8)}
                     </span>
                   </TD>
@@ -103,7 +103,7 @@ export default async function DispositivosPage() {
                           aria-pressed={d.sedeCod === s.cod}
                           title={`Pre-marcar ${s.nombre} en el login de este equipo`}
                           className={cn(
-                            'rounded-r-pastilla border px-2 py-0.5 tabular-nums text-[11px] font-medium transition-colors',
+                            'rounded-r-pastilla border px-2 py-0.5 tabular-nums text-micro font-medium transition-colors',
                             d.sedeCod === s.cod ? 'border-navy bg-navy text-paper' : 'border-line text-muted hover:border-gold hover:text-navy',
                           )}
                         >

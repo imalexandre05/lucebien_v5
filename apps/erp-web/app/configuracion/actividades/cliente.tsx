@@ -245,7 +245,7 @@ export function ActividadesCliente({
           <span className={cn('h-1.5 w-1.5 shrink-0 rounded-r-pastilla', a.activa ? 'bg-exito' : 'bg-error')} />
           <div className="min-w-0">
             <div className="truncate text-sm font-medium text-navy">{a.nombre}</div>
-            <div className="tabular-nums text-[10px] text-muted">{a.cod}</div>
+            <div className="tabular-nums text-micro text-muted">{a.cod}</div>
           </div>
         </div>
       </TD>
@@ -265,7 +265,7 @@ export function ActividadesCliente({
           onClick={() => toggleActiva(a)}
           disabled={pending}
           className={cn(
-            'rounded-r-pastilla border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
+            'rounded-r-pastilla border px-2 py-1 text-micro font-medium transition-colors duration-150 active:scale-[0.97]',
             a.activa
               ? 'border-line text-muted hover:border-error-line hover:text-error'
               : 'border-exito-line bg-exito-soft text-exito-deep hover:bg-exito-soft',
@@ -339,7 +339,7 @@ export function ActividadesCliente({
       {/* Filtros */}
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-3.5">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
           <input
@@ -627,7 +627,7 @@ export function ActividadesCliente({
               >
                 <div className={cn('text-sm font-semibold', form.acumula ? 'text-exito-deep' : 'text-ink')}>
                   {form.acumula ? '✓ ' : ''}Acumula si no se realiza
-                  <span className="ml-1 text-[11px] font-normal text-muted">(arrastre de pendientes)</span>
+                  <span className="ml-1 text-micro font-normal text-muted">(arrastre de pendientes)</span>
                 </div>
                 <p className="mt-1 text-xs leading-relaxed text-muted">
                   Si el turno termina y no fue marcada como realizada, reaparece resaltada como

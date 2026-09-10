@@ -137,7 +137,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                     <TD className="pl-5 tabular-nums text-sm font-semibold text-navy">{t.prefijo}</TD>
                     <TD>
                       <div className="text-sm font-medium text-navy">{t.nombre}</div>
-                      <div className="tabular-nums text-[10px] text-muted">{t.cod}</div>
+                      <div className="tabular-nums text-micro text-muted">{t.cod}</div>
                     </TD>
                     <TD className="text-xs text-muted">
                       {t.atributosSugeridos.length ? t.atributosSugeridos.join(', ') : '—'}
@@ -148,7 +148,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                         onClick={() => toggleActivo(t)}
                         disabled={pending}
                         className={cn(
-                          'rounded-r-pastilla border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
+                          'rounded-r-pastilla border px-2 py-1 text-micro font-medium transition-colors duration-150 active:scale-[0.97]',
                           t.activo
                             ? 'border-line text-muted hover:border-error-line hover:text-error'
                             : 'border-exito-line bg-exito-soft text-exito-deep hover:bg-exito-soft',

@@ -78,7 +78,7 @@ export default async function DispositivoPage({
                     <Button type="submit" variant="outline" className="w-full justify-center">
                       Solicitar acceso
                     </Button>
-                    <p className="text-center text-[11px] text-muted">
+                    <p className="text-center text-micro text-muted">
                       Un administrador debe aprobar este equipo antes de que puedas continuar.
                     </p>
                   </form>
@@ -89,7 +89,7 @@ export default async function DispositivoPage({
         </Card>
 
         {sesion && (
-          <p className="mt-4 text-center text-[11px] text-muted">
+          <p className="mt-4 text-center text-micro text-muted">
             Sesión de <span className="font-medium text-navy">{sesion.nombre}</span>
           </p>
         )}

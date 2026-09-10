@@ -288,7 +288,7 @@ export function InventarioCliente({
                         {a.publicable && <Globe className="h-3 w-3 text-exito" strokeWidth={2} aria-label="Publicable en la web" />}
                       </div>
                       {(PIEZA_LABEL[a.pieza] || padre) && (
-                        <div className="text-[10px] text-muted">
+                        <div className="text-micro text-muted">
                           {PIEZA_LABEL[a.pieza]}
                           {padre && ` de ${padre.codigo}`}
                         </div>
@@ -298,7 +298,7 @@ export function InventarioCliente({
                       {catTipo ? (
                         <>
                           <div className="text-sm text-navy">{catTipo.nombre}</div>
-                          <div className="tabular-nums text-[10px] text-muted">{a.tipo}</div>
+                          <div className="tabular-nums text-micro text-muted">{a.tipo}</div>
                         </>
                       ) : (
                         <span className="tabular-nums text-sm">{a.tipo}</span>
@@ -353,7 +353,7 @@ export function InventarioCliente({
                         </select>
                       )}
                       {bloqueo && (
-                        <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-aviso-deep" title={`Bloqueado por ${bloqueo.codigo} (${labelEstado(bloqueo.estado)})`}>
+                        <div className="mt-1 inline-flex items-center gap-1 text-micro font-medium text-aviso-deep" title={`Bloqueado por ${bloqueo.codigo} (${labelEstado(bloqueo.estado)})`}>
                           <Lock className="h-2.5 w-2.5" strokeWidth={2.5} /> Ocupado por {bloqueo.codigo}
                         </div>
                       )}
@@ -468,7 +468,7 @@ export function InventarioCliente({
                           aria-pressed={modal.form.tipo.toUpperCase() === t.prefijo.toUpperCase()}
                           onClick={() => setCampo('tipo', t.prefijo)}
                           className={cn(
-                            'rounded-r-pastilla border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                            'rounded-r-pastilla border px-2 py-0.5 text-micro font-medium transition-colors',
                             modal.form.tipo.toUpperCase() === t.prefijo.toUpperCase()
                               ? 'border-navy bg-navy text-paper'
                               : 'border-line text-muted hover:border-gold hover:text-navy',

@@ -175,7 +175,7 @@ export function SidebarNav({
         if (items.length === 0) return null;
         return (
           <div key={group.section}>
-            <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-paper/40">
+            <div className="px-3 pb-2 text-rotulo font-semibold uppercase text-paper/40">
               {group.section}
             </div>
             <ul className="space-y-0.5">
@@ -221,7 +221,7 @@ export function SidebarNav({
 // empresa, que es de quien es el sistema.
 export function SidebarFooter() {
   return (
-    <div className="border-t border-white/10 px-6 py-4 text-[11px] leading-relaxed text-paper/40">
+    <div className="border-t border-white/10 px-6 py-4 text-micro leading-relaxed text-paper/40">
       Sistema de Control Interno
       <br />
       Confecciones Aliaga E.I.R.L.

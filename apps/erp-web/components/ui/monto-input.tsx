@@ -55,7 +55,7 @@ export const MontoInput = forwardRef<
               disabled={disabled}
               onClick={() => onChange(total)}
               className={cn(
-                'rounded-r-pastilla border border-line px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-navy transition-colors hover:border-gold disabled:cursor-not-allowed disabled:opacity-50',
+                'rounded-r-pastilla border border-line px-2 py-2 text-rotulo font-semibold uppercase text-navy transition-colors hover:border-gold disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >
               Total
@@ -65,7 +65,7 @@ export const MontoInput = forwardRef<
               disabled={disabled}
               onClick={() => onChange(r2(total / 2))}
               className={cn(
-                'rounded-r-pastilla border border-line px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-navy transition-colors hover:border-gold disabled:cursor-not-allowed disabled:opacity-50',
+                'rounded-r-pastilla border border-line px-2 py-2 text-rotulo font-semibold uppercase text-navy transition-colors hover:border-gold disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >
               Mitad

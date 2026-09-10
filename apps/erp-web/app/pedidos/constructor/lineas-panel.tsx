@@ -112,7 +112,7 @@ export function LineasPanel({
 
       <div className="flex flex-wrap items-end gap-2 rounded-r-chico border border-dashed border-line px-2.5 py-2">
         <div className="flex-1">
-          <label className="mb-1 block text-[11px] uppercase tracking-wide text-muted">Línea manual (sin prenda del catálogo)</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Línea manual (sin prenda del catálogo)</label>
           <input
             value={manualDesc}
             onChange={(e) => setManualDesc(e.target.value)}
@@ -191,7 +191,7 @@ export function LineasPanel({
                   data-testid="linea-cortesia-toggle"
                   onClick={() => onUpdate(l.key, { esCortesia: !l.esCortesia })}
                   className={cn(
-                    'rounded-r-pastilla border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                    'rounded-r-pastilla border px-2.5 py-1 text-micro font-medium transition-colors',
                     l.esCortesia ? 'border-exito bg-exito/10 text-exito-deep' : 'border-line text-muted hover:border-gold',
                   )}
                 >

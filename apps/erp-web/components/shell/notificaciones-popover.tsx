@@ -125,7 +125,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
       >
         <Bell className="h-4 w-4" strokeWidth={1.75} />
         {noLeidas > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-r-pastilla bg-error px-1 text-[10px] font-bold leading-none text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-r-pastilla bg-error px-1 text-micro font-bold leading-none text-white">
             {noLeidas > 99 ? '99+' : noLeidas}
           </span>
         )}
@@ -175,7 +175,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
                         <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', sev.cls)} strokeWidth={1.75} aria-hidden />
                         <div className="min-w-0 flex-1">
                           <p className={cn('truncate text-xs font-semibold', !n.leida ? 'text-navy' : 'text-ink')}>{n.titulo}</p>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] text-muted">{n.mensaje}</p>
+                          <p className="mt-0.5 line-clamp-2 text-micro text-muted">{n.mensaje}</p>
                         </div>
                         {!n.leida && (
                           <button

@@ -50,7 +50,7 @@ export function ProveedoresCliente({ proveedores, categorias }: { proveedores: P
     <div className="space-y-4">
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-4">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
           <input
@@ -100,7 +100,7 @@ export function ProveedoresCliente({ proveedores, categorias }: { proveedores: P
                       </span>
                       <div className="min-w-0">
                         <div className="truncate font-medium text-navy">{p.nombre}</div>
-                        {Boolean(p.ruc) && <div className="tabular-nums text-[10px] text-muted">RUC {p.ruc}</div>}
+                        {Boolean(p.ruc) && <div className="tabular-nums text-micro text-muted">RUC {p.ruc}</div>}
                       </div>
                     </div>
                   </TD>

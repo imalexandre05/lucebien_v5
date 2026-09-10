@@ -342,7 +342,7 @@ export function TableroPipeline({
 
       {/* ── Filtros + búsqueda ── */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-2">
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Filtros</span>
+        <span className="text-rotulo font-semibold uppercase text-muted">Filtros</span>
         <Chip on={!sedeF} onClick={() => setSedeF('')}>Todas</Chip>
         {sedes.map((s) => (
           <Chip key={s} on={sedeF === s} onClick={() => setSedeF(s)}>{s}</Chip>
@@ -425,7 +425,7 @@ export function TableroPipeline({
           </span>
           {ranking.map((r, i) => (
             <span key={r.nombre} className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-navy/5 px-2.5 py-1 text-xs">
-              <span className="tabular-nums text-[10px] text-muted">#{i + 1}</span>
+              <span className="tabular-nums text-micro text-muted">#{i + 1}</span>
               <span className="font-medium text-navy">{r.nombre}</span>
               <span className="tabular-nums font-bold text-gold-deep">{r.total}</span>
             </span>
@@ -458,7 +458,7 @@ export function TableroPipeline({
                 <button
                   onClick={() => toggleColumna(items.map((i) => i.id), col.k)}
                   className={cn(
-                    'mb-2 inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-1 text-[11px] font-medium transition',
+                    'mb-2 inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-1 text-micro font-medium transition',
                     selEtapa === col.k && items.every((i) => sel.has(i.id))
                       ? 'border-navy bg-navy text-white'
                       : 'border-navy/15 bg-navy/5 text-navy hover:bg-navy/10',
@@ -642,28 +642,28 @@ function Tarjeta({
         </button>
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-1">
-        <span className="rounded bg-navy/5 px-1.5 py-0.5 tabular-nums text-[10px] text-navy">{p.sedeOrigenCod}</span>
-        {Boolean(meta) && <span className="truncate text-[11px] leading-tight text-muted">{meta}</span>}
+        <span className="rounded bg-navy/5 px-1.5 py-0.5 tabular-nums text-micro text-navy">{p.sedeOrigenCod}</span>
+        {Boolean(meta) && <span className="truncate text-micro leading-tight text-muted">{meta}</span>}
       </div>
       {(Boolean(p.tipoLavado) || Boolean(p.necesitaCompostura) || Boolean(p.aprobada)) && (
         <div className="mt-1 flex flex-wrap items-center gap-1">
           {Boolean(p.tipoLavado) && (
-            <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', tipoLavadoCls(p.tipoLavado ?? ''))}>
+            <span className={cn('rounded px-1.5 py-0.5 text-micro font-medium', tipoLavadoCls(p.tipoLavado ?? ''))}>
               {p.tipoLavado}
             </span>
           )}
           {Boolean(p.necesitaCompostura) && (
-            <span className="rounded bg-aviso-soft px-1.5 py-0.5 text-[10px] font-medium text-aviso-deep">compostura</span>
+            <span className="rounded bg-aviso-soft px-1.5 py-0.5 text-micro font-medium text-aviso-deep">compostura</span>
           )}
           {Boolean(p.aprobada) && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-exito-soft px-1.5 py-0.5 text-[10px] font-medium text-exito-deep">
+            <span className="inline-flex items-center gap-0.5 rounded bg-exito-soft px-1.5 py-0.5 text-micro font-medium text-exito-deep">
               <Check className="h-2.5 w-2.5" strokeWidth={3} /> ok
             </span>
           )}
         </div>
       )}
       {Boolean(p.obsCalidad) && (
-        <div className="mt-1 flex items-start gap-1 rounded bg-error-soft px-2 py-1 text-[11px] text-error-deep">
+        <div className="mt-1 flex items-start gap-1 rounded bg-error-soft px-2 py-1 text-micro text-error-deep">
           <AlertTriangle className="mt-px h-3 w-3 shrink-0" strokeWidth={2.5} /> {p.obsCalidad}
         </div>
       )}
@@ -674,7 +674,7 @@ function Tarjeta({
         <a
           href="/pipeline/envios"
           onClick={(e) => e.stopPropagation()}
-          className="mt-1.5 inline-flex w-full items-center justify-center gap-1 rounded-md border border-line px-2 py-1 text-[11px] font-medium text-muted transition hover:border-gold hover:text-navy"
+          className="mt-1.5 inline-flex w-full items-center justify-center gap-1 rounded-md border border-line px-2 py-1 text-micro font-medium text-muted transition hover:border-gold hover:text-navy"
         >
           Confirmar en Envíos <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
         </a>

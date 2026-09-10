@@ -149,7 +149,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
                         onClick={() => toggleActivo(t)}
                         disabled={pending}
                         className={cn(
-                          'rounded-r-pastilla border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
+                          'rounded-r-pastilla border px-2 py-1 text-micro font-medium transition-colors duration-150 active:scale-[0.97]',
                           t.activo
                             ? 'border-line text-muted hover:border-error-line hover:text-error'
                             : 'border-exito-line bg-exito-soft text-exito-deep hover:bg-exito-soft',
@@ -223,7 +223,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
                     key={c}
                     type="button"
                     onClick={() => setForm((f) => ({ ...f, categoria: c }))}
-                    className="rounded-r-pastilla border border-line px-2.5 py-0.5 text-[11px] text-muted hover:border-gold hover:text-navy"
+                    className="rounded-r-pastilla border border-line px-2.5 py-0.5 text-micro text-muted hover:border-gold hover:text-navy"
                   >
                     {c}
                   </button>

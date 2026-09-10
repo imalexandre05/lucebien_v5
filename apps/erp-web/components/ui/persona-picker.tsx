@@ -100,7 +100,7 @@ export function PersonaPicker({
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-medium text-navy">{e.nombre}</span>
-                {tag && <span className="block truncate tabular-nums text-[11px] text-muted">{tag}</span>}
+                {tag && <span className="block truncate tabular-nums text-micro text-muted">{tag}</span>}
               </span>
               <span
                 className={cn(
@@ -142,7 +142,7 @@ export function PersonaPicker({
             );
           })
         )}
-        <span className="ml-auto tabular-nums text-[11px] text-muted">
+        <span className="ml-auto tabular-nums text-micro text-muted">
           {single ? `${selected.length}/1` : `${selected.length} sel.`}
         </span>
       </div>

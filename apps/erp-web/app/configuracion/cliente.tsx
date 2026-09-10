@@ -137,13 +137,13 @@ function ParametroFila({
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-sm font-medium text-navy">{item.etiqueta}</span>
             {!item.guardado && (
-              <Badge tone="amber" className="text-[10px]">
+              <Badge tone="amber" className="text-micro">
                 valor por defecto
               </Badge>
             )}
           </div>
           {item.descripcion && <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-muted">{item.descripcion}</p>}
-          <div className="mt-1 flex items-center gap-2 tabular-nums text-[10px] text-muted/70">
+          <div className="mt-1 flex items-center gap-2 tabular-nums text-micro text-muted/70">
             {item.clave}
             {item.default != null && <span>· default: {item.default}</span>}
           </div>
@@ -166,7 +166,7 @@ function ParametroFila({
         <button
           type="button"
           onClick={() => item.default != null && onChange(item.default)}
-          className="mt-1.5 flex items-center gap-1 text-[11px] text-muted underline decoration-dotted underline-offset-2 hover:text-navy"
+          className="mt-1.5 flex items-center gap-1 text-micro text-muted underline decoration-dotted underline-offset-2 hover:text-navy"
         >
           <RotateCcw className="h-3 w-3" strokeWidth={2} /> Restaurar valor por defecto
         </button>

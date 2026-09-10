@@ -349,7 +349,7 @@ export default async function Dashboard() {
                   {ETAPAS_PIPELINE.map((e) => (
                     <div
                       key={e}
-                      className="flex-1 px-0.5 pb-1 pt-2 text-center text-[10px] font-medium uppercase leading-tight tracking-wide text-muted"
+                      className="flex-1 px-0.5 pb-1 pt-2 text-center text-rotulo font-medium uppercase leading-tight text-muted"
                     >
                       {ETAPA_LABEL[e]}
                     </div>
@@ -445,10 +445,10 @@ export default async function Dashboard() {
                           {ev.detalle && <span className="block truncate text-xs text-muted">{ev.detalle}</span>}
                         </span>
                         <span className="shrink-0 text-right">
-                          <span className="block tabular-nums text-[11px] text-muted">{tiempoRelativo(ev.ts, ahora)}</span>
+                          <span className="block tabular-nums text-micro text-muted">{tiempoRelativo(ev.ts, ahora)}</span>
                           {/* Fecha absoluta (tarea 1): "hace 3 h" no dice CUÁNDO fue — solo en reportes. */}
                           {esReporte && (
-                            <span className="block tabular-nums text-[10px] text-muted/70">{fechaHoraCorta(ev.ts)}</span>
+                            <span className="block tabular-nums text-micro text-muted/70">{fechaHoraCorta(ev.ts)}</span>
                           )}
                         </span>
                       </Link>
@@ -485,7 +485,7 @@ export default async function Dashboard() {
                   <div key={r.nombre} className="animate-rise" style={{ animationDelay: `${i * 50}ms` }}>
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="flex min-w-0 items-baseline gap-2">
-                        <span className="w-6 shrink-0 tabular-nums text-[11px] text-muted">#{i + 1}</span>
+                        <span className="w-6 shrink-0 tabular-nums text-micro text-muted">#{i + 1}</span>
                         <span className="truncate text-sm text-ink">{r.nombre}</span>
                       </span>
                       <span
@@ -526,7 +526,7 @@ function PuntajePill({ puntaje }: { puntaje: number }) {
         ? 'bg-gold/20 text-gold-deep'
         : 'bg-error/15 text-error-deep';
   return (
-    <span className={cn('rounded-r-pastilla px-2 py-0.5 tabular-nums text-[10px] font-bold', cls)}>
+    <span className={cn('rounded-r-pastilla px-2 py-0.5 tabular-nums text-micro font-bold', cls)}>
       {puntaje}%
     </span>
   );

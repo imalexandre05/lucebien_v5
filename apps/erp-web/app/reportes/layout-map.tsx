@@ -141,7 +141,7 @@ function TarjetaEspecial({
         <span className={cn('block text-sm font-semibold', activa && !esEval ? 'text-exito-deep' : 'text-ink')}>
           {z.nombre || z.cod}
         </span>
-        <span className="block text-[11px] text-muted">{sub}</span>
+        <span className="block text-micro text-muted">{sub}</span>
       </span>
       <span
         className={cn(
@@ -508,7 +508,7 @@ export function LayoutMap({
                         type="button"
                         onClick={() => toggle(cod)}
                         className={cn(
-                          'flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-[11px] transition-colors duration-150',
+                          'flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-micro transition-colors duration-150',
                           !esEval && zzOn ? 'bg-exito-soft text-exito-deep' : 'hover:bg-paper',
                         )}
                       >
@@ -545,7 +545,7 @@ export function LayoutMap({
       )}
 
       {/* Leyenda */}
-      <div className="flex flex-wrap items-center gap-3 text-[10px] text-muted">
+      <div className="flex flex-wrap items-center gap-3 text-micro text-muted">
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-[2px] bg-[#eab308]" /> AM</span>
         <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-[2px] bg-[#2563eb]" /> PM</span>
         <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2 bg-[#facc15]" style={{ borderRadius: '50% 50% 2px 2px' }} /> Maniquí</span>
@@ -571,7 +571,7 @@ export function LayoutMap({
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 lg:flex-row">
       {mapa}
       <aside className="w-full shrink-0 lg:w-64">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">
+        <div className="mb-2 text-rotulo font-semibold uppercase text-muted">
           Calificación limpieza
         </div>
         <div className="mb-3 h-1.5 overflow-hidden rounded-r-pastilla bg-line/60">
@@ -600,8 +600,8 @@ export function LayoutMap({
                   <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-white" style={{ background: ev.chip }}>
                     <IconoEstado v={v} className="h-2.5 w-2.5" />
                   </span>
-                  <span className="min-w-0 flex-1 truncate tabular-nums text-[11px] text-ink">{z.cod}</span>
-                  <span className="shrink-0 tabular-nums text-[11px] font-semibold" style={{ color: ev.borde }}>
+                  <span className="min-w-0 flex-1 truncate tabular-nums text-micro text-ink">{z.cod}</span>
+                  <span className="shrink-0 tabular-nums text-micro font-semibold" style={{ color: ev.borde }}>
                     {r1(z.peso * v)}/{r1(z.peso)}
                   </span>
                 </button>

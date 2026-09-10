@@ -102,7 +102,7 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
         </Card>
         <p
           id="login-ayuda"
-          className="mt-4 animate-rise text-center text-[11px] text-muted [animation-delay:270ms]"
+          className="mt-4 animate-rise text-center text-micro text-muted [animation-delay:270ms]"
         >
           {loginV2 ? 'Ingresa con tu usuario y contraseña' : 'Ingresa con tu código de 4 dígitos y tu sede'}
         </p>

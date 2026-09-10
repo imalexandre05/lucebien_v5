@@ -99,7 +99,7 @@ export function HiloPago({
               {e === 'listo' ? <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden /> : i + 1}
             </span>
             <span className="mt-2 block text-xs font-medium leading-tight text-ink">{paso.titulo}</span>
-            <span className="mt-0.5 block text-[11px] leading-snug text-muted">{paso.detalle}</span>
+            <span className="mt-0.5 block text-micro leading-snug text-muted">{paso.detalle}</span>
           </>
         );
 

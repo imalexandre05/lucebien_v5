@@ -109,7 +109,7 @@ export function CamposPerfil({
       <div>
         <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Nombre completo</label>
         <input value={nombre} onChange={(e) => setNombre(e.target.value)} className={cn(fieldCls, 'w-full')} />
-        <p className="mt-1 text-[11px] text-muted">Es también el usuario de login — debe ser único.</p>
+        <p className="mt-1 text-micro text-muted">Es también el usuario de login — debe ser único.</p>
       </div>
 
       <div>
@@ -148,7 +148,7 @@ export function CamposPerfil({
             </Pill>
           ))}
         </div>
-        <p className="mt-1 text-[11px] text-muted">La sede primaria siempre queda incluida.</p>
+        <p className="mt-1 text-micro text-muted">La sede primaria siempre queda incluida.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
@@ -280,7 +280,7 @@ export function OperaCajaToggle({
 
   if (esAdminODueno) {
     return (
-      <p className="rounded-md bg-navy/5 px-3 py-2 text-[11px] text-muted">
+      <p className="rounded-md bg-navy/5 px-3 py-2 text-micro text-muted">
         Administrador/dueño siempre puede operar caja — no depende de este permiso.
       </p>
     );
@@ -293,7 +293,7 @@ export function OperaCajaToggle({
           <Wallet className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
           <div>
             <p className="text-sm font-medium text-navy">Opera caja</p>
-            <p className="text-[11px] text-muted">
+            <p className="text-micro text-muted">
               Permiso de cajero (<span className="tabular-nums">pos_cobro</span>) del rol{' '}
               <span className="font-medium">{opcionRolActual?.label}</span> — aplica a TODOS
               los colaboradores con este rol, no solo a {nombrePersona.split(' ')[0]}.

@@ -50,7 +50,7 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
 
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-4">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
           <input
@@ -98,7 +98,7 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
                         {c.nombre}
                       </Link>
                       {(c.telefono || c.dni) && (
-                        <div className="tabular-nums text-[11px] text-muted">{c.telefono || c.dni}</div>
+                        <div className="tabular-nums text-micro text-muted">{c.telefono || c.dni}</div>
                       )}
                     </TD>
                     <TD className="tabular-nums text-xs">{c.sedeCod || '—'}</TD>
@@ -107,7 +107,7 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
                     <TD className="tabular-nums text-xs text-muted">
                       {c.ultimoPedido ?? '—'}
                       {c.seguir && (
-                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-r-pastilla bg-aviso-soft px-1.5 py-0.5 text-[10px] font-medium text-aviso-deep">
+                        <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-r-pastilla bg-aviso-soft px-1.5 py-0.5 text-micro font-medium text-aviso-deep">
                           <RefreshCw className="h-2.5 w-2.5" strokeWidth={2.5} /> reactivar
                         </span>
                       )}

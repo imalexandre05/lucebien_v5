@@ -92,10 +92,10 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
           </div>
           <div className="text-right">
             <div className="tabular-nums text-sm font-semibold text-navy">{r.id}</div>
-            <div className="mt-1 tabular-nums text-[11px] text-muted">
+            <div className="mt-1 tabular-nums text-micro text-muted">
               {r.sedeCod} · {TURNO_LABEL[r.turno] ?? r.turno} · {r.fecha}
             </div>
-            <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted">
+            <div className="mt-0.5 text-rotulo font-medium uppercase text-muted">
               {ESTADO_REPORTE_LABEL[estado]}
             </div>
           </div>
@@ -273,7 +273,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
       </Link>
 
       {/* Pie de documento — solo impresión. */}
-      <footer className="mt-8 hidden items-center justify-between border-t border-line pt-3 tabular-nums text-[10px] text-muted print:flex">
+      <footer className="mt-8 hidden items-center justify-between border-t border-line pt-3 tabular-nums text-micro text-muted print:flex">
         <span>SCI-LB · Sistema de Control Interno</span>
         <span>
           {r.id} · impreso {new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeZone: 'America/Lima' }).format(new Date())}

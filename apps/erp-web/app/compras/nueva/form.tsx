@@ -117,7 +117,7 @@ export function NuevaCompraForm({
             </p>
           ) : (
             <div className="space-y-2">
-              <div className="hidden grid-cols-[1fr_5.5rem_7rem_6rem_2rem] gap-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted sm:grid">
+              <div className="hidden grid-cols-[1fr_5.5rem_7rem_6rem_2rem] gap-2 px-1 text-rotulo font-semibold uppercase text-muted sm:grid">
                 <span>Material</span>
                 <span className="text-right">Cantidad</span>
                 <span className="text-right">Costo unit.</span>

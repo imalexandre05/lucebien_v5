@@ -437,7 +437,7 @@ export function EnvioLavanderiaCliente({
                   ariaLabel="Prenda sin talla"
                 />
                 <div>
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted">
+                  <span className="mb-1 block text-rotulo font-semibold uppercase text-muted">
                     Adulto
                   </span>
                   <OpcionBotones
@@ -451,7 +451,7 @@ export function EnvioLavanderiaCliente({
                   />
                 </div>
                 <div>
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted">
+                  <span className="mb-1 block text-rotulo font-semibold uppercase text-muted">
                     Niño
                   </span>
                   <OpcionBotones

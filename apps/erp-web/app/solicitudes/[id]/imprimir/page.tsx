@@ -46,7 +46,7 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
             <div className="mt-2 text-xs text-muted">Confecciones Aliaga E.I.R.L. · Huancayo, Perú</div>
           </div>
           <div className="text-right text-xs text-muted">
-            <div className="tabular-nums text-[11px] text-navy">Ref. #{s.id.slice(0, 8).toUpperCase()}</div>
+            <div className="tabular-nums text-micro text-navy">Ref. #{s.id.slice(0, 8).toUpperCase()}</div>
             <div className="mt-0.5">{fechaHora(s.createdAt)}</div>
           </div>
         </header>

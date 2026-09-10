@@ -205,12 +205,12 @@ function Contenido({
           <Badge tone={URGENCIA_TONE[solicitud.urgencia]}>{URGENCIA_LABEL[solicitud.urgencia]}</Badge>
           <Badge tone={ESTADO_TONE[solicitud.estado]}>{ESTADO_LABEL[solicitud.estado]}</Badge>
           {solicitud.pedidoImpreso && (
-            <span className="inline-flex items-center gap-1 rounded-r-pastilla bg-exito-soft px-2 py-0.5 text-[10px] font-medium text-exito-deep">
+            <span className="inline-flex items-center gap-1 rounded-r-pastilla bg-exito-soft px-2 py-0.5 text-micro font-medium text-exito-deep">
               <Printer className="h-3 w-3" strokeWidth={2} /> Pedido impreso
             </span>
           )}
           {solicitud.confirmacionImpresa && (
-            <span className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy/10 px-2 py-0.5 text-[10px] font-medium text-navy">
+            <span className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy/10 px-2 py-0.5 text-micro font-medium text-navy">
               <Printer className="h-3 w-3" strokeWidth={2} /> Confirmación impresa
             </span>
           )}

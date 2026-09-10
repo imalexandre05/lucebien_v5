@@ -188,7 +188,7 @@ export function DatosCliente({
             </button>
           </div>
 
-          <p className="flex items-start gap-1.5 rounded-r-chico bg-navy/5 px-3 py-2 text-[11px] text-muted">
+          <p className="flex items-start gap-1.5 rounded-r-chico bg-navy/5 px-3 py-2 text-micro text-muted">
             <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" strokeWidth={2} />
             El código de acceso (4 dígitos) es fijo y no se muestra ni se edita aquí — es la
             credencial interna de Supabase Auth. El login usa nombre + contraseña.
@@ -258,7 +258,7 @@ export function DatosCliente({
                 </Link>
               )}
             </div>
-            <p className="mt-1 text-[11px] text-muted">
+            <p className="mt-1 text-micro text-muted">
               El sueldo se pacta en el contrato — esta ficha ya no lo edita.
             </p>
           </div>
@@ -412,7 +412,7 @@ function DocumentosCard({
             ))}
           </ul>
         )}
-        <p className="text-[11px] text-muted">Máximo 10 MB por archivo — imágenes o PDF.</p>
+        <p className="text-micro text-muted">Máximo 10 MB por archivo — imágenes o PDF.</p>
       </CardContent>
     </Card>
   );

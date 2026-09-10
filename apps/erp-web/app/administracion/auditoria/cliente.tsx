@@ -125,7 +125,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
       <Card>
         <CardContent className="flex flex-wrap items-end gap-3 py-4">
           <div>
-            <label htmlFor="aud-tabla" className="mb-1 block text-[10px] uppercase tracking-wide text-muted">
+            <label htmlFor="aud-tabla" className="mb-1 block text-rotulo uppercase text-muted">
               Tabla
             </label>
             <select
@@ -142,23 +142,23 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
             </select>
           </div>
           <div>
-            <div className="mb-1 text-[10px] uppercase tracking-wide text-muted">Operación</div>
+            <div className="mb-1 text-rotulo uppercase text-muted">Operación</div>
             <OpcionBotones opciones={OPC_OPERACION} value={fOperacion} onChange={setFOperacion} ariaLabel="Operación" />
           </div>
           <div>
-            <label htmlFor="aud-desde" className="mb-1 block text-[10px] uppercase tracking-wide text-muted">
+            <label htmlFor="aud-desde" className="mb-1 block text-rotulo uppercase text-muted">
               Desde
             </label>
             <input id="aud-desde" type="date" value={fDesde} onChange={(e) => setFDesde(e.target.value)} className={fieldCls} />
           </div>
           <div>
-            <label htmlFor="aud-hasta" className="mb-1 block text-[10px] uppercase tracking-wide text-muted">
+            <label htmlFor="aud-hasta" className="mb-1 block text-rotulo uppercase text-muted">
               Hasta
             </label>
             <input id="aud-hasta" type="date" value={fHasta} onChange={(e) => setFHasta(e.target.value)} className={fieldCls} />
           </div>
           <div className="relative">
-            <label htmlFor="aud-actor" className="mb-1 block text-[10px] uppercase tracking-wide text-muted">
+            <label htmlFor="aud-actor" className="mb-1 block text-rotulo uppercase text-muted">
               Actor
             </label>
             <div className="relative">
@@ -229,7 +229,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                         <Badge tone={OPERACION_TONE[f.operacion]}>{OPERACION_LABEL[f.operacion]}</Badge>
                       </TD>
                       <TD className="text-sm text-navy">{f.actorNombre ?? <span className="text-muted">Sistema</span>}</TD>
-                      <TD className="tabular-nums text-[11px] text-muted" title={f.filaId}>
+                      <TD className="tabular-nums text-micro text-muted" title={f.filaId}>
                         {f.filaId.slice(0, 8)}
                       </TD>
                       <TD className="pr-5 text-right">
@@ -252,7 +252,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                   pantalla. Mismo LIMITE_AUDITORIA que usa el repositorio (auditoria-tipos.ts), para
                   que este aviso nunca pueda desincronizarse del corte real. */}
               {filas.length >= LIMITE_AUDITORIA && (
-                <p className="px-5 py-3 text-[11px] text-muted">
+                <p className="px-5 py-3 text-micro text-muted">
                   Hay más de {LIMITE_AUDITORIA} movimientos con este resultado — se muestran los {LIMITE_AUDITORIA} más recientes. Acota el
                   rango de fechas para ver el resto.
                 </p>

@@ -149,7 +149,7 @@ export function CajaCliente({
           <div className="inline-flex items-center gap-2 text-xl font-semibold leading-none">
             <span className="h-2 w-2 rounded-r-pastilla bg-exito" /> Caja abierta · {sesion.sedeCod}
           </div>
-          <div className="mt-1 tabular-nums text-[11px] text-paper/60">
+          <div className="mt-1 tabular-nums text-micro text-paper/60">
             Apertura {soles(sesion.montoApertura)} · {sesion.aperturaAt.slice(0, 16).replace('T', ' ')}
           </div>
         </div>

@@ -90,7 +90,7 @@ export function BarraPeriodo({
       )}
     >
       <div>
-        <label htmlFor="periodo-desde" className="block text-[11px] font-medium uppercase tracking-wide text-muted">
+        <label htmlFor="periodo-desde" className="block text-rotulo font-medium uppercase text-muted">
           Desde
         </label>
         <input
@@ -102,7 +102,7 @@ export function BarraPeriodo({
         />
       </div>
       <div>
-        <label htmlFor="periodo-hasta" className="block text-[11px] font-medium uppercase tracking-wide text-muted">
+        <label htmlFor="periodo-hasta" className="block text-rotulo font-medium uppercase text-muted">
           Hasta
         </label>
         <input

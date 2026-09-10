@@ -196,7 +196,7 @@ export function EvaluarPanel({
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-navy">{a.nombre}</span>
-                  {a.peso > 0 && <span className="tabular-nums text-[11px] text-muted">{a.peso}pts</span>}
+                  {a.peso > 0 && <span className="tabular-nums text-micro text-muted">{a.peso}pts</span>}
                 </div>
               </div>
               {a.cat && <Badge tone={catTone(a.cat)}>{a.cat}</Badge>}

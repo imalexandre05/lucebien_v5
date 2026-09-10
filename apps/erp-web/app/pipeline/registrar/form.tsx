@@ -173,7 +173,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
           {registradas.map((c, i) => (
             <span
               key={`${c}-${i}`}
-              className="inline-flex items-center gap-1 rounded bg-exito-soft px-1.5 py-0.5 tabular-nums text-[11px] font-medium text-exito-deep"
+              className="inline-flex items-center gap-1 rounded bg-exito-soft px-1.5 py-0.5 tabular-nums text-micro font-medium text-exito-deep"
             >
               <Check className="h-2.5 w-2.5" strokeWidth={3} /> {c}
             </span>

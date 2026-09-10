@@ -157,7 +157,7 @@ export default async function ResumenColaboradorPage({
                 </TBody>
               </Table>
               {desempeno.reportes.length > 12 && (
-                <p className="px-5 pt-2 text-[11px] text-muted">
+                <p className="px-5 pt-2 text-micro text-muted">
                   Se muestran los 12 más recientes de {desempeno.reportes.length}.
                 </p>
               )}

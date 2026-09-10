@@ -110,7 +110,7 @@ export function PedidoAcciones({ pedido }: { pedido: Pedido }) {
             </button>
           </div>
           {!hayAlquilerActivo && pedido.items.some((i) => i.tipo === 'alquiler') && (
-            <p className="mt-1.5 text-[11px] text-muted">El/los activo(s) ya reingresaron al pipeline de lavandería para procesarse.</p>
+            <p className="mt-1.5 text-micro text-muted">El/los activo(s) ya reingresaron al pipeline de lavandería para procesarse.</p>
           )}
         </div>
       )}

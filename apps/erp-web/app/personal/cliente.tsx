@@ -194,7 +194,7 @@ export function ListaColaboradores({
                   <span className="block tabular-nums text-base font-semibold text-navy">
                     {e.nota != null ? e.nota.toFixed(2) : '—'}
                   </span>
-                  <span className="block text-[11px] text-muted">nota /20</span>
+                  <span className="block text-micro text-muted">nota /20</span>
                 </div>
 
                 {/* La flecha se acerca al pasar: dice "esto lleva a algún lado" sin ocupar texto.
