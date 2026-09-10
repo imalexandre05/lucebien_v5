@@ -56,7 +56,7 @@ export function StatBox({
   const tile = (
     <div
       className={cn(
-        'animate-rise rounded-xl border p-4',
+        'animate-rise rounded-r-medio border p-4',
         align === 'center' ? 'text-center' : 'text-left',
         href &&
           'h-full transition-[transform,box-shadow] duration-200 ease-out-expo hover-fine:-translate-y-0.5 hover:shadow-lift active:translate-y-0 active:shadow-card active:duration-75',
@@ -81,7 +81,7 @@ export function StatBox({
 
   if (!href) return tile;
   return (
-    <Link href={href} className="anillo block rounded-xl outline-none">
+    <Link href={href} className="anillo block rounded-r-medio outline-none">
       {tile}
     </Link>
   );

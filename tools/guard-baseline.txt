@@ -251,15 +251,7 @@ radio|apps/erp-web/components/shell/notificaciones-popover.tsx
 radio|apps/erp-web/components/shell/sede-popover.tsx
 radio|apps/erp-web/components/shell/sidebar.tsx
 radio|apps/erp-web/components/shell/stub-note.tsx
-radio|apps/erp-web/components/ui/activo-picker.tsx
-radio|apps/erp-web/components/ui/button.tsx
-radio|apps/erp-web/components/ui/form.tsx
-radio|apps/erp-web/components/ui/modal.tsx
-radio|apps/erp-web/components/ui/monto-input.tsx
 radio|apps/erp-web/components/ui/persona-picker.tsx
-radio|apps/erp-web/components/ui/reauth-gate.tsx
-radio|apps/erp-web/components/ui/skeleton.tsx
-radio|apps/erp-web/components/ui/stat-box.tsx
 
 # -- elevacion: shadow-none bajo print: (comprobantes) o shadow suelto (toggle) -----------
 

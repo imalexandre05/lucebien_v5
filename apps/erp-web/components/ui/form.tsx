@@ -21,7 +21,7 @@ import { cn } from '../../lib/cn';
 // foco, deshabilitado y error. El relleno va aparte porque el ERP usa dos densidades y las dos son
 // correctas.
 export const campoBase =
-  'rounded-md border border-line bg-white text-sm text-navy placeholder:text-muted/70 ' +
+  'rounded-r-chico border border-line bg-white text-sm text-navy placeholder:text-muted/70 ' +
   'transition-[border-color,box-shadow,background-color] duration-150 ease-out-expo ' +
   'hover:border-navy/25 ' +
   'focus:border-navy/40 focus:outline-none focus:ring-2 focus:ring-gold/30 ' +
@@ -119,7 +119,7 @@ export function Aviso({
       // Sólo el error interrumpe. Un acierto o un dato se leen cuando la persona llegue: anunciar
       // todo con la misma urgencia enseña a ignorar los avisos.
       role={tono === 'error' ? 'alert' : 'status'}
-      className={cn('animate-fade rounded-md border px-3 py-2 text-xs leading-relaxed', tonos[tono], className)}
+      className={cn('animate-fade rounded-r-chico border px-3 py-2 text-xs leading-relaxed', tonos[tono], className)}
     >
       {titulo && <p className="font-semibold">{titulo}</p>}
       {children}

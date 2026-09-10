@@ -45,7 +45,7 @@ export const MontoInput = forwardRef<
             value={Number.isFinite(value) && value !== 0 ? value : value === 0 ? '' : value}
             onChange={(e) => onChange(e.target.value === '' ? 0 : Number(e.target.value))}
             onKeyDown={onKeyDown}
-            className="w-full rounded-md border border-line bg-white py-2 pl-8 pr-2.5 text-right tabular-nums text-sm text-navy outline-none transition-colors focus:border-gold disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-r-chico border border-line bg-white py-2 pl-8 pr-2.5 text-right tabular-nums text-sm text-navy outline-none transition-colors focus:border-gold disabled:cursor-not-allowed disabled:opacity-50"
           />
         </div>
         {total != null && total > 0 && (
@@ -55,7 +55,7 @@ export const MontoInput = forwardRef<
               disabled={disabled}
               onClick={() => onChange(total)}
               className={cn(
-                'rounded-md border border-line px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-navy transition-colors hover:border-gold disabled:cursor-not-allowed disabled:opacity-50',
+                'rounded-r-pastilla border border-line px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-navy transition-colors hover:border-gold disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >
               Total
@@ -65,7 +65,7 @@ export const MontoInput = forwardRef<
               disabled={disabled}
               onClick={() => onChange(r2(total / 2))}
               className={cn(
-                'rounded-md border border-line px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-navy transition-colors hover:border-gold disabled:cursor-not-allowed disabled:opacity-50',
+                'rounded-r-pastilla border border-line px-2 py-2 text-[11px] font-semibold uppercase tracking-wide text-navy transition-colors hover:border-gold disabled:cursor-not-allowed disabled:opacity-50',
               )}
             >
               Mitad

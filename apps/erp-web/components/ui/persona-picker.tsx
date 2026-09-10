@@ -60,7 +60,7 @@ export function PersonaPicker({
   }
 
   return (
-    <div className="flex flex-col rounded-xl border border-line bg-white shadow-card" data-testid={testId}>
+    <div className="flex flex-col rounded-r-medio border border-line bg-white shadow-card" data-testid={testId}>
       <div className="relative border-b border-line">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
@@ -86,7 +86,7 @@ export function PersonaPicker({
               data-testid="persona-row"
               onClick={() => toggle(e.id)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-150',
+                'flex w-full items-center gap-3 rounded-r-chico px-2.5 py-2 text-left transition-colors duration-150',
                 on ? 'bg-navy/5' : 'hover:bg-paper',
               )}
             >
@@ -104,7 +104,7 @@ export function PersonaPicker({
               </span>
               <span
                 className={cn(
-                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-150',
+                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-r-chico border-2 transition-colors duration-150',
                   on ? 'border-navy bg-navy text-paper' : 'border-line',
                 )}
               >

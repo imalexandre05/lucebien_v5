@@ -16,7 +16,7 @@ const variants: Record<Variant, string> = {
 // pantalla táctil no hay `:hover`, así que esto es la única confirmación de que el toque llegó.
 // El foco es `.anillo` — dorado siempre, es la única señal de accesibilidad del sistema.
 const base =
-  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-[transform,background-color,color] duration-instante ease-estado active:scale-[.985] anillo disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-r-pastilla px-4 py-2 text-sm font-medium transition-[transform,background-color,color] duration-instante ease-estado active:scale-[.985] anillo disabled:cursor-not-allowed disabled:opacity-50';
 
 // `grande` (44px de alto tocable) es para lo que se llena de pie — formularios de operario
 // (spec §3.11). El tamaño por defecto no cambia: sigue siendo el de siempre.
