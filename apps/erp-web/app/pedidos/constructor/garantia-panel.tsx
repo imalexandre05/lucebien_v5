@@ -68,7 +68,7 @@ export function GarantiaPanel({
             onChange={(e) => onChange({ ...value, documentoNum: e.target.value })}
             placeholder="Número de documento"
             data-testid="garantia-documento-num"
-            className="w-full rounded-md border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold"
+            className="w-full rounded-r-chico border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold"
           />
         </div>
       )}

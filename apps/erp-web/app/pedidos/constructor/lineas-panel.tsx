@@ -110,14 +110,14 @@ export function LineasPanel({
         />
       </div>
 
-      <div className="flex flex-wrap items-end gap-2 rounded-md border border-dashed border-line px-2.5 py-2">
+      <div className="flex flex-wrap items-end gap-2 rounded-r-chico border border-dashed border-line px-2.5 py-2">
         <div className="flex-1">
           <label className="mb-1 block text-[11px] uppercase tracking-wide text-muted">Línea manual (sin prenda del catálogo)</label>
           <input
             value={manualDesc}
             onChange={(e) => setManualDesc(e.target.value)}
             placeholder="ej. Lavado en seco de saco del cliente"
-            className="w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
+            className="w-full rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
           />
         </div>
         <input
@@ -127,13 +127,13 @@ export function LineasPanel({
           value={manualPrecio || ''}
           onChange={(e) => setManualPrecio(Number(e.target.value) || 0)}
           placeholder="S/ 0.00"
-          className="w-28 rounded-md border border-line bg-white px-2.5 py-1.5 text-right tabular-nums text-sm text-navy outline-none focus:border-gold"
+          className="w-28 rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-right tabular-nums text-sm text-navy outline-none focus:border-gold"
         />
         <button
           type="button"
           onClick={agregarManual}
           disabled={!manualDesc.trim()}
-          className="toque inline-flex items-center gap-1 rounded-md border border-navy/25 px-3 py-1.5 text-xs font-medium text-navy transition-colors hover:bg-navy/5 disabled:cursor-not-allowed disabled:opacity-50"
+          className="toque inline-flex items-center gap-1 rounded-r-pastilla border border-navy/25 px-3 py-1.5 text-xs font-medium text-navy transition-colors hover:bg-navy/5 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
         </button>
@@ -166,7 +166,7 @@ export function LineasPanel({
                   min="1"
                   value={l.cantidad}
                   onChange={(e) => onUpdate(l.key, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
-                  className="w-14 rounded-md border border-line bg-white px-1.5 py-1 text-center tabular-nums text-xs text-navy outline-none focus:border-gold"
+                  className="w-14 rounded-r-chico border border-line bg-white px-1.5 py-1 text-center tabular-nums text-xs text-navy outline-none focus:border-gold"
                 />
               </TD>
               <TD className="text-right">
@@ -179,7 +179,7 @@ export function LineasPanel({
                     min="0"
                     value={l.precioUnitario}
                     onChange={(e) => onUpdate(l.key, { precioUnitario: Number(e.target.value) || 0 })}
-                    className="w-24 rounded-md border border-line bg-white px-1.5 py-1 text-right tabular-nums text-xs text-navy outline-none focus:border-gold"
+                    className="w-24 rounded-r-chico border border-line bg-white px-1.5 py-1 text-right tabular-nums text-xs text-navy outline-none focus:border-gold"
                   />
                 )}
               </TD>

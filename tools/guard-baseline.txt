@@ -198,12 +198,6 @@ radio|apps/erp-web/app/pagos/[id]/comprobante/page.tsx
 radio|apps/erp-web/app/pagos/cliente.tsx
 radio|apps/erp-web/app/pedidos/[id]/contrato/page.tsx
 radio|apps/erp-web/app/pedidos/[id]/page.tsx
-radio|apps/erp-web/app/pedidos/constructor/cliente-panel.tsx
-radio|apps/erp-web/app/pedidos/constructor/constructor.tsx
-radio|apps/erp-web/app/pedidos/constructor/fechas-panel.tsx
-radio|apps/erp-web/app/pedidos/constructor/garantia-panel.tsx
-radio|apps/erp-web/app/pedidos/constructor/lineas-panel.tsx
-radio|apps/erp-web/app/pedidos/constructor/ticket.tsx
 radio|apps/erp-web/app/pedidos/pendientes.tsx
 radio|apps/erp-web/app/personal/[id]/cabecera.tsx
 radio|apps/erp-web/app/personal/[id]/datos/cliente.tsx

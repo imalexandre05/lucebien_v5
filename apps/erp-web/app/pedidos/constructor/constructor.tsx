@@ -236,7 +236,7 @@ export function PedidosConstructor({
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
         {exito && (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-exito-line bg-exito-soft px-4 py-3 text-sm text-exito-deep" data-testid="exito-banner">
+          <div className="flex items-center justify-between gap-3 rounded-r-chico border border-exito-line bg-exito-soft px-4 py-3 text-sm text-exito-deep" data-testid="exito-banner">
             <span>
               Pedido <span className="tabular-nums font-semibold">{exito.codigo}</span> registrado.
             </span>

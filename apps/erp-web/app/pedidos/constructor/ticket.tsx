@@ -54,7 +54,7 @@ export function Ticket({
   const cobroTipo = recibido > 0 ? clasificarCobro(total, 0, recibidoClamp) : null;
 
   return (
-    <div className="sticky top-4 flex flex-col gap-4 rounded-lg border border-line bg-white p-4 shadow-card">
+    <div className="sticky top-4 flex flex-col gap-4 rounded-r-medio border border-line bg-white p-4 shadow-card">
       <div>
         <p className="text-xs uppercase tracking-wide text-muted">Pedido nuevo</p>
         <p className="tabular-nums text-sm text-navy">se genera el código al registrar</p>
@@ -99,7 +99,7 @@ export function Ticket({
       )}
 
       {sinCaja && (
-        <div className="rounded-md border border-aviso-line bg-aviso-soft p-3 text-xs text-aviso-deep" data-testid="banner-sin-caja">
+        <div className="rounded-r-chico border border-aviso-line bg-aviso-soft p-3 text-xs text-aviso-deep" data-testid="banner-sin-caja">
           <p className="font-medium">La caja de {sede} está cerrada.</p>
           <p className="mt-0.5 mb-2">Ábrela aquí mismo para poder cobrar o registrar la garantía.</p>
           <div className="flex items-center gap-2">
@@ -110,7 +110,7 @@ export function Ticket({
               value={montoApertura || ''}
               onChange={(e) => setMontoApertura(Number(e.target.value) || 0)}
               placeholder="Monto de apertura"
-              className="w-32 rounded-md border border-aviso-line bg-white px-2 py-1 text-right tabular-nums text-xs outline-none"
+              className="w-32 rounded-r-chico border border-aviso-line bg-white px-2 py-1 text-right tabular-nums text-xs outline-none"
             />
             <Button type="button" variant="outline" pending={abriendoCaja} onClick={() => onAbrirCaja(montoApertura)} data-testid="abrir-caja-inline">
               Abrir caja
@@ -120,7 +120,7 @@ export function Ticket({
       )}
 
       {error && (
-        <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep" data-testid="ticket-error">
+        <p className="rounded-r-chico bg-error-soft px-3 py-2 text-sm text-error-deep" data-testid="ticket-error">
           {error}
         </p>
       )}

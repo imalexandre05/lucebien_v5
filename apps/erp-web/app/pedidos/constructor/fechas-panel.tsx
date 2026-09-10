@@ -61,7 +61,7 @@ function FechaRapida({
         data-testid={`${testId}-input`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
+        className="rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
       />
     </div>
   );

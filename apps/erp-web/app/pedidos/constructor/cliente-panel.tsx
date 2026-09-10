@@ -88,7 +88,7 @@ export function ClientePanel({
 
   if (value) {
     return (
-      <div className="rounded-md border border-line bg-navy/5 px-3 py-2.5" data-testid="cliente-elegido">
+      <div className="rounded-r-chico border border-line bg-navy/5 px-3 py-2.5" data-testid="cliente-elegido">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="truncate text-sm font-medium text-navy">{value.nombre || '(sin nombre)'}</p>
@@ -101,7 +101,7 @@ export function ClientePanel({
             <button
               type="button"
               onClick={() => setEditar((v) => !v)}
-              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-navy transition-colors hover:bg-navy/10"
+              className="inline-flex items-center gap-1 rounded-r-pastilla px-2 py-1 text-xs font-medium text-navy transition-colors hover:bg-navy/10"
             >
               Editar todo <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', editar && 'rotate-180')} strokeWidth={2} />
             </button>
@@ -138,7 +138,7 @@ export function ClientePanel({
 
   return (
     <div className="relative">
-      <div className="relative rounded-md border border-line focus-within:border-gold">
+      <div className="relative rounded-r-chico border border-line focus-within:border-gold">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" strokeWidth={1.75} />
         <input
           ref={inputRef}
@@ -157,7 +157,7 @@ export function ClientePanel({
         />
       </div>
       {open && (
-        <div ref={listRef} className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-line bg-white p-1 shadow-lift">
+        <div ref={listRef} className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-r-medio border border-line bg-white p-1 shadow-lift">
           {filtrados.map((c, idx) => (
             <button
               key={c.id}
@@ -168,7 +168,7 @@ export function ClientePanel({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => elegir(c)}
               className={cn(
-                'flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors',
+                'flex w-full items-center justify-between gap-2 rounded-r-chico px-2.5 py-1.5 text-left text-sm transition-colors',
                 idx === hi ? 'bg-navy/10' : 'hover:bg-paper',
               )}
             >
@@ -182,7 +182,7 @@ export function ClientePanel({
             data-testid="cliente-nuevo"
             onMouseDown={(e) => e.preventDefault()}
             onClick={nuevo}
-            className="mt-1 flex w-full items-center gap-2 rounded-md border-t border-line px-2.5 py-2 text-left text-sm font-medium text-navy transition-colors hover:bg-gold/10"
+            className="mt-1 flex w-full items-center gap-2 rounded-r-chico border-t border-line px-2.5 py-2 text-left text-sm font-medium text-navy transition-colors hover:bg-gold/10"
           >
             <UserPlus className="h-4 w-4" strokeWidth={2} />
             {q.trim() ? `+ Cliente nuevo "${q.trim()}"` : '+ Cliente nuevo'}
