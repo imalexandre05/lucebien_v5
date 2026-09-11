@@ -302,7 +302,7 @@ export function EnvioLavanderiaCliente({
 
         {/* El tipo de envío es la única decisión de nivel lista, y cambia lo que muestran las
             tarjetas de abajo. Por eso va arriba de todas y no adentro de una. */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white px-4 py-3 shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-r-medio border border-line bg-white px-4 py-3 shadow-card">
           <div className="min-w-0">
             <LabelGrupo>Tipo de envío</LabelGrupo>
             <p className="text-apoyo text-muted">
@@ -495,7 +495,7 @@ export function EnvioLavanderiaCliente({
             </div>
 
             {items.length > 0 && (
-              <ul className="divide-y divide-line rounded-md border border-line">
+              <ul className="divide-y divide-line rounded-r-chico border border-line">
                 {items.map((it, i) => (
                   <li key={it.cod + '-' + i} className="flex flex-wrap items-center gap-2 px-3 py-2 text-cuerpo">
                     <span className="tabular-nums font-medium text-navy">{it.cod}</span>
@@ -538,14 +538,14 @@ export function EnvioLavanderiaCliente({
                       // UN ACCESORIO CONTADO SE ENCIENDE. Seis casillas idénticas en cero se leen
                       // todas igual, y quien carga no tiene cómo ver de un vistazo qué ya contó y
                       // qué no. El que tiene al menos uno se marca en oro.
-                      'flex items-center justify-between rounded-md border px-3 py-2 transition-colors duration-150',
+                      'flex items-center justify-between rounded-r-chico border px-3 py-2 transition-colors duration-150',
                       generales[a.key] > 0 ? 'border-gold bg-gold/10' : 'border-line',
                     )}
                   >
                     <span className={cn('text-cuerpo text-navy', generales[a.key] > 0 && 'font-semibold')}>
                       {a.label}
                     </span>
-                    <div className="inline-flex items-center gap-0.5 rounded-md border border-line">
+                    <div className="inline-flex items-center gap-0.5 rounded-r-chico border border-line">
                       <button
                         type="button"
                         onClick={() => cambiarGeneral(a.key, -1)}
@@ -736,12 +736,12 @@ export function EnvioLavanderiaCliente({
                                   las que quedaron de antes sí pueden estar así, y un recuadro vacío se lee
                                   como que la pantalla se rompió. */}
                               {l.items.length === 0 && (
-                                <p className="rounded-md border border-dashed border-line px-3 py-2.5 text-cuerpo text-muted">
+                                <p className="rounded-r-chico border border-dashed border-line px-3 py-2.5 text-cuerpo text-muted">
                                   Esta lista no tiene prendas registradas: sólo se puede dar por validada.
                                 </p>
                               )}
 
-                              <ul className="divide-y divide-line rounded-md border border-line empty:hidden">
+                              <ul className="divide-y divide-line rounded-r-chico border border-line empty:hidden">
                                 {l.items.map((i) => (
                                   <li
                                     key={i.id}

@@ -144,7 +144,7 @@ export function CajaCliente({
   return (
     <div className="space-y-4">
       {/* Cabecera de la sesión */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-r-grande bg-navy-deep px-5 py-4 text-paper shadow-card">
         <div>
           <div className="inline-flex items-center gap-2 text-seccion font-display font-semibold leading-none">
             <span className="h-2 w-2 rounded-r-pastilla bg-exito" /> Caja abierta · {sesion.sedeCod}
@@ -155,21 +155,21 @@ export function CajaCliente({
         </div>
         {puedeCobrar ? (
           <div className="flex flex-wrap items-center gap-2">
-            <button data-testid="abrir-cobro" onClick={() => setModal('cobro')} className="inline-flex items-center gap-1.5 rounded-md bg-gold px-3 py-2 text-cuerpo font-semibold text-navy transition hover:brightness-95">
+            <button data-testid="abrir-cobro" onClick={() => setModal('cobro')} className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-gold px-3 py-2 text-cuerpo font-semibold text-navy transition hover:brightness-95">
               <ArrowDownCircle className="h-4 w-4" strokeWidth={2} /> Cobro
             </button>
-            <button onClick={() => setModal('egreso')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-cuerpo font-medium text-paper transition hover:bg-white/20">
+            <button onClick={() => setModal('egreso')} className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-white/10 px-3 py-2 text-cuerpo font-medium text-paper transition hover:bg-white/20">
               <ArrowUpCircle className="h-4 w-4" strokeWidth={2} /> Egreso
             </button>
-            <button onClick={() => setModal('garantia')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-cuerpo font-medium text-paper transition hover:bg-white/20">
+            <button onClick={() => setModal('garantia')} className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-white/10 px-3 py-2 text-cuerpo font-medium text-paper transition hover:bg-white/20">
               <Shield className="h-4 w-4" strokeWidth={2} /> Garantía
             </button>
-            <button data-testid="abrir-cerrar" onClick={() => { setMontoCierre(resumen?.efectivoEsperado ?? 0); setModal('cerrar'); }} className="inline-flex items-center gap-1.5 rounded-md border border-white/25 px-3 py-2 text-cuerpo font-medium text-paper transition hover:bg-white/10">
+            <button data-testid="abrir-cerrar" onClick={() => { setMontoCierre(resumen?.efectivoEsperado ?? 0); setModal('cerrar'); }} className="inline-flex items-center gap-1.5 rounded-r-pastilla border border-white/25 px-3 py-2 text-cuerpo font-medium text-paper transition hover:bg-white/10">
               <Lock className="h-4 w-4" strokeWidth={2} /> Cerrar caja
             </button>
           </div>
         ) : (
-          <span className="rounded-md bg-white/10 px-3 py-2 text-apoyo text-paper/70">Solo lectura — sin permiso de cajero</span>
+          <span className="rounded-r-pastilla bg-white/10 px-3 py-2 text-apoyo text-paper/70">Solo lectura — sin permiso de cajero</span>
         )}
       </div>
 
@@ -216,7 +216,7 @@ export function CajaCliente({
                       <button
                         type="button"
                         onClick={() => { setCPedido(p.pedidoId); setCMonto(p.saldo); setCMetodo('efectivo'); setModal('cobro'); }}
-                        className="rounded-md border border-line px-2.5 py-1 text-apoyo text-navy transition hover:border-gold"
+                        className="rounded-r-pastilla border border-line px-2.5 py-1 text-apoyo text-navy transition hover:border-gold"
                       >
                         Cobrar
                       </button>
@@ -423,7 +423,7 @@ export function CajaCliente({
             </>
           }
         >
-          <div className="flex justify-between rounded-md bg-navy/5 px-3 py-2 text-cuerpo">
+          <div className="flex justify-between rounded-r-chico bg-navy/5 px-3 py-2 text-cuerpo">
             <span className="text-muted">Efectivo esperado</span>
             <span className="tabular-nums font-semibold text-navy">{soles(resumen.efectivoEsperado)}</span>
           </div>
@@ -431,7 +431,7 @@ export function CajaCliente({
             <label className="mb-1 block text-rotulo uppercase text-muted">Efectivo contado (arqueo)</label>
             <input type="number" step="0.5" data-testid="monto-cierre" value={montoCierre} onChange={(e) => setMontoCierre(Number(e.target.value))} className={fieldCls} />
           </div>
-          <div className={cn('flex justify-between rounded-md px-3 py-2 text-cuerpo', Math.abs(montoCierre - resumen.efectivoEsperado) < 0.01 ? 'bg-exito-soft text-exito-deep' : 'bg-aviso-soft text-aviso-deep')}>
+          <div className={cn('flex justify-between rounded-r-chico px-3 py-2 text-cuerpo', Math.abs(montoCierre - resumen.efectivoEsperado) < 0.01 ? 'bg-exito-soft text-exito-deep' : 'bg-aviso-soft text-aviso-deep')}>
             <span>Diferencia</span>
             <span className="tabular-nums font-semibold">{soles(montoCierre - resumen.efectivoEsperado)}</span>
           </div>

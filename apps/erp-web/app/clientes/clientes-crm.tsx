@@ -57,12 +57,12 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por nombre, DNI o teléfono…"
-            className="min-w-[14rem] flex-1 rounded-md border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none transition-colors focus:border-gold"
+            className="min-w-[14rem] flex-1 rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none transition-colors focus:border-gold"
           />
           <select
             value={fSeg}
             onChange={(e) => setFSeg(e.target.value)}
-            className="rounded-md border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none focus:border-gold"
+            className="rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none focus:border-gold"
             aria-label="Segmento"
           >
             <option value="">Todos los segmentos</option>

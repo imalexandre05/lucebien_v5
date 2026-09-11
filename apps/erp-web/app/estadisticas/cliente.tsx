@@ -77,17 +77,17 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
           <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className={fieldCls} aria-label="Desde" />
           <span className="text-muted">→</span>
           <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className={fieldCls} aria-label="Hasta" />
-          <button type="button" onClick={() => aplicar()} className="rounded-md bg-navy px-3 py-1.5 text-cuerpo font-medium text-white transition hover:bg-navy-deep">
+          <button type="button" onClick={() => aplicar()} className="rounded-r-pastilla bg-navy px-3 py-1.5 text-cuerpo font-medium text-white transition hover:bg-navy-deep">
             Aplicar
           </button>
           <div className="ml-1 flex gap-1">
             {[7, 30, 90].map((d) => (
-              <button key={d} type="button" onClick={() => preset(d)} className="rounded-md border border-line px-2 py-1.5 text-apoyo text-navy transition hover:border-gold">
+              <button key={d} type="button" onClick={() => preset(d)} className="rounded-r-pastilla border border-line px-2 py-1.5 text-apoyo text-navy transition hover:border-gold">
                 {d} días
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-cuerpo text-navy transition hover:border-gold">
+          <button type="button" onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1.5 rounded-r-pastilla border border-line px-2.5 py-1.5 text-cuerpo text-navy transition hover:border-gold">
             <Printer className="h-4 w-4" strokeWidth={1.75} /> Imprimir
           </button>
         </CardContent>
@@ -120,8 +120,8 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
               data.ingresos.map((r) => (
                 <div key={r.fecha} className="flex items-center gap-3">
                   <span className="w-12 shrink-0 tabular-nums text-dato text-muted">{diaCorto(r.fecha)}</span>
-                  <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
-                    <div className="h-full rounded bg-exito/70" style={{ width: `${Math.max(3, Math.round((r.ingresos / ingresosMax) * 100))}%` }} />
+                  <div className="h-4 flex-1 overflow-hidden rounded-r-pastilla bg-navy/5">
+                    <div className="h-full rounded-r-pastilla bg-exito/70" style={{ width: `${Math.max(3, Math.round((r.ingresos / ingresosMax) * 100))}%` }} />
                   </div>
                   <span className="w-24 text-right tabular-nums text-dato text-navy">{soles(r.ingresos)}</span>
                 </div>
@@ -144,8 +144,8 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
               pedidosPorTipo.map((p) => (
                 <div key={p.categoria} className="flex items-center gap-3">
                   <span className="w-20 shrink-0 text-cuerpo capitalize text-ink">{p.categoria}</span>
-                  <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
-                    <div className="h-full rounded bg-navy/70" style={{ width: `${Math.max(3, p.pct)}%` }} />
+                  <div className="h-4 flex-1 overflow-hidden rounded-r-pastilla bg-navy/5">
+                    <div className="h-full rounded-r-pastilla bg-navy/70" style={{ width: `${Math.max(3, p.pct)}%` }} />
                   </div>
                   <span className="w-14 text-right tabular-nums text-dato text-muted">{p.pct}%</span>
                   <span className="w-24 text-right tabular-nums text-dato text-navy">{soles(p.total)}</span>
@@ -279,8 +279,8 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
               data.inventario.map((r) => (
                 <div key={r.estado} className="flex items-center gap-3">
                   <span className="w-24 shrink-0 text-cuerpo capitalize text-ink">{r.estado}</span>
-                  <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
-                    <div className="h-full rounded bg-gold/60" style={{ width: `${Math.max(3, Math.round((r.n / invMax) * 100))}%` }} />
+                  <div className="h-4 flex-1 overflow-hidden rounded-r-pastilla bg-navy/5">
+                    <div className="h-full rounded-r-pastilla bg-gold/60" style={{ width: `${Math.max(3, Math.round((r.n / invMax) * 100))}%` }} />
                   </div>
                   <span className="w-8 text-right tabular-nums text-dato text-navy">{r.n}</span>
                 </div>

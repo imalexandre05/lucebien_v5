@@ -108,7 +108,7 @@ export function NuevaCompraForm({
           </div>
 
           {materialesSede.length === 0 ? (
-            <p className="rounded-md bg-aviso-soft px-3 py-2 text-cuerpo text-aviso-deep">
+            <p className="rounded-r-chico bg-aviso-soft px-3 py-2 text-cuerpo text-aviso-deep">
               La sede {sede} no tiene materiales registrados.{' '}
               <Link href="/materiales" className="font-medium underline">
                 Crea materiales
@@ -169,7 +169,7 @@ export function NuevaCompraForm({
               <button
                 type="button"
                 onClick={() => setFilas((p) => [...p, { materialId: '', cantidad: 1, costoUnitario: 0 }])}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold"
+                className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar material
               </button>

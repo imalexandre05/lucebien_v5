@@ -83,7 +83,7 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
                             type="button"
                             disabled={pending}
                             onClick={() => recibir(c)}
-                            className="inline-flex items-center gap-1 rounded-md bg-exito px-2.5 py-1.5 text-apoyo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
+                            className="inline-flex items-center gap-1 rounded-r-pastilla bg-exito px-2.5 py-1.5 text-apoyo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
                           >
                             <PackageCheck className="h-3.5 w-3.5" strokeWidth={2.5} /> Recibir
                           </button>
@@ -93,7 +93,7 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
                             type="button"
                             disabled={pending}
                             onClick={() => anular(c)}
-                            className="inline-flex items-center gap-1 rounded-md border border-error-line px-2 py-1 text-apoyo text-error-deep transition hover:bg-error-soft"
+                            className="inline-flex items-center gap-1 rounded-r-pastilla border border-error-line px-2 py-1 text-apoyo text-error-deep transition hover:bg-error-soft"
                           >
                             <Ban className="h-3.5 w-3.5" strokeWidth={2} /> Anular
                           </button>

@@ -23,7 +23,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
               <summary className="cursor-pointer text-apoyo text-muted transition-colors duration-150 hover:text-navy">
                 Detalle técnico
               </summary>
-              <pre className="mt-2 overflow-x-auto rounded-md bg-paper px-3 py-2 tabular-nums text-micro leading-relaxed text-ink">
+              <pre className="mt-2 overflow-x-auto rounded-r-chico bg-paper px-3 py-2 tabular-nums text-micro leading-relaxed text-ink">
                 {error.message}
               </pre>
             </details>

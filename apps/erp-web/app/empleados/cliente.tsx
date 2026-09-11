@@ -280,14 +280,14 @@ export function OperaCajaToggle({
 
   if (esAdminODueno) {
     return (
-      <p className="rounded-md bg-navy/5 px-3 py-2 text-micro text-muted">
+      <p className="rounded-r-chico bg-navy/5 px-3 py-2 text-micro text-muted">
         Administrador/dueño siempre puede operar caja — no depende de este permiso.
       </p>
     );
   }
 
   return (
-    <div className="rounded-md border border-line bg-paper/40 p-3">
+    <div className="rounded-r-chico border border-line bg-paper/40 p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
@@ -364,7 +364,7 @@ export function ContrasenaForm({ empleadoId }: { empleadoId: string }) {
         </Button>
       </div>
       {passOk && <p className="mt-1.5 text-apoyo font-medium text-exito-deep">Contraseña actualizada ✓</p>}
-      {passError && <p className="mt-1.5 rounded-md bg-error-soft px-3 py-2 text-cuerpo text-error-deep">{passError}</p>}
+      {passError && <p className="mt-1.5 rounded-r-chico bg-error-soft px-3 py-2 text-cuerpo text-error-deep">{passError}</p>}
     </div>
   );
 }
