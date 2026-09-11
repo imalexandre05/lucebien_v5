@@ -118,7 +118,7 @@ function TarjetaEspecial({
       disabled={readOnly}
       onClick={onClick}
       className={cn(
-        'flex w-full items-center gap-3 rounded-lg border px-3.5 py-2.5 text-left transition-colors duration-150',
+        'flex w-full items-center gap-3 rounded-r-chico border px-3.5 py-2.5 text-left transition-colors duration-150',
         !readOnly && 'active:scale-[0.99]',
         readOnly && 'cursor-default',
         !esEval && (marcada ? 'border-exito/60 bg-exito-soft' : 'border-dashed border-line bg-white hover:border-gold/60'),
@@ -127,7 +127,7 @@ function TarjetaEspecial({
     >
       {esEval ? (
         <span
-          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-white"
+          className="flex h-5 w-5 shrink-0 items-center justify-center rounded-r-pastilla text-white"
           style={{ background: ev.chip }}
         >
           <IconoEstado v={estadoEval} className="h-3 w-3" />
@@ -256,26 +256,26 @@ export function LayoutMap({
       <div className="flex flex-wrap items-center gap-2">
         {!readOnly && !esEval && (
           <>
-            <button type="button" onClick={() => emit(mostradas.filter(puntuable).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
+            <button type="button" onClick={() => emit(mostradas.filter(puntuable).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
               <Check className="h-3 w-3" strokeWidth={2.5} /> Turno
             </button>
-            <button type="button" onClick={() => emit(zonas.filter(puntuable).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
+            <button type="button" onClick={() => emit(zonas.filter(puntuable).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
               <Check className="h-3 w-3" strokeWidth={2.5} /> Todas
             </button>
-            <button type="button" onClick={() => emit([])} className="rounded-md border border-line px-2.5 py-1.5 text-apoyo text-muted transition-colors duration-150 hover:border-gold active:scale-[0.97]">
+            <button type="button" onClick={() => emit([])} className="rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-muted transition-colors duration-150 hover:border-gold active:scale-[0.97]">
               Limpiar
             </button>
           </>
         )}
         {!readOnly && esEval && onMass && (
           <>
-            <button type="button" onClick={() => onMass(1)} aria-label="Aprobar todas las zonas" className="inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1.5 text-apoyo font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
+            <button type="button" onClick={() => onMass(1)} aria-label="Aprobar todas las zonas" className="inline-flex items-center gap-1 rounded-r-pastilla border border-exito-line bg-exito-soft px-2.5 py-1.5 text-apoyo font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
               <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> Aprobar
             </button>
-            <button type="button" onClick={() => onMass(0.5)} aria-label="Observar todas las zonas" className="inline-flex items-center gap-1 rounded-md border border-aviso-line bg-aviso-soft px-2.5 py-1.5 text-apoyo font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]">
+            <button type="button" onClick={() => onMass(0.5)} aria-label="Observar todas las zonas" className="inline-flex items-center gap-1 rounded-r-pastilla border border-aviso-line bg-aviso-soft px-2.5 py-1.5 text-apoyo font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]">
               <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Observar
             </button>
-            <button type="button" onClick={() => onMass(0)} aria-label="Rechazar todas las zonas" className="inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1.5 text-apoyo font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
+            <button type="button" onClick={() => onMass(0)} aria-label="Rechazar todas las zonas" className="inline-flex items-center gap-1 rounded-r-pastilla border border-error-line bg-error-soft px-2.5 py-1.5 text-apoyo font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
               <X className="h-3.5 w-3.5" strokeWidth={2.5} /> Rechazar
             </button>
           </>
@@ -340,7 +340,7 @@ export function LayoutMap({
           if (e.target === e.currentTarget) toggle(piso.cod);
         }}
         className={cn(
-          'relative w-full flex-1 overflow-hidden rounded-xl border transition-colors duration-200',
+          'relative w-full flex-1 overflow-hidden rounded-r-medio border transition-colors duration-200',
           'aspect-[800/580] xl:aspect-auto',
           pisoMarcado && !esEval ? 'border-exito/70 bg-exito-soft/70' : 'border-line bg-[#f8fafc]',
           esEval && piso && 'cursor-pointer',
@@ -492,7 +492,7 @@ export function LayoutMap({
               {dropdownAbierto && (
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full z-[6] mt-1 w-48 space-y-0.5 rounded-lg border border-line bg-white p-1.5 shadow-lift"
+                  className="absolute left-0 top-full z-[6] mt-1 w-48 space-y-0.5 rounded-r-medio border border-line bg-white p-1.5 shadow-lift"
                 >
                   <p className="px-1.5 pb-1 text-[9px] font-semibold uppercase tracking-wide text-muted">
                     {grupo!.size} zonas en este punto
@@ -508,7 +508,7 @@ export function LayoutMap({
                         type="button"
                         onClick={() => toggle(cod)}
                         className={cn(
-                          'flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-micro transition-colors duration-150',
+                          'flex w-full items-center gap-1.5 rounded-r-chico px-1.5 py-1 text-left text-micro transition-colors duration-150',
                           !esEval && zzOn ? 'bg-exito-soft text-exito-deep' : 'hover:bg-paper',
                         )}
                       >
@@ -592,12 +592,12 @@ export function LayoutMap({
                   onClick={() => toggle(z.cod)}
                   title={`${z.nombre || z.cod} — clic para ciclar`}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left transition-colors duration-150',
+                    'flex w-full items-center gap-2 rounded-r-chico border border-transparent px-2 py-1.5 text-left transition-colors duration-150',
                     !readOnly && 'hover:border-line hover:bg-white',
                   )}
                   style={{ background: `${ev.bg}33` }}
                 >
-                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-white" style={{ background: ev.chip }}>
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-r-pastilla text-white" style={{ background: ev.chip }}>
                     <IconoEstado v={v} className="h-2.5 w-2.5" />
                   </span>
                   <span className="min-w-0 flex-1 truncate tabular-nums text-micro text-ink">{z.cod}</span>
@@ -609,7 +609,7 @@ export function LayoutMap({
             );
           })}
         </ul>
-        <div className="mt-2 flex items-center justify-between rounded-lg border border-gold/40 bg-gold/10 px-3 py-2">
+        <div className="mt-2 flex items-center justify-between rounded-r-chico border border-gold/40 bg-gold/10 px-3 py-2">
           <span className="text-cuerpo font-semibold text-navy">Limpieza</span>
           <span className="tabular-nums text-dato font-bold text-gold-deep">
             {r1(ganados)}/{r1(totalPts)}

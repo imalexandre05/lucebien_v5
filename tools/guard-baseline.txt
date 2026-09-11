@@ -117,6 +117,9 @@ radio|apps/erp-web/app/configuracion/layout/editor.tsx
 # las cuatro esquinas y le rompe la base. Mismo caso que rounded-r-full en sidebar.tsx.
 radio|apps/erp-web/app/page.tsx
 radio|apps/erp-web/app/pipeline/tablero.tsx
+# Los dos puntos de leyenda AM/PM (8x8px, rounded-[2px]) son la misma geometría de marcador
+# diminuto que ya tiene documentada editor.tsx para radio: forzar r-chico (8px) los volvería
+# casi circulares a ese tamaño. El resto del archivo (botones, paneles, lienzo, filas) ya migró.
 radio|apps/erp-web/app/reportes/layout-map.tsx
 # El pie sticky (línea ~918) usa rounded-t-xl -- sólo esquinas de arriba, a propósito: está
 # pegado al borde inferior de la pantalla (`sticky bottom-0`) y sólo el lado que SE VE necesita
