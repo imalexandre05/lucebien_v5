@@ -236,7 +236,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                         <button
                           type="button"
                           onClick={() => setDetalle(f)}
-                          className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
+                          className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
                         >
                           <Eye className="h-3 w-3" strokeWidth={2} /> Ver
                         </button>
@@ -282,7 +282,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                 cambios.length === 0 ? (
                   <p className="text-cuerpo text-muted">No se detectaron campos con valores distintos.</p>
                 ) : (
-                  <div className="overflow-x-auto rounded-md border border-line">
+                  <div className="overflow-x-auto rounded-r-chico border border-line">
                     <Table>
                       <THead>
                         <TR>
@@ -308,7 +308,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                   </div>
                 )
               ) : (
-                <div className="max-h-80 overflow-auto rounded-md border border-line bg-paper/40 p-3">
+                <div className="max-h-80 overflow-auto rounded-r-chico border border-line bg-paper/40 p-3">
                   <table className="w-full text-apoyo">
                     <tbody>
                       {Object.entries(detalle.operacion === 'DELETE' ? detalle.antes ?? {} : detalle.despues ?? {}).map(([k, v]) => (

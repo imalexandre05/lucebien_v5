@@ -106,10 +106,7 @@ tipografia|apps/erp-web/components/ui/contador-mas.tsx
 tipografia|apps/erp-web/components/ui/teclado-numerico.tsx
 
 # -- radio: rounded-*/rounded-full de Tailwind en vez de r-chico/medio/grande/pastilla ----
-radio|apps/erp-web/app/administracion/auditoria/cliente.tsx
-radio|apps/erp-web/app/administracion/auditoria/page.tsx
 radio|apps/erp-web/app/asistencias/huellero/cliente.tsx
-radio|apps/erp-web/app/buscar/page.tsx
 radio|apps/erp-web/app/caja/cliente.tsx
 radio|apps/erp-web/app/clientes/[id]/page.tsx
 radio|apps/erp-web/app/clientes/clientes-crm.tsx
@@ -121,18 +118,15 @@ radio|apps/erp-web/app/compras/nueva/form.tsx
 # a ese tamaño. El resto del archivo (botones, panel, lienzo) ya migró.
 radio|apps/erp-web/app/configuracion/layout/editor.tsx
 radio|apps/erp-web/app/dispositivo/page.tsx
-radio|apps/erp-web/app/dispositivos/page.tsx
 radio|apps/erp-web/app/empleados/cliente.tsx
 radio|apps/erp-web/app/envio-lavanderia/cliente.tsx
 radio|apps/erp-web/app/error.tsx
 radio|apps/erp-web/app/estadisticas/cliente.tsx
 radio|apps/erp-web/app/evaluaciones/cliente.tsx
-radio|apps/erp-web/app/evaluar-reportes/page.tsx
 radio|apps/erp-web/app/incidencias/cliente.tsx
 radio|apps/erp-web/app/inventario/cliente.tsx
 radio|apps/erp-web/app/login/page.tsx
 radio|apps/erp-web/app/materiales/cliente.tsx
-radio|apps/erp-web/app/notificaciones/cliente.tsx
 radio|apps/erp-web/app/page.tsx
 radio|apps/erp-web/app/pagos/cliente.tsx
 radio|apps/erp-web/app/pedidos/[id]/page.tsx
@@ -152,7 +146,6 @@ radio|apps/erp-web/app/reportes/nuevo/form.tsx
 # con `border-l-2` de acento a la izquierda; ponerles un token compuesto (r-chico etc.) redondea
 # las CUATRO esquinas y rompe la forma. Mismo caso que `rounded-r-full` de sidebar.tsx.
 radio|apps/erp-web/app/solicitudes/detalle-solicitud.tsx
-radio|apps/erp-web/app/valores/page.tsx
 # logo.tsx (LogoMark) se queda A PROPÓSITO: rOuter/rInner son geometría de marca, no una
 # superficie genérica -- cada tamaño (sm/md/lg/xl) empareja un radio externo con uno interno
 # exactamente 1-2px menor para dejar un filete de ancho constante alrededor del sello (ver

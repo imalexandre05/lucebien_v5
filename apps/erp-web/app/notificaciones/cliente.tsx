@@ -91,7 +91,7 @@ export function NotificacionesCliente({ notificaciones, esAdmin }: { notificacio
                 type="button"
                 onClick={() => setFiltro(f.k)}
                 className={cn(
-                  'rounded-md border px-2.5 py-1.5 text-apoyo transition',
+                  'rounded-r-pastilla border px-2.5 py-1.5 text-apoyo transition',
                   filtro === f.k ? 'border-navy bg-navy text-white' : 'border-line text-navy hover:border-gold',
                 )}
               >
@@ -106,7 +106,7 @@ export function NotificacionesCliente({ notificaciones, esAdmin }: { notificacio
                 type="button"
                 onClick={marcarTodas}
                 disabled={pending}
-                className="toque inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-navy transition hover:border-gold"
+                className="toque inline-flex items-center gap-1.5 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition hover:border-gold"
               >
                 <CheckCheck className="h-3.5 w-3.5" strokeWidth={2} /> Marcar todas
               </button>
@@ -117,7 +117,7 @@ export function NotificacionesCliente({ notificaciones, esAdmin }: { notificacio
                 onClick={generar}
                 disabled={pending}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-md bg-navy px-3 py-1.5 text-apoyo font-medium text-white transition hover:bg-navy-deep',
+                  'inline-flex items-center gap-1.5 rounded-r-pastilla bg-navy px-3 py-1.5 text-apoyo font-medium text-white transition hover:bg-navy-deep',
                   pending && 'opacity-60',
                 )}
               >
@@ -171,7 +171,7 @@ export function NotificacionesCliente({ notificaciones, esAdmin }: { notificacio
                       disabled={pending}
                       title="Marcar como leída"
                       aria-label="Marcar como leída"
-                      className="shrink-0 rounded-md border border-line p-1.5 text-muted transition hover:border-gold hover:text-navy"
+                      className="shrink-0 rounded-r-pastilla border border-line p-1.5 text-muted transition hover:border-gold hover:text-navy"
                     >
                       <Check className="h-3.5 w-3.5" strokeWidth={2} />
                     </button>

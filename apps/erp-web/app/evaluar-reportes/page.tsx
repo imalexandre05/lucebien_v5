@@ -66,7 +66,7 @@ export default async function EvaluarReportesPage() {
                 {pendientes.map((r) => (
                   <TR key={r.id}>
                     <TD className="pl-5">
-                      <span className="inline-block rounded-md bg-navy px-2.5 py-1 tabular-nums text-dato font-medium text-paper">
+                      <span className="inline-block rounded-r-pastilla bg-navy px-2.5 py-1 tabular-nums text-dato font-medium text-paper">
                         {r.id}
                       </span>
                     </TD>

@@ -61,7 +61,7 @@ export default async function BuscarPage({ searchParams }: { searchParams: { q?:
               defaultValue={q}
               autoFocus
               placeholder="Código (TN-042), tipo, talla, color…"
-              className="flex-1 rounded-md border border-line bg-white px-3 py-2 text-cuerpo text-navy outline-none transition-colors focus:border-gold"
+              className="flex-1 rounded-r-chico border border-line bg-white px-3 py-2 text-cuerpo text-navy outline-none transition-colors focus:border-gold"
             />
             <button type="submit" className={buttonVariants({ variant: 'primary' })}>
               <Search className="h-4 w-4" strokeWidth={2} />
