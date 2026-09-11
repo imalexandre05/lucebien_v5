@@ -86,12 +86,12 @@ export function HuelleroCliente({
   return (
     <div className="space-y-6">
       {Boolean(error) && (
-        <div className="rounded-md border border-error-line bg-error-soft px-3 py-2 text-cuerpo text-error-deep">
+        <div className="rounded-r-chico border border-error-line bg-error-soft px-3 py-2 text-cuerpo text-error-deep">
           {error}
         </div>
       )}
       {Boolean(aviso) && (
-        <div className="rounded-md border border-exito-line bg-exito-soft px-3 py-2 text-cuerpo text-exito-deep">
+        <div className="rounded-r-chico border border-exito-line bg-exito-soft px-3 py-2 text-cuerpo text-exito-deep">
           {aviso}
         </div>
       )}
@@ -139,7 +139,7 @@ function Equipos({
       </CardHeader>
       <CardContent className="space-y-3">
         {abierto && (
-          <div className="flex flex-wrap items-end gap-2 rounded-md border border-line bg-cream/40 p-3">
+          <div className="flex flex-wrap items-end gap-2 rounded-r-chico border border-line bg-cream/40 p-3">
             <div>
               <label className="mb-1 block text-rotulo uppercase text-muted">Nombre</label>
               <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Almacén" className={fieldCls} />
@@ -174,7 +174,7 @@ function Equipos({
             {dispositivos.map((d) => {
               const caido = d.minutosDesdeSync === null || d.minutosDesdeSync > MINUTOS_PARA_ALARMA;
               return (
-                <div key={d.id} className="rounded-md border border-line p-3">
+                <div key={d.id} className="rounded-r-chico border border-line p-3">
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-navy">{d.nombre}</span>
                     <Badge tone={caido ? 'red' : 'green'}>{caido ? 'Sin señal' : 'Al día'}</Badge>

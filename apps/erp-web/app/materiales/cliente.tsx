@@ -78,7 +78,7 @@ export function MaterialesCliente({
             type="button"
             onClick={() => setSoloBajos((v) => !v)}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-apoyo transition',
+              'inline-flex items-center gap-1.5 rounded-r-pastilla border px-2.5 py-1.5 text-apoyo transition',
               soloBajos ? 'border-error-line bg-error-soft text-error-deep' : 'border-line text-navy hover:border-gold',
             )}
           >
@@ -139,14 +139,14 @@ export function MaterialesCliente({
                         <button
                           type="button"
                           onClick={() => setAjustar(m)}
-                          className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-apoyo text-navy transition hover:border-gold"
+                          className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition hover:border-gold"
                         >
                           <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} /> Ajustar
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditar(m)}
-                          className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-apoyo text-navy transition hover:border-gold"
+                          className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition hover:border-gold"
                         >
                           <Pencil className="h-3.5 w-3.5" strokeWidth={2} /> Editar
                         </button>
@@ -345,7 +345,7 @@ function AjusteModal({ material, onClose, onSaved }: { material: Material; onClo
           <label className="mb-1 block text-rotulo uppercase text-muted">Motivo</label>
           <input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. consumo en taller, merma…" className={cn(fieldCls, 'w-full')} />
         </div>
-        <p className="rounded-md bg-navy/5 px-3 py-2 text-cuerpo text-navy">
+        <p className="rounded-r-chico bg-navy/5 px-3 py-2 text-cuerpo text-navy">
           Stock resultante: <span className="tabular-nums font-semibold">{nfmt(resultante)}</span> {material.unidad}
         </p>
         {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}

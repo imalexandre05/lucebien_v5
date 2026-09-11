@@ -295,7 +295,7 @@ export function IncidenciasCliente({
                       type="button"
                       onClick={() => setNivel(n)}
                       className={cn(
-                        'rounded-md border-2 px-3 py-2 text-cuerpo font-medium transition-colors duration-150',
+                        'rounded-r-pastilla border-2 px-3 py-2 text-cuerpo font-medium transition-colors duration-150',
                         nivel === n
                           ? n === 'Alto'
                             ? 'border-error bg-error-soft text-error-deep'

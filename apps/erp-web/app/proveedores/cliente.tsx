@@ -118,7 +118,7 @@ export function ProveedoresCliente({ proveedores, categorias }: { proveedores: P
                     <button
                       type="button"
                       onClick={() => setEditar(p)}
-                      className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-apoyo text-navy transition hover:border-gold"
+                      className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition hover:border-gold"
                     >
                       <Pencil className="h-3.5 w-3.5" strokeWidth={2} /> Editar
                     </button>

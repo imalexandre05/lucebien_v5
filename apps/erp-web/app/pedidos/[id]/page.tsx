@@ -71,7 +71,7 @@ export default async function PedidoDetalle({ params }: { params: { id: string }
           </dl>
 
           <p className="mb-2 mt-4 text-rotulo uppercase text-muted">Ítems ({p.items.length})</p>
-          <div className="overflow-x-auto rounded-md border border-line">
+          <div className="overflow-x-auto rounded-r-chico border border-line">
             <Table>
               <THead>
                 <TR>

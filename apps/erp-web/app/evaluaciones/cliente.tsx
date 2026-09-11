@@ -409,7 +409,7 @@ export function EvaluacionesCliente({
               </Aviso>
             )}
             {revisionPesos.desviado && (
-              <div className="flex items-start gap-3 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2.5 text-cuerpo text-aviso-deep">
+              <div className="flex items-start gap-3 rounded-r-chico border border-aviso-line bg-aviso-soft px-3 py-2.5 text-cuerpo text-aviso-deep">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
                 <span>
                   Los pesos configurados suman <strong>{fmtSuma(revisionPesos.suma)}</strong>: esta nota no
@@ -465,7 +465,7 @@ export function EvaluacionesCliente({
             </div>
 
             {infoExtra && (
-              <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line/60 bg-paper/60 px-3 py-2 text-apoyo text-muted">
+              <div className="flex flex-wrap items-center gap-4 rounded-r-chico border border-line/60 bg-paper/60 px-3 py-2 text-apoyo text-muted">
                 <span>
                   Pipeline <span className="tabular-nums font-semibold text-navy">{infoExtra.puntosPipeline} pts</span>
                 </span>
@@ -603,7 +603,7 @@ export function EvaluacionesCliente({
           <CardContent className="space-y-3">
             <p className="text-apoyo text-muted">Ciclo {evalGuardada.cicloDesde} a {evalGuardada.cicloHasta}.</p>
 
-            <p className="rounded-lg border border-line bg-paper/60 px-3 py-2.5 text-cuerpo text-ink">
+            <p className="rounded-r-chico border border-line bg-paper/60 px-3 py-2.5 text-cuerpo text-ink">
               El pago se registra en la pestaña{' '}
               <Link
                 href={`/personal/${evalGuardada.empleadoId}/pago`}
@@ -660,7 +660,7 @@ export function EvaluacionesCliente({
                             ev.stopPropagation();
                             setExpandida(abierta ? null : e.id);
                           }}
-                          className="anillo flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy"
+                          className="anillo flex h-7 w-7 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy"
                         >
                           <ChevronRight
                             className={cn('h-4 w-4 transition-transform duration-200 ease-out-expo', abierta && 'rotate-90')}

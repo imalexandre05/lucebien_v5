@@ -227,7 +227,7 @@ export function PagosCliente({
                 <div className="flex items-center gap-2">
                   <input type="number" step="0.5" value={monto} onChange={(e) => setMonto(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
                   {sugerido != null && (
-                    <button type="button" onClick={() => setMonto(sugerido)} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-apoyo text-navy hover:border-gold">
+                    <button type="button" onClick={() => setMonto(sugerido)} className="whitespace-nowrap rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy hover:border-gold">
                       Usar sugerido
                     </button>
                   )}

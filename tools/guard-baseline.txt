@@ -106,28 +106,18 @@ tipografia|apps/erp-web/components/ui/contador-mas.tsx
 tipografia|apps/erp-web/components/ui/teclado-numerico.tsx
 
 # -- radio: rounded-*/rounded-full de Tailwind en vez de r-chico/medio/grande/pastilla ----
-radio|apps/erp-web/app/asistencias/huellero/cliente.tsx
 # editor.tsx se queda A PROPÓSITO: dos marcadores de 10x10px sobre el lienzo del mapa de piso
 # (el grip de resize de la zona seleccionada, el punto de color de la lista) usan rounded-[3px]
 # -- geometría de marcador, no una superficie; forzar r-chico (8px) los haría casi circulares
 # a ese tamaño. El resto del archivo (botones, panel, lienzo) ya migró.
 radio|apps/erp-web/app/configuracion/layout/editor.tsx
-radio|apps/erp-web/app/dispositivo/page.tsx
-radio|apps/erp-web/app/evaluaciones/cliente.tsx
-radio|apps/erp-web/app/incidencias/cliente.tsx
-radio|apps/erp-web/app/inventario/cliente.tsx
 radio|apps/erp-web/app/login/page.tsx
-radio|apps/erp-web/app/materiales/cliente.tsx
 radio|apps/erp-web/app/page.tsx
-radio|apps/erp-web/app/pagos/cliente.tsx
-radio|apps/erp-web/app/pedidos/[id]/page.tsx
-radio|apps/erp-web/app/pedidos/pendientes.tsx
 radio|apps/erp-web/app/pipeline/accesorios/cliente.tsx
 radio|apps/erp-web/app/pipeline/envios/cliente.tsx
 radio|apps/erp-web/app/pipeline/metricas/page.tsx
 radio|apps/erp-web/app/pipeline/registrar/form.tsx
 radio|apps/erp-web/app/pipeline/tablero.tsx
-radio|apps/erp-web/app/proveedores/cliente.tsx
 radio|apps/erp-web/app/reportes/[id]/acciones.tsx
 radio|apps/erp-web/app/reportes/layout-map.tsx
 radio|apps/erp-web/app/reportes/lista.tsx

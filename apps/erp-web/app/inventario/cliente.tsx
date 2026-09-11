@@ -311,7 +311,7 @@ export function InventarioCliente({
                         onBlur={(e) => {
                           if (e.target.value !== a.talla) guardarInline(a, { talla: e.target.value });
                         }}
-                        className="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-cuerpo text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                        className="w-16 rounded-r-chico border border-transparent bg-transparent px-1 py-0.5 text-cuerpo text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
                     <TD>
@@ -321,7 +321,7 @@ export function InventarioCliente({
                         onBlur={(e) => {
                           if (e.target.value !== a.color) guardarInline(a, { color: e.target.value });
                         }}
-                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-cuerpo text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                        className="w-20 rounded-r-chico border border-transparent bg-transparent px-1 py-0.5 text-cuerpo text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
                     <TD className="tabular-nums">{a.sedeCod}</TD>
@@ -368,7 +368,7 @@ export function InventarioCliente({
                           const v = Number(e.target.value);
                           if (v !== a.precioAlquiler) guardarInline(a, { precioAlquiler: v });
                         }}
-                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums text-dato text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                        className="w-20 rounded-r-chico border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums text-dato text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
                     <TD className="text-right">
@@ -381,7 +381,7 @@ export function InventarioCliente({
                           const v = Number(e.target.value);
                           if (v !== a.precioVenta) guardarInline(a, { precioVenta: v });
                         }}
-                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums text-dato text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                        className="w-20 rounded-r-chico border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums text-dato text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
                     <TD className="text-right tabular-nums">{a.usosAcumulados}</TD>
@@ -394,7 +394,7 @@ export function InventarioCliente({
                             disabled={pending}
                             aria-label="Despiezar en saco + pantalón"
                             title="Despiezar en saco + pantalón"
-                            className="rounded-md p-1.5 text-muted transition-colors hover:bg-navy/5 hover:text-navy disabled:opacity-50"
+                            className="rounded-r-pastilla p-1.5 text-muted transition-colors hover:bg-navy/5 hover:text-navy disabled:opacity-50"
                           >
                             <Scissors className="h-3.5 w-3.5" strokeWidth={2} />
                           </button>
@@ -404,7 +404,7 @@ export function InventarioCliente({
                           onClick={() => abrirEditar(a)}
                           aria-label="Editar todos los datos"
                           title="Editar todos los datos"
-                          className="rounded-md p-1.5 text-muted transition-colors hover:bg-navy/5 hover:text-navy"
+                          className="rounded-r-pastilla p-1.5 text-muted transition-colors hover:bg-navy/5 hover:text-navy"
                         >
                           <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
                         </button>
@@ -413,7 +413,7 @@ export function InventarioCliente({
                           onClick={() => eliminar(a.id)}
                           aria-label="Dar de baja"
                           title="Dar de baja"
-                          className="rounded-md p-1.5 text-muted transition-colors hover:bg-error-soft hover:text-error"
+                          className="rounded-r-pastilla p-1.5 text-muted transition-colors hover:bg-error-soft hover:text-error"
                         >
                           <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
                         </button>
@@ -551,7 +551,7 @@ export function InventarioCliente({
                   <label className="text-rotulo uppercase text-muted">
                     Atributos (tela, forro, cuello… lo que corresponda a este tipo)
                   </label>
-                  <button type="button" onClick={agregarAtributo} className="toque inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-apoyo text-navy transition-colors hover:border-gold">
+                  <button type="button" onClick={agregarAtributo} className="toque inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition-colors hover:border-gold">
                     <Plus className="h-3 w-3" strokeWidth={2.5} /> Agregar
                   </button>
                 </div>
@@ -593,7 +593,7 @@ export function InventarioCliente({
 
               <div className="border-t border-line/60 pt-3">
                 <label className="flex items-center gap-2 text-cuerpo text-navy">
-                  <input type="checkbox" checked={modal.form.publicable} onChange={(e) => setCampo('publicable', e.target.checked)} className="h-4 w-4 rounded border-line" />
+                  <input type="checkbox" checked={modal.form.publicable} onChange={(e) => setCampo('publicable', e.target.checked)} className="h-4 w-4 rounded-r-chico border-line" />
                   Mostrar en el catálogo público (web)
                 </label>
                 {modal.form.publicable && (
