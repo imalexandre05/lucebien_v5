@@ -103,7 +103,7 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
                             type="button"
                             disabled={pending}
                             onClick={() => calificar(p, true)}
-                            className="inline-flex items-center gap-1 rounded-md bg-exito px-2.5 py-1.5 text-apoyo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
+                            className="inline-flex items-center gap-1 rounded-r-pastilla bg-exito px-2.5 py-1.5 text-apoyo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={3} /> Aceptar
                           </button>
@@ -111,7 +111,7 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
                             value={destinoObs[p.id] ?? 'recepcion'}
                             onChange={(e) => setDestinoObs((prev) => ({ ...prev, [p.id]: e.target.value }))}
                             aria-label={`Observar ${p.codigo}: devolver a`}
-                            className="rounded-md border border-line bg-white px-1.5 py-1 text-apoyo text-navy"
+                            className="rounded-r-pastilla border border-line bg-white px-1.5 py-1 text-apoyo text-navy"
                           >
                             <option value="recepcion">Recepción</option>
                             <option value="planchado">Planchado</option>
@@ -121,7 +121,7 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
                             type="button"
                             disabled={pending}
                             onClick={() => calificar(p, false)}
-                            className="inline-flex items-center gap-1 rounded-md border border-aviso-line bg-aviso-soft px-2 py-1.5 text-apoyo font-medium text-aviso-deep transition hover:bg-aviso-soft active:scale-[.97]"
+                            className="inline-flex items-center gap-1 rounded-r-pastilla border border-aviso-line bg-aviso-soft px-2 py-1.5 text-apoyo font-medium text-aviso-deep transition hover:bg-aviso-soft active:scale-[.97]"
                           >
                             <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Observar
                           </button>

@@ -127,7 +127,7 @@ export function AccesoriosCliente({
               <button
                 type="button"
                 onClick={() => setFilas((p) => [...p, { tipo: '', cantidad: 1 }])}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold"
+                className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar accesorio
               </button>
@@ -192,7 +192,7 @@ export function AccesoriosCliente({
                             type="button"
                             disabled={pending}
                             onClick={() => confirmar(e.id)}
-                            className="inline-flex items-center gap-1 rounded-md bg-exito px-2.5 py-1.5 text-apoyo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
+                            className="inline-flex items-center gap-1 rounded-r-pastilla bg-exito px-2.5 py-1.5 text-apoyo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={3} /> Confirmar recibido
                           </button>

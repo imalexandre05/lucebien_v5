@@ -83,13 +83,13 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
   return (
     <div>
       {pendientes > 0 && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-aviso-line bg-aviso-soft px-4 py-2.5 text-cuerpo text-aviso-deep">
+        <div className="mb-4 flex items-center gap-2 rounded-r-chico border border-aviso-line bg-aviso-soft px-4 py-2.5 text-cuerpo text-aviso-deep">
           <ClipboardCheck className="h-4 w-4 shrink-0" strokeWidth={2} />
           Hay <strong className="font-semibold">{pendientes}</strong> reporte(s) pendientes de evaluación.
           <button
             type="button"
             onClick={() => setEstado('pendiente')}
-            className="ml-auto rounded-md border border-aviso-line px-2.5 py-1 text-apoyo font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]"
+            className="ml-auto rounded-r-pastilla border border-aviso-line px-2.5 py-1 text-apoyo font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]"
           >
             Ver pendientes
           </button>
@@ -148,7 +148,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                     <TD className="pl-5">
                       <Link
                         href={`/reportes/${r.id}`}
-                        className="toque inline-block rounded-md bg-navy px-2.5 py-1 tabular-nums text-dato font-medium text-paper transition-colors duration-150 hover:bg-navy-dark"
+                        className="toque inline-block rounded-r-pastilla bg-navy px-2.5 py-1 tabular-nums text-dato font-medium text-paper transition-colors duration-150 hover:bg-navy-dark"
                       >
                         {r.id}
                       </Link>

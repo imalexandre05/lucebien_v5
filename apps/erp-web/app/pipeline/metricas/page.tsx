@@ -83,9 +83,9 @@ export default async function MetricasPage() {
               {porEtapa.map((e) => (
                 <div key={e.k} className="flex items-center gap-3">
                   <span className="w-32 shrink-0 text-cuerpo text-ink">{e.n}</span>
-                  <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
+                  <div className="h-4 flex-1 overflow-hidden rounded-r-pastilla bg-navy/5">
                     <div
-                      className="h-full rounded bg-navy/70"
+                      className="h-full rounded-r-pastilla bg-navy/70"
                       style={{ width: `${Math.max(4, Math.round((e.c / maxEtapa) * 100))}%` }}
                     />
                   </div>

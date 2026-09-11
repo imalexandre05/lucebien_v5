@@ -111,16 +111,14 @@ tipografia|apps/erp-web/components/ui/teclado-numerico.tsx
 # -- geometría de marcador, no una superficie; forzar r-chico (8px) los haría casi circulares
 # a ese tamaño. El resto del archivo (botones, panel, lienzo) ya migró.
 radio|apps/erp-web/app/configuracion/layout/editor.tsx
-radio|apps/erp-web/app/login/page.tsx
+# app/page.tsx se queda A PROPÓSITO: el mini-gráfico de barras del flujo de pipeline usa
+# rounded-t-lg/rounded-t-[4px] -- sólo esquinas de arriba, a propósito, porque la barra crece
+# desde abajo (origin-bottom) y tiene que apoyar plana sobre el eje. Un token compuesto redondea
+# las cuatro esquinas y le rompe la base. Mismo caso que rounded-r-full en sidebar.tsx.
 radio|apps/erp-web/app/page.tsx
-radio|apps/erp-web/app/pipeline/accesorios/cliente.tsx
-radio|apps/erp-web/app/pipeline/envios/cliente.tsx
-radio|apps/erp-web/app/pipeline/metricas/page.tsx
-radio|apps/erp-web/app/pipeline/registrar/form.tsx
 radio|apps/erp-web/app/pipeline/tablero.tsx
 radio|apps/erp-web/app/reportes/[id]/acciones.tsx
 radio|apps/erp-web/app/reportes/layout-map.tsx
-radio|apps/erp-web/app/reportes/lista.tsx
 radio|apps/erp-web/app/reportes/nuevo/form.tsx
 # Los cuatro callouts (líneas 226/232/237/242) usan `rounded-r-md`: Tailwind DIRECCIONAL (sólo
 # esquinas derechas), no nuestro token -- coincide en el prefijo "r-" por casualidad. Son cajas

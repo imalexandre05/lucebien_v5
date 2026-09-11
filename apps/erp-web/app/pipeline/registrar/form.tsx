@@ -149,7 +149,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
             </label>
 
             {error && (
-              <p className="col-span-2 rounded-md bg-error-soft px-3 py-2 text-cuerpo text-error-deep sm:col-span-3">{error}</p>
+              <p className="col-span-2 rounded-r-chico bg-error-soft px-3 py-2 text-cuerpo text-error-deep sm:col-span-3">{error}</p>
             )}
 
             <div className="col-span-2 sm:col-span-3">
@@ -168,12 +168,12 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
       </Card>
 
       {registradas.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-2">
+        <div className="flex flex-wrap items-center gap-1.5 rounded-r-chico border border-line bg-white px-3 py-2">
           <span className="text-apoyo text-muted">Registradas en esta sesión:</span>
           {registradas.map((c, i) => (
             <span
               key={`${c}-${i}`}
-              className="inline-flex items-center gap-1 rounded bg-exito-soft px-1.5 py-0.5 tabular-nums text-micro font-medium text-exito-deep"
+              className="inline-flex items-center gap-1 rounded-r-pastilla bg-exito-soft px-1.5 py-0.5 tabular-nums text-micro font-medium text-exito-deep"
             >
               <Check className="h-2.5 w-2.5" strokeWidth={3} /> {c}
             </span>
