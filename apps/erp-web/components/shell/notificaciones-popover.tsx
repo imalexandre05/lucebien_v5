@@ -148,12 +148,12 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
               className="fixed z-30 w-80 max-w-[calc(100vw-1rem)] animate-fade overflow-y-auto rounded-r-medio border border-line bg-white shadow-lift"
             >
               <div className="flex items-center justify-between border-b border-line/60 px-3.5 py-2.5">
-                <span className="text-sm font-semibold text-navy">Notificaciones</span>
+                <span className="text-cuerpo font-semibold text-navy">Notificaciones</span>
                 {noLeidas > 0 && (
                   <button
                     type="button"
                     onClick={marcarTodas}
-                    className="inline-flex items-center gap-1 text-xs text-muted transition-colors hover:text-navy"
+                    className="inline-flex items-center gap-1 text-apoyo text-muted transition-colors hover:text-navy"
                   >
                     <CheckCheck className="h-3.5 w-3.5" strokeWidth={2} /> Marcar todas
                   </button>
@@ -163,7 +163,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
               {recientes.length === 0 ? (
                 <div className="flex flex-col items-center gap-1.5 px-4 py-8 text-center">
                   <Bell className="h-6 w-6 text-line" strokeWidth={1.5} />
-                  <p className="text-xs text-muted">Sin notificaciones.</p>
+                  <p className="text-apoyo text-muted">Sin notificaciones.</p>
                 </div>
               ) : (
                 <ul className="max-h-80 overflow-y-auto">
@@ -174,7 +174,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
                       <li key={n.id} className={cn('flex items-start gap-2.5 border-b border-line/40 px-3.5 py-2.5 last:border-0', !n.leida && 'bg-gold/5')}>
                         <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', sev.cls)} strokeWidth={1.75} aria-hidden />
                         <div className="min-w-0 flex-1">
-                          <p className={cn('truncate text-xs font-semibold', !n.leida ? 'text-navy' : 'text-ink')}>{n.titulo}</p>
+                          <p className={cn('truncate text-apoyo font-semibold', !n.leida ? 'text-navy' : 'text-ink')}>{n.titulo}</p>
                           <p className="mt-0.5 line-clamp-2 text-micro text-muted">{n.mensaje}</p>
                         </div>
                         {!n.leida && (
@@ -197,7 +197,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
               <Link
                 href="/notificaciones"
                 onClick={() => setAbierto(false)}
-                className="block w-full rounded-b-xl border-t border-line/60 py-2.5 text-center text-xs font-medium text-navy transition-colors hover:bg-navy/5"
+                className="block w-full rounded-b-xl border-t border-line/60 py-2.5 text-center text-apoyo font-medium text-navy transition-colors hover:bg-navy/5"
               >
                 Mostrar más
               </Link>

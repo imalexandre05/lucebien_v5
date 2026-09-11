@@ -204,7 +204,7 @@ export function AsistenciasCliente({
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Empleado</label>
+                <label className="mb-1 block text-rotulo uppercase text-muted">Empleado</label>
                 <select value={empleadoId} onChange={(e) => setEmpleadoId(e.target.value)} className={cn(fieldCls, 'w-full')}>
                   <option value="">Elige…</option>
                   {empleados.map((e) => (
@@ -216,34 +216,34 @@ export function AsistenciasCliente({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Fecha</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Fecha</label>
                   <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={cn(fieldCls, 'w-full')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Turno</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Turno</label>
                   <OpcionBotones opciones={OPC_TURNO} value={turno} onChange={setTurno} ariaLabel="Turno" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Hora entrada</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Hora entrada</label>
                   <input type="time" value={horaEntrada} onChange={(e) => setHoraEntrada(e.target.value)} className={cn(fieldCls, 'w-full')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Hora salida</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Hora salida</label>
                   <input type="time" value={horaSalida} onChange={(e) => setHoraSalida(e.target.value)} className={cn(fieldCls, 'w-full')} />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tardanza (min)</label>
+                <label className="mb-1 block text-rotulo uppercase text-muted">Tardanza (min)</label>
                 <input type="number" value={tardanza} onChange={(e) => setTardanza(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Observación</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Observación</label>
               <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Opcional" className={cn(fieldCls, 'w-full')} />
             </div>
-            {error && <p className="text-sm text-error">{error}</p>}
+            {error && <p className="text-cuerpo text-error">{error}</p>}
             <Button type="button" onClick={registrar} disabled={!empleadoId} pending={pending}>
               {pending ? 'Registrando…' : 'Registrar'}
             </Button>
@@ -269,15 +269,15 @@ export function AsistenciasCliente({
             <TBody>
               {filtradas.map((a) => (
                 <TR key={a.id}>
-                  <TD className="pl-5 tabular-nums text-xs text-muted">{a.fecha}</TD>
+                  <TD className="pl-5 tabular-nums text-dato text-muted">{a.fecha}</TD>
                   <TD>
                     <div className="font-medium text-navy">{a.empleadoNombre ?? '—'}</div>
-                    {a.obs && <div className="text-xs text-muted">{a.obs}</div>}
+                    {a.obs && <div className="text-apoyo text-muted">{a.obs}</div>}
                   </TD>
                   <TD>
                     <Badge tone="navy">{a.turno}</Badge>
                   </TD>
-                  <TD className="tabular-nums text-xs">
+                  <TD className="tabular-nums text-dato">
                     {a.horaEntrada ?? '—'}
                     {Boolean(a.entradaEstimada) && (
                       <span title="El sistema propuso esta hora con el horario contratado: no hubo marca de entrada.">
@@ -287,7 +287,7 @@ export function AsistenciasCliente({
                       </span>
                     )}
                   </TD>
-                  <TD className="tabular-nums text-xs">
+                  <TD className="tabular-nums text-dato">
                     {a.horaSalida ?? '—'}
                     {Boolean(a.salidaEstimada) && (
                       <span title="El sistema propuso esta hora con el horario contratado: no hubo marca de salida.">

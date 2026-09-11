@@ -28,7 +28,7 @@ export default async function NuevaPersonaPage() {
       <div>
         <PageHeader title="Nueva persona" subtitle="Alta de un colaborador" />
         <Card>
-          <CardContent className="py-12 text-center text-sm text-muted">
+          <CardContent className="py-12 text-center text-cuerpo text-muted">
             Solo los administradores pueden registrar personas nuevas.
           </CardContent>
         </Card>

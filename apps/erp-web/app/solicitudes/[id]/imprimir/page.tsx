@@ -20,8 +20,8 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
     if (e instanceof SolicitudesNoMigradoError) {
       return (
         <div className="mx-auto max-w-md py-16 text-center">
-          <p className="text-sm font-semibold text-navy">Falta aplicar la migración 0056</p>
-          <p className="mt-1 text-sm text-muted">Este módulo todavía no tiene sus tablas en la base de datos.</p>
+          <p className="text-cuerpo font-semibold text-navy">Falta aplicar la migración 0056</p>
+          <p className="mt-1 text-cuerpo text-muted">Este módulo todavía no tiene sus tablas en la base de datos.</p>
         </div>
       );
     }
@@ -43,45 +43,45 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
             <div className="mt-1 tabular-nums text-[10px] tracking-brand text-gold">
               {tipo === 'confirmacion' ? 'CONFIRMACIÓN DE ENTREGA' : 'PEDIDO A ALMACÉN'} · SCI-LB
             </div>
-            <div className="mt-2 text-xs text-muted">Confecciones Aliaga E.I.R.L. · Huancayo, Perú</div>
+            <div className="mt-2 text-apoyo text-muted">Confecciones Aliaga E.I.R.L. · Huancayo, Perú</div>
           </div>
-          <div className="text-right text-xs text-muted">
+          <div className="text-right text-apoyo text-muted">
             <div className="tabular-nums text-micro text-navy">Ref. #{s.id.slice(0, 8).toUpperCase()}</div>
             <div className="mt-0.5">{fechaHora(s.createdAt)}</div>
           </div>
         </header>
 
-        <section className="mt-6 grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
+        <section className="mt-6 grid grid-cols-2 gap-4 text-cuerpo sm:grid-cols-4">
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Sede</div>
+            <div className="text-rotulo uppercase text-muted">Sede</div>
             <div className="mt-0.5 tabular-nums text-navy">{s.sedeCod}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Solicitante</div>
+            <div className="text-rotulo uppercase text-muted">Solicitante</div>
             <div className="mt-0.5 text-navy">{s.solicitanteNombre ?? '—'}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Urgencia</div>
+            <div className="text-rotulo uppercase text-muted">Urgencia</div>
             <div className="mt-0.5 text-navy">{URGENCIA_LABEL[s.urgencia]}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Estado</div>
+            <div className="text-rotulo uppercase text-muted">Estado</div>
             <div className="mt-0.5 text-navy">{ESTADO_LABEL[s.estado]}</div>
           </div>
         </section>
 
         {s.obs && (
-          <p className="mt-4 rounded-r-chico bg-navy/5 px-3 py-2 text-xs text-ink">
+          <p className="mt-4 rounded-r-chico bg-navy/5 px-3 py-2 text-apoyo text-ink">
             <b>Observación:</b> {s.obs}
           </p>
         )}
         {s.obsRespuesta && (
-          <p className="mt-2 rounded-r-chico bg-gold/10 px-3 py-2 text-xs text-ink">
+          <p className="mt-2 rounded-r-chico bg-gold/10 px-3 py-2 text-apoyo text-ink">
             <b>Respuesta de almacén:</b> {s.obsRespuesta}
           </p>
         )}
 
-        <table className="mt-6 w-full border-collapse text-xs">
+        <table className="mt-6 w-full border-collapse text-apoyo">
           <thead>
             <tr className="border-b-2 border-navy/20 text-left uppercase tracking-wide text-muted">
               <th className="py-1.5 pr-2">Tipo</th>
@@ -111,23 +111,23 @@ export default async function ImprimirSolicitudPage({ params }: { params: { id: 
         </table>
 
         {s.recibeEnTienda && (
-          <p className="mt-4 text-xs text-muted">
+          <p className="mt-4 text-apoyo text-muted">
             Entregado a <b className="text-navy">{s.recibeEnTienda}</b> por <b className="text-navy">{s.entregadoPorNombre ?? '—'}</b> ·{' '}
             {fechaHora(s.fechaEntrega)}
           </p>
         )}
         {s.codigosPrenda && Object.keys(s.codigosPrenda).length > 0 && (
-          <p className="mt-2 text-xs text-muted">
+          <p className="mt-2 text-apoyo text-muted">
             <b className="text-navy">Códigos:</b> {Object.values(s.codigosPrenda).flat().join(', ')}
           </p>
         )}
         {s.motivoRechazo && (
-          <p className="mt-4 rounded-r-chico bg-error-soft px-3 py-2 text-xs text-error-deep">
+          <p className="mt-4 rounded-r-chico bg-error-soft px-3 py-2 text-apoyo text-error-deep">
             <b>Rechazada</b> por {s.rechazadoPorNombre ?? '—'} — {s.motivoRechazo}
           </p>
         )}
 
-        <section className="mt-16 grid grid-cols-2 gap-10 text-center text-xs text-muted">
+        <section className="mt-16 grid grid-cols-2 gap-10 text-center text-apoyo text-muted">
           <div>
             <div className="border-t border-ink/40 pt-2">Entrega — Almacén</div>
           </div>

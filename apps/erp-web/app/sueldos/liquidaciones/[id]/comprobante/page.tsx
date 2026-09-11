@@ -68,38 +68,38 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
             <div className="mt-1 tabular-nums text-[10px] tracking-brand text-gold">
               RESUMEN DE LIQUIDACION · SCI-LB
             </div>
-            <div className="mt-2 text-xs text-muted">Confecciones Aliaga E.I.R.L. · Huancayo, Peru</div>
+            <div className="mt-2 text-apoyo text-muted">Confecciones Aliaga E.I.R.L. · Huancayo, Peru</div>
           </div>
           {/* Fecha del periodo y estado de la liquidacion, con tabular-nums */}
           <div className="text-right">
-            <div className="tabular-nums text-sm font-semibold text-navy">
+            <div className="tabular-nums text-dato font-semibold text-navy">
               {liq.periodoDesde} → {liq.periodoHasta}
             </div>
-            <div className="mt-1 text-xs text-muted">N.º {liq.id.slice(0, 8)} · estado {liq.estado}</div>
+            <div className="mt-1 text-apoyo text-muted">N.º {liq.id.slice(0, 8)} · estado {liq.estado}</div>
             {liq.cerradaEn && (
-              <div className="tabular-nums text-xs text-muted">Cerrada el {fechaHoraCorta(liq.cerradaEn)}</div>
+              <div className="tabular-nums text-dato text-muted">Cerrada el {fechaHoraCorta(liq.cerradaEn)}</div>
             )}
           </div>
         </header>
 
         {/* 1. Persona y periodo */}
-        <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-3 text-sm sm:grid-cols-4">
+        <dl className="mt-6 grid grid-cols-2 gap-x-8 gap-y-3 text-cuerpo sm:grid-cols-4">
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted">Colaborador</dt>
+            <dt className="text-rotulo uppercase text-muted">Colaborador</dt>
             <dd className="text-navy">{liq.empleadoNombre ?? '—'}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted">Periodo</dt>
+            <dt className="text-rotulo uppercase text-muted">Periodo</dt>
             <dd className="tabular-nums text-navy">
               {liq.periodoDesde} → {liq.periodoHasta}
             </dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted">Días del periodo</dt>
+            <dt className="text-rotulo uppercase text-muted">Días del periodo</dt>
             <dd className="tabular-nums text-navy">{liq.resultado.periodo.dias}</dd>
           </div>
           <div>
-            <dt className="text-xs uppercase tracking-wide text-muted">Motor</dt>
+            <dt className="text-rotulo uppercase text-muted">Motor</dt>
             <dd className="tabular-nums text-navy">{liq.motorVersion}</dd>
           </div>
         </dl>
@@ -107,10 +107,10 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
         {/* 2. El desglose completo, agrupado ingreso / descuento / ajuste / final, igual que
                en la pantalla: concepto, de donde sale, regla, monto */}
         <section className="mt-8">
-          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Desglose</h2>
+          <h2 className="text-rotulo font-semibold uppercase text-muted">Desglose</h2>
           <div className="mt-2 border-t border-line">
             {sinCerrar ? (
-              <p className="py-6 text-center text-sm text-muted">
+              <p className="py-6 text-center text-cuerpo text-muted">
                 Esta liquidación todavía es un borrador: el desglose se guarda recién al cerrarla.
               </p>
             ) : (
@@ -130,15 +130,15 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
                     return (
                       <Fragment key={g}>
                         <TR>
-                          <TD colSpan={4} className="bg-paper text-xs font-medium uppercase tracking-wide text-muted">
+                          <TD colSpan={4} className="bg-paper text-rotulo font-medium uppercase text-muted">
                             {GRUPO_LABEL[g] ?? g}
                           </TD>
                         </TR>
                         {delGrupo.map((l, i) => (
                           <TR key={`${g}-${i}`} className={g === 'final' ? 'font-medium text-navy' : undefined}>
                             <TD>{l.concepto}</TD>
-                            <TD className="text-sm text-muted">{l.detalle}</TD>
-                            <TD className="text-xs text-muted">{l.regla}</TD>
+                            <TD className="text-cuerpo text-muted">{l.detalle}</TD>
+                            <TD className="text-apoyo text-muted">{l.regla}</TD>
                             <TD className="text-right tabular-nums">{soles(l.monto)}</TD>
                           </TR>
                         ))}
@@ -153,10 +153,10 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
 
         {/* 3. El total, destacado */}
         <div className="mt-6 rounded-r-chico border border-gold/30 bg-gold/10 p-5 text-center">
-          <div className="text-xs uppercase tracking-wide text-muted">Total de la liquidación</div>
+          <div className="text-rotulo uppercase text-muted">Total de la liquidación</div>
           <div className="tabular-nums text-3xl font-bold text-navy">{soles(liq.total)}</div>
           {(liq.ingresos != null || liq.descuentos != null) && (
-            <div className="mt-1 text-xs text-muted">
+            <div className="mt-1 text-apoyo text-muted">
               {liq.ingresos != null && <span>ingresos {soles(liq.ingresos)}</span>}
               {liq.ingresos != null && liq.descuentos != null && <span> · </span>}
               {liq.descuentos != null && <span>descuentos {soles(liq.descuentos)}</span>}
@@ -169,10 +169,10 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
             no está aplicada (pagos === null); nunca se muestra si es un borrador (sinCerrar). */}
         {!sinCerrar && pagos != null && (
           <section className="mt-8">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Pagos registrados</h2>
+            <h2 className="text-rotulo font-semibold uppercase text-muted">Pagos registrados</h2>
             <div className="mt-2 border-t border-line">
               {pagos.length === 0 ? (
-                <p className="py-4 text-sm text-muted">Sin pagos registrados todavía.</p>
+                <p className="py-4 text-cuerpo text-muted">Sin pagos registrados todavía.</p>
               ) : (
                 <Table>
                   <THead>
@@ -189,7 +189,7 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
                         <TD>
                           {p.metodo}
                           {p.anulado && (
-                            <span className="ml-2 text-xs">anulado: {p.anuladoMotivo ?? '—'}</span>
+                            <span className="ml-2 text-apoyo">anulado: {p.anuladoMotivo ?? '—'}</span>
                           )}
                         </TD>
                         <TD className={p.anulado ? 'text-right tabular-nums line-through' : 'text-right tabular-nums'}>
@@ -201,13 +201,13 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
                 </Table>
               )}
             </div>
-            <div className="mt-3 flex justify-end gap-8 border-t border-line pt-3 text-sm">
+            <div className="mt-3 flex justify-end gap-8 border-t border-line pt-3 text-cuerpo">
               <div className="text-right">
-                <div className="text-xs uppercase tracking-wide text-muted">Pagado</div>
+                <div className="text-rotulo uppercase text-muted">Pagado</div>
                 <div className="tabular-nums font-medium text-navy">{soles(pagado)}</div>
               </div>
               <div className="text-right">
-                <div className="text-xs uppercase tracking-wide text-muted">Saldo</div>
+                <div className="text-rotulo uppercase text-muted">Saldo</div>
                 <div className="tabular-nums font-medium text-navy">{sinMontoAPagar ? '—' : soles(saldo)}</div>
               </div>
             </div>
@@ -220,8 +220,8 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
             advertencias que el motor ya dejó guardadas en el snapshot congelado. */}
         {liq.resultado.advertencias.length > 0 && (
           <section className="mt-8">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">Observaciones</h2>
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink">
+            <h2 className="text-rotulo font-semibold uppercase text-muted">Observaciones</h2>
+            <ul className="mt-2 list-disc space-y-1 pl-5 text-cuerpo text-ink">
               {liq.resultado.advertencias.map((a) => (
                 <li key={a}>{a}</li>
               ))}
@@ -230,7 +230,7 @@ export default async function ComprobanteLiquidacionPage({ params }: { params: {
         )}
 
         {liq.anuladaMotivo && (
-          <p className="mt-6 border-t border-line pt-4 text-sm text-muted">
+          <p className="mt-6 border-t border-line pt-4 text-cuerpo text-muted">
             Anulada{liq.anuladaEn ? ` el ${fechaHoraCorta(liq.anuladaEn)}` : ''}: {liq.anuladaMotivo}
           </p>
         )}

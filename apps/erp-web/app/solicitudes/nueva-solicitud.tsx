@@ -96,7 +96,7 @@ function Stepper({ value, onChange, min = 1 }: { value: number; onChange: (v: nu
         min={min}
         onChange={(e) => onChange(Math.max(min, Number(e.target.value) || min))}
         onFocus={(e) => e.target.select()}
-        className="w-9 border-none bg-transparent text-center text-sm font-semibold text-navy outline-none"
+        className="w-9 border-none bg-transparent text-center text-cuerpo font-semibold text-navy outline-none"
       />
       <button
         type="button"
@@ -226,7 +226,7 @@ function FilaPrenda({
         value={row.obs}
         onChange={(e) => onChange({ obs: e.target.value })}
         placeholder="Observación del ítem (opcional)"
-        className={cn(fieldCls, 'mt-2 w-full text-xs')}
+        className={cn(fieldCls, 'mt-2 w-full text-apoyo')}
       />
     </div>
   );
@@ -274,7 +274,7 @@ function FilaArticulo({
         value={row.detalle}
         onChange={(e) => onChange({ detalle: e.target.value })}
         placeholder="Especificación (ej. color de trapo)"
-        className={cn(fieldCls, 'mt-2 w-full text-xs')}
+        className={cn(fieldCls, 'mt-2 w-full text-apoyo')}
       />
     </div>
   );
@@ -356,22 +356,22 @@ export function NuevaSolicitudModal({
       <ModalBody className="space-y-4">
         <div className="flex flex-wrap items-start gap-4">
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Urgencia</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Urgencia</label>
             <OpcionBotones opciones={OPC_URGENCIA} value={urgencia} onChange={setUrgencia} ariaLabel="Urgencia" />
           </div>
           <div className="min-w-[12rem] flex-1">
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Observación</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Observación</label>
             <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Ej: campaña escolar" className={cn(fieldCls, 'w-full')} />
           </div>
         </div>
 
         <div className="flex items-center justify-between border-t border-line pt-3">
-          <span className="text-sm font-semibold text-navy">Ítems del pedido</span>
+          <span className="text-cuerpo font-semibold text-navy">Ítems del pedido</span>
           <div className="flex gap-2">
-            <button type="button" onClick={() => agregar('prenda')} className={cn(buttonVariants({ variant: 'outline' }), 'py-1.5 text-xs')}>
+            <button type="button" onClick={() => agregar('prenda')} className={cn(buttonVariants({ variant: 'outline' }), 'py-1.5 text-apoyo')}>
               <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Prenda
             </button>
-            <button type="button" onClick={() => agregar('articulo')} className={cn(buttonVariants({ variant: 'outline' }), 'py-1.5 text-xs')}>
+            <button type="button" onClick={() => agregar('articulo')} className={cn(buttonVariants({ variant: 'outline' }), 'py-1.5 text-apoyo')}>
               <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Artículo
             </button>
           </div>
@@ -390,14 +390,14 @@ export function NuevaSolicitudModal({
             // lo referencia, en vez de repetirlo en dos lugares que después se desincronizan.
             <p
               id="motivo-solicitud"
-              className="rounded-r-chico border border-dashed border-line px-3 py-6 text-center text-sm text-muted"
+              className="rounded-r-chico border border-dashed border-line px-3 py-6 text-center text-cuerpo text-muted"
             >
               Agrega una prenda o un artículo para poder enviar la solicitud.
             </p>
           )}
         </div>
 
-        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+        {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={cerrar} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

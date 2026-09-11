@@ -78,7 +78,7 @@ export function MaterialesCliente({
             type="button"
             onClick={() => setSoloBajos((v) => !v)}
             className={cn(
-              'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs transition',
+              'inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-apoyo transition',
               soloBajos ? 'border-error-line bg-error-soft text-error-deep' : 'border-line text-navy hover:border-gold',
             )}
           >
@@ -115,12 +115,12 @@ export function MaterialesCliente({
                   <TR key={m.id} className={cn(!m.activo && 'opacity-60')}>
                     <TD className="pl-5">
                       <span className="font-medium text-navy">{m.nombre}</span>
-                      {!m.activo && <span className="ml-2 text-xs text-muted">(inactivo)</span>}
+                      {!m.activo && <span className="ml-2 text-apoyo text-muted">(inactivo)</span>}
                     </TD>
-                    <TD className="text-sm text-ink">{m.categoria || '—'}</TD>
-                    <TD className="tabular-nums text-xs text-navy">{m.sedeCod}</TD>
+                    <TD className="text-cuerpo text-ink">{m.categoria || '—'}</TD>
+                    <TD className="tabular-nums text-dato text-navy">{m.sedeCod}</TD>
                     <TD className="text-right">
-                      <span className={cn('tabular-nums text-sm font-semibold', bajo ? 'text-error' : 'text-navy')}>
+                      <span className={cn('tabular-nums text-dato font-semibold', bajo ? 'text-error' : 'text-navy')}>
                         {nfmt(m.stockActual)}
                       </span>
                       <span className="ml-1 text-micro text-muted">{m.unidad}</span>
@@ -130,8 +130,8 @@ export function MaterialesCliente({
                         </Badge>
                       )}
                     </TD>
-                    <TD className="text-right tabular-nums text-xs text-muted">{nfmt(m.stockMinimo)}</TD>
-                    <TD className="text-right tabular-nums text-xs text-muted">
+                    <TD className="text-right tabular-nums text-dato text-muted">{nfmt(m.stockMinimo)}</TD>
+                    <TD className="text-right tabular-nums text-dato text-muted">
                       {m.costoPromedio ? `S/ ${nfmt(m.costoPromedio)}` : '—'}
                     </TD>
                     <TD className="pr-5">
@@ -139,14 +139,14 @@ export function MaterialesCliente({
                         <button
                           type="button"
                           onClick={() => setAjustar(m)}
-                          className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition hover:border-gold"
+                          className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-apoyo text-navy transition hover:border-gold"
                         >
                           <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={2} /> Ajustar
                         </button>
                         <button
                           type="button"
                           onClick={() => setEditar(m)}
-                          className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition hover:border-gold"
+                          className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-apoyo text-navy transition hover:border-gold"
                         >
                           <Pencil className="h-3.5 w-3.5" strokeWidth={2} /> Editar
                         </button>
@@ -241,12 +241,12 @@ function MaterialModal({
     <Modal open onClose={onClose} size="md" title={material ? material.nombre : 'Nuevo material'}>
       <ModalBody className="space-y-3">
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Nombre *</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Nombre *</label>
           <input value={form.nombre} onChange={(e) => set('nombre', e.target.value)} className={cn(fieldCls, 'w-full')} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Categoría</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Categoría</label>
             <input value={form.categoria ?? ''} onChange={(e) => set('categoria', e.target.value)} list="cat-material" className={cn(fieldCls, 'w-full')} />
             <datalist id="cat-material">
               {categorias.map((c) => (
@@ -255,7 +255,7 @@ function MaterialModal({
             </datalist>
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Unidad</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Unidad</label>
             <select value={form.unidad} onChange={(e) => set('unidad', e.target.value)} className={cn(fieldCls, 'w-full')}>
               {unidades.map((u) => (
                 <option key={u}>{u}</option>
@@ -265,7 +265,7 @@ function MaterialModal({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Sede</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Sede</label>
             <select value={form.sedeCod} onChange={(e) => set('sedeCod', e.target.value)} className={cn(fieldCls, 'w-full')}>
               {sedes.map((s) => (
                 <option key={s}>{s}</option>
@@ -273,7 +273,7 @@ function MaterialModal({
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Stock mínimo</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Stock mínimo</label>
             <input
               type="number"
               min={0}
@@ -285,15 +285,15 @@ function MaterialModal({
           </div>
         </div>
         {!material && (
-          <p className="text-xs text-muted">
+          <p className="text-apoyo text-muted">
             El stock inicial arranca en 0: cárgalo con una compra recibida o un ajuste de entrada.
           </p>
         )}
-        <label className="flex items-center gap-2 text-sm text-navy">
+        <label className="flex items-center gap-2 text-cuerpo text-navy">
           <input type="checkbox" checked={form.activo} onChange={(e) => set('activo', e.target.checked)} />
           Material activo
         </label>
-        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+        {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>
@@ -330,7 +330,7 @@ function AjusteModal({ material, onClose, onSaved }: { material: Material; onClo
     <Modal open onClose={onClose} size="sm" title={`Ajustar stock · ${material.nombre}`} subtitle={`Actual: ${material.stockActual} ${material.unidad}`}>
       <ModalBody className="space-y-3">
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tipo</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Tipo</label>
           <select value={tipo} onChange={(e) => setTipo(e.target.value as typeof tipo)} className={cn(fieldCls, 'w-full')}>
             <option value="salida">Salida (consumo / merma)</option>
             <option value="entrada">Entrada (ingreso manual)</option>
@@ -338,17 +338,17 @@ function AjusteModal({ material, onClose, onSaved }: { material: Material; onClo
           </select>
         </div>
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Cantidad</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Cantidad</label>
           <input type="number" min={0} step="0.01" value={cantidad} onChange={(e) => setCantidad(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
         </div>
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Motivo</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Motivo</label>
           <input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ej. consumo en taller, merma…" className={cn(fieldCls, 'w-full')} />
         </div>
-        <p className="rounded-md bg-navy/5 px-3 py-2 text-sm text-navy">
+        <p className="rounded-md bg-navy/5 px-3 py-2 text-cuerpo text-navy">
           Stock resultante: <span className="tabular-nums font-semibold">{nfmt(resultante)}</span> {material.unidad}
         </p>
-        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+        {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>

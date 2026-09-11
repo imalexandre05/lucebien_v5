@@ -42,7 +42,7 @@ export function GarantiaPanel({
   return (
     <div className="space-y-2.5">
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Garantía</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Garantía</label>
         <OpcionBotones
           opciones={TIPO_OPCIONES}
           value={value.tipo}
@@ -68,7 +68,7 @@ export function GarantiaPanel({
             onChange={(e) => onChange({ ...value, documentoNum: e.target.value })}
             placeholder="Número de documento"
             data-testid="garantia-documento-num"
-            className="w-full rounded-r-chico border border-line bg-white px-2.5 py-2 text-sm text-navy outline-none transition-colors focus:border-gold"
+            className="w-full rounded-r-chico border border-line bg-white px-2.5 py-2 text-cuerpo text-navy outline-none transition-colors focus:border-gold"
           />
         </div>
       )}

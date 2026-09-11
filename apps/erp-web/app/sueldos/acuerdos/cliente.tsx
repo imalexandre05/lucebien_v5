@@ -547,7 +547,7 @@ export function AcuerdosCliente({
           <CardHeader className="flex-wrap gap-3">
             <div className="min-w-0">
               <CardTitle>{editando ? 'Editar contrato' : 'Nuevo contrato'}</CardTitle>
-              <p className="mt-1 text-xs text-muted">
+              <p className="mt-1 text-apoyo text-muted">
                 Sueldo, periodo y horario. De acá salen las horas contratadas y el valor de la hora.
               </p>
             </div>
@@ -570,10 +570,10 @@ export function AcuerdosCliente({
             {personaFija ? (
               <div>
                 <LabelGrupo>Persona</LabelGrupo>
-                <p className="text-sm font-medium text-navy">Contrato de {personaFija.nombre}</p>
+                <p className="text-cuerpo font-medium text-navy">Contrato de {personaFija.nombre}</p>
                 {/* C-2: cel/DNI/recomendaciones en el contrato — vacío se ve como «—», nunca se
                     oculta la línea (spec §4: lo que falta se ve como falta, no desaparece). */}
-                <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-2">
+                <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-apoyo text-muted sm:grid-cols-2">
                   <div className="flex gap-1">
                     <dt className="shrink-0 font-medium text-ink">DNI:</dt>
                     <dd>{personaFija.dni || '—'}</dd>
@@ -635,7 +635,7 @@ export function AcuerdosCliente({
             {/* ── Horario semanal ───────────────────────────────────────────────────────── */}
             <div>
               <LabelGrupo>Horario contratado</LabelGrupo>
-              <p className="mb-2 text-xs text-muted">
+              <p className="mb-2 text-apoyo text-muted">
                 El horario real de LuceBien es 09:00–13:00 y 13:00–20:00, contiguo. Se cargan los dos
                 turnos, no uno solo de 09:00 a 20:00: dos turnos que se pisan inflan las horas y
                 hunden el valor de la hora de todo el periodo.
@@ -648,7 +648,7 @@ export function AcuerdosCliente({
                     .filter(({ t }) => t.diaSemana === dia);
                   return (
                     <div key={dia} className="flex flex-wrap items-center gap-2 rounded-r-chico border border-line px-3 py-2">
-                      <span className="w-24 shrink-0 text-sm font-medium text-navy">{nombre}</span>
+                      <span className="w-24 shrink-0 text-cuerpo font-medium text-navy">{nombre}</span>
                       {/* Barra 06:00–22:00: cada turno es un segmento. Estática a propósito. */}
                       <div className="relative h-4 w-full max-w-[16rem] shrink-0 overflow-hidden rounded-r-pastilla bg-paper sm:w-40" aria-hidden>
                         {delDia.map(({ t, i }) => (
@@ -659,7 +659,7 @@ export function AcuerdosCliente({
                           />
                         ))}
                       </div>
-                      {delDia.length === 0 && <span className="text-xs text-muted">sin turnos</span>}
+                      {delDia.length === 0 && <span className="text-apoyo text-muted">sin turnos</span>}
                       {delDia.map(({ t, i }) => (
                         <span key={i} className="flex items-center gap-1">
                           <Input
@@ -756,7 +756,7 @@ export function AcuerdosCliente({
                 onChange={(x) => setB((v) => ({ ...v, almuerzoHabilitado: x === 'si' }))}
                 ariaLabel="Cuándo se gana el almuerzo"
               />
-              <p className="mt-1 text-xs text-muted">
+              <p className="mt-1 text-apoyo text-muted">
                 Un día de tiempo completo es el que llega a las horas mínimas del parámetro «Horas
                 para el almuerzo».
               </p>
@@ -764,34 +764,34 @@ export function AcuerdosCliente({
 
             {/* ── Vista previa ──────────────────────────────────────────────────────────── */}
             <div className="rounded-r-chico border border-line bg-paper px-4 py-3">
-              <p className="mb-2 text-sm font-medium text-navy">Resumen del contrato</p>
+              <p className="mb-2 text-cuerpo font-medium text-navy">Resumen del contrato</p>
               {analisis.error ? (
-                <p className="text-sm text-error-deep">{analisis.error}</p>
+                <p className="text-cuerpo text-error-deep">{analisis.error}</p>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 text-cuerpo sm:grid-cols-4">
                     <div>
-                      <p className="text-xs text-muted">Días del periodo</p>
+                      <p className="text-apoyo text-muted">Días del periodo</p>
                       <p className="tabular-nums text-navy">{analisis.dias}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Horas contratadas</p>
+                      <p className="text-apoyo text-muted">Horas contratadas</p>
                       <p className="tabular-nums text-navy">{analisis.horas.toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Valor de la hora</p>
+                      <p className="text-apoyo text-muted">Valor de la hora</p>
                       <p className="tabular-nums text-navy">
                         {analisis.valorHora == null ? '—' : soles(analisis.valorHora)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Sugerido por escala</p>
+                      <p className="text-apoyo text-muted">Sugerido por escala</p>
                       <p className="tabular-nums text-navy">
                         {analisis.sugerido == null ? '—' : soles(analisis.sugerido)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Pago del periodo</p>
+                      <p className="text-apoyo text-muted">Pago del periodo</p>
                       <p className="tabular-nums text-navy">
                         {Number(b.sueldoPactado) > 0 ? soles(Number(b.sueldoPactado)) : '—'}
                       </p>
@@ -800,19 +800,19 @@ export function AcuerdosCliente({
                       {/* C-6 (spec liquidación-por-tramos): ya no es una aproximación. Con
                           `sueldoPactado` como cuota de CADA liquidación, este número es el mismo
                           que "Pago del periodo" — sin dividir por la duración del contrato. */}
-                      <p className="text-xs text-muted">Pago por liquidación</p>
+                      <p className="text-apoyo text-muted">Pago por liquidación</p>
                       <p className="tabular-nums text-navy">
                         {analisis.pagoMensual == null ? '—' : soles(analisis.pagoMensual)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Horas mensuales (aprox.)</p>
+                      <p className="text-apoyo text-muted">Horas mensuales (aprox.)</p>
                       <p className="tabular-nums text-navy">
                         {analisis.horasMensuales == null ? '—' : analisis.horasMensuales.toFixed(2)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Almuerzos (máx. mes / periodo)</p>
+                      <p className="text-apoyo text-muted">Almuerzos (máx. mes / periodo)</p>
                       <p className="tabular-nums text-navy">
                         {analisis.almuerzoMensual == null
                           ? '—'
@@ -821,13 +821,13 @@ export function AcuerdosCliente({
                     </div>
                   </div>
                   {analisis.sugerido != null && (
-                    <p className="mt-2 text-xs text-muted">
+                    <p className="mt-2 text-apoyo text-muted">
                       La escala es una referencia para negociar, no una obligación: el que manda es
                       el sueldo pactado.
                     </p>
                   )}
                   {analisis.almuerzoPeriodo != null && analisis.almuerzoPeriodo > 0 && (
-                    <p className="mt-2 text-xs text-muted">
+                    <p className="mt-2 text-apoyo text-muted">
                       Almuerzos: es el máximo si cumple el horario todos los días; lo que
                       efectivamente gane sale de la asistencia.
                     </p>
@@ -836,7 +836,7 @@ export function AcuerdosCliente({
               )}
 
               {analisis.avisos.map((a) => (
-                <p key={a} className="mt-2 flex gap-2 text-xs text-aviso-deep">
+                <p key={a} className="mt-2 flex gap-2 text-apoyo text-aviso-deep">
                   <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
                   {a}
                 </p>
@@ -847,8 +847,8 @@ export function AcuerdosCliente({
             <div className="rounded-r-chico border border-line px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-navy">Parámetros propios de este contrato</p>
-                  <p className="text-xs text-muted">
+                  <p className="text-cuerpo font-medium text-navy">Parámetros propios de este contrato</p>
+                  <p className="text-apoyo text-muted">
                     En blanco usa el valor global de Configuración. Lo que se escriba acá vale sólo
                     para esta persona y sólo en este contrato.
                   </p>
@@ -907,7 +907,7 @@ export function AcuerdosCliente({
                       placeholder={global == null ? 'sin meta pactada' : String(global)}
                       onChange={(e) => setParametro(p.clave, e.target.value)}
                     />
-                    <p className="mt-1 text-xs text-muted">{p.ayuda}</p>
+                    <p className="mt-1 text-apoyo text-muted">{p.ayuda}</p>
                   </div>
                 );
               })}

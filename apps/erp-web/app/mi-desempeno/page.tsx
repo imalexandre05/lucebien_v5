@@ -98,7 +98,7 @@ export default async function MiDesempenoPage() {
             )}
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-sm text-muted">Mes evaluado: {d.ultimaEvaluacion.mes}</p>
+            <p className="text-cuerpo text-muted">Mes evaluado: {d.ultimaEvaluacion.mes}</p>
             {/* Perfil propio (spec §2 C-4): en qué es fuerte y en qué flaquea — ya no decide la
                 nota, que sale de los puntos del período (o del promedio ponderado en evaluaciones
                 viejas). Sin `componentes` guardado (evaluación muy vieja, previa a la migración
@@ -134,7 +134,7 @@ export default async function MiDesempenoPage() {
               <TBody>
                 {d.reportes.map((r) => (
                   <TR key={r.id}>
-                    <TD className="pl-5 tabular-nums text-xs text-muted">{r.fecha}</TD>
+                    <TD className="pl-5 tabular-nums text-dato text-muted">{r.fecha}</TD>
                     <TD>{TURNO_LABEL[r.turno as keyof typeof TURNO_LABEL] ?? r.turno}</TD>
                     <TD>
                       <Badge tone={r.evaluado ? 'green' : 'amber'}>{r.evaluado ? 'Evaluado' : 'Pendiente'}</Badge>
@@ -154,7 +154,7 @@ export default async function MiDesempenoPage() {
         </CardHeader>
         <CardContent className={d.extras.length ? 'px-0 pb-0' : 'pb-0'}>
           {d.extras.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted">Sin extras registrados este mes.</p>
+            <p className="py-4 text-center text-cuerpo text-muted">Sin extras registrados este mes.</p>
           ) : (
             <Table>
               <THead>
@@ -167,7 +167,7 @@ export default async function MiDesempenoPage() {
               <TBody>
                 {d.extras.map((e) => (
                   <TR key={e.id}>
-                    <TD className="pl-5 tabular-nums text-xs text-muted">{e.fecha}</TD>
+                    <TD className="pl-5 tabular-nums text-dato text-muted">{e.fecha}</TD>
                     <TD>{e.nombre}</TD>
                     <TD className="pr-5 text-right tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
                   </TR>
@@ -195,16 +195,16 @@ export default async function MiDesempenoPage() {
               <TBody>
                 {d.incidencias.map((i) => (
                   <TR key={i.id}>
-                    <TD className="pl-5 tabular-nums text-xs text-muted">{i.fecha}</TD>
+                    <TD className="pl-5 tabular-nums text-dato text-muted">{i.fecha}</TD>
                     <TD>{i.tipo}</TD>
                     <TD className="pr-5">
                       <span
                         className={
                           i.nivel === 'Alto'
-                            ? 'rounded-r-pastilla bg-error-soft px-2.5 py-0.5 text-xs font-medium text-error-deep'
+                            ? 'rounded-r-pastilla bg-error-soft px-2.5 py-0.5 text-apoyo font-medium text-error-deep'
                             : i.nivel === 'Medio'
-                              ? 'rounded-r-pastilla bg-aviso-soft px-2.5 py-0.5 text-xs font-medium text-aviso-deep'
-                              : 'rounded-r-pastilla bg-paper px-2.5 py-0.5 text-xs font-medium text-muted'
+                              ? 'rounded-r-pastilla bg-aviso-soft px-2.5 py-0.5 text-apoyo font-medium text-aviso-deep'
+                              : 'rounded-r-pastilla bg-paper px-2.5 py-0.5 text-apoyo font-medium text-muted'
                         }
                       >
                         {i.nivel}
@@ -219,7 +219,7 @@ export default async function MiDesempenoPage() {
       )}
 
       {!d.ultimaEvaluacion && (
-        <p className="mt-4 flex items-center gap-2 text-xs text-muted">
+        <p className="mt-4 flex items-center gap-2 text-apoyo text-muted">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" strokeWidth={2} /> Aún no tienes una evaluación mensual registrada.
         </p>
       )}

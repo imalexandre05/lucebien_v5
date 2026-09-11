@@ -37,13 +37,13 @@ function TarjetaSemana({ s }: { s: SemanaMeta }) {
         s.cumplida ? 'border-exito-line bg-exito-soft text-exito-deep' : 'border-line bg-paper text-muted',
       )}
     >
-      <p className="text-xs font-semibold uppercase tracking-wide">Semana {s.numero}</p>
-      <p className="mt-0.5 text-xs">
+      <p className="text-rotulo font-semibold uppercase">Semana {s.numero}</p>
+      <p className="mt-0.5 text-apoyo">
         {s.desde} → {s.hasta}
         {s.dias > 7 && ` · ${s.dias} días`}
       </p>
       <p className="mt-2 text-lg font-semibold tabular-nums text-navy">{soles(s.vendido)}</p>
-      <p className="text-xs tabular-nums">meta {soles(s.meta)}</p>
+      <p className="text-dato tabular-nums">meta {soles(s.meta)}</p>
     </div>
   );
 }
@@ -78,7 +78,7 @@ function FilaVendedor({
         </Select>
       )}
       {venta.vendedorExterno && (
-        <span className="ml-2 text-xs text-muted">vino como “{venta.vendedorExterno}”</span>
+        <span className="ml-2 text-apoyo text-muted">vino como “{venta.vendedorExterno}”</span>
       )}
     </>
   );
@@ -207,7 +207,7 @@ export function VentasCliente({
   return (
     <div className="space-y-6">
       <BarraPeriodo />
-      <p className="text-xs text-muted">
+      <p className="text-apoyo text-muted">
         El semáforo de abajo compara contra las semanas de <strong>este rango</strong>. Para que
         coincida con lo que va a liquidar, elige el mismo periodo que el contrato antes de mirar
         si se cumplió la meta.
@@ -223,13 +223,13 @@ export function VentasCliente({
           ))}
         </div>
         {metaSemanal === 0 && (
-          <p className="mt-2 text-xs text-muted">
+          <p className="mt-2 text-apoyo text-muted">
             Ningún contrato vigente tiene todavía una meta semanal pactada: el semáforo no está
             comparando contra nada real.
           </p>
         )}
         {ventasSinAsignar.length > 0 && (
-          <p className="mt-2 text-xs text-muted">
+          <p className="mt-2 text-apoyo text-muted">
             El total vendido de cada semana incluye boletas sin vendedor asignado (hay{' '}
             {ventasSinAsignar.length} en la cola de abajo). Nadie cobra por esas todavía, así que
             el semáforo puede leerse en verde antes de que la comisión real de alguien esté
@@ -244,7 +244,7 @@ export function VentasCliente({
           <CardTitle>Transcribir boletas de tuxedo</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-xs text-muted">
+          <p className="text-apoyo text-muted">
             Se carga el <strong>total de la boleta</strong>, no el de un producto: la comisión mira
             el monto de la boleta contra el mínimo configurado (hoy {soles(montoMinimoComision)}).
             Es el mínimo general de la empresa: si el contrato de esa persona pactó uno distinto,
@@ -317,7 +317,7 @@ export function VentasCliente({
           </div>
 
           <div>
-            <span id="motivo-venta" className="text-xs text-muted">
+            <span id="motivo-venta" className="text-apoyo text-muted">
               {motivoBloqueo ?? 'Se guarda y el formulario queda listo para la boleta siguiente.'}
             </span>
             <div className="mt-2">
@@ -380,7 +380,7 @@ export function VentasCliente({
         </CardHeader>
         <div className="border-t border-line">
           {cargadas.length === 0 ? (
-            <p className="px-5 py-6 text-center text-sm text-muted">
+            <p className="px-5 py-6 text-center text-cuerpo text-muted">
               Todavía no hay ninguna boleta con vendedor asignado en este periodo.
             </p>
           ) : (

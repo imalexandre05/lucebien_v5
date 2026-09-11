@@ -113,7 +113,7 @@ export function ValoresCliente({
   return (
     <div className="space-y-4">
       {avisoVentanaCerrada && (
-        <Aviso tono="aviso" className="text-sm">
+        <Aviso tono="aviso" className="text-cuerpo">
           {avisoVentanaCerrada}
         </Aviso>
       )}
@@ -140,7 +140,7 @@ export function ValoresCliente({
             type="button"
             onClick={() => setVista('evaluar')}
             className={cn(
-              'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
+              'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors',
               vista === 'evaluar' ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
             )}
           >
@@ -150,7 +150,7 @@ export function ValoresCliente({
             type="button"
             onClick={() => setVista('seguimiento')}
             className={cn(
-              'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
+              'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors',
               vista === 'seguimiento' ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
             )}
           >
@@ -187,20 +187,20 @@ export function ValoresCliente({
                     >
                       <span
                         className={cn(
-                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-r-pastilla text-xs font-semibold',
+                          'flex h-9 w-9 shrink-0 items-center justify-center rounded-r-pastilla text-apoyo font-semibold',
                           tonoAvatar(c.nombre),
                         )}
                       >
                         {iniciales(c.nombre)}
                       </span>
-                      <span className="flex-1 text-sm font-medium text-navy">{c.nombre}</span>
+                      <span className="flex-1 text-cuerpo font-medium text-navy">{c.nombre}</span>
                       {c.evaluado ? (
                         <Badge tone="green">
                           <CheckCircle2 className="mr-1 h-3 w-3" strokeWidth={2} />
                           Evaluado
                         </Badge>
                       ) : (
-                        <span className="text-xs text-muted">Evaluar →</span>
+                        <span className="text-apoyo text-muted">Evaluar →</span>
                       )}
                     </button>
                   </li>
@@ -285,7 +285,7 @@ export function ValoresCliente({
                 style={{ transform: `scaleX(${contestados / VALORES.length})` }}
               />
             </div>
-            <span className="shrink-0 tabular-nums text-xs text-muted">
+            <span className="shrink-0 tabular-nums text-dato text-muted">
               {contestados}/{VALORES.length}
             </span>
           </div>
@@ -296,7 +296,7 @@ export function ValoresCliente({
                 key={v}
                 type="button"
                 onClick={() => todosA(v)}
-                className="rounded-r-pastilla border border-line px-2.5 py-1 text-xs text-navy transition-colors hover:border-gold"
+                className="rounded-r-pastilla border border-line px-2.5 py-1 text-apoyo text-navy transition-colors hover:border-gold"
               >
                 Todos a {v}
               </button>
@@ -305,7 +305,7 @@ export function ValoresCliente({
           {VALORES.map(({ key, label }) => (
             <div key={key}>
               <div className="mb-1.5 flex items-baseline justify-between gap-2">
-                <span className="text-sm font-medium text-navy">{label}</span>
+                <span className="text-cuerpo font-medium text-navy">{label}</span>
                 {puntaje[key] == null && <span className="text-micro text-muted">sin responder</span>}
               </div>
               <OpcionBotones
@@ -316,10 +316,10 @@ export function ValoresCliente({
               />
             </div>
           ))}
-          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+          {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
-          <span id="motivo-valores" className="mr-auto text-xs text-muted">
+          <span id="motivo-valores" className="mr-auto text-apoyo text-muted">
             {completo
               ? 'Quién puntuó qué no se muestra a nadie.'
               : `Faltan ${VALORES.length - contestados} de ${VALORES.length}.`}

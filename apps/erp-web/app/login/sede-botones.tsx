@@ -22,7 +22,7 @@ export function SedeBotones({
     <div>
       {/* Sin htmlFor: no hay un único control asociable (es un radiogroup) — accesible vía
           aria-label en OpcionBotones, igual que el resto de grupos de pills del proyecto. */}
-      <label className="mb-1 block text-xs font-medium text-muted">Sede</label>
+      <label className="mb-1 block text-apoyo font-medium text-muted">Sede</label>
       <input type="hidden" name="sede" value={sede} />
       <OpcionBotones opciones={opciones} value={sede} onChange={setSede} ariaLabel="Sede" className="gap-2" />
     </div>

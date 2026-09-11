@@ -158,7 +158,7 @@ export function DatosCliente({
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-3">
             <span
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-r-pastilla px-2.5 py-1 text-xs font-medium',
+                'inline-flex items-center gap-1.5 rounded-r-pastilla px-2.5 py-1 text-apoyo font-medium',
                 emp.activo ? 'bg-exito-soft text-exito-deep' : 'bg-ink/10 text-muted',
               )}
             >
@@ -170,7 +170,7 @@ export function DatosCliente({
               onClick={toggleEstado}
               disabled={estadoPending}
               className={cn(
-                'inline-flex items-center gap-1 rounded-r-pastilla border px-2.5 py-1.5 text-xs font-medium transition',
+                'inline-flex items-center gap-1 rounded-r-pastilla border px-2.5 py-1.5 text-apoyo font-medium transition',
                 emp.activo
                   ? 'border-error-line text-error-deep hover:bg-error-soft'
                   : 'border-exito-line text-exito-deep hover:bg-exito-soft',
@@ -233,18 +233,18 @@ export function DatosCliente({
               «Salario base» ahora se lee el sueldo pactado, en solo lectura, con enlace a la
               pestaña Contrato — nunca se edita desde la ficha. */}
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Sueldo</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Sueldo</label>
             <div className="flex flex-wrap items-center gap-2 rounded-r-chico border border-line bg-paper/40 px-3 py-2">
               <Wallet className="h-4 w-4 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />
               {sueldoVigente != null ? (
                 <>
-                  <p className="text-sm text-ink">
+                  <p className="text-cuerpo text-ink">
                     Sueldo (contrato vigente):{' '}
                     <span className="font-semibold tabular-nums text-navy">{soles(sueldoVigente)}</span>
                   </p>
                   <Link
                     href={rutaSeccion(emp.id, 'contrato', '')}
-                    className="ml-auto text-xs font-medium text-navy underline decoration-gold decoration-2 underline-offset-2 hover:text-navy-dark"
+                    className="ml-auto text-apoyo font-medium text-navy underline decoration-gold decoration-2 underline-offset-2 hover:text-navy-dark"
                   >
                     Ver contrato
                   </Link>
@@ -252,7 +252,7 @@ export function DatosCliente({
               ) : (
                 <Link
                   href={rutaSeccion(emp.id, 'contrato', '')}
-                  className="text-sm font-medium text-navy underline decoration-gold decoration-2 underline-offset-2 hover:text-navy-dark"
+                  className="text-cuerpo font-medium text-navy underline decoration-gold decoration-2 underline-offset-2 hover:text-navy-dark"
                 >
                   Sin contrato — pactarlo
                 </Link>
@@ -264,14 +264,14 @@ export function DatosCliente({
           </div>
 
           {error && (
-            <Aviso tono="error" className="text-sm">
+            <Aviso tono="error" className="text-cuerpo">
               {error}
             </Aviso>
           )}
 
           <div className="flex items-center justify-end gap-3 pt-1">
             {guardado && !pending && (
-              <span className="text-xs font-medium text-exito-deep">Cambios guardados ✓</span>
+              <span className="text-apoyo font-medium text-exito-deep">Cambios guardados ✓</span>
             )}
             <Button type="button" onClick={guardar} pending={pending}>
               {pending ? 'Guardando…' : 'Guardar cambios'}
@@ -355,12 +355,12 @@ function DocumentosCard({
       <DialogoConfirmar {...conf.props} pending={pendingBorrado} />
       <CardContent className="space-y-3 pt-4">
         <div className="flex items-center justify-between gap-3 border-b border-line/60 pb-3">
-          <p className="flex items-center gap-1.5 text-sm font-medium text-navy">
+          <p className="flex items-center gap-1.5 text-cuerpo font-medium text-navy">
             <Paperclip className="h-4 w-4" strokeWidth={1.75} /> Documentos
           </p>
           <label
             className={cn(
-              'inline-flex cursor-pointer items-center gap-1.5 rounded-r-pastilla border border-line px-2.5 py-1.5 text-xs font-medium text-navy transition hover:bg-navy/5',
+              'inline-flex cursor-pointer items-center gap-1.5 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo font-medium text-navy transition hover:bg-navy/5',
               subiendo && 'pointer-events-none opacity-60',
             )}
           >
@@ -378,14 +378,14 @@ function DocumentosCard({
         {error && <Aviso tono="error">{error}</Aviso>}
 
         {documentos.length === 0 ? (
-          <p className="py-3 text-center text-sm text-muted">Sin documentos adjuntos.</p>
+          <p className="py-3 text-center text-cuerpo text-muted">Sin documentos adjuntos.</p>
         ) : (
           <ul className="divide-y divide-line/60">
             {documentos.map((d) => (
               <li key={d.id} className="flex items-center justify-between gap-3 py-2.5">
                 <div className="min-w-0">
-                  <p className="truncate text-sm text-ink">{d.nombreArchivo}</p>
-                  <p className="text-xs text-muted">
+                  <p className="truncate text-cuerpo text-ink">{d.nombreArchivo}</p>
+                  <p className="text-apoyo text-muted">
                     {(d.tamanoBytes / 1024).toFixed(0)} KB · {d.subidoEn.slice(0, 10)}
                   </p>
                 </div>

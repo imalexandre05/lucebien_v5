@@ -11,7 +11,7 @@ export function AccionesComprobante() {
         <Printer className="h-4 w-4" strokeWidth={2} />
         Imprimir
       </button>
-      <Link href="/pagos" className="text-sm text-muted transition-colors duration-150 hover:text-navy">
+      <Link href="/pagos" className="text-cuerpo text-muted transition-colors duration-150 hover:text-navy">
         ← Volver a pagos
       </Link>
     </div>

@@ -123,7 +123,7 @@ export default async function ColaboradoresPage({
 
       {herramientas.length > 0 && (
         <div className="mb-5">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+          <p className="mb-2 text-rotulo font-semibold uppercase text-muted">
             Herramientas del período
           </p>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -136,7 +136,7 @@ export default async function ColaboradoresPage({
                       <span className="rounded-r-chico bg-navy/5 p-2 text-navy">
                         <Icono className="h-4 w-4" aria-hidden="true" />
                       </span>
-                      <span className="text-xs font-medium text-navy">{h.label}</span>
+                      <span className="text-apoyo font-medium text-navy">{h.label}</span>
                     </CardContent>
                   </Card>
                 </Link>

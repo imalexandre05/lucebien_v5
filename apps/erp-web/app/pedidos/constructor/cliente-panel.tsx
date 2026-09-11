@@ -91,8 +91,8 @@ export function ClientePanel({
       <div className="rounded-r-chico border border-line bg-navy/5 px-3 py-2.5" data-testid="cliente-elegido">
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-navy">{value.nombre || '(sin nombre)'}</p>
-            <p className="truncate tabular-nums text-xs text-muted">
+            <p className="truncate text-cuerpo font-medium text-navy">{value.nombre || '(sin nombre)'}</p>
+            <p className="truncate tabular-nums text-dato text-muted">
               {value.dni ? `DNI ${value.dni}` : 'sin DNI'} {value.telefono && `· ${value.telefono}`}
               {!value.id && ' · cliente nuevo'}
             </p>
@@ -101,7 +101,7 @@ export function ClientePanel({
             <button
               type="button"
               onClick={() => setEditar((v) => !v)}
-              className="inline-flex items-center gap-1 rounded-r-pastilla px-2 py-1 text-xs font-medium text-navy transition-colors hover:bg-navy/10"
+              className="inline-flex items-center gap-1 rounded-r-pastilla px-2 py-1 text-apoyo font-medium text-navy transition-colors hover:bg-navy/10"
             >
               Editar todo <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', editar && 'rotate-180')} strokeWidth={2} />
             </button>
@@ -152,7 +152,7 @@ export function ClientePanel({
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           onKeyDown={onKeyDown}
           placeholder="Nombre · DNI · teléfono… (/)"
-          className="w-full bg-white py-2.5 pl-9 pr-3 text-sm text-navy outline-none placeholder:text-muted"
+          className="w-full bg-white py-2.5 pl-9 pr-3 text-cuerpo text-navy outline-none placeholder:text-muted"
           autoComplete="off"
         />
       </div>
@@ -168,21 +168,21 @@ export function ClientePanel({
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => elegir(c)}
               className={cn(
-                'flex w-full items-center justify-between gap-2 rounded-r-chico px-2.5 py-1.5 text-left text-sm transition-colors',
+                'flex w-full items-center justify-between gap-2 rounded-r-chico px-2.5 py-1.5 text-left text-cuerpo transition-colors',
                 idx === hi ? 'bg-navy/10' : 'hover:bg-paper',
               )}
             >
               <span className="truncate font-medium text-navy">{c.nombre}</span>
-              <span className="shrink-0 tabular-nums text-xs text-muted">{c.dni || '—'} {c.telefono && `· ${c.telefono}`}</span>
+              <span className="shrink-0 tabular-nums text-dato text-muted">{c.dni || '—'} {c.telefono && `· ${c.telefono}`}</span>
             </button>
           ))}
-          {filtrados.length === 0 && <p className="px-3 py-3 text-center text-xs text-muted">Sin coincidencias.</p>}
+          {filtrados.length === 0 && <p className="px-3 py-3 text-center text-apoyo text-muted">Sin coincidencias.</p>}
           <button
             type="button"
             data-testid="cliente-nuevo"
             onMouseDown={(e) => e.preventDefault()}
             onClick={nuevo}
-            className="mt-1 flex w-full items-center gap-2 rounded-r-chico border-t border-line px-2.5 py-2 text-left text-sm font-medium text-navy transition-colors hover:bg-gold/10"
+            className="mt-1 flex w-full items-center gap-2 rounded-r-chico border-t border-line px-2.5 py-2 text-left text-cuerpo font-medium text-navy transition-colors hover:bg-gold/10"
           >
             <UserPlus className="h-4 w-4" strokeWidth={2} />
             {q.trim() ? `+ Cliente nuevo "${q.trim()}"` : '+ Cliente nuevo'}

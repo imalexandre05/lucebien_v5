@@ -34,7 +34,7 @@ function NivelPill({ nivel }: { nivel: string }) {
       : nivel === 'Medio'
         ? 'bg-aviso-soft text-aviso-deep'
         : 'bg-paper text-muted';
-  return <span className={cn('rounded-r-pastilla px-2.5 py-0.5 text-xs font-medium', cls)}>{nivel}</span>;
+  return <span className={cn('rounded-r-pastilla px-2.5 py-0.5 text-apoyo font-medium', cls)}>{nivel}</span>;
 }
 
 export function IncidenciasCliente({
@@ -257,7 +257,7 @@ export function IncidenciasCliente({
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tipo</label>
+                <label className="mb-1 block text-rotulo uppercase text-muted">Tipo</label>
                 <select value={tipo} onChange={(e) => elegirTipo(e.target.value)} className={cn(fieldCls, 'w-full')}>
                   <option value="">Elige un tipo…</option>
                   {tiposPorCat.map(([cat, lista]) => (
@@ -272,7 +272,7 @@ export function IncidenciasCliente({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Responsable</label>
+                <label className="mb-1 block text-rotulo uppercase text-muted">Responsable</label>
                 <select value={responsable} onChange={(e) => setResponsable(e.target.value)} className={cn(fieldCls, 'w-full')}>
                   <option value="">— sin responsable (el admin investigará) —</option>
                   {empleados.map((e) => (
@@ -287,7 +287,7 @@ export function IncidenciasCliente({
               // Sólo la categoría 'Otros' deja elegir gravedad a mano — en el resto de los 20
               // tipos ya la trae el catálogo (nivel_default) y preguntarla de nuevo es redundante.
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Gravedad</label>
+                <label className="mb-1 block text-rotulo uppercase text-muted">Gravedad</label>
                 <div className="grid grid-cols-3 gap-2">
                   {NIVELES.map((n) => (
                     <button
@@ -295,7 +295,7 @@ export function IncidenciasCliente({
                       type="button"
                       onClick={() => setNivel(n)}
                       className={cn(
-                        'rounded-md border-2 px-3 py-2 text-sm font-medium transition-colors duration-150',
+                        'rounded-md border-2 px-3 py-2 text-cuerpo font-medium transition-colors duration-150',
                         nivel === n
                           ? n === 'Alto'
                             ? 'border-error bg-error-soft text-error-deep'
@@ -312,7 +312,7 @@ export function IncidenciasCliente({
               </div>
             )}
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
+              <label className="mb-1 block text-rotulo uppercase text-muted">
                 Descripción
                 {esOtros && (
                   <span className="ml-0.5 font-semibold text-gold-deep">
@@ -328,7 +328,7 @@ export function IncidenciasCliente({
                 className={cn(fieldCls, 'w-full')}
               />
             </div>
-            {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+            {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 type="button"
@@ -340,12 +340,12 @@ export function IncidenciasCliente({
                 {pending ? 'Registrando…' : 'Registrar incidencia'}
               </Button>
               {!tipo ? (
-                <span id="motivo-incidencia" className="text-xs font-medium text-aviso-deep">
+                <span id="motivo-incidencia" className="text-apoyo font-medium text-aviso-deep">
                   Elige el tipo de incidencia para poder registrarla.
                 </span>
               ) : (
                 descripcionFalta && (
-                  <span id="motivo-incidencia" className="text-xs font-medium text-aviso-deep">
+                  <span id="motivo-incidencia" className="text-apoyo font-medium text-aviso-deep">
                     La descripción es obligatoria para este tipo de incidencia.
                   </span>
                 )
@@ -373,11 +373,11 @@ export function IncidenciasCliente({
             <TBody>
               {filtradas.map((i) => (
                 <TR key={i.id}>
-                  <TD className="pl-5 tabular-nums text-xs text-muted">{i.fecha}</TD>
+                  <TD className="pl-5 tabular-nums text-dato text-muted">{i.fecha}</TD>
                   <TD className="tabular-nums">{i.sedeCod}</TD>
                   <TD>
                     <div className="font-medium text-navy">{i.tipo}</div>
-                    {i.descripcion && <div className="text-xs text-muted">{i.descripcion}</div>}
+                    {i.descripcion && <div className="text-apoyo text-muted">{i.descripcion}</div>}
                   </TD>
                   <TD>
                     <NivelPill nivel={i.nivel} />
@@ -402,7 +402,7 @@ export function IncidenciasCliente({
                         {/* Sólo el administrador ve quién reportó (confirmado por Alexander): el
                             repo ya deja reportadoPorNombre en null para cualquier otra sesión. */}
                         {i.reportadoPorNombre && (
-                          <div className="mt-1 text-xs text-muted">Reportado por: {i.reportadoPorNombre}</div>
+                          <div className="mt-1 text-apoyo text-muted">Reportado por: {i.reportadoPorNombre}</div>
                         )}
                       </>
                     ) : (
@@ -418,7 +418,7 @@ export function IncidenciasCliente({
                         reporte
                       </Link>
                     ) : (
-                      <span className="text-xs text-muted">manual</span>
+                      <span className="text-apoyo text-muted">manual</span>
                     )}
                   </TD>
                   <TD className="text-right tabular-nums">{i.puntosPenalidad || '—'}</TD>
@@ -456,7 +456,7 @@ export function IncidenciasCliente({
       {esAdmin && (
         // La consecuencia se dice donde se toma la decisión: quien cambia el responsable está
         // moviendo puntos de una evaluación a otra, y eso termina en el sueldo de alguien.
-        <p className="text-xs text-muted">
+        <p className="text-apoyo text-muted">
           Elige el responsable en la columna correspondiente para asignarlo o cambiarlo; se guarda al
           instante. Los puntos de penalidad descuentan de la evaluación mensual de quien quede como
           responsable, así que un cambio mueve el descuento de una persona a la otra. Las

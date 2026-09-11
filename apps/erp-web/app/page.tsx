@@ -285,13 +285,13 @@ export default async function Dashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2.5">
             Pipeline de lavandería
-            <span className="rounded-r-pastilla bg-navy/5 px-2.5 py-0.5 tabular-nums text-xs font-semibold text-navy">
+            <span className="rounded-r-pastilla bg-navy/5 px-2.5 py-0.5 tabular-nums text-dato font-semibold text-navy">
               {totalFlujo} en proceso
             </span>
           </CardTitle>
           <Link
             href="/pipeline"
-            className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold"
+            className="text-apoyo font-medium text-navy transition-colors duration-150 hover:text-gold"
           >
             Abrir tablero →
           </Link>
@@ -436,13 +436,13 @@ export default async function Dashboard() {
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <span className="truncate text-sm text-ink">{ev.titulo}</span>
+                            <span className="truncate text-cuerpo text-ink">{ev.titulo}</span>
                             {esReporte && ev.estado && (
                               <Badge tone={ESTADO_ACTIVIDAD_TONE[ev.estado]}>{ESTADO_ACTIVIDAD_LABEL[ev.estado]}</Badge>
                             )}
                             {esReporte && ev.puntaje != null && <PuntajePill puntaje={ev.puntaje} />}
                           </span>
-                          {ev.detalle && <span className="block truncate text-xs text-muted">{ev.detalle}</span>}
+                          {ev.detalle && <span className="block truncate text-apoyo text-muted">{ev.detalle}</span>}
                         </span>
                         <span className="shrink-0 text-right">
                           <span className="block tabular-nums text-micro text-muted">{tiempoRelativo(ev.ts, ahora)}</span>
@@ -468,7 +468,7 @@ export default async function Dashboard() {
             </CardTitle>
             <Link
               href="/pipeline"
-              className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold"
+              className="text-apoyo font-medium text-navy transition-colors duration-150 hover:text-gold"
             >
               Tablero →
             </Link>
@@ -486,11 +486,11 @@ export default async function Dashboard() {
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="flex min-w-0 items-baseline gap-2">
                         <span className="w-6 shrink-0 tabular-nums text-micro text-muted">#{i + 1}</span>
-                        <span className="truncate text-sm text-ink">{r.nombre}</span>
+                        <span className="truncate text-cuerpo text-ink">{r.nombre}</span>
                       </span>
                       <span
                         className={cn(
-                          'tabular-nums text-sm font-bold',
+                          'tabular-nums text-dato font-bold',
                           i === 0 ? 'text-gold-deep' : 'text-navy',
                         )}
                       >

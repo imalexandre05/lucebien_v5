@@ -17,7 +17,7 @@ import { cn } from '../../lib/cn';
 // hace daño, y sacarlos a mano de 28 archivos es riesgo sin premio.
 export const Table = ({ className, ...p }: TableHTMLAttributes<HTMLTableElement>) => (
   <div className="overflow-x-auto">
-    <table className={cn('w-full border-collapse text-sm', className)} {...p} />
+    <table className={cn('w-full border-collapse text-cuerpo', className)} {...p} />
   </div>
 );
 

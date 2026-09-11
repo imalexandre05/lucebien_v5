@@ -69,7 +69,7 @@ export function NuevaCompraForm({
 
   return (
     <div className="space-y-5">
-      <Link href="/compras" className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors duration-150 hover:text-navy">
+      <Link href="/compras" className="inline-flex items-center gap-1.5 text-cuerpo text-muted transition-colors duration-150 hover:text-navy">
         <ArrowLeft className="h-4 w-4" strokeWidth={2} /> Volver a compras
       </Link>
 
@@ -80,7 +80,7 @@ export function NuevaCompraForm({
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-xs uppercase tracking-wide text-muted">Proveedor</span>
+              <span className="mb-1 block text-rotulo uppercase text-muted">Proveedor</span>
               <select value={proveedorId} onChange={(e) => setProveedorId(e.target.value)} className={cn(fieldCls, 'w-full')}>
                 <option value="">— Sin especificar —</option>
                 {proveedores.map((p) => (
@@ -91,7 +91,7 @@ export function NuevaCompraForm({
               </select>
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs uppercase tracking-wide text-muted">Sede</span>
+              <span className="mb-1 block text-rotulo uppercase text-muted">Sede</span>
               <select
                 value={sede}
                 onChange={(e) => {
@@ -108,7 +108,7 @@ export function NuevaCompraForm({
           </div>
 
           {materialesSede.length === 0 ? (
-            <p className="rounded-md bg-aviso-soft px-3 py-2 text-sm text-aviso-deep">
+            <p className="rounded-md bg-aviso-soft px-3 py-2 text-cuerpo text-aviso-deep">
               La sede {sede} no tiene materiales registrados.{' '}
               <Link href="/materiales" className="font-medium underline">
                 Crea materiales
@@ -154,7 +154,7 @@ export function NuevaCompraForm({
                       className={cn(fieldCls, 'w-full text-right')}
                       aria-label="Costo unitario"
                     />
-                    <span className="text-right tabular-nums text-sm text-navy">{soles(sub)}</span>
+                    <span className="text-right tabular-nums text-dato text-navy">{soles(sub)}</span>
                     <button
                       type="button"
                       onClick={() => setFilas((p) => (p.length > 1 ? p.filter((_, j) => j !== i) : p))}
@@ -169,7 +169,7 @@ export function NuevaCompraForm({
               <button
                 type="button"
                 onClick={() => setFilas((p) => [...p, { materialId: '', cantidad: 1, costoUnitario: 0 }])}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold"
+                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar material
               </button>
@@ -178,10 +178,10 @@ export function NuevaCompraForm({
 
           <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Observación (opcional)" className={cn(fieldCls, 'w-full')} />
 
-          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+          {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
 
           <div className="flex items-center justify-between border-t border-line pt-4">
-            <span className="text-sm text-muted">
+            <span className="text-cuerpo text-muted">
               Total de la compra:{' '}
               <span className="tabular-nums text-lg font-semibold text-gold-deep">{soles(total)}</span>
             </span>
@@ -196,7 +196,7 @@ export function NuevaCompraForm({
               {pending ? 'Guardando…' : 'Registrar compra'}
             </Button>
           </div>
-          <p className="text-xs text-muted">Se registra como “por recibir”. El stock sube cuando la marques como recibida en la lista de compras.</p>
+          <p className="text-apoyo text-muted">Se registra como “por recibir”. El stock sube cuando la marques como recibida en la lista de compras.</p>
         </CardContent>
       </Card>
     </div>

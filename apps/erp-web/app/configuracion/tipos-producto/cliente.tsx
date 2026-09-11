@@ -104,7 +104,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
 
       <Card>
         <CardContent className="flex items-center justify-between py-4">
-          <p className="text-sm text-muted">
+          <p className="text-cuerpo text-muted">
             {tipos.length} tipo(s) en el catálogo · sugiere el prefijo del código y los atributos por tipo
           </p>
           <button type="button" onClick={abrirNuevo} className={buttonVariants({ variant: 'primary' })}>
@@ -134,12 +134,12 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
               <TBody>
                 {tipos.map((t) => (
                   <TR key={t.cod} className={cn(!t.activo && 'opacity-55')}>
-                    <TD className="pl-5 tabular-nums text-sm font-semibold text-navy">{t.prefijo}</TD>
+                    <TD className="pl-5 tabular-nums text-dato font-semibold text-navy">{t.prefijo}</TD>
                     <TD>
-                      <div className="text-sm font-medium text-navy">{t.nombre}</div>
+                      <div className="text-cuerpo font-medium text-navy">{t.nombre}</div>
                       <div className="tabular-nums text-micro text-muted">{t.cod}</div>
                     </TD>
-                    <TD className="text-xs text-muted">
+                    <TD className="text-apoyo text-muted">
                       {t.atributosSugeridos.length ? t.atributosSugeridos.join(', ') : '—'}
                     </TD>
                     <TD>
@@ -162,7 +162,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                         <button
                           type="button"
                           onClick={() => abrirEditar(t)}
-                          className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
+                          className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
                         >
                           <Pencil className="h-3 w-3" strokeWidth={2} /> Editar
                         </button>
@@ -194,7 +194,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
         <ModalBody className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="tp-cod" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+              <label htmlFor="tp-cod" className="mb-1 block text-rotulo uppercase text-muted">
                 Código interno *
               </label>
               <input
@@ -207,7 +207,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
               />
             </div>
             <div>
-              <label htmlFor="tp-prefijo" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+              <label htmlFor="tp-prefijo" className="mb-1 block text-rotulo uppercase text-muted">
                 Prefijo de código *
               </label>
               <input
@@ -221,7 +221,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
             </div>
           </div>
           <div>
-            <label htmlFor="tp-nombre" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label htmlFor="tp-nombre" className="mb-1 block text-rotulo uppercase text-muted">
               Nombre *
             </label>
             <input
@@ -233,7 +233,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label className="mb-1 block text-rotulo uppercase text-muted">
               Atributos sugeridos (solo sugiere, no restringe)
             </label>
             <div className="flex gap-2">
@@ -249,14 +249,14 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
                 placeholder="ej. tela"
                 className={cn(fieldCls, 'flex-1')}
               />
-              <button type="button" onClick={agregarClave} className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
+              <button type="button" onClick={agregarClave} className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
                 Agregar
               </button>
             </div>
             {form.atributosSugeridos.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {form.atributosSugeridos.map((k) => (
-                  <span key={k} className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy/5 px-2.5 py-1 text-xs text-navy">
+                  <span key={k} className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy/5 px-2.5 py-1 text-apoyo text-navy">
                     {k}
                     <button type="button" onClick={() => quitarClave(k)} aria-label={`Quitar ${k}`} className="text-muted hover:text-error">
                       <X className="h-3 w-3" strokeWidth={2.5} />
@@ -287,7 +287,7 @@ export function TiposProductoCliente({ tipos }: { tipos: ProductoTipo[] }) {
         icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody>
-          <p className="text-sm leading-relaxed text-muted">
+          <p className="text-cuerpo leading-relaxed text-muted">
             <span className="font-medium text-ink">{eliminar?.nombre}</span> se quita del catálogo. Los
             activos que ya usan este tipo como texto libre no cambian (el campo tipo sigue siendo libre).
           </p>

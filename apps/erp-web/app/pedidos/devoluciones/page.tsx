@@ -53,7 +53,7 @@ export default async function DevolucionesPage() {
         title="Devoluciones"
         subtitle="Alquileres pendientes de retorno"
         action={
-          <Link href="/pedidos" className="text-sm text-muted transition-colors hover:text-navy">
+          <Link href="/pedidos" className="text-cuerpo text-muted transition-colors hover:text-navy">
             ← Pedidos
           </Link>
         }
@@ -88,12 +88,12 @@ export default async function DevolucionesPage() {
                         {p.clienteNombre ?? '—'}
                       </Link>
                     </TD>
-                    <TD className="tabular-nums text-xs">{p.detalle}</TD>
-                    <TD className="tabular-nums text-xs text-muted">{p.fecha}</TD>
-                    <TD className="tabular-nums text-xs text-navy">{p.fechaDevolucion}</TD>
+                    <TD className="tabular-nums text-dato">{p.detalle}</TD>
+                    <TD className="tabular-nums text-dato text-muted">{p.fecha}</TD>
+                    <TD className="tabular-nums text-dato text-navy">{p.fechaDevolucion}</TD>
                     <TD className="capitalize">{p.estado}</TD>
                     <TD className="pr-5">
-                      <span className={cn('inline-flex items-center rounded-r-pastilla px-2.5 py-0.5 text-xs font-medium', a.cls)}>
+                      <span className={cn('inline-flex items-center rounded-r-pastilla px-2.5 py-0.5 text-apoyo font-medium', a.cls)}>
                         {a.label}
                       </span>
                     </TD>

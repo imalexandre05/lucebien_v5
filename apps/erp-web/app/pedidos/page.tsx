@@ -54,7 +54,7 @@ export default async function PedidosPage({
           <div className="flex flex-wrap items-center gap-2">
             <span
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-r-pastilla px-3 py-1.5 text-xs font-medium',
+                'inline-flex items-center gap-1.5 rounded-r-pastilla px-3 py-1.5 text-apoyo font-medium',
                 ses ? 'bg-exito/10 text-exito-deep' : 'bg-error/15 text-error-deep',
               )}
               data-testid="chip-caja"

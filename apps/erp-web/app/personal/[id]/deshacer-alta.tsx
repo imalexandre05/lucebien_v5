@@ -129,7 +129,7 @@ export function BotonDeshacerAlta({ personaId, personaNombre }: { personaId: str
       <button
         type="button"
         onClick={abrir}
-        className="anillo toque inline-flex items-center gap-1.5 whitespace-nowrap rounded-r-pastilla border border-line px-2.5 py-1.5 text-xs font-medium text-muted transition-colors duration-150 hover:border-error-line hover:bg-error-soft hover:text-error-deep"
+        className="anillo toque inline-flex items-center gap-1.5 whitespace-nowrap rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo font-medium text-muted transition-colors duration-150 hover:border-error-line hover:bg-error-soft hover:text-error-deep"
         title="Deshacer un alta de personal hecha por error. Sólo funciona si la persona no tiene pagos, contratos ni evaluaciones."
       >
         <Undo2 className="h-3.5 w-3.5" strokeWidth={2} aria-hidden />
@@ -144,12 +144,12 @@ export function BotonDeshacerAlta({ personaId, personaNombre }: { personaId: str
         size="sm"
       >
         <ModalBody>
-          {cargando && <p className="text-sm text-muted">Comprobando qué se perdería…</p>}
+          {cargando && <p className="text-cuerpo text-muted">Comprobando qué se perdería…</p>}
 
           {!cargando && errorPrevio && <Aviso tono="error">{errorPrevio}</Aviso>}
 
           {!cargando && previo && (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-cuerpo">
               {bloqueado ? (
                 <>
                   <p className="text-ink">
@@ -161,7 +161,7 @@ export function BotonDeshacerAlta({ personaId, personaNombre }: { personaId: str
                       <li key={b}>{b}</li>
                     ))}
                   </ul>
-                  <p className="text-xs text-muted">
+                  <p className="text-apoyo text-muted">
                     Si esta persona ya no trabaja acá, usa «Suspender» en la pestaña Datos — corta
                     el acceso y conserva todo.
                   </p>

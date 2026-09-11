@@ -92,13 +92,13 @@ export function HiloPago({
           <>
             <span
               className={cn(
-                'relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-r-pastilla border-2 tabular-nums text-xs font-semibold transition-colors duration-200',
+                'relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-r-pastilla border-2 tabular-nums text-dato font-semibold transition-colors duration-200',
                 TONO[e].circulo,
               )}
             >
               {e === 'listo' ? <Check className="h-4 w-4" strokeWidth={2.5} aria-hidden /> : i + 1}
             </span>
-            <span className="mt-2 block text-xs font-medium leading-tight text-ink">{paso.titulo}</span>
+            <span className="mt-2 block text-apoyo font-medium leading-tight text-ink">{paso.titulo}</span>
             <span className="mt-0.5 block text-micro leading-snug text-muted">{paso.detalle}</span>
           </>
         );

@@ -45,7 +45,7 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
 
   return (
     <div className="space-y-4">
-      {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+      {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
       <Card>
         <CardContent className="overflow-x-auto px-0 pb-0">
           <Table>
@@ -65,14 +65,14 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
                 const est = ESTADO[c.estado];
                 return (
                   <TR key={c.id} className={cn(c.estado === 'anulada' && 'opacity-60')}>
-                    <TD className="pl-5 tabular-nums text-xs text-muted">{c.fecha}</TD>
-                    <TD className="text-sm font-medium text-navy">{c.proveedorNombre ?? '—'}</TD>
-                    <TD className="tabular-nums text-xs text-navy">{c.sedeCod}</TD>
-                    <TD className="max-w-[22rem] text-sm text-ink">
+                    <TD className="pl-5 tabular-nums text-dato text-muted">{c.fecha}</TD>
+                    <TD className="text-cuerpo font-medium text-navy">{c.proveedorNombre ?? '—'}</TD>
+                    <TD className="tabular-nums text-dato text-navy">{c.sedeCod}</TD>
+                    <TD className="max-w-[22rem] text-cuerpo text-ink">
                       {c.items.map((i) => `${i.cantidad}× ${i.materialNombre ?? 'material'}`).join(' · ') || '—'}
-                      {Boolean(c.obs) && <span className="block text-xs text-muted">{c.obs}</span>}
+                      {Boolean(c.obs) && <span className="block text-apoyo text-muted">{c.obs}</span>}
                     </TD>
-                    <TD className="text-right tabular-nums text-sm text-navy">{soles(c.total)}</TD>
+                    <TD className="text-right tabular-nums text-dato text-navy">{soles(c.total)}</TD>
                     <TD>
                       <Badge tone={est.tone}>{est.label}</Badge>
                     </TD>
@@ -83,7 +83,7 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
                             type="button"
                             disabled={pending}
                             onClick={() => recibir(c)}
-                            className="inline-flex items-center gap-1 rounded-md bg-exito px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
+                            className="inline-flex items-center gap-1 rounded-md bg-exito px-2.5 py-1.5 text-apoyo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
                           >
                             <PackageCheck className="h-3.5 w-3.5" strokeWidth={2.5} /> Recibir
                           </button>
@@ -93,13 +93,13 @@ export function ComprasCliente({ compras }: { compras: Compra[] }) {
                             type="button"
                             disabled={pending}
                             onClick={() => anular(c)}
-                            className="inline-flex items-center gap-1 rounded-md border border-error-line px-2 py-1 text-xs text-error-deep transition hover:bg-error-soft"
+                            className="inline-flex items-center gap-1 rounded-md border border-error-line px-2 py-1 text-apoyo text-error-deep transition hover:bg-error-soft"
                           >
                             <Ban className="h-3.5 w-3.5" strokeWidth={2} /> Anular
                           </button>
                         )}
                         {c.estado === 'recibida' && (
-                          <span className="inline-flex items-center gap-1 text-xs text-exito-deep">
+                          <span className="inline-flex items-center gap-1 text-apoyo text-exito-deep">
                             <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> en stock
                           </span>
                         )}

@@ -409,7 +409,7 @@ export function EvaluacionesCliente({
               </Aviso>
             )}
             {revisionPesos.desviado && (
-              <div className="flex items-start gap-3 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2.5 text-sm text-aviso-deep">
+              <div className="flex items-start gap-3 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2.5 text-cuerpo text-aviso-deep">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
                 <span>
                   Los pesos configurados suman <strong>{fmtSuma(revisionPesos.suma)}</strong>: esta nota no
@@ -419,7 +419,7 @@ export function EvaluacionesCliente({
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Empleado</label>
+                <label className="mb-1 block text-rotulo uppercase text-muted">Empleado</label>
                 <select value={empleadoId} onChange={(e) => elegirEmpleado(e.target.value)} className={cn(fieldCls, 'w-full')} aria-label="Empleado">
                   <option value="">Elige…</option>
                   {empleados.map((e) => (
@@ -430,7 +430,7 @@ export function EvaluacionesCliente({
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
+                <label className="mb-1 block text-rotulo uppercase text-muted">
                   Ciclo
                   {ciclo && (
                     <span className="ml-1.5 font-normal normal-case text-muted">
@@ -441,7 +441,7 @@ export function EvaluacionesCliente({
                 </label>
                 <div className="flex items-center gap-2">
                   <input type="date" value={ciclo?.desde ?? ''} disabled={!ciclo} onChange={(e) => setCicloDesde(e.target.value)} className={cn(fieldCls, 'w-full')} />
-                  <span className="text-xs text-muted">a</span>
+                  <span className="text-apoyo text-muted">a</span>
                   <input type="date" value={ciclo?.hasta ?? ''} disabled={!ciclo} onChange={(e) => setCicloHasta(e.target.value)} className={cn(fieldCls, 'w-full')} />
                 </div>
               </div>
@@ -454,18 +454,18 @@ export function EvaluacionesCliente({
                 onClick={calcularDesdeData}
                 disabled={!empleadoId || !ciclo}
                 pending={pending}
-                className="text-xs"
+                className="text-apoyo"
               >
                 Calcular desde la data
               </Button>
-              <span className="text-xs text-muted">
+              <span className="text-apoyo text-muted">
                 Trae los puntos del período (pipeline, extras, actividades, ventas, incidencias) que dan la nota, y llena
                 operaciones/software/limpieza/valores/tardanza del perfil.
               </span>
             </div>
 
             {infoExtra && (
-              <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line/60 bg-paper/60 px-3 py-2 text-xs text-muted">
+              <div className="flex flex-wrap items-center gap-4 rounded-lg border border-line/60 bg-paper/60 px-3 py-2 text-apoyo text-muted">
                 <span>
                   Pipeline <span className="tabular-nums font-semibold text-navy">{infoExtra.puntosPipeline} pts</span>
                 </span>
@@ -495,17 +495,17 @@ export function EvaluacionesCliente({
             {/* Perfil (spec §2 C-4): los 7 componentes ya NO deciden la nota — de acá sale sólo el
                 dato de en qué es fuerte la persona y en qué flaquea, al lado de la nota de arriba. */}
             <div className="border-t border-line/60 pt-3">
-              <div className="mb-2 text-xs uppercase tracking-wide text-muted">Perfil (no entra a la nota)</div>
+              <div className="mb-2 text-rotulo uppercase text-muted">Perfil (no entra a la nota)</div>
               <PerfilComponentes componentes={compParaCalculo as unknown as Record<string, number>} pesos={pesos as unknown as Record<string, number>} />
             </div>
 
             {/* Ya no pesan sobre la nota (por eso sin "×peso" al lado, a diferencia del perfil de
                 arriba): son la carga a mano de los mismos siete componentes que arma el perfil. */}
-            <div className="text-xs uppercase tracking-wide text-muted">Componentes (escala /20) — perfil, no fórmula</div>
+            <div className="text-rotulo uppercase text-muted">Componentes (escala /20) — perfil, no fórmula</div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {COMPONENTES.filter(({ key }) => key !== 'competencias').map(({ key, label }) => (
                 <div key={key} className="flex items-center gap-2">
-                  <label className="flex-1 text-sm text-navy">{label}</label>
+                  <label className="flex-1 text-cuerpo text-navy">{label}</label>
                   <input
                     type="number"
                     step="0.5"
@@ -523,17 +523,17 @@ export function EvaluacionesCliente({
                 competencias_config — nunca hardcodeado. La nota se deriva, no se escribe a mano. */}
             <div className="border-t border-line/60 pt-3">
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-xs uppercase tracking-wide text-muted">Competencias</span>
-                <span className="tabular-nums text-sm font-semibold text-navy">{competenciaNota.toFixed(1)}/20</span>
+                <span className="text-rotulo uppercase text-muted">Competencias</span>
+                <span className="tabular-nums text-dato font-semibold text-navy">{competenciaNota.toFixed(1)}/20</span>
               </div>
               {competenciasConfig.length === 0 ? (
-                <p className="text-xs text-muted">Sin catálogo de competencias todavía (falta aplicar la migración 0057) — la nota queda en 0.</p>
+                <p className="text-apoyo text-muted">Sin catálogo de competencias todavía (falta aplicar la migración 0057) — la nota queda en 0.</p>
               ) : (
                 <div className="space-y-3">
                   {competenciasConfig.map((c) => (
                     <div key={c.cod}>
                       <div className="mb-1 flex items-baseline justify-between gap-2">
-                        <span className="text-xs font-medium text-navy">{c.nombre}</span>
+                        <span className="text-apoyo font-medium text-navy">{c.nombre}</span>
                         {competenciaSel[c.cod] === undefined && (
                           <span className="text-micro text-muted">sin responder</span>
                         )}
@@ -552,16 +552,16 @@ export function EvaluacionesCliente({
 
             <div className="grid grid-cols-1 gap-2 border-t border-line/60 pt-3 sm:grid-cols-2">
               <div className="flex items-center gap-2">
-                <label className="flex-1 text-sm text-navy">Descuento por incidencias</label>
+                <label className="flex-1 text-cuerpo text-navy">Descuento por incidencias</label>
                 <input type="number" step="0.5" value={comp.descuentoIncidencias} onChange={(e) => set('descuentoIncidencias', Number(e.target.value))} className={cn(fieldCls, 'w-20 text-right')} />
               </div>
               <div className="flex items-center gap-2">
-                <label className="flex-1 text-sm text-navy">Bonus por ventas</label>
+                <label className="flex-1 text-cuerpo text-navy">Bonus por ventas</label>
                 <input type="number" step="0.5" value={comp.bonusVentas} onChange={(e) => set('bonusVentas', Number(e.target.value))} className={cn(fieldCls, 'w-20 text-right')} />
               </div>
             </div>
 
-            {error && <p className="text-sm text-error">{error}</p>}
+            {error && <p className="text-cuerpo text-error">{error}</p>}
             <div className="flex items-center gap-3">
               <Button
                 type="button"
@@ -572,7 +572,7 @@ export function EvaluacionesCliente({
               >
                 {pending ? 'Guardando…' : nota !== null ? `Guardar · ${nota.toFixed(2)}` : 'Guardar'}
               </Button>
-              <span id="motivo-evaluacion" className="text-xs text-muted">
+              <span id="motivo-evaluacion" className="text-apoyo text-muted">
                 {nota === null
                   ? 'La nota no se pudo calcular: revisa el aviso de arriba.'
                   : ventasSinTasa
@@ -601,9 +601,9 @@ export function EvaluacionesCliente({
             </Badge>
           </CardHeader>
           <CardContent className="space-y-3">
-            <p className="text-xs text-muted">Ciclo {evalGuardada.cicloDesde} a {evalGuardada.cicloHasta}.</p>
+            <p className="text-apoyo text-muted">Ciclo {evalGuardada.cicloDesde} a {evalGuardada.cicloHasta}.</p>
 
-            <p className="rounded-lg border border-line bg-paper/60 px-3 py-2.5 text-sm text-ink">
+            <p className="rounded-lg border border-line bg-paper/60 px-3 py-2.5 text-cuerpo text-ink">
               El pago se registra en la pestaña{' '}
               <Link
                 href={`/personal/${evalGuardada.empleadoId}/pago`}
@@ -614,7 +614,7 @@ export function EvaluacionesCliente({
               de la persona.
             </p>
 
-            <button type="button" onClick={reiniciar} className="block text-xs text-muted underline underline-offset-2 hover:text-navy">
+            <button type="button" onClick={reiniciar} className="block text-apoyo text-muted underline underline-offset-2 hover:text-navy">
               Nueva evaluación
             </button>
           </CardContent>
@@ -668,7 +668,7 @@ export function EvaluacionesCliente({
                           />
                         </button>
                       </TD>
-                      <TD className="tabular-nums text-xs text-muted">{e.mes}</TD>
+                      <TD className="tabular-nums text-dato text-muted">{e.mes}</TD>
                       <TD className="font-medium text-navy">{e.empleadoNombre ?? '—'}</TD>
                       <TD className="text-right tabular-nums text-base font-bold text-navy">{e.notaFinal.toFixed(2)}</TD>
                       <TD className="pr-5">
@@ -685,7 +685,7 @@ export function EvaluacionesCliente({
                           {e.componentes ? (
                             <PerfilComponentes componentes={e.componentes} pesos={e.pesosUsados ?? (pesos as unknown as Record<string, number>)} />
                           ) : (
-                            <p className="text-xs text-muted">Esta evaluación no guardó desglose por componente.</p>
+                            <p className="text-apoyo text-muted">Esta evaluación no guardó desglose por componente.</p>
                           )}
                         </TD>
                       </TR>

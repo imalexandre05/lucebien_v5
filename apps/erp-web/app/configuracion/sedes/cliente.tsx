@@ -59,11 +59,11 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
     <div className="space-y-4">
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-2 py-3.5">
-          <p className="text-sm text-muted">
+          <p className="text-cuerpo text-muted">
             {sedes.length} sede(s). El código va en pickers y reportes; el nombre, en el login.
           </p>
           <div className="flex items-center gap-2">
-            <Link href="/configuracion/actividades" className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
+            <Link href="/configuracion/actividades" className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
               Actividades
             </Link>
             <button type="button" onClick={() => abrir('nueva')} className={buttonVariants({ variant: 'primary' })}>
@@ -89,12 +89,12 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
               {sedes.map((s) => (
                 <TR key={s.cod}>
                   <TD className="pl-5">
-                    <span className="inline-block rounded-r-pastilla bg-navy px-2.5 py-1 tabular-nums text-xs font-semibold text-paper">
+                    <span className="inline-block rounded-r-pastilla bg-navy px-2.5 py-1 tabular-nums text-dato font-semibold text-paper">
                       {s.cod}
                     </span>
                   </TD>
                   <TD className="font-medium text-navy">{s.nombre}</TD>
-                  <TD className="text-sm text-muted">{s.direccion || '—'}</TD>
+                  <TD className="text-cuerpo text-muted">{s.direccion || '—'}</TD>
                   <TD>
                     <Badge tone={s.perfil === 'almacen' ? 'gray' : 'navy'}>{PERFIL_LABEL[s.perfil]}</Badge>
                   </TD>
@@ -102,7 +102,7 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
                     <button
                       type="button"
                       onClick={() => abrir('editar', s)}
-                      className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
+                      className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
                     >
                       <Pencil className="h-3 w-3" strokeWidth={2} /> Editar
                     </button>
@@ -124,7 +124,7 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
         <ModalBody className="space-y-3">
           {modal === 'nueva' && (
             <div>
-              <label htmlFor="sede-cod" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+              <label htmlFor="sede-cod" className="mb-1 block text-rotulo uppercase text-muted">
                 Código (2-3 letras) *
               </label>
               <input
@@ -138,7 +138,7 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
             </div>
           )}
           <div>
-            <label htmlFor="sede-nombre" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label htmlFor="sede-nombre" className="mb-1 block text-rotulo uppercase text-muted">
               Nombre *
             </label>
             <input
@@ -150,7 +150,7 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
             />
           </div>
           <div>
-            <label htmlFor="sede-dir" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label htmlFor="sede-dir" className="mb-1 block text-rotulo uppercase text-muted">
               Dirección
             </label>
             <input
@@ -162,14 +162,14 @@ export function SedesCliente({ sedes }: { sedes: Sede[] }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Perfil</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Perfil</label>
             <OpcionBotones
               opciones={OPC_PERFIL}
               value={form.perfil}
               onChange={(perfil) => setForm((f) => ({ ...f, perfil }))}
               ariaLabel="Perfil de la sede"
             />
-            <p className="mt-1.5 text-xs leading-relaxed text-muted">
+            <p className="mt-1.5 text-apoyo leading-relaxed text-muted">
               {form.perfil === 'almacen'
                 ? 'Almacén: pipeline de lavandería y solicitudes, sin mostrador (como Almacén Central).'
                 : 'Punto de venta: pedidos y caja, sin pipeline propio.'}

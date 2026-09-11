@@ -28,7 +28,7 @@ function Chip({ label, count, active, onClick, testId }: { label: string; count:
       data-testid={testId}
       onClick={onClick}
       className={cn(
-        'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
+        'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors',
         active ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
       )}
     >
@@ -113,14 +113,14 @@ export function PedidosPendientes({
     <Card className="mt-4">
       <CardContent className="pt-4">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <h2 className="mr-1 text-xs font-semibold uppercase tracking-wide text-muted">⑥ Pendientes</h2>
+          <h2 className="mr-1 text-rotulo font-semibold uppercase text-muted">⑥ Pendientes</h2>
           <Chip label="Con saldo" count={conSaldo.length} active={filtro === 'saldo'} onClick={() => toggleFiltro('saldo')} testId="filtro-saldo" />
           <Chip label="Devoluciones hoy" count={devolucionesHoy.length} active={filtro === 'devolucionesHoy'} onClick={() => toggleFiltro('devolucionesHoy')} testId="filtro-dev-hoy" />
           <Chip label="Vencidos" count={vencidos.length} active={filtro === 'vencidos'} onClick={() => toggleFiltro('vencidos')} testId="filtro-vencidos" />
           <Chip label="Del día" count={delDia.length} active={filtro === 'delDia'} onClick={() => toggleFiltro('delDia')} testId="filtro-del-dia" />
         </div>
 
-        {error && <Aviso tono="error" className="mb-2 text-sm">{error}</Aviso>}
+        {error && <Aviso tono="error" className="mb-2 text-cuerpo">{error}</Aviso>}
 
         <div className="overflow-x-auto">
           <Table>
@@ -140,17 +140,17 @@ export function PedidosPendientes({
                 <Fragment key={p.id}>
                   <TR data-testid="pendiente-fila">
                     <TD>
-                      <Link href={`/pedidos/${p.id}`} className="tabular-nums text-xs font-medium text-navy hover:text-gold">
+                      <Link href={`/pedidos/${p.id}`} className="tabular-nums text-dato font-medium text-navy hover:text-gold">
                         {p.codigo}
                       </Link>
                     </TD>
-                    <TD className="text-sm">{p.clienteNombre ?? '—'}</TD>
+                    <TD className="text-cuerpo">{p.clienteNombre ?? '—'}</TD>
                     <TD>
                       <Badge tone={TIPO_TONE[p.tipo]}>{TIPO_LABEL[p.tipo]}</Badge>
                     </TD>
-                    <TD className="text-right tabular-nums text-xs">{soles(p.total)}</TD>
-                    <TD className={cn('text-right tabular-nums text-xs', p.saldo > 0 && 'font-semibold text-aviso-deep')}>{soles(p.saldo)}</TD>
-                    <TD className="tabular-nums text-xs text-muted">{p.fechaDevolucion ?? '—'}</TD>
+                    <TD className="text-right tabular-nums text-dato">{soles(p.total)}</TD>
+                    <TD className={cn('text-right tabular-nums text-dato', p.saldo > 0 && 'font-semibold text-aviso-deep')}>{soles(p.saldo)}</TD>
+                    <TD className="tabular-nums text-dato text-muted">{p.fechaDevolucion ?? '—'}</TD>
                     <TD className="text-right">
                       <div className="flex justify-end gap-1.5">
                         {p.saldo > 0 && (
@@ -191,7 +191,7 @@ export function PedidosPendientes({
                         <div className="flex flex-wrap items-end gap-3 py-1">
                           <MontoInput value={montoCobro} onChange={setMontoCobro} total={p.saldo} label="Monto" testId="cobro-saldo-monto" />
                           <div>
-                            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
+                            <label className="mb-1 block text-rotulo uppercase text-muted">Método</label>
                             <MetodoPagoBotones value={metodoCobro} onChange={setMetodoCobro} opciones={metodosPago} />
                           </div>
                           <button
@@ -199,11 +199,11 @@ export function PedidosPendientes({
                             data-testid="cobro-saldo-confirmar"
                             disabled={pending || montoCobro <= 0}
                             onClick={() => confirmarCobro(p)}
-                            className="rounded-md bg-navy px-3 py-2 text-xs font-medium text-paper transition-colors hover:bg-navy-dark disabled:cursor-not-allowed disabled:opacity-50"
+                            className="rounded-md bg-navy px-3 py-2 text-apoyo font-medium text-paper transition-colors hover:bg-navy-dark disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {pending ? 'Cobrando…' : 'Confirmar cobro'}
                           </button>
-                          <button type="button" onClick={() => setFilaCobro(null)} className="text-xs text-muted hover:text-navy">
+                          <button type="button" onClick={() => setFilaCobro(null)} className="text-apoyo text-muted hover:text-navy">
                             Cancelar
                           </button>
                         </div>

@@ -62,7 +62,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
     <div className="mx-auto max-w-3xl space-y-4">
       <Link
         href="/pipeline"
-        className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors duration-150 hover:text-navy"
+        className="inline-flex items-center gap-1.5 text-cuerpo text-muted transition-colors duration-150 hover:text-navy"
       >
         <ArrowLeft className="h-4 w-4" strokeWidth={2} /> Volver al kanban
       </Link>
@@ -83,7 +83,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
             className="grid grid-cols-2 gap-3 sm:grid-cols-3"
           >
             <label className="col-span-2 flex flex-col gap-1 sm:col-span-1">
-              <span className="text-xs font-medium text-muted">Código *</span>
+              <span className="text-apoyo font-medium text-muted">Código *</span>
               <input
                 ref={codigoRef}
                 value={codigo}
@@ -94,7 +94,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-muted">Tipo *</span>
+              <span className="text-apoyo font-medium text-muted">Tipo *</span>
               <select value={tipo} onChange={(e) => setTipo(e.target.value)} className={fieldCls}>
                 {TIPOS.map((t) => (
                   <option key={t}>{t}</option>
@@ -102,7 +102,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
               </select>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-muted">Color</span>
+              <span className="text-apoyo font-medium text-muted">Color</span>
               <select value={color} onChange={(e) => setColor(e.target.value)} className={fieldCls}>
                 {COLORES.map((c) => (
                   <option key={c}>{c}</option>
@@ -110,7 +110,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
               </select>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-muted">Talla</span>
+              <span className="text-apoyo font-medium text-muted">Talla</span>
               <select value={talla} onChange={(e) => setTalla(e.target.value)} className={fieldCls}>
                 <option value="">—</option>
                 {TALLAS.map((t) => (
@@ -119,7 +119,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
               </select>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-muted">Sede origen *</span>
+              <span className="text-apoyo font-medium text-muted">Sede origen *</span>
               <select value={sede} onChange={(e) => setSede(e.target.value)} className={fieldCls}>
                 {sedes.map((s) => (
                   <option key={s}>{s}</option>
@@ -127,7 +127,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
               </select>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-muted">Tipo de lavado</span>
+              <span className="text-apoyo font-medium text-muted">Tipo de lavado</span>
               <select value={lavado} onChange={(e) => setLavado(e.target.value)} className={fieldCls}>
                 {LAVADOS.map((l) => (
                   <option key={l}>{l}</option>
@@ -135,10 +135,10 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
               </select>
             </label>
             <label className="col-span-2 flex flex-col gap-1 sm:col-span-2">
-              <span className="text-xs font-medium text-muted">Observación</span>
+              <span className="text-apoyo font-medium text-muted">Observación</span>
               <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Opcional" className={fieldCls} />
             </label>
-            <label className="flex items-end gap-2 pb-1.5 text-sm text-navy">
+            <label className="flex items-end gap-2 pb-1.5 text-cuerpo text-navy">
               <input
                 type="checkbox"
                 checked={compostura}
@@ -149,7 +149,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
             </label>
 
             {error && (
-              <p className="col-span-2 rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep sm:col-span-3">{error}</p>
+              <p className="col-span-2 rounded-md bg-error-soft px-3 py-2 text-cuerpo text-error-deep sm:col-span-3">{error}</p>
             )}
 
             <div className="col-span-2 sm:col-span-3">
@@ -169,7 +169,7 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
 
       {registradas.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-line bg-white px-3 py-2">
-          <span className="text-xs text-muted">Registradas en esta sesión:</span>
+          <span className="text-apoyo text-muted">Registradas en esta sesión:</span>
           {registradas.map((c, i) => (
             <span
               key={`${c}-${i}`}

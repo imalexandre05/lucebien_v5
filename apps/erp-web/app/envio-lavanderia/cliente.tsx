@@ -305,7 +305,7 @@ export function EnvioLavanderiaCliente({
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white px-4 py-3 shadow-card">
           <div className="min-w-0">
             <LabelGrupo>Tipo de envío</LabelGrupo>
-            <p className="text-xs text-muted">
+            <p className="text-apoyo text-muted">
               {tipo === 'LAV'
                 ? 'Prendas codificadas y accesorios a granel. Cada prenda elige su destino.'
                 : 'Sólo prendas codificadas, y van todas a Compostura: sin accesorios a granel.'}
@@ -355,7 +355,7 @@ export function EnvioLavanderiaCliente({
                   ariaLabel="Destino de la prenda"
                 />
                 {tipo === 'REF' && (
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-apoyo text-muted">
                     En un envío de refacción todas las prendas van a Compostura.
                   </p>
                 )}
@@ -489,7 +489,7 @@ export function EnvioLavanderiaCliente({
               >
                 <Plus className="h-4 w-4" strokeWidth={2} /> Agregar prenda
               </Button>
-              <p id="motivo-agregar" className="mt-1 text-xs text-muted">
+              <p id="motivo-agregar" className="mt-1 text-apoyo text-muted">
                 {motivoNoAgregar ?? 'También se agrega con Enter.'}
               </p>
             </div>
@@ -497,14 +497,14 @@ export function EnvioLavanderiaCliente({
             {items.length > 0 && (
               <ul className="divide-y divide-line rounded-md border border-line">
                 {items.map((it, i) => (
-                  <li key={it.cod + '-' + i} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+                  <li key={it.cod + '-' + i} className="flex flex-wrap items-center gap-2 px-3 py-2 text-cuerpo">
                     <span className="tabular-nums font-medium text-navy">{it.cod}</span>
                     <span className="text-muted">
                       {it.tipo} · {it.color}
                       {it.talla ? ' · ' + it.talla : ''}
                     </span>
                     {it.destino === 'compostura' && <Badge tone="red">Compostura</Badge>}
-                    {it.obs && <span className="w-full text-xs text-muted sm:w-auto">«{it.obs}»</span>}
+                    {it.obs && <span className="w-full text-apoyo text-muted sm:w-auto">«{it.obs}»</span>}
                     <button
                       type="button"
                       onClick={() => quitarItem(i)}
@@ -542,7 +542,7 @@ export function EnvioLavanderiaCliente({
                       generales[a.key] > 0 ? 'border-gold bg-gold/10' : 'border-line',
                     )}
                   >
-                    <span className={cn('text-sm text-navy', generales[a.key] > 0 && 'font-semibold')}>
+                    <span className={cn('text-cuerpo text-navy', generales[a.key] > 0 && 'font-semibold')}>
                       {a.label}
                     </span>
                     <div className="inline-flex items-center gap-0.5 rounded-md border border-line">
@@ -556,7 +556,7 @@ export function EnvioLavanderiaCliente({
                       </button>
                       <span
                         className={cn(
-                          'w-8 text-center text-sm font-semibold tabular-nums',
+                          'w-8 text-center text-dato font-semibold tabular-nums',
                           generales[a.key] > 0 ? 'text-gold-deep' : 'text-muted',
                         )}
                       >
@@ -605,10 +605,10 @@ export function EnvioLavanderiaCliente({
           * la vista — que es además la única forma de darse cuenta de que uno se olvidó de los
           * accesorios. */}
         <div className="sticky bottom-0 z-20 space-y-2 rounded-r-grande border border-line bg-superficie/95 px-4 py-3 shadow-elev-2 backdrop-blur">
-          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+          {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
           {/* El acierto también se anuncia. Antes era un párrafo mudo: con lector de pantalla la
               lista se enviaba y no pasaba nada audible, que es indistinguible de que fallara. */}
-          {ok && <Aviso tono="exito" className="text-sm">{ok}</Aviso>}
+          {ok && <Aviso tono="exito" className="text-cuerpo">{ok}</Aviso>}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="text-apoyo">
               <span className="text-dato font-semibold text-navy">{items.length}</span>{' '}
@@ -676,9 +676,9 @@ export function EnvioLavanderiaCliente({
                   return (
                     <Fragment key={l.id}>
                       <TR>
-                        <TD className="pl-5 tabular-nums text-xs">{l.id.slice(0, 8)}</TD>
+                        <TD className="pl-5 tabular-nums text-dato">{l.id.slice(0, 8)}</TD>
                         <TD>{l.tipo === 'LAV' ? 'General' : 'Refacción'}</TD>
-                        <TD className="tabular-nums text-xs text-muted">{l.fecha.slice(0, 10)}</TD>
+                        <TD className="tabular-nums text-dato text-muted">{l.fecha.slice(0, 10)}</TD>
                         <TD className="text-right tabular-nums">{l.items.length}</TD>
                         <TD>
                           <Badge tone={ESTADO_TONE[l.estado] ?? 'gray'}>{l.estado}</Badge>
@@ -693,7 +693,7 @@ export function EnvioLavanderiaCliente({
                             <Button
                               type="button"
                               variant="outline"
-                              className="px-3 py-1.5 text-xs"
+                              className="px-3 py-1.5 text-apoyo"
                               disabled={pending}
                               aria-expanded={abierta}
                               aria-controls={abierta ? 'revision-' + l.id : undefined}
@@ -704,7 +704,7 @@ export function EnvioLavanderiaCliente({
                             </Button>
                           )}
                           {l.estado === 'Devuelto-Observado' && (
-                            <span className="inline-flex flex-col items-end gap-0.5 text-xs text-error-deep">
+                            <span className="inline-flex flex-col items-end gap-0.5 text-apoyo text-error-deep">
                               <span className="inline-flex items-center gap-1">
                                 <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Con observación
                               </span>
@@ -726,7 +726,7 @@ export function EnvioLavanderiaCliente({
                             <div className="space-y-4">
                               <div>
                                 <LabelGrupo>Cómo volvió cada prenda</LabelGrupo>
-                                <p className="text-xs text-muted">
+                                <p className="text-apoyo text-muted">
                                   Marca «Con problema» la prenda que volvió mal o que no volvió. Con una sola
                                   marcada, la lista queda como «Devuelto-Observado» y no como validada.
                                 </p>
@@ -736,7 +736,7 @@ export function EnvioLavanderiaCliente({
                                   las que quedaron de antes sí pueden estar así, y un recuadro vacío se lee
                                   como que la pantalla se rompió. */}
                               {l.items.length === 0 && (
-                                <p className="rounded-md border border-dashed border-line px-3 py-2.5 text-sm text-muted">
+                                <p className="rounded-md border border-dashed border-line px-3 py-2.5 text-cuerpo text-muted">
                                   Esta lista no tiene prendas registradas: sólo se puede dar por validada.
                                 </p>
                               )}
@@ -745,7 +745,7 @@ export function EnvioLavanderiaCliente({
                                 {l.items.map((i) => (
                                   <li
                                     key={i.id}
-                                    className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 text-sm"
+                                    className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 text-cuerpo"
                                   >
                                     <span className="tabular-nums font-medium text-navy">{i.cod}</span>
                                     <span className="text-muted">
@@ -754,7 +754,7 @@ export function EnvioLavanderiaCliente({
                                     {/* La observación con la que SALIÓ la prenda: sin ella, quien revisa no
                                         puede saber si la mancha es nueva o si ya iba así. */}
                                     {i.obs && (
-                                      <span className="w-full text-xs text-muted sm:w-auto">«{i.obs}»</span>
+                                      <span className="w-full text-apoyo text-muted sm:w-auto">«{i.obs}»</span>
                                     )}
                                     <OpcionBotones
                                       className="ml-auto"
@@ -796,7 +796,7 @@ export function EnvioLavanderiaCliente({
                               {errorRetorno && <Aviso tono="error">{errorRetorno}</Aviso>}
 
                               <div className="flex flex-wrap items-center justify-between gap-3">
-                                <span className="text-sm text-muted">
+                                <span className="text-cuerpo text-muted">
                                   {conProblema === 0
                                     ? 'Todas las prendas volvieron bien.'
                                     : conProblema === 1

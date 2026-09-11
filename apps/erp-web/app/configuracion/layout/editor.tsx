@@ -293,7 +293,7 @@ export function LayoutEditor({
                 if (dirty && !confirm('Hay cambios sin guardar. ¿Cambiar de sede igual?')) e.preventDefault();
               }}
               className={cn(
-                'rounded-r-pastilla px-3 py-1.5 text-sm font-medium transition-colors duration-150',
+                'rounded-r-pastilla px-3 py-1.5 text-cuerpo font-medium transition-colors duration-150',
                 s.cod === sede ? 'bg-navy text-paper' : 'text-muted hover:bg-navy/5 hover:text-navy',
               )}
             >
@@ -308,21 +308,21 @@ export function LayoutEditor({
               aria-pressed={filtro === f}
               onClick={() => setFiltro(f)}
               className={cn(
-                'rounded-r-pastilla border px-2.5 py-1 text-xs font-medium transition-colors duration-150',
+                'rounded-r-pastilla border px-2.5 py-1 text-apoyo font-medium transition-colors duration-150',
                 filtro === f ? 'border-navy bg-navy/10 text-navy' : 'border-line text-muted hover:border-gold',
               )}
             >
               {f === 'todos' ? 'Todos' : f === 'M' ? 'AM' : 'PM'}
             </button>
           ))}
-          <span className="ml-2 tabular-nums text-xs text-muted">
+          <span className="ml-2 tabular-nums text-dato text-muted">
             {zonas.length} zonas · {totalPts} pts
           </span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <button type="button" onClick={agregarZona} className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
+            <button type="button" onClick={agregarZona} className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
               <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Zona
             </button>
-            <button type="button" onClick={alinearGrilla} className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')} title="Alinear todas las zonas a la grilla">
+            <button type="button" onClick={alinearGrilla} className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')} title="Alinear todas las zonas a la grilla">
               <Grid3x3 className="h-3.5 w-3.5" strokeWidth={2} /> Alinear grilla
             </button>
             <button
@@ -332,7 +332,7 @@ export function LayoutEditor({
                 setClonarAbierto(true);
                 setError('');
               }}
-              className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}
+              className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}
             >
               <Copy className="h-3.5 w-3.5" strokeWidth={2} /> Clonar de sede
             </button>
@@ -346,7 +346,7 @@ export function LayoutEditor({
       {(error || okMsg) && (
         <p
           className={cn(
-            'flex animate-fade items-center gap-1.5 rounded-r-chico px-3 py-2 text-sm',
+            'flex animate-fade items-center gap-1.5 rounded-r-chico px-3 py-2 text-cuerpo',
             error ? 'bg-error-soft text-error-deep' : 'bg-exito-soft text-exito-deep',
           )}
         >
@@ -357,7 +357,7 @@ export function LayoutEditor({
       {/* Fase 5 tarea 2: aviso de solapes (no bloquea — el mapa de limpieza los resuelve con el
           desplegable de "zonas ocultas aquí"). Solo pares NO explicados por nivel=sobre+sobreCod. */}
       {solapesInesperados.length > 0 && (
-        <div className="flex items-start gap-2 rounded-r-chico border border-aviso-line bg-aviso-soft px-3 py-2 text-xs text-aviso-deep">
+        <div className="flex items-start gap-2 rounded-r-chico border border-aviso-line bg-aviso-soft px-3 py-2 text-apoyo text-aviso-deep">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
           <p>
             <span className="font-semibold">{solapesInesperados.length} solape(s) sin declarar:</span>{' '}
@@ -473,7 +473,7 @@ export function LayoutEditor({
             <Card>
               <CardContent className="space-y-3 pt-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-lg font-semibold text-navy">Zona {sel.cod}</span>
+                  <span className="text-seccion font-display font-semibold text-navy">Zona {sel.cod}</span>
                   <div className="flex items-center gap-1">
                     <button type="button" onClick={() => duplicarZona(sel.key)} aria-label="Duplicar zona" title="Duplicar zona" className="flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors hover:bg-navy/5 hover:text-navy">
                       <CopyPlus className="h-4 w-4" strokeWidth={1.75} />
@@ -532,7 +532,7 @@ export function LayoutEditor({
                             aria-pressed={sel.turno === t}
                             onClick={() => cambiarTurno(sel, t)}
                             className={cn(
-                              'rounded-r-pastilla border px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-150',
+                              'rounded-r-pastilla border px-2.5 py-1 text-apoyo font-medium capitalize transition-colors duration-150',
                               sel.turno === t ? 'border-navy bg-navy text-paper' : 'border-line text-muted hover:border-gold',
                             )}
                           >
@@ -591,7 +591,7 @@ export function LayoutEditor({
             </Card>
           ) : (
             <Card>
-              <CardContent className="py-5 text-center text-sm text-muted">
+              <CardContent className="py-5 text-center text-cuerpo text-muted">
                 Selecciona una zona del lienzo o del catálogo para editarla.
               </CardContent>
             </Card>
@@ -618,7 +618,7 @@ export function LayoutEditor({
                   <span className="w-12 shrink-0 rounded-r-pastilla bg-navy px-1.5 py-0.5 text-center tabular-nums text-micro font-semibold text-paper">
                     {z.cod}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-ink">{z.nombre}</span>
+                  <span className="min-w-0 flex-1 truncate text-apoyo text-ink">{z.nombre}</span>
                   <span className="shrink-0 tabular-nums text-micro font-semibold text-navy">{z.peso}</span>
                 </button>
               ))}
@@ -644,7 +644,7 @@ export function LayoutEditor({
                       >
                         <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px] border border-black/10" style={{ background: z.color }} />
                         <span className="w-10 shrink-0 tabular-nums text-micro font-semibold text-navy">{z.cod}</span>
-                        <span className="min-w-0 flex-1 truncate text-xs text-ink">{z.nombre}</span>
+                        <span className="min-w-0 flex-1 truncate text-apoyo text-ink">{z.nombre}</span>
                         {z.sobreCod && (
                           <span className="shrink-0 rounded-r-pastilla bg-navy-deep px-1.5 py-px tabular-nums text-[8px] text-paper/90">
                             s/{z.sobreCod}
@@ -670,12 +670,12 @@ export function LayoutEditor({
         icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody className="space-y-3">
-          <p className="text-sm leading-relaxed text-muted">
+          <p className="text-cuerpo leading-relaxed text-muted">
             Copia el layout completo de otra sede y <span className="font-semibold text-ink">reemplaza</span> el
             actual de {sede}. Esta acción se guarda de inmediato.
           </p>
           <div>
-            <label htmlFor="clonar-desde" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label htmlFor="clonar-desde" className="mb-1 block text-rotulo uppercase text-muted">
               Copiar desde
             </label>
             <select id="clonar-desde" value={clonarDe} onChange={(e) => setClonarDe(e.target.value)} className={cn(fieldCls, 'w-full')}>

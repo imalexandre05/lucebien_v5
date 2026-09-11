@@ -63,7 +63,7 @@ export function PedidoAcciones({ pedido }: { pedido: Pedido }) {
     <div className="mt-4 space-y-3">
       {lineasConfeccion.map((linea) => (
         <div key={linea.id}>
-          <p className="mb-1.5 text-xs uppercase tracking-wide text-muted">
+          <p className="mb-1.5 text-rotulo uppercase text-muted">
             Etapa de confección — <span className="tabular-nums">{linea.descripcion || linea.activoCodigo || linea.id.slice(0, 8)}</span>
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -74,7 +74,7 @@ export function PedidoAcciones({ pedido }: { pedido: Pedido }) {
                 disabled={pending}
                 onClick={() => avanzarEtapa(linea.id, e)}
                 className={cn(
-                  'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
+                  'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors',
                   linea.etapaConfeccion === e ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
                   pending && 'opacity-60',
                 )}
@@ -88,7 +88,7 @@ export function PedidoAcciones({ pedido }: { pedido: Pedido }) {
 
       {puedeCerrar && (
         <div>
-          <p className="mb-1.5 text-xs uppercase tracking-wide text-muted">Estado del pedido</p>
+          <p className="mb-1.5 text-rotulo uppercase text-muted">Estado del pedido</p>
           <div className="flex flex-wrap gap-2">
             {pedido.estado === 'abierto' && (
               <Button type="button" variant="outline" pending={pending} onClick={() => cambiarEstado('entregado')}>
@@ -114,7 +114,7 @@ export function PedidoAcciones({ pedido }: { pedido: Pedido }) {
           )}
         </div>
       )}
-      {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+      {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
     </div>
   );
 }

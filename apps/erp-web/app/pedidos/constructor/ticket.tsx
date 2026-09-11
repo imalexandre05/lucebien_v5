@@ -56,14 +56,14 @@ export function Ticket({
   return (
     <div className="sticky top-4 flex flex-col gap-4 rounded-r-medio border border-line bg-white p-4 shadow-card">
       <div>
-        <p className="text-xs uppercase tracking-wide text-muted">Pedido nuevo</p>
-        <p className="tabular-nums text-sm text-navy">se genera el código al registrar</p>
+        <p className="text-rotulo uppercase text-muted">Pedido nuevo</p>
+        <p className="tabular-nums text-dato text-navy">se genera el código al registrar</p>
       </div>
 
       <div className="max-h-56 space-y-1.5 overflow-y-auto border-y border-line/60 py-2">
-        {items.length === 0 && <p className="py-3 text-center text-xs text-muted">Agrega líneas para ver el ticket.</p>}
+        {items.length === 0 && <p className="py-3 text-center text-apoyo text-muted">Agrega líneas para ver el ticket.</p>}
         {items.map((l) => (
-          <div key={l.key} className="flex items-center justify-between gap-2 text-sm">
+          <div key={l.key} className="flex items-center justify-between gap-2 text-cuerpo">
             <span className="min-w-0 truncate text-navy">
               {l.cantidad}× {l.activoCodigo ?? l.descripcion ?? '—'}
             </span>
@@ -73,21 +73,21 @@ export function Ticket({
       </div>
 
       <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold uppercase tracking-wide text-navy">Total</span>
+        <span className="text-rotulo font-semibold uppercase text-navy">Total</span>
         <span className="tabular-nums text-2xl font-bold text-gold-deep" data-testid="ticket-total">
           {soles(total)}
         </span>
       </div>
 
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Método</label>
         <MetodoPagoBotones value={metodo} onChange={onMetodoChange} opciones={metodosPago} />
       </div>
 
       <MontoInput ref={montoInputRef} value={recibido} onChange={onRecibidoChange} total={total} label="Recibe" testId="ticket-recibido" />
 
       {recibido > 0 && (
-        <p className="text-xs text-muted" data-testid="ticket-saldo">
+        <p className="text-apoyo text-muted" data-testid="ticket-saldo">
           {saldo > 0 ? (
             <>
               Saldo <span className="tabular-nums font-medium text-navy">{soles(saldo)}</span> · {cobroTipo === 'adelanto' ? 'ADELANTO' : cobroTipo?.toUpperCase()}
@@ -99,7 +99,7 @@ export function Ticket({
       )}
 
       {sinCaja && (
-        <div className="rounded-r-chico border border-aviso-line bg-aviso-soft p-3 text-xs text-aviso-deep" data-testid="banner-sin-caja">
+        <div className="rounded-r-chico border border-aviso-line bg-aviso-soft p-3 text-apoyo text-aviso-deep" data-testid="banner-sin-caja">
           <p className="font-medium">La caja de {sede} está cerrada.</p>
           <p className="mt-0.5 mb-2">Ábrela aquí mismo para poder cobrar o registrar la garantía.</p>
           <div className="flex items-center gap-2">
@@ -110,7 +110,7 @@ export function Ticket({
               value={montoApertura || ''}
               onChange={(e) => setMontoApertura(Number(e.target.value) || 0)}
               placeholder="Monto de apertura"
-              className="w-32 rounded-r-chico border border-aviso-line bg-white px-2 py-1 text-right tabular-nums text-xs outline-none"
+              className="w-32 rounded-r-chico border border-aviso-line bg-white px-2 py-1 text-right tabular-nums text-dato outline-none"
             />
             <Button type="button" variant="outline" pending={abriendoCaja} onClick={() => onAbrirCaja(montoApertura)} data-testid="abrir-caja-inline">
               Abrir caja
@@ -120,7 +120,7 @@ export function Ticket({
       )}
 
       {error && (
-        <p className="rounded-r-chico bg-error-soft px-3 py-2 text-sm text-error-deep" data-testid="ticket-error">
+        <p className="rounded-r-chico bg-error-soft px-3 py-2 text-cuerpo text-error-deep" data-testid="ticket-error">
           {error}
         </p>
       )}

@@ -32,7 +32,7 @@ const NIVELES: Opcion[] = [
 function NivelPill({ nivel }: { nivel: string }) {
   const cls =
     nivel === 'Alto' ? 'bg-error-soft text-error-deep' : nivel === 'Medio' ? 'bg-aviso-soft text-aviso-deep' : 'bg-paper text-muted';
-  return <span className={cn('inline-flex items-center rounded-r-pastilla px-2.5 py-0.5 text-xs font-medium', cls)}>{nivel}</span>;
+  return <span className={cn('inline-flex items-center rounded-r-pastilla px-2.5 py-0.5 text-apoyo font-medium', cls)}>{nivel}</span>;
 }
 
 const VACIO: TipoIncidenciaInput = { tipo: '', categoria: '', nivelDefault: 'Medio', puntosDefault: 2 };
@@ -107,7 +107,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
 
       <Card>
         <CardContent className="flex items-center justify-between py-4">
-          <p className="text-sm text-muted">
+          <p className="text-cuerpo text-muted">
             {tipos.length} tipo(s) en el catálogo · alimenta el selector de gravedad/puntos al registrar una incidencia
           </p>
           <button type="button" onClick={abrirNuevo} className={buttonVariants({ variant: 'primary' })}>
@@ -137,12 +137,12 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
               <TBody>
                 {tipos.map((t) => (
                   <TR key={t.id} className={cn(!t.activo && 'opacity-55')}>
-                    <TD className="pl-5 text-sm font-medium text-navy">{t.tipo}</TD>
-                    <TD className="text-xs text-muted">{t.categoria || '—'}</TD>
+                    <TD className="pl-5 text-cuerpo font-medium text-navy">{t.tipo}</TD>
+                    <TD className="text-apoyo text-muted">{t.categoria || '—'}</TD>
                     <TD>
                       <NivelPill nivel={t.nivelDefault} />
                     </TD>
-                    <TD className="tabular-nums text-sm text-navy">{t.puntosDefault}</TD>
+                    <TD className="tabular-nums text-dato text-navy">{t.puntosDefault}</TD>
                     <TD>
                       <button
                         type="button"
@@ -163,7 +163,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
                         <button
                           type="button"
                           onClick={() => abrirEditar(t)}
-                          className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
+                          className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
                         >
                           <Pencil className="h-3 w-3" strokeWidth={2} /> Editar
                         </button>
@@ -194,7 +194,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
       >
         <ModalBody className="space-y-4">
           <div>
-            <label htmlFor="ti-tipo" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label htmlFor="ti-tipo" className="mb-1 block text-rotulo uppercase text-muted">
               Nombre del tipo *
             </label>
             <input
@@ -206,7 +206,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
             />
           </div>
           <div>
-            <label htmlFor="ti-categoria" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label htmlFor="ti-categoria" className="mb-1 block text-rotulo uppercase text-muted">
               Categoría (agrupa el catálogo, texto libre)
             </label>
             <input
@@ -233,11 +233,11 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Gravedad por defecto</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Gravedad por defecto</label>
               <OpcionBotones opciones={NIVELES} value={form.nivelDefault} onChange={(v) => setForm((f) => ({ ...f, nivelDefault: v }))} />
             </div>
             <div>
-              <label htmlFor="ti-puntos" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+              <label htmlFor="ti-puntos" className="mb-1 block text-rotulo uppercase text-muted">
                 Puntos de penalidad por defecto
               </label>
               <input
@@ -251,7 +251,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
               />
             </div>
           </div>
-          <p className="text-xs text-muted">Gravedad y puntos son solo el valor sugerido al elegir este tipo — quien registra la incidencia los puede ajustar.</p>
+          <p className="text-apoyo text-muted">Gravedad y puntos son solo el valor sugerido al elegir este tipo — quien registra la incidencia los puede ajustar.</p>
           {error && <Aviso tono="error">{error}</Aviso>}
         </ModalBody>
         <ModalFooter>
@@ -273,7 +273,7 @@ export function TiposIncidenciaCliente({ tipos }: { tipos: TipoIncidenciaAdmin[]
         icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody>
-          <p className="text-sm leading-relaxed text-muted">
+          <p className="text-cuerpo leading-relaxed text-muted">
             <span className="font-medium text-ink">{eliminar?.tipo}</span> se quita del catálogo. Las incidencias que ya se registraron
             con este tipo no cambian (el campo tipo sigue siendo texto libre).
           </p>

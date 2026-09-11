@@ -136,7 +136,7 @@ export default async function DashboardPersonalPage() {
             <TR key={f.id}>
               <TD className="pl-5">
                 <div className="font-medium text-ink">{f.nombre}</div>
-                <div className="text-xs text-muted">
+                <div className="text-apoyo text-muted">
                   {ROL_LABEL[f.rol as Rol] ?? f.rol}
                   {f.sedeCod ? ` · ${f.sedeCod}` : ''}
                 </div>
@@ -150,7 +150,7 @@ export default async function DashboardPersonalPage() {
                 {f.error ? (
                   <Badge tone="gray">No se pudo calcular</Badge>
                 ) : f.sinActividad ? (
-                  <span className="text-xs text-muted">Sin actividad este período</span>
+                  <span className="text-apoyo text-muted">Sin actividad este período</span>
                 ) : (
                   <Badge tone={BANDA_TONE[f.banda as BandaEval]}>
                     {f.nota!.toFixed(2)} · {BANDA_LABEL[f.banda as BandaEval]}
@@ -162,7 +162,7 @@ export default async function DashboardPersonalPage() {
         </TBody>
       </Table>
 
-      <p className="mt-4 text-xs text-muted">
+      <p className="mt-4 text-apoyo text-muted">
         La escala de puntos sigue con los valores de ejemplo del administrador, sin calibrar contra
         la operación real (ver docs/pendientes-negocio.md) — la nota de acá no es todavía un juicio
         sobre nadie, es el desglose de dónde viene.

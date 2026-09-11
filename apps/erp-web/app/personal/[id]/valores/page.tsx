@@ -111,8 +111,8 @@ export default async function ValoresColaboradorPage({
                 return (
                   <div key={key}>
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-xs text-ink">{label}</span>
-                      <span className="tabular-nums text-xs font-semibold text-navy">
+                      <span className="text-apoyo text-ink">{label}</span>
+                      <span className="tabular-nums text-dato font-semibold text-navy">
                         {v == null ? '—' : `${v.toFixed(2)} / 5`}
                       </span>
                     </div>
@@ -127,12 +127,12 @@ export default async function ValoresColaboradorPage({
               })}
             </div>
             <p className="mt-4 flex items-baseline justify-between border-t border-line/60 pt-3">
-              <span className="text-xs text-muted">
+              <span className="text-apoyo text-muted">
                 Nota de Valores 360°, la que entra a la evaluación mensual
               </span>
               <span className="tabular-nums text-xl font-bold text-navy">
                 {resumen.nota20 == null ? '—' : resumen.nota20.toFixed(2)}
-                <span className="ml-0.5 text-xs font-normal text-muted">/20</span>
+                <span className="ml-0.5 text-apoyo font-normal text-muted">/20</span>
               </span>
             </p>
           </CardContent>

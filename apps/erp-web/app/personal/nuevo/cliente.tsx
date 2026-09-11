@@ -105,7 +105,7 @@ export function NuevaPersonaCliente({
         />
 
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Contraseña inicial</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Contraseña inicial</label>
           <input
             type="password"
             value={password}
@@ -116,7 +116,7 @@ export function NuevaPersonaCliente({
         </div>
 
         {error && (
-          <Aviso tono="error" className="text-sm">
+          <Aviso tono="error" className="text-cuerpo">
             {error}
           </Aviso>
         )}

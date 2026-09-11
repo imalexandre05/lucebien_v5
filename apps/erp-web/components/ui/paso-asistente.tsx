@@ -37,7 +37,7 @@ export function PasoAsistente({
           />
         ))}
       </div>
-      <h2 className="mb-3.5 text-[22px] font-display font-bold leading-tight tracking-[-.02em] text-acento-deep">
+      <h2 className="mb-3.5 text-seccion font-display font-bold text-acento-deep">
         {pregunta}
       </h2>
       <div className="flex-1">{children}</div>

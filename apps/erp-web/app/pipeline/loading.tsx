@@ -11,7 +11,7 @@ export default function Loading() {
     <div className="flex h-[calc(100vh-6.5rem)] flex-col overflow-hidden animate-fade sm:h-[calc(100vh-7.5rem)]">
       <div className="mb-4 flex shrink-0 flex-wrap items-center justify-between gap-3 rounded-r-grande bg-navy-deep px-5 py-4 text-paper shadow-card">
         <div>
-          <div className="text-xl font-semibold leading-none">Prendas recibidas</div>
+          <div className="text-titulo font-display font-bold leading-none">Prendas recibidas</div>
           <div className="mt-1 tabular-nums text-rotulo uppercase text-gold">Almacén Central</div>
         </div>
         <Skeleton className="h-6 w-24 bg-white/10" />

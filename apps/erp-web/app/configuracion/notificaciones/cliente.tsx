@@ -108,16 +108,16 @@ function FilaRegla({
   return (
     <TR className={cn(!fila.activa && 'opacity-60')}>
       <TD className="pl-5">
-        <div className="text-sm font-medium text-navy">{etiquetaRegla(regla.tipo)}</div>
-        <div className="mt-0.5 max-w-md text-xs leading-relaxed text-muted">{regla.descripcion}</div>
+        <div className="text-cuerpo font-medium text-navy">{etiquetaRegla(regla.tipo)}</div>
+        <div className="mt-0.5 max-w-md text-apoyo leading-relaxed text-muted">{regla.descripcion}</div>
       </TD>
       <TD>
         <Badge tone={sev.tone}>{sev.label}</Badge>
       </TD>
-      <TD className="text-xs capitalize text-muted">{etiquetaRol(regla.destinatarioRol)}</TD>
+      <TD className="text-apoyo capitalize text-muted">{etiquetaRol(regla.destinatarioRol)}</TD>
       <TD>
         {SIN_UMBRAL.has(regla.tipo) ? (
-          <span className="text-xs text-muted">— (sin umbral)</span>
+          <span className="text-apoyo text-muted">— (sin umbral)</span>
         ) : (
           <input
             type="number"
@@ -178,7 +178,7 @@ function GrupoReglas({
     <Card>
       <div className="border-b border-line/60 px-5 pt-4 pb-3">
         <CardTitle>{titulo}</CardTitle>
-        {nota && <p className="mt-1 text-xs leading-relaxed text-muted">{nota}</p>}
+        {nota && <p className="mt-1 text-apoyo leading-relaxed text-muted">{nota}</p>}
       </div>
       <CardContent className="overflow-x-auto px-0 pb-0">
         <Table>

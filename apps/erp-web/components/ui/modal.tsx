@@ -105,9 +105,9 @@ export function Modal({
               {icon}
               <div className="min-w-0">
                 {title && (
-                  <div className="truncate text-lg font-semibold text-navy">{title}</div>
+                  <div className="truncate text-seccion font-display font-semibold text-navy">{title}</div>
                 )}
-                {subtitle && <div className="truncate text-xs text-muted">{subtitle}</div>}
+                {subtitle && <div className="truncate text-apoyo text-muted">{subtitle}</div>}
               </div>
             </div>
             <button

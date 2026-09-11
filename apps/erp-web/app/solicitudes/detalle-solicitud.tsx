@@ -218,28 +218,28 @@ function Contenido({
 
         <div className="space-y-1.5">
           {solicitud.obs && (
-            <div className="rounded-r-chico bg-paper px-2.5 py-1.5 text-xs text-ink">
+            <div className="rounded-r-chico bg-paper px-2.5 py-1.5 text-apoyo text-ink">
               <b>Obs.:</b> {solicitud.obs}
             </div>
           )}
           {solicitud.aprobadoPorNombre && (
-            <div className="rounded-r-md border-l-2 border-navy bg-navy/5 px-2.5 py-1.5 text-xs text-navy">
+            <div className="rounded-r-md border-l-2 border-navy bg-navy/5 px-2.5 py-1.5 text-apoyo text-navy">
               Aprobó <b>{solicitud.aprobadoPorNombre}</b> · {fechaHora(solicitud.fechaRespuesta)}
               {solicitud.obsRespuesta && <span className="block text-muted">{solicitud.obsRespuesta}</span>}
             </div>
           )}
           {solicitud.entregadoPorNombre && (
-            <div className="rounded-r-md border-l-2 border-exito bg-exito-soft px-2.5 py-1.5 text-xs text-exito-deep">
+            <div className="rounded-r-md border-l-2 border-exito bg-exito-soft px-2.5 py-1.5 text-apoyo text-exito-deep">
               Entregó <b>{solicitud.entregadoPorNombre}</b> a <b>{solicitud.recibeEnTienda ?? '—'}</b> · {fechaHora(solicitud.fechaEntrega)}
             </div>
           )}
           {solicitud.confirmadoPorNombre && (
-            <div className="rounded-r-md border-l-2 border-navy bg-navy/5 px-2.5 py-1.5 text-xs text-navy">
+            <div className="rounded-r-md border-l-2 border-navy bg-navy/5 px-2.5 py-1.5 text-apoyo text-navy">
               Confirmó <b>{solicitud.confirmadoPorNombre}</b> · {fechaHora(solicitud.fechaConfirmacion)}
             </div>
           )}
           {solicitud.rechazadoPorNombre && (
-            <div className="rounded-r-md border-l-2 border-error bg-error-soft px-2.5 py-1.5 text-xs text-error-deep">
+            <div className="rounded-r-md border-l-2 border-error bg-error-soft px-2.5 py-1.5 text-apoyo text-error-deep">
               Rechazó <b>{solicitud.rechazadoPorNombre}</b> — {solicitud.motivoRechazo}
             </div>
           )}
@@ -283,7 +283,7 @@ function Contenido({
                       {i.color ?? '—'}
                     </TD>
                     <TD>{i.talla ?? '—'}</TD>
-                    <TD className="text-xs text-muted">{[i.tela, i.modelo].filter(Boolean).join(' · ') || '—'}</TD>
+                    <TD className="text-apoyo text-muted">{[i.tela, i.modelo].filter(Boolean).join(' · ') || '—'}</TD>
                     <TD className="text-right tabular-nums font-semibold">{i.cantidad}</TD>
                     {mostrarEnviar && (
                       <TD className="text-right">
@@ -294,7 +294,7 @@ function Contenido({
                           value={cantidadesEnviar[i.id] ?? i.cantidad}
                           onFocus={(e) => e.target.select()}
                           onChange={(e) => setCantidadesEnviar((p) => ({ ...p, [i.id]: clamp(Number(e.target.value) || 0, 0, i.cantidad) }))}
-                          className="w-16 rounded-r-chico border border-line bg-white px-1.5 py-1 text-right text-sm outline-none focus:border-gold"
+                          className="w-16 rounded-r-chico border border-line bg-white px-1.5 py-1 text-right text-cuerpo outline-none focus:border-gold"
                         />
                       </TD>
                     )}
@@ -320,7 +320,7 @@ function Contenido({
                             onChange={(e) =>
                               setCantidadesRecibir((p) => ({ ...p, [i.id]: clamp(Number(e.target.value) || 0, 0, i.cantidadEnviada) }))
                             }
-                            className="w-16 rounded-r-chico border border-line bg-white px-1.5 py-1 text-right text-sm outline-none focus:border-gold"
+                            className="w-16 rounded-r-chico border border-line bg-white px-1.5 py-1 text-right text-cuerpo outline-none focus:border-gold"
                           />
                         </TD>
                         <TD>
@@ -328,7 +328,7 @@ function Contenido({
                             value={obsRecepcion[i.id] ?? ''}
                             onChange={(e) => setObsRecepcion((p) => ({ ...p, [i.id]: e.target.value }))}
                             placeholder="Obs."
-                            className="w-full rounded-r-chico border border-line bg-white px-1.5 py-1 text-xs outline-none focus:border-gold"
+                            className="w-full rounded-r-chico border border-line bg-white px-1.5 py-1 text-apoyo outline-none focus:border-gold"
                           />
                         </TD>
                       </>
@@ -338,7 +338,7 @@ function Contenido({
                         {i.cantidadRecibida}
                       </TD>
                     )}
-                    <TD className="text-xs text-muted">{i.obs || i.detalle || '—'}</TD>
+                    <TD className="text-apoyo text-muted">{i.obs || i.detalle || '—'}</TD>
                   </TR>
                 );
               })}
@@ -348,25 +348,25 @@ function Contenido({
 
         {esPendiente && esGestor && !rechazando && (
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Observación de respuesta (opcional)</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Observación de respuesta (opcional)</label>
             <input
               value={obsRespuesta}
               onChange={(e) => setObsRespuesta(e.target.value)}
               placeholder="Ej: no hay stock talla XL"
-              className="w-full rounded-r-chico border border-line bg-white px-2.5 py-2 text-sm outline-none focus:border-gold"
+              className="w-full rounded-r-chico border border-line bg-white px-2.5 py-2 text-cuerpo outline-none focus:border-gold"
             />
           </div>
         )}
 
         {rechazando && (
           <div className="rounded-r-chico border border-error-line bg-error-soft p-3">
-            <label className="mb-1 block text-xs uppercase tracking-wide text-error-deep">Motivo del rechazo (obligatorio)</label>
+            <label className="mb-1 block text-rotulo uppercase text-error-deep">Motivo del rechazo (obligatorio)</label>
             <input
               value={motivo}
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Ej: no hay stock"
               autoFocus
-              className="w-full rounded-r-chico border border-error-line bg-white px-2.5 py-2 text-sm outline-none focus:border-error"
+              className="w-full rounded-r-chico border border-error-line bg-white px-2.5 py-2 text-cuerpo outline-none focus:border-error"
             />
           </div>
         )}
@@ -374,7 +374,7 @@ function Contenido({
         {entregando && (
           <div className="space-y-3 rounded-r-chico border border-line bg-paper/60 p-3">
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Quién recibe en {solicitud.sedeCod}</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Quién recibe en {solicitud.sedeCod}</label>
               {empleadosDeSede.length > 0 && (
                 <div className="mb-1.5 flex flex-wrap gap-1.5">
                   {empleadosDeSede.map((e) => (
@@ -383,7 +383,7 @@ function Contenido({
                       type="button"
                       onClick={() => setRecibeEnTienda(e.nombre)}
                       className={cn(
-                        'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
+                        'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors',
                         recibeEnTienda === e.nombre ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
                       )}
                     >
@@ -396,19 +396,19 @@ function Contenido({
                 value={recibeEnTienda}
                 onChange={(e) => setRecibeEnTienda(e.target.value)}
                 placeholder="O escribe el nombre de quien recibe…"
-                className="w-full rounded-r-chico border border-line bg-white px-2.5 py-2 text-sm outline-none focus:border-gold"
+                className="w-full rounded-r-chico border border-line bg-white px-2.5 py-2 text-cuerpo outline-none focus:border-gold"
               />
             </div>
             {solicitud.items.some((i) => i.categoria === 'prenda' && i.cantidadEnviada > 0) && (
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
+                <label className="mb-1 block text-rotulo uppercase text-muted">
                   Códigos de prenda (opcional) · obligatorio para imprimir la confirmación
                 </label>
                 {solicitud.items
                   .filter((i) => i.categoria === 'prenda' && i.cantidadEnviada > 0)
                   .map((i) => (
                     <div key={i.id} className="mb-2 rounded-r-chico border border-line bg-white p-2.5">
-                      <div className="mb-1.5 flex items-center justify-between text-xs">
+                      <div className="mb-1.5 flex items-center justify-between text-apoyo">
                         <span className="font-semibold text-navy">
                           {i.tipo} {i.color} {i.talla}
                         </span>
@@ -421,7 +421,7 @@ function Contenido({
                             value={codigos[i.id]?.[k] ?? ''}
                             onChange={(e) => setCodigo(i.id, k, e.target.value.toUpperCase())}
                             placeholder={`Código ${k + 1}`}
-                            className="rounded-r-chico border border-line bg-white px-2 py-1.5 tabular-nums text-xs uppercase tracking-wide outline-none focus:border-gold"
+                            className="rounded-r-chico border border-line bg-white px-2 py-1.5 tabular-nums text-dato uppercase tracking-wide outline-none focus:border-gold"
                           />
                         ))}
                       </div>
@@ -432,7 +432,7 @@ function Contenido({
           </div>
         )}
 
-        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+        {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
       </ModalBody>
       <ModalFooter className="flex-wrap justify-start gap-2">
         {esPendiente && esGestor && !rechazando && (

@@ -431,7 +431,7 @@ export function NuevoReporteForm({
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted">Turno</label>
+            <label className="mb-2 block text-rotulo font-semibold uppercase text-muted">Turno</label>
             <div className="grid grid-cols-3 gap-3">
               {TURNOS.map(({ v, label, sub, icon: Icon }) => {
                 const on = turno === v;
@@ -449,13 +449,13 @@ export function NuevoReporteForm({
                     )}
                   >
                     <Icon className={cn('h-7 w-7', on ? 'text-gold' : 'text-navy/70')} strokeWidth={1.6} />
-                    <span className="text-base font-semibold">{label}</span>
+                    <span className="text-sub font-semibold">{label}</span>
                     <span className={cn('text-micro', on ? 'text-paper/70' : 'text-muted')}>{sub}</span>
                   </button>
                 );
               })}
             </div>
-            <p className="mt-2 tabular-nums text-xs text-muted">
+            <p className="mt-2 tabular-nums text-dato text-muted">
               {sede} · {fecha}
               {turno && ` · ${idReporte(fecha, turno, sede)}`}
             </p>
@@ -464,7 +464,7 @@ export function NuevoReporteForm({
           {turno && !yaEnviado && !conflicto && (
             <div className="grid gap-5 border-t border-line/60 pt-5 lg:grid-cols-2">
               <div>
-                <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                <div className="mb-2 flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
                   <Users className="h-3.5 w-3.5" strokeWidth={2} /> Colaboradores del turno
                 </div>
                 <PersonaPicker
@@ -476,7 +476,7 @@ export function NuevoReporteForm({
                 />
               </div>
               <div>
-                <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                <div className="mb-2 flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
                   <PenLine className="h-3.5 w-3.5" strokeWidth={2} /> Encargado del turno
                   <span className="font-normal normal-case text-muted/80">· quien firma</span>
                 </div>
@@ -498,11 +498,11 @@ export function NuevoReporteForm({
         <Card>
           <CardContent className="py-10 text-center">
             <Clock className="mx-auto mb-3 h-9 w-9 text-gold/70" strokeWidth={1.5} />
-            <p className="text-sm text-muted">Selecciona un turno para cargar las actividades del día.</p>
+            <p className="text-cuerpo text-muted">Selecciona un turno para cargar las actividades del día.</p>
           </CardContent>
         </Card>
       )}
-      {cargando && <p className="text-sm text-muted">Cargando actividades…</p>}
+      {cargando && <p className="text-cuerpo text-muted">Cargando actividades…</p>}
 
       {turno && !cargando && yaEnviado && (
         <Card>
@@ -511,8 +511,8 @@ export function NuevoReporteForm({
               <>
                 <Clock className="h-10 w-10 text-muted" strokeWidth={1.5} />
                 <div>
-                  <p className="text-lg font-semibold text-navy">Este turno venció sin actividad registrada</p>
-                  <p className="mt-1 text-sm text-muted">
+                  <p className="text-seccion font-display font-semibold text-navy">Este turno venció sin actividad registrada</p>
+                  <p className="mt-1 text-cuerpo text-muted">
                     Se cerró automáticamente al pasar el plazo porque no había ningún borrador guardado. No hay nada que evaluar.
                   </p>
                 </div>
@@ -524,7 +524,7 @@ export function NuevoReporteForm({
                   <p className="text-lg font-semibold text-navy">
                     {yaEnviado.estadoEnvio === 'no_enviado' ? 'Este turno se cerró automáticamente' : 'Este turno ya se envió'}
                   </p>
-                  <p className="mt-1 text-sm text-muted">
+                  <p className="mt-1 text-cuerpo text-muted">
                     {yaEnviado.estadoEnvio === 'no_enviado' ? (
                       'Venció el plazo, pero se guardó todo lo que ya habías marcado (actividades, limpieza, extras, colaboradores). Corresponde evaluarlo.'
                     ) : (
@@ -548,8 +548,8 @@ export function NuevoReporteForm({
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <Clock className="h-10 w-10 text-aviso" strokeWidth={1.5} />
             <div>
-              <p className="text-lg font-semibold text-navy">Este horario ya está cubierto</p>
-              <p className="mt-1 text-sm text-muted">
+              <p className="text-seccion font-display font-semibold text-navy">Este horario ya está cubierto</p>
+              <p className="mt-1 text-cuerpo text-muted">
                 Ya existe un reporte de <span className="font-semibold">{TURNO_LABEL[conflicto.turno] ?? conflicto.turno}</span> para {sede} · {fecha}, que ya cubre este horario. No se puede crear otro reporte encima.
               </p>
             </div>
@@ -569,8 +569,8 @@ export function NuevoReporteForm({
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <ClipboardCheck className="h-10 w-10 text-aviso" strokeWidth={1.5} />
             <div>
-              <p className="text-lg font-semibold text-navy">Hay un reporte anterior pendiente de evaluación</p>
-              <p className="mt-1 text-sm text-muted">
+              <p className="text-seccion font-display font-semibold text-navy">Hay un reporte anterior pendiente de evaluación</p>
+              <p className="mt-1 text-cuerpo text-muted">
                 El reporte de <span className="font-semibold">{TURNO_LABEL[pendienteAnterior.turno] ?? pendienteAnterior.turno}</span> del {pendienteAnterior.fecha} en {sede} todavía no se evaluó. Evalúalo antes de crear uno nuevo.
               </p>
             </div>
@@ -593,7 +593,7 @@ export function NuevoReporteForm({
               <Card className="flex flex-col xl:col-span-3">
                 <CardHeader>
                   <CardTitle>Limpieza</CardTitle>
-                  <span className="text-xs text-muted">Marca en el mapa las zonas que limpiaste</span>
+                  <span className="text-apoyo text-muted">Marca en el mapa las zonas que limpiaste</span>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col">
                   <LayoutMap zonas={zonas} turno={turno} selected={limpieza} onChange={setLimpieza} />
@@ -606,20 +606,20 @@ export function NuevoReporteForm({
               <CardHeader>
                 <CardTitle>Actividades del turno</CardTitle>
                 <div className="flex items-center gap-2">
-                  <span className="tabular-nums text-xs text-muted">
+                  <span className="tabular-nums text-dato text-muted">
                     {actDone}/{cat.length}
                   </span>
                   <button
                     type="button"
                     onClick={() => marcarTodas(true)}
-                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
+                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold active:scale-[0.97]"
                   >
                     <Check className="h-3.5 w-3.5" strokeWidth={2} /> Todas
                   </button>
                   <button
                     type="button"
                     onClick={() => marcarTodas(false)}
-                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold active:scale-[0.97]"
+                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-muted transition-colors hover:border-gold active:scale-[0.97]"
                   >
                     <Square className="h-3.5 w-3.5" strokeWidth={2} /> Ninguna
                   </button>
@@ -648,7 +648,7 @@ export function NuevoReporteForm({
                     >
                       <span className="w-10 shrink-0 tabular-nums text-micro text-muted">{a.cod}</span>
                       <div className="min-w-0 flex-1">
-                        <span className="text-[13px] font-medium leading-snug text-navy">{a.nombre}</span>
+                        <span className="text-apoyo font-medium leading-snug text-navy">{a.nombre}</span>
                         {a.peso > 0 && <span className="ml-1.5 tabular-nums text-micro text-muted">{a.peso}pts</span>}
                         {a.pendienteAcumulado && (
                           <Badge tone="amber" className="ml-1.5">
@@ -662,7 +662,7 @@ export function NuevoReporteForm({
                         onChange={(e) => setObs((p) => ({ ...p, [a.cod]: e.target.value }))}
                         placeholder="Obs."
                         aria-label={`Observación de ${a.nombre}`}
-                        className={cn(fieldCls, 'w-24 px-2 py-1 text-xs')}
+                        className={cn(fieldCls, 'w-24 px-2 py-1 text-apoyo')}
                       />
                       <Toggle on={on} onClick={() => setDone((p) => ({ ...p, [a.cod]: !p[a.cod] }))} />
                     </div>
@@ -680,14 +680,14 @@ export function NuevoReporteForm({
               <button
                 type="button"
                 onClick={() => setIncidencias((p) => [...p, { tipo: '', nivel: 'Medio', descripcion: '', responsableId: '', puntosPenalidad: 2 }])}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
+                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold active:scale-[0.97]"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
               </button>
             </CardHeader>
             <CardContent>
               {incidencias.length === 0 ? (
-                <p className="text-sm text-muted">Sin incidencias registradas.</p>
+                <p className="text-cuerpo text-muted">Sin incidencias registradas.</p>
               ) : (
                 <div className="space-y-3">
                   {incidencias.map((inc, i) => {
@@ -748,7 +748,7 @@ export function NuevoReporteForm({
                                 type="button"
                                 onClick={() => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, nivel: n } : x)))}
                                 className={cn(
-                                  'rounded-md border-2 px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
+                                  'rounded-md border-2 px-2.5 py-1.5 text-apoyo font-medium transition-colors duration-150',
                                   inc.nivel === n
                                     ? n === 'Alto'
                                       ? 'border-error bg-error-soft text-error-deep'
@@ -764,7 +764,7 @@ export function NuevoReporteForm({
                           </div>
                         )}
                         {descripcionFalta && (
-                          <span className="text-xs font-medium text-aviso-deep">
+                          <span className="text-apoyo font-medium text-aviso-deep">
                             La descripción es obligatoria para este tipo.
                           </span>
                         )}
@@ -792,12 +792,12 @@ export function NuevoReporteForm({
             <CardHeader>
               <CardTitle>Extras</CardTitle>
               {extras.length > 0 && (
-                <span className="tabular-nums text-xs text-muted">{extras.length} agregado(s)</span>
+                <span className="tabular-nums text-dato text-muted">{extras.length} agregado(s)</span>
               )}
             </CardHeader>
             <CardContent className="space-y-3">
               {catalogoExtras.length === 0 ? (
-                <p className="text-xs text-muted">
+                <p className="text-apoyo text-muted">
                   Catálogo de extras no configurado para esta sede — usa &quot;Otra actividad&quot; para registrar uno igual.
                 </p>
               ) : (
@@ -821,7 +821,7 @@ export function NuevoReporteForm({
                               onClick={() => agregarCatalogo(c)}
                               title={tipoAct === 'remunerada' && c.precioUnitario > 0 ? `S/ ${c.precioUnitario.toFixed(2)} / ${c.unidad}` : c.nombre}
                               className={cn(
-                                'inline-flex items-center gap-1.5 rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
+                                'inline-flex items-center gap-1.5 rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors duration-150 active:scale-[0.97]',
                                 enLista
                                   ? 'border-exito bg-exito/10 text-exito-deep'
                                   : 'border-line bg-white text-navy hover:border-gold/70',
@@ -844,7 +844,7 @@ export function NuevoReporteForm({
                   {extras.map((e, i) => (
                     <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-line/60 p-2">
                       {e.cod ? (
-                        <span className="min-w-[9rem] flex-1 text-sm text-navy">{e.nombre}</span>
+                        <span className="min-w-[9rem] flex-1 text-cuerpo text-navy">{e.nombre}</span>
                       ) : (
                         <input
                           value={e.nombre}
@@ -862,7 +862,7 @@ export function NuevoReporteForm({
                         >
                           <Minus className="h-3.5 w-3.5" strokeWidth={2} />
                         </button>
-                        <span className="w-6 text-center tabular-nums text-sm font-semibold">{e.cantidad}</span>
+                        <span className="w-6 text-center tabular-nums text-dato font-semibold">{e.cantidad}</span>
                         <button
                           type="button"
                           onClick={() => cambiarCantidadExtra(i, 1)}
@@ -906,7 +906,7 @@ export function NuevoReporteForm({
               <button
                 type="button"
                 onClick={agregarExtraLibre}
-                className="toque inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
+                className="toque inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2.5 py-1.5 text-apoyo text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
               >
                 <HelpCircle className="h-3.5 w-3.5" strokeWidth={2} /> Otra actividad (sin catálogo)
               </button>
@@ -929,7 +929,7 @@ export function NuevoReporteForm({
               />
             </div>
             {error && (
-              <Aviso tono="error" className="mb-2 text-sm">
+              <Aviso tono="error" className="mb-2 text-cuerpo">
                 {error}
                 {bloqueoId && (
                   <>
@@ -945,31 +945,31 @@ export function NuevoReporteForm({
               </Aviso>
             )}
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              <span className="text-xs text-muted">
+              <span className="text-apoyo text-muted">
                 Limpieza{' '}
-                <span className="tabular-nums text-sm font-bold text-exito-deep">
+                <span className="tabular-nums text-dato font-bold text-exito-deep">
                   {limpiezaPts.got}
                 </span>
                 <span className="tabular-nums text-micro text-muted">/{limpiezaPts.tot}</span>
               </span>
-              <span className="text-xs text-muted">
+              <span className="text-apoyo text-muted">
                 Actividades{' '}
-                <span className="tabular-nums text-sm font-bold text-navy">
+                <span className="tabular-nums text-dato font-bold text-navy">
                   {actDone}/{cat.length}
                 </span>
               </span>
-              <span className="text-xs text-muted" title="El encargado del turno siempre cuenta como colaborador">
-                Equipo <span className="tabular-nums text-sm font-bold text-navy">{equipoCount}</span>
+              <span className="text-apoyo text-muted" title="El encargado del turno siempre cuenta como colaborador">
+                Equipo <span className="tabular-nums text-dato font-bold text-navy">{equipoCount}</span>
               </span>
               {extras.filter((e) => e.nombre.trim()).length > 0 && (
-                <span className="text-xs text-muted">
+                <span className="text-apoyo text-muted">
                   Extras{' '}
-                  <span className="tabular-nums text-sm font-bold text-navy">
+                  <span className="tabular-nums text-dato font-bold text-navy">
                     {extras.filter((e) => e.nombre.trim()).length}
                   </span>
                 </span>
               )}
-              <span className="rounded-r-pastilla bg-gold/15 px-3 py-1 text-xs text-muted">
+              <span className="rounded-r-pastilla bg-gold/15 px-3 py-1 text-apoyo text-muted">
                 Total{' '}
                 <span className="tabular-nums text-base font-bold text-gold-deep">{totalPts}</span>{' '}
                 pts
@@ -979,7 +979,7 @@ export function NuevoReporteForm({
               {minutosRestantes !== null && (
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1 rounded-r-pastilla px-2.5 py-1 tabular-nums text-xs font-medium',
+                    'inline-flex items-center gap-1 rounded-r-pastilla px-2.5 py-1 tabular-nums text-dato font-medium',
                     minutosRestantes <= 0
                       ? 'bg-error-soft text-error-deep'
                       : minutosRestantes <= 30
@@ -994,7 +994,7 @@ export function NuevoReporteForm({
               <div className="ml-auto flex items-center gap-3">
                 <span
                   id="motivo-envio"
-                  className={cn('text-xs', motivoBloqueo ? 'font-medium text-aviso-deep' : 'text-muted')}
+                  className={cn('text-apoyo', motivoBloqueo ? 'font-medium text-aviso-deep' : 'text-muted')}
                 >
                   {motivoBloqueo ?? 'Se guarda automáticamente mientras lo completas.'}
                 </span>

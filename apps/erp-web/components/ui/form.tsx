@@ -21,7 +21,7 @@ import { cn } from '../../lib/cn';
 // foco, deshabilitado y error. El relleno va aparte porque el ERP usa dos densidades y las dos son
 // correctas.
 export const campoBase =
-  'rounded-r-chico border border-line bg-white text-sm text-navy placeholder:text-muted/70 ' +
+  'rounded-r-chico border border-line bg-white text-cuerpo text-navy placeholder:text-muted/70 ' +
   'transition-[border-color,box-shadow,background-color] duration-150 ease-out-expo ' +
   'hover:border-navy/25 ' +
   'focus:border-navy/40 focus:outline-none focus:ring-2 focus:ring-gold/30 ' +
@@ -63,7 +63,7 @@ export const Label = ({
   children,
   ...p
 }: LabelHTMLAttributes<HTMLLabelElement> & { required?: boolean }) => (
-  <label className={cn('mb-1 block text-xs font-medium text-muted', className)} {...p}>
+  <label className={cn('mb-1 block text-apoyo font-medium text-muted', className)} {...p}>
     {children}
     {required && (
       // El asterisco es dorado y no rojo: obligatorio no es un error todavía. El texto entre
@@ -87,7 +87,7 @@ export const Label = ({
  * nombra su propio `aria-label`, que es donde el lector sí lo busca.
  */
 export const LabelGrupo = ({ className, ...p }: HTMLAttributes<HTMLSpanElement>) => (
-  <span className={cn('mb-1 block text-xs font-medium text-muted', className)} {...p} />
+  <span className={cn('mb-1 block text-apoyo font-medium text-muted', className)} {...p} />
 );
 
 /**
@@ -119,7 +119,7 @@ export function Aviso({
       // Sólo el error interrumpe. Un acierto o un dato se leen cuando la persona llegue: anunciar
       // todo con la misma urgencia enseña a ignorar los avisos.
       role={tono === 'error' ? 'alert' : 'status'}
-      className={cn('animate-fade rounded-r-chico border px-3 py-2 text-xs leading-relaxed', tonos[tono], className)}
+      className={cn('animate-fade rounded-r-chico border px-3 py-2 text-apoyo leading-relaxed', tonos[tono], className)}
     >
       {titulo && <p className="font-semibold">{titulo}</p>}
       {children}

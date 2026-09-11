@@ -25,8 +25,8 @@ export type Opcion<T extends string = string> = {
 // con 8px de separación, así que las áreas de una fila se comerían los toques de la de arriba.
 // Cuando el control se toca de verdad, se agranda el control.
 const TAMANOS = {
-  compacto: 'px-3 py-1.5 text-xs',
-  grande: 'px-3 py-2.5 text-sm',
+  compacto: 'px-3 py-1.5 text-apoyo',
+  grande: 'px-3 py-2.5 text-cuerpo',
 } as const;
 
 // FILA vs GRILLA. En fila los botones son pills que se envuelven y ocupan lo que mide su texto:

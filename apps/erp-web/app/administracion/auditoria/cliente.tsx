@@ -182,19 +182,19 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                 setFHasta('');
                 setFActor('');
               }}
-              className="text-xs text-muted underline hover:text-navy"
+              className="text-apoyo text-muted underline hover:text-navy"
             >
               Limpiar filtros
             </button>
           )}
-          {cargando && <span className="text-xs text-muted">Buscando…</span>}
+          {cargando && <span className="text-apoyo text-muted">Buscando…</span>}
         </CardContent>
       </Card>
 
       {errorBusqueda && (
         <Card>
           <CardContent className="py-3">
-            <p className="text-sm text-error-deep">No se pudo leer la auditoría: {errorBusqueda}</p>
+            <p className="text-cuerpo text-error-deep">No se pudo leer la auditoría: {errorBusqueda}</p>
           </CardContent>
         </Card>
       )}
@@ -223,12 +223,12 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                 <TBody>
                   {filtradas.map((f) => (
                     <TR key={f.id}>
-                      <TD className="pl-5 text-xs text-muted">{fechaHoraCorta(f.at)}</TD>
-                      <TD className="text-sm text-navy">{TABLA_LABEL[f.tabla as keyof typeof TABLA_LABEL] ?? f.tabla}</TD>
+                      <TD className="pl-5 text-apoyo text-muted">{fechaHoraCorta(f.at)}</TD>
+                      <TD className="text-cuerpo text-navy">{TABLA_LABEL[f.tabla as keyof typeof TABLA_LABEL] ?? f.tabla}</TD>
                       <TD>
                         <Badge tone={OPERACION_TONE[f.operacion]}>{OPERACION_LABEL[f.operacion]}</Badge>
                       </TD>
-                      <TD className="text-sm text-navy">{f.actorNombre ?? <span className="text-muted">Sistema</span>}</TD>
+                      <TD className="text-cuerpo text-navy">{f.actorNombre ?? <span className="text-muted">Sistema</span>}</TD>
                       <TD className="tabular-nums text-micro text-muted" title={f.filaId}>
                         {f.filaId.slice(0, 8)}
                       </TD>
@@ -236,7 +236,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                         <button
                           type="button"
                           onClick={() => setDetalle(f)}
-                          className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
+                          className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
                         >
                           <Eye className="h-3 w-3" strokeWidth={2} /> Ver
                         </button>
@@ -272,7 +272,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
         <ModalBody className="space-y-3">
           {detalle && (
             <>
-              <p className="text-xs text-muted">
+              <p className="text-apoyo text-muted">
                 Actor: <span className="font-medium text-navy">{detalle.actorNombre ?? 'Sistema (sin usuario en sesión, p. ej. una acción administrativa por API)'}</span>
                 {' · '}
                 Fila: <span className="tabular-nums">{detalle.filaId}</span>
@@ -280,7 +280,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
 
               {detalle.operacion === 'UPDATE' ? (
                 cambios.length === 0 ? (
-                  <p className="text-sm text-muted">No se detectaron campos con valores distintos.</p>
+                  <p className="text-cuerpo text-muted">No se detectaron campos con valores distintos.</p>
                 ) : (
                   <div className="overflow-x-auto rounded-md border border-line">
                     <Table>
@@ -294,11 +294,11 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                       <TBody>
                         {cambios.map((c) => (
                           <TR key={c.campo}>
-                            <TD className="pl-3 tabular-nums text-xs text-navy">{c.campo}</TD>
-                            <TD className="max-w-[220px] truncate text-xs text-error-deep" title={valorLegible(c.antes)}>
+                            <TD className="pl-3 tabular-nums text-dato text-navy">{c.campo}</TD>
+                            <TD className="max-w-[220px] truncate text-apoyo text-error-deep" title={valorLegible(c.antes)}>
                               {valorLegible(c.antes)}
                             </TD>
-                            <TD className="max-w-[220px] truncate text-xs text-exito-deep" title={valorLegible(c.despues)}>
+                            <TD className="max-w-[220px] truncate text-apoyo text-exito-deep" title={valorLegible(c.despues)}>
                               {valorLegible(c.despues)}
                             </TD>
                           </TR>
@@ -309,7 +309,7 @@ export function AuditoriaCliente({ filasIniciales }: { filasIniciales: AuditLogF
                 )
               ) : (
                 <div className="max-h-80 overflow-auto rounded-md border border-line bg-paper/40 p-3">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-apoyo">
                     <tbody>
                       {Object.entries(detalle.operacion === 'DELETE' ? detalle.antes ?? {} : detalle.despues ?? {}).map(([k, v]) => (
                         <tr key={k} className="border-b border-line/50 last:border-0">

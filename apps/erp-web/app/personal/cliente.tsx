@@ -127,7 +127,7 @@ export function ListaColaboradores({
               onClick={() => setFiltro(f.clave)}
               aria-pressed={filtroActivo === f.clave}
               className={cn(
-                'anillo cursor-pointer rounded-r-pastilla px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
+                'anillo cursor-pointer rounded-r-pastilla px-2.5 py-1.5 text-apoyo font-medium transition-colors duration-150',
                 filtroActivo === f.clave ? 'bg-navy text-paper' : 'text-navy hover:bg-navy/5',
               )}
             >
@@ -167,8 +167,8 @@ export function ListaColaboradores({
                 <Avatar nombre={c.nombre} iniciales={c.iniciales} />
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-navy">{c.nombre}</p>
-                  <p className="truncate text-xs text-muted">
+                  <p className="truncate text-cuerpo font-semibold text-navy">{c.nombre}</p>
+                  <p className="truncate text-apoyo text-muted">
                     {ROL_LABEL[c.rol as Rol] ?? c.rol}
                     {c.sedeCod ? ` · ${c.sedeCod}` : ''}
                     {/* Se dice en la fila y no sólo en el filtro: el expediente de una persona
@@ -182,7 +182,7 @@ export function ListaColaboradores({
                   <HiloPago pasos={pasos} compacto />
                   <span
                     className={cn(
-                      'text-xs',
+                      'text-apoyo',
                       corte ? 'font-medium text-aviso-deep' : 'text-exito-deep',
                     )}
                   >

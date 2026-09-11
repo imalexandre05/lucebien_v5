@@ -133,7 +133,7 @@ export function EvaluarPanel({
   return (
     <div className="mt-6 space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-xl font-semibold text-navy">
+        <h2 className="flex items-center gap-2 text-seccion font-display font-semibold text-navy">
           <Star className="h-5 w-5 text-gold" strokeWidth={2} /> Evaluar reporte
         </h2>
         <span className="rounded-r-pastilla bg-gold/15 px-3 py-1 tabular-nums text-base font-bold text-gold-deep">
@@ -142,11 +142,11 @@ export function EvaluarPanel({
       </div>
 
       {trabajadores.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2 text-sm text-aviso-deep">
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2 text-cuerpo text-aviso-deep">
           <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={2} />
           <span>El evaluante no puede haber estado en el turno:</span>
           {trabajadores.map((t) => (
-            <span key={t} className="rounded-r-pastilla bg-white px-2 py-0.5 text-xs font-medium text-aviso-deep">
+            <span key={t} className="rounded-r-pastilla bg-white px-2 py-0.5 text-apoyo font-medium text-aviso-deep">
               {t}
             </span>
           ))}
@@ -157,7 +157,7 @@ export function EvaluarPanel({
         <Card>
           <CardHeader>
             <CardTitle>Limpieza</CardTitle>
-            <span className="text-xs text-muted">Clic en cada zona para aprobar / observar / rechazar</span>
+            <span className="text-apoyo text-muted">Clic en cada zona para aprobar / observar / rechazar</span>
           </CardHeader>
           <CardContent>
             <LayoutMap
@@ -178,13 +178,13 @@ export function EvaluarPanel({
         <CardHeader>
           <CardTitle>Calificación por actividad</CardTitle>
           <div className="flex items-center gap-1.5">
-            <button type="button" onClick={() => masivoActs(1)} aria-label="Aprobar todo" className="inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1.5 text-xs font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(1)} aria-label="Aprobar todo" className="inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1.5 text-apoyo font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
               <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
-            <button type="button" onClick={() => masivoActs(0.5)} aria-label="Observar todo" className="inline-flex items-center gap-1 rounded-md border border-aviso-line bg-aviso-soft px-2.5 py-1.5 text-xs font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(0.5)} aria-label="Observar todo" className="inline-flex items-center gap-1 rounded-md border border-aviso-line bg-aviso-soft px-2.5 py-1.5 text-apoyo font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]">
               <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
-            <button type="button" onClick={() => masivoActs(0)} aria-label="Rechazar todo" className="inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1.5 text-xs font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(0)} aria-label="Rechazar todo" className="inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1.5 text-apoyo font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
               <X className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
           </div>
@@ -192,10 +192,10 @@ export function EvaluarPanel({
         <CardContent className="space-y-2">
           {actividades.map((a) => (
             <div key={a.cod} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white px-3 py-2.5">
-              <span className="w-12 shrink-0 tabular-nums text-xs text-muted">{a.cod}</span>
+              <span className="w-12 shrink-0 tabular-nums text-dato text-muted">{a.cod}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-navy">{a.nombre}</span>
+                  <span className="text-cuerpo font-medium text-navy">{a.nombre}</span>
                   {a.peso > 0 && <span className="tabular-nums text-micro text-muted">{a.peso}pts</span>}
                 </div>
               </div>
@@ -205,18 +205,18 @@ export function EvaluarPanel({
                 onChange={(e) => setObs((p) => ({ ...p, [a.cod]: e.target.value }))}
                 placeholder="Obs."
                 aria-label={`Observación de ${a.nombre}`}
-                className="w-40 rounded-md border border-line bg-white px-2.5 py-2 text-xs text-navy outline-none transition-colors focus:border-gold"
+                className="w-40 rounded-md border border-line bg-white px-2.5 py-2 text-apoyo text-navy outline-none transition-colors focus:border-gold"
               />
               <Estado3 value={cal[a.cod] ?? 1} onChange={(v) => setCal((p) => ({ ...p, [a.cod]: v }))} nombre={a.nombre} />
             </div>
           ))}
           {actividades.length === 0 && (
-            <p className="py-6 text-center text-sm text-muted">Este reporte no tiene actividades para evaluar.</p>
+            <p className="py-6 text-center text-cuerpo text-muted">Este reporte no tiene actividades para evaluar.</p>
           )}
         </CardContent>
       </Card>
 
-      {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+      {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
 
       <Button
         type="button"
@@ -224,7 +224,7 @@ export function EvaluarPanel({
         onClick={enviar}
         disabled={actividades.length === 0 && limpieza.length === 0}
         pending={pending}
-        className="w-full justify-center py-3 text-base"
+        className="w-full justify-center py-3 text-sub"
       >
         {pending ? 'Enviando…' : `Enviar evaluación · ${puntaje}%`}
       </Button>
@@ -267,7 +267,7 @@ export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean 
 
   return (
     <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-line/60 pt-4">
-      <span className="text-xs uppercase tracking-wide text-muted">Admin</span>
+      <span className="text-rotulo uppercase text-muted">Admin</span>
       {evaluado && (
         <button type="button" onClick={() => setConfirmar('eval')} disabled={pending} className={buttonVariants({ variant: 'outline' })}>
           Anular evaluación
@@ -291,7 +291,7 @@ export function AccionesAdmin({ id, evaluado }: { id: string; evaluado: boolean 
         icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody>
-          <p className="text-sm leading-relaxed text-muted">
+          <p className="text-cuerpo leading-relaxed text-muted">
             {confirmar === 'eval'
               ? 'El reporte vuelve a quedar pendiente de evaluación.'
               : 'Se borran sus actividades, trabajadores y extras. Esta acción no se puede deshacer.'}

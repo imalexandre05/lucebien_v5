@@ -57,12 +57,12 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por nombre, DNI o teléfono…"
-            className="min-w-[14rem] flex-1 rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold"
+            className="min-w-[14rem] flex-1 rounded-md border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none transition-colors focus:border-gold"
           />
           <select
             value={fSeg}
             onChange={(e) => setFSeg(e.target.value)}
-            className="rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
+            className="rounded-md border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none focus:border-gold"
             aria-label="Segmento"
           >
             <option value="">Todos los segmentos</option>
@@ -70,7 +70,7 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
             <option value="recurrente">Recurrente</option>
             <option value="nuevo">Nuevo</option>
           </select>
-          <span className="ml-auto tabular-nums text-xs text-muted">{filtrados.length} clientes</span>
+          <span className="ml-auto tabular-nums text-dato text-muted">{filtrados.length} clientes</span>
         </CardContent>
       </Card>
 
@@ -101,10 +101,10 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
                         <div className="tabular-nums text-micro text-muted">{c.telefono || c.dni}</div>
                       )}
                     </TD>
-                    <TD className="tabular-nums text-xs">{c.sedeCod || '—'}</TD>
+                    <TD className="tabular-nums text-dato">{c.sedeCod || '—'}</TD>
                     <TD className="text-right tabular-nums">{c.pedidos}</TD>
                     <TD className="text-right tabular-nums">S/ {c.totalGastado.toFixed(2)}</TD>
-                    <TD className="tabular-nums text-xs text-muted">
+                    <TD className="tabular-nums text-dato text-muted">
                       {c.ultimoPedido ?? '—'}
                       {c.seguir && (
                         <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-r-pastilla bg-aviso-soft px-1.5 py-0.5 text-micro font-medium text-aviso-deep">
@@ -113,7 +113,7 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
                       )}
                     </TD>
                     <TD>
-                      <span className={cn('inline-flex items-center gap-1 rounded-r-pastilla px-2.5 py-0.5 text-xs font-medium', seg.cls)}>
+                      <span className={cn('inline-flex items-center gap-1 rounded-r-pastilla px-2.5 py-0.5 text-apoyo font-medium', seg.cls)}>
                         {c.segmento === 'vip' && <Star className="h-3 w-3" strokeWidth={2.5} />}
                         {seg.label}
                       </span>
@@ -121,7 +121,7 @@ export function ClientesCRM({ clientes }: { clientes: ClienteCRM[] }) {
                     <TD className="pr-5 text-right">
                       <form action={eliminarCliente}>
                         <input type="hidden" name="id" value={c.id} />
-                        <button className="cursor-pointer text-xs text-muted transition-colors duration-150 hover:text-error">
+                        <button className="cursor-pointer text-apoyo text-muted transition-colors duration-150 hover:text-error">
                           Eliminar
                         </button>
                       </form>

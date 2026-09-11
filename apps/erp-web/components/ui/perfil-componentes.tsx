@@ -34,11 +34,11 @@ export function PerfilComponentes({
           return (
             <div key={key}>
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs text-ink">
+                <span className="text-apoyo text-ink">
                   {label}
                   <span className="ml-1.5 tabular-nums text-micro text-muted">{fmtPeso(pesos[key])}</span>
                 </span>
-                <span className="tabular-nums text-xs font-semibold text-navy">{v.toFixed(1)}</span>
+                <span className="tabular-nums text-dato font-semibold text-navy">{v.toFixed(1)}</span>
               </div>
               <div className="mt-1 h-1.5 overflow-hidden rounded-r-pastilla bg-line/60">
                 <div className="h-full rounded-r-pastilla bg-navy" style={{ width: `${pct}%` }} />

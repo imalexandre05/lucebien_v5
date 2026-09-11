@@ -77,23 +77,23 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
           <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className={fieldCls} aria-label="Desde" />
           <span className="text-muted">→</span>
           <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className={fieldCls} aria-label="Hasta" />
-          <button type="button" onClick={() => aplicar()} className="rounded-md bg-navy px-3 py-1.5 text-sm font-medium text-white transition hover:bg-navy-deep">
+          <button type="button" onClick={() => aplicar()} className="rounded-md bg-navy px-3 py-1.5 text-cuerpo font-medium text-white transition hover:bg-navy-deep">
             Aplicar
           </button>
           <div className="ml-1 flex gap-1">
             {[7, 30, 90].map((d) => (
-              <button key={d} type="button" onClick={() => preset(d)} className="rounded-md border border-line px-2 py-1.5 text-xs text-navy transition hover:border-gold">
+              <button key={d} type="button" onClick={() => preset(d)} className="rounded-md border border-line px-2 py-1.5 text-apoyo text-navy transition hover:border-gold">
                 {d} días
               </button>
             ))}
           </div>
-          <button type="button" onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-sm text-navy transition hover:border-gold">
+          <button type="button" onClick={() => window.print()} className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-cuerpo text-navy transition hover:border-gold">
             <Printer className="h-4 w-4" strokeWidth={1.75} /> Imprimir
           </button>
         </CardContent>
       </Card>
 
-      <p className="hidden text-sm text-muted print:block">
+      <p className="hidden text-cuerpo text-muted print:block">
         Periodo: {rango.desde} → {rango.hasta}
       </p>
 
@@ -115,15 +115,15 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
           </CardHeader>
           <CardContent className="space-y-1.5">
             {data.ingresos.length === 0 ? (
-              <p className="text-sm text-muted">Sin movimientos de caja en el periodo.</p>
+              <p className="text-cuerpo text-muted">Sin movimientos de caja en el periodo.</p>
             ) : (
               data.ingresos.map((r) => (
                 <div key={r.fecha} className="flex items-center gap-3">
-                  <span className="w-12 shrink-0 tabular-nums text-xs text-muted">{diaCorto(r.fecha)}</span>
+                  <span className="w-12 shrink-0 tabular-nums text-dato text-muted">{diaCorto(r.fecha)}</span>
                   <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
                     <div className="h-full rounded bg-exito/70" style={{ width: `${Math.max(3, Math.round((r.ingresos / ingresosMax) * 100))}%` }} />
                   </div>
-                  <span className="w-24 text-right tabular-nums text-xs text-navy">{soles(r.ingresos)}</span>
+                  <span className="w-24 text-right tabular-nums text-dato text-navy">{soles(r.ingresos)}</span>
                 </div>
               ))
             )}
@@ -139,16 +139,16 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
           </CardHeader>
           <CardContent className="space-y-2">
             {pedidosPorTipo.length === 0 || pedidosPorTipo.every((p) => p.total === 0) ? (
-              <p className="text-sm text-muted">Sin pedidos en el periodo.</p>
+              <p className="text-cuerpo text-muted">Sin pedidos en el periodo.</p>
             ) : (
               pedidosPorTipo.map((p) => (
                 <div key={p.categoria} className="flex items-center gap-3">
-                  <span className="w-20 shrink-0 text-sm capitalize text-ink">{p.categoria}</span>
+                  <span className="w-20 shrink-0 text-cuerpo capitalize text-ink">{p.categoria}</span>
                   <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
                     <div className="h-full rounded bg-navy/70" style={{ width: `${Math.max(3, p.pct)}%` }} />
                   </div>
-                  <span className="w-14 text-right tabular-nums text-xs text-muted">{p.pct}%</span>
-                  <span className="w-24 text-right tabular-nums text-xs text-navy">{soles(p.total)}</span>
+                  <span className="w-14 text-right tabular-nums text-dato text-muted">{p.pct}%</span>
+                  <span className="w-24 text-right tabular-nums text-dato text-navy">{soles(p.total)}</span>
                 </div>
               ))
             )}
@@ -164,7 +164,7 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
           </CardHeader>
           <CardContent className="overflow-x-auto px-0 pb-0">
             {productividad.length === 0 ? (
-              <p className="px-5 pb-5 text-sm text-muted">Sin puntos registrados en el periodo.</p>
+              <p className="px-5 pb-5 text-cuerpo text-muted">Sin puntos registrados en el periodo.</p>
             ) : (
               <Table>
                 <THead>
@@ -178,10 +178,10 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                 <TBody>
                   {productividad.map((r, i) => (
                     <TR key={r.empleadoId}>
-                      <TD className="pl-5 tabular-nums text-xs text-muted">{i + 1}</TD>
-                      <TD className="text-sm font-medium text-ink">{r.nombre}</TD>
-                      <TD className="text-right tabular-nums text-sm text-muted">{entero(r.acciones)}</TD>
-                      <TD className="pr-5 text-right tabular-nums text-sm font-bold text-gold-deep">{r.puntos}</TD>
+                      <TD className="pl-5 tabular-nums text-dato text-muted">{i + 1}</TD>
+                      <TD className="text-cuerpo font-medium text-ink">{r.nombre}</TD>
+                      <TD className="text-right tabular-nums text-dato text-muted">{entero(r.acciones)}</TD>
+                      <TD className="pr-5 text-right tabular-nums text-dato font-bold text-gold-deep">{r.puntos}</TD>
                     </TR>
                   ))}
                 </TBody>
@@ -199,7 +199,7 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
           </CardHeader>
           <CardContent className="overflow-x-auto px-0 pb-0">
             {data.fr01.length === 0 ? (
-              <p className="px-5 pb-5 text-sm text-muted">Sin reportes en el periodo.</p>
+              <p className="px-5 pb-5 text-cuerpo text-muted">Sin reportes en el periodo.</p>
             ) : (
               <Table>
                 <THead>
@@ -216,11 +216,11 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                     const pct = r.actTotal ? Math.round((r.actDone / r.actTotal) * 100) : 0;
                     return (
                       <TR key={r.sedeCod}>
-                        <TD className="pl-5 tabular-nums text-sm font-semibold text-navy">{r.sedeCod}</TD>
-                        <TD className="text-right tabular-nums text-sm text-muted">{r.reportes}</TD>
-                        <TD className="text-right tabular-nums text-xs text-muted">{r.actDone}/{r.actTotal}</TD>
-                        <TD className="text-right tabular-nums text-sm text-navy">{pct}%</TD>
-                        <TD className="pr-5 text-right tabular-nums text-sm text-gold-deep">{r.puntajeProm ?? '—'}</TD>
+                        <TD className="pl-5 tabular-nums text-dato font-semibold text-navy">{r.sedeCod}</TD>
+                        <TD className="text-right tabular-nums text-dato text-muted">{r.reportes}</TD>
+                        <TD className="text-right tabular-nums text-dato text-muted">{r.actDone}/{r.actTotal}</TD>
+                        <TD className="text-right tabular-nums text-dato text-navy">{pct}%</TD>
+                        <TD className="pr-5 text-right tabular-nums text-dato text-gold-deep">{r.puntajeProm ?? '—'}</TD>
                       </TR>
                     );
                   })}
@@ -239,7 +239,7 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
           </CardHeader>
           <CardContent className="overflow-x-auto px-0 pb-0">
             {data.incidencias.length === 0 ? (
-              <p className="px-5 pb-5 text-sm text-muted">Sin incidencias en el periodo.</p>
+              <p className="px-5 pb-5 text-cuerpo text-muted">Sin incidencias en el periodo.</p>
             ) : (
               <Table>
                 <THead>
@@ -253,10 +253,10 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
                 <TBody>
                   {data.incidencias.map((r, i) => (
                     <TR key={`${r.sedeCod}-${r.nivel}-${i}`}>
-                      <TD className="pl-5 tabular-nums text-sm font-semibold text-navy">{r.sedeCod}</TD>
-                      <TD className={cn('text-sm capitalize', NIVEL_TONE[r.nivel] ?? 'text-ink')}>{r.nivel}</TD>
-                      <TD className="text-right tabular-nums text-sm text-navy">{r.n}</TD>
-                      <TD className="pr-5 text-right tabular-nums text-sm text-muted">{r.penalidad || '—'}</TD>
+                      <TD className="pl-5 tabular-nums text-dato font-semibold text-navy">{r.sedeCod}</TD>
+                      <TD className={cn('text-cuerpo capitalize', NIVEL_TONE[r.nivel] ?? 'text-ink')}>{r.nivel}</TD>
+                      <TD className="text-right tabular-nums text-dato text-navy">{r.n}</TD>
+                      <TD className="pr-5 text-right tabular-nums text-dato text-muted">{r.penalidad || '—'}</TD>
                     </TR>
                   ))}
                 </TBody>
@@ -274,15 +274,15 @@ export function EstadisticasCliente({ data, rango }: { data: Estadisticas; rango
           </CardHeader>
           <CardContent className="space-y-2">
             {data.inventario.length === 0 ? (
-              <p className="text-sm text-muted">Sin inventario registrado.</p>
+              <p className="text-cuerpo text-muted">Sin inventario registrado.</p>
             ) : (
               data.inventario.map((r) => (
                 <div key={r.estado} className="flex items-center gap-3">
-                  <span className="w-24 shrink-0 text-sm capitalize text-ink">{r.estado}</span>
+                  <span className="w-24 shrink-0 text-cuerpo capitalize text-ink">{r.estado}</span>
                   <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
                     <div className="h-full rounded bg-gold/60" style={{ width: `${Math.max(3, Math.round((r.n / invMax) * 100))}%` }} />
                   </div>
-                  <span className="w-8 text-right tabular-nums text-sm text-navy">{r.n}</span>
+                  <span className="w-8 text-right tabular-nums text-dato text-navy">{r.n}</span>
                 </div>
               ))
             )}

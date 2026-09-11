@@ -66,7 +66,7 @@ export async function Topbar() {
 
   return (
     <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-line bg-paper/85 px-4 backdrop-blur sm:px-7 print:hidden">
-      <div className="flex items-center gap-2.5 text-sm text-muted">
+      <div className="flex items-center gap-2.5 text-cuerpo text-muted">
         {rol && <MobileNav rol={rol} matriz={matriz} rolCod={rolCod} perfilSede={perfilSede} />}
         <LogoMark size="sm" className="lg:hidden" />
         <span className="hidden md:inline">Confecciones Aliaga · Huancayo</span>
@@ -85,7 +85,7 @@ export async function Topbar() {
         {sesion && <NotificacionesBell notificaciones={notificaciones} />}
         {sesion && <SedePopover sedeActual={sede} sedes={sedesDisponibles} />}
         {rol && (
-          <span className="hidden rounded-r-pastilla border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-gold-deep md:inline">
+          <span className="hidden rounded-r-pastilla border border-gold/40 bg-gold/10 px-3 py-1 text-apoyo font-medium text-gold-deep md:inline">
             {ROL_LABEL[rol] ?? rol}
           </span>
         )}
@@ -95,7 +95,7 @@ export async function Topbar() {
             title="Mi desempeño"
             aria-label="Mi desempeño"
             className={cn(
-              'anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-xs font-semibold transition-transform duration-150 hover-fine:scale-105 active:scale-95',
+              'anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-apoyo font-semibold transition-transform duration-150 hover-fine:scale-105 active:scale-95',
               tonoAvatar(nombre),
             )}
           >

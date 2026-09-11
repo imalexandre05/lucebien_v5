@@ -47,11 +47,11 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
       <div className="flex items-center gap-2">
         <Link
           href="/pipeline"
-          className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors duration-150 hover:text-navy"
+          className="inline-flex items-center gap-1.5 text-cuerpo text-muted transition-colors duration-150 hover:text-navy"
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2} /> Volver al kanban
         </Link>
-        <span className="ml-auto rounded-r-pastilla bg-navy/5 px-2.5 py-1 tabular-nums text-xs font-medium text-navy">
+        <span className="ml-auto rounded-r-pastilla bg-navy/5 px-2.5 py-1 tabular-nums text-dato font-medium text-navy">
           {enCamino.length} por confirmar
         </span>
       </div>
@@ -71,7 +71,7 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
               <CardTitle className="flex items-center gap-2.5">
                 <Truck className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
                 Hacia {sede}
-                <span className="rounded-r-pastilla bg-navy/5 px-2 py-0.5 tabular-nums text-xs text-navy">
+                <span className="rounded-r-pastilla bg-navy/5 px-2 py-0.5 tabular-nums text-dato text-navy">
                   {items.length}
                 </span>
                 {sede === miSede && <Badge tone="gold">tu sede</Badge>}
@@ -91,19 +91,19 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
                 <TBody>
                   {items.map((p) => (
                     <TR key={p.id}>
-                      <TD className="pl-5 tabular-nums text-sm font-semibold text-navy">{p.codigo}</TD>
-                      <TD className="text-sm text-ink">
+                      <TD className="pl-5 tabular-nums text-dato font-semibold text-navy">{p.codigo}</TD>
+                      <TD className="text-cuerpo text-ink">
                         {[p.tipo, p.color, p.talla ? `T.${p.talla}` : ''].filter(Boolean).join(' · ') || '—'}
                       </TD>
-                      <TD className="tabular-nums text-xs text-muted">{p.sedeOrigenCod}</TD>
-                      <TD className="tabular-nums text-xs text-muted">{fecha(p.fechaEnvio)}</TD>
+                      <TD className="tabular-nums text-dato text-muted">{p.sedeOrigenCod}</TD>
+                      <TD className="tabular-nums text-dato text-muted">{fecha(p.fechaEnvio)}</TD>
                       <TD className="pr-5">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
                             disabled={pending}
                             onClick={() => calificar(p, true)}
-                            className="inline-flex items-center gap-1 rounded-md bg-exito px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
+                            className="inline-flex items-center gap-1 rounded-md bg-exito px-2.5 py-1.5 text-apoyo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={3} /> Aceptar
                           </button>
@@ -111,7 +111,7 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
                             value={destinoObs[p.id] ?? 'recepcion'}
                             onChange={(e) => setDestinoObs((prev) => ({ ...prev, [p.id]: e.target.value }))}
                             aria-label={`Observar ${p.codigo}: devolver a`}
-                            className="rounded-md border border-line bg-white px-1.5 py-1 text-xs text-navy"
+                            className="rounded-md border border-line bg-white px-1.5 py-1 text-apoyo text-navy"
                           >
                             <option value="recepcion">Recepción</option>
                             <option value="planchado">Planchado</option>
@@ -121,7 +121,7 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
                             type="button"
                             disabled={pending}
                             onClick={() => calificar(p, false)}
-                            className="inline-flex items-center gap-1 rounded-md border border-aviso-line bg-aviso-soft px-2 py-1.5 text-xs font-medium text-aviso-deep transition hover:bg-aviso-soft active:scale-[.97]"
+                            className="inline-flex items-center gap-1 rounded-md border border-aviso-line bg-aviso-soft px-2 py-1.5 text-apoyo font-medium text-aviso-deep transition hover:bg-aviso-soft active:scale-[.97]"
                           >
                             <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Observar
                           </button>
@@ -154,12 +154,12 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
               <TBody>
                 {recibidas.map((p) => (
                   <TR key={p.id}>
-                    <TD className="pl-5 tabular-nums text-sm text-navy">{p.codigo}</TD>
-                    <TD className="text-sm text-ink">
+                    <TD className="pl-5 tabular-nums text-dato text-navy">{p.codigo}</TD>
+                    <TD className="text-cuerpo text-ink">
                       {[p.tipo, p.color].filter(Boolean).join(' · ') || '—'}
                     </TD>
-                    <TD className="tabular-nums text-xs text-muted">{p.sedeDestinoCod}</TD>
-                    <TD className={cn('pr-5 tabular-nums text-xs text-muted')}>{fecha(p.fechaActualizado)}</TD>
+                    <TD className="tabular-nums text-dato text-muted">{p.sedeDestinoCod}</TD>
+                    <TD className={cn('pr-5 tabular-nums text-dato text-muted')}>{fecha(p.fechaActualizado)}</TD>
                   </TR>
                 ))}
               </TBody>

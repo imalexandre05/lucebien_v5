@@ -63,15 +63,15 @@ function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; con
             // cada grupo. Envolver en <tbody> no sirve: rompería el <table>.
             <Fragment key={g}>
               <TR>
-                <TD colSpan={4} className="bg-paper text-xs font-medium uppercase tracking-wide text-muted">
+                <TD colSpan={4} className="bg-paper text-rotulo font-medium uppercase text-muted">
                   {GRUPO_LABEL[g] ?? g}
                 </TD>
               </TR>
               {delGrupo.map((l, i) => (
                 <TR key={`${g}-${i}`} className={g === 'final' ? 'font-medium text-navy' : undefined}>
                   <TD>{l.concepto}</TD>
-                  <TD className="text-sm text-muted">{l.detalle}</TD>
-                  <TD className="text-xs text-muted">{l.regla}</TD>
+                  <TD className="text-cuerpo text-muted">{l.detalle}</TD>
+                  <TD className="text-apoyo text-muted">{l.regla}</TD>
                   <TD className={`text-right tabular-nums ${l.monto < 0 ? 'text-error-deep' : ''}`}>
                     {soles(l.monto)}
                   </TD>
@@ -131,7 +131,7 @@ function sugerirRango(
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string | number }) {
   return (
     <div>
-      <p className="text-xs text-muted">{etiqueta}</p>
+      <p className="text-apoyo text-muted">{etiqueta}</p>
       <p className="tabular-nums text-navy">{valor}</p>
     </div>
   );
@@ -379,22 +379,22 @@ export function LiquidacionesCliente({
       </Card>
 
       {error && (
-        <div className="mb-5 rounded-r-chico bg-error/10 px-4 py-3 text-sm text-error-deep">
+        <div className="mb-5 rounded-r-chico bg-error/10 px-4 py-3 text-cuerpo text-error-deep">
           <p>{error}</p>
           {codigo === 'DATO' && (
-            <p className="mt-1 text-xs">
+            <p className="mt-1 text-apoyo">
               Faltan días por declarar. Andá a <strong>Declarar asistencia</strong> y decí qué pasó
               cada uno de esos días — un día sin dato no es una falta.
             </p>
           )}
           {codigo === 'DESACTUALIZADA' && (
-            <p className="mt-1 text-xs">
+            <p className="mt-1 text-apoyo">
               Se cargó algo después de calcular. Descartá el borrador, volvé a calcular y cerrá de
               nuevo: si no, esa fila quedaría sellada sin estar en el pago.
             </p>
           )}
           {codigo === 'PARCIAL' && (
-            <p className="mt-1 text-xs font-medium">
+            <p className="mt-1 text-apoyo font-medium">
               La anulación SÍ se aplicó — ya figura como «anulada» en la lista de abajo, con el
               motivo que pusiste. El contrato y el período quedaron cargados arriba: apretá{' '}
               <strong>Calcular</strong> y, si el número es el que esperás, <strong>Guardar
@@ -456,7 +456,7 @@ export function LiquidacionesCliente({
                   {sinVentas && (
                     <div
                       role="alert"
-                      className="mb-4 rounded-r-chico border border-error-line bg-error-soft px-4 py-3 text-sm text-error-deep"
+                      className="mb-4 rounded-r-chico border border-error-line bg-error-soft px-4 py-3 text-cuerpo text-error-deep"
                     >
                       <p className="font-medium">Este período no tiene ninguna venta cargada.</p>
                       <p className="mt-1">
@@ -483,7 +483,7 @@ export function LiquidacionesCliente({
                   {otrasAdvertencias.length > 0 && (
                     <div role="status" className="rounded-r-chico bg-aviso/10 px-3 py-2">
                       {otrasAdvertencias.map((a) => (
-                        <p key={a} className="flex gap-2 text-sm text-aviso-deep">
+                        <p key={a} className="flex gap-2 text-cuerpo text-aviso-deep">
                           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
                           {a}
                         </p>
@@ -507,7 +507,7 @@ export function LiquidacionesCliente({
         </CardHeader>
         <CardContent className="px-0 pb-0">
           {liquidaciones.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-muted">
+            <p className="px-5 py-8 text-center text-cuerpo text-muted">
               Todavía no se guardó ninguna. Calculá un contrato y guardá el borrador.
             </p>
           ) : (
@@ -532,11 +532,11 @@ export function LiquidacionesCliente({
                     <TD>
                       <Badge tone={TONO[l.estado]}>{l.estado}</Badge>
                       {l.anuladaMotivo && (
-                        <span className="ml-2 text-xs text-muted">{l.anuladaMotivo}</span>
+                        <span className="ml-2 text-apoyo text-muted">{l.anuladaMotivo}</span>
                       )}
                     </TD>
                     <TD className="text-right tabular-nums">{soles(l.total)}</TD>
-                    <TD className="text-xs text-muted">{l.motorVersion}</TD>
+                    <TD className="text-apoyo text-muted">{l.motorVersion}</TD>
                     <TD className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" onClick={() => verDetalle(l.id)} aria-label="Ver el desglose">
@@ -557,7 +557,7 @@ export function LiquidacionesCliente({
                             {/* Sólo cerradas: un borrador todavía puede cambiar, y un papel
                                 impreso de algo que después cambia es el problema del Excel. */}
                             <a
-                              className="self-center text-sm text-gold-deep underline"
+                              className="self-center text-cuerpo text-gold-deep underline"
                               href={`/sueldos/liquidaciones/${l.id}/comprobante`}
                             >
                               Resumen
@@ -600,7 +600,7 @@ export function LiquidacionesCliente({
         <ModalBody>
           {detalle && (
             <>
-              <p className="mb-3 text-xs text-muted">
+              <p className="mb-3 text-apoyo text-muted">
                 Esto es el desglose tal como se emitió. No se recalcula al abrirlo: si mañana cambia
                 un parámetro de Configuración, este recibo sigue diciendo lo mismo.
               </p>
@@ -608,7 +608,7 @@ export function LiquidacionesCliente({
               {detalle.resultado.advertencias.length > 0 && (
                 <div className="mt-3 rounded-r-chico bg-aviso/10 px-3 py-2">
                   {detalle.resultado.advertencias.map((a) => (
-                    <p key={a} className="text-sm text-aviso-deep">
+                    <p key={a} className="text-cuerpo text-aviso-deep">
                       {a}
                     </p>
                   ))}
@@ -639,7 +639,7 @@ export function LiquidacionesCliente({
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="Por qué se anula este pago…"
           />
-          <p className="mt-2 text-xs text-muted">
+          <p className="mt-2 text-apoyo text-muted">
             Es obligatorio. Sin motivo se pierde por qué se anuló un pago ya emitido.
           </p>
         </ModalBody>
@@ -662,11 +662,11 @@ export function LiquidacionesCliente({
       >
         <ModalBody>
           {errorCorregir && (
-            <div role="alert" className="mb-3 rounded-r-chico bg-error/10 px-3 py-2 text-sm text-error-deep">
+            <div role="alert" className="mb-3 rounded-r-chico bg-error/10 px-3 py-2 text-cuerpo text-error-deep">
               {errorCorregir}
             </div>
           )}
-          <p className="mb-3 text-xs text-muted">
+          <p className="mb-3 text-apoyo text-muted">
             Una liquidación cerrada no se edita: corregir es esto — anularla, con motivo, y volver a
             emitirla desde cero. Las dos quedan en la lista, con el rastro completo.
           </p>
@@ -677,7 +677,7 @@ export function LiquidacionesCliente({
             onChange={(e) => setMotivoCorregir(e.target.value)}
             placeholder="Qué estaba mal en esta liquidación…"
           />
-          <p className="mt-2 text-xs text-muted">
+          <p className="mt-2 text-apoyo text-muted">
             Es el motivo con el que queda anulada la liquidación actual. Sin él no se puede continuar.
           </p>
         </ModalBody>

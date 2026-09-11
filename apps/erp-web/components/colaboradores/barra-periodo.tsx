@@ -73,7 +73,7 @@ export function BarraPeriodo({
       title={titulo}
       aria-pressed={esIgual(p)}
       className={cn(
-        'anillo cursor-pointer rounded-r-pastilla px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
+        'anillo cursor-pointer rounded-r-pastilla px-2.5 py-1.5 text-apoyo font-medium transition-colors duration-150',
         esIgual(p) ? 'bg-navy text-paper' : 'text-navy hover:bg-navy/5',
       )}
     >
@@ -127,7 +127,7 @@ export function BarraPeriodo({
           )}
       </div>
 
-      <p className="ml-auto flex items-center gap-1.5 text-xs text-muted">
+      <p className="ml-auto flex items-center gap-1.5 text-apoyo text-muted">
         <CalendarRange className="h-3.5 w-3.5" aria-hidden />
         <span>{etiquetaPeriodo(periodo)}</span>
         <span className="tabular-nums">· {diasDelPeriodo(periodo)} días</span>

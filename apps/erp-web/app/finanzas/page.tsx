@@ -16,7 +16,7 @@ const CAT_LABEL: Record<string, string> = {
 
 function Fila({ label, valor }: { label: string; valor: string }) {
   return (
-    <div className="flex items-center justify-between border-b border-line/60 py-2 text-sm last:border-0">
+    <div className="flex items-center justify-between border-b border-line/60 py-2 text-cuerpo last:border-0">
       <span className="capitalize text-muted">{label}</span>
       <span className="tabular-nums text-navy">{valor}</span>
     </div>
@@ -66,7 +66,7 @@ export default async function FinanzasPage() {
           </CardHeader>
           <CardContent className="py-1">
             {ingresosCat.length === 0 && egresosCat.length === 0 && (
-              <p className="py-2 text-sm text-muted">Sin movimientos todavía.</p>
+              <p className="py-2 text-cuerpo text-muted">Sin movimientos todavía.</p>
             )}
             {ingresosCat.map(([cat, monto]) => (
               <Fila key={`i-${cat}`} label={`+ ${CAT_LABEL[cat] ?? cat}`} valor={soles(monto)} />
@@ -89,7 +89,7 @@ export default async function FinanzasPage() {
         </Card>
       </div>
 
-      <p className="mt-3 text-xs text-muted">
+      <p className="mt-3 text-apoyo text-muted">
         Los ingresos/egresos provienen de los movimientos de caja; el comercial por tipo, de los pedidos.
       </p>
     </div>

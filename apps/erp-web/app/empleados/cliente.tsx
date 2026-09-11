@@ -37,7 +37,7 @@ function Pill({
       disabled={disabled}
       aria-pressed={active}
       className={cn(
-        'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
+        'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50',
         active ? 'border-navy bg-navy text-paper' : 'border-line bg-white text-navy hover:border-gold/60',
       )}
     >
@@ -107,13 +107,13 @@ export function CamposPerfil({
   return (
     <>
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Nombre completo</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Nombre completo</label>
         <input value={nombre} onChange={(e) => setNombre(e.target.value)} className={cn(fieldCls, 'w-full')} />
         <p className="mt-1 text-micro text-muted">Es también el usuario de login — debe ser único.</p>
       </div>
 
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Rol</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Rol</label>
         <div className="flex flex-wrap gap-1.5">
           {opciones.map((o) => (
             <Pill key={o.valor} active={rolValor === o.valor} onClick={() => setRolValor(o.valor)}>
@@ -124,7 +124,7 @@ export function CamposPerfil({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Sede primaria</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Sede primaria</label>
         <div className="flex flex-wrap gap-1.5">
           {sedes.map((s) => (
             <Pill key={s.cod} active={sedePrimaria === s.cod} onClick={() => elegirSedePrimaria(s.cod)}>
@@ -135,7 +135,7 @@ export function CamposPerfil({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tiendas (acceso)</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Tiendas (acceso)</label>
         <div className="flex flex-wrap gap-1.5">
           {sedes.map((s) => (
             <Pill
@@ -153,7 +153,7 @@ export function CamposPerfil({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Fecha de ingreso</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Fecha de ingreso</label>
           <input
             type="date"
             value={fechaIngreso}
@@ -164,7 +164,7 @@ export function CamposPerfil({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Notas</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Notas</label>
         <textarea
           value={notas}
           onChange={(e) => setNotas(e.target.value)}
@@ -208,21 +208,21 @@ export function ContactoCampos({
     <>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Teléfono</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Teléfono</label>
           <input value={telefono} onChange={(e) => setTelefono(e.target.value)} className={cn(fieldCls, 'w-full')} />
         </div>
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">DNI</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">DNI</label>
           <input value={dni} onChange={(e) => setDni(e.target.value)} className={cn(fieldCls, 'w-full')} />
         </div>
       </div>
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Dirección</label>
         <input value={direccion} onChange={(e) => setDireccion(e.target.value)} className={cn(fieldCls, 'w-full')} />
       </div>
       {setRecomendaciones && (
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Recomendaciones</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Recomendaciones</label>
           <textarea
             value={recomendaciones ?? ''}
             onChange={(e) => setRecomendaciones(e.target.value)}
@@ -292,7 +292,7 @@ export function OperaCajaToggle({
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
           <div>
-            <p className="text-sm font-medium text-navy">Opera caja</p>
+            <p className="text-cuerpo font-medium text-navy">Opera caja</p>
             <p className="text-micro text-muted">
               Permiso de cajero (<span className="tabular-nums">pos_cobro</span>) del rol{' '}
               <span className="font-medium">{opcionRolActual?.label}</span> — aplica a TODOS
@@ -306,7 +306,7 @@ export function OperaCajaToggle({
           disabled={posCobroPending}
           aria-pressed={operaCaja}
           className={cn(
-            'shrink-0 rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+            'shrink-0 rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
             operaCaja ? 'border-exito bg-exito-soft text-exito-deep' : 'border-line bg-white text-muted hover:border-gold/60',
           )}
         >
@@ -342,7 +342,7 @@ export function ContrasenaForm({ empleadoId }: { empleadoId: string }) {
 
   return (
     <div className="border-t border-line/60 pt-3">
-      <label className="mb-1 flex items-center gap-1.5 text-xs uppercase tracking-wide text-muted">
+      <label className="mb-1 flex items-center gap-1.5 text-rotulo uppercase text-muted">
         <KeyRound className="h-3.5 w-3.5" strokeWidth={2} /> Asignar / reiniciar contraseña
       </label>
       <div className="flex gap-2">
@@ -363,8 +363,8 @@ export function ContrasenaForm({ empleadoId }: { empleadoId: string }) {
           {passPending ? 'Guardando…' : 'Asignar'}
         </Button>
       </div>
-      {passOk && <p className="mt-1.5 text-xs font-medium text-exito-deep">Contraseña actualizada ✓</p>}
-      {passError && <p className="mt-1.5 rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{passError}</p>}
+      {passOk && <p className="mt-1.5 text-apoyo font-medium text-exito-deep">Contraseña actualizada ✓</p>}
+      {passError && <p className="mt-1.5 rounded-md bg-error-soft px-3 py-2 text-cuerpo text-error-deep">{passError}</p>}
     </div>
   );
 }

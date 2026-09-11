@@ -10,8 +10,8 @@ export default function NotFound() {
         <div aria-hidden className="h-0.5 bg-gradient-to-r from-gold via-gold/50 to-line" />
         <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
           <Compass className="h-10 w-10 text-gold" strokeWidth={1.25} aria-hidden />
-          <h1 className="text-2xl font-semibold text-navy">Página no encontrada</h1>
-          <p className="max-w-sm text-sm leading-relaxed text-muted">
+          <h1 className="text-titulo font-display font-bold text-navy">Página no encontrada</h1>
+          <p className="max-w-sm text-cuerpo leading-relaxed text-muted">
             La ruta que buscas no existe o fue movida.
           </p>
           <Link href="/" className={buttonVariants()}>

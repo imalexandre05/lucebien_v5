@@ -23,37 +23,37 @@ export default async function ContratoPage({ params }: { params: { id: string } 
         <header className="border-b-2 border-navy pb-4">
           <div className="text-3xl font-semibold text-navy">LuceBien</div>
           <div className="mt-1 tabular-nums text-[10px] tracking-brand text-gold">CONTRATO DE ALQUILER · SCI-LB</div>
-          <div className="mt-2 text-xs text-muted">Confecciones Aliaga E.I.R.L. · Huancayo, Perú</div>
+          <div className="mt-2 text-apoyo text-muted">Confecciones Aliaga E.I.R.L. · Huancayo, Perú</div>
         </header>
 
-        <section className="mt-6 grid grid-cols-2 gap-4 text-sm">
+        <section className="mt-6 grid grid-cols-2 gap-4 text-cuerpo">
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Cliente</div>
+            <div className="text-rotulo uppercase text-muted">Cliente</div>
             <div className="mt-0.5 font-medium text-navy">{p.clienteNombre ?? '—'}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Sede</div>
+            <div className="text-rotulo uppercase text-muted">Sede</div>
             <div className="mt-0.5 text-navy">{SEDE_NOMBRE[p.sedeCod] ?? p.sedeCod}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Prenda</div>
+            <div className="text-rotulo uppercase text-muted">Prenda</div>
             <div className="mt-0.5 tabular-nums text-navy">{p.detalle}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Monto</div>
+            <div className="text-rotulo uppercase text-muted">Monto</div>
             <div className="mt-0.5 tabular-nums text-navy">S/ {p.total.toFixed(2)}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Entrega</div>
+            <div className="text-rotulo uppercase text-muted">Entrega</div>
             <div className="mt-0.5 tabular-nums text-navy">{p.fecha}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-muted">Devolución</div>
+            <div className="text-rotulo uppercase text-muted">Devolución</div>
             <div className="mt-0.5 tabular-nums text-navy">{p.fechaDevolucion || '—'}</div>
           </div>
         </section>
 
-        <section className="mt-6 space-y-2 text-xs leading-relaxed text-ink/80">
+        <section className="mt-6 space-y-2 text-apoyo leading-relaxed text-ink/80">
           <p className="font-medium text-navy">Condiciones</p>
           <p>1. El cliente recibe la prenda en buen estado y se compromete a devolverla en la fecha indicada.</p>
           <p>2. La demora en la devolución genera un recargo según tarifa vigente de la tienda.</p>
@@ -61,7 +61,7 @@ export default async function ContratoPage({ params }: { params: { id: string } 
           <p className="text-muted">* Cláusulas de muestra — el texto legal definitivo lo provee LuceBien.</p>
         </section>
 
-        <section className="mt-12 grid grid-cols-2 gap-10 text-center text-xs text-muted">
+        <section className="mt-12 grid grid-cols-2 gap-10 text-center text-apoyo text-muted">
           <div>
             <div className="border-t border-ink/40 pt-2">Firma del cliente</div>
           </div>

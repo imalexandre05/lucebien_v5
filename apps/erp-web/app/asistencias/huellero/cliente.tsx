@@ -86,12 +86,12 @@ export function HuelleroCliente({
   return (
     <div className="space-y-6">
       {Boolean(error) && (
-        <div className="rounded-md border border-error-line bg-error-soft px-3 py-2 text-sm text-error-deep">
+        <div className="rounded-md border border-error-line bg-error-soft px-3 py-2 text-cuerpo text-error-deep">
           {error}
         </div>
       )}
       {Boolean(aviso) && (
-        <div className="rounded-md border border-exito-line bg-exito-soft px-3 py-2 text-sm text-exito-deep">
+        <div className="rounded-md border border-exito-line bg-exito-soft px-3 py-2 text-cuerpo text-exito-deep">
           {aviso}
         </div>
       )}
@@ -141,11 +141,11 @@ function Equipos({
         {abierto && (
           <div className="flex flex-wrap items-end gap-2 rounded-md border border-line bg-cream/40 p-3">
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Nombre</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Nombre</label>
               <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Almacén" className={fieldCls} />
             </div>
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección en la red</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Dirección en la red</label>
               <input value={ip} onChange={(e) => setIp(e.target.value)} placeholder="192.168.1.220" className={fieldCls} />
             </div>
             <Button
@@ -159,7 +159,7 @@ function Equipos({
             >
               Guardar
             </Button>
-            <p className="w-full text-xs text-muted">
+            <p className="w-full text-apoyo text-muted">
               La contraseña del equipo no se guarda acá: vive sólo en la computadora que lo lee.
             </p>
           </div>
@@ -179,14 +179,14 @@ function Equipos({
                     <span className="font-medium text-navy">{d.nombre}</span>
                     <Badge tone={caido ? 'red' : 'green'}>{caido ? 'Sin señal' : 'Al día'}</Badge>
                   </div>
-                  <p className="mt-1 text-sm text-muted">{d.ip}</p>
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-cuerpo text-muted">{d.ip}</p>
+                  <p className="mt-1 text-apoyo text-muted">
                     {d.ultimaSincronizacion === null
                       ? 'Nunca sincronizó'
                       : `Última señal hace ${d.minutosDesdeSync} min`}
                   </p>
                   {caido && (
-                    <p className="mt-2 text-xs text-error-deep">
+                    <p className="mt-2 text-apoyo text-error-deep">
                       El colector no da señales. Revisá que la computadora del almacén esté
                       encendida y con internet.
                     </p>
@@ -238,7 +238,7 @@ function ColaSinAsignar({
         <CardTitle>Identificadores sin asignar ({sinAsignar.length})</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="mb-3 text-sm text-muted">
+        <p className="mb-3 text-cuerpo text-muted">
           Marcas que llegaron pero que todavía no corresponden a nadie. Nada se pierde: al asignar
           el identificador, sus marcas viejas entran solas.
         </p>
@@ -259,11 +259,11 @@ function ColaSinAsignar({
               const reasignado = s.nombresEquipo.length > 1;
               return (
                 <TR key={clave}>
-                  <TD className="tabular-nums text-xs">{s.employeeNo}</TD>
+                  <TD className="tabular-nums text-dato">{s.employeeNo}</TD>
                   <TD>
                     {s.nombresEquipo.join(', ') || <span className="text-muted">sin nombre</span>}
                     {reasignado && (
-                      <p className="mt-1 flex items-center gap-1 text-xs text-aviso-deep">
+                      <p className="mt-1 flex items-center gap-1 text-apoyo text-aviso-deep">
                         <AlertTriangle className="h-3 w-3" />
                         El equipo usó este número para más de una persona: asignalo por tramos de
                         fecha, uno por cada una.
@@ -271,7 +271,7 @@ function ColaSinAsignar({
                     )}
                   </TD>
                   <TD className="text-right">{s.marcas}</TD>
-                  <TD className="text-xs text-muted">{s.primeraMarca.slice(0, 10)}</TD>
+                  <TD className="text-apoyo text-muted">{s.primeraMarca.slice(0, 10)}</TD>
                   <TD>
                     <select
                       value={sel[clave] ?? ''}
@@ -349,7 +349,7 @@ function DiasSinSalida({
           </EmptyState>
         ) : (
           <>
-            <p className="mb-3 text-sm text-muted">
+            <p className="mb-3 text-cuerpo text-muted">
               La persona marcó al llegar pero no al irse. Mientras el día siga así, el sueldo de
               ese mes no se puede calcular: hay que poner la hora a mano.
             </p>
@@ -368,7 +368,7 @@ function DiasSinSalida({
                   <TR key={d.id}>
                     <TD>{d.empleadoNombre ?? <span className="text-muted">sin nombre</span>}</TD>
                     <TD>{d.fecha}</TD>
-                    <TD className="tabular-nums text-xs">{d.horaEntrada ?? '—'}</TD>
+                    <TD className="tabular-nums text-dato">{d.horaEntrada ?? '—'}</TD>
                     <TD>
                       <input
                         type="time"
@@ -423,7 +423,7 @@ function DiasARevisar({ dias }: { dias: DiaPendiente[] }) {
           (lo dice el comentario de `listarAsistencias` en lib/asistencias-repo.ts). Mandar al
           administrador ahí era mandarlo a la única pantalla donde no podía resolverlo.
         */}
-        <p className="mb-3 text-sm text-muted">
+        <p className="mb-3 text-cuerpo text-muted">
           El sistema guardó las horas pero no dio el día por trabajado, porque el resultado no
           puede ser cierto o porque el identificador cambió de dueño ese día. Corregirlo desde
           <Link href="/sueldos/asistencia" className="ml-1 underline">
@@ -446,15 +446,15 @@ function DiasARevisar({ dias }: { dias: DiaPendiente[] }) {
               <TR key={d.id}>
                 <TD>{d.empleadoNombre ?? <span className="text-muted">sin nombre</span>}</TD>
                 <TD>{d.fecha}</TD>
-                <TD className="tabular-nums text-xs">{d.horaEntrada ?? '—'}</TD>
-                <TD className="tabular-nums text-xs">{d.horaSalida ?? '—'}</TD>
+                <TD className="tabular-nums text-dato">{d.horaEntrada ?? '—'}</TD>
+                <TD className="tabular-nums text-dato">{d.horaSalida ?? '—'}</TD>
                 {/*
                   Se recorta todo lo que venga ANTES del motivo, no sólo la etiqueta: la
                   observación real es "auto: huellero · revisar: …" y con el recorte anterior la
                   columna «Motivo» repetía el prefijo en cada fila. El cuantificador es perezoso
                   para cortar en el primer «revisar:» y no perder un segundo motivo concatenado.
                 */}
-                <TD className="text-xs text-aviso-deep">
+                <TD className="text-apoyo text-aviso-deep">
                   {(d.obs ?? '').replace(/^.*?revisar:\s*/, '')}
                 </TD>
               </TR>
@@ -536,7 +536,7 @@ function MapeosVigentes({
             <TBody>
               {mapeos.map((m) => (
                 <TR key={m.id}>
-                  <TD className="tabular-nums text-xs">{m.employeeNo}</TD>
+                  <TD className="tabular-nums text-dato">{m.employeeNo}</TD>
                   <TD>
                     {m.ignorado ? (
                       <Badge tone="gray">Ignorado</Badge>
@@ -544,8 +544,8 @@ function MapeosVigentes({
                       (m.empleadoNombre ?? <span className="text-muted">sin nombre</span>)
                     )}
                   </TD>
-                  <TD className="text-xs">{m.vigenteDesde}</TD>
-                  <TD className="text-xs">
+                  <TD className="text-apoyo">{m.vigenteDesde}</TD>
+                  <TD className="text-apoyo">
                     {m.vigenteHasta ?? <span className="text-muted">sigue vigente</span>}
                   </TD>
                   <TD>

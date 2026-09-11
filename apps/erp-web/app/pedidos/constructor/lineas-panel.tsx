@@ -76,7 +76,7 @@ export function LineasPanel({
   return (
     <div className="space-y-3">
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tipo de la próxima línea</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Tipo de la próxima línea</label>
         <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Tipo de línea" data-testid="tipo-linea-botones">
           {TIPOS_LINEA.map((t) => (
             <button
@@ -88,7 +88,7 @@ export function LineasPanel({
               title={TIPO_ATAJO[t]}
               onClick={() => onTipoActivoChange(t)}
               className={cn(
-                'rounded-r-pastilla border px-3 py-1.5 text-xs font-medium transition-colors',
+                'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors',
                 tipoActivo === t ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
               )}
             >
@@ -99,7 +99,7 @@ export function LineasPanel({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Prenda / activo</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Prenda / activo</label>
         <ActivoPicker
           activos={activos}
           tipo={tipoActivo}
@@ -117,7 +117,7 @@ export function LineasPanel({
             value={manualDesc}
             onChange={(e) => setManualDesc(e.target.value)}
             placeholder="ej. Lavado en seco de saco del cliente"
-            className="w-full rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
+            className="w-full rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none focus:border-gold"
           />
         </div>
         <input
@@ -127,13 +127,13 @@ export function LineasPanel({
           value={manualPrecio || ''}
           onChange={(e) => setManualPrecio(Number(e.target.value) || 0)}
           placeholder="S/ 0.00"
-          className="w-28 rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-right tabular-nums text-sm text-navy outline-none focus:border-gold"
+          className="w-28 rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-right tabular-nums text-dato text-navy outline-none focus:border-gold"
         />
         <button
           type="button"
           onClick={agregarManual}
           disabled={!manualDesc.trim()}
-          className="toque inline-flex items-center gap-1 rounded-r-pastilla border border-navy/25 px-3 py-1.5 text-xs font-medium text-navy transition-colors hover:bg-navy/5 disabled:cursor-not-allowed disabled:opacity-50"
+          className="toque inline-flex items-center gap-1 rounded-r-pastilla border border-navy/25 px-3 py-1.5 text-apoyo font-medium text-navy transition-colors hover:bg-navy/5 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
         </button>
@@ -157,8 +157,8 @@ export function LineasPanel({
                 <Badge tone="navy">{TIPO_LABEL[l.tipo]}</Badge>
               </TD>
               <TD className="max-w-[16rem] truncate">
-                {l.activoCodigo && <span className="mr-1.5 tabular-nums text-xs text-navy">{l.activoCodigo}</span>}
-                <span className="text-xs text-muted">{l.descripcion || '—'}</span>
+                {l.activoCodigo && <span className="mr-1.5 tabular-nums text-dato text-navy">{l.activoCodigo}</span>}
+                <span className="text-apoyo text-muted">{l.descripcion || '—'}</span>
               </TD>
               <TD className="text-center">
                 <input
@@ -166,7 +166,7 @@ export function LineasPanel({
                   min="1"
                   value={l.cantidad}
                   onChange={(e) => onUpdate(l.key, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
-                  className="w-14 rounded-r-chico border border-line bg-white px-1.5 py-1 text-center tabular-nums text-xs text-navy outline-none focus:border-gold"
+                  className="w-14 rounded-r-chico border border-line bg-white px-1.5 py-1 text-center tabular-nums text-dato text-navy outline-none focus:border-gold"
                 />
               </TD>
               <TD className="text-right">
@@ -179,7 +179,7 @@ export function LineasPanel({
                     min="0"
                     value={l.precioUnitario}
                     onChange={(e) => onUpdate(l.key, { precioUnitario: Number(e.target.value) || 0 })}
-                    className="w-24 rounded-r-chico border border-line bg-white px-1.5 py-1 text-right tabular-nums text-xs text-navy outline-none focus:border-gold"
+                    className="w-24 rounded-r-chico border border-line bg-white px-1.5 py-1 text-right tabular-nums text-dato text-navy outline-none focus:border-gold"
                   />
                 )}
               </TD>
@@ -213,7 +213,7 @@ export function LineasPanel({
           ))}
           {items.length === 0 && (
             <TR>
-              <TD colSpan={6} className="py-6 text-center text-xs text-muted">
+              <TD colSpan={6} className="py-6 text-center text-apoyo text-muted">
                 Sin líneas todavía — busca una prenda arriba o agrega una línea manual.
               </TD>
             </TR>

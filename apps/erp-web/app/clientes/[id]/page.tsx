@@ -42,7 +42,7 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
         {kpis.map((k, i) => (
           <Card key={k.label} className="animate-rise" style={{ animationDelay: `${i * 60}ms` }}>
             <CardContent className="pt-5">
-              <div className="text-xs font-medium uppercase tracking-wide text-muted">{k.label}</div>
+              <div className="text-rotulo font-medium uppercase text-muted">{k.label}</div>
               <div className="mt-2 tabular-nums text-2xl font-semibold text-navy">{k.value}</div>
             </CardContent>
           </Card>
@@ -54,7 +54,7 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
           <CardHeader>
             <CardTitle>Datos</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 text-sm">
+          <CardContent className="space-y-2 text-cuerpo">
             <div className="flex justify-between border-b border-line/60 py-1.5">
               <span className="text-muted">DNI</span>
               <span className="tabular-nums text-navy">{cliente.dni || '—'}</span>
@@ -69,7 +69,7 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
             </div>
             <div className="flex items-center justify-between border-b border-line/60 py-1.5">
               <span className="text-muted">Segmento</span>
-              <span className={cn('inline-flex items-center rounded-r-pastilla px-2.5 py-0.5 text-xs font-medium', SEG_CLS[m.segmento])}>
+              <span className={cn('inline-flex items-center rounded-r-pastilla px-2.5 py-0.5 text-apoyo font-medium', SEG_CLS[m.segmento])}>
                 {SEG_LABEL[m.segmento]}
               </span>
             </div>
@@ -105,7 +105,7 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
                     <TD className="pl-5">
                       <Badge tone={TIPO_TONE[p.tipo]}>{p.tipo}</Badge>
                     </TD>
-                    <TD className="tabular-nums text-xs">{p.detalle}</TD>
+                    <TD className="tabular-nums text-dato">{p.detalle}</TD>
                     <TD className="tabular-nums text-muted">{p.fecha}</TD>
                     <TD className="pr-5 text-right tabular-nums">S/ {p.total.toFixed(2)}</TD>
                   </TR>
@@ -123,7 +123,7 @@ export default async function ClienteDetalle({ params }: { params: { id: string 
         </Card>
       </div>
 
-      <Link href="/clientes" className="mt-4 inline-block text-sm text-muted transition-colors duration-150 hover:text-navy">
+      <Link href="/clientes" className="mt-4 inline-block text-cuerpo text-muted transition-colors duration-150 hover:text-navy">
         ← Volver a clientes
       </Link>
     </div>

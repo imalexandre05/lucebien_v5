@@ -70,7 +70,7 @@ export function PersonaPicker({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-t-xl bg-white py-2.5 pl-9 pr-3 text-sm text-navy outline-none placeholder:text-muted"
+          className="w-full rounded-t-xl bg-white py-2.5 pl-9 pr-3 text-cuerpo text-navy outline-none placeholder:text-muted"
         />
       </div>
 
@@ -92,14 +92,14 @@ export function PersonaPicker({
             >
               <span
                 className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-r-pastilla text-xs font-bold',
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-r-pastilla text-apoyo font-bold',
                   tonoAvatar(e.nombre),
                 )}
               >
                 {iniciales(e.nombre)}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-navy">{e.nombre}</span>
+                <span className="block truncate text-cuerpo font-medium text-navy">{e.nombre}</span>
                 {tag && <span className="block truncate tabular-nums text-micro text-muted">{tag}</span>}
               </span>
               <span
@@ -114,20 +114,20 @@ export function PersonaPicker({
           );
         })}
         {filtrados.length === 0 && (
-          <p className="px-3 py-6 text-center text-sm text-muted">Sin coincidencias.</p>
+          <p className="px-3 py-6 text-center text-cuerpo text-muted">Sin coincidencias.</p>
         )}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 border-t border-line px-2.5 py-2">
         {selected.length === 0 ? (
-          <span className="text-xs text-muted">{emptyHint ?? (single ? 'Elige al encargado' : 'Ningún colaborador')}</span>
+          <span className="text-apoyo text-muted">{emptyHint ?? (single ? 'Elige al encargado' : 'Ningún colaborador')}</span>
         ) : (
           selected.map((id) => {
             const e = byId.get(id);
             return (
               <span
                 key={id}
-                className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy px-2.5 py-1 text-xs font-medium text-paper"
+                className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy px-2.5 py-1 text-apoyo font-medium text-paper"
               >
                 {e?.nombre ?? '—'}
                 <button

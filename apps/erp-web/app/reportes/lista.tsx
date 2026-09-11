@@ -52,7 +52,7 @@ function Puntaje({ r }: { r: Reporte }) {
   if (!r.evaluado) return <span className="text-muted">—</span>;
   const p = r.puntajeEval ?? r.puntaje;
   const cls = p >= 85 ? 'bg-exito/10 text-exito-deep' : p >= 60 ? 'bg-gold/20 text-gold-deep' : 'bg-error-soft text-error-deep';
-  return <span className={cn('rounded-r-pastilla px-2.5 py-0.5 tabular-nums text-xs font-bold', cls)}>{p}%</span>;
+  return <span className={cn('rounded-r-pastilla px-2.5 py-0.5 tabular-nums text-dato font-bold', cls)}>{p}%</span>;
 }
 
 export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
@@ -83,13 +83,13 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
   return (
     <div>
       {pendientes > 0 && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-aviso-line bg-aviso-soft px-4 py-2.5 text-sm text-aviso-deep">
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-aviso-line bg-aviso-soft px-4 py-2.5 text-cuerpo text-aviso-deep">
           <ClipboardCheck className="h-4 w-4 shrink-0" strokeWidth={2} />
           Hay <strong className="font-semibold">{pendientes}</strong> reporte(s) pendientes de evaluación.
           <button
             type="button"
             onClick={() => setEstado('pendiente')}
-            className="ml-auto rounded-md border border-aviso-line px-2.5 py-1 text-xs font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]"
+            className="ml-auto rounded-md border border-aviso-line px-2.5 py-1 text-apoyo font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]"
           >
             Ver pendientes
           </button>
@@ -117,7 +117,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
           </select>
           <OpcionBotones opciones={OPC_FILTRO_TURNO} value={turno} onChange={setTurno} ariaLabel="Turno" />
           <OpcionBotones opciones={OPC_FILTRO_ESTADO} value={estado} onChange={setEstado} ariaLabel="Estado" />
-          <span className="ml-auto tabular-nums text-xs text-muted">
+          <span className="ml-auto tabular-nums text-dato text-muted">
             {filtrados.length} reportes
           </span>
         </CardContent>
@@ -148,13 +148,13 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                     <TD className="pl-5">
                       <Link
                         href={`/reportes/${r.id}`}
-                        className="toque inline-block rounded-md bg-navy px-2.5 py-1 tabular-nums text-xs font-medium text-paper transition-colors duration-150 hover:bg-navy-dark"
+                        className="toque inline-block rounded-md bg-navy px-2.5 py-1 tabular-nums text-dato font-medium text-paper transition-colors duration-150 hover:bg-navy-dark"
                       >
                         {r.id}
                       </Link>
                     </TD>
                     <TD className="tabular-nums">{r.sedeCod}</TD>
-                    <TD className="tabular-nums text-xs text-muted">{r.fecha}</TD>
+                    <TD className="tabular-nums text-dato text-muted">{r.fecha}</TD>
                     <TD>
                       <Badge tone="navy">{TURNO_LABEL[r.turno] ?? r.turno}</Badge>
                     </TD>
@@ -163,7 +163,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                       {r.trabajadores.length > 0 ? (
                         <span
                           title={r.trabajadores.join(', ')}
-                          className="inline-flex items-center rounded-r-pastilla bg-navy/5 px-2 py-0.5 tabular-nums text-xs text-navy"
+                          className="inline-flex items-center rounded-r-pastilla bg-navy/5 px-2 py-0.5 tabular-nums text-dato text-navy"
                         >
                           {r.trabajadores.length}
                         </span>
@@ -185,7 +185,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                         {r.estadoEnvio === 'no_enviado' && <Badge tone="amber">No enviado</Badge>}
                       </div>
                     </TD>
-                    <TD className="pr-5 text-sm text-muted">{r.evaluadorNombre ?? '—'}</TD>
+                    <TD className="pr-5 text-cuerpo text-muted">{r.evaluadorNombre ?? '—'}</TD>
                   </TR>
                 );
               })}
