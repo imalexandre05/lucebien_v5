@@ -117,8 +117,10 @@ radio|apps/erp-web/app/configuracion/layout/editor.tsx
 # las cuatro esquinas y le rompe la base. Mismo caso que rounded-r-full en sidebar.tsx.
 radio|apps/erp-web/app/page.tsx
 radio|apps/erp-web/app/pipeline/tablero.tsx
-radio|apps/erp-web/app/reportes/[id]/acciones.tsx
 radio|apps/erp-web/app/reportes/layout-map.tsx
+# El pie sticky (línea ~918) usa rounded-t-xl -- sólo esquinas de arriba, a propósito: está
+# pegado al borde inferior de la pantalla (`sticky bottom-0`) y sólo el lado que SE VE necesita
+# esquina. Mismo caso que el pie de notificaciones-popover.tsx y la barra de app/page.tsx.
 radio|apps/erp-web/app/reportes/nuevo/form.tsx
 # Los cuatro callouts (líneas 226/232/237/242) usan `rounded-r-md`: Tailwind DIRECCIONAL (sólo
 # esquinas derechas), no nuestro token -- coincide en el prefijo "r-" por casualidad. Son cajas

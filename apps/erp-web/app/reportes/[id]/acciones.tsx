@@ -40,7 +40,7 @@ function Estado3({
     { v: 0, Icon: X, on: 'bg-error text-white', label: 'Rechazar' },
   ];
   return (
-    <div className="inline-flex shrink-0 overflow-hidden rounded-lg border border-line">
+    <div className="inline-flex shrink-0 overflow-hidden rounded-r-chico border border-line">
       {opts.map((o) => {
         const active = value === o.v;
         const Icon = o.Icon;
@@ -142,7 +142,7 @@ export function EvaluarPanel({
       </div>
 
       {trabajadores.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-aviso-line bg-aviso-soft px-3 py-2 text-cuerpo text-aviso-deep">
+        <div className="flex flex-wrap items-center gap-2 rounded-r-chico border border-aviso-line bg-aviso-soft px-3 py-2 text-cuerpo text-aviso-deep">
           <AlertTriangle className="h-4 w-4 shrink-0" strokeWidth={2} />
           <span>El evaluante no puede haber estado en el turno:</span>
           {trabajadores.map((t) => (
@@ -178,20 +178,20 @@ export function EvaluarPanel({
         <CardHeader>
           <CardTitle>Calificación por actividad</CardTitle>
           <div className="flex items-center gap-1.5">
-            <button type="button" onClick={() => masivoActs(1)} aria-label="Aprobar todo" className="inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1.5 text-apoyo font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(1)} aria-label="Aprobar todo" className="inline-flex items-center gap-1 rounded-r-pastilla border border-exito-line bg-exito-soft px-2.5 py-1.5 text-apoyo font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
               <Check className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
-            <button type="button" onClick={() => masivoActs(0.5)} aria-label="Observar todo" className="inline-flex items-center gap-1 rounded-md border border-aviso-line bg-aviso-soft px-2.5 py-1.5 text-apoyo font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(0.5)} aria-label="Observar todo" className="inline-flex items-center gap-1 rounded-r-pastilla border border-aviso-line bg-aviso-soft px-2.5 py-1.5 text-apoyo font-medium text-aviso-deep transition-colors duration-150 hover:bg-aviso-soft active:scale-[0.97]">
               <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
-            <button type="button" onClick={() => masivoActs(0)} aria-label="Rechazar todo" className="inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1.5 text-apoyo font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
+            <button type="button" onClick={() => masivoActs(0)} aria-label="Rechazar todo" className="inline-flex items-center gap-1 rounded-r-pastilla border border-error-line bg-error-soft px-2.5 py-1.5 text-apoyo font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
               <X className="h-3.5 w-3.5" strokeWidth={2.5} /> Todo
             </button>
           </div>
         </CardHeader>
         <CardContent className="space-y-2">
           {actividades.map((a) => (
-            <div key={a.cod} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-white px-3 py-2.5">
+            <div key={a.cod} className="flex flex-wrap items-center gap-3 rounded-r-chico border border-line bg-white px-3 py-2.5">
               <span className="w-12 shrink-0 tabular-nums text-dato text-muted">{a.cod}</span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export function EvaluarPanel({
                 onChange={(e) => setObs((p) => ({ ...p, [a.cod]: e.target.value }))}
                 placeholder="Obs."
                 aria-label={`Observación de ${a.nombre}`}
-                className="w-40 rounded-md border border-line bg-white px-2.5 py-2 text-apoyo text-navy outline-none transition-colors focus:border-gold"
+                className="w-40 rounded-r-chico border border-line bg-white px-2.5 py-2 text-apoyo text-navy outline-none transition-colors focus:border-gold"
               />
               <Estado3 value={cal[a.cod] ?? 1} onChange={(v) => setCal((p) => ({ ...p, [a.cod]: v }))} nombre={a.nombre} />
             </div>

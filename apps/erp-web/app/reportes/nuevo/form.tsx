@@ -442,7 +442,7 @@ export function NuevoReporteForm({
                     data-testid={`turno-${v}`}
                     onClick={() => setTurno(v)}
                     className={cn(
-                      'flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-5 transition-[transform,background-color,border-color] duration-150 ease-out-expo active:scale-[0.98]',
+                      'flex flex-col items-center justify-center gap-1.5 rounded-r-medio border-2 px-3 py-5 transition-[transform,background-color,border-color] duration-150 ease-out-expo active:scale-[0.98]',
                       on
                         ? 'border-navy bg-navy text-paper shadow-card'
                         : 'border-line bg-white text-navy hover:border-gold/70 hover:bg-paper',
@@ -612,14 +612,14 @@ export function NuevoReporteForm({
                   <button
                     type="button"
                     onClick={() => marcarTodas(true)}
-                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold active:scale-[0.97]"
+                    className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold active:scale-[0.97]"
                   >
                     <Check className="h-3.5 w-3.5" strokeWidth={2} /> Todas
                   </button>
                   <button
                     type="button"
                     onClick={() => marcarTodas(false)}
-                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-muted transition-colors hover:border-gold active:scale-[0.97]"
+                    className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-muted transition-colors hover:border-gold active:scale-[0.97]"
                   >
                     <Square className="h-3.5 w-3.5" strokeWidth={2} /> Ninguna
                   </button>
@@ -642,7 +642,7 @@ export function NuevoReporteForm({
                     <div
                       key={a.cod}
                       className={cn(
-                        'flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border px-2.5 py-1.5 transition-colors duration-150',
+                        'flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-r-chico border px-2.5 py-1.5 transition-colors duration-150',
                         on ? 'border-navy/15 bg-navy/[0.03]' : 'border-line bg-white',
                       )}
                     >
@@ -680,7 +680,7 @@ export function NuevoReporteForm({
               <button
                 type="button"
                 onClick={() => setIncidencias((p) => [...p, { tipo: '', nivel: 'Medio', descripcion: '', responsableId: '', puntosPenalidad: 2 }])}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold active:scale-[0.97]"
+                className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold active:scale-[0.97]"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
               </button>
@@ -748,7 +748,7 @@ export function NuevoReporteForm({
                                 type="button"
                                 onClick={() => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, nivel: n } : x)))}
                                 className={cn(
-                                  'rounded-md border-2 px-2.5 py-1.5 text-apoyo font-medium transition-colors duration-150',
+                                  'rounded-r-pastilla border-2 px-2.5 py-1.5 text-apoyo font-medium transition-colors duration-150',
                                   inc.nivel === n
                                     ? n === 'Alto'
                                       ? 'border-error bg-error-soft text-error-deep'
@@ -842,7 +842,7 @@ export function NuevoReporteForm({
               {extras.length > 0 && (
                 <div className="space-y-2 border-t border-line/60 pt-3">
                   {extras.map((e, i) => (
-                    <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-line/60 p-2">
+                    <div key={i} className="flex flex-wrap items-center gap-2 rounded-r-chico border border-line/60 p-2">
                       {e.cod ? (
                         <span className="min-w-[9rem] flex-1 text-cuerpo text-navy">{e.nombre}</span>
                       ) : (
@@ -853,7 +853,7 @@ export function NuevoReporteForm({
                           className={cn(fieldCls, 'min-w-[9rem] flex-1')}
                         />
                       )}
-                      <div className="inline-flex items-center gap-0.5 rounded-md border border-line">
+                      <div className="inline-flex items-center gap-0.5 rounded-r-chico border border-line">
                         <button
                           type="button"
                           onClick={() => cambiarCantidadExtra(i, -1)}
@@ -906,7 +906,7 @@ export function NuevoReporteForm({
               <button
                 type="button"
                 onClick={agregarExtraLibre}
-                className="toque inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2.5 py-1.5 text-apoyo text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
+                className="toque inline-flex items-center gap-1 rounded-r-pastilla border border-dashed border-line px-2.5 py-1.5 text-apoyo text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
               >
                 <HelpCircle className="h-3.5 w-3.5" strokeWidth={2} /> Otra actividad (sin catálogo)
               </button>
