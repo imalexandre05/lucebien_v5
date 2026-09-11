@@ -330,7 +330,7 @@ export function TableroPipeline({
               title="Próximamente"
             >
               {t.label}
-              <span className="ml-1 rounded bg-line/70 px-1 text-[9px] uppercase text-muted">pronto</span>
+              <span className="ml-1 rounded-r-pastilla bg-line/70 px-1 text-[9px] uppercase text-muted">pronto</span>
             </button>
           ),
         )}
@@ -359,7 +359,7 @@ export function TableroPipeline({
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar por código, color o tipo…"
-            className="w-64 rounded-md border border-line bg-white py-1.5 pl-8 pr-3 text-cuerpo text-navy placeholder:text-muted focus:border-navy focus:outline-none"
+            className="w-64 rounded-r-chico border border-line bg-white py-1.5 pl-8 pr-3 text-cuerpo text-navy placeholder:text-muted focus:border-navy focus:outline-none"
           />
         </div>
       </div>
@@ -369,7 +369,7 @@ export function TableroPipeline({
           tablero (flota igual que el toast) en vez de ser un ítem más del flex-col — así
           aparece/desaparece sin correr el alto del carril de columnas ni de "Ranking del día". ── */}
       {sel.size > 0 && selEtapa && (
-        <div className="absolute inset-x-3 bottom-3 z-40 flex flex-wrap items-center gap-2.5 rounded-xl border-2 border-navy bg-white px-4 py-3 shadow-lift">
+        <div className="absolute inset-x-3 bottom-3 z-40 flex flex-wrap items-center gap-2.5 rounded-r-medio border-2 border-navy bg-white px-4 py-3 shadow-lift">
           <span className="text-cuerpo font-semibold text-navy">
             <span className="tabular-nums text-base">{sel.size}</span> en {NOMBRE[selEtapa] ?? selEtapa}
           </span>
@@ -379,7 +379,7 @@ export function TableroPipeline({
                 value={sedeEnvio}
                 onChange={(e) => setSedeEnvio(e.target.value)}
                 aria-label="Sede destino"
-                className="rounded-md border border-line bg-white px-2 py-2 text-cuerpo text-navy"
+                className="rounded-r-chico border border-line bg-white px-2 py-2 text-cuerpo text-navy"
               >
                 {tiendas.map((t) => (
                   <option key={t} value={t}>
@@ -392,7 +392,7 @@ export function TableroPipeline({
                   h.enviarTanda([...sel], sedeEnvio);
                   limpiarSel();
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-gold px-4 py-2 text-cuerpo font-semibold text-navy transition hover:brightness-95 active:scale-[.98]"
+                className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-gold px-4 py-2 text-cuerpo font-semibold text-navy transition hover:brightness-95 active:scale-[.98]"
               >
                 <Send className="h-4 w-4" strokeWidth={2.5} /> Enviar a {sedeEnvio}
               </button>
@@ -405,7 +405,7 @@ export function TableroPipeline({
                   h.avanzarTanda([...sel], d);
                   limpiarSel();
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-navy px-4 py-2 text-cuerpo font-semibold text-white transition hover:bg-[#26345c] active:scale-[.98]"
+                className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-navy px-4 py-2 text-cuerpo font-semibold text-white transition hover:bg-[#26345c] active:scale-[.98]"
               >
                 {NOMBRE[d] ?? d} <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
               </button>
@@ -419,7 +419,7 @@ export function TableroPipeline({
 
       {/* ── Ranking del día ── */}
       {ranking.length > 0 && (
-        <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-lg border border-line bg-white p-3">
+        <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2 rounded-r-chico border border-line bg-white p-3">
           <span className="inline-flex items-center gap-1.5 text-apoyo font-medium text-muted">
             <Trophy className="h-4 w-4 text-gold" strokeWidth={2} /> Puntos de hoy
           </span>
@@ -442,7 +442,7 @@ export function TableroPipeline({
           const Icon = col.icon;
           return (
             <div key={col.k} className="flex h-full w-56 shrink-0 flex-col">
-              <div className="mb-2 flex shrink-0 items-center gap-2 rounded-lg px-3 py-2" style={{ background: `${col.tint}14` }}>
+              <div className="mb-2 flex shrink-0 items-center gap-2 rounded-r-chico px-3 py-2" style={{ background: `${col.tint}14` }}>
                 <Icon className="h-4 w-4 shrink-0" style={{ color: col.tint }} strokeWidth={2} />
                 <span className="text-cuerpo font-medium" style={{ color: col.tint }}>
                   {col.n}
@@ -458,7 +458,7 @@ export function TableroPipeline({
                 <button
                   onClick={() => toggleColumna(items.map((i) => i.id), col.k)}
                   className={cn(
-                    'mb-2 inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-md border px-2 py-1 text-micro font-medium transition',
+                    'mb-2 inline-flex w-full shrink-0 items-center justify-center gap-1 rounded-r-pastilla border px-2 py-1 text-micro font-medium transition',
                     selEtapa === col.k && items.every((i) => sel.has(i.id))
                       ? 'border-navy bg-navy text-white'
                       : 'border-navy/15 bg-navy/5 text-navy hover:bg-navy/10',
@@ -479,7 +479,7 @@ export function TableroPipeline({
                   />
                 ))}
                 {items.length === 0 && (
-                  <div className="rounded-lg border border-dashed border-line py-5 text-center text-apoyo text-muted">
+                  <div className="rounded-r-chico border border-dashed border-line py-5 text-center text-apoyo text-muted">
                     {ql || sedeF || tipoF ? 'sin coincidencias' : '— vacío —'}
                   </div>
                 )}
@@ -492,7 +492,7 @@ export function TableroPipeline({
       {toast && (
         <div
           key={toast.msg}
-          className={`fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 animate-fade items-center gap-3 rounded-lg px-4 py-2.5 text-cuerpo font-semibold shadow-lift ${
+          className={`fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 animate-fade items-center gap-3 rounded-r-pastilla px-4 py-2.5 text-cuerpo font-semibold shadow-lift ${
             toast.tono === 'gold'
               ? 'bg-gold text-navy'
               : toast.tono === 'warn'
@@ -512,7 +512,7 @@ export function TableroPipeline({
           {toast.undo && (
             <button
               onClick={toast.undo}
-              className="toque inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-apoyo font-medium transition hover:bg-white/30"
+              className="toque inline-flex items-center gap-1 rounded-r-pastilla bg-white/20 px-2 py-0.5 text-apoyo font-medium transition hover:bg-white/30"
             >
               <Undo2 className="h-3 w-3" strokeWidth={2.5} /> Deshacer
             </button>
@@ -587,7 +587,7 @@ function Tarjeta({
         }
       }}
       className={cn(
-        'cursor-pointer rounded-lg border bg-white p-2 shadow-card transition hover:shadow-lift',
+        'cursor-pointer rounded-r-medio border bg-white p-2 shadow-card transition hover:shadow-lift',
         seleccionado ? 'border-navy ring-2 ring-navy/30' : 'border-line',
       )}
     >
@@ -607,7 +607,7 @@ function Tarjeta({
             }}
             aria-label="Dividir en saco + pantalón"
             title="Dividir en saco + pantalón"
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-line transition-colors hover:bg-navy/5 hover:text-navy"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-r-pastilla text-line transition-colors hover:bg-navy/5 hover:text-navy"
           >
             <Split className="h-3 w-3" strokeWidth={2.5} />
           </button>
@@ -621,7 +621,7 @@ function Tarjeta({
             }}
             aria-label="Deshacer división"
             title="Deshacer división (vuelve a ser una sola prenda)"
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-line transition-colors hover:bg-navy/5 hover:text-navy"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded-r-pastilla text-line transition-colors hover:bg-navy/5 hover:text-navy"
           >
             <Combine className="h-3 w-3" strokeWidth={2.5} />
           </button>
@@ -634,7 +634,7 @@ function Tarjeta({
           }}
           aria-label="Seleccionar"
           className={cn(
-            'ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors',
+            'ml-auto flex h-5 w-5 shrink-0 items-center justify-center rounded-r-pastilla border transition-colors',
             seleccionado ? 'border-navy bg-navy text-white' : 'border-line text-transparent hover:border-navy',
           )}
         >
@@ -642,28 +642,28 @@ function Tarjeta({
         </button>
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-1">
-        <span className="rounded bg-navy/5 px-1.5 py-0.5 tabular-nums text-micro text-navy">{p.sedeOrigenCod}</span>
+        <span className="rounded-r-pastilla bg-navy/5 px-1.5 py-0.5 tabular-nums text-micro text-navy">{p.sedeOrigenCod}</span>
         {Boolean(meta) && <span className="truncate text-micro leading-tight text-muted">{meta}</span>}
       </div>
       {(Boolean(p.tipoLavado) || Boolean(p.necesitaCompostura) || Boolean(p.aprobada)) && (
         <div className="mt-1 flex flex-wrap items-center gap-1">
           {Boolean(p.tipoLavado) && (
-            <span className={cn('rounded px-1.5 py-0.5 text-micro font-medium', tipoLavadoCls(p.tipoLavado ?? ''))}>
+            <span className={cn('rounded-r-pastilla px-1.5 py-0.5 text-micro font-medium', tipoLavadoCls(p.tipoLavado ?? ''))}>
               {p.tipoLavado}
             </span>
           )}
           {Boolean(p.necesitaCompostura) && (
-            <span className="rounded bg-aviso-soft px-1.5 py-0.5 text-micro font-medium text-aviso-deep">compostura</span>
+            <span className="rounded-r-pastilla bg-aviso-soft px-1.5 py-0.5 text-micro font-medium text-aviso-deep">compostura</span>
           )}
           {Boolean(p.aprobada) && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-exito-soft px-1.5 py-0.5 text-micro font-medium text-exito-deep">
+            <span className="inline-flex items-center gap-0.5 rounded-r-pastilla bg-exito-soft px-1.5 py-0.5 text-micro font-medium text-exito-deep">
               <Check className="h-2.5 w-2.5" strokeWidth={3} /> ok
             </span>
           )}
         </div>
       )}
       {Boolean(p.obsCalidad) && (
-        <div className="mt-1 flex items-start gap-1 rounded bg-error-soft px-2 py-1 text-micro text-error-deep">
+        <div className="mt-1 flex items-start gap-1 rounded-r-chico bg-error-soft px-2 py-1 text-micro text-error-deep">
           <AlertTriangle className="mt-px h-3 w-3 shrink-0" strokeWidth={2.5} /> {p.obsCalidad}
         </div>
       )}
@@ -674,7 +674,7 @@ function Tarjeta({
         <a
           href="/pipeline/envios"
           onClick={(e) => e.stopPropagation()}
-          className="mt-1.5 inline-flex w-full items-center justify-center gap-1 rounded-md border border-line px-2 py-1 text-micro font-medium text-muted transition hover:border-gold hover:text-navy"
+          className="mt-1.5 inline-flex w-full items-center justify-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-micro font-medium text-muted transition hover:border-gold hover:text-navy"
         >
           Confirmar en Envíos <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
         </a>
@@ -693,7 +693,7 @@ function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
       <select
         value={destino}
         onChange={(e) => setDestino(e.target.value)}
-        className="rounded-md border border-line bg-white px-1.5 py-1 text-apoyo text-navy"
+        className="rounded-r-pastilla border border-line bg-white px-1.5 py-1 text-apoyo text-navy"
         aria-label="Devolver a la etapa"
       >
         <option value="recepcion">Recepción</option>
@@ -705,7 +705,7 @@ function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
       </select>
       <button
         onClick={() => h.rechazar(p.id, destino)}
-        className="inline-flex flex-1 items-center justify-center gap-1 rounded-md border border-error-line bg-error-soft px-2 py-1.5 text-apoyo font-medium text-error-deep transition hover:bg-error-soft active:scale-[.98]"
+        className="inline-flex flex-1 items-center justify-center gap-1 rounded-r-pastilla border border-error-line bg-error-soft px-2 py-1.5 text-apoyo font-medium text-error-deep transition hover:bg-error-soft active:scale-[.98]"
       >
         <Undo2 className="h-3.5 w-3.5" strokeWidth={2.5} /> Rechazar
       </button>
