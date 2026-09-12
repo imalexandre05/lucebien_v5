@@ -158,6 +158,9 @@ export function SidebarNav({
 }) {
   const path = usePathname();
   const activo = hrefActivo(path ?? '');
+  // Contador corrido entre las dos secciones: la entrada escalonada se lee como un solo listado
+  // que aparece de arriba a abajo, no como dos listas que arrancan cada una desde cero.
+  let indice = 0;
   return (
     <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
       {NAV.map((group) => {
@@ -182,8 +185,13 @@ export function SidebarNav({
               {items.map((it) => {
                 const active = it.href === activo;
                 const Icon = it.icon;
+                const idx = indice++;
                 return (
-                  <li key={it.href}>
+                  <li
+                    key={it.href}
+                    className="animate-rise"
+                    style={{ animationDelay: `${Math.min(idx, 12) * 30}ms` }}
+                  >
                     <Link
                       href={it.href}
                       aria-current={active ? 'page' : undefined}
@@ -197,7 +205,7 @@ export function SidebarNav({
                       )}
                       <Icon
                         className={cn(
-                          'h-4 w-4 transition-colors duration-150',
+                          'h-4 w-4 transition-[color,transform] duration-150 group-hover:scale-110',
                           active ? 'text-gold' : 'text-paper/50 group-hover:text-paper/70',
                         )}
                         strokeWidth={1.75}
@@ -246,9 +254,12 @@ export function Sidebar({
       <Link
         href="/"
         aria-label="Ir al inicio"
-        className="flex items-center border-b border-white/10 px-5 py-6 transition-transform duration-150 ease-out-expo hover-fine:translate-x-0.5 active:scale-[0.98]"
+        className="relative flex items-center px-5 py-6 transition-transform duration-150 ease-out-expo hover-fine:translate-x-0.5 active:scale-[0.98]"
       >
         <Logo tone="onDark" size="md" />
+        {/* Filete de sastre, versión oscura: la misma firma dorada que el login y el hilo del
+            dashboard, adaptada al fondo navy — reemplaza el borde plano blanco/10. */}
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-gold via-gold/40 to-transparent" />
       </Link>
       <SidebarNav rol={rol} matriz={matriz} rolCod={rolCod} perfilSede={perfilSede} />
       <SidebarFooter />
