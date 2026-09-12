@@ -244,6 +244,19 @@ export function LayoutMap({
     }
     emit(sel.has(cod) ? selected.filter((c) => c !== cod) : [...selected, cod]);
   };
+  // Igual que toggle(), pero SIN cerrar el desplegable: un punto con "N zonas en este punto"
+  // (ej. 4) se marca de a una sin que la lista se cierre entre clic y clic — antes cada ítem
+  // pasaba por toggle() y el desplegable se cerraba solo, así que marcar la segunda zona exigía
+  // reabrirlo desde cero. Se cierra explícito con el botón ✕ de la cabecera, con el propio badge
+  // (mismo cod, toggle en línea 455-457) o clicando fuera del mapa.
+  const toggleEnDropdown = (cod: string) => {
+    if (readOnly) return;
+    if (esEval) {
+      onCycle?.(cod);
+      return;
+    }
+    emit(sel.has(cod) ? selected.filter((c) => c !== cod) : [...selected, cod]);
+  };
 
   // En solo-lectura (vista) mostramos solo lo marcado; en eval, todo.
   const visible = (z: LayoutZona) => !(readOnly && !esEval) || sel.has(z.cod);
@@ -514,9 +527,19 @@ export function LayoutMap({
                   onClick={(e) => e.stopPropagation()}
                   className="absolute left-0 top-full z-[6] mt-1 w-48 space-y-0.5 rounded-r-medio border border-line bg-white p-1.5 shadow-lift"
                 >
-                  <p className="px-1.5 pb-1 text-[9px] font-semibold uppercase tracking-wide text-muted">
-                    {grupo!.size} zonas en este punto
-                  </p>
+                  <div className="mb-0.5 flex items-center justify-between gap-2 px-1.5 pb-1">
+                    <p className="text-[9px] font-semibold uppercase tracking-wide text-muted">
+                      {grupo!.size} zonas en este punto
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setDropdownCod(null)}
+                      aria-label="Cerrar"
+                      className="shrink-0 rounded-r-pastilla p-0.5 text-muted transition-colors duration-150 hover:bg-paper hover:text-navy"
+                    >
+                      <X className="h-3 w-3" strokeWidth={2.5} />
+                    </button>
+                  </div>
                   {[...grupo!].map((cod) => {
                     const zz = enMapa.find((x) => x.cod === cod);
                     if (!zz) return null;
@@ -526,7 +549,7 @@ export function LayoutMap({
                       <button
                         key={cod}
                         type="button"
-                        onClick={() => toggle(cod)}
+                        onClick={() => toggleEnDropdown(cod)}
                         className={cn(
                           'flex w-full items-center gap-1.5 rounded-r-chico px-1.5 py-1 text-left text-micro transition-colors duration-150',
                           !esEval && zzOn ? 'bg-exito-soft text-exito-deep' : 'hover:bg-paper',
