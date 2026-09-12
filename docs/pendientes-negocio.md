@@ -1466,3 +1466,21 @@ verificado por lectura contra `tools/verificar-local.sh` (guard, typecheck, test
 contra el esquema real de `alertas_reglas` (columnas y valores confirmados en las migraciones
 `0041`/`0107`, no supuestos). Falta la comprobación visual en el navegador antes de darla por
 cerrada del todo.
+
+---
+
+## Hallazgo del 12-sep-2026 — `reporte_extras.puntos_total` legible por API directa
+
+Apareció al diseñar «Mis reportes»
+([spec](superpowers/specs/reportes/2026-09-12-mis-reportes-design.md) §4), no es parte de ese
+trabajo. La política `rep_extras_select`
+(`packages/db/migrations/0081_reportes_escritura_directa.sql:266`) es la misma condición por sede
+que el resto de `reportes` — admin, almacén o sede propia — **sin recorte de columna**. El corte que
+decidió el dueño en la Fase 5 tarea 3 (el operativo no ve puntos de extras, sólo admin/evaluador) es
+de interfaz (`puedeVerPuntosExtras` en `app/reportes/[id]/page.tsx`), no de base: alguien con acceso
+a la API de Supabase de su sede podría leer esa columna sin pasar por la pantalla.
+
+No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revoke`/`grant`
+separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
+vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
+directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
