@@ -13,9 +13,16 @@ import { cn } from '../../lib/cn';
 //
 // Popover ANCLADO (absolute, no portal): a diferencia de NotificacionesBell — que necesita
 // reposicionarse en scroll/resize y hacer flip porque su panel puede crecer con la lista y el
-// topbar es sticky — acá la lista es corta (≤4 sedes) y el trigger vive siempre arriba del
-// viewport, así que nunca hay riesgo real de recorte. Un simple `absolute right-0 top-full`
-// alcanza sin repetir esa maquinaria.
+// topbar es sticky — acá el trigger vive siempre arriba del viewport. Un simple
+// `absolute right-0 top-full` alcanza sin repetir esa maquinaria.
+//
+// DOS CORRECCIONES DE 2026-09-12, las dos por asumir que la lista era corta:
+//   - `max-h-[70vh] overflow-y-auto`: ya son cinco sedes y pueden ser más. Antes el panel crecía
+//     sin techo y se salía del viewport por abajo.
+//   - El recorte que se veía NO era de este panel: el header es `backdrop-blur`, o sea un
+//     contexto de apilamiento propio, y con su z-10 original empataba con la fila de tiles del
+//     dashboard, que ganaba por orden de DOM y tapaba el desplegable a media lista. El header
+//     pasó a z-30 (ver topbar.tsx) y este panel a z-40 dentro de él.
 export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: { cod: string; nombre: string }[] }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
@@ -76,7 +83,7 @@ export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: 
         <div
           role="menu"
           aria-label="Cambiar de sede"
-          className="absolute right-0 top-full z-30 mt-1.5 w-52 animate-fade overflow-hidden rounded-r-medio border border-line bg-white py-1 shadow-lift"
+          className="absolute right-0 top-full z-40 mt-1.5 max-h-[70vh] w-52 animate-fade overflow-y-auto rounded-r-medio border border-line bg-white py-1 shadow-lift"
         >
           {sedes.map((s) => (
             <button
