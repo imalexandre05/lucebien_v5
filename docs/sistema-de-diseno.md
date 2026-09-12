@@ -131,6 +131,61 @@ a la próxima persona de que ese valor no es libre.
 
 ---
 
+## 2 bis. Tipografía
+
+**Ningún tamaño de letra se elige a ojo.** Hay nueve, tienen nombre, y el nombre dice para qué sirve
+— no cuánto mide. Si al escribir una pantalla dudás entre dos, la duda es sobre qué ES ese texto, no
+sobre cuántos píxeles necesita.
+
+| Token | Tamaño | Qué es |
+|---|---|---|
+| `text-cifra` | 48px | El número del panel principal. Uno por pantalla, o ninguno |
+| `text-titulo` | 34px | El `h1` de la pantalla. Va con `font-display font-bold` |
+| `text-seccion` | 21px | Título de tarjeta o de sección. Va con `font-display font-semibold` |
+| `text-sub` | 16px | Subtítulo, o el texto de un control grande |
+| `text-cuerpo` | 14px | Texto corrido y el de los controles normales |
+| `text-dato` | 14px | Un número en una tabla. Igual de grande que `cuerpo`, pero va con `tabular-nums` |
+| `text-apoyo` | 13px | Lo que acompaña: una ayuda, una fecha, el pie de un valor |
+| `text-rotulo` | 11px | Lo que **nombra**: cabecera de tabla, título de grupo, sección del menú. Va con `uppercase` |
+| `text-micro` | 11px | Lo que **acompaña** y es chico: un contador, una marca de tiempo dentro de una fila |
+
+Las parejas del mismo tamaño (`cuerpo`/`dato`, `rotulo`/`micro`) no son un descuido: miden igual y
+significan distinto, y el día que una de las dos tenga que cambiar va a cambiar sola.
+
+### Las tres reglas
+
+1. **`text-xs`, `text-sm`, `text-lg` y compañía no se escriben.** Son la escala de Tailwind, que no
+   sabe nada de este sistema. La regla `tipografia` del guard las rechaza.
+2. **Un tamaño en corchetes (`text-[13px]`) es casi siempre un token que no se buscó.** 13px ES
+   `apoyo`; 11px ES `micro`. Si de verdad hace falta un valor que no está en la tabla, el comentario
+   al lado tiene que decir por qué.
+3. **El `tracking` no se agrega aparte.** `rotulo` ya trae su espaciado incorporado: sumarle
+   `tracking-wide` lo pisa y deja dos fuentes de verdad para lo mismo.
+
+### Por qué esto importa más de lo que parece
+
+Antes de unificar, la misma cabecera de tabla estaba escrita de tres formas distintas y ninguna
+coincidía del todo. El resultado no era feo de una: era **desprolijo de a poco** — una pantalla con
+la letra un punto más grande que la de al lado, un rótulo que en un lugar iba en mayúsculas y en
+otro no. Es el tipo de error que nadie reporta como bug y que hace que el sistema se sienta hecho
+por varias manos.
+
+### Esto lo comprueba una máquina
+
+La regla `tipografia` de `tools/guard-reglas.sh` falla si aparece un tamaño de la escala de Tailwind
+o uno en corchetes dentro de `apps/erp-web`.
+
+Quedan excepciones **anotadas en `tools/guard-baseline.txt`**, y son cuatro familias, no deuda
+suelta: los números prominentes (`Cifra`/`StatBox` se quedan a propósito en los píxeles viejos), las
+escalas internas de un componente (el glifo del teclado numérico atado a su tecla de 56px), la letra
+de marca y el membrete de los documentos impresos, y las etiquetas diminutas del mapa de piso, que
+están atadas al tamaño real de la zona en el lienzo. Cada una dice por qué en el propio baseline.
+
+> **Si encontrás una pantalla que no respeta esto, no es una excepción nueva: es una que se escapó.**
+> Se migra a los tokens y listo. El baseline sólo crece con una razón escrita.
+
+---
+
 ## 3. Movimiento
 
 ### El presupuesto
