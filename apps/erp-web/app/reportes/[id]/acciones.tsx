@@ -53,11 +53,14 @@ function Estado3({
             aria-label={nombre ? `${o.label} — ${nombre}` : o.label}
             title={o.label}
             className={cn(
-              'anillo flex h-10 w-11 items-center justify-center border-l border-line transition-colors duration-150 first:border-l-0 focus-visible:z-10',
-              active ? o.on : 'bg-white text-muted hover:bg-paper',
+              // 44px de alto y 52 de ancho: el mínimo táctil del sistema (spec §3.11). Antes eran
+              // 40x44 y, con tres botones pegados, elegir "observar" sin darle a "aprobar" pedía
+              // puntería. El hundido al presionar confirma el toque donde no hay hover.
+              'anillo flex h-11 w-[52px] items-center justify-center border-l border-line transition-[background-color,color,transform] duration-150 first:border-l-0 focus-visible:z-10 active:scale-[0.94]',
+              active ? o.on : 'bg-white text-muted hover:bg-paper hover:text-navy',
             )}
           >
-            <Icon className="h-4 w-4" strokeWidth={2.5} />
+            <Icon className="h-[18px] w-[18px]" strokeWidth={2.5} />
           </button>
         );
       })}

@@ -584,13 +584,17 @@ export function NuevoReporteForm({
       {turno && !cargando && !yaEnviado && !conflicto && !pendienteAnterior && (
         <>
           {/* ── Limpieza + Actividades lado a lado en xl (una pantalla, no un pergamino) ── */}
-          <div className={cn('grid grid-cols-1 gap-4', zonas.length > 0 && 'xl:grid-cols-5')}>
+          {/* 12 columnas (8 mapa / 4 actividades) en vez de 5 (3/2): el mapa pasa de 60% a 67% del
+              ancho. Junto con el minHeight del lienzo (layout-map.tsx), las zonas quedan ~25% más
+              anchas y ~40% más altas — la lista de actividades sigue holgada porque sus filas son
+              compactas y tienen scroll propio. */}
+          <div className={cn('grid grid-cols-1 gap-4', zonas.length > 0 && 'xl:grid-cols-12')}>
             {zonas.length > 0 && (
               // Fase 5 tarea 1: flex-col + CardContent flex-1 propaga la altura que el grid ya le
               // da a esta Card (stretch por defecto, igualada a la de "Actividades del turno") hasta
               // el lienzo — antes el lienzo solo medía lo que su aspectRatio 800×580 daba y el resto
               // de la columna quedaba vacío/cortado a media sección.
-              <Card className="flex flex-col xl:col-span-3">
+              <Card className="flex flex-col xl:col-span-8">
                 <CardHeader>
                   <CardTitle>Limpieza</CardTitle>
                   <span className="text-apoyo text-muted">Marca en el mapa las zonas que limpiaste</span>
@@ -602,7 +606,7 @@ export function NuevoReporteForm({
             )}
 
             {/* ── Actividades del Turno (lista compacta con scroll propio) ── */}
-            <Card className={cn(zonas.length > 0 && 'xl:col-span-2')}>
+            <Card className={cn(zonas.length > 0 && 'xl:col-span-4')}>
               <CardHeader>
                 <CardTitle>Actividades del turno</CardTitle>
                 <div className="flex items-center gap-2">

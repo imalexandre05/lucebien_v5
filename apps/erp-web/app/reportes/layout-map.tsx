@@ -346,7 +346,10 @@ export function LayoutMap({
           esEval && piso && 'cursor-pointer',
           !readOnly && piso && !esEval && 'cursor-pointer',
         )}
-        style={{ minHeight: 340 }}
+        // 480 y no 340 (12-sep-2026): el alto mínimo es lo que fija el tamaño de cada zona cuando
+        // el lienzo no puede crecer por flex. Con 340 las zonas chicas quedaban en ~20px de alto
+        // y fallar el clic era lo normal; con 480 crecen ~40% sin cambiar una sola coordenada.
+        style={{ minHeight: 480 }}
       >
         {/* Hint del piso, al fondo del lienzo */}
         {piso && !readOnly && (
@@ -458,15 +461,23 @@ export function LayoutMap({
                 aria-expanded={tieneSolape ? dropdownAbierto : undefined}
                 style={{ background: bg, border: ring, opacity, boxShadow: glow || undefined }}
                 className={cn(
-                  'anillo relative flex h-full w-full items-center justify-center overflow-visible transition-[background-color,box-shadow,opacity] duration-150',
-                  readOnly || !miTurno ? 'cursor-default' : 'hover:brightness-105',
+                  // El hover levanta la zona (scale + sombra) y el toque la hunde: en un mapa de
+                  // rectángulos chicos y pegados, saber CUÁL está bajo el cursor antes de hacer
+                  // clic es la mitad de la puntería. `transform` no mueve a las vecinas.
+                  'anillo relative flex h-full w-full items-center justify-center overflow-visible transition-[background-color,box-shadow,opacity,transform] duration-150',
+                  readOnly || !miTurno
+                    ? 'cursor-default'
+                    : 'hover:z-[30] hover:scale-[1.06] hover:brightness-110 hover:shadow-lift active:scale-[0.97]',
                 )}
               >
                 {texturaZona(z)}
                 {chip}
                 <span
                   className={cn(
-                    'pointer-events-none px-0.5 tabular-nums text-[7px] font-semibold leading-none',
+                    // 9px y no 7px: con el lienzo más alto (minHeight 480) las zonas crecieron y el
+                    // código se leía más chico de lo necesario. Sigue por debajo de `micro` (11px)
+                    // a propósito — es geometría de marcador, no texto de la página.
+                    'pointer-events-none px-0.5 tabular-nums text-[9px] font-semibold leading-none',
                     esEval ? 'text-ink/70' : oscuro ? 'text-[#5c3d00]' : 'text-white',
                   )}
                   style={{ textShadow: oscuro || esEval ? undefined : '0 0 2px rgba(0,0,0,.25)' }}
@@ -568,9 +579,14 @@ export function LayoutMap({
   const filas = [...mostradas.filter(puntuable)].sort((a, b) => a.cod.localeCompare(b.cod));
   const frac = totalPts > 0 ? ganados / totalPts : 1;
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 lg:flex-row">
+    // SIN `max-w-4xl` (12-sep-2026). El tope de 896px para mapa + panel dejaba al lienzo en
+    // ~600px aunque la pantalla midiera 1900: las zonas quedaban de 20-30px, imposibles de
+    // apuntar, y era el motivo real de que evaluar la limpieza se sintiera incómodo. Ahora el
+    // mapa usa todo el ancho que le da su tarjeta y el panel de calificación se queda fijo al
+    // costado, un poco más ancho para que el código y el puntaje no se aprieten.
+    <div className="flex w-full flex-col gap-4 lg:flex-row">
       {mapa}
-      <aside className="w-full shrink-0 lg:w-64">
+      <aside className="w-full shrink-0 lg:w-72">
         <div className="mb-2 text-rotulo font-semibold uppercase text-muted">
           Calificación limpieza
         </div>
@@ -580,7 +596,9 @@ export function LayoutMap({
             style={{ width: `${Math.round(frac * 100)}%` }}
           />
         </div>
-        <ul className="max-h-[420px] space-y-1 overflow-y-auto pr-1">
+        {/* 560 y no 420: acompaña al lienzo, que ahora arranca en 480 de alto. Con 420 la lista
+            de zonas scrolleaba teniendo espacio libre al lado. */}
+        <ul className="max-h-[560px] space-y-1 overflow-y-auto pr-1">
           {filas.map((z) => {
             const v = estadoDe(z.cod);
             const ev = evalVisual(v);
