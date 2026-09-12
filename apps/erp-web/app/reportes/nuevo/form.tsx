@@ -805,42 +805,45 @@ export function NuevoReporteForm({
                   Catálogo de extras no configurado para esta sede — usa &quot;Otra actividad&quot; para registrar uno igual.
                 </p>
               ) : (
-                (['remunerada', 'por_puntos'] as const).map((tipoAct) => {
-                  const grupo = catalogoExtras.filter((c) => c.tipoAct === tipoAct);
-                  if (!grupo.length) return null;
-                  const Icon = tipoAct === 'remunerada' ? Wallet : Star;
-                  return (
-                    <div key={tipoAct}>
-                      <div className="mb-1.5 flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
-                        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
-                        {tipoAct === 'remunerada' ? 'Remuneradas' : 'Por puntos'}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {grupo.map((c) => {
-                          const enLista = extras.find((e) => e.cod === c.cod);
-                          return (
-                            <button
-                              key={c.cod}
-                              type="button"
-                              onClick={() => agregarCatalogo(c)}
-                              title={tipoAct === 'remunerada' && c.precioUnitario > 0 ? `S/ ${c.precioUnitario.toFixed(2)} / ${c.unidad}` : c.nombre}
-                              className={cn(
-                                'inline-flex items-center gap-1.5 rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors duration-150 active:scale-[0.97]',
-                                enLista
-                                  ? 'border-exito bg-exito/10 text-exito-deep'
-                                  : 'border-line bg-white text-navy hover:border-gold/70',
-                              )}
-                            >
-                              {enLista ? <Check className="h-3 w-3" strokeWidth={2.5} /> : <Plus className="h-3 w-3" strokeWidth={2.5} />}
-                              {c.nombre}
-                              {enLista && <span className="tabular-nums text-micro font-bold">×{enLista.cantidad}</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })
+                // MENÚ Y NO NUBE DE BOTONES (12-sep-2026, pedido de Alexander). El catálogo crece
+                // por sede y la nube de chips se comía media tarjeta antes de agregar nada. Un
+                // <select> nativo con <optgroup> ocupa una línea, se abre con el teclado, filtra
+                // escribiendo y en el celular usa el selector del sistema — mismo criterio que el
+                // selector de persona de la ficha (cabecera.tsx).
+                //
+                // Elegir AGREGA (no hay botón aparte) y el menú vuelve a su rótulo: el gesto es uno
+                // solo y lo agregado se confirma en la lista de abajo, que es donde se ajusta la
+                // cantidad. Si el extra ya estaba, suma +1 en vez de duplicar la fila.
+                <label className="block">
+                  <span className="mb-1 block text-rotulo font-display uppercase text-muted">Agregar del catálogo</span>
+                  <select
+                    value=""
+                    onChange={(ev) => {
+                      const c = catalogoExtras.find((x) => x.cod === ev.target.value);
+                      if (c) agregarCatalogo(c);
+                    }}
+                    className={cn(fieldCls, 'w-full cursor-pointer')}
+                  >
+                    <option value="">Elegir una actividad extra…</option>
+                    {(['remunerada', 'por_puntos'] as const).map((tipoAct) => {
+                      const grupo = catalogoExtras.filter((c) => c.tipoAct === tipoAct);
+                      if (!grupo.length) return null;
+                      return (
+                        <optgroup key={tipoAct} label={tipoAct === 'remunerada' ? 'Remuneradas' : 'Por puntos'}>
+                          {grupo.map((c) => {
+                            const enLista = extras.find((e) => e.cod === c.cod);
+                            return (
+                              <option key={c.cod} value={c.cod}>
+                                {c.nombre}
+                                {enLista ? ` · ya van ${enLista.cantidad}` : ''}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      );
+                    })}
+                  </select>
+                </label>
               )}
 
               {extras.length > 0 && (
@@ -848,7 +851,17 @@ export function NuevoReporteForm({
                   {extras.map((e, i) => (
                     <div key={i} className="flex flex-wrap items-center gap-2 rounded-r-chico border border-line/60 p-2">
                       {e.cod ? (
-                        <span className="min-w-[9rem] flex-1 text-cuerpo text-navy">{e.nombre}</span>
+                        // El ícono dice de qué tipo es: al pasar el catálogo a un menú se
+                        // perdieron los encabezados "Remuneradas"/"Por puntos", y esa distinción
+                        // sigue importando acá (una se paga, la otra suma puntaje).
+                        <span className="flex min-w-[9rem] flex-1 items-center gap-1.5 text-cuerpo text-navy">
+                          {e.tipoAct === 'remunerada' ? (
+                            <Wallet className="h-3.5 w-3.5 shrink-0 text-gold-deep" strokeWidth={2} aria-label="Remunerada" />
+                          ) : (
+                            <Star className="h-3.5 w-3.5 shrink-0 text-navy/50" strokeWidth={2} aria-label="Por puntos" />
+                          )}
+                          {e.nombre}
+                        </span>
                       ) : (
                         <input
                           value={e.nombre}
