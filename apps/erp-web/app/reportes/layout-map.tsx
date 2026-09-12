@@ -467,7 +467,10 @@ export function LayoutMap({
                   'anillo relative flex h-full w-full items-center justify-center overflow-visible transition-[background-color,box-shadow,opacity,transform] duration-150',
                   readOnly || !miTurno
                     ? 'cursor-default'
-                    : 'hover:z-[30] hover:scale-[1.06] hover:brightness-110 hover:shadow-lift active:scale-[0.97]',
+                    // z-20 y no z-30: por encima de las zonas hermanas (2..14) pero por DEBAJO del
+                    // header sticky (z-30) — si no, una zona en hover cerca del borde superior se
+                    // dibujaria encima de la topbar. Mismo error que el desplegable de sede.
+                    : 'hover:z-20 hover:scale-[1.06] hover:brightness-110 hover:shadow-lift active:scale-[0.97]',
                 )}
               >
                 {texturaZona(z)}

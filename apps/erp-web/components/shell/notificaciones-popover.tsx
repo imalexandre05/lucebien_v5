@@ -134,7 +134,9 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
       {abierto &&
         createPortal(
           <>
-            <div className="fixed inset-0 z-20" onClick={() => setAbierto(false)} aria-hidden />
+            {/* z-30 = mismo nivel que el header: el overlay tiene que tapar TAMBIEN la topbar, si no un
+                clic ahi pasa de largo y el panel se queda abierto. El panel va a z-40, encima. */}
+            <div className="fixed inset-0 z-30" onClick={() => setAbierto(false)} aria-hidden />
             <div
               ref={panelRef}
               role="dialog"
@@ -145,7 +147,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
                 visibility: coords.top === null ? 'hidden' : 'visible',
                 maxHeight: 'calc(100vh - 1rem)',
               }}
-              className="fixed z-30 w-80 max-w-[calc(100vw-1rem)] animate-fade overflow-y-auto rounded-r-medio border border-line bg-white shadow-lift"
+              className="fixed z-40 w-80 max-w-[calc(100vw-1rem)] animate-fade overflow-y-auto rounded-r-medio border border-line bg-white shadow-lift"
             >
               <div className="flex items-center justify-between border-b border-line/60 px-3.5 py-2.5">
                 <span className="text-cuerpo font-semibold text-navy">Notificaciones</span>
