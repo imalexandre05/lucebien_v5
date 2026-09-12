@@ -114,5 +114,10 @@ export const config = {
   // cualquier request no autenticado a /login — incluida la petición interna que hace el
   // optimizador de next/image al leer el PNG. Efecto: el logo salía roto para cualquiera que
   // todavía no tuviera sesión, justo el caso que más importa (la propia página de login).
-  matcher: ['/((?!_next/static|_next/image|assets|favicon.ico).*)'],
+  //
+  // `icon.png`: mismo bug, versión pestaña del navegador. Es la convención de App Router
+  // (app/icon.png), no un archivo estático como favicon.ico — se había quedado afuera de la
+  // excepción de arriba y el navegador pedía /icon.png sin sesión, la redirección a /login
+  // (HTML, no imagen) rompía el ícono de la pestaña para cualquiera sin sesión activa.
+  matcher: ['/((?!_next/static|_next/image|assets|favicon.ico|icon.png).*)'],
 };
