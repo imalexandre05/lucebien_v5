@@ -5,7 +5,6 @@ import {
   estadoReporte,
   ESTADO_REPORTE_LABEL,
   puede,
-  type EstadoReporte,
   type MatrizPermisos,
 } from '@scilb/core';
 import { obtenerReporte, listarLayoutZonas } from '../../../lib/reportes-repo';
@@ -14,17 +13,12 @@ import { leerMatrizPermisos } from '../../../lib/permisos-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
-import { Badge, type Tone } from '../../../components/ui/badge';
+import { Badge } from '../../../components/ui/badge';
 import { LogoMark } from '../../../components/brand/logo';
 import { PrintButton } from '../../../components/print-button';
 import { LayoutMap } from '../layout-map';
 import { EvaluarPanel, AccionesAdmin } from './acciones';
-
-const ESTADO_TONE: Record<EstadoReporte, Tone> = {
-  evaluado: 'green',
-  pendiente: 'amber',
-  no_evaluable: 'gray',
-};
+import { ESTADO_TONE } from '../constantes';
 
 const esLimpieza = (cod: string) => cod.startsWith('OL_');
 

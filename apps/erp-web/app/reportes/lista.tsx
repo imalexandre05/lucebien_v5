@@ -3,25 +3,13 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ClipboardCheck, Filter } from 'lucide-react';
-import {
-  TURNO_LABEL,
-  estadoReporte,
-  ESTADO_REPORTE_LABEL,
-  type EstadoReporte,
-  type Reporte,
-} from '@scilb/core';
+import { TURNO_LABEL, estadoReporte, ESTADO_REPORTE_LABEL, type Reporte } from '@scilb/core';
 import { Card, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
-import { Badge, type Tone } from '../../components/ui/badge';
+import { Badge } from '../../components/ui/badge';
 import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { campoCls } from '../../components/ui/form';
-import { cn } from '../../lib/cn';
-
-const ESTADO_TONE: Record<EstadoReporte, Tone> = {
-  evaluado: 'green',
-  pendiente: 'amber',
-  no_evaluable: 'gray',
-};
+import { ESTADO_TONE, Puntaje } from './constantes';
 
 // 'utiles' = los que tienen contenido (no vacíos); es el default porque ~92% de los
 // reportes migrados son cascarones no_evaluable que de otro modo copan la lista.
@@ -47,13 +35,6 @@ const OPC_FILTRO_ESTADO: Opcion<FiltroEstado>[] = (Object.keys(ESTADO_FILTRO_LAB
   value: k,
   label: ESTADO_FILTRO_LABEL[k],
 }));
-
-function Puntaje({ r }: { r: Reporte }) {
-  if (!r.evaluado) return <span className="text-muted">—</span>;
-  const p = r.puntajeEval ?? r.puntaje;
-  const cls = p >= 85 ? 'bg-exito/10 text-exito-deep' : p >= 60 ? 'bg-gold/20 text-gold-deep' : 'bg-error-soft text-error-deep';
-  return <span className={cn('rounded-r-pastilla px-2.5 py-0.5 tabular-nums text-dato font-bold', cls)}>{p}%</span>;
-}
 
 export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
   const [q, setQ] = useState('');
