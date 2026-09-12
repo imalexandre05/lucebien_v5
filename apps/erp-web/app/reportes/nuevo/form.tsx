@@ -606,7 +606,7 @@ export function NuevoReporteForm({
             )}
 
             {/* ── Actividades del Turno (lista compacta con scroll propio) ── */}
-            <Card className={cn(zonas.length > 0 && 'xl:col-span-4')}>
+            <Card className={cn(zonas.length > 0 && 'flex flex-col xl:col-span-4')}>
               <CardHeader>
                 <CardTitle>Actividades del turno</CardTitle>
                 <div className="flex items-center gap-2">
@@ -629,7 +629,12 @@ export function NuevoReporteForm({
                   </button>
                 </div>
               </CardHeader>
-              <CardContent className={cn('space-y-1.5', zonas.length > 0 && 'max-h-[640px] overflow-y-auto')}>
+              {/* `flex-1 min-h-0` y no un `max-h` fijo: la tarjeta se estira a la altura del mapa (que
+                  ahora arranca en 620) y un tope de 640px dejaba un hueco blanco abajo que crecia
+                  con cada milimetro que ganaba el lienzo. Con flex-1 la lista mide siempre lo que
+                  sobra. `min-h-0` es lo que deja que se achique y aparezca el scroll -- mismo
+                  detalle que documenta ModalBody. */}
+              <CardContent className={cn('space-y-1.5', zonas.length > 0 && 'min-h-0 flex-1 overflow-y-auto')}>
                 {cat.length === 0 && (
                   // Sin actividades el turno no se puede reportar, y el formulario quedaba como un
                   // hueco mudo: la persona no tenia forma de saber si estaba roto o si faltaba algo.
