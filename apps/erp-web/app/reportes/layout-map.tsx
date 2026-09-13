@@ -354,21 +354,21 @@ export function LayoutMap({
         }}
         className={cn(
           'relative w-full flex-1 overflow-hidden rounded-r-medio border transition-colors duration-200',
-          // El lienzo se sentía aplastado: al ensanchar la columna, el ratio 800/580 devolvía un
-          // rectángulo cada vez más chato. 800/640 le devuelve altura sin deformar tanto las zonas
-          // (siguen posicionadas en % sobre el mismo sistema de 800×580, así que se estiran un
-          // 10% en vertical — a cambio de zonas visiblemente más altas, que es lo que se pidió).
-          'aspect-[800/640] xl:aspect-auto',
+          // LA PROPORCIÓN MANDA, EN TODOS LOS TAMAÑOS (corregido 12-sep-2026). Antes esto era
+          // `xl:aspect-auto` + un `minHeight` grande, y el resultado dependía del ancho de la
+          // columna: en evaluación, con el panel de calificación al lado, el lienzo quedaba
+          // angosto y alto (~680×620) contra un sistema de coordenadas de 800×580 — o sea que
+          // cada zona se estiraba a lo alto y el plano se veía deformado, "bugueado". Con el
+          // aspect fijo el lienzo es SIEMPRE la tienda: crece con el ancho disponible y las zonas
+          // conservan su forma real. La altura ya no se fuerza; sale del ancho.
+          'aspect-[800/580]',
           pisoMarcado && !esEval ? 'border-exito/70 bg-exito-soft/70' : 'border-line bg-[#f8fafc]',
           esEval && piso && 'cursor-pointer',
           !readOnly && piso && !esEval && 'cursor-pointer',
         )}
-        // 620 y no 340 (12-sep-2026): el alto mínimo es lo que fija el tamaño de cada zona cuando
-        // el lienzo no puede crecer por flex. Con 340 las zonas chicas quedaban en ~20px de alto y
-        // fallar el clic era lo normal; con 620 casi se duplican sin cambiar una sola coordenada.
-        // Se subió en dos pasos (340 → 480 → 620): con 480 el mapa seguía sintiéndose aplastado
-        // contra el ancho nuevo de la columna.
-        style={{ minHeight: 620 }}
+        // Piso para pantallas angostas, no una altura impuesta: con el aspect fijo de arriba, la
+        // altura la da el ancho. Sólo hace falta que en un celular el plano no quede minúsculo.
+        style={{ minHeight: 360 }}
       >
         {/* Hint del piso, al fondo del lienzo */}
         {piso && !readOnly && (
