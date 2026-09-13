@@ -139,7 +139,13 @@ export function EvaluarPanel({
         <h2 className="flex items-center gap-2 text-seccion font-display font-semibold text-navy">
           <Star className="h-5 w-5 text-gold" strokeWidth={2} /> Evaluar reporte
         </h2>
-        <span className="rounded-r-pastilla bg-gold/15 px-3 py-1 tabular-nums text-base font-bold text-gold-deep">
+        {/* El puntaje se mueve con cada zona o actividad que se aprueba, observa o rechaza, y
+            está lejos del clic: sin señal, no se nota que cambió. `key={puntaje}` re-monta el
+            nodo para que el destello vuelva a correr en cada cambio, no sólo al montar. */}
+        <span
+          key={puntaje}
+          className="animate-destello-valor rounded-r-pastilla bg-gold/15 px-3 py-1 tabular-nums text-base font-bold text-gold-deep"
+        >
           {puntaje}%
         </span>
       </div>

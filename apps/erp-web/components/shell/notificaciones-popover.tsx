@@ -125,7 +125,13 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
       >
         <Bell className="h-4 w-4" strokeWidth={1.75} />
         {noLeidas > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-r-pastilla bg-error px-1 text-micro font-bold leading-none text-white">
+          // `pulso-acento` una sola vez al aparecer (o al cambiar la cuenta, por la key): el
+          // contador rojo tiene que llamar la atención UNA vez, no latir para siempre en la
+          // esquina — un badge que parpatea sin parar se vuelve parte del fondo y se ignora.
+          <span
+            key={noLeidas}
+            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 animate-pulso-acento items-center justify-center rounded-r-pastilla bg-error px-1 text-micro font-bold leading-none text-white"
+          >
             {noLeidas > 99 ? '99+' : noLeidas}
           </span>
         )}

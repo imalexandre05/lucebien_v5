@@ -976,7 +976,7 @@ export function NuevoReporteForm({
               </span>
               <span className="text-apoyo text-muted">
                 Actividades{' '}
-                <span className="tabular-nums text-dato font-bold text-navy">
+                <span key={actDone} className="animate-destello-valor tabular-nums text-dato font-bold text-navy">
                   {actDone}/{cat.length}
                 </span>
               </span>
@@ -993,7 +993,12 @@ export function NuevoReporteForm({
               )}
               <span className="rounded-r-pastilla bg-gold/15 px-3 py-1 text-apoyo text-muted">
                 Total{' '}
-                <span className="tabular-nums text-base font-bold text-gold-deep">{totalPts}</span>{' '}
+                {/* `key={totalPts}` re-monta el nodo cuando el numero cambia, y eso reinicia la
+                    animacion: sin la key, `destello-valor` correria una sola vez al montar. Es la
+                    pieza del catalogo para "un valor que acaba de cambiar" (spec seccion 6). */}
+                <span key={totalPts} className="animate-destello-valor tabular-nums text-base font-bold text-gold-deep">
+                  {totalPts}
+                </span>{' '}
                 pts
               </span>
               {/* Tarea 5: cuenta regresiva del turno — ámbar a ≤30 min, como avisaba el header.js
