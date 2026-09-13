@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
@@ -53,6 +54,17 @@ export function Modal({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  // POR QUÉ VA POR PORTAL A <body> (12-sep-2026). `PageTransition` envuelve TODO el contenido de
+  // la ruta en un `animate-page-enter`, y una animación con `transform` crea un contexto de
+  // apilamiento propio. El modal vivía dentro de ese contexto, así que su `z-50` no competía con
+  // la página: competía con sus hermanos. Resultado visible en /solicitudes — el velo oscurecía
+  // todo MENOS la franja de la topbar, que se dibujaba por encima. Sacarlo al body lo devuelve al
+  // contexto raíz y su z-50 vuelve a valer contra header (z-30) y popovers (z-40).
+  //
+  // `montado` evita tocar `document` en el render del servidor.
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -68,9 +80,9 @@ export function Modal({
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !montado) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex animate-fade items-center justify-center bg-navy-deep/40 p-4 backdrop-blur-[2px]"
       onClick={onClose}
@@ -122,7 +134,8 @@ export function Modal({
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
