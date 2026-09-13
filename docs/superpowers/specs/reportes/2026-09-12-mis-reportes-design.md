@@ -116,6 +116,6 @@ vista, permisos/RLS = nivel 3, con su propia spec y verificador). Queda anotado 
 ---
 
 **Implementado el 12-sep-2026** (plan: `docs/superpowers/plans/2026-09-12-mis-reportes.md`).
-Verificado: `tools/verificar-local.sh` en verde. **Pendiente**: la prueba e2e
-(`e2e/colaborador.mis-reportes.spec.ts`) está escrita pero no corrida — necesita
-`E2E_ADMIN_PASSWORD`/`E2E_COLAB_PASSWORD`, que no están disponibles en esta sesión.
+Verificado: `tools/verificar-local.sh` en verde y la prueba e2e
+(`e2e/colaborador.mis-reportes.spec.ts`) corrida contra `erp-dev` (puerto 3005) con sesión real de
+`Prueba Admin`/`Prueba Colaborador` — **3 passed**. Cerrado.
