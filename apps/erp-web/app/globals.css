@@ -46,35 +46,42 @@
   /* Categóricos — IDENTIDAD, nunca estado (spec §3.3). Siete familias: tres existentes (mar, lila,
      arcilla) y cuatro nuevas (oliva, ciruela, humo, piedra), elegidas por hueco de tono libre para
      que ninguna caiga encima de un semántico (oro 54° · aviso 35° · error 0° · éxito 155° ·
-     info 207° · navy 226°). Un acento por grupo de módulo lo asigna la fase 5; acá sólo el color. */
-  --cat-mar-soft: 232 243 244; /* #e8f3f4 */
-  --cat-mar-line: 192 222 225; /* #c0dee1 */
-  --cat-mar: 47 127 136; /* #2f7f88 */
-  --cat-mar-deep: 30 90 97; /* #1e5a61 */
-  --cat-lila-soft: 242 238 249; /* #f2eef9 */
-  --cat-lila-line: 215 203 238; /* #d7cbee */
-  --cat-lila: 111 90 168; /* #6f5aa8 */
-  --cat-lila-deep: 78 61 125; /* #4e3d7d */
-  --cat-arcilla-soft: 251 238 233; /* #fbeee9 */
-  --cat-arcilla-line: 240 207 193; /* #f0cfc1 */
-  --cat-arcilla: 181 100 63; /* #b5643f */
-  --cat-arcilla-deep: 138 70 42; /* #8a462a */
-  --cat-oliva-soft: 241 244 231; /* #f1f4e7 */
-  --cat-oliva-line: 213 222 185; /* #d5deb9 */
-  --cat-oliva: 109 132 56; /* #6d8438 */
-  --cat-oliva-deep: 75 92 35; /* #4b5c23 */
-  --cat-ciruela-soft: 247 237 247; /* #f7edf7 */
-  --cat-ciruela-line: 227 201 228; /* #e3c9e4 */
-  --cat-ciruela: 143 79 146; /* #8f4f92 */
-  --cat-ciruela-deep: 103 53 106; /* #67356a */
-  --cat-humo-soft: 238 241 244; /* #eef1f4 */
-  --cat-humo-line: 204 213 222; /* #ccd5de */
-  --cat-humo: 91 112 134; /* #5b7086 */
-  --cat-humo-deep: 60 77 94; /* #3c4d5e */
-  --cat-piedra-soft: 244 241 235; /* #f4f1eb */
-  --cat-piedra-line: 222 214 200; /* #ded6c8 */
-  --cat-piedra: 138 122 99; /* #8a7a63 */
-  --cat-piedra-deep: 93 81 64; /* #5d5140 */
+     info 207° · navy 226°). Un acento por grupo de módulo lo asigna la fase 5; acá sólo el color.
+
+     SATURACIÓN SUBIDA EL 12-SEP-2026 (pedido de Alexander: «los siento apagados»). Se multiplicó
+     la saturación de las siete familias —×1.55 las de color, ×1.35 humo y piedra, que son los
+     neutros del sistema y tienen que seguir siendo los más sobrios— MANTENIENDO tono y
+     luminosidad. Eso es lo que deja intactos los contrastes: `-soft` sigue sirviendo de fondo,
+     `-deep` sigue legible encima de él, y el base sigue aguantando texto `paper` en la banda de
+     módulo. Si alguna vez hay que volver a tocarlos, tocar la SATURACIÓN, nunca la luminosidad. */
+  --cat-mar-soft: 229 246 247; /* #e5f6f7 */
+  --cat-mar-line: 183 229 234; /* #b7e5ea */
+  --cat-mar: 23 147 160; /* #1793a0 */
+  --cat-mar-deep: 12 105 115; /* #0c6973 */
+  --cat-lila-soft: 241 235 252; /* #f1ebfc */
+  --cat-lila-line: 212 193 248; /* #d4c1f8 */
+  --cat-lila: 101 69 189; /* #6545bd */
+  --cat-lila-deep: 70 43 143; /* #462b8f */
+  --cat-arcilla-soft: 255 236 229; /* #ffece5 */
+  --cat-arcilla-line: 252 202 181; /* #fccab5 */
+  --cat-arcilla: 210 89 34; /* #d25922 */
+  --cat-arcilla-deep: 162 60 18; /* #a23c12 */
+  --cat-oliva-soft: 243 248 227; /* #f3f8e3 */
+  --cat-oliva-line: 219 233 174; /* #dbe9ae */
+  --cat-oliva: 118 155 33; /* #769b21 */
+  --cat-oliva-deep: 82 109 18; /* #526d12 */
+  --cat-ciruela-soft: 250 234 250; /* #faeafa */
+  --cat-ciruela-line: 234 194 235; /* #eac2eb */
+  --cat-ciruela: 160 61 164; /* #a03da4 */
+  --cat-ciruela-deep: 116 38 121; /* #742679 */
+  --cat-humo-soft: 237 241 245; /* #edf1f5 */
+  --cat-humo-line: 201 213 225; /* #c9d5e1 */
+  --cat-humo: 83 112 142; /* #53708e */
+  --cat-humo-deep: 54 77 100; /* #364d64 */
+  --cat-piedra-soft: 246 242 233; /* #f6f2e9 */
+  --cat-piedra-line: 226 215 196; /* #e2d7c4 */
+  --cat-piedra: 145 123 92; /* #917b5c */
+  --cat-piedra-deep: 98 82 59; /* #62523b */
 
   /* El acento del módulo (spec §3.3/§3.6). Una ruta lo fija con una clase `.m-*` que la fase 5
      define, con sus cuatro pasos —soft/line/DEFAULT/deep, igual que un categórico—. Hasta
