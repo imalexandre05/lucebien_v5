@@ -23,8 +23,18 @@ export const Card = ({
 export const CardHeader = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => (
   <div className={cn('flex items-center justify-between px-5 pt-4 pb-3', className)} {...p} />
 );
+// El título de tarjeta lleva el hilo dorado del sistema a la izquierda: una barra corta en el
+// acento del módulo que lo ancla y le da color a una zona que era sólo texto navy sobre blanco.
+// `before` y no un nodo aparte para no tocar las ~60 pantallas que ya usan CardTitle.
 export const CardTitle = ({ className, ...p }: HTMLAttributes<HTMLHeadingElement>) => (
-  <h3 className={cn('text-seccion font-display font-semibold text-navy', className)} {...p} />
+  <h3
+    className={cn(
+      'relative flex items-center gap-2.5 text-seccion font-display font-semibold text-navy',
+      'before:block before:h-4 before:w-1 before:shrink-0 before:rounded-r-pastilla before:bg-acento before:content-[""]',
+      className,
+    )}
+    {...p}
+  />
 );
 export const CardContent = ({ className, ...p }: HTMLAttributes<HTMLDivElement>) => (
   <div className={cn('px-5 pb-5', className)} {...p} />

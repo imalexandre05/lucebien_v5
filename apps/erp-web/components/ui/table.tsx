@@ -57,7 +57,9 @@ export const TR = ({
 }: HTMLAttributes<HTMLTableRowElement> & { seleccionada?: boolean }) => (
   <tr
     className={cn(
-      'border-b border-line/60 transition-colors duration-150 last:border-0 hover:bg-paper/60',
+      // El hover ahora tira al acento del módulo en vez de al gris de papel: recorrer una tabla
+      // larga con el dedo/cursor devuelve color, no un gris apenas distinto del fondo.
+      'border-b border-line/60 transition-colors duration-150 last:border-0 hover:bg-acento-soft/60',
       seleccionada && 'hilo-fila bg-superficie-hundida/60',
       className,
     )}
