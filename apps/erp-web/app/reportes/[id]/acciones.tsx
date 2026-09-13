@@ -221,13 +221,18 @@ export function EvaluarPanel({
 
       {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
 
+      {/* `gold` y no el navy primario: esto CIERRA la evaluación — es uno de los cuatro momentos
+          de cierre del sistema (spec §6), y el oro es el color que la casa usa para eso. Además,
+          el bloque entero de evaluar ya es dorado y verde: el navy plano se leía como un botón
+          secundario justo en la acción principal de la pantalla. */}
       <Button
         type="button"
+        variant="gold"
         data-testid="enviar-evaluacion"
         onClick={enviar}
         disabled={actividades.length === 0 && limpieza.length === 0}
         pending={pending}
-        className="w-full justify-center py-3 text-sub"
+        className="w-full justify-center py-3 text-sub font-semibold shadow-elev-1"
       >
         {pending ? 'Enviando…' : `Enviar evaluación · ${puntaje}%`}
       </Button>
