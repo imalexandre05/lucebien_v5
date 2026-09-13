@@ -69,7 +69,9 @@ export function StatBox({
         as="div"
         className={cn(Icon && 'flex items-center gap-2', Icon && align === 'center' && 'justify-center')}
       >
-        {Icon && <Icon className="h-3.5 w-3.5 shrink-0 text-gold" strokeWidth={1.75} aria-hidden />}
+        {/* `icono-pop`: otra pieza del catálogo que estaba registrada y sin usar. El ícono del
+            tile entra con un rebote corto, escalonado con el resto de la tarjeta. */}
+        {Icon && <Icon className="h-3.5 w-3.5 shrink-0 animate-icono-pop text-gold" strokeWidth={1.75} aria-hidden />}
         <span>{label}</span>
       </Rotulo>
       <Cifra size={size} className={cn('text-current', size === 'xl' && 'mt-1.5')}>

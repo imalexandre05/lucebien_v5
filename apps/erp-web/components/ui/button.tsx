@@ -4,11 +4,14 @@ import { Spinner } from './spinner';
 
 type Variant = 'primary' | 'gold' | 'outline' | 'ghost';
 
+// Los dos botones con fondo se levantan al pasar el mouse (sombra teñida del acento + 1px hacia
+// arriba) y ceden al presionar. Antes sólo cambiaban de color, que sobre navy o sobre oro casi no
+// se nota: el botón principal de cada pantalla se sentía inerte.
 const variants: Record<Variant, string> = {
-  primary: 'bg-navy text-paper hover:bg-navy-dark',
-  gold: 'bg-gold text-navy-deep hover:bg-gold-soft',
-  outline: 'border border-navy/25 text-navy hover:bg-navy/5',
-  ghost: 'text-navy hover:bg-navy/5',
+  primary: 'bg-navy text-paper shadow-elev-1 hover:bg-navy-dark hover-fine:-translate-y-px hover:shadow-elev-2',
+  gold: 'bg-gold text-navy-deep shadow-elev-1 hover:bg-gold-soft hover-fine:-translate-y-px hover:shadow-elev-2',
+  outline: 'border border-navy/25 text-navy hover:border-gold hover:bg-gold/10',
+  ghost: 'text-navy hover:bg-acento-soft',
 };
 
 // transition acotada (no `all`) + curva propia + feedback al presionar. `duration-instante` +
@@ -16,7 +19,7 @@ const variants: Record<Variant, string> = {
 // pantalla táctil no hay `:hover`, así que esto es la única confirmación de que el toque llegó.
 // El foco es `.anillo` — dorado siempre, es la única señal de accesibilidad del sistema.
 const base =
-  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-r-pastilla px-4 py-2 text-cuerpo font-medium transition-[transform,background-color,color] duration-instante ease-estado active:scale-[.985] anillo disabled:cursor-not-allowed disabled:opacity-50';
+  'inline-flex cursor-pointer items-center justify-center gap-2 rounded-r-pastilla px-4 py-2 text-cuerpo font-medium transition-[transform,background-color,color,box-shadow,border-color] duration-instante ease-estado active:scale-[.985] anillo disabled:cursor-not-allowed disabled:opacity-50';
 
 // `grande` (44px de alto tocable) es para lo que se llena de pie — formularios de operario
 // (spec §3.11). El tamaño por defecto no cambia: sigue siendo el de siempre.

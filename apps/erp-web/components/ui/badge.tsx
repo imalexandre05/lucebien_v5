@@ -32,7 +32,10 @@ export function Badge({
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-r-pastilla px-2.5 py-0.5 text-micro font-medium',
+        // `chip-entra` es la pieza del catálogo para esto (spec §6): el badge entra con un rebote
+        // corto en vez de aparecer de golpe. Estaba registrada en tailwind.config.ts y sin ningún
+        // consumidor; el badge es el mejor porque sale en casi todas las pantallas.
+        'inline-flex animate-chip-entra items-center rounded-r-pastilla px-2.5 py-0.5 text-micro font-medium',
         tones[tone],
         className,
       )}
