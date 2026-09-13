@@ -273,7 +273,10 @@ export function Sidebar({
           aria-hidden
           className="pointer-events-none absolute -left-6 -top-6 h-32 w-32 rounded-r-pastilla bg-gold/20 blur-2xl transition-opacity duration-300 group-hover:bg-gold/30"
         />
-        <Logo tone="onDark" size="md" className="relative" />
+        {/* `tagline={false}`: el "SCI · LB" al lado del lockup competía con la marca en una barra
+            de 240px y no decía nada que el usuario necesite. `lg` en vez de `md` para que el
+            lockup ocupe el ancho que le corresponde ahora que está solo. */}
+        <Logo tone="onDark" size="lg" tagline={false} className="relative" />
         {/* Filete de sastre, versión oscura: la misma firma dorada que el login y el hilo del
             dashboard, adaptada al fondo navy — reemplaza el borde plano blanco/10. */}
         <div aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-gold via-gold/40 to-transparent" />
