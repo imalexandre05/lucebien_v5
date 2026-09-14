@@ -1333,10 +1333,21 @@ se fusionó el historial en la fila que el huellero alimenta hoy, y la fila viej
 y la prueba contra `scilb` en vivo antes de aplicar y encontró tres bloqueos reales (la
 justificación citaba una lectura del código que no era cierta, la prueba no cubría las diez
 columnas por igual, y el alias del ETL que decía prevenir el problema en realidad lo habría
-revertido en el siguiente `--run`) — los tres se corrigieron antes de aplicar. **Aplicar la
-migración quedó pendiente de una confirmación explícita** (el clasificador de modo automático del
-entorno bloquea escrituras directas contra la base de producción); si esta línea sigue así al
-leerla, `0102_identidades_duplicadas_empleados.sql` todavía no corrió contra `scilb`.
+revertido en el siguiente `--run`) — los tres se corrigieron antes de aplicar.
+
+**Aplicada el 13-sep-2026, por Alexander desde el SQL Editor** (el clasificador de modo automático
+del entorno bloquea que un agente escriba directo contra producción, así que la corrió a mano).
+`packages/db/pruebas/0102_identidades_duplicadas_empleados.prueba.sql` confirmó las cuatro promesas
+de la spec §6: cero filas huérfanas en las diez columnas, Mary/Yessi/Elthon en `activo = false`,
+sedes completas en la canónica, e historial preservado (Marylin 1.819 eventos de
+`pipeline_puntos`, Yessica 1.450, Elthom 4 filas de `reporte_trabajadores` — verificado además
+contra `empleados.activo` en vivo, no sólo contra el resultado de la prueba).
+
+Nota de higiene, sin urgencia: al correrse pegada en el SQL Editor y no por el flujo de
+migraciones, `0102` no quedó registrada en `supabase_migrations.schema_migrations` — Supabase no
+la ve como aplicada aunque el dato ya cambió. No tiene efecto práctico hoy (la migración es
+idempotente: se salta sola si la fila vieja ya está `activo = false`), pero si se quiere que quede
+prolijo para el futuro, falta insertar su fila de registro a mano.
 
 🔴 **Hallazgo aparte, sin resolver: el `sueldo_acuerdos` y la `evaluaciones_mensuales` de Marylin
 parecen ser datos de prueba, no un acuerdo real.** El verificador encontró que ese acuerdo
