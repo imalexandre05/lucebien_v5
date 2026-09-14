@@ -293,7 +293,7 @@ export function LayoutEditor({
                 if (dirty && !confirm('Hay cambios sin guardar. ¿Cambiar de sede igual?')) e.preventDefault();
               }}
               className={cn(
-                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150',
+                'rounded-r-pastilla px-3 py-1.5 text-cuerpo font-medium transition-colors duration-150',
                 s.cod === sede ? 'bg-navy text-paper' : 'text-muted hover:bg-navy/5 hover:text-navy',
               )}
             >
@@ -308,21 +308,21 @@ export function LayoutEditor({
               aria-pressed={filtro === f}
               onClick={() => setFiltro(f)}
               className={cn(
-                'rounded-md border px-2.5 py-1 text-xs font-medium transition-colors duration-150',
+                'rounded-r-pastilla border px-2.5 py-1 text-apoyo font-medium transition-colors duration-150',
                 filtro === f ? 'border-navy bg-navy/10 text-navy' : 'border-line text-muted hover:border-gold',
               )}
             >
               {f === 'todos' ? 'Todos' : f === 'M' ? 'AM' : 'PM'}
             </button>
           ))}
-          <span className="ml-2 tabular-nums text-xs text-muted">
+          <span className="ml-2 tabular-nums text-dato text-muted">
             {zonas.length} zonas · {totalPts} pts
           </span>
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            <button type="button" onClick={agregarZona} className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
+            <button type="button" onClick={agregarZona} className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
               <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Zona
             </button>
-            <button type="button" onClick={alinearGrilla} className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')} title="Alinear todas las zonas a la grilla">
+            <button type="button" onClick={alinearGrilla} className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')} title="Alinear todas las zonas a la grilla">
               <Grid3x3 className="h-3.5 w-3.5" strokeWidth={2} /> Alinear grilla
             </button>
             <button
@@ -332,7 +332,7 @@ export function LayoutEditor({
                 setClonarAbierto(true);
                 setError('');
               }}
-              className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}
+              className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}
             >
               <Copy className="h-3.5 w-3.5" strokeWidth={2} /> Clonar de sede
             </button>
@@ -346,7 +346,7 @@ export function LayoutEditor({
       {(error || okMsg) && (
         <p
           className={cn(
-            'flex animate-fade items-center gap-1.5 rounded-md px-3 py-2 text-sm',
+            'flex animate-fade items-center gap-1.5 rounded-r-chico px-3 py-2 text-cuerpo',
             error ? 'bg-error-soft text-error-deep' : 'bg-exito-soft text-exito-deep',
           )}
         >
@@ -357,7 +357,7 @@ export function LayoutEditor({
       {/* Fase 5 tarea 2: aviso de solapes (no bloquea — el mapa de limpieza los resuelve con el
           desplegable de "zonas ocultas aquí"). Solo pares NO explicados por nivel=sobre+sobreCod. */}
       {solapesInesperados.length > 0 && (
-        <div className="flex items-start gap-2 rounded-md border border-aviso-line bg-aviso-soft px-3 py-2 text-xs text-aviso-deep">
+        <div className="flex items-start gap-2 rounded-r-chico border border-aviso-line bg-aviso-soft px-3 py-2 text-apoyo text-aviso-deep">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} />
           <p>
             <span className="font-semibold">{solapesInesperados.length} solape(s) sin declarar:</span>{' '}
@@ -383,7 +383,7 @@ export function LayoutEditor({
             onClick={(e) => {
               if (e.target === e.currentTarget) setSelKey(null);
             }}
-            className="relative w-full touch-none overflow-hidden rounded-xl border border-line bg-paper"
+            className="relative w-full touch-none overflow-hidden rounded-r-medio border border-line bg-paper"
             style={{
               aspectRatio: `${LIENZO_W} / ${LIENZO_H}`,
               backgroundImage:
@@ -438,7 +438,7 @@ export function LayoutEditor({
                     {z.cod}
                   </span>
                   {z.sobreCod && (
-                    <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-full bg-navy-deep px-1 py-px tabular-nums text-[6px] leading-tight text-paper/90">
+                    <span className="pointer-events-none absolute -bottom-2 left-1/2 z-[6] -translate-x-1/2 whitespace-nowrap rounded-r-pastilla bg-navy-deep px-1 py-px tabular-nums text-[6px] leading-tight text-paper/90">
                       s/{z.sobreCod}
                     </span>
                   )}
@@ -461,7 +461,7 @@ export function LayoutEditor({
               );
             })}
           </div>
-          <p className="mt-2 text-[11px] text-muted">
+          <p className="mt-2 text-micro text-muted">
             Arrastra para mover · esquinas para redimensionar · flechas del teclado mueven (Shift = fino) ·
             Supr elimina · grilla de {GRID}px
           </p>
@@ -473,12 +473,12 @@ export function LayoutEditor({
             <Card>
               <CardContent className="space-y-3 pt-4">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-lg font-semibold text-navy">Zona {sel.cod}</span>
+                  <span className="text-seccion font-display font-semibold text-navy">Zona {sel.cod}</span>
                   <div className="flex items-center gap-1">
-                    <button type="button" onClick={() => duplicarZona(sel.key)} aria-label="Duplicar zona" title="Duplicar zona" className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-navy/5 hover:text-navy">
+                    <button type="button" onClick={() => duplicarZona(sel.key)} aria-label="Duplicar zona" title="Duplicar zona" className="flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors hover:bg-navy/5 hover:text-navy">
                       <CopyPlus className="h-4 w-4" strokeWidth={1.75} />
                     </button>
-                    <button type="button" onClick={() => eliminarZona(sel.key)} aria-label="Eliminar zona" title="Eliminar zona" className="flex h-8 w-8 items-center justify-center rounded-md text-muted transition-colors hover:bg-error-soft hover:text-error">
+                    <button type="button" onClick={() => eliminarZona(sel.key)} aria-label="Eliminar zona" title="Eliminar zona" className="flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors hover:bg-error-soft hover:text-error">
                       <Trash2 className="h-4 w-4" strokeWidth={1.75} />
                     </button>
                   </div>
@@ -486,16 +486,16 @@ export function LayoutEditor({
 
                 <div className="grid grid-cols-2 gap-2">
                   <label className="block">
-                    <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Código</span>
+                    <span className="mb-1 block text-rotulo uppercase text-muted">Código</span>
                     <input value={sel.cod} onChange={(e) => set(sel.key, { cod: e.target.value.toUpperCase() })} className={cn(fieldCls, 'w-full tabular-nums uppercase')} />
                   </label>
                   <label className="block">
-                    <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Peso (pts)</span>
+                    <span className="mb-1 block text-rotulo uppercase text-muted">Peso (pts)</span>
                     <input type="number" step="0.1" min={0} value={sel.peso} onChange={(e) => set(sel.key, { peso: Number(e.target.value) })} className={cn(fieldCls, 'w-full text-right')} />
                   </label>
                 </div>
                 <label className="block">
-                  <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Nombre</span>
+                  <span className="mb-1 block text-rotulo uppercase text-muted">Nombre</span>
                   <input value={sel.nombre} onChange={(e) => set(sel.key, { nombre: e.target.value })} className={cn(fieldCls, 'w-full')} />
                 </label>
 
@@ -503,7 +503,7 @@ export function LayoutEditor({
                   <>
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block">
-                        <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Tipo</span>
+                        <span className="mb-1 block text-rotulo uppercase text-muted">Tipo</span>
                         <select value={sel.tipo} onChange={(e) => set(sel.key, { tipo: e.target.value })} className={cn(fieldCls, 'w-full')}>
                           {TIPOS.map((t) => (
                             <option key={t} value={t}>
@@ -513,7 +513,7 @@ export function LayoutEditor({
                         </select>
                       </label>
                       <label className="block">
-                        <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Forma</span>
+                        <span className="mb-1 block text-rotulo uppercase text-muted">Forma</span>
                         <select value={sel.forma} onChange={(e) => set(sel.key, { forma: e.target.value })} className={cn(fieldCls, 'w-full')}>
                           <option value="rect">Rectángulo</option>
                           <option value="circle">Círculo</option>
@@ -523,7 +523,7 @@ export function LayoutEditor({
                     </div>
 
                     <div>
-                      <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Turno</span>
+                      <span className="mb-1 block text-rotulo uppercase text-muted">Turno</span>
                       <div className="flex gap-1.5">
                         {['ambos', 'mañana', 'tarde'].map((t) => (
                           <button
@@ -532,7 +532,7 @@ export function LayoutEditor({
                             aria-pressed={sel.turno === t}
                             onClick={() => cambiarTurno(sel, t)}
                             className={cn(
-                              'rounded-md border px-2.5 py-1 text-xs font-medium capitalize transition-colors duration-150',
+                              'rounded-r-pastilla border px-2.5 py-1 text-apoyo font-medium capitalize transition-colors duration-150',
                               sel.turno === t ? 'border-navy bg-navy text-paper' : 'border-line text-muted hover:border-gold',
                             )}
                           >
@@ -543,7 +543,7 @@ export function LayoutEditor({
                     </div>
 
                     <div>
-                      <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Color</span>
+                      <span className="mb-1 block text-rotulo uppercase text-muted">Color</span>
                       <div className="flex items-center gap-1.5">
                         {SWATCHES.map((c) => (
                           <button
@@ -552,7 +552,7 @@ export function LayoutEditor({
                             aria-label={`Color ${c}`}
                             aria-pressed={sel.color === c}
                             onClick={() => set(sel.key, { color: c })}
-                            className={cn('h-6 w-6 rounded-md border transition-transform', sel.color === c ? 'scale-110 border-navy ring-2 ring-gold/50' : 'border-line')}
+                            className={cn('h-6 w-6 rounded-r-chico border transition-transform', sel.color === c ? 'scale-110 border-navy ring-2 ring-gold/50' : 'border-line')}
                             style={{ background: c }}
                           />
                         ))}
@@ -561,7 +561,7 @@ export function LayoutEditor({
 
                     <div className="grid grid-cols-2 gap-2">
                       <label className="block">
-                        <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Nivel</span>
+                        <span className="mb-1 block text-rotulo uppercase text-muted">Nivel</span>
                         <select
                           value={sel.nivel === 'sobre' ? 'sobre' : 'piso'}
                           onChange={(e) => set(sel.key, { nivel: e.target.value, sobreCod: e.target.value === 'piso' ? '' : sel.sobreCod })}
@@ -573,7 +573,7 @@ export function LayoutEditor({
                       </label>
                       {sel.nivel === 'sobre' && (
                         <label className="block">
-                          <span className="mb-1 block text-[10px] uppercase tracking-wide text-muted">Sobre</span>
+                          <span className="mb-1 block text-rotulo uppercase text-muted">Sobre</span>
                           <select value={sel.sobreCod} onChange={(e) => set(sel.key, { sobreCod: e.target.value })} className={cn(fieldCls, 'w-full tabular-nums')}>
                             <option value="">—</option>
                             {muebles.map((m) => (
@@ -591,7 +591,7 @@ export function LayoutEditor({
             </Card>
           ) : (
             <Card>
-              <CardContent className="py-5 text-center text-sm text-muted">
+              <CardContent className="py-5 text-center text-cuerpo text-muted">
                 Selecciona una zona del lienzo o del catálogo para editarla.
               </CardContent>
             </Card>
@@ -601,7 +601,7 @@ export function LayoutEditor({
           <Card>
             <CardContent className="max-h-[480px] overflow-y-auto px-0 py-2">
               {especiales.length > 0 && (
-                <div className="px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-widest text-muted">
+                <div className="px-4 pb-1 pt-2 text-rotulo font-semibold uppercase text-muted">
                   Tarjetas del mapa
                 </div>
               )}
@@ -615,11 +615,11 @@ export function LayoutEditor({
                     selKey === z.key && 'bg-gold/10',
                   )}
                 >
-                  <span className="w-12 shrink-0 rounded bg-navy px-1.5 py-0.5 text-center tabular-nums text-[10px] font-semibold text-paper">
+                  <span className="w-12 shrink-0 rounded-r-pastilla bg-navy px-1.5 py-0.5 text-center tabular-nums text-micro font-semibold text-paper">
                     {z.cod}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-xs text-ink">{z.nombre}</span>
-                  <span className="shrink-0 tabular-nums text-[11px] font-semibold text-navy">{z.peso}</span>
+                  <span className="min-w-0 flex-1 truncate text-apoyo text-ink">{z.nombre}</span>
+                  <span className="shrink-0 tabular-nums text-micro font-semibold text-navy">{z.peso}</span>
                 </button>
               ))}
               {TIPOS.map((tipo) => {
@@ -629,7 +629,7 @@ export function LayoutEditor({
                 if (!grupo.length) return null;
                 return (
                   <div key={tipo}>
-                    <div className="px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-widest text-muted">
+                    <div className="px-4 pb-1 pt-3 text-rotulo font-semibold uppercase text-muted">
                       {TIPO_LABEL[tipo]} ({grupo.length})
                     </div>
                     {grupo.map((z) => (
@@ -643,14 +643,14 @@ export function LayoutEditor({
                         )}
                       >
                         <span aria-hidden className="h-2.5 w-2.5 shrink-0 rounded-[3px] border border-black/10" style={{ background: z.color }} />
-                        <span className="w-10 shrink-0 tabular-nums text-[10px] font-semibold text-navy">{z.cod}</span>
-                        <span className="min-w-0 flex-1 truncate text-xs text-ink">{z.nombre}</span>
+                        <span className="w-10 shrink-0 tabular-nums text-micro font-semibold text-navy">{z.cod}</span>
+                        <span className="min-w-0 flex-1 truncate text-apoyo text-ink">{z.nombre}</span>
                         {z.sobreCod && (
-                          <span className="shrink-0 rounded-full bg-navy-deep px-1.5 py-px tabular-nums text-[8px] text-paper/90">
+                          <span className="shrink-0 rounded-r-pastilla bg-navy-deep px-1.5 py-px tabular-nums text-[8px] text-paper/90">
                             s/{z.sobreCod}
                           </span>
                         )}
-                        <span className="shrink-0 tabular-nums text-[11px] text-muted">{z.peso}</span>
+                        <span className="shrink-0 tabular-nums text-micro text-muted">{z.peso}</span>
                       </button>
                     ))}
                   </div>
@@ -670,12 +670,12 @@ export function LayoutEditor({
         icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody className="space-y-3">
-          <p className="text-sm leading-relaxed text-muted">
+          <p className="text-cuerpo leading-relaxed text-muted">
             Copia el layout completo de otra sede y <span className="font-semibold text-ink">reemplaza</span> el
             actual de {sede}. Esta acción se guarda de inmediato.
           </p>
           <div>
-            <label htmlFor="clonar-desde" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label htmlFor="clonar-desde" className="mb-1 block text-rotulo uppercase text-muted">
               Copiar desde
             </label>
             <select id="clonar-desde" value={clonarDe} onChange={(e) => setClonarDe(e.target.value)} className={cn(fieldCls, 'w-full')}>

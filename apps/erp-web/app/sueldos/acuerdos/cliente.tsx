@@ -25,7 +25,18 @@ import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import type { AcuerdoSueldo, EstadoAcuerdo, ModalidadAcuerdo } from '../../../lib/sueldos-repo';
 import { accionActualizarAcuerdo, accionCambiarEstado, accionCrearAcuerdo, type AcuerdoForm } from './actions';
 
-type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
+// C-2: dni/telefono/recomendaciones sólo llegan poblados cuando este tipo se usa como
+// `personaFija` (app/personal/[id]/contrato/page.tsx) — el arreglo `empleados` del picker no los
+// necesita, por eso son opcionales en vez de forzar a poblarlos en los dos usos.
+type Emp = {
+  id: string;
+  nombre: string;
+  rol: string;
+  sedeCod: string | null;
+  dni?: string | null;
+  telefono?: string | null;
+  recomendaciones?: string | null;
+};
 
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 const DIAS_CORTO = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
@@ -299,6 +310,39 @@ function borradorNuevo(personaFija: Emp | undefined, fechaIngresoPersona: string
   };
 }
 
+// F-1 (spec docs/superpowers/specs/empleados/2026-09-08-borrador-persistente-design.md): sólo para
+// un contrato NUEVO — editar uno que ya existe carga siempre desde la base (deAcuerdo), nunca de
+// acá. try/catch en las tres funciones porque localStorage puede faltar (SSR, navegación privada,
+// cuota llena) y eso no puede tirar abajo el editor: sin borrador es exactamente el comportamiento
+// de hoy.
+const claveBorrador = (personaFija: Emp | undefined) => `sueldos-acuerdo-borrador:${personaFija?.id ?? 'picker'}`;
+
+function leerBorrador(personaFija: Emp | undefined): Borrador | null {
+  try {
+    const crudo = localStorage.getItem(claveBorrador(personaFija));
+    return crudo ? (JSON.parse(crudo) as Borrador) : null;
+  } catch {
+    return null;
+  }
+}
+
+function guardarBorrador(personaFija: Emp | undefined, b: Borrador): void {
+  try {
+    localStorage.setItem(claveBorrador(personaFija), JSON.stringify(b));
+  } catch {
+    // Cuota llena o localStorage inaccesible: se sigue trabajando sin borrador, sin avisar en cada
+    // tecla — el aviso sería más ruido que la pérdida ocasional que esto mismo existe para evitar.
+  }
+}
+
+function borrarBorrador(personaFija: Emp | undefined): void {
+  try {
+    localStorage.removeItem(claveBorrador(personaFija));
+  } catch {
+    /* nada que limpiar si ni siquiera se pudo leer */
+  }
+}
+
 export function AcuerdosCliente({
   acuerdos,
   empleados,
@@ -330,9 +374,26 @@ export function AcuerdosCliente({
   const [editando, setEditando] = useState<string | null>(null);
   const [enEditor, setEnEditor] = useState(arrancaEnEditor);
   const [parametrosAbierto, setParametrosAbierto] = useState(false);
+  // F-1: si al arrancar directo en el editor (alta encadenada) hay un borrador guardado, se
+  // restaura en vez de empezar vacío — `leerBorrador` es null en el server (sin localStorage), así
+  // que el primer render en SSR siempre es el vacío y el cliente lo corrige en el montaje si hace
+  // falta (ver el useEffect de abajo), sin desajuste de hidratación visible: el usuario no llega a
+  // ver el formulario vacío antes del reemplazo.
   const [b, setB] = useState<Borrador>(() =>
     arrancaEnEditor ? borradorNuevo(personaFija, fechaIngresoPersona, true) : VACIO,
   );
+  const [borradorRestaurado, setBorradorRestaurado] = useState(false);
+
+  useEffect(() => {
+    if (!arrancaEnEditor || editando) return;
+    const guardado = leerBorrador(personaFija);
+    if (guardado) {
+      setB(guardado);
+      setBorradorRestaurado(true);
+    }
+    // Sólo al montar: abrirNuevo()/abrirEdicion() ya manejan su propio caso al hacer clic.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [error, setError] = useState<string | null>(null);
   // El error de una acción de la lista —poner vigente— no puede vivir en el error del formulario:
   // cuando se dispara, el formulario no está en pantalla y el mensaje se renderizaría donde nadie
@@ -351,24 +412,52 @@ export function AcuerdosCliente({
 
   const abrirNuevo = () => {
     setEditando(null);
-    // C-2: el PRIMER contrato de la persona arranca en su fecha de ingreso, editable. Una
-    // renovación no: tiene su propia fecha y atarla al ingreso original la pisaría.
-    setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0));
+    // F-1: un borrador sin guardar de un contrato nuevo gana al vacío — es exactamente el caso que
+    // esto existe para cubrir (cambiar de pantalla y volver a «Nuevo contrato»).
+    const guardado = leerBorrador(personaFija);
+    if (guardado) {
+      setB(guardado);
+      setBorradorRestaurado(true);
+    } else {
+      // C-2: el PRIMER contrato de la persona arranca en su fecha de ingreso, editable. Una
+      // renovación no: tiene su propia fecha y atarla al ingreso original la pisaría.
+      setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0));
+      setBorradorRestaurado(false);
+    }
     setError(null);
     setEnEditor(true);
   };
 
   const abrirEdicion = (a: AcuerdoSueldo) => {
+    // F-1 (spec §2): un contrato que YA EXISTE carga siempre desde la base, nunca de un borrador
+    // sin guardar — el que hubiera para "nuevo contrato" no le corresponde a este id.
     setEditando(a.id);
     setB(deAcuerdo(a));
+    setBorradorRestaurado(false);
     setError(null);
     setEnEditor(true);
+  };
+
+  const descartarBorrador = () => {
+    borrarBorrador(personaFija);
+    setBorradorRestaurado(false);
+    setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0));
   };
 
   const volver = () => {
     setParametrosAbierto(false);
     setEnEditor(false);
   };
+
+  // F-1: se guarda mientras se edita un contrato NUEVO (no una edición existente — spec §2). Sin
+  // debounce: `b` es un objeto chico, escribirlo en cada tecla no se nota.
+  useEffect(() => {
+    if (!enEditor || editando) return;
+    guardarBorrador(personaFija, b);
+    // personaFija no cambia dentro de la vida de este componente; incluirlo en las dependencias
+    // sólo agregaría ruido a la lista sin cambiar cuándo corre esto.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [b, enEditor, editando]);
 
   const guardar = () => {
     setError(null);
@@ -384,8 +473,12 @@ export function AcuerdosCliente({
       turnos: b.turnos,
     };
     empezar(async () => {
+      const eraNuevo = !editando;
       const r = editando ? await accionActualizarAcuerdo(editando, form) : await accionCrearAcuerdo(form);
       if (r.ok) {
+        // F-1: el borrador cumplió su función — guardarlo después de esto pisaría el próximo
+        // contrato nuevo con lo que ya se guardó.
+        if (eraNuevo) borrarBorrador(personaFija);
         volver();
         // ROTURA 3 (validador de flujo 23-ago-2026): las acciones sólo revalidan la ruta vieja
         // /sueldos/acuerdos. Montado en /personal/[id]/contrato nadie volvía a pedirle datos al
@@ -454,7 +547,7 @@ export function AcuerdosCliente({
           <CardHeader className="flex-wrap gap-3">
             <div className="min-w-0">
               <CardTitle>{editando ? 'Editar contrato' : 'Nuevo contrato'}</CardTitle>
-              <p className="mt-1 text-xs text-muted">
+              <p className="mt-1 text-apoyo text-muted">
                 Sueldo, periodo y horario. De acá salen las horas contratadas y el valor de la hora.
               </p>
             </div>
@@ -464,10 +557,36 @@ export function AcuerdosCliente({
           </CardHeader>
 
           <CardContent className="space-y-6 border-t border-line pt-5">
+            {/* F-1: sólo aparece para un contrato nuevo (borradorRestaurado nunca se prende en
+                abrirEdicion, spec §2). */}
+            {borradorRestaurado && (
+              <Aviso tono="info">
+                Se restauró un borrador sin guardar.{' '}
+                <button type="button" onClick={descartarBorrador} className="font-medium underline underline-offset-2">
+                  Descartar y empezar de cero
+                </button>
+              </Aviso>
+            )}
             {personaFija ? (
               <div>
                 <LabelGrupo>Persona</LabelGrupo>
-                <p className="text-sm font-medium text-navy">Contrato de {personaFija.nombre}</p>
+                <p className="text-cuerpo font-medium text-navy">Contrato de {personaFija.nombre}</p>
+                {/* C-2: cel/DNI/recomendaciones en el contrato — vacío se ve como «—», nunca se
+                    oculta la línea (spec §4: lo que falta se ve como falta, no desaparece). */}
+                <dl className="mt-2 grid grid-cols-1 gap-x-4 gap-y-1 text-apoyo text-muted sm:grid-cols-2">
+                  <div className="flex gap-1">
+                    <dt className="shrink-0 font-medium text-ink">DNI:</dt>
+                    <dd>{personaFija.dni || '—'}</dd>
+                  </div>
+                  <div className="flex gap-1">
+                    <dt className="shrink-0 font-medium text-ink">Teléfono:</dt>
+                    <dd>{personaFija.telefono || '—'}</dd>
+                  </div>
+                  <div className="col-span-full flex gap-1">
+                    <dt className="shrink-0 font-medium text-ink">Recomendaciones:</dt>
+                    <dd>{personaFija.recomendaciones || '—'}</dd>
+                  </div>
+                </dl>
               </div>
             ) : (
               <div>
@@ -516,7 +635,7 @@ export function AcuerdosCliente({
             {/* ── Horario semanal ───────────────────────────────────────────────────────── */}
             <div>
               <LabelGrupo>Horario contratado</LabelGrupo>
-              <p className="mb-2 text-xs text-muted">
+              <p className="mb-2 text-apoyo text-muted">
                 El horario real de LuceBien es 09:00–13:00 y 13:00–20:00, contiguo. Se cargan los dos
                 turnos, no uno solo de 09:00 a 20:00: dos turnos que se pisan inflan las horas y
                 hunden el valor de la hora de todo el periodo.
@@ -528,19 +647,19 @@ export function AcuerdosCliente({
                     .map((t, i) => ({ t, i }))
                     .filter(({ t }) => t.diaSemana === dia);
                   return (
-                    <div key={dia} className="flex flex-wrap items-center gap-2 rounded-md border border-line px-3 py-2">
-                      <span className="w-24 shrink-0 text-sm font-medium text-navy">{nombre}</span>
+                    <div key={dia} className="flex flex-wrap items-center gap-2 rounded-r-chico border border-line px-3 py-2">
+                      <span className="w-24 shrink-0 text-cuerpo font-medium text-navy">{nombre}</span>
                       {/* Barra 06:00–22:00: cada turno es un segmento. Estática a propósito. */}
-                      <div className="relative h-4 w-full max-w-[16rem] shrink-0 overflow-hidden rounded bg-paper sm:w-40" aria-hidden>
+                      <div className="relative h-4 w-full max-w-[16rem] shrink-0 overflow-hidden rounded-r-pastilla bg-paper sm:w-40" aria-hidden>
                         {delDia.map(({ t, i }) => (
                           <span
                             key={i}
-                            className="absolute inset-y-0 rounded-sm bg-gold/60"
+                            className="absolute inset-y-0 rounded-r-pastilla bg-gold/60"
                             style={{ left: `${pctBarra(t.horaInicio)}%`, width: `${Math.max(pctBarra(t.horaFin) - pctBarra(t.horaInicio), 1)}%` }}
                           />
                         ))}
                       </div>
-                      {delDia.length === 0 && <span className="text-xs text-muted">sin turnos</span>}
+                      {delDia.length === 0 && <span className="text-apoyo text-muted">sin turnos</span>}
                       {delDia.map(({ t, i }) => (
                         <span key={i} className="flex items-center gap-1">
                           <Input
@@ -637,42 +756,42 @@ export function AcuerdosCliente({
                 onChange={(x) => setB((v) => ({ ...v, almuerzoHabilitado: x === 'si' }))}
                 ariaLabel="Cuándo se gana el almuerzo"
               />
-              <p className="mt-1 text-xs text-muted">
+              <p className="mt-1 text-apoyo text-muted">
                 Un día de tiempo completo es el que llega a las horas mínimas del parámetro «Horas
                 para el almuerzo».
               </p>
             </div>
 
             {/* ── Vista previa ──────────────────────────────────────────────────────────── */}
-            <div className="rounded-md border border-line bg-paper px-4 py-3">
-              <p className="mb-2 text-sm font-medium text-navy">Resumen del contrato</p>
+            <div className="rounded-r-chico border border-line bg-paper px-4 py-3">
+              <p className="mb-2 text-cuerpo font-medium text-navy">Resumen del contrato</p>
               {analisis.error ? (
-                <p className="text-sm text-error-deep">{analisis.error}</p>
+                <p className="text-cuerpo text-error-deep">{analisis.error}</p>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-3 text-cuerpo sm:grid-cols-4">
                     <div>
-                      <p className="text-xs text-muted">Días del periodo</p>
+                      <p className="text-apoyo text-muted">Días del periodo</p>
                       <p className="tabular-nums text-navy">{analisis.dias}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Horas contratadas</p>
+                      <p className="text-apoyo text-muted">Horas contratadas</p>
                       <p className="tabular-nums text-navy">{analisis.horas.toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Valor de la hora</p>
+                      <p className="text-apoyo text-muted">Valor de la hora</p>
                       <p className="tabular-nums text-navy">
                         {analisis.valorHora == null ? '—' : soles(analisis.valorHora)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Sugerido por escala</p>
+                      <p className="text-apoyo text-muted">Sugerido por escala</p>
                       <p className="tabular-nums text-navy">
                         {analisis.sugerido == null ? '—' : soles(analisis.sugerido)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Pago del periodo</p>
+                      <p className="text-apoyo text-muted">Pago del periodo</p>
                       <p className="tabular-nums text-navy">
                         {Number(b.sueldoPactado) > 0 ? soles(Number(b.sueldoPactado)) : '—'}
                       </p>
@@ -681,19 +800,19 @@ export function AcuerdosCliente({
                       {/* C-6 (spec liquidación-por-tramos): ya no es una aproximación. Con
                           `sueldoPactado` como cuota de CADA liquidación, este número es el mismo
                           que "Pago del periodo" — sin dividir por la duración del contrato. */}
-                      <p className="text-xs text-muted">Pago por liquidación</p>
+                      <p className="text-apoyo text-muted">Pago por liquidación</p>
                       <p className="tabular-nums text-navy">
                         {analisis.pagoMensual == null ? '—' : soles(analisis.pagoMensual)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Horas mensuales (aprox.)</p>
+                      <p className="text-apoyo text-muted">Horas mensuales (aprox.)</p>
                       <p className="tabular-nums text-navy">
                         {analisis.horasMensuales == null ? '—' : analisis.horasMensuales.toFixed(2)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted">Almuerzos (máx. mes / periodo)</p>
+                      <p className="text-apoyo text-muted">Almuerzos (máx. mes / periodo)</p>
                       <p className="tabular-nums text-navy">
                         {analisis.almuerzoMensual == null
                           ? '—'
@@ -702,13 +821,13 @@ export function AcuerdosCliente({
                     </div>
                   </div>
                   {analisis.sugerido != null && (
-                    <p className="mt-2 text-xs text-muted">
+                    <p className="mt-2 text-apoyo text-muted">
                       La escala es una referencia para negociar, no una obligación: el que manda es
                       el sueldo pactado.
                     </p>
                   )}
                   {analisis.almuerzoPeriodo != null && analisis.almuerzoPeriodo > 0 && (
-                    <p className="mt-2 text-xs text-muted">
+                    <p className="mt-2 text-apoyo text-muted">
                       Almuerzos: es el máximo si cumple el horario todos los días; lo que
                       efectivamente gane sale de la asistencia.
                     </p>
@@ -717,7 +836,7 @@ export function AcuerdosCliente({
               )}
 
               {analisis.avisos.map((a) => (
-                <p key={a} className="mt-2 flex gap-2 text-xs text-aviso-deep">
+                <p key={a} className="mt-2 flex gap-2 text-apoyo text-aviso-deep">
                   <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
                   {a}
                 </p>
@@ -725,11 +844,11 @@ export function AcuerdosCliente({
             </div>
 
             {/* ── Parámetros propios: lo único que sigue siendo un modal ─────────────────── */}
-            <div className="rounded-md border border-line px-4 py-3">
+            <div className="rounded-r-chico border border-line px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-navy">Parámetros propios de este contrato</p>
-                  <p className="text-xs text-muted">
+                  <p className="text-cuerpo font-medium text-navy">Parámetros propios de este contrato</p>
+                  <p className="text-apoyo text-muted">
                     En blanco usa el valor global de Configuración. Lo que se escriba acá vale sólo
                     para esta persona y sólo en este contrato.
                   </p>
@@ -788,7 +907,7 @@ export function AcuerdosCliente({
                       placeholder={global == null ? 'sin meta pactada' : String(global)}
                       onChange={(e) => setParametro(p.clave, e.target.value)}
                     />
-                    <p className="mt-1 text-xs text-muted">{p.ayuda}</p>
+                    <p className="mt-1 text-apoyo text-muted">{p.ayuda}</p>
                   </div>
                 );
               })}

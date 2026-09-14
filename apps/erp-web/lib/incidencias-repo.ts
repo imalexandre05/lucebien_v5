@@ -243,7 +243,11 @@ export async function crearIncidenciasDeReporte(p: {
       descripcion: i.descripcion,
       nivel: i.nivel,
       responsable_id: i.responsableId,
-      reportado_por_id: p.reportadoPorId,
+      // Si no hay sesión válida (reportadoPorId null), se OMITE la clave en vez de mandar un
+      // `null` explícito: PostgREST inserta `null` a propósito cuando la clave está presente, y
+      // eso pisaría el `default auth.uid()` de la columna (migración 0106). Omitiéndola, el
+      // default entra a jugar con el auth.uid() que ya autorizó el resto de la petición.
+      ...(p.reportadoPorId !== null ? { reportado_por_id: p.reportadoPorId } : {}),
       reporte_id: p.reporteId,
       puntos_penalidad: i.puntosPenalidad,
       origen: 'reporte',

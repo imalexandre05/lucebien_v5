@@ -64,7 +64,7 @@ else
 fi
 
 # ── 3) Los tests de la lógica de negocio ────────────────────────────────────────────────────
-titulo "3/3 · Tests de @scilb/core"
+titulo "3/4 · Tests de @scilb/core"
 if VITEST=$(buscar_bin vitest vitest.mjs); then
   if (cd packages/core && node "../../$VITEST" run --reporter=dot); then
     echo "  ✓ tests en verde"
@@ -77,9 +77,36 @@ else
   fallos=$((fallos + 1))
 fi
 
+# ---- 4) Los tests de los repos de la app -------------------------------------------------
+#
+# `apps/erp-web` no tiene vitest propio: se le presta el de packages/core. El paso existe porque
+# el 6-sep-2026 aparecio `apps/erp-web/lib/__tests__/sueldos-repo.corregir.test.ts`, con 4 tests
+# que pasaban y que NO corria nadie -ni este script ni CI- porque el paso 3 entra a packages/core
+# y ahi se queda. Un test verde que nunca se ejecuta es peor que no tenerlo: da la confianza sin
+# el respaldo.
+#
+# Se limita a `lib/__tests__/` a proposito: `apps/erp-web/e2e/` son specs de Playwright y vitest
+# no las puede correr. Si algun dia hay tests en otra carpeta de la app, se suman aca.
+titulo "4/4 - Tests de los repos de erp-web"
+if ls apps/erp-web/lib/__tests__/*.test.ts >/dev/null 2>&1; then
+  if VITEST=$(buscar_bin vitest vitest.mjs); then
+    if node "$VITEST" run --root apps/erp-web --reporter=dot lib/__tests__; then
+      echo "  OK tests en verde"
+    else
+      echo "  X hay tests rojos"
+      fallos=$((fallos + 1))
+    fi
+  else
+    echo "  ! no encontre vitest. Corre: pnpm install --force"
+    fallos=$((fallos + 1))
+  fi
+else
+  echo "  . no hay tests de repos todavia - nada que correr"
+fi
+
 echo
 if [ "$fallos" -gt 0 ]; then
-  echo "✗ $fallos de 3 fallaron. No commitees todavía."
+  echo "✗ $fallos de 4 fallaron. No commitees todavía."
   exit 1
 fi
-echo "✓ Los tres pasaron. Esto es lo mismo que va a correr CI."
+echo "✓ Los cuatro pasaron. Esto es lo mismo que va a correr CI."

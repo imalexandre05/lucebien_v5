@@ -13,7 +13,18 @@
 --   · el auto-cierre ya no monta un turno C encima de un M que envió una persona;
 --   · la asistencia derivada del reporte deja una sola fila por día, con el turno DEL REPORTE
 --     (no 'C': la 0079 rescata esa fila buscándola por turno, y el huellero sólo usa 'M'/'T');
---   · y ese día, después de que el huellero derive su tramo, la liquidación NO se bloquea.
+--   · y ese día, después de que el huellero derive su tramo, la liquidación NO se bloquea;
+--   · agregado 06-sep-2026 (defecto reportado: extras de catálogo guardándose con peso_unitario=0
+--     en las 13 filas de producción de ese momento): un extra CON `cod` de catálogo SIEMPRE toma
+--     `peso_unitario`/`precio_unitario` de `actividades_config`, nunca de lo que mande el cliente
+--     —ni siquiera si el cliente manda un peso/precio hostil a propósito—, y `puntos_total` (columna
+--     generada) sale de multiplicar ese peso por la cantidad. Investigado contra el código y contra
+--     la SQLite legacy (no contra la base viva, sin acceso desde este entorno): las 13 filas en cero
+--     eran de ANTES de que `peso_unitario`/`cod` existieran como columnas (las agregó la 0053, un
+--     mes después de que corriera `packages/db/etl/migra-reportes.mjs`) — no hay bypass vivo del
+--     catálogo en `reportes_crear` ni en `reportes_auto_cierre`, las dos ya derivan estos dos campos
+--     server-side (0053:154-175, 0081:121-142 abajo). Este bloque lo deja FIJADO con una prueba en
+--     vez de dejarlo solo verificado por lectura.
 --
 -- Cada falla se verifica por su SÍNTOMA exacto —cuántas filas tocó, o el prefijo `PERMISO:` del
 -- error—, no por "lanzó algo": una policy que se rompe y falla por otro motivo tiene que
@@ -358,6 +369,90 @@ begin
   select count(*) into v_cnt from cron.job where jobname like 'reportes-auto-cierre%';
   if v_cnt = 0 then r := r || 'Q-cron=ok ';
   else r := r || 'Q-CRON-AGENDADO=FALLA(' || v_cnt || ' jobs) '; end if;
+
+  -- ═══ R/S (06-sep-2026) — el peso/precio de un extra de catálogo SIEMPRE sale del catálogo ═══
+  --
+  -- Usa una fila REAL de actividades_config (categoria='EXT') de v_sede en vez de insertar una de
+  -- prueba: la consigna de esta tarea decía "no toques el catálogo actividades_config" — esto sólo
+  -- lo LEE, nunca lo escribe. Si la sede no tiene ningún EXT con peso>0 (no debería pasar hoy: las
+  -- 4 sedes reales tienen catálogo, ver 0053), R queda como INFO en vez de FALLA — no es lo que
+  -- esta prueba busca comprobar.
+  --
+  -- v_sede puede tener reportes pendientes de evaluar que las pruebas de arriba dejaron sin cerrar
+  -- (id_propio, id_asis1, id_asis2): reportes_crear corta con REPORTE_PENDIENTE si hay alguno, así
+  -- que se limpia primero — mismo criterio que el montaje inicial del archivo.
+  update reportes set evaluado = true
+   where sede_cod = v_sede and not evaluado and not coalesce(no_evaluable, false);
+
+  declare
+    v_cat_cod       text;
+    v_cat_peso      numeric;
+    v_cat_precio    numeric;
+    v_cantidad      int := 3;
+    id_extra_cat    text := '08-01-99_M-' || v_sede;
+    v_peso_got      numeric;
+    v_puntos_got    numeric;
+    v_precio_got    numeric;
+    v_revisar_got   boolean;
+    id_extra_libre  text := '10-01-99_T-' || v_sede;
+    v_peso_libre    numeric;
+    v_revisar_libre boolean;
+  begin
+    select cod, peso, precio_unitario into v_cat_cod, v_cat_peso, v_cat_precio
+      from actividades_config
+      where sede_cod = v_sede and categoria = 'EXT' and activa and peso > 0
+      order by peso desc, cod
+      limit 1;
+
+    if v_cat_cod is null then
+      r := r || 'R=INFO-sin-EXT-con-peso-en-la-sede ';
+    else
+      -- 'peso' y 'precio_unitario' en el jsonb son HOSTILES a propósito: si el servidor los
+      -- llegara a usar en vez de ignorarlos, las comprobaciones de abajo lo detectan.
+      perform reportes_crear(
+        id_extra_cat, v_sede, 'M', 0, 0, array[]::uuid[], null,
+        jsonb_build_array(jsonb_build_object(
+          'cod', v_cat_cod, 'cantidad', v_cantidad, 'peso', 999999, 'precio_unitario', 999999
+        )),
+        col);
+
+      select peso_unitario, puntos_total, precio_unitario, revisar
+        into v_peso_got, v_puntos_got, v_precio_got, v_revisar_got
+        from reporte_extras where reporte_id = id_extra_cat and cod = v_cat_cod;
+
+      if v_peso_got = v_cat_peso then r := r || 'R-peso=ok ';
+      else r := r || 'R-PESO-NO-VIENE-DEL-CATALOGO=FALLA(catalogo=' || v_cat_peso::text
+                     || ' guardado=' || coalesce(v_peso_got::text, 'NULL') || ') '; end if;
+
+      if v_puntos_got = v_cat_peso * v_cantidad then r := r || 'R-puntos=ok ';
+      else r := r || 'R-PUNTOS-TOTAL-MAL=FALLA(esperado=' || (v_cat_peso * v_cantidad)::text
+                     || ' guardado=' || coalesce(v_puntos_got::text, 'NULL') || ') '; end if;
+
+      if v_precio_got = v_cat_precio then r := r || 'R-precio=ok ';
+      else r := r || 'R-PRECIO-NO-VIENE-DEL-CATALOGO=FALLA(catalogo=' || v_cat_precio::text
+                     || ' guardado=' || coalesce(v_precio_got::text, 'NULL') || ') '; end if;
+
+      if v_revisar_got = false then r := r || 'R-revisar=ok ';
+      else r := r || 'R-REVISAR-DEBERIA-SER-FALSE=FALLA '; end if;
+
+      -- Libera la sede para el siguiente insert de esta misma prueba (S), que si no chocaría
+      -- contra el mismo REPORTE_PENDIENTE que se limpió más arriba.
+      update reportes set evaluado = true where id = id_extra_cat;
+    end if;
+
+    -- S) El escape hatch libre/"personalizada" (sin cod) se queda en peso=0/revisar=true A
+    --    PROPÓSITO (docs/pendientes-negocio.md, Fase 5): esto NO es el defecto, es el diseño, y
+    --    esta prueba también falla si alguien lo "corrige" sin querer.
+    perform reportes_crear(
+      id_extra_libre, v_sede, 'T', 0, 0, array[]::uuid[], null,
+      jsonb_build_array(jsonb_build_object('nombre', 'Actividad libre de prueba', 'cantidad', 2)),
+      col);
+    select peso_unitario, revisar into v_peso_libre, v_revisar_libre
+      from reporte_extras where reporte_id = id_extra_libre and cod is null;
+    if v_peso_libre = 0 and v_revisar_libre = true then r := r || 'S=ok ';
+    else r := r || 'S-LIBRE-DEBERIA-QUEDAR-EN-0-REVISAR=FALLA(peso=' || coalesce(v_peso_libre::text, 'NULL')
+                   || ' revisar=' || coalesce(v_revisar_libre::text, 'NULL') || ') '; end if;
+  end;
 
   raise exception 'RESULTADO 0081 >>> %', r;
 end $$;

@@ -69,13 +69,13 @@ function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
       aria-checked={on}
       onClick={onClick}
       className={cn(
-        'relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors duration-150 ease-out-expo',
+        'relative inline-flex h-7 w-12 shrink-0 items-center rounded-r-pastilla transition-colors duration-150 ease-out-expo',
         on ? 'bg-exito' : 'bg-line',
       )}
     >
       <span
         className={cn(
-          'inline-block h-6 w-6 transform rounded-full bg-white shadow transition-transform duration-150 ease-out-expo',
+          'inline-block h-6 w-6 transform rounded-r-pastilla bg-white shadow-elev-1 transition-transform duration-150 ease-out-expo',
           on ? 'translate-x-5' : 'translate-x-0.5',
         )}
       />
@@ -431,7 +431,7 @@ export function NuevoReporteForm({
         </CardHeader>
         <CardContent className="space-y-6">
           <div>
-            <label className="mb-2 block text-xs font-semibold uppercase tracking-wide text-muted">Turno</label>
+            <label className="mb-2 block text-rotulo font-semibold uppercase text-muted">Turno</label>
             <div className="grid grid-cols-3 gap-3">
               {TURNOS.map(({ v, label, sub, icon: Icon }) => {
                 const on = turno === v;
@@ -442,20 +442,20 @@ export function NuevoReporteForm({
                     data-testid={`turno-${v}`}
                     onClick={() => setTurno(v)}
                     className={cn(
-                      'flex flex-col items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-5 transition-[transform,background-color,border-color] duration-150 ease-out-expo active:scale-[0.98]',
+                      'flex flex-col items-center justify-center gap-1.5 rounded-r-medio border-2 px-3 py-5 transition-[transform,background-color,border-color] duration-150 ease-out-expo active:scale-[0.98]',
                       on
                         ? 'border-navy bg-navy text-paper shadow-card'
                         : 'border-line bg-white text-navy hover:border-gold/70 hover:bg-paper',
                     )}
                   >
                     <Icon className={cn('h-7 w-7', on ? 'text-gold' : 'text-navy/70')} strokeWidth={1.6} />
-                    <span className="text-base font-semibold">{label}</span>
-                    <span className={cn('text-[11px]', on ? 'text-paper/70' : 'text-muted')}>{sub}</span>
+                    <span className="text-sub font-semibold">{label}</span>
+                    <span className={cn('text-micro', on ? 'text-paper/70' : 'text-muted')}>{sub}</span>
                   </button>
                 );
               })}
             </div>
-            <p className="mt-2 tabular-nums text-xs text-muted">
+            <p className="mt-2 tabular-nums text-dato text-muted">
               {sede} · {fecha}
               {turno && ` · ${idReporte(fecha, turno, sede)}`}
             </p>
@@ -464,7 +464,7 @@ export function NuevoReporteForm({
           {turno && !yaEnviado && !conflicto && (
             <div className="grid gap-5 border-t border-line/60 pt-5 lg:grid-cols-2">
               <div>
-                <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                <div className="mb-2 flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
                   <Users className="h-3.5 w-3.5" strokeWidth={2} /> Colaboradores del turno
                 </div>
                 <PersonaPicker
@@ -476,7 +476,7 @@ export function NuevoReporteForm({
                 />
               </div>
               <div>
-                <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+                <div className="mb-2 flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
                   <PenLine className="h-3.5 w-3.5" strokeWidth={2} /> Encargado del turno
                   <span className="font-normal normal-case text-muted/80">· quien firma</span>
                 </div>
@@ -498,11 +498,11 @@ export function NuevoReporteForm({
         <Card>
           <CardContent className="py-10 text-center">
             <Clock className="mx-auto mb-3 h-9 w-9 text-gold/70" strokeWidth={1.5} />
-            <p className="text-sm text-muted">Selecciona un turno para cargar las actividades del día.</p>
+            <p className="text-cuerpo text-muted">Selecciona un turno para cargar las actividades del día.</p>
           </CardContent>
         </Card>
       )}
-      {cargando && <p className="text-sm text-muted">Cargando actividades…</p>}
+      {cargando && <p className="text-cuerpo text-muted">Cargando actividades…</p>}
 
       {turno && !cargando && yaEnviado && (
         <Card>
@@ -511,8 +511,8 @@ export function NuevoReporteForm({
               <>
                 <Clock className="h-10 w-10 text-muted" strokeWidth={1.5} />
                 <div>
-                  <p className="text-lg font-semibold text-navy">Este turno venció sin actividad registrada</p>
-                  <p className="mt-1 text-sm text-muted">
+                  <p className="text-seccion font-display font-semibold text-navy">Este turno venció sin actividad registrada</p>
+                  <p className="mt-1 text-cuerpo text-muted">
                     Se cerró automáticamente al pasar el plazo porque no había ningún borrador guardado. No hay nada que evaluar.
                   </p>
                 </div>
@@ -524,7 +524,7 @@ export function NuevoReporteForm({
                   <p className="text-lg font-semibold text-navy">
                     {yaEnviado.estadoEnvio === 'no_enviado' ? 'Este turno se cerró automáticamente' : 'Este turno ya se envió'}
                   </p>
-                  <p className="mt-1 text-sm text-muted">
+                  <p className="mt-1 text-cuerpo text-muted">
                     {yaEnviado.estadoEnvio === 'no_enviado' ? (
                       'Venció el plazo, pero se guardó todo lo que ya habías marcado (actividades, limpieza, extras, colaboradores). Corresponde evaluarlo.'
                     ) : (
@@ -548,8 +548,8 @@ export function NuevoReporteForm({
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <Clock className="h-10 w-10 text-aviso" strokeWidth={1.5} />
             <div>
-              <p className="text-lg font-semibold text-navy">Este horario ya está cubierto</p>
-              <p className="mt-1 text-sm text-muted">
+              <p className="text-seccion font-display font-semibold text-navy">Este horario ya está cubierto</p>
+              <p className="mt-1 text-cuerpo text-muted">
                 Ya existe un reporte de <span className="font-semibold">{TURNO_LABEL[conflicto.turno] ?? conflicto.turno}</span> para {sede} · {fecha}, que ya cubre este horario. No se puede crear otro reporte encima.
               </p>
             </div>
@@ -569,8 +569,8 @@ export function NuevoReporteForm({
           <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
             <ClipboardCheck className="h-10 w-10 text-aviso" strokeWidth={1.5} />
             <div>
-              <p className="text-lg font-semibold text-navy">Hay un reporte anterior pendiente de evaluación</p>
-              <p className="mt-1 text-sm text-muted">
+              <p className="text-seccion font-display font-semibold text-navy">Hay un reporte anterior pendiente de evaluación</p>
+              <p className="mt-1 text-cuerpo text-muted">
                 El reporte de <span className="font-semibold">{TURNO_LABEL[pendienteAnterior.turno] ?? pendienteAnterior.turno}</span> del {pendienteAnterior.fecha} en {sede} todavía no se evaluó. Evalúalo antes de crear uno nuevo.
               </p>
             </div>
@@ -584,16 +584,20 @@ export function NuevoReporteForm({
       {turno && !cargando && !yaEnviado && !conflicto && !pendienteAnterior && (
         <>
           {/* ── Limpieza + Actividades lado a lado en xl (una pantalla, no un pergamino) ── */}
-          <div className={cn('grid grid-cols-1 gap-4', zonas.length > 0 && 'xl:grid-cols-5')}>
+          {/* 12 columnas (8 mapa / 4 actividades) en vez de 5 (3/2): el mapa pasa de 60% a 67% del
+              ancho. Junto con el minHeight del lienzo (layout-map.tsx), las zonas quedan ~25% más
+              anchas y ~40% más altas — la lista de actividades sigue holgada porque sus filas son
+              compactas y tienen scroll propio. */}
+          <div className={cn('grid grid-cols-1 gap-4', zonas.length > 0 && 'xl:grid-cols-12')}>
             {zonas.length > 0 && (
               // Fase 5 tarea 1: flex-col + CardContent flex-1 propaga la altura que el grid ya le
               // da a esta Card (stretch por defecto, igualada a la de "Actividades del turno") hasta
               // el lienzo — antes el lienzo solo medía lo que su aspectRatio 800×580 daba y el resto
               // de la columna quedaba vacío/cortado a media sección.
-              <Card className="flex flex-col xl:col-span-3">
+              <Card className="flex flex-col xl:col-span-8">
                 <CardHeader>
                   <CardTitle>Limpieza</CardTitle>
-                  <span className="text-xs text-muted">Marca en el mapa las zonas que limpiaste</span>
+                  <span className="text-apoyo text-muted">Marca en el mapa las zonas que limpiaste</span>
                 </CardHeader>
                 <CardContent className="flex flex-1 flex-col">
                   <LayoutMap zonas={zonas} turno={turno} selected={limpieza} onChange={setLimpieza} />
@@ -602,30 +606,35 @@ export function NuevoReporteForm({
             )}
 
             {/* ── Actividades del Turno (lista compacta con scroll propio) ── */}
-            <Card className={cn(zonas.length > 0 && 'xl:col-span-2')}>
+            <Card className={cn(zonas.length > 0 && 'flex flex-col xl:col-span-4')}>
               <CardHeader>
                 <CardTitle>Actividades del turno</CardTitle>
                 <div className="flex items-center gap-2">
-                  <span className="tabular-nums text-xs text-muted">
+                  <span className="tabular-nums text-dato text-muted">
                     {actDone}/{cat.length}
                   </span>
                   <button
                     type="button"
                     onClick={() => marcarTodas(true)}
-                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
+                    className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold active:scale-[0.97]"
                   >
                     <Check className="h-3.5 w-3.5" strokeWidth={2} /> Todas
                   </button>
                   <button
                     type="button"
                     onClick={() => marcarTodas(false)}
-                    className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold active:scale-[0.97]"
+                    className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-muted transition-colors hover:border-gold active:scale-[0.97]"
                   >
                     <Square className="h-3.5 w-3.5" strokeWidth={2} /> Ninguna
                   </button>
                 </div>
               </CardHeader>
-              <CardContent className={cn('space-y-1.5', zonas.length > 0 && 'max-h-[640px] overflow-y-auto')}>
+              {/* `flex-1 min-h-0` y no un `max-h` fijo: la tarjeta se estira a la altura del mapa (que
+                  ahora arranca en 620) y un tope de 640px dejaba un hueco blanco abajo que crecia
+                  con cada milimetro que ganaba el lienzo. Con flex-1 la lista mide siempre lo que
+                  sobra. `min-h-0` es lo que deja que se achique y aparezca el scroll -- mismo
+                  detalle que documenta ModalBody. */}
+              <CardContent className={cn('space-y-1.5', zonas.length > 0 && 'min-h-0 flex-1 overflow-y-auto')}>
                 {cat.length === 0 && (
                   // Sin actividades el turno no se puede reportar, y el formulario quedaba como un
                   // hueco mudo: la persona no tenia forma de saber si estaba roto o si faltaba algo.
@@ -642,14 +651,14 @@ export function NuevoReporteForm({
                     <div
                       key={a.cod}
                       className={cn(
-                        'flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border px-2.5 py-1.5 transition-colors duration-150',
+                        'flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-r-chico border px-2.5 py-1.5 transition-colors duration-150',
                         on ? 'border-navy/15 bg-navy/[0.03]' : 'border-line bg-white',
                       )}
                     >
-                      <span className="w-10 shrink-0 tabular-nums text-[11px] text-muted">{a.cod}</span>
+                      <span className="w-10 shrink-0 tabular-nums text-micro text-muted">{a.cod}</span>
                       <div className="min-w-0 flex-1">
-                        <span className="text-[13px] font-medium leading-snug text-navy">{a.nombre}</span>
-                        {a.peso > 0 && <span className="ml-1.5 tabular-nums text-[10px] text-muted">{a.peso}pts</span>}
+                        <span className="text-apoyo font-medium leading-snug text-navy">{a.nombre}</span>
+                        {a.peso > 0 && <span className="ml-1.5 tabular-nums text-micro text-muted">{a.peso}pts</span>}
                         {a.pendienteAcumulado && (
                           <Badge tone="amber" className="ml-1.5">
                             pendiente
@@ -662,7 +671,7 @@ export function NuevoReporteForm({
                         onChange={(e) => setObs((p) => ({ ...p, [a.cod]: e.target.value }))}
                         placeholder="Obs."
                         aria-label={`Observación de ${a.nombre}`}
-                        className={cn(fieldCls, 'w-24 px-2 py-1 text-xs')}
+                        className={cn(fieldCls, 'w-24 px-2 py-1 text-apoyo')}
                       />
                       <Toggle on={on} onClick={() => setDone((p) => ({ ...p, [a.cod]: !p[a.cod] }))} />
                     </div>
@@ -680,14 +689,14 @@ export function NuevoReporteForm({
               <button
                 type="button"
                 onClick={() => setIncidencias((p) => [...p, { tipo: '', nivel: 'Medio', descripcion: '', responsableId: '', puntosPenalidad: 2 }])}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold active:scale-[0.97]"
+                className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold active:scale-[0.97]"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar
               </button>
             </CardHeader>
             <CardContent>
               {incidencias.length === 0 ? (
-                <p className="text-sm text-muted">Sin incidencias registradas.</p>
+                <p className="text-cuerpo text-muted">Sin incidencias registradas.</p>
               ) : (
                 <div className="space-y-3">
                   {incidencias.map((inc, i) => {
@@ -748,7 +757,7 @@ export function NuevoReporteForm({
                                 type="button"
                                 onClick={() => setIncidencias((p) => p.map((x, j) => (j === i ? { ...x, nivel: n } : x)))}
                                 className={cn(
-                                  'rounded-md border-2 px-2.5 py-1.5 text-xs font-medium transition-colors duration-150',
+                                  'rounded-r-pastilla border-2 px-2.5 py-1.5 text-apoyo font-medium transition-colors duration-150',
                                   inc.nivel === n
                                     ? n === 'Alto'
                                       ? 'border-error bg-error-soft text-error-deep'
@@ -764,7 +773,7 @@ export function NuevoReporteForm({
                           </div>
                         )}
                         {descripcionFalta && (
-                          <span className="text-xs font-medium text-aviso-deep">
+                          <span className="text-apoyo font-medium text-aviso-deep">
                             La descripción es obligatoria para este tipo.
                           </span>
                         )}
@@ -792,59 +801,72 @@ export function NuevoReporteForm({
             <CardHeader>
               <CardTitle>Extras</CardTitle>
               {extras.length > 0 && (
-                <span className="tabular-nums text-xs text-muted">{extras.length} agregado(s)</span>
+                <span className="tabular-nums text-dato text-muted">{extras.length} agregado(s)</span>
               )}
             </CardHeader>
             <CardContent className="space-y-3">
               {catalogoExtras.length === 0 ? (
-                <p className="text-xs text-muted">
+                <p className="text-apoyo text-muted">
                   Catálogo de extras no configurado para esta sede — usa &quot;Otra actividad&quot; para registrar uno igual.
                 </p>
               ) : (
-                (['remunerada', 'por_puntos'] as const).map((tipoAct) => {
-                  const grupo = catalogoExtras.filter((c) => c.tipoAct === tipoAct);
-                  if (!grupo.length) return null;
-                  const Icon = tipoAct === 'remunerada' ? Wallet : Star;
-                  return (
-                    <div key={tipoAct}>
-                      <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
-                        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
-                        {tipoAct === 'remunerada' ? 'Remuneradas' : 'Por puntos'}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {grupo.map((c) => {
-                          const enLista = extras.find((e) => e.cod === c.cod);
-                          return (
-                            <button
-                              key={c.cod}
-                              type="button"
-                              onClick={() => agregarCatalogo(c)}
-                              title={tipoAct === 'remunerada' && c.precioUnitario > 0 ? `S/ ${c.precioUnitario.toFixed(2)} / ${c.unidad}` : c.nombre}
-                              className={cn(
-                                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
-                                enLista
-                                  ? 'border-exito bg-exito/10 text-exito-deep'
-                                  : 'border-line bg-white text-navy hover:border-gold/70',
-                              )}
-                            >
-                              {enLista ? <Check className="h-3 w-3" strokeWidth={2.5} /> : <Plus className="h-3 w-3" strokeWidth={2.5} />}
-                              {c.nombre}
-                              {enLista && <span className="tabular-nums text-[11px] font-bold">×{enLista.cantidad}</span>}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })
+                // MENÚ Y NO NUBE DE BOTONES (12-sep-2026, pedido de Alexander). El catálogo crece
+                // por sede y la nube de chips se comía media tarjeta antes de agregar nada. Un
+                // <select> nativo con <optgroup> ocupa una línea, se abre con el teclado, filtra
+                // escribiendo y en el celular usa el selector del sistema — mismo criterio que el
+                // selector de persona de la ficha (cabecera.tsx).
+                //
+                // Elegir AGREGA (no hay botón aparte) y el menú vuelve a su rótulo: el gesto es uno
+                // solo y lo agregado se confirma en la lista de abajo, que es donde se ajusta la
+                // cantidad. Si el extra ya estaba, suma +1 en vez de duplicar la fila.
+                <label className="block">
+                  <span className="mb-1 block text-rotulo font-display uppercase text-muted">Agregar del catálogo</span>
+                  <select
+                    value=""
+                    onChange={(ev) => {
+                      const c = catalogoExtras.find((x) => x.cod === ev.target.value);
+                      if (c) agregarCatalogo(c);
+                    }}
+                    className={cn(fieldCls, 'w-full cursor-pointer')}
+                  >
+                    <option value="">Elegir una actividad extra…</option>
+                    {(['remunerada', 'por_puntos'] as const).map((tipoAct) => {
+                      const grupo = catalogoExtras.filter((c) => c.tipoAct === tipoAct);
+                      if (!grupo.length) return null;
+                      return (
+                        <optgroup key={tipoAct} label={tipoAct === 'remunerada' ? 'Remuneradas' : 'Por puntos'}>
+                          {grupo.map((c) => {
+                            const enLista = extras.find((e) => e.cod === c.cod);
+                            return (
+                              <option key={c.cod} value={c.cod}>
+                                {c.nombre}
+                                {enLista ? ` · ya van ${enLista.cantidad}` : ''}
+                              </option>
+                            );
+                          })}
+                        </optgroup>
+                      );
+                    })}
+                  </select>
+                </label>
               )}
 
               {extras.length > 0 && (
                 <div className="space-y-2 border-t border-line/60 pt-3">
                   {extras.map((e, i) => (
-                    <div key={i} className="flex flex-wrap items-center gap-2 rounded-lg border border-line/60 p-2">
+                    <div key={i} className="flex flex-wrap items-center gap-2 rounded-r-chico border border-line/60 p-2">
                       {e.cod ? (
-                        <span className="min-w-[9rem] flex-1 text-sm text-navy">{e.nombre}</span>
+                        // El ícono dice de qué tipo es: al pasar el catálogo a un menú se
+                        // perdieron los encabezados "Remuneradas"/"Por puntos", y esa distinción
+                        // sigue importando acá (una se paga, la otra suma puntaje).
+                        <span className="flex min-w-[9rem] flex-1 items-center gap-1.5 text-cuerpo text-navy">
+                          {e.tipoAct === 'remunerada' ? (
+                            <Wallet className="h-3.5 w-3.5 shrink-0 text-gold-deep" strokeWidth={2} aria-label="Remunerada" />
+                          ) : (
+                            <Star className="h-3.5 w-3.5 shrink-0 text-navy/50" strokeWidth={2} aria-label="Por puntos" />
+                          )}
+                          {e.nombre}
+                        </span>
                       ) : (
                         <input
                           value={e.nombre}
@@ -853,7 +875,7 @@ export function NuevoReporteForm({
                           className={cn(fieldCls, 'min-w-[9rem] flex-1')}
                         />
                       )}
-                      <div className="inline-flex items-center gap-0.5 rounded-md border border-line">
+                      <div className="inline-flex items-center gap-0.5 rounded-r-chico border border-line">
                         <button
                           type="button"
                           onClick={() => cambiarCantidadExtra(i, -1)}
@@ -862,7 +884,7 @@ export function NuevoReporteForm({
                         >
                           <Minus className="h-3.5 w-3.5" strokeWidth={2} />
                         </button>
-                        <span className="w-6 text-center tabular-nums text-sm font-semibold">{e.cantidad}</span>
+                        <span className="w-6 text-center tabular-nums text-dato font-semibold">{e.cantidad}</span>
                         <button
                           type="button"
                           onClick={() => cambiarCantidadExtra(i, 1)}
@@ -906,7 +928,7 @@ export function NuevoReporteForm({
               <button
                 type="button"
                 onClick={agregarExtraLibre}
-                className="toque inline-flex items-center gap-1 rounded-md border border-dashed border-line px-2.5 py-1.5 text-xs text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
+                className="toque inline-flex items-center gap-1 rounded-r-pastilla border border-dashed border-line px-2.5 py-1.5 text-apoyo text-muted transition-colors hover:border-gold hover:text-navy active:scale-[0.97]"
               >
                 <HelpCircle className="h-3.5 w-3.5" strokeWidth={2} /> Otra actividad (sin catálogo)
               </button>
@@ -929,7 +951,7 @@ export function NuevoReporteForm({
               />
             </div>
             {error && (
-              <Aviso tono="error" className="mb-2 text-sm">
+              <Aviso tono="error" className="mb-2 text-cuerpo">
                 {error}
                 {bloqueoId && (
                   <>
@@ -945,33 +967,38 @@ export function NuevoReporteForm({
               </Aviso>
             )}
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-              <span className="text-xs text-muted">
+              <span className="text-apoyo text-muted">
                 Limpieza{' '}
-                <span className="tabular-nums text-sm font-bold text-exito-deep">
+                <span className="tabular-nums text-dato font-bold text-exito-deep">
                   {limpiezaPts.got}
                 </span>
-                <span className="tabular-nums text-[11px] text-muted">/{limpiezaPts.tot}</span>
+                <span className="tabular-nums text-micro text-muted">/{limpiezaPts.tot}</span>
               </span>
-              <span className="text-xs text-muted">
+              <span className="text-apoyo text-muted">
                 Actividades{' '}
-                <span className="tabular-nums text-sm font-bold text-navy">
+                <span key={actDone} className="animate-destello-valor tabular-nums text-dato font-bold text-navy">
                   {actDone}/{cat.length}
                 </span>
               </span>
-              <span className="text-xs text-muted" title="El encargado del turno siempre cuenta como colaborador">
-                Equipo <span className="tabular-nums text-sm font-bold text-navy">{equipoCount}</span>
+              <span className="text-apoyo text-muted" title="El encargado del turno siempre cuenta como colaborador">
+                Equipo <span className="tabular-nums text-dato font-bold text-navy">{equipoCount}</span>
               </span>
               {extras.filter((e) => e.nombre.trim()).length > 0 && (
-                <span className="text-xs text-muted">
+                <span className="text-apoyo text-muted">
                   Extras{' '}
-                  <span className="tabular-nums text-sm font-bold text-navy">
+                  <span className="tabular-nums text-dato font-bold text-navy">
                     {extras.filter((e) => e.nombre.trim()).length}
                   </span>
                 </span>
               )}
-              <span className="rounded-full bg-gold/15 px-3 py-1 text-xs text-muted">
+              <span className="rounded-r-pastilla bg-gold/15 px-3 py-1 text-apoyo text-muted">
                 Total{' '}
-                <span className="tabular-nums text-base font-bold text-gold-deep">{totalPts}</span>{' '}
+                {/* `key={totalPts}` re-monta el nodo cuando el numero cambia, y eso reinicia la
+                    animacion: sin la key, `destello-valor` correria una sola vez al montar. Es la
+                    pieza del catalogo para "un valor que acaba de cambiar" (spec seccion 6). */}
+                <span key={totalPts} className="animate-destello-valor tabular-nums text-base font-bold text-gold-deep">
+                  {totalPts}
+                </span>{' '}
                 pts
               </span>
               {/* Tarea 5: cuenta regresiva del turno — ámbar a ≤30 min, como avisaba el header.js
@@ -979,7 +1006,7 @@ export function NuevoReporteForm({
               {minutosRestantes !== null && (
                 <span
                   className={cn(
-                    'inline-flex items-center gap-1 rounded-full px-2.5 py-1 tabular-nums text-xs font-medium',
+                    'inline-flex items-center gap-1 rounded-r-pastilla px-2.5 py-1 tabular-nums text-dato font-medium',
                     minutosRestantes <= 0
                       ? 'bg-error-soft text-error-deep'
                       : minutosRestantes <= 30
@@ -994,7 +1021,7 @@ export function NuevoReporteForm({
               <div className="ml-auto flex items-center gap-3">
                 <span
                   id="motivo-envio"
-                  className={cn('text-xs', motivoBloqueo ? 'font-medium text-aviso-deep' : 'text-muted')}
+                  className={cn('text-apoyo', motivoBloqueo ? 'font-medium text-aviso-deep' : 'text-muted')}
                 >
                   {motivoBloqueo ?? 'Se guarda automáticamente mientras lo completas.'}
                 </span>

@@ -170,15 +170,15 @@ export function PermisosCliente({
 
       <Card>
         <CardContent className="flex flex-wrap items-center gap-3 py-4">
-          <p className="text-sm text-muted">
-            Clic en cada letra para activar/desactivar esa acción. <span className="tabular-nums text-xs">V</span> ver ·{' '}
-            <span className="tabular-nums text-xs">C</span> crear · <span className="tabular-nums text-xs">E</span> editar ·{' '}
-            <span className="tabular-nums text-xs">D</span> eliminar ·{' '}
-            <span className="tabular-nums text-xs">{totalActivos}</span> activadas.
+          <p className="text-cuerpo text-muted">
+            Clic en cada letra para activar/desactivar esa acción. <span className="tabular-nums text-dato">V</span> ver ·{' '}
+            <span className="tabular-nums text-dato">C</span> crear · <span className="tabular-nums text-dato">E</span> editar ·{' '}
+            <span className="tabular-nums text-dato">D</span> eliminar ·{' '}
+            <span className="tabular-nums text-dato">{totalActivos}</span> activadas.
           </p>
           <div className="ml-auto flex items-center gap-3">
-            {guardado && <span className="text-xs font-medium text-exito-deep">Guardado ✓</span>}
-            {error && <span className="text-xs text-error">{error}</span>}
+            {guardado && <span className="text-apoyo font-medium text-exito-deep">Guardado ✓</span>}
+            {error && <span className="text-apoyo text-error">{error}</span>}
             <Button type="button" onClick={guardar} pending={pending}>
               {!pending && <Save className="h-4 w-4" strokeWidth={2} />}
               {pending ? 'Guardando…' : 'Guardar cambios'}
@@ -190,14 +190,14 @@ export function PermisosCliente({
       {GRUPOS.map((grupo) => (
         <Card key={grupo.seccion}>
           <CardContent className="overflow-x-auto px-0 pb-0 pt-0">
-            <table className="w-full min-w-[720px] border-collapse text-sm">
+            <table className="w-full min-w-[720px] border-collapse text-cuerpo">
               <thead>
                 <tr className="border-b border-line bg-paper/60">
-                  <th className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-muted">
+                  <th className="px-4 py-2.5 text-left text-rotulo font-semibold uppercase text-muted">
                     {grupo.seccion}
                   </th>
                   {columnas.map((rolKey) => (
-                    <th key={rolKey} className="px-2 py-2.5 text-center text-[11px] font-semibold text-navy">
+                    <th key={rolKey} className="px-2 py-2.5 text-center text-micro font-semibold text-navy">
                       {labelColumna(rolKey)}
                     </th>
                   ))}
@@ -222,7 +222,7 @@ export function PermisosCliente({
                                   aria-pressed={on}
                                   title={`${titulo} — ${label} — ${labelColumna(rolKey)}`}
                                   className={cn(
-                                    'flex h-6 w-6 items-center justify-center rounded border text-[10px] font-bold transition-colors duration-150 active:scale-95',
+                                    'flex h-6 w-6 items-center justify-center rounded-r-chico border text-micro font-bold transition-colors duration-150 active:scale-95',
                                     on
                                       ? 'border-exito bg-exito-soft text-exito-deep'
                                       : 'border-line bg-white text-muted/50 hover:border-gold/50',
@@ -293,7 +293,7 @@ function RolesDerivados({ roles, onCambio }: { roles: RolDerivado[]; onCambio: (
         </button>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="text-xs text-muted">
+        <p className="text-apoyo text-muted">
           Un rol derivado hereda la seguridad de un rol base (mismas sedes, mismo alcance) pero
           puede tener su propia fila en la matriz de abajo — así se le suma o quita acceso a
           módulos concretos sin tocar al resto del rol base.
@@ -309,7 +309,7 @@ function RolesDerivados({ roles, onCambio }: { roles: RolDerivado[]; onCambio: (
                 disabled={pending}
                 title={`Basado en ${r.rolBase} · clic para ${r.activo ? 'desactivar' : 'activar'}`}
                 className={cn(
-                  'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                  'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors',
                   r.activo ? 'border-navy bg-navy/5 text-navy' : 'border-line bg-white text-muted line-through',
                 )}
               >
@@ -320,18 +320,18 @@ function RolesDerivados({ roles, onCambio }: { roles: RolDerivado[]; onCambio: (
         )}
 
         {abierto && (
-          <div className="space-y-3 rounded-md border border-line bg-paper/40 p-3">
+          <div className="space-y-3 rounded-r-chico border border-line bg-paper/40 p-3">
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Nombre del rol</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Nombre del rol</label>
               <input
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Ej. Vendedor Senior"
-                className="w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
+                className="w-full rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none focus:border-gold"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Basado en</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Basado en</label>
               <div className="flex flex-wrap gap-1.5">
                 {ROLES_EDITABLES.map((r) => (
                   <button
@@ -340,7 +340,7 @@ function RolesDerivados({ roles, onCambio }: { roles: RolDerivado[]; onCambio: (
                     onClick={() => setRolBase(r.rol)}
                     aria-pressed={rolBase === r.rol}
                     className={cn(
-                      'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+                      'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors',
                       rolBase === r.rol ? 'border-navy bg-navy text-paper' : 'border-line bg-white text-navy hover:border-gold/60',
                     )}
                   >

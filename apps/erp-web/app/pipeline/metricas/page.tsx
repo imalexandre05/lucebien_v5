@@ -57,7 +57,7 @@ export default async function MetricasPage() {
       <div className="space-y-5">
         <Link
           href="/pipeline"
-          className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors duration-150 hover:text-navy"
+          className="inline-flex items-center gap-1.5 text-cuerpo text-muted transition-colors duration-150 hover:text-navy"
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2} /> Volver al kanban
         </Link>
@@ -82,17 +82,17 @@ export default async function MetricasPage() {
             <CardContent className="space-y-2">
               {porEtapa.map((e) => (
                 <div key={e.k} className="flex items-center gap-3">
-                  <span className="w-32 shrink-0 text-sm text-ink">{e.n}</span>
-                  <div className="h-4 flex-1 overflow-hidden rounded bg-navy/5">
+                  <span className="w-32 shrink-0 text-cuerpo text-ink">{e.n}</span>
+                  <div className="h-4 flex-1 overflow-hidden rounded-r-pastilla bg-navy/5">
                     <div
-                      className="h-full rounded bg-navy/70"
+                      className="h-full rounded-r-pastilla bg-navy/70"
                       style={{ width: `${Math.max(4, Math.round((e.c / maxEtapa) * 100))}%` }}
                     />
                   </div>
-                  <span className="w-8 text-right tabular-nums text-sm font-semibold text-navy">{e.c}</span>
+                  <span className="w-8 text-right tabular-nums text-dato font-semibold text-navy">{e.c}</span>
                 </div>
               ))}
-              {porEtapa.length === 0 && <p className="text-sm text-muted">Sin prendas en el tablero.</p>}
+              {porEtapa.length === 0 && <p className="text-cuerpo text-muted">Sin prendas en el tablero.</p>}
             </CardContent>
           </Card>
 
@@ -123,10 +123,10 @@ export default async function MetricasPage() {
                   <TBody>
                     {ranking.map((r, i) => (
                       <TR key={r.nombre}>
-                        <TD className="pl-5 tabular-nums text-xs text-muted">{i + 1}</TD>
-                        <TD className="text-sm font-medium text-ink">{r.nombre}</TD>
-                        <TD className="text-right tabular-nums text-sm text-muted">{r.acciones}</TD>
-                        <TD className="pr-5 text-right tabular-nums text-sm font-bold text-gold-deep">
+                        <TD className="pl-5 tabular-nums text-dato text-muted">{i + 1}</TD>
+                        <TD className="text-cuerpo font-medium text-ink">{r.nombre}</TD>
+                        <TD className="text-right tabular-nums text-dato text-muted">{r.acciones}</TD>
+                        <TD className="pr-5 text-right tabular-nums text-dato font-bold text-gold-deep">
                           <span className="inline-flex items-center gap-1">
                             <Zap className="h-3 w-3" strokeWidth={2.5} /> {r.total}
                           </span>
@@ -147,7 +147,7 @@ export default async function MetricasPage() {
           </CardHeader>
           <CardContent className="overflow-x-auto px-0 pb-0">
             {porDia.length === 0 ? (
-              <p className="px-5 pb-5 text-sm text-muted">Sin movimientos en la semana.</p>
+              <p className="px-5 pb-5 text-cuerpo text-muted">Sin movimientos en la semana.</p>
             ) : (
               <Table>
                 <THead>
@@ -169,10 +169,10 @@ export default async function MetricasPage() {
                 <TBody>
                   {porDia.map((d) => (
                     <TR key={d.f}>
-                      <TD className="pl-5 text-sm capitalize text-ink">{diaLabel(d.f)}</TD>
-                      <TD className="text-right tabular-nums text-sm text-navy">{d.total}</TD>
-                      <TD className="text-right tabular-nums text-sm text-muted">{d.listos}</TD>
-                      <TD className="pr-5 text-right tabular-nums text-sm text-muted">{d.enviadas}</TD>
+                      <TD className="pl-5 text-cuerpo capitalize text-ink">{diaLabel(d.f)}</TD>
+                      <TD className="text-right tabular-nums text-dato text-navy">{d.total}</TD>
+                      <TD className="text-right tabular-nums text-dato text-muted">{d.listos}</TD>
+                      <TD className="pr-5 text-right tabular-nums text-dato text-muted">{d.enviadas}</TD>
                     </TR>
                   ))}
                 </TBody>

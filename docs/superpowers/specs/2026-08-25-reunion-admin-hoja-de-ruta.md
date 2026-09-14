@@ -71,10 +71,10 @@ empezar.
 | B-5 | *«cuando no se marca entrada o salida por huellero entonces se rellena automáticamente, pero se avisa que ese marcado no es real y fue automático porque no se marcó»* | 📐 | **Contradice parcialmente una regla existente**: hoy un día sin salida queda `sin_dato` y CORTA la liquidación. Ver §3 |
 | B-6 | *«en caso si no se marca ni una huella ya es falta»* | 📐 | Hoy queda `sin_dato` (que no es falta). Es un cambio de regla real |
 | B-7 | *«¿cómo se marca en las asistencias cuando es doble turno?»* | 🔴 | Pregunta del administrador, no pedido. Ver §2 |
-| B-8 | *«tratar de mejorar el reconocimiento del huellero para que no tenga tantos errores»* · *«entrenar al huellero para reconocer marcas, a veces los colaboradores fallan»* | ⏸️ | Es hardware/configuración del Hikvision, no del ERP. Va a la lista de Jordan |
-| B-9 | *«notificaciones en caso de declaraciones falla»* | ⏸️ | Necesita definir por dónde notifica (¿pantalla? ¿WhatsApp?) |
+| B-8 | *«tratar de mejorar el reconocimiento del huellero para que no tenga tantos errores»* · *«entrenar al huellero para reconocer marcas, a veces los colaboradores fallan»* | ⏸️ | **Medido el 6-sep**: de 2.369 marcas ya asignadas, ninguna llegó con nombre ambiguo — el reconocimiento en sí no muestra fallas medibles. Lo que sí falla es hardware/configuración del Hikvision, no del ERP. Va a la lista de Jordan. Detalle en [huellero-identificadores-sin-asignar-06-sep.md](../huellero-identificadores-sin-asignar-06-sep.md) |
+| B-9 | *«notificaciones en caso de declaraciones falla»* | 📐 | **El módulo ya existe y corre** (dos cron diarios, migraciones `0041`/`0042`) pero cuatro de sus cinco reglas son del comercial: sin novedades desde el 26-ago. Canal decidido: dentro del sistema. Spec en [notificaciones/2026-09-06-...](notificaciones/2026-09-06-notificaciones-de-control-interno-design.md), con dos agujeros de aislamiento que se cierran primero |
 | B-10 | *«que en declarar asistencias solo se vea lo que pone del período»* | 📐 | Pantalla, acotado |
-| B-11 | *«cómo hacer para registrar persona y conectar huellero»* | ⏸️ | Es procedimiento, no código: va a la lista de Jordan + un documento de «cómo dar de alta a alguien» |
+| B-11 | *«cómo hacer para registrar persona y conectar huellero»* | ⏸️ | Es procedimiento, ya documentado en [puesta-en-marcha-huellero.md §7](../puesta-en-marcha-huellero.md). **Al ir a medirlo el 6-sep** apareció que 13 identificadores llevan sin asignar desde enero, 5 son de personas activas del sistema (622 marcas) y 2 están vivos hoy mismo (uno marcó esta mañana) — el procedimiento existe, nadie completó ese último paso. Detalle en [huellero-identificadores-sin-asignar-06-sep.md](../huellero-identificadores-sin-asignar-06-sep.md) |
 
 ### C. Contratos
 
@@ -90,7 +90,7 @@ empezar.
 |---|---|---|---|
 | D-1 | ⚠️ *«las liquidaciones cuando se cierran que se pueda editar, todo debe ser editable "por si las moscas"»* | 📐 con **interpretación** | **Choca de frente con el congelado.** Ver §3 — se resuelve sin romperlo |
 | D-2 | *«las liquidaciones y pagos y todo eso se debe registrar el método (yape, efectivo etc)»* | ✅ **ya existe** | `sueldo_liquidacion_pagos` (migración 0080) ya guarda el método. Verificar en pantalla y confirmarlo |
-| D-3 | *«los cambios en configuración deben aplicarse»* | ⏸️ | Suena a defecto real: algo se edita en /configuración y no surte efecto. **Falta reproducirlo** — ver §2 |
+| D-3 | *«los cambios en configuración deben aplicarse»* | ✅ **hecho — era un defecto real** | Alexander dio la reproducción el 25-ago: cambiaron `sueldo_tolerancia_minutos` a 0 y no pasó nada. Verificado contra `scilb`: **el 0 sí estaba guardado**; lo que no se refrescaba eran las otras once pantallas que leen parámetros — las tres acciones de `/configuracion` sólo revalidaban su propia ruta. El arreglo ya existía dos carpetas más allá (`/configuracion/permisos` revalida la raíz con `'layout'` desde antes). PR #32 |
 
 ### E. Incidencias
 
@@ -141,9 +141,35 @@ por una pantalla rota, que no es mejor.
 | F-1 | *«que se quede borrador en caso se cambie de pantalla»* | 📐 | Formularios largos que se pierden al navegar. Acotado, alto valor de uso |
 | F-2 | *«poner una página de métricas de todo tipo, dashboard de personal exclusivamente»* | 📐 | Pantalla nueva. Se alimenta sola de A-4 (el perfil) |
 | F-3 | *«poder deshabilitar y eliminar a personal»* | ✅ parcial | Suspender ya existe y banea el acceso (migración 0083). **Eliminar** ya se estudió: cuesta 48 referencias, decidido no borrar. Confirmar que la pantalla lo dice claro |
-| F-4 | *«MANDAR LISTA DE COSAS QUE TIENE QUE HACER JOVEN JORDAN»* | 🔴 | **Jordan es el otro administrador** (`rol = 'admin'` en `empleados`, verificado el 25-ago) — no un colaborador de piso. O sea que la lista es de tareas para quien administra el sistema, no para quien trabaja en tienda. Pero **qué tareas** no está en ninguna anotación. No se inventa una lista de trabajo para una persona real: ver §2 |
+| F-4 | *«MANDAR LISTA DE COSAS QUE TIENE QUE HACER JOVEN JORDAN»* | ✅ **cerrado, no era una tarea del sistema** | Alexander lo aclaró el 25-ago: **Jordan es el administrador real** del negocio; Alexander es el administrador del sistema (desarrolla y prueba). *«no le corresponden tareas más que las administrativas, que es ajeno al sistema; él usa el sistema para monitorear, pagar, etc»*. No hay lista que construir acá |
 
 ---
+
+## 1.bis Lo que Alexander contestó el 25-ago, después de la primera vuelta
+
+| Pregunta que estaba abierta | Respuesta | Qué cambia |
+|---|---|---|
+| ¿Quién es Jordan y qué le toca hacer? | **Es el administrador real del negocio.** Alexander es el administrador del sistema (desarrolla, prueba). Jordan *«usa el sistema para monitorear, pagar, etc»* y sus tareas son administrativas, ajenas al sistema | F-4 se cierra: no hay lista que construir |
+| ¿Qué cambio de configuración no se aplicó? | La tolerancia | Reproducido, diagnosticado y arreglado — ver D-3 |
+| Los puntos promedio | *«todavía no sabemos, por eso primero mediríamos»*, y **tiene que ser editable desde Configuración con efecto inmediato** | La escala se queda con los defaults del ejemplo hasta que midan. Lo editable ya funciona (`listarConfig` muestra el catálogo aunque no haya fila) y lo inmediato lo arregló D-3 |
+| Las nueve fechas de ingreso | *«ya las colocará el admin pronto»* | A-8 sigue esperando ese dato, sin nada más que hacer de este lado |
+| ¿Cómo se declara una falta? | *«se pone como falta si no se marca su huella en el día y ya»* | Es lo implementado. Lo que falta no es la regla sino **cuándo corre**: nada despierta al sistema un día sin marcas. Ver §2 |
+
+## 1.ter Segunda tanda de respuestas — 25-ago-2026
+
+| Pregunta | Respuesta | Qué cambia |
+|---|---|---|
+| ¿Cuántos puntos vale una venta? | **Medir primero**, igual que la escala | `pts_por_sol_vendido` sigue **vacía a propósito** — que es exactamente lo que ya está. Sin nada que construir. Y hoy no bloquea a nadie: `sueldo_ventas` tiene **cero filas**, el módulo de ventas todavía no se usa |
+| Tolerancia 0: ¿la tardanza cuenta desde la hora pactada o desde 10 minutos antes? | **Desde la hora pactada.** Los 10 minutos antes son expectativa cultural, no algo que el sistema mida ni descuente | **Confirma lo que ya corre.** Con `sueldo_tolerancia_minutos = 0`, quien entra 14:00 y llega 14:01 tiene 1 minuto de tardanza. Nada que cambiar |
+| ¿Hasta dónde llega «eliminar personal»? | **Si no tiene pagos ni evaluaciones** — se puede borrar aunque tenga algo de asistencia o reportes sueltos | Acota F-3. Ver la spec propia |
+| ¿Qué módulos en paralelo? | **Notificaciones, eliminar personal, y mejorar el lector de huellas.** Exámenes **no** todavía | El de exámenes queda fuera por ahora |
+| ¿Quién es Jordan? | El administrador real; Alexander administra el sistema | F-4 cerrado |
+
+**Sobre el defecto de las actividades extra**, encontrado midiendo la base el 25-ago mientras se investigaba
+A-7 (*«corregir las horas extras»*): el catálogo tiene pesos reales (michi = 10 puntos, pañuelo = 10,
+pantalón nuevo = 6) pero **las 13 filas de `reporte_extras` tienen `peso_unitario = 0`**, así que todo
+el trabajo extra registrado vale cero — en el reporte y en la nota. Pesa más desde la `0095`, que hizo
+que los extras entren a la nota. En arreglo; falta que Alexander confirme que era eso lo que veía mal.
 
 ## 2. 🔴 Las preguntas que nadie puede contestar por el administrador
 
@@ -242,18 +268,41 @@ Lo que **no** se hace: rellenar sin marcar que se rellenó. Eso sería exactamen
 
 Por radio de daño y por lo que el administrador subrayó, no por lo que es más fácil.
 
-1. **Puntos como moneda + nota visual** (A-1 a A-4). Es el núcleo, y todo lo demás de evaluación
-   cuelga de él. Spec escrita.
-2. **Incidencias: las tres correcciones juntas** (E-1, E-3, E-4). Chico, acotado, y E-1 toca datos
-   de personas.
-3. **Huellero: emparejado inteligente** (B-2, B-3, B-4, B-5, B-6). Un solo cambio de fondo, cinco
-   pedidos.
-4. **Evaluación automática con pendiente** (A-8). Depende de 1.
-5. **Dashboard de personal** (F-2). Depende de 1 — es la pantalla donde el perfil de A-4 se vuelve
-   útil.
-6. **Contratos: datos completos + adjuntos** (C-2, C-3).
-7. **Corregir liquidación en un paso** (D-1) y **borrador que sobrevive** (F-1).
-8. **Lista de Jordan** (F-4) — se puede escribir en cualquier momento, no depende de nada.
+**Estado al 8-sep-2026: los 8 pasos están resueltos, salvo el único bloqueado por un dato que sólo
+el administrador puede cargar.**
+
+1. ✅ **Puntos como moneda + nota visual** (A-1 a A-4). Migración `0095`, aplicada.
+2. ✅ **Incidencias: las tres correcciones juntas** (E-1, E-3, E-4). Migración `0094`, aplicada.
+   Además, un hallazgo posterior (E-5, §6 de la spec de incidencias) que haría fallar E-1 en
+   silencio para quien reportara: corregido y aplicado el 8-sep (migración `0106`).
+3. ✅ **Huellero: emparejado inteligente** (B-2, B-3, B-4, B-5, B-6). Migraciones `0096`/`0097`,
+   aplicadas. Cerró de rebote el defecto de derivación abierto desde el 19-ago.
+4. ⛔ **Evaluación automática con pendiente** (A-8). **Sigue bloqueada**: 9 de 11 personas reales no
+   tienen `fecha_ingreso`. Spec completa y lista para construir en cuanto el administrador cargue
+   esas fechas — no es código lo que falta.
+5. ✅ **Dashboard de personal** (F-2). Hecho por la sesión en paralelo.
+6. ✅ **Contratos: datos completos + adjuntos** (C-2, C-3). Hecho por la sesión en paralelo.
+7. ✅ **Corregir liquidación en un paso** (D-1) y **borrador que sobrevive** (F-1). D-1 aplicado y
+   verificado el 8-sep; F-1 hecho por la sesión en paralelo.
+8. ✅ **Lista de Jordan** (F-4) — cerrada sin lista: Jordan es el administrador real del negocio, no
+   le corresponden tareas del sistema (ver la fila F-4 de la tabla maestra).
+
+**Fuera de este orden pero avanzado en paralelo, a pedido de Alexander del 25-ago** (*«podríamos
+avanzarlo en paralelo en otras sesiones»* + su elección del 6-sep de notificaciones/eliminar
+personal/huellero):
+- ✅ **Notificaciones** (B-9), **completo, 5 de 5 pasos.** Los dos agujeros de aislamiento
+  cerrados, las alertas ya se retiran solas, las seis reglas nuevas de control interno sumadas y
+  verificadas, el botón manual y el cron ya son un solo motor, y `/configuracion/notificaciones`
+  deja encender/apagar y ajustar el umbral de las 11 reglas con efecto inmediato. Dos hallazgos
+  propios en el camino, los dos cerrados el mismo día: un tercer agujero de aislamiento en la RLS
+  de la `0100` (`0108`), y un guard que habría apagado el cron de producción (`0109`, corregido
+  antes de aplicar). Migraciones `0100`/`0101`/`0107`/`0108`/`0109`, todas aplicadas y verificadas
+  contra `scilb`.
+- ✅ **Eliminar personal** (F-3, acotado a «deshacer un alta por error»): backend + pantalla,
+  aplicado y verificado de punta a punta.
+- ✅ **Mejorar el lector de huellas** (B-8/B-11): medido y documentado — no era código. El hallazgo
+  real (13 identificadores sin asignar, 5 de personas activas, 2 vivos hoy) queda como tarea para
+  el administrador en `huellero-identificadores-sin-asignar-06-sep.md`.
 
 ---
 
@@ -263,7 +312,27 @@ Por radio de daño y por lo que el administrador subrayó, no por lo que es más
   sobre qué se evalúa, quién arma las preguntas y qué pasa con el resultado.
 - **Mejorar el reconocimiento del huellero** (B-8): es configuración del equipo Hikvision, no del
   ERP. Va a la lista de Jordan.
-- **Notificaciones** (B-9): falta decidir el canal antes de construir nada.
-- **Eliminar personal** (F-3, la parte de «eliminar»): ya se estudió el 14-ago y se decidió que no
-  se borra —cuesta 48 referencias y se lleva historia de la empresa—. Se suspende. Si el
-  administrador insiste, es una conversación aparte con ese costo sobre la mesa.
+- ~~**Notificaciones** (B-9): falta decidir el canal antes de construir nada.~~
+  **Resuelto el 6-sep, pasos 1-2 aplicados el 8-sep.** El canal se decidió —dentro del sistema, ver
+  la spec §4— y al ir a medirlo apareció que el módulo **ya existía y corría** mirando sólo el
+  módulo comercial. Spec en
+  [notificaciones/2026-09-06-notificaciones-de-control-interno-design.md](notificaciones/2026-09-06-notificaciones-de-control-interno-design.md).
+  Los **dos agujeros de aislamiento** medidos (`destinatario_rol` que la RLS nunca consultaba, y un
+  `with check` que dejaba a cualquiera crear un aviso global) **ya están cerrados** (`0100`), y las
+  alertas **ya se retiran solas** en vez de acumularse (`0101`) — las dos migraciones aplicadas y
+  verificadas contra `scilb`. Las seis reglas nuevas de control interno están sumadas (`0107`), y al
+  probarlas contra `scilb` apareció **un tercer agujero, en la propia `0100`**: la rama de "aviso
+  global" no excluía que el aviso también tuviera `destinatario_id` puesto, así que un aviso
+  personal se colaba para cualquiera con sesión — cerrado en el momento (`0108`), verificado sin
+  regresión. Quedan sin empezar: unificar el motor (hoy sigue habiendo dos) y la pantalla en
+  `/configuracion`.
+- ~~**Eliminar personal** (F-3, la parte de «eliminar»): ya se estudió el 14-ago y se decidió que no
+  se borra —cuesta 48 referencias y se lleva historia de la empresa—. Se suspende.~~
+  **Acotado el 25-ago y construido el 8-sep.** No es lo mismo que borrar a alguien que trabajó: spec
+  en [empleados/2026-08-25-borrar-alta-por-error-design.md](empleados/2026-08-25-borrar-alta-por-error-design.md).
+  Suspender sigue siendo la respuesta para todo lo demás. La §7 de esa spec corrigió el número: no son
+  48 referencias sino **50 columnas en 35 tablas**, medidas contra la base. `empleado_borrar_alta()` y
+  `empleado_borrar_alta_previo()` (migración `0099`) aplicadas y verificadas contra `scilb` — 17 casos,
+  todos `[ok]`. **✅ Completo el 8-sep**: el botón «Deshacer alta» vive en la cabecera del expediente
+  de `/personal/[id]` (visible en cualquier sección), con el diálogo de dos pasos de C-1 — muestra la
+  cuenta antes de confirmar, y si hay algo que bloquea, remite a «Suspender» en su lugar.

@@ -296,9 +296,27 @@ Escrito acá para que nadie lo descubra tarde:
   credenciales de la base y CI no tiene secretos **a propósito** (así siempre es reproducible). Hoy
   se corren a mano antes de mergear. Automatizarlas exige una rama de Supabase con su URL en los
   secretos del repositorio.
-- **El E2E no prueba ningún flujo con sesión.** Sólo humo. Falta un usuario de prueba y una base
-  aparte; contra `scilb` escribiría datos reales que después no se pueden borrar, porque el trigger
-  de inmutabilidad lo impide a propósito.
+- **Corregido el 09-sep-2026 — el E2E SÍ prueba flujos con sesión, desde hace un tiempo.** Esta
+  línea quedó vieja: `e2e/sesiones.ts` ya tiene dos cuentas dedicadas («Prueba Admin»/«Prueba
+  Colaborador», cod `9901`/`9902`) con contraseña por variable de entorno
+  (`E2E_ADMIN_PASSWORD`/`E2E_COLAB_PASSWORD`, nunca en el repo), y hay specs de sesión real
+  (`admin.navegacion`, `colaborador.aislamiento`, `admin.dashboard-personal`, etc.). Sigue habiendo
+  un hueco real: los flujos de ESCRITURA sólo corren opt-in (`E2E_WRITE=1`, `E2E_CONTRATO=1`,
+  `E2E_SUSPENSION=1`) contra `scilb` de verdad, y se limitan a lo que se puede auto-limpiar o a
+  cuentas de prueba dedicadas — nunca a una persona real. **Esas dos cuentas ahora son
+  infraestructura de prueba, no basura**: si algo (como la `0099`, borrar-alta-por-error) las
+  toca alguna vez, hay que avisar antes, porque `Prueba Admin`/`Prueba Colaborador` sostienen media
+  suite de E2E.
+- **Correr el E2E con el servidor de desarrollo compartido puede levantar un SEGUNDO servidor sin
+  querer.** `playwright.config.ts` arranca `pnpm dev` si no ve nada respondiendo en `E2E_URL` (por
+  defecto `localhost:3000`) — pero el `pnpm dev` de PM2 de esta máquina corre en el **3005**
+  (`dev -p 3005`). Sin `E2E_URL`, Playwright no lo encuentra y levanta una SEGUNDA instancia de
+  Next, que comparte el mismo `.next/` en disco con la de PM2: las dos recompilando al mismo tiempo
+  —más los hot-reloads de cualquier otra sesión editando código en paralelo— produce exactamente
+  los síntomas de una base corrupta (`ENOENT ... edge-instrumentation.js`, páginas en blanco,
+  redirecciones que no llegan a tiempo) sin que el código tenga ningún defecto real. La solución no
+  es reintentar: es `E2E_URL=http://localhost:3005 npx playwright test` para que reuse el servidor
+  que ya está corriendo, y `pm2 restart erp-dev` si de todos modos quedó en un estado raro.
 - **El `node_modules/` versionado sigue ahí, y es una mina.** `tools/verificar-local.sh` lo
   esquiva, no lo resuelve. Ya rompió dos cosas el mismo día: el `tsc` que no se encuentra, y un
   `pnpm install --force` que borró el binario compilado de `better-sqlite3`.

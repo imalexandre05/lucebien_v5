@@ -45,9 +45,14 @@ export default async function ColaboradorLayout({
   // para que no quede seleccionado un valor que no existe entre las opciones.
   const personas = activos.some((p) => p.id === persona.id) ? activos : [persona, ...activos];
 
+  // Mismo criterio que accesoColaboradores() para `soloAdmin`: admin/dueño. Se resuelve acá y se
+  // pasa a la cabecera (que se muestra en TODAS las secciones, no sólo Datos) para «Deshacer
+  // alta» — ver el comentario en cabecera.tsx.
+  const esAdmin = acceso.sesion.usuario.rol === 'admin' || acceso.sesion.usuario.rol === 'dueno';
+
   return (
     <div className="space-y-4">
-      <CabeceraColaborador persona={persona} personas={personas} />
+      <CabeceraColaborador persona={persona} personas={personas} esAdmin={esAdmin} />
       <BarraPeriodo fechaIngreso={persona.fechaIngreso} />
       <NavSecciones empleadoId={persona.id} visibles={acceso.secciones} />
       <div>{children}</div>

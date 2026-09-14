@@ -50,7 +50,7 @@ export function ProveedoresCliente({ proveedores, categorias }: { proveedores: P
     <div className="space-y-4">
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-4">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
           <input
@@ -95,30 +95,30 @@ export function ProveedoresCliente({ proveedores, categorias }: { proveedores: P
                 <TR key={p.id} className={cn(!p.activo && 'opacity-60')}>
                   <TD className="pl-5">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-navy/5 text-navy">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-r-pastilla bg-navy/5 text-navy">
                         <Truck className="h-4 w-4" strokeWidth={1.75} />
                       </span>
                       <div className="min-w-0">
                         <div className="truncate font-medium text-navy">{p.nombre}</div>
-                        {Boolean(p.ruc) && <div className="tabular-nums text-[10px] text-muted">RUC {p.ruc}</div>}
+                        {Boolean(p.ruc) && <div className="tabular-nums text-micro text-muted">RUC {p.ruc}</div>}
                       </div>
                     </div>
                   </TD>
-                  <TD className="text-sm text-ink">{p.categoria || '—'}</TD>
-                  <TD className="text-sm text-ink">{p.contacto || '—'}</TD>
-                  <TD className="tabular-nums text-xs">{p.telefono || '—'}</TD>
+                  <TD className="text-cuerpo text-ink">{p.categoria || '—'}</TD>
+                  <TD className="text-cuerpo text-ink">{p.contacto || '—'}</TD>
+                  <TD className="tabular-nums text-dato">{p.telefono || '—'}</TD>
                   <TD>
                     {p.activo ? (
                       <Badge tone="green">Activo</Badge>
                     ) : (
-                      <span className="text-xs text-muted">Inactivo</span>
+                      <span className="text-apoyo text-muted">Inactivo</span>
                     )}
                   </TD>
                   <TD className="pr-5 text-right">
                     <button
                       type="button"
                       onClick={() => setEditar(p)}
-                      className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition hover:border-gold"
+                      className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition hover:border-gold"
                     >
                       <Pencil className="h-3.5 w-3.5" strokeWidth={2} /> Editar
                     </button>
@@ -181,16 +181,16 @@ function ProveedorModal({
     <Modal open onClose={onClose} size="md" title={proveedor ? proveedor.nombre : 'Nuevo proveedor'}>
       <ModalBody className="space-y-3">
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Nombre / razón social *</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Nombre / razón social *</label>
           <input value={form.nombre} onChange={(e) => set('nombre', e.target.value)} className={cn(fieldCls, 'w-full')} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">RUC</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">RUC</label>
             <input value={form.ruc ?? ''} onChange={(e) => set('ruc', e.target.value)} className={cn(fieldCls, 'w-full')} />
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Categoría</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Categoría</label>
             <input
               value={form.categoria ?? ''}
               onChange={(e) => set('categoria', e.target.value)}
@@ -206,27 +206,27 @@ function ProveedorModal({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Contacto</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Contacto</label>
             <input value={form.contacto ?? ''} onChange={(e) => set('contacto', e.target.value)} className={cn(fieldCls, 'w-full')} />
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Teléfono</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Teléfono</label>
             <input value={form.telefono ?? ''} onChange={(e) => set('telefono', e.target.value)} className={cn(fieldCls, 'w-full')} />
           </div>
         </div>
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Dirección</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Dirección</label>
           <input value={form.direccion ?? ''} onChange={(e) => set('direccion', e.target.value)} className={cn(fieldCls, 'w-full')} />
         </div>
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Observación</label>
+          <label className="mb-1 block text-rotulo uppercase text-muted">Observación</label>
           <input value={form.obs ?? ''} onChange={(e) => set('obs', e.target.value)} className={cn(fieldCls, 'w-full')} />
         </div>
-        <label className="flex items-center gap-2 text-sm text-navy">
+        <label className="flex items-center gap-2 text-cuerpo text-navy">
           <input type="checkbox" checked={form.activo} onChange={(e) => set('activo', e.target.checked)} />
           Proveedor activo
         </label>
-        {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+        {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
       </ModalBody>
       <ModalFooter>
         <button type="button" onClick={onClose} className={buttonVariants({ variant: 'outline' })}>

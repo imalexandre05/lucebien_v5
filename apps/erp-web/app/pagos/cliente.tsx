@@ -150,7 +150,7 @@ export function PagosCliente({
       {/* Filtros + acción */}
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-4">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
           <input
@@ -182,7 +182,7 @@ export function PagosCliente({
           <CardContent className="space-y-3">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Empleado</label>
+                <label className="mb-1 block text-rotulo uppercase text-muted">Empleado</label>
                 <select value={empleadoId} onChange={(e) => elegirEmpleado(e.target.value)} className={cn(fieldCls, 'w-full')}>
                   <option value="">Elige…</option>
                   {empleados.map((e) => (
@@ -192,7 +192,7 @@ export function PagosCliente({
                   ))}
                 </select>
                 {emp && (
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-apoyo text-muted">
                     Salario base {soles(emp.salarioBase)} · última nota {emp.ultimaNota != null ? emp.ultimaNota.toFixed(2) : '—'}
                     {sugerido != null && <> · sugerido <span className="font-medium text-navy">{soles(sugerido)}</span></>}
                   </p>
@@ -200,41 +200,41 @@ export function PagosCliente({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Fecha</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Fecha</label>
                   <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={cn(fieldCls, 'w-full')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Método</label>
                   <OpcionBotones opciones={OPC_METODO} value={metodo} onChange={setMetodo} ariaLabel="Método" />
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Bonus</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Bonus</label>
                   <input type="number" step="0.5" value={bonus} onChange={(e) => setBonus(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descuentos</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Descuentos</label>
                   <input type="number" step="0.5" value={descuentos} onChange={(e) => setDescuentos(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Estado</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Estado</label>
                   <OpcionBotones opciones={OPC_ESTADO_PAGO} value={estado} onChange={setEstado} ariaLabel="Estado" />
                 </div>
               </div>
               <div>
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Monto (S/)</label>
+                <label className="mb-1 block text-rotulo uppercase text-muted">Monto (S/)</label>
                 <div className="flex items-center gap-2">
                   <input type="number" step="0.5" value={monto} onChange={(e) => setMonto(Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
                   {sugerido != null && (
-                    <button type="button" onClick={() => setMonto(sugerido)} className="whitespace-nowrap rounded-md border border-line px-2 py-1 text-xs text-navy hover:border-gold">
+                    <button type="button" onClick={() => setMonto(sugerido)} className="whitespace-nowrap rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy hover:border-gold">
                       Usar sugerido
                     </button>
                   )}
                 </div>
               </div>
             </div>
-            {error && <p className="text-sm text-error">{error}</p>}
+            {error && <p className="text-cuerpo text-error">{error}</p>}
             <Button type="button" onClick={registrar} disabled={!empleadoId} pending={pending}>
               {pending ? 'Registrando…' : `Registrar · ${soles(monto)}`}
             </Button>
@@ -258,7 +258,7 @@ export function PagosCliente({
             <TBody>
               {filtrados.map((p) => (
                 <TR key={p.id}>
-                  <TD className="pl-5 tabular-nums text-xs text-muted">{p.fechaPago ?? p.createdAt.slice(0, 10)}</TD>
+                  <TD className="pl-5 tabular-nums text-dato text-muted">{p.fechaPago ?? p.createdAt.slice(0, 10)}</TD>
                   <TD className="font-medium text-navy">{p.empleadoNombre ?? '—'}</TD>
                   <TD className="capitalize">{p.metodo}</TD>
                   <TD>

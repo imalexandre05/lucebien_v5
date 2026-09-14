@@ -48,7 +48,7 @@ function FechaRapida({
             data-testid={`${testId}-${o.label}`}
             onClick={() => onChange(fecha)}
             className={cn(
-              'rounded-full border px-3 py-1.5 text-xs font-medium transition-colors',
+              'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors',
               value === fecha ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
             )}
           >
@@ -61,7 +61,7 @@ function FechaRapida({
         data-testid={`${testId}-input`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
+        className="rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none focus:border-gold"
       />
     </div>
   );
@@ -89,11 +89,11 @@ export function FechasPanel({
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Entrega (venta / confección)</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Entrega (venta / confección)</label>
         <FechaRapida hoy={hoy} value={fechaEntrega} onChange={onFechaEntregaChange} offsets={offsetsEntrega ?? ENTREGA_OFFSETS} testId="fecha-entrega" />
       </div>
       <div>
-        <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Devolución (alquiler)</label>
+        <label className="mb-1 block text-rotulo uppercase text-muted">Devolución (alquiler)</label>
         <FechaRapida hoy={hoy} value={fechaDevolucion} onChange={onFechaDevolucionChange} offsets={offsetsDevolucion ?? DEVOLUCION_OFFSETS} testId="fecha-devolucion" />
       </div>
     </div>

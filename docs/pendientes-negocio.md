@@ -1311,3 +1311,176 @@ honesto de la pantalla").
 Sigue pendiente, sin cambios respecto de lo anotado arriba: aplicar 0096+0097+0098 juntas (no
 aplicadas todavía) y decidir el disparador de `huellero_declarar_faltas_del_dia` (cron vs. botón
 manual).
+
+**Corrección del 07-sep-2026:** lo anterior quedó viejo. Verificado contra `scilb` con
+`list_migrations`: las tres (`0096`, `0097`, `0098`) **están aplicadas**, del 25-ago-2026. Sigue
+sin decidir el disparador de `huellero_declarar_faltas_del_dia` — eso no cambió.
+
+---
+
+## Auditoría del 07-sep-2026 — identidades duplicadas, y qué encontró el verificador sobre ellas
+
+Al revisar el estado general del sistema se encontraron **tres personas reales representadas por
+dos filas cada una** en `empleados`: `Mary`/`Marylin`, `Yessi`/`Yessica`, `Elthom`/`Elthon`. El
+historial del pipeline (migrado del SQLite legacy) había quedado en una fila y la asistencia en
+vivo del huellero en la otra — el 80% de todos los puntos que existen en el sistema (5.169 de
+6.472) estaba atrapado en filas que nunca iban a acumular asistencia ni a evaluarse.
+
+Corregido con la migración `0102` (spec en
+[empleados/2026-09-07-identidades-duplicadas-design.md](superpowers/specs/empleados/2026-09-07-identidades-duplicadas-design.md)):
+se fusionó el historial en la fila que el huellero alimenta hoy, y la fila vieja quedó
+`activo = false` con una nota, sin borrarse. Un subagente verificador revisó la spec, la migración
+y la prueba contra `scilb` en vivo antes de aplicar y encontró tres bloqueos reales (la
+justificación citaba una lectura del código que no era cierta, la prueba no cubría las diez
+columnas por igual, y el alias del ETL que decía prevenir el problema en realidad lo habría
+revertido en el siguiente `--run`) — los tres se corrigieron antes de aplicar. **Aplicar la
+migración quedó pendiente de una confirmación explícita** (el clasificador de modo automático del
+entorno bloquea escrituras directas contra la base de producción); si esta línea sigue así al
+leerla, `0102_identidades_duplicadas_empleados.sql` todavía no corrió contra `scilb`.
+
+🔴 **Hallazgo aparte, sin resolver: el `sueldo_acuerdos` y la `evaluaciones_mensuales` de Marylin
+parecen ser datos de prueba, no un acuerdo real.** El verificador encontró que ese acuerdo
+(cod `7073`) lo creó `creado_por = Prueba Admin` (cod `9901`, cuya propia `notas` dice
+*"CUENTA DE PRUEBA E2E - borrar al terminar"*), el 24-ago-2026, en la misma ventana que el resto de
+las filas de prueba de esta rama. La evaluación mensual asociada (17,9, método `ponderado`,
+componentes de aspecto sembrado) tiene la misma pinta. No se tocó porque está fuera del alcance de
+la `0102` (que no mueve nada hacia esa tabla) y porque tocar zona crítica de sueldos sin spec propia
+violaría el no-negociable 6. **Falta que alguien con el contexto del E2E que las creó confirme si
+son de prueba y hay que anularlas** (con el camino sancionado — motivo + reemitir, nunca borrar un
+`sueldo_acuerdos`/`sueldo_liquidaciones` a mano) **o si son reales y hay que dejarlas.**
+
+Además, medido en la misma auditoría: de las 24 filas `activo = true` en `empleados` contra los
+**18 empleados** que dice `CLAUDE.md`, 6 eran de más — las tres duplicadas de arriba (ya resueltas)
+y `Alexito prueba`, `Prueba Admin`, `Prueba Colaborador` (altas de prueba con nombre explícito,
+`Alexito prueba` con 105 asistencias fabricadas, 93 de ellas con fecha futura hasta diciembre de
+2026). Estas tres últimas quedaron **fuera del alcance de la `0102`** a propósito: no son
+identidades partidas de una persona real, y una sección paralela ya está construyendo el mecanismo
+general para deshacer un alta hecha por error
+([empleados/2026-08-25-borrar-alta-por-error-design.md](superpowers/specs/empleados/2026-08-25-borrar-alta-por-error-design.md),
+migración `0099` reservada) — son candidatas naturales para ese mecanismo, no para una migración
+aparte que compita con él. La cuarta fila ambigua, `Alexito` (cod `0000`), se dejó sin tocar: no
+tiene ninguna fila "hermana" y desactivarla dejaría el conteo en 17, no en 18.
+
+---
+
+## Avance del 08-sep-2026 sobre el orden de trabajo (roadmap del 25-ago §4)
+
+- ✅ **F-2 (dashboard de personal)** — hecho. `/personal/dashboard`, tabla de sólo lectura ordenada
+  por nota ascendente con el desglose de puntos (pipeline/actividades/ventas/extras/descuento) por
+  persona. Sigue sin resolverse la escala sin calibrar (§ arriba): la nota que muestra no es
+  todavía un juicio sobre nadie.
+- ✅ **C-2 (contrato con todos los datos)** — hecho. DNI/teléfono ya existían y se editaban en la
+  ficha; sólo faltaba traerlos a la pantalla del contrato. "Recomendaciones" es campo nuevo (texto
+  libre, migración `0104`).
+- ✅ **C-3 (adjuntar DNI/CV/imágenes)** — hecho. Tabla `empleado_documentos` + bucket privado
+  `empleado-documentos` (migración `0105`), sólo admin/dueño en las dos capas de RLS, 10 MB,
+  imágenes+PDF. Primera migración de Storage con policies propias que se escribe sabiendo del
+  precedente ya aplicado (`0069`, el bucket `mi-talla`) — la primera versión de la `0105` no lo
+  sabía y el verificador lo encontró antes de aplicar (ver `docs/aprendizajes.md`).
+- 🔶 **D-1 (corregir liquidación en un paso)** — **en curso por otra sesión**, no por ésta. Se
+  encontraron cambios sin commitear en `apps/erp-web/app/sueldos/liquidaciones/{actions.ts,cliente.tsx}`
+  y `apps/erp-web/lib/sueldos-repo.ts` con una función `accionCorregir(id, motivo)` que por el
+  nombre es exactamente esto (anular + clonar en borrador, pidiendo motivo). Sin commitear todavía
+  al momento de escribir esto — avisado a esa sesión para que lo commitee antes de que se pierda en
+  el directorio de trabajo compartido.
+- ⏸️ **F-1 (borrador que sobrevive al cambiar de pantalla)** — sin empezar. Pendiente de confirmar
+  con la sesión de arriba si también lo tiene en curso, para no duplicar.
+
+**Nota sobre el entorno de esta tarea:** varias sesiones de Claude Code trabajaron en paralelo sobre
+el mismo directorio físico (no worktrees separados) — `feat/sueldos-motor` recibió commits
+intercalados de al menos tres sesiones distintas el mismo día. Ver `docs/aprendizajes.md` para el
+detalle de qué se aprendió de esa coordinación.
+
+**Cierre, más tarde el mismo 08-sep-2026:** los cinco ítems del orden de trabajo del §4 de la hoja
+de ruta quedaron hechos. D-1 lo cerró la sesión "Rediseño frontend sistema de sueldos"
+(`45148bc`, botón «Corregir esta liquidación»). F-1 lo cerró esta sesión (`5787720`) una vez
+confirmado que D-1 ya estaba a salvo — el borrador de un contrato nuevo en `localStorage`, nunca
+para uno que ya existe. Ninguno de los dos se duplicó: se coordinó por mensaje directo entre
+sesiones antes de tocar los archivos compartidos.
+
+---
+
+## Notificaciones de control interno — C-4/C-5, paso 3 (08-sep-2026)
+
+Spec completa: [2026-09-06-notificaciones-de-control-interno-design.md](superpowers/specs/notificaciones/2026-09-06-notificaciones-de-control-interno-design.md)
+§5. Implementado en la migración `0107_notificaciones_reglas_control_interno.sql`: las seis reglas
+nuevas dentro de `generar_alertas()`, con su alcance de aislamiento (C-5) — cuatro sólo para el
+administrador, dos (`dia_con_hora_estimada`, `dia_sin_marca`) para el administrador **y** la
+persona, como dos filas separadas de `notificaciones`.
+
+### Los dos umbrales nuevos (`alertas_reglas.umbral`)
+
+| `tipo` | Default | De dónde sale ese default |
+|---|---|---|
+| `periodo_liquidable` | `3` (días de gracia) | Elegido por el implementador. La spec (§5 C-4) sólo dice "días de gracia" sin número — 3 días es un margen chico, suficiente para que el administrador cierre el tramo sin que el aviso se dispare el mismo día en que el contrato vence |
+| `dia_sin_marca` | `7` (días hacia atrás) | Elegido por el implementador. La spec sólo dice "días hacia atrás" sin número — una semana es la ventana mínima que cubre un ciclo semanal completo de turnos sin acumular demasiado ruido |
+
+Ninguno de los dos está confirmado por el administrador — siguen siendo el default elegido por el
+implementador, ahora editable sin migrar desde `/configuracion/notificaciones` (C-6, paso 5 de la
+spec, cerrado el 08-sep-2026).
+
+Las otras cuatro reglas nuevas (`declaracion_incompleta`, `dia_con_hora_estimada`,
+`extra_sin_valor`, `falta_fecha_ingreso`) no llevan umbral (`null`): la spec no pide ninguno para
+ellas y no se inventó uno.
+
+### Una decisión de aislamiento que NO es un parámetro de negocio
+
+`destinatario_rol='admin'` para las seis reglas nuevas va **literal** dentro del `insert` de
+`generar_alertas()`, no leído desde `alertas_reglas.destinatario_rol` (que sí es la fuente para las
+cinco reglas viejas, pensadas para ser reasignables a otro rol de tienda/almacén). Es a propósito:
+la spec §5 C-5 es una garantía de aislamiento del no-negociable 3 ("un aviso que nombra a una
+persona es del administrador y de esa persona, de nadie más"), no un parámetro de negocio libre. La
+pantalla de Configuración (`/configuracion/notificaciones`, C-6, cerrada el 08-sep-2026) toca
+`activa`/`umbral` de las once filas de `alertas_reglas` pero nunca `destinatario_rol`: se muestra
+de sólo lectura a propósito —`actualizarAlertaRegla()` en `notificaciones-repo.ts` sólo acepta esos
+dos campos— para no reabrir el agujero que cerraron las migraciones `0100`/`0101`.
+
+### Ambigüedades resueltas al implementar, sin decisión de negocio nueva involucrada
+
+- **`sueldo_acuerdos.estado` para "vigente"**: confirmado contra el `check` de la `0072`
+  (`sueldo_acuerdos_estado_chk`) que los tres valores son `'borrador' | 'vigente' | 'liquidado'` —
+  coincide exacto con lo que la spec asumía para `periodo_liquidable`. No hubo que decidir nada.
+- **Agrupación de `dia_con_hora_estimada` sin liquidación en borrador**: la spec sugería "mes
+  calendario" como default razonable si la persona no tiene una liquidación `'borrador'` vigente que
+  cubra el día. Se implementó tal cual: el período de agrupación es el mes calendario completo
+  (primer y último día) de la fecha de cada asistencia con hora estimada, calculado con
+  `date_trunc('month', ...)`. No es una regla de negocio nueva — es sólo una forma de agrupar avisos
+  para que no se dupliquen día por día, no afecta ningún cálculo de sueldo.
+- **`dia_sin_marca`, ventana de días**: interpretado como `[hoy - umbral, hoy - 1]`, es decir SIN
+  contar el día de hoy (todavía en curso, no puede considerarse "pasado" y candidato a falta hasta
+  que termine). La spec no lo decía explícito; se documenta acá por si el administrador prefiere
+  incluir el día de hoy después de las 20h (cierre habitual de turno) — no se implementó así porque
+  el sistema no tiene una noción configurable de "hora de cierre del día" para asistencia (distinta
+  de los cierres de turno de reportes, que sí la tienen en `config`).
+
+### C-6 — pantalla de Configuración (08-sep-2026)
+
+`/configuracion/notificaciones` (`apps/erp-web/app/configuracion/notificaciones/`) muestra las 11
+filas de `alertas_reglas` agrupadas en "Control interno" (las 6 de la `0107`) y "Módulo comercial"
+(las 5 de la `0041`/`0046`, con nota de que 4 de las 5 están apagadas). Sin migración nueva: la
+tabla y sus columnas ya existían. `actualizarAlertaRegla()` (`notificaciones-repo.ts`) sólo
+escribe `activa` y `umbral` — nunca `destinatario_rol`, que se muestra de sólo lectura.
+
+No se probó a mano contra un navegador (`npm run dev`): esta sesión no tiene esa capacidad. Quedó
+verificado por lectura contra `tools/verificar-local.sh` (guard, typecheck, tests) en verde, y
+contra el esquema real de `alertas_reglas` (columnas y valores confirmados en las migraciones
+`0041`/`0107`, no supuestos). Falta la comprobación visual en el navegador antes de darla por
+cerrada del todo.
+
+---
+
+## Hallazgo del 12-sep-2026 — `reporte_extras.puntos_total` legible por API directa
+
+Apareció al diseñar «Mis reportes»
+([spec](superpowers/specs/reportes/2026-09-12-mis-reportes-design.md) §4), no es parte de ese
+trabajo. La política `rep_extras_select`
+(`packages/db/migrations/0081_reportes_escritura_directa.sql:266`) es la misma condición por sede
+que el resto de `reportes` — admin, almacén o sede propia — **sin recorte de columna**. El corte que
+decidió el dueño en la Fase 5 tarea 3 (el operativo no ve puntos de extras, sólo admin/evaluador) es
+de interfaz (`puedeVerPuntosExtras` en `app/reportes/[id]/page.tsx`), no de base: alguien con acceso
+a la API de Supabase de su sede podría leer esa columna sin pasar por la pantalla.
+
+No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revoke`/`grant`
+separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
+vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
+directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.

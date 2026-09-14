@@ -34,21 +34,21 @@ export function PerfilComponentes({
           return (
             <div key={key}>
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-xs text-ink">
+                <span className="text-apoyo text-ink">
                   {label}
-                  <span className="ml-1.5 tabular-nums text-[10px] text-muted">{fmtPeso(pesos[key])}</span>
+                  <span className="ml-1.5 tabular-nums text-micro text-muted">{fmtPeso(pesos[key])}</span>
                 </span>
-                <span className="tabular-nums text-xs font-semibold text-navy">{v.toFixed(1)}</span>
+                <span className="tabular-nums text-dato font-semibold text-navy">{v.toFixed(1)}</span>
               </div>
-              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-line/60">
-                <div className="h-full rounded-full bg-navy" style={{ width: `${pct}%` }} />
+              <div className="mt-1 h-1.5 overflow-hidden rounded-r-pastilla bg-line/60">
+                <div className="h-full rounded-r-pastilla bg-navy" style={{ width: `${pct}%` }} />
               </div>
             </div>
           );
         })}
       </div>
       {(descuento !== 0 || bonus !== 0) && (
-        <p className="mt-3 border-t border-line/60 pt-2 text-[11px] text-muted">
+        <p className="mt-3 border-t border-line/60 pt-2 text-micro text-muted">
           Ajustes: −{descuento.toFixed(1)} por incidencias · +{bonus.toFixed(1)} bonus por ventas
         </p>
       )}

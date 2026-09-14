@@ -4,6 +4,7 @@ import type { MatrizPermisos, Rol } from '@scilb/core';
 import { Sidebar } from '../components/shell/sidebar';
 import { Topbar } from '../components/shell/topbar';
 import { PageTransition } from '../components/shell/page-transition';
+import { ModuloAcento } from '../components/shell/modulo-acento';
 import { getSesion } from '../lib/auth';
 import { leerMatrizPermisos } from '../lib/permisos-repo';
 import { getPerfilSede } from '../lib/sedes-repo';
@@ -36,7 +37,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="es">
       <body>
-        <div className="flex min-h-screen">
+        <ModuloAcento className="flex min-h-screen">
           <Sidebar rol={rol} matriz={matriz} rolCod={sesion?.usuario.rolCod} perfilSede={perfilSede} />
           <div className="flex min-w-0 flex-1 flex-col">
             <Topbar />
@@ -44,7 +45,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <PageTransition>{children}</PageTransition>
             </main>
           </div>
-        </div>
+        </ModuloAcento>
       </body>
     </html>
   );

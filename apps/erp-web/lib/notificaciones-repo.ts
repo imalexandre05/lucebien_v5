@@ -1,18 +1,12 @@
-import {
-  alertasDevoluciones,
-  alertasStock,
-  alertasCajaSinCerrar,
-  alertasReportesSinEvaluar,
-  ordenarAlertas,
-  type Alerta,
-} from '@scilb/core';
 import { getServerClient } from './supabase/server';
 
-// Notificaciones internas (S21). La generación evalúa el estado con el motor de reglas del core
-// y hace UPSERT (ignora las que ya existen por dedup_key) para no re-alertar lo ya visto/leído.
-// Este es el camino MANUAL (botón admin). El camino AUTOMÁTICO (pg_cron) usa la función SQL
-// `generar_alertas()` (migración 0042), espejo de esta lógica y del mismo dedup_key → ambos son
-// idempotentes entre sí. Si cambian las reglas aquí o en core/alertas.ts, actualizar también 0042.
+// Notificaciones internas (S21). Un solo motor: la función SQL `generar_alertas()`
+// (migraciones 0042/0046/0052/0100/0101/0107/0109), que corre el cron dos veces al día Y el botón
+// manual del administrador (generarAlertasAction() → generarAlertas() acá abajo). Antes había una
+// segunda copia de las reglas en TypeScript (packages/core/src/alertas.ts) que el botón corría por
+// su cuenta; se borró en la 0109 (C-3 de la spec de notificaciones) porque las dos copias ya
+// divergían: esa copia sólo tenía las 5 reglas viejas, nunca se actualizó con las 6 nuevas de la
+// 0107, y el botón manual daba un resultado distinto al del cron.
 
 export type Notificacion = {
   id: string;
@@ -73,104 +67,58 @@ export async function marcarTodasLeidas(): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-type Regla = { tipo: string; activa: boolean; umbral: number | null; destinatarioRol: string | null };
-
-// Genera notificaciones evaluando el estado actual con el motor de reglas del core.
-// Devuelve cuántas nuevas se crearon. Idempotente por dedup_key (no duplica ni re-alerta lo leído).
+// Llama al único motor de reglas: la función SQL `generar_alertas()` (0109). Ella misma exige
+// administrador por dentro (`private.app_es_admin()`, `raise exception 'PERMISO:...'` si no) —
+// ese guard es el que de verdad importa; el de generarAlertasAction() en el server action es
+// cinturón, no la única defensa. Devuelve cuántas filas insertó o refrescó (no cuántas son nuevas).
 export async function generarAlertas(): Promise<number> {
   const sb = getServerClient();
-  const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' }); // YYYY-MM-DD
-
-  const [reglasRes, pedidosRes, materialesRes, cajaRes, reportesRes] = await Promise.all([
-    sb.from('alertas_reglas').select('tipo, activa, umbral, destinatario_rol'),
-    sb.from('pedidos').select('id, fecha_devolucion, estado, sede_cod, clientes(nombre)'),
-    sb.from('materiales').select('id, nombre, stock_actual, stock_minimo, sede_cod, activo'),
-    sb.from('caja_sesiones').select('id, sede_cod, fecha, estado').eq('estado', 'abierta'),
-    sb.from('reportes').select('id, sede_cod, fecha, evaluado, no_evaluable').eq('evaluado', false).order('fecha', { ascending: false }).limit(200),
-  ]);
-  for (const r of [reglasRes, pedidosRes, materialesRes, cajaRes, reportesRes]) {
-    if (r.error) throw new Error(r.error.message);
-  }
-
-  const reglas = new Map<string, Regla>();
-  for (const r of (reglasRes.data as Record<string, unknown>[]) ?? []) {
-    reglas.set(String(r.tipo), {
-      tipo: String(r.tipo),
-      activa: Boolean(r.activa),
-      umbral: r.umbral == null ? null : Number(r.umbral),
-      destinatarioRol: (r.destinatario_rol as string | null) ?? null,
-    });
-  }
-  const activa = (tipo: string) => reglas.get(tipo)?.activa ?? false;
-  const umbral = (tipo: string, def: number) => reglas.get(tipo)?.umbral ?? def;
-
-  const alertas: Alerta[] = [];
-
-  if (activa('devolucion_vencida') || activa('devolucion_proxima')) {
-    const pedidos = ((pedidosRes.data as Record<string, unknown>[]) ?? []).map((p) => ({
-      id: String(p.id),
-      fechaDevolucion: (p.fecha_devolucion as string | null) ?? null,
-      estado: String(p.estado),
-      sedeCod: (p.sede_cod as string | null) ?? null,
-      cliente: (p.clientes as { nombre: string } | null)?.nombre ?? null,
-    }));
-    for (const a of alertasDevoluciones(pedidos, hoy, umbral('devolucion_proxima', 2))) {
-      if (activa(a.tipo)) alertas.push(a);
-    }
-  }
-
-  if (activa('stock_bajo')) {
-    const materiales = ((materialesRes.data as Record<string, unknown>[]) ?? []).map((m) => ({
-      id: String(m.id),
-      nombre: String(m.nombre),
-      stockActual: Number(m.stock_actual ?? 0),
-      stockMinimo: Number(m.stock_minimo ?? 0),
-      sedeCod: (m.sede_cod as string | null) ?? null,
-      activo: Boolean(m.activo),
-    }));
-    alertas.push(...alertasStock(materiales));
-  }
-
-  if (activa('caja_sin_cerrar')) {
-    const sesiones = ((cajaRes.data as Record<string, unknown>[]) ?? []).map((s) => ({
-      id: String(s.id),
-      sedeCod: String(s.sede_cod),
-      fecha: String(s.fecha).slice(0, 10),
-      estado: String(s.estado),
-    }));
-    alertas.push(...alertasCajaSinCerrar(sesiones, hoy));
-  }
-
-  if (activa('reporte_sin_evaluar')) {
-    const reportes = ((reportesRes.data as Record<string, unknown>[]) ?? []).map((r) => ({
-      id: String(r.id),
-      sedeCod: String(r.sede_cod),
-      fecha: String(r.fecha).slice(0, 10),
-      evaluado: Boolean(r.evaluado),
-      noEvaluable: Boolean(r.no_evaluable),
-    }));
-    alertas.push(...alertasReportesSinEvaluar(reportes, hoy, umbral('reporte_sin_evaluar', 2)));
-  }
-
-  if (alertas.length === 0) return 0;
-
-  const rows = ordenarAlertas(alertas).map((a) => ({
-    tipo: a.tipo,
-    titulo: a.titulo,
-    mensaje: a.mensaje,
-    severidad: a.severidad,
-    destinatario_rol: reglas.get(a.tipo)?.destinatarioRol ?? null,
-    destinatario_sede: a.sede ?? null,
-    ref_tipo: a.refTipo ?? null,
-    ref_id: a.refId ?? null,
-    dedup_key: `${a.tipo}:${a.refId ?? ''}`,
-  }));
-
-  // ignoreDuplicates: no re-alerta lo que ya existe (preserva `leida`).
-  const { data, error } = await sb
-    .from('notificaciones')
-    .upsert(rows, { onConflict: 'dedup_key', ignoreDuplicates: true })
-    .select('id');
+  const { data, error } = await sb.rpc('generar_alertas');
   if (error) throw new Error(error.message);
-  return (data as unknown[])?.length ?? 0;
+  return Number(data ?? 0);
+}
+
+// ── Catálogo de reglas (alertas_reglas, 0041) — C-6 de la spec: editable desde /configuracion ────
+//
+// `destinatario_rol` se lee para MOSTRAR, nunca para editar: las seis reglas de control interno
+// (0107) lo llevan literal ('admin') dentro del INSERT de generar_alertas(), no lo leen de esta
+// columna — cambiarlo acá no movería nada para ellas, y para las cinco reglas viejas reabriría a
+// mano un reparto de destinatario que hoy nadie pide tocar. Por eso `actualizarAlertaRegla` sólo
+// toca `activa` y `umbral` (ver docs/pendientes-negocio.md, sección "Notificaciones de control
+// interno").
+export type AlertaRegla = {
+  tipo: string;
+  descripcion: string;
+  severidad: 'info' | 'warn' | 'critica';
+  umbral: number | null;
+  activa: boolean;
+  destinatarioRol: string | null;
+};
+
+function fromReglaRow(r: Record<string, unknown>): AlertaRegla {
+  const sev = r.severidad;
+  return {
+    tipo: String(r.tipo),
+    descripcion: String(r.descripcion ?? ''),
+    severidad: sev === 'critica' || sev === 'warn' ? sev : 'info',
+    umbral: r.umbral === null || r.umbral === undefined ? null : Number(r.umbral),
+    activa: Boolean(r.activa),
+    destinatarioRol: (r.destinatario_rol as string | null) ?? null,
+  };
+}
+
+export async function listarAlertasReglas(): Promise<AlertaRegla[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('alertas_reglas')
+    .select('tipo, descripcion, severidad, umbral, activa, destinatario_rol')
+    .order('tipo');
+  if (error) throw new Error(error.message);
+  return ((data as Record<string, unknown>[]) ?? []).map(fromReglaRow);
+}
+
+export async function actualizarAlertaRegla(tipo: string, p: { activa: boolean; umbral: number | null }): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.from('alertas_reglas').update({ activa: p.activa, umbral: p.umbral }).eq('tipo', tipo);
+  if (error) throw new Error(error.message);
 }

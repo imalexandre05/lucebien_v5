@@ -95,14 +95,14 @@ export function SolicitudesCliente({
 
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-4">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar ítem, solicitante u observación…"
-            className="min-w-[13rem] flex-1 rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none transition-colors focus:border-gold"
+            className="min-w-[13rem] flex-1 rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none transition-colors focus:border-gold"
           />
           <OpcionBotones opciones={OPC_ESTADO} value={fEstado} onChange={setFEstado} ariaLabel="Estado" />
           <OpcionBotones opciones={OPC_URGENCIA} value={fUrgencia} onChange={setFUrgencia} ariaLabel="Urgencia" />
@@ -110,7 +110,7 @@ export function SolicitudesCliente({
             <select
               value={fSede}
               onChange={(e) => setFSede(e.target.value)}
-              className="rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-navy outline-none focus:border-gold"
+              className="rounded-r-chico border border-line bg-white px-2.5 py-1.5 text-cuerpo text-navy outline-none focus:border-gold"
               aria-label="Sede"
             >
               <option value="">Todas las sedes</option>
@@ -144,9 +144,9 @@ export function SolicitudesCliente({
             <TBody>
               {filtradas.map((s) => (
                 <TR key={s.id} className={cn(s.sedeCod === sedeActual && 'border-l-2 border-l-navy bg-navy/[0.03]')}>
-                  <TD className="pl-5 tabular-nums text-xs text-muted">{fechaHora(s.createdAt)}</TD>
+                  <TD className="pl-5 tabular-nums text-dato text-muted">{fechaHora(s.createdAt)}</TD>
                   <TD className="tabular-nums">{s.sedeCod}</TD>
-                  <TD className="text-sm">{resumenItems(s.items)}</TD>
+                  <TD className="text-cuerpo">{resumenItems(s.items)}</TD>
                   <TD>
                     <Badge tone={URGENCIA_TONE[s.urgencia]}>{URGENCIA_LABEL[s.urgencia]}</Badge>
                   </TD>

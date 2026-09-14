@@ -39,12 +39,12 @@ export function ReauthGate({ mensaje }: { mensaje?: string }) {
     <div className="mx-auto max-w-sm py-16">
       <Card>
         <CardContent className="space-y-4 py-8 text-center">
-          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-navy/5 text-navy">
+          <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-r-pastilla bg-navy/5 text-navy">
             <ShieldCheck className="h-6 w-6" strokeWidth={1.75} />
           </span>
           <div>
-            <h2 className="text-lg font-semibold text-navy">Confirma que eres tú</h2>
-            <p className="mt-1 text-sm text-muted">
+            <h2 className="text-seccion font-display font-semibold text-navy">Confirma que eres tú</h2>
+            <p className="mt-1 text-cuerpo text-muted">
               {mensaje ?? 'Esta sección muestra información confidencial.'} Esta PC puede ser
               compartida — ingresa tu contraseña para continuar.
             </p>
@@ -56,9 +56,9 @@ export function ReauthGate({ mensaje }: { mensaje?: string }) {
             onKeyDown={(e) => e.key === 'Enter' && confirmar()}
             placeholder="Tu contraseña"
             autoFocus
-            className="w-full rounded-md border border-line bg-white px-3 py-2 text-center text-sm text-navy outline-none transition-colors focus:border-gold"
+            className="w-full rounded-r-chico border border-line bg-white px-3 py-2 text-center text-cuerpo text-navy outline-none transition-colors focus:border-gold"
           />
-          {error && <p className="rounded-md bg-error-soft px-3 py-2 text-sm text-error-deep">{error}</p>}
+          {error && <p className="rounded-r-chico bg-error-soft px-3 py-2 text-cuerpo text-error-deep">{error}</p>}
           <Button type="button" onClick={confirmar} pending={pending} className="w-full">
             {pending ? 'Verificando…' : 'Continuar'}
           </Button>

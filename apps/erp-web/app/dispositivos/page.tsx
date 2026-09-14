@@ -36,7 +36,7 @@ export default async function DispositivosPage() {
       <div>
         <PageHeader title="Dispositivos autorizados" subtitle="Acceso restringido" />
         <Card>
-          <CardContent className="py-10 text-center text-sm text-muted">
+          <CardContent className="py-10 text-center text-cuerpo text-muted">
             Solo un administrador puede gestionar los equipos autorizados.
           </CardContent>
         </Card>
@@ -81,13 +81,13 @@ export default async function DispositivosPage() {
                   <TD className="pl-5">
                     <div className="font-medium text-navy">{d.nombre || 'Equipo sin nombre'}</div>
                     {d.userAgent && (
-                      <div className="max-w-[16rem] truncate text-[11px] text-muted" title={d.userAgent}>
+                      <div className="max-w-[16rem] truncate text-micro text-muted" title={d.userAgent}>
                         {d.userAgent}
                       </div>
                     )}
                   </TD>
                   <TD>
-                    <span className="tabular-nums text-[11px] text-muted" title={d.deviceId}>
+                    <span className="tabular-nums text-micro text-muted" title={d.deviceId}>
                       …{d.deviceId.slice(-8)}
                     </span>
                   </TD>
@@ -103,7 +103,7 @@ export default async function DispositivosPage() {
                           aria-pressed={d.sedeCod === s.cod}
                           title={`Pre-marcar ${s.nombre} en el login de este equipo`}
                           className={cn(
-                            'rounded-full border px-2 py-0.5 tabular-nums text-[11px] font-medium transition-colors',
+                            'rounded-r-pastilla border px-2 py-0.5 tabular-nums text-micro font-medium transition-colors',
                             d.sedeCod === s.cod ? 'border-navy bg-navy text-paper' : 'border-line text-muted hover:border-gold hover:text-navy',
                           )}
                         >
@@ -115,14 +115,14 @@ export default async function DispositivosPage() {
                   <TD>
                     <Badge tone={TONE[d.estado]}>{LABEL[d.estado]}</Badge>
                   </TD>
-                  <TD className="tabular-nums text-xs text-muted">{fecha(d.creadoEn)}</TD>
-                  <TD className="tabular-nums text-xs text-muted">{fecha(d.ultimoVisto)}</TD>
+                  <TD className="tabular-nums text-dato text-muted">{fecha(d.creadoEn)}</TD>
+                  <TD className="tabular-nums text-dato text-muted">{fecha(d.ultimoVisto)}</TD>
                   <TD className="pr-5">
                     <div className="flex items-center justify-end gap-1.5">
                       {d.estado !== 'aprobado' && (
                         <form action={accionAprobar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="toque inline-flex items-center gap-1 rounded-md border border-exito-line bg-exito-soft px-2.5 py-1 text-xs font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
+                          <button className="toque inline-flex items-center gap-1 rounded-r-pastilla border border-exito-line bg-exito-soft px-2.5 py-1 text-apoyo font-medium text-exito-deep transition-colors duration-150 hover:bg-exito-soft active:scale-[0.97]">
                             <ShieldCheck className="h-3.5 w-3.5" strokeWidth={2} /> Aprobar
                           </button>
                         </form>
@@ -130,7 +130,7 @@ export default async function DispositivosPage() {
                       {d.estado === 'pendiente' && (
                         <form action={accionRechazar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="toque inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1 text-xs font-medium text-muted transition-colors duration-150 hover:border-gold hover:text-navy active:scale-[0.97]">
+                          <button className="toque inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1 text-apoyo font-medium text-muted transition-colors duration-150 hover:border-gold hover:text-navy active:scale-[0.97]">
                             <ShieldX className="h-3.5 w-3.5" strokeWidth={2} /> Rechazar
                           </button>
                         </form>
@@ -138,7 +138,7 @@ export default async function DispositivosPage() {
                       {d.estado === 'aprobado' && (
                         <form action={accionRevocar}>
                           <input type="hidden" name="id" value={d.id} />
-                          <button className="toque inline-flex items-center gap-1 rounded-md border border-error-line bg-error-soft px-2.5 py-1 text-xs font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
+                          <button className="toque inline-flex items-center gap-1 rounded-r-pastilla border border-error-line bg-error-soft px-2.5 py-1 text-apoyo font-medium text-error-deep transition-colors duration-150 hover:bg-error-soft active:scale-[0.97]">
                             <Ban className="h-3.5 w-3.5" strokeWidth={2} /> Revocar
                           </button>
                         </form>
@@ -162,7 +162,7 @@ export default async function DispositivosPage() {
         </CardContent>
       </Card>
 
-      <p className="mt-3 text-xs text-muted">
+      <p className="mt-3 text-apoyo text-muted">
         La <strong className="font-medium text-navy">sede</strong> es la que este equipo pre-marca como botón en su
         pantalla de login (&ldquo;el dispositivo manda&rdquo;) — quien tenga varias tiendas puede cambiarla ahí mismo o
         después desde el topbar. El control de acceso por equipo se activa con el flag{' '}

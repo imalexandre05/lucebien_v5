@@ -38,3 +38,125 @@ campo|apps/erp-web/app/reportes/[id]/acciones.tsx
 campo|apps/erp-web/app/solicitudes/cliente.tsx
 campo|apps/erp-web/app/solicitudes/detalle-solicitud.tsx
 campo|apps/erp-web/app/solicitudes/nueva-solicitud.tsx
+
+# ── Segunda pasada visual — línea base congelada el 09-09-2026
+# (docs/superpowers/specs/2026-09-06-sistema-visual-sci-lb-design.md, sección 9). Deuda de
+# las 72 pantallas anteriores a la migración de tokens (Fase 1-6). Se salda pantalla por
+# pantalla en la Fase 8 (propagación); cada una que migra borra sus líneas de acá.
+
+# -- tipografia: text-xs/sm/base/lg/xl/2xl/3xl o text-[..] en vez de los nueve tokens -----
+# Los 94 archivos que sólo tenían texto genérico ya migraron y salieron de esta lista. Los 25
+# que quedan NO son pantallas a medio migrar: cada uno cae en una de cuatro categorías que la
+# spec y los propios componentes ya declaran fuera de la escala con nombre. No se tocan a mano
+# sin volver a esa decisión primero.
+#
+# 1) NÚMERO PROMINENTE (tabular-nums + font-bold/semibold: monto, total, nota, contador). Mismo
+#    criterio que components/ui/cifra.tsx: StatBox/Cifra se quedan a propósito en los pixeles
+#    viejos de Tailwind (text-xl/2xl/3xl) porque subirlos a un token con nombre habría sido un
+#    rediseño de densidad, no un afinado; `text-cifra` (48px) queda reservado para el panel hero
+#    de una fase futura. Mismo trato para los totales/notas/contadores repartidos por pantallas
+#    sueltas: clientes/[id]/page.tsx, compras/nueva/form.tsx, evaluaciones/cliente.tsx,
+#    app/page.tsx, pedidos/constructor/ticket.tsx, personal/[id]/valores/page.tsx,
+#    personal/cliente.tsx, pipeline/tablero.tsx (dos), reportes/[id]/acciones.tsx,
+#    reportes/nuevo/form.tsx, sueldos/ventas/cliente.tsx, y los montos de los cuatro
+#    comprobantes impresos.
+# 2) ESCALA INTERNA DE COMPONENTE. El tamaño de letra es parte de la geometría del componente
+#    (glifo del numpad atado a sus 56px, número del contador atado a sus 46px, inicial del
+#    avatar atada al tamaño del círculo, el tamaño "grande" del Button) — no texto de la página.
+#    components/ui/button.tsx, components/colaboradores/avatar.tsx,
+#    components/ui/contador-mas.tsx, components/ui/teclado-numerico.tsx, components/ui/cifra.tsx.
+# 3) LETRA DE MARCA (tracking-brand: "SCI · LB", "CONTRATO DE ALQUILER · SCI-LB") y el código
+#    estilo cerradura del login (tabular-nums, tracking ancho a propósito) — misma excepción que
+#    ya tiene components/brand/logo.tsx para radio: geometría de marca, no texto genérico.
+#    components/brand/logo.tsx, app/login/page.tsx.
+# 4) MEMBRETE DE DOCUMENTO IMPRESO. El nombre "LuceBien" y el título del documento en los
+#    comprobantes/contratos/reportes impresos son la cabecera del papel, no un h1 de pantalla;
+#    los cuatro comprobantes y reportes/[id]/page.tsx (sólo su encabezado `print:block`) la
+#    comparten igual, sin font-display, a propósito.
+# 5) GEOMETRÍA DIMINUTA DEL LIENZO. Las etiquetas de 6 a 9px sobre las zonas del mapa de piso
+#    (mismo archivo que ya tiene la excepción de radio) son marcadores atados al tamaño real de
+#    la zona en el lienzo, no hay token de la escala que baje de 11px sin agrandarlas visiblemente
+#    encima de su rectángulo. configuracion/layout/editor.tsx, reportes/layout-map.tsx (que
+#    además dispara un falso positivo de esta regla en `text-[#5c3d00]`: es un color arbitrario,
+#    no un tamaño de letra — la regla del guard no distingue las dos cosas).
+tipografia|apps/erp-web/app/clientes/[id]/page.tsx
+tipografia|apps/erp-web/app/compras/nueva/form.tsx
+tipografia|apps/erp-web/app/configuracion/layout/editor.tsx
+tipografia|apps/erp-web/app/evaluaciones/cliente.tsx
+tipografia|apps/erp-web/app/login/page.tsx
+tipografia|apps/erp-web/app/page.tsx
+tipografia|apps/erp-web/app/pagos/[id]/comprobante/page.tsx
+tipografia|apps/erp-web/app/pedidos/[id]/contrato/page.tsx
+tipografia|apps/erp-web/app/pedidos/constructor/ticket.tsx
+tipografia|apps/erp-web/app/personal/[id]/valores/page.tsx
+tipografia|apps/erp-web/app/personal/cliente.tsx
+tipografia|apps/erp-web/app/pipeline/tablero.tsx
+tipografia|apps/erp-web/app/reportes/[id]/acciones.tsx
+tipografia|apps/erp-web/app/reportes/[id]/page.tsx
+tipografia|apps/erp-web/app/reportes/layout-map.tsx
+tipografia|apps/erp-web/app/reportes/nuevo/form.tsx
+tipografia|apps/erp-web/app/solicitudes/[id]/imprimir/page.tsx
+tipografia|apps/erp-web/app/sueldos/liquidaciones/[id]/comprobante/page.tsx
+tipografia|apps/erp-web/app/sueldos/ventas/cliente.tsx
+tipografia|apps/erp-web/components/brand/logo.tsx
+tipografia|apps/erp-web/components/colaboradores/avatar.tsx
+tipografia|apps/erp-web/components/ui/button.tsx
+tipografia|apps/erp-web/components/ui/cifra.tsx
+tipografia|apps/erp-web/components/ui/contador-mas.tsx
+tipografia|apps/erp-web/components/ui/teclado-numerico.tsx
+
+# -- radio: rounded-*/rounded-full de Tailwind en vez de r-chico/medio/grande/pastilla ----
+# editor.tsx se queda A PROPÓSITO: dos marcadores de 10x10px sobre el lienzo del mapa de piso
+# (el grip de resize de la zona seleccionada, el punto de color de la lista) usan rounded-[3px]
+# -- geometría de marcador, no una superficie; forzar r-chico (8px) los haría casi circulares
+# a ese tamaño. El resto del archivo (botones, panel, lienzo) ya migró.
+radio|apps/erp-web/app/configuracion/layout/editor.tsx
+# app/page.tsx se queda A PROPÓSITO: el mini-gráfico de barras del flujo de pipeline usa
+# rounded-t-lg/rounded-t-[4px] -- sólo esquinas de arriba, a propósito, porque la barra crece
+# desde abajo (origin-bottom) y tiene que apoyar plana sobre el eje. Un token compuesto redondea
+# las cuatro esquinas y le rompe la base. Mismo caso que rounded-r-full en sidebar.tsx.
+radio|apps/erp-web/app/page.tsx
+# Los dos puntos de leyenda AM/PM (8x8px, rounded-[2px]) son la misma geometría de marcador
+# diminuto que ya tiene documentada editor.tsx para radio: forzar r-chico (8px) los volvería
+# casi circulares a ese tamaño. El resto del archivo (botones, paneles, lienzo, filas) ya migró.
+radio|apps/erp-web/app/reportes/layout-map.tsx
+# El pie sticky (línea ~918) usa rounded-t-xl -- sólo esquinas de arriba, a propósito: está
+# pegado al borde inferior de la pantalla (`sticky bottom-0`) y sólo el lado que SE VE necesita
+# esquina. Mismo caso que el pie de notificaciones-popover.tsx y la barra de app/page.tsx.
+radio|apps/erp-web/app/reportes/nuevo/form.tsx
+# Los cuatro callouts (líneas 226/232/237/242) usan `rounded-r-md`: Tailwind DIRECCIONAL (sólo
+# esquinas derechas), no nuestro token -- coincide en el prefijo "r-" por casualidad. Son cajas
+# con `border-l-2` de acento a la izquierda; ponerles un token compuesto (r-chico etc.) redondea
+# las CUATRO esquinas y rompe la forma. Mismo caso que `rounded-r-full` de sidebar.tsx.
+radio|apps/erp-web/app/solicitudes/detalle-solicitud.tsx
+# logo.tsx (LogoMark) se queda A PROPÓSITO: rOuter/rInner son geometría de marca, no una
+# superficie genérica -- cada tamaño (sm/md/lg/xl) empareja un radio externo con uno interno
+# exactamente 1-2px menor para dejar un filete de ancho constante alrededor del sello (ver
+# comentario del archivo, "chapa"). Forzar chico/medio/grande rompería esa proporción calculada
+# a mano. No es deuda pendiente de migrar mecánicamente.
+radio|apps/erp-web/components/brand/logo.tsx
+# Las tres esquinas direccionales que quedan: notificaciones-popover.tsx (rounded-b-xl, el pie
+# "Mostrar más" pegado abajo del panel), sidebar.tsx (rounded-r-full, la barra activa pegada al
+# borde izquierdo) y persona-picker.tsx (rounded-t-xl, el buscador pegado arriba del dropdown).
+# Las tres son la utilidad DIRECCIONAL de Tailwind (un solo lado), no nuestro token compuesto --
+# Tailwind no genera el lado direccional de un token con nombre (`rounded-t-r-medio` no compila,
+# probado a mano). Forzar el token completo redondearía las cuatro esquinas y despegaría el
+# elemento del borde al que está pegado.
+radio|apps/erp-web/components/shell/notificaciones-popover.tsx
+radio|apps/erp-web/components/shell/sidebar.tsx
+radio|apps/erp-web/components/ui/persona-picker.tsx
+
+# -- elevacion: shadow-none bajo print: (comprobantes) o shadow suelto (toggle) -----------
+
+# -- foco: ring-* escrito a mano en vez de la clase .anillo --------------------------------
+# form.tsx (campoBase) se queda A PROPÓSITO, no es deuda pendiente de migrar mecánicamente:
+# el anillo de un campo de texto va en foco simple (mouse incluido, no sólo :focus-visible,
+# para que se vea dónde está escribiendo) y cambia a rojo bajo aria-invalid. `.anillo` es un
+# solo anillo dorado sólo-:focus-visible — aplicarlo acá perdería el color de error y el
+# anillo al hacer clic. Usado por 27+ pantallas vía campoCls/Input/Select/Textarea: decisión
+# de diseño para revisar en su propia spec si hace falta un `.anillo-campo`, no un swap ciego.
+foco|apps/erp-web/components/ui/form.tsx
+
+# -- carga: page.tsx asíncrona sin loading.tsx hermano --------------------------------------
+
+# -- movimiento: duración de animación literal en vez del token --dur-* --------------------

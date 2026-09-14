@@ -17,8 +17,8 @@ const GARANTIA_LABEL: Record<string, string> = { efectivo: 'Efectivo', documento
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-line/60 py-3">
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-0.5 text-sm text-navy">{children}</dd>
+      <dt className="text-rotulo uppercase text-muted">{label}</dt>
+      <dd className="mt-0.5 text-cuerpo text-navy">{children}</dd>
     </div>
   );
 }
@@ -70,8 +70,8 @@ export default async function PedidoDetalle({ params }: { params: { id: string }
             )}
           </dl>
 
-          <p className="mb-2 mt-4 text-xs uppercase tracking-wide text-muted">Ítems ({p.items.length})</p>
-          <div className="overflow-x-auto rounded-md border border-line">
+          <p className="mb-2 mt-4 text-rotulo uppercase text-muted">Ítems ({p.items.length})</p>
+          <div className="overflow-x-auto rounded-r-chico border border-line">
             <Table>
               <THead>
                 <TR>
@@ -89,7 +89,7 @@ export default async function PedidoDetalle({ params }: { params: { id: string }
                     <TD className="pl-3">
                       <Badge tone={TIPO_TONE[it.tipo] ?? 'gray'}>{TIPO_LABEL[it.tipo] ?? it.tipo}</Badge>
                     </TD>
-                    <TD className="tabular-nums text-xs">
+                    <TD className="tabular-nums text-dato">
                       {it.activoCodigo ?? it.descripcion ?? '—'}
                       {it.esCortesia && <Badge tone="green" className="ml-2">CORTESÍA</Badge>}
                     </TD>
@@ -146,7 +146,7 @@ export default async function PedidoDetalle({ params }: { params: { id: string }
           <PedidoAcciones pedido={p} />
         </CardContent>
       </Card>
-      <Link href="/pedidos" className="mt-4 inline-block text-sm text-muted transition-colors duration-150 hover:text-navy">
+      <Link href="/pedidos" className="mt-4 inline-block text-cuerpo text-muted transition-colors duration-150 hover:text-navy">
         ← Volver a pedidos
       </Link>
     </div>

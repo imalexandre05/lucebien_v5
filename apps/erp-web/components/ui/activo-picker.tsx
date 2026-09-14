@@ -106,7 +106,7 @@ export function ActivoPicker({
 
   return (
     <div className="relative">
-      <div className="relative rounded-md border border-line focus-within:border-gold">
+      <div className="relative rounded-r-chico border border-line focus-within:border-gold">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" strokeWidth={1.75} />
         <input
           ref={inputRef}
@@ -120,14 +120,14 @@ export function ActivoPicker({
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           onKeyDown={onKeyDown}
           placeholder={placeholder}
-          className="w-full bg-white py-2.5 pl-9 pr-3 text-sm text-navy outline-none placeholder:text-muted"
+          className="w-full bg-white py-2.5 pl-9 pr-3 text-cuerpo text-navy outline-none placeholder:text-muted"
           autoComplete="off"
         />
       </div>
       {open && (
         <div
           ref={listRef}
-          className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-line bg-white p-1 shadow-lift"
+          className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-r-medio border border-line bg-white p-1 shadow-lift"
         >
           {filtrados.map((a, idx) => {
             const bloqueo = activoBloqueadoPor(activos, a.id);
@@ -144,12 +144,12 @@ export function ActivoPicker({
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => elegir(a)}
                 className={cn(
-                  'flex w-full items-center justify-between gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors',
+                  'flex w-full items-center justify-between gap-2 rounded-r-chico px-2.5 py-1.5 text-left text-cuerpo transition-colors',
                   deshabilitado ? 'cursor-not-allowed text-muted/60' : idx === hi ? 'bg-navy/10' : 'hover:bg-paper',
                 )}
               >
                 <span className={cn('tabular-nums', !deshabilitado && 'text-navy')}>{a.codigo}</span>
-                <span className="truncate text-xs text-muted">
+                <span className="truncate text-apoyo text-muted">
                   {a.tipo} {a.talla} · {a.color}
                   {bloqueo && <> · ocupado por {bloqueo.codigo}</>}
                   {noDisponible && <> · {ESTADO_LABEL[a.estado] ?? a.estado}</>}
@@ -158,7 +158,7 @@ export function ActivoPicker({
             );
           })}
           {filtrados.length === 0 && (
-            <p className="px-3 py-4 text-center text-xs text-muted">Sin coincidencias — puede ser un servicio sin activo.</p>
+            <p className="px-3 py-4 text-center text-apoyo text-muted">Sin coincidencias — puede ser un servicio sin activo.</p>
           )}
         </div>
       )}

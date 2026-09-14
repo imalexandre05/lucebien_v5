@@ -247,7 +247,7 @@ export function InventarioCliente({
     <div className="space-y-4">
       <Card>
         <CardContent className="flex items-center justify-between py-4">
-          <p className="text-sm text-muted">{activos.length} activo(s) registrados</p>
+          <p className="text-cuerpo text-muted">{activos.length} activo(s) registrados</p>
           <button type="button" onClick={abrirNuevo} className={buttonVariants({ variant: 'primary' })}>
             <Plus className="h-4 w-4" strokeWidth={2} /> Nuevo activo
           </button>
@@ -288,7 +288,7 @@ export function InventarioCliente({
                         {a.publicable && <Globe className="h-3 w-3 text-exito" strokeWidth={2} aria-label="Publicable en la web" />}
                       </div>
                       {(PIEZA_LABEL[a.pieza] || padre) && (
-                        <div className="text-[10px] text-muted">
+                        <div className="text-micro text-muted">
                           {PIEZA_LABEL[a.pieza]}
                           {padre && ` de ${padre.codigo}`}
                         </div>
@@ -297,11 +297,11 @@ export function InventarioCliente({
                     <TD>
                       {catTipo ? (
                         <>
-                          <div className="text-sm text-navy">{catTipo.nombre}</div>
-                          <div className="tabular-nums text-[10px] text-muted">{a.tipo}</div>
+                          <div className="text-cuerpo text-navy">{catTipo.nombre}</div>
+                          <div className="tabular-nums text-micro text-muted">{a.tipo}</div>
                         </>
                       ) : (
-                        <span className="tabular-nums text-sm">{a.tipo}</span>
+                        <span className="tabular-nums text-dato">{a.tipo}</span>
                       )}
                     </TD>
                     <TD>
@@ -311,7 +311,7 @@ export function InventarioCliente({
                         onBlur={(e) => {
                           if (e.target.value !== a.talla) guardarInline(a, { talla: e.target.value });
                         }}
-                        className="w-16 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                        className="w-16 rounded-r-chico border border-transparent bg-transparent px-1 py-0.5 text-cuerpo text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
                     <TD>
@@ -321,7 +321,7 @@ export function InventarioCliente({
                         onBlur={(e) => {
                           if (e.target.value !== a.color) guardarInline(a, { color: e.target.value });
                         }}
-                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                        className="w-20 rounded-r-chico border border-transparent bg-transparent px-1 py-0.5 text-cuerpo text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
                     <TD className="tabular-nums">{a.sedeCod}</TD>
@@ -336,7 +336,7 @@ export function InventarioCliente({
                           onChange={(e) => guardarInline(a, { estado: e.target.value as EstadoActivo })}
                           disabled={pending}
                           className={cn(
-                            'rounded-full border-0 px-2.5 py-1 text-xs font-medium outline-none',
+                            'rounded-r-pastilla border-0 px-2.5 py-1 text-apoyo font-medium outline-none',
                             tonoEstado(a.estado) === 'green' && 'bg-exito-soft text-exito-deep',
                             tonoEstado(a.estado) === 'amber' && 'bg-aviso-soft text-aviso-deep',
                             tonoEstado(a.estado) === 'navy' && 'bg-navy/10 text-navy',
@@ -353,7 +353,7 @@ export function InventarioCliente({
                         </select>
                       )}
                       {bloqueo && (
-                        <div className="mt-1 inline-flex items-center gap-1 text-[10px] font-medium text-aviso-deep" title={`Bloqueado por ${bloqueo.codigo} (${labelEstado(bloqueo.estado)})`}>
+                        <div className="mt-1 inline-flex items-center gap-1 text-micro font-medium text-aviso-deep" title={`Bloqueado por ${bloqueo.codigo} (${labelEstado(bloqueo.estado)})`}>
                           <Lock className="h-2.5 w-2.5" strokeWidth={2.5} /> Ocupado por {bloqueo.codigo}
                         </div>
                       )}
@@ -368,7 +368,7 @@ export function InventarioCliente({
                           const v = Number(e.target.value);
                           if (v !== a.precioAlquiler) guardarInline(a, { precioAlquiler: v });
                         }}
-                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                        className="w-20 rounded-r-chico border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums text-dato text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
                     <TD className="text-right">
@@ -381,7 +381,7 @@ export function InventarioCliente({
                           const v = Number(e.target.value);
                           if (v !== a.precioVenta) guardarInline(a, { precioVenta: v });
                         }}
-                        className="w-20 rounded border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums text-sm text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
+                        className="w-20 rounded-r-chico border border-transparent bg-transparent px-1 py-0.5 text-right tabular-nums text-dato text-navy transition-colors hover:border-line focus:border-gold focus:bg-white focus:outline-none"
                       />
                     </TD>
                     <TD className="text-right tabular-nums">{a.usosAcumulados}</TD>
@@ -394,7 +394,7 @@ export function InventarioCliente({
                             disabled={pending}
                             aria-label="Despiezar en saco + pantalón"
                             title="Despiezar en saco + pantalón"
-                            className="rounded-md p-1.5 text-muted transition-colors hover:bg-navy/5 hover:text-navy disabled:opacity-50"
+                            className="rounded-r-pastilla p-1.5 text-muted transition-colors hover:bg-navy/5 hover:text-navy disabled:opacity-50"
                           >
                             <Scissors className="h-3.5 w-3.5" strokeWidth={2} />
                           </button>
@@ -404,7 +404,7 @@ export function InventarioCliente({
                           onClick={() => abrirEditar(a)}
                           aria-label="Editar todos los datos"
                           title="Editar todos los datos"
-                          className="rounded-md p-1.5 text-muted transition-colors hover:bg-navy/5 hover:text-navy"
+                          className="rounded-r-pastilla p-1.5 text-muted transition-colors hover:bg-navy/5 hover:text-navy"
                         >
                           <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
                         </button>
@@ -413,7 +413,7 @@ export function InventarioCliente({
                           onClick={() => eliminar(a.id)}
                           aria-label="Dar de baja"
                           title="Dar de baja"
-                          className="rounded-md p-1.5 text-muted transition-colors hover:bg-error-soft hover:text-error"
+                          className="rounded-r-pastilla p-1.5 text-muted transition-colors hover:bg-error-soft hover:text-error"
                         >
                           <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
                         </button>
@@ -435,7 +435,7 @@ export function InventarioCliente({
           </Table>
         </CardContent>
       </Card>
-      <p className="text-xs text-muted">
+      <p className="text-apoyo text-muted">
         Clic en el estado, precios, talla o color de una fila para editarlos al instante. El lápiz abre
         todos los datos, incluidos los atributos libres (tela, forro, etc.). Las tijeras despiezan un
         activo &ldquo;único&rdquo; en saco + pantalón — alquilar una pieza bloquea el set completo pero
@@ -453,11 +453,11 @@ export function InventarioCliente({
             <ModalBody className="space-y-4">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Código</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Código</label>
                   <input value={modal.form.codigo} onChange={(e) => setCampo('codigo', e.target.value.toUpperCase())} placeholder="TN-042" className={cn(fieldCls, 'w-full tabular-nums')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tipo</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Tipo</label>
                   <input value={modal.form.tipo} onChange={(e) => setCampo('tipo', e.target.value)} placeholder="TN, CM, CO…" className={cn(fieldCls, 'w-full')} />
                   {tiposProducto.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
@@ -468,7 +468,7 @@ export function InventarioCliente({
                           aria-pressed={modal.form.tipo.toUpperCase() === t.prefijo.toUpperCase()}
                           onClick={() => setCampo('tipo', t.prefijo)}
                           className={cn(
-                            'rounded-full border px-2 py-0.5 text-[11px] font-medium transition-colors',
+                            'rounded-r-pastilla border px-2 py-0.5 text-micro font-medium transition-colors',
                             modal.form.tipo.toUpperCase() === t.prefijo.toUpperCase()
                               ? 'border-navy bg-navy text-paper'
                               : 'border-line text-muted hover:border-gold hover:text-navy',
@@ -481,15 +481,15 @@ export function InventarioCliente({
                   )}
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Talla</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Talla</label>
                   <input value={modal.form.talla} onChange={(e) => setCampo('talla', e.target.value)} placeholder="40 / M" className={cn(fieldCls, 'w-full')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Color</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Color</label>
                   <input value={modal.form.color} onChange={(e) => setCampo('color', e.target.value)} placeholder="Navy" className={cn(fieldCls, 'w-full')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Sede</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Sede</label>
                   {/* Fase 2: ya no es un <select> — un activo nuevo nace en tu sede activa; uno
                       existente conserva la suya (reubicarlo es un movimiento físico real, no un
                       campo de formulario — ver Fase 11, Solicitudes tienda↔almacén). */}
@@ -498,7 +498,7 @@ export function InventarioCliente({
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Estado</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Estado</label>
                   <select value={modal.form.estado} onChange={(e) => setCampo('estado', e.target.value as EstadoActivo)} className={cn(fieldCls, 'w-full')}>
                     {ESTADOS_ACTIVO.map((e) => (
                       <option key={e} value={e}>
@@ -508,25 +508,25 @@ export function InventarioCliente({
                   </select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Precio base</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Precio base</label>
                   <input type="number" step="0.01" value={modal.form.precioBase} onChange={(e) => setCampo('precioBase', Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Precio alquiler</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Precio alquiler</label>
                   <input type="number" step="0.01" value={modal.form.precioAlquiler} onChange={(e) => setCampo('precioAlquiler', Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Precio venta</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Precio venta</label>
                   <input type="number" step="0.01" value={modal.form.precioVenta} onChange={(e) => setCampo('precioVenta', Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Usos acumulados</label>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Usos acumulados</label>
                   <input type="number" value={modal.form.usosAcumulados} onChange={(e) => setCampo('usosAcumulados', Number(e.target.value))} className={cn(fieldCls, 'w-full')} />
                 </div>
               </div>
 
               <div className="border-t border-line/60 pt-3">
-                <label className="mb-1 block text-xs uppercase tracking-wide text-muted">
+                <label className="mb-1 block text-rotulo uppercase text-muted">
                   Pieza (despiece saco/pantalón)
                 </label>
                 <OpcionBotones
@@ -536,11 +536,11 @@ export function InventarioCliente({
                   ariaLabel="Pieza"
                 />
                 {modal.original?.activoPadreId && (
-                  <p className="mt-1.5 text-xs text-muted">
+                  <p className="mt-1.5 text-apoyo text-muted">
                     Vinculado a {porId.get(modal.original.activoPadreId)?.codigo ?? modal.original.activoPadreId}.
                   </p>
                 )}
-                <p className="mt-1.5 text-xs text-muted">
+                <p className="mt-1.5 text-apoyo text-muted">
                   Normalmente esto lo fija el botón de tijeras de la tabla (despiece automático). Cámbialo
                   a mano solo para corregir datos.
                 </p>
@@ -548,10 +548,10 @@ export function InventarioCliente({
 
               <div className="border-t border-line/60 pt-3">
                 <div className="mb-2 flex items-center justify-between">
-                  <label className="text-xs uppercase tracking-wide text-muted">
+                  <label className="text-rotulo uppercase text-muted">
                     Atributos (tela, forro, cuello… lo que corresponda a este tipo)
                   </label>
-                  <button type="button" onClick={agregarAtributo} className="toque inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors hover:border-gold">
+                  <button type="button" onClick={agregarAtributo} className="toque inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition-colors hover:border-gold">
                     <Plus className="h-3 w-3" strokeWidth={2.5} /> Agregar
                   </button>
                 </div>
@@ -559,13 +559,13 @@ export function InventarioCliente({
                   <button
                     type="button"
                     onClick={() => usarAtributosSugeridos(tipoSeleccionadoCatalogo.atributosSugeridos)}
-                    className="mb-2 text-left text-xs text-navy underline decoration-dotted underline-offset-2 hover:text-gold"
+                    className="mb-2 text-left text-apoyo text-navy underline decoration-dotted underline-offset-2 hover:text-gold"
                   >
                     Usar sugeridos de &ldquo;{tipoSeleccionadoCatalogo.nombre}&rdquo;: {tipoSeleccionadoCatalogo.atributosSugeridos.join(', ')}
                   </button>
                 )}
                 {atributosLista.length === 0 ? (
-                  <p className="text-xs text-muted">Sin atributos agregados.</p>
+                  <p className="text-apoyo text-muted">Sin atributos agregados.</p>
                 ) : (
                   <div className="space-y-2">
                     {atributosLista.map(([clave, valor], i) => (
@@ -592,8 +592,8 @@ export function InventarioCliente({
               </div>
 
               <div className="border-t border-line/60 pt-3">
-                <label className="flex items-center gap-2 text-sm text-navy">
-                  <input type="checkbox" checked={modal.form.publicable} onChange={(e) => setCampo('publicable', e.target.checked)} className="h-4 w-4 rounded border-line" />
+                <label className="flex items-center gap-2 text-cuerpo text-navy">
+                  <input type="checkbox" checked={modal.form.publicable} onChange={(e) => setCampo('publicable', e.target.checked)} className="h-4 w-4 rounded-r-chico border-line" />
                   Mostrar en el catálogo público (web)
                 </label>
                 {modal.form.publicable && (
@@ -607,7 +607,7 @@ export function InventarioCliente({
                 )}
               </div>
 
-              {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+              {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
             </ModalBody>
             <ModalFooter>
               <button type="button" onClick={cerrarModal} disabled={pending} className={buttonVariants({ variant: 'ghost' })}>

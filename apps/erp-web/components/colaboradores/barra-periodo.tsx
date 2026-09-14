@@ -73,7 +73,7 @@ export function BarraPeriodo({
       title={titulo}
       aria-pressed={esIgual(p)}
       className={cn(
-        'cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60',
+        'anillo cursor-pointer rounded-r-pastilla px-2.5 py-1.5 text-apoyo font-medium transition-colors duration-150',
         esIgual(p) ? 'bg-navy text-paper' : 'text-navy hover:bg-navy/5',
       )}
     >
@@ -84,13 +84,13 @@ export function BarraPeriodo({
   return (
     <div
       className={cn(
-        'flex flex-wrap items-end gap-x-3 gap-y-2 rounded-lg border border-line bg-white px-4 py-3 shadow-card',
+        'flex flex-wrap items-end gap-x-3 gap-y-2 rounded-r-medio border border-line bg-white px-4 py-3 shadow-card',
         pendiente && 'opacity-60',
         className,
       )}
     >
       <div>
-        <label htmlFor="periodo-desde" className="block text-[11px] font-medium uppercase tracking-wide text-muted">
+        <label htmlFor="periodo-desde" className="block text-rotulo font-medium uppercase text-muted">
           Desde
         </label>
         <input
@@ -102,7 +102,7 @@ export function BarraPeriodo({
         />
       </div>
       <div>
-        <label htmlFor="periodo-hasta" className="block text-[11px] font-medium uppercase tracking-wide text-muted">
+        <label htmlFor="periodo-hasta" className="block text-rotulo font-medium uppercase text-muted">
           Hasta
         </label>
         <input
@@ -127,7 +127,7 @@ export function BarraPeriodo({
           )}
       </div>
 
-      <p className="ml-auto flex items-center gap-1.5 text-xs text-muted">
+      <p className="ml-auto flex items-center gap-1.5 text-apoyo text-muted">
         <CalendarRange className="h-3.5 w-3.5" aria-hidden />
         <span>{etiquetaPeriodo(periodo)}</span>
         <span className="tabular-nums">· {diasDelPeriodo(periodo)} días</span>

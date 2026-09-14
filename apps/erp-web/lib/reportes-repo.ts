@@ -106,6 +106,24 @@ export async function listarReportes(): Promise<Reporte[]> {
   return rows.map((r) => baseReporte(r, nombre, trabByRep.get(r.id) ?? []));
 }
 
+// "Mis reportes" (spec 2026-09-12): los últimos reportes que ESTA persona llenó
+// (encargado_id = ella). No resuelve nombres de terceros -- no hacen falta para una lista de "lo
+// mío". RLS de `rep_select` (0081) ya es por sede, no por encargado: este filtro es sólo de la
+// aplicación, no una puerta nueva.
+export async function listarReportesDe(usuarioId: string, limite = 10): Promise<Reporte[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('reportes')
+    .select('*')
+    .eq('encargado_id', usuarioId)
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limite);
+  if (error) throw new Error(error.message);
+  const rows = (data as RepRow[]) ?? [];
+  return rows.map((r) => baseReporte(r, () => null, []));
+}
+
 // Detalle completo: reporte + actividades + extras + trabajadores.
 export async function obtenerReporte(id: string): Promise<ReporteDetalle | null> {
   const sb = getServerClient();

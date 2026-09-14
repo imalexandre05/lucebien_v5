@@ -158,6 +158,9 @@ export function SidebarNav({
 }) {
   const path = usePathname();
   const activo = hrefActivo(path ?? '');
+  // Contador corrido entre las dos secciones: la entrada escalonada se lee como un solo listado
+  // que aparece de arriba a abajo, no como dos listas que arrancan cada una desde cero.
+  let indice = 0;
   return (
     <nav className="flex-1 space-y-7 overflow-y-auto px-3 py-6">
       {NAV.map((group) => {
@@ -175,29 +178,43 @@ export function SidebarNav({
         if (items.length === 0) return null;
         return (
           <div key={group.section}>
-            <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-widest text-paper/40">
+            {/* paper/40 se perdía contra el navy. Con /60 y un guion dorado delante, la sección
+                se lee de un vistazo y la barra deja de ser un bloque uniforme de texto gris. */}
+            <div className="flex items-center gap-2 px-3 pb-2 text-rotulo font-semibold uppercase text-paper/60">
+              <span aria-hidden className="h-px w-3 shrink-0 bg-gold/70" />
               {group.section}
             </div>
             <ul className="space-y-0.5">
               {items.map((it) => {
                 const active = it.href === activo;
                 const Icon = it.icon;
+                const idx = indice++;
                 return (
-                  <li key={it.href}>
+                  <li
+                    key={it.href}
+                    className="animate-rise"
+                    style={{ animationDelay: `${Math.min(idx, 12) * 30}ms` }}
+                  >
                     <Link
                       href={it.href}
                       aria-current={active ? 'page' : undefined}
                       className={cn(
-                        'group relative flex items-center gap-3 rounded-md px-3 py-2.5 text-sm transition-[background-color,color,transform] duration-150 ease-out-expo hover-fine:translate-x-0.5',
-                        active ? 'bg-white/10 text-paper' : 'text-paper/60 hover:bg-white/5 hover:text-paper',
+                        // El activo ya no es un gris blanco lavado: lleva el oro de la casa
+                        // (fondo tenue + borde + resplandor). Con `bg-white/10` la barra dorada de
+                        // la izquierda era lo único que decía "estás acá", y sobre navy oscuro eso
+                        // se leía apagado. El hover también tira a oro en vez de a blanco.
+                        'group relative flex items-center gap-3 rounded-r-chico px-3 py-2.5 text-cuerpo transition-[background-color,color,transform,box-shadow] duration-150 ease-out-expo hover-fine:translate-x-0.5',
+                        active
+                          ? 'bg-gold/15 font-medium text-paper shadow-[inset_0_0_0_1px_rgba(184,165,21,.35)]'
+                          : 'text-paper/60 hover:bg-gold/10 hover:text-paper',
                       )}
                     >
                       {active && (
-                        <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-r-full bg-gold" />
+                        <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-gold shadow-[0_0_10px_rgba(184,165,21,.6)]" />
                       )}
                       <Icon
                         className={cn(
-                          'h-4 w-4 transition-colors duration-150',
+                          'h-4 w-4 transition-[color,transform] duration-150 group-hover:scale-110',
                           active ? 'text-gold' : 'text-paper/50 group-hover:text-paper/70',
                         )}
                         strokeWidth={1.75}
@@ -221,7 +238,7 @@ export function SidebarNav({
 // empresa, que es de quien es el sistema.
 export function SidebarFooter() {
   return (
-    <div className="border-t border-white/10 px-6 py-4 text-[11px] leading-relaxed text-paper/40">
+    <div className="border-t border-white/10 px-6 py-4 text-micro leading-relaxed text-paper/40">
       Sistema de Control Interno
       <br />
       Confecciones Aliaga E.I.R.L.
@@ -242,13 +259,27 @@ export function Sidebar({
   perfilSede?: SedePerfil | null;
 }) {
   return (
-    <aside className="sticky top-0 hidden h-screen w-60 flex-col bg-navy-deep text-paper/80 lg:flex print:hidden">
+    // El navy plano se leía apagado. Ahora la barra tiene profundidad: un degradado vertical
+    // (arriba más claro, abajo más profundo) y un halo dorado muy tenue detrás del logo, que es
+    // donde la marca tiene que pesar. Sigue siendo el mismo navy de la casa, no un color nuevo.
+    <aside className="sticky top-0 hidden h-screen w-60 flex-col bg-gradient-to-b from-navy via-navy-deep to-navy-deep text-paper/80 lg:flex print:hidden">
       <Link
         href="/"
         aria-label="Ir al inicio"
-        className="flex items-center border-b border-white/10 px-5 py-6 transition-transform duration-150 ease-out-expo hover-fine:translate-x-0.5 active:scale-[0.98]"
+        className="group relative flex items-center px-5 py-6 transition-transform duration-150 ease-out-expo hover-fine:translate-x-0.5 active:scale-[0.98]"
       >
-        <Logo tone="onDark" size="md" />
+        {/* Halo dorado detrás del sello: da el brillo sin tocar el PNG oficial de la marca. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -left-6 -top-6 h-32 w-32 rounded-r-pastilla bg-gold/20 blur-2xl transition-opacity duration-300 group-hover:bg-gold/30"
+        />
+        {/* `tagline={false}`: el "SCI · LB" al lado del lockup competía con la marca en una barra
+            de 240px y no decía nada que el usuario necesite. `lg` en vez de `md` para que el
+            lockup ocupe el ancho que le corresponde ahora que está solo. */}
+        <Logo tone="onDark" size="lg" tagline={false} className="relative" />
+        {/* Filete de sastre, versión oscura: la misma firma dorada que el login y el hilo del
+            dashboard, adaptada al fondo navy — reemplaza el borde plano blanco/10. */}
+        <div aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-gold via-gold/40 to-transparent" />
       </Link>
       <SidebarNav rol={rol} matriz={matriz} rolCod={rolCod} perfilSede={perfilSede} />
       <SidebarFooter />

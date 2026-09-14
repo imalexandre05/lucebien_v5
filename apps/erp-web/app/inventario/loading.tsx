@@ -9,7 +9,7 @@ export default function Loading() {
         <Skeleton className="mt-3 h-3 w-44" />
         <div className="gold-rule mt-4" />
       </div>
-      <div className="mb-4 flex flex-wrap gap-2 rounded-lg border border-line bg-white p-4">
+      <div className="mb-4 flex flex-wrap gap-2 rounded-r-medio border border-line bg-white p-4">
         <Skeleton className="h-9 w-36" />
         <Skeleton className="h-9 w-36" />
         <Skeleton className="h-9 w-36" />

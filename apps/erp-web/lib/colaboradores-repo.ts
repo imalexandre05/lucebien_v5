@@ -27,10 +27,15 @@ export type Colaborador = {
   salarioBase: number;
   /** `false` cuando la persona está suspendida. Ver `listarColaboradores`. */
   activo: boolean;
+  /** C-2: el contrato (app/sueldos/acuerdos/cliente.tsx) los suma a lo que ya mostraba —
+      el dato ya existía y ya se editaba en la pestaña Datos, sólo faltaba traerlo hasta acá. */
+  dni: string | null;
+  telefono: string | null;
+  recomendaciones: string | null;
 };
 
 const COLUMNAS_COLABORADOR =
-  'id, nombre, iniciales, rol, rol_cod, sede_cod, fecha_ingreso, salario_base, activo';
+  'id, nombre, iniciales, rol, rol_cod, sede_cod, fecha_ingreso, salario_base, activo, dni, telefono, recomendaciones';
 
 const aColaborador = (r: Record<string, unknown>): Colaborador => ({
   id: String(r.id),
@@ -42,6 +47,9 @@ const aColaborador = (r: Record<string, unknown>): Colaborador => ({
   fechaIngreso: r.fecha_ingreso ? String(r.fecha_ingreso).slice(0, 10) : null,
   salarioBase: Number(r.salario_base ?? 0),
   activo: r.activo !== false,
+  dni: (r.dni as string | null) ?? null,
+  telefono: (r.telefono as string | null) ?? null,
+  recomendaciones: (r.recomendaciones as string | null) ?? null,
 });
 
 /**

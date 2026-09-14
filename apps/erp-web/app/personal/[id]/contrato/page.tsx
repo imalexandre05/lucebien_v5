@@ -59,7 +59,15 @@ export default async function ContratoColaboradorPage({
       <AcuerdosCliente
         acuerdos={acuerdos}
         empleados={[{ id: persona.id, nombre: persona.nombre, rol: persona.rol, sedeCod: persona.sedeCod }]}
-        personaFija={{ id: persona.id, nombre: persona.nombre, rol: persona.rol, sedeCod: persona.sedeCod }}
+        personaFija={{
+          id: persona.id,
+          nombre: persona.nombre,
+          rol: persona.rol,
+          sedeCod: persona.sedeCod,
+          dni: persona.dni,
+          telefono: persona.telefono,
+          recomendaciones: persona.recomendaciones,
+        }}
         fechaIngresoPersona={persona.fechaIngreso}
         abrirNuevoAlMontar={continuaDeAlta}
       />

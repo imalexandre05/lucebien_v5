@@ -127,7 +127,7 @@ export function ListaColaboradores({
               onClick={() => setFiltro(f.clave)}
               aria-pressed={filtroActivo === f.clave}
               className={cn(
-                'cursor-pointer rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60',
+                'anillo cursor-pointer rounded-r-pastilla px-2.5 py-1.5 text-apoyo font-medium transition-colors duration-150',
                 filtroActivo === f.clave ? 'bg-navy text-paper' : 'text-navy hover:bg-navy/5',
               )}
             >
@@ -144,7 +144,7 @@ export function ListaColaboradores({
       </div>
 
       {visibles.length === 0 ? (
-        <div className="rounded-lg border border-line bg-white shadow-card">
+        <div className="rounded-r-medio border border-line bg-white shadow-card">
           <EmptyState icon={Users} titulo={filtroActivo === 'pendientes' ? 'No falta nada en este período' : 'Nadie coincide'}>
             {filtroActivo === 'pendientes'
               ? 'Los cinco pasos están resueltos para todo el equipo en el rango elegido.'
@@ -152,7 +152,7 @@ export function ListaColaboradores({
           </EmptyState>
         </div>
       ) : (
-        <ul className="divide-y divide-line/60 overflow-hidden rounded-lg border border-line bg-white shadow-card">
+        <ul className="divide-y divide-line/60 overflow-hidden rounded-r-medio border border-line bg-white shadow-card">
           {visibles.map(({ c, e, pasos, corte }, i) => (
             <li key={c.id} className="animate-rise" style={{ animationDelay: `${Math.min(i, 10) * 30}ms` }}>
               <Link
@@ -162,13 +162,13 @@ export function ListaColaboradores({
                 // clic). Mismo patrón que ya usa el hilo completo de Resumen (rutaSeccion + la
                 // sección del paso), sólo que acá decide el destino de toda la fila.
                 href={corte ? rutaSeccion(c.id, corte.seccion, query) : `/personal/${c.id}?${query}`}
-                className="group grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 outline-none transition-colors duration-150 hover:bg-paper/70 focus-visible:bg-paper/70 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-gold/60 active:bg-line/50 active:duration-75 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
+                className="anillo group grid grid-cols-[auto_1fr_auto] items-center gap-x-3 gap-y-2 px-4 py-3 transition-colors duration-150 hover:bg-paper/70 focus-visible:bg-paper/70 active:bg-line/50 active:duration-75 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]"
               >
                 <Avatar nombre={c.nombre} iniciales={c.iniciales} />
 
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-navy">{c.nombre}</p>
-                  <p className="truncate text-xs text-muted">
+                  <p className="truncate text-cuerpo font-semibold text-navy">{c.nombre}</p>
+                  <p className="truncate text-apoyo text-muted">
                     {ROL_LABEL[c.rol as Rol] ?? c.rol}
                     {c.sedeCod ? ` · ${c.sedeCod}` : ''}
                     {/* Se dice en la fila y no sólo en el filtro: el expediente de una persona
@@ -182,7 +182,7 @@ export function ListaColaboradores({
                   <HiloPago pasos={pasos} compacto />
                   <span
                     className={cn(
-                      'text-xs',
+                      'text-apoyo',
                       corte ? 'font-medium text-aviso-deep' : 'text-exito-deep',
                     )}
                   >
@@ -194,7 +194,7 @@ export function ListaColaboradores({
                   <span className="block tabular-nums text-base font-semibold text-navy">
                     {e.nota != null ? e.nota.toFixed(2) : '—'}
                   </span>
-                  <span className="block text-[11px] text-muted">nota /20</span>
+                  <span className="block text-micro text-muted">nota /20</span>
                 </div>
 
                 {/* La flecha se acerca al pasar: dice "esto lleva a algún lado" sin ocupar texto.

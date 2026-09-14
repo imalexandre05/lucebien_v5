@@ -13,17 +13,17 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         <div aria-hidden className="h-0.5 bg-gradient-to-r from-gold via-gold/50 to-line" />
         <CardContent className="flex flex-col items-center gap-3 py-10 text-center">
           <AlertTriangle className="h-10 w-10 text-gold" strokeWidth={1.25} aria-hidden />
-          <h1 className="text-2xl font-semibold text-navy">Algo salió mal</h1>
-          <p className="max-w-sm text-sm leading-relaxed text-muted">
+          <h1 className="text-titulo font-display font-bold text-navy">Algo salió mal</h1>
+          <p className="max-w-sm text-cuerpo leading-relaxed text-muted">
             No pudimos cargar esta pantalla. Puedes reintentar; si el problema continúa, avisa al
             administrador.
           </p>
           {error?.message && (
             <details className="mt-1 w-full max-w-sm text-left">
-              <summary className="cursor-pointer text-xs text-muted transition-colors duration-150 hover:text-navy">
+              <summary className="cursor-pointer text-apoyo text-muted transition-colors duration-150 hover:text-navy">
                 Detalle técnico
               </summary>
-              <pre className="mt-2 overflow-x-auto rounded-md bg-paper px-3 py-2 tabular-nums text-[11px] leading-relaxed text-ink">
+              <pre className="mt-2 overflow-x-auto rounded-r-chico bg-paper px-3 py-2 tabular-nums text-micro leading-relaxed text-ink">
                 {error.message}
               </pre>
             </details>
@@ -32,7 +32,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
             <Button onClick={reset}>Reintentar</Button>
             <a
               href="/"
-              className="text-sm font-medium text-navy transition-colors duration-150 hover:text-gold"
+              className="text-cuerpo font-medium text-navy transition-colors duration-150 hover:text-gold"
             >
               Ir al dashboard
             </a>

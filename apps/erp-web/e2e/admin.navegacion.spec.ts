@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { RUTAS_INTERNO, RUTAS_ADMIN, RUTAS_COMERCIAL, SECCIONES_PERSONA } from './rutas';
+import { RUTAS_INTERNO, RUTAS_ADMIN, RUTAS_COMERCIAL, SECCIONES_PERSONA, idDePersonaReal } from './rutas';
 import { pasarReauth } from './sesiones';
 
 /**
@@ -72,16 +72,9 @@ test.describe('las rutas del módulo comercial siguen sin reventar', () => {
 
 test('la ficha de una persona abre sus ocho secciones', async ({ page }) => {
   await page.goto('/personal');
+  await page.waitForLoadState('domcontentloaded');
 
-  // El id sale de un enlace real de la lista: escrito a mano se pudre en cuanto cambia la base.
-  // Se descarta /personal/nuevo: es un enlace a /personal/ pero no es una persona.
-  const enlace = page.locator('a[href^="/personal/"]:not([href="/personal/nuevo"])').first();
-  await expect(enlace, 'la lista de personal debería ofrecer al menos una persona').toBeVisible({
-    timeout: 30_000,
-  });
-  const href = (await enlace.getAttribute('href')) ?? '';
-  const id = href.split('/')[2];
-  expect(id, 'no se pudo resolver el id de una persona desde la lista').toBeTruthy();
+  const id = await idDePersonaReal(page);
 
   for (const seccion of SECCIONES_PERSONA) {
     await abrir(page, `/personal/${id}${seccion}`);

@@ -177,6 +177,91 @@ revisar "campo" "Diseno -- el estilo de campo sale de campoCls" \
   "Usa campoCls de components/ui/form, con cn() para lo que de verdad cambie." \
   "$hits_campo"
 
+# ── Segunda pasada visual (docs/superpowers/specs/2026-09-06-sistema-visual-sci-lb-design.md,
+#    sección 9): siete reglas nuevas, las siete con línea base congelada. Las 72 pantallas usan
+#    `text-sm`/`rounded-lg` en todas partes — sin línea base el guard queda en rojo permanente
+#    el primer día y alguien lo apaga, y entonces no protege nada. Con línea base, la deuda
+#    conocida se tolera y NO PUEDE CRECER, y cada pantalla que se migra se descuenta del
+#    baseline — el mismo mecanismo que ya usa la regla `campo` de arriba.
+
+# -- Tipografia: los nueve tokens con nombre, no la escala de Tailwind -----------------------
+hits_tipografia=$(
+  { grep -rnE "(^|[^a-zA-Z0-9-])text-(xs|sm|base|lg|xl|2xl|3xl)([^a-zA-Z0-9-]|$)" \
+      apps/erp-web/app apps/erp-web/components --include="*.tsx" 2>/dev/null;
+    grep -rn "text-\[" \
+      apps/erp-web/app apps/erp-web/components --include="*.tsx" 2>/dev/null; } \
+    | sin_comentarios | sort -u || true
+)
+revisar "tipografia" "Diseno -- tipografia sale de los nueve tokens con nombre" \
+  "Usa text-cifra/titulo/seccion/sub/cuerpo/dato/apoyo/rotulo/micro (spec sección 3.4)." \
+  "$hits_tipografia"
+
+# -- Radio: tres tamaños más la pastilla, no rounded-md/lg/xl/full de Tailwind ----------------
+hits_radio=$(grep -rnE "(^|[^a-zA-Z0-9-])rounded(-[a-zA-Z0-9]+)?" \
+  apps/erp-web/app apps/erp-web/components --include="*.tsx" 2>/dev/null \
+  | grep -vE "rounded-r-(chico|medio|grande|pastilla)" | sin_comentarios || true)
+revisar "radio" "Diseno -- radio sale de r-chico/r-medio/r-grande/r-pastilla" \
+  "Usa rounded-r-chico (8px) / r-medio (14px) / r-grande (22px) / r-pastilla (999px)." \
+  "$hits_radio"
+
+# -- Elevacion: elev-0..3, con sombra teñida del acento, no la escala plana de Tailwind -------
+hits_elevacion=$(grep -rnE "(^|[^a-zA-Z0-9-])shadow(-(sm|md|lg|xl|2xl|inner|none))?([^a-zA-Z0-9-]|$)" \
+  apps/erp-web/app apps/erp-web/components --include="*.tsx" 2>/dev/null | sin_comentarios || true)
+revisar "elevacion" "Diseno -- elevacion sale de elev-0/1/2/3" \
+  "Usa shadow-elev-0..3. shadow-card/shadow-lift siguen vivas (27 archivos), esas no son violación." \
+  "$hits_elevacion"
+
+# -- Foco: un solo anillo, dorado siempre -----------------------------------------------------
+hits_foco=$(grep -rnE "focus-visible:ring-|focus:ring-" \
+  apps/erp-web/app apps/erp-web/components --include="*.tsx" 2>/dev/null \
+  | grep -v "anillo" | sin_comentarios || true)
+revisar "foco" "Diseno -- foco sale de la clase .anillo" \
+  "Agregá la clase 'anillo' y sacá el ring-* escrito a mano (globals.css la define)." \
+  "$hits_foco"
+
+# -- Carga: page.tsx asíncrona sin loading.tsx hermano ----------------------------------------
+# Proxy mecánico de "consulta datos": la página exporta una función async por defecto. No
+# detecta el caso raro de una página async que NO consulta nada — ahí el arreglo es agregar un
+# loading.tsx igual (barato) o bajar la línea del baseline con una nota.
+sin_loading=""
+while IFS= read -r pagina; do
+  [ -z "$pagina" ] && continue
+  dir=$(dirname "$pagina")
+  if grep -q "^export default async function" "$pagina" 2>/dev/null && [ ! -f "$dir/loading.tsx" ]; then
+    sin_loading="${sin_loading}${pagina}:0: pagina async sin loading.tsx hermano"$'\n'
+  fi
+done <<< "$(find apps/erp-web/app -name "page.tsx" 2>/dev/null | sort)"
+revisar "carga" "Diseno -- toda ruta con datos tiene su loading.tsx" \
+  "Agregá loading.tsx junto al page.tsx (SkeletonPagina si no tiene silueta propia)." \
+  "$(printf '%s' "$sin_loading")"
+
+# -- Movimiento: el catálogo cerrado de globals.css/tailwind.config.ts, nada suelto -----------
+# Tres formas de romperla: un @keyframes fuera de los dos archivos de tokens, una duración
+# literal en vez del token (--dur-*), o la curva de rebote dentro de un modal/drawer -- un
+# modal que rebota al abrirse convierte una decisión irreversible en un juguete.
+hits_keyframes=$(grep -rn "@keyframes" apps/erp-web \
+  --include="*.tsx" --include="*.ts" --include="*.css" --exclude-dir=.next --exclude-dir=node_modules 2>/dev/null \
+  | grep -v "app/globals.css" | sin_comentarios || true)
+hits_duracion=$(grep -rnE "animation(Duration)?: *['\"]?[0-9]+m?s|transition-duration: *[0-9]+m?s" \
+  apps/erp-web/app apps/erp-web/components --include="*.tsx" 2>/dev/null | sin_comentarios || true)
+hits_rebote_modal=$(grep -rln "curva-rebote\|ease-rebote" apps/erp-web/components/ui/modal.tsx 2>/dev/null \
+  | sed 's/$/:0: usa la curva de rebote dentro de un modal -- nunca, spec §3.9/' || true)
+hits_movimiento=$(printf '%s\n%s\n%s' "$hits_keyframes" "$hits_duracion" "$hits_rebote_modal" | grep -v "^$" || true)
+revisar "movimiento" "Diseno -- movimiento sale del catalogo de globals.css/tailwind.config.ts" \
+  "Registrá la pieza como keyframe/animation en los dos archivos de tokens, no la escribas suelta." \
+  "$hits_movimiento"
+
+# -- Acento: el grupo de módulo sale de lib/modulo-grupo.ts, nunca a mano en una pantalla -----
+# Sólo mira las nueve clases `m-{grupo}` -- NO las familias cat-* sueltas, que siguen teniendo
+# usos legítimos y ya sancionados fuera del acento de módulo (el color por persona de Avatar,
+# las zonas del editor de layout). Prohibir esas rompería trabajo que la spec nunca quiso tocar.
+hits_acento=$(grep -rnE "(^|[^a-zA-Z0-9-])m-(inicio|sueldos|pipeline|solicitudes|inventario|lavanderia|personas|desempeno|sistema)([^a-zA-Z0-9-]|$)" \
+  apps/erp-web/app apps/erp-web/components --include="*.tsx" 2>/dev/null \
+  | grep -v "components/shell/modulo-acento.tsx" | sin_comentarios || true)
+revisar "acento" "Diseno -- el acento de modulo sale de ModuloAcento, no a mano" \
+  "Agregá la ruta a lib/modulo-grupo.ts. El grupo lo pone ModuloAcento una sola vez, en el shell." \
+  "$hits_acento"
+
 # ── Números de migración únicos, MIRANDO TODAS LAS RAMAS ───────────────────────────────────
 # El número es la identidad de una migración. Mirar sólo el directorio de trabajo no alcanza: dos
 # ramas paralelas ven la misma "última" y las dos escriben la siguiente. El choque no aparece

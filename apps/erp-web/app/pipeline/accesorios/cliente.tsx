@@ -64,7 +64,7 @@ export function AccesoriosCliente({
     <div className="space-y-5">
       <Link
         href="/pipeline"
-        className="inline-flex items-center gap-1.5 text-sm text-muted transition-colors duration-150 hover:text-navy"
+        className="inline-flex items-center gap-1.5 text-cuerpo text-muted transition-colors duration-150 hover:text-navy"
       >
         <ArrowLeft className="h-4 w-4" strokeWidth={2} /> Volver al kanban
       </Link>
@@ -79,8 +79,8 @@ export function AccesoriosCliente({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <label className="flex items-center gap-2 text-sm text-navy">
-              <span className="w-24 shrink-0 text-xs font-medium text-muted">Sede destino</span>
+            <label className="flex items-center gap-2 text-cuerpo text-navy">
+              <span className="w-24 shrink-0 text-apoyo font-medium text-muted">Sede destino</span>
               <select value={sede} onChange={(e) => setSede(e.target.value)} className={cn(fieldCls, 'flex-1')}>
                 {tiendas.map((t) => (
                   <option key={t}>{t}</option>
@@ -127,7 +127,7 @@ export function AccesoriosCliente({
               <button
                 type="button"
                 onClick={() => setFilas((p) => [...p, { tipo: '', cantidad: 1 }])}
-                className="inline-flex items-center gap-1 rounded-md border border-line px-2.5 py-1.5 text-xs text-navy transition-colors hover:border-gold"
+                className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors hover:border-gold"
               >
                 <Plus className="h-3.5 w-3.5" strokeWidth={2} /> Agregar accesorio
               </button>
@@ -135,7 +135,7 @@ export function AccesoriosCliente({
 
             <input value={obs} onChange={(e) => setObs(e.target.value)} placeholder="Observación (opcional)" className={cn(fieldCls, 'w-full')} />
 
-            {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+            {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
 
             <Button type="button" onClick={enviar} pending={pending} className="w-full justify-center py-2.5">
               {!pending && <Send className="h-4 w-4" strokeWidth={2} />}
@@ -150,7 +150,7 @@ export function AccesoriosCliente({
             <CardHeader>
               <CardTitle>
                 Por validar en tienda{' '}
-                <span className="ml-1 rounded-full bg-navy/5 px-2 py-0.5 tabular-nums text-xs text-navy">
+                <span className="ml-1 rounded-r-pastilla bg-navy/5 px-2 py-0.5 tabular-nums text-dato text-navy">
                   {pendientes.length}
                 </span>
               </CardTitle>
@@ -174,25 +174,25 @@ export function AccesoriosCliente({
                   <TBody>
                     {pendientes.map((e) => (
                       <TR key={e.id}>
-                        <TD className="pl-5 tabular-nums text-xs text-muted">{fecha(e.fecha)}</TD>
+                        <TD className="pl-5 tabular-nums text-dato text-muted">{fecha(e.fecha)}</TD>
                         <TD>
-                          <span className="tabular-nums text-sm font-semibold text-navy">{e.sedeDestinoCod}</span>
+                          <span className="tabular-nums text-dato font-semibold text-navy">{e.sedeDestinoCod}</span>
                           {e.sedeDestinoCod === miSede && (
                             <Badge tone="gold" className="ml-1.5">
                               tu sede
                             </Badge>
                           )}
                         </TD>
-                        <TD className="text-sm text-ink">
+                        <TD className="text-cuerpo text-ink">
                           {e.items.map((i) => `${i.cantidad}× ${i.tipo}`).join(' · ') || '—'}
-                          {Boolean(e.obs) && <span className="block text-xs text-muted">{e.obs}</span>}
+                          {Boolean(e.obs) && <span className="block text-apoyo text-muted">{e.obs}</span>}
                         </TD>
                         <TD className="pr-5 text-right">
                           <button
                             type="button"
                             disabled={pending}
                             onClick={() => confirmar(e.id)}
-                            className="inline-flex items-center gap-1 rounded-md bg-exito px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
+                            className="inline-flex items-center gap-1 rounded-r-pastilla bg-exito px-2.5 py-1.5 text-apoyo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={3} /> Confirmar recibido
                           </button>
@@ -223,10 +223,10 @@ export function AccesoriosCliente({
                   <TBody>
                     {validados.map((e) => (
                       <TR key={e.id}>
-                        <TD className="pl-5 tabular-nums text-xs text-muted">{fecha(e.fecha)}</TD>
-                        <TD className="tabular-nums text-sm text-navy">{e.sedeDestinoCod}</TD>
-                        <TD className="text-sm text-ink">{e.items.map((i) => `${i.cantidad}× ${i.tipo}`).join(' · ')}</TD>
-                        <TD className="pr-5 tabular-nums text-xs text-exito-deep">{fecha(e.fechaValidado)}</TD>
+                        <TD className="pl-5 tabular-nums text-dato text-muted">{fecha(e.fecha)}</TD>
+                        <TD className="tabular-nums text-dato text-navy">{e.sedeDestinoCod}</TD>
+                        <TD className="text-cuerpo text-ink">{e.items.map((i) => `${i.cantidad}× ${i.tipo}`).join(' · ')}</TD>
+                        <TD className="pr-5 tabular-nums text-dato text-exito-deep">{fecha(e.fechaValidado)}</TD>
                       </TR>
                     ))}
                   </TBody>

@@ -44,10 +44,10 @@ export default async function AuditoriaPage() {
             <CardContent className="flex items-start gap-3 py-6">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-aviso" strokeWidth={1.75} />
               <div>
-                <p className="text-sm font-semibold text-navy">Falta aplicar la migración 0058</p>
-                <p className="mt-1 text-sm text-muted">
+                <p className="text-cuerpo font-semibold text-navy">Falta aplicar la migración 0058</p>
+                <p className="mt-1 text-cuerpo text-muted">
                   Este módulo todavía no tiene su tabla ni sus triggers en la base de datos. Aplica{' '}
-                  <code className="rounded bg-navy/5 px-1.5 py-0.5 tabular-nums text-xs">
+                  <code className="rounded-r-chico bg-navy/5 px-1.5 py-0.5 tabular-nums text-dato">
                     packages/db/migrations/0058_config_tipado_auditoria.sql
                   </code>{' '}
                   contra el proyecto Supabase y recarga esta página.

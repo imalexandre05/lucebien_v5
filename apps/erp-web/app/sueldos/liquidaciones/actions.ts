@@ -7,9 +7,11 @@ import {
   anularLiquidacion,
   calcularPreview,
   cerrarLiquidacion,
+  corregirLiquidacion,
   crearBorrador,
   eliminarBorrador,
   obtenerLiquidacion,
+  CorreccionParcialError,
   SueldoRpcError,
   type EntradaConContexto,
   type LiquidacionDetalle,
@@ -108,6 +110,60 @@ export async function accionAnular(id: string, motivo: string): Promise<Resultad
     revalidatePath('/sueldos/liquidaciones');
     return { ok: true };
   } catch (e) {
+    return comoResultado(e);
+  }
+}
+
+/**
+ * El resultado de «Corregir esta liquidación» (spec 2026-08-25-reunion-admin-hoja-de-ruta.md §3.1).
+ * No son dos desenlaces sino tres: además de "salió bien" y "salió mal", existe "se anuló pero no
+ * se pudo crear el borrador nuevo" — ahí la pantalla no puede tratarlo como un error cualquiera,
+ * porque a diferencia de cualquier otro error de este archivo, algo sí quedó escrito en la base.
+ * `parcial: true` es la señal para que `cliente.tsx` lo muestre distinto y arme el camino de vuelta.
+ */
+export type ResultadoCorregir = {
+  ok: boolean;
+  error?: string;
+  codigo?: string;
+  parcial?: boolean;
+  acuerdoId?: string;
+  periodoDesde?: string;
+  periodoHasta?: string;
+  nuevoBorradorId?: string;
+};
+
+/**
+ * Anula la liquidación `id` (con motivo) y, en el mismo paso, crea el borrador de reemplazo para
+ * el mismo acuerdo y el mismo período — recalculado contra los datos de hoy. No abre un camino
+ * nuevo: es `anularLiquidacion()` + `crearBorrador()` tal como ya existen, orquestados por
+ * `corregirLiquidacion()`.
+ *
+ * Si la anulación corre y el borrador nuevo no se puede crear, esta acción no lo esconde detrás de
+ * un mensaje genérico: devuelve `parcial: true` con el acuerdo y el período exactos, porque la
+ * anulación ya quedó firme —no hay forma de deshacerla— y el administrador tiene que saberlo.
+ */
+export async function accionCorregir(id: string, motivo: string): Promise<ResultadoCorregir> {
+  try {
+    if (!(await esAdmin())) {
+      return { ok: false, error: 'Sólo el administrador o el dueño corrigen una liquidación.' };
+    }
+    const { nuevoBorradorId } = await corregirLiquidacion(id, motivo);
+    revalidatePath('/sueldos/liquidaciones');
+    return { ok: true, nuevoBorradorId };
+  } catch (e) {
+    if (e instanceof CorreccionParcialError) {
+      // La anulación sí escribió en la base: hay que revalidar para que se vea en el acto, aunque
+      // el borrador de reemplazo no se haya podido crear.
+      revalidatePath('/sueldos/liquidaciones');
+      return {
+        ok: false,
+        parcial: true,
+        error: e.message,
+        acuerdoId: e.acuerdoId,
+        periodoDesde: e.periodoDesde,
+        periodoHasta: e.periodoHasta,
+      };
+    }
     return comoResultado(e);
   }
 }

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Award, CalendarCheck, Coins, FileSignature, Plus, ShoppingBag, Wallet, type LucideIcon } from 'lucide-react';
+import { Award, BarChart3, CalendarCheck, Coins, FileSignature, Plus, ShoppingBag, Wallet, type LucideIcon } from 'lucide-react';
 import { puede, type MatrizPermisos } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
@@ -50,6 +50,7 @@ const HERRAMIENTAS: Herramienta[] = [
   { href: '/sueldos/liquidaciones', icono: Coins, label: 'Liquidar el periodo', gate: 'admin' },
   { href: '/evaluaciones', icono: Award, label: 'Evaluaciones del mes', gate: 'evaluaciones' },
   { href: '/sueldos/acuerdos', icono: FileSignature, label: 'Contratos', gate: 'admin' },
+  { href: '/personal/dashboard', icono: BarChart3, label: 'Dashboard de personal', gate: 'admin' },
 ];
 
 export default async function ColaboradoresPage({
@@ -122,7 +123,7 @@ export default async function ColaboradoresPage({
 
       {herramientas.length > 0 && (
         <div className="mb-5">
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
+          <p className="mb-2 text-rotulo font-semibold uppercase text-muted">
             Herramientas del período
           </p>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -132,10 +133,10 @@ export default async function ColaboradoresPage({
                 <Link key={h.href} href={h.href} className="animate-rise" style={{ animationDelay: `${i * 40}ms` }}>
                   <Card interactive className="h-full">
                     <CardContent className="flex flex-col items-center gap-2 p-3 text-center">
-                      <span className="rounded-lg bg-navy/5 p-2 text-navy">
+                      <span className="rounded-r-chico bg-navy/5 p-2 text-navy">
                         <Icono className="h-4 w-4" aria-hidden="true" />
                       </span>
-                      <span className="text-xs font-medium text-navy">{h.label}</span>
+                      <span className="text-apoyo font-medium text-navy">{h.label}</span>
                     </CardContent>
                   </Card>
                 </Link>

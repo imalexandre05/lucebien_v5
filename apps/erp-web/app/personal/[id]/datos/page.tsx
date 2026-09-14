@@ -7,6 +7,7 @@ import { listarSedes } from '../../../../lib/sedes-repo';
 import { listarRoles } from '../../../../lib/roles-repo';
 import { leerMatrizPermisos } from '../../../../lib/permisos-repo';
 import { listarAcuerdos } from '../../../../lib/sueldos-repo';
+import { listarDocumentos } from '../../../../lib/documentos-repo';
 import { Card } from '../../../../components/ui/card';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { SeccionHeader } from '../../../../components/colaboradores/seccion-header';
@@ -56,7 +57,7 @@ export default async function DatosColaboradorPage({ params }: { params: { id: s
 
   // lib/empleados-repo.ts sólo expone la lista completa (listarEmpleadosAdmin) — no hay un fetch
   // por id, y con 18 personas no vale la pena una RPC nueva sólo para esto: se filtra acá.
-  const [empleados, sedes, rolesDerivados, matrizPermisos, acuerdos] = await Promise.all([
+  const [empleados, sedes, rolesDerivados, matrizPermisos, acuerdos, documentos] = await Promise.all([
     listarEmpleadosAdmin(),
     listarSedes().catch(() => []),
     // roles derivados (migración 0050): si aún no se aplicó, el picker sólo muestra los 7 base.
@@ -65,6 +66,8 @@ export default async function DatosColaboradorPage({ params }: { params: { id: s
     // Igual de defensivo que sedes/roles: el trabajo PRINCIPAL de esta pantalla es identidad y
     // acceso, no sueldos — un tropiezo en sueldo_acuerdos no debería tumbar la ficha entera.
     listarAcuerdos(params.id).catch(() => []),
+    // Ídem (C-3, migración 0105): sin documentos no debería tumbar la ficha entera.
+    listarDocumentos(params.id).catch(() => []),
   ]);
   const persona = empleados.find((e) => e.id === params.id);
   if (!persona) notFound();
@@ -81,6 +84,7 @@ export default async function DatosColaboradorPage({ params }: { params: { id: s
         rolesDerivados={rolesDerivados}
         matrizPermisos={matrizPermisos}
         sueldoVigente={sueldoVigente}
+        documentosIniciales={documentos}
       />
     </div>
   );

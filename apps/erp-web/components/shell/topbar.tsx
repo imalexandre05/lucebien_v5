@@ -64,9 +64,15 @@ export async function Topbar() {
     }
   }
 
+  // z-30 y no z-10: `backdrop-blur` hace del header un CONTEXTO DE APILAMIENTO propio, así que el
+  // z-40 del panel de SedePopover no sale hacia afuera — hacia el resto de la página el header
+  // entero vale lo que diga ESTE z-index. Con z-10 empataba con la fila de tiles del dashboard
+  // (`relative z-10` en app/page.tsx, puesta para solapar la banda de módulo) y, al empatar,
+  // ganaba la que viene después en el DOM: el desplegable de sede aparecía cortado justo donde
+  // empezaban las tarjetas. Modales y drawer (z-50) siguen por encima.
   return (
-    <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-line bg-paper/85 px-4 backdrop-blur sm:px-7 print:hidden">
-      <div className="flex items-center gap-2.5 text-sm text-muted">
+    <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-line bg-paper/85 px-4 backdrop-blur sm:px-7 print:hidden">
+      <div className="flex items-center gap-2.5 text-cuerpo text-muted">
         {rol && <MobileNav rol={rol} matriz={matriz} rolCod={rolCod} perfilSede={perfilSede} />}
         <LogoMark size="sm" className="lg:hidden" />
         <span className="hidden md:inline">Confecciones Aliaga · Huancayo</span>
@@ -77,7 +83,7 @@ export async function Topbar() {
             href="/buscar"
             title="Buscar un terno (código, tipo, talla, color)"
             aria-label="Buscar"
-            className="flex h-8 w-8 items-center justify-center rounded-full text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-[0.97]"
+            className="anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
           >
             <Search className="h-4 w-4" strokeWidth={1.75} />
           </Link>
@@ -85,7 +91,7 @@ export async function Topbar() {
         {sesion && <NotificacionesBell notificaciones={notificaciones} />}
         {sesion && <SedePopover sedeActual={sede} sedes={sedesDisponibles} />}
         {rol && (
-          <span className="hidden rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-xs font-medium text-gold-deep md:inline">
+          <span className="hidden rounded-r-pastilla border border-gold/40 bg-gold/10 px-3 py-1 text-apoyo font-medium text-gold-deep md:inline">
             {ROL_LABEL[rol] ?? rol}
           </span>
         )}
@@ -95,7 +101,7 @@ export async function Topbar() {
             title="Mi desempeño"
             aria-label="Mi desempeño"
             className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold outline-none transition-transform duration-150 hover-fine:scale-105 focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-95',
+              'anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-apoyo font-semibold transition-transform duration-150 hover-fine:scale-105 active:scale-95',
               tonoAvatar(nombre),
             )}
           >
@@ -107,7 +113,7 @@ export async function Topbar() {
             <button
               title="Cerrar sesión"
               aria-label="Cerrar sesión"
-              className="flex h-8 w-8 items-center justify-center rounded-full text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-[0.97]"
+              className="anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
             >
               <LogOut className="h-4 w-4" strokeWidth={1.75} />
             </button>

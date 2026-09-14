@@ -22,9 +22,9 @@ export function SeccionHeader({
   return (
     <div className="flex flex-wrap items-start justify-between gap-2 pt-1">
       <div>
-        <h2 className="text-base font-semibold text-navy">{s.label}</h2>
-        <p className="text-xs text-muted">{s.descripcion}</p>
-        {nota && <p className="mt-1 max-w-2xl text-xs leading-relaxed text-muted">{nota}</p>}
+        <h2 className="text-sub font-display font-semibold text-navy">{s.label}</h2>
+        <p className="text-apoyo text-muted">{s.descripcion}</p>
+        {nota && <p className="mt-1 max-w-2xl text-apoyo leading-relaxed text-muted">{nota}</p>}
       </div>
       {accion}
     </div>

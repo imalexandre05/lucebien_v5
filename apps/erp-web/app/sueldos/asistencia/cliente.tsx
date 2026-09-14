@@ -252,12 +252,12 @@ export function AsistenciaCliente({
               ))}
             </Select>
           </div>
-          <div className="text-sm">
-            <p className="text-xs text-muted">Días contratados</p>
+          <div className="text-cuerpo">
+            <p className="text-apoyo text-muted">Días contratados</p>
             <p className="tabular-nums text-navy">{contratados.length}</p>
           </div>
-          <div className="text-sm">
-            <p className="text-xs text-muted">Sin declarar</p>
+          <div className="text-cuerpo">
+            <p className="text-apoyo text-muted">Sin declarar</p>
             <p className="tabular-nums text-navy">
               {sinDeclarar.length === 0 ? (
                 <Badge tone="green">ninguno</Badge>
@@ -275,7 +275,7 @@ export function AsistenciaCliente({
       </Card>
 
       {sinDeclarar.length > 0 && (
-        <p className="mb-4 flex gap-2 rounded-md bg-aviso/10 px-3 py-2 text-sm text-aviso-deep">
+        <p className="mb-4 flex gap-2 rounded-r-chico bg-aviso/10 px-3 py-2 text-cuerpo text-aviso-deep">
           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
           <span>
             Quedan {sinDeclarar.length} día(s) contratados sin declarar. La liquidación no se va a
@@ -285,12 +285,12 @@ export function AsistenciaCliente({
         </p>
       )}
 
-      {error && <p className="mb-4 rounded-md bg-error/10 px-3 py-2 text-sm text-error-deep">{error}</p>}
+      {error && <p className="mb-4 rounded-r-chico bg-error/10 px-3 py-2 text-cuerpo text-error-deep">{error}</p>}
 
       <Card>
         <CardHeader>
           <CardTitle>{acuerdo.empleadoNombre ?? 'Sin nombre'}</CardTitle>
-          <span className="text-sm text-muted">
+          <span className="text-cuerpo text-muted">
             {acuerdo.fechaInicio} → {acuerdo.fechaFin}
           </span>
         </CardHeader>
@@ -320,17 +320,17 @@ export function AsistenciaCliente({
                   <TR key={d.fecha} className={contratado ? undefined : 'opacity-60'}>
                     <TD className="whitespace-nowrap">
                       <span className="font-medium text-navy">{d.fecha}</span>
-                      <span className="ml-2 text-xs text-muted">{DIAS_CORTO[d.iso - 1]}</span>
+                      <span className="ml-2 text-apoyo text-muted">{DIAS_CORTO[d.iso - 1]}</span>
                       {b.fuente && b.fuente !== 'manual' && (
                         <Badge tone="navy" className="ml-2">
                           {b.fuente}
                         </Badge>
                       )}
                       {d.otras > 0 && (
-                        <span className="ml-2 text-xs text-muted">+{d.otras} fila(s) del mismo día</span>
+                        <span className="ml-2 text-apoyo text-muted">+{d.otras} fila(s) del mismo día</span>
                       )}
                     </TD>
-                    <TD className="whitespace-nowrap text-sm text-muted">
+                    <TD className="whitespace-nowrap text-cuerpo text-muted">
                       {contratado ? `${d.entradaContrato} · ${d.horasContratadas} h` : 'fuera de contrato'}
                       {paraRevisar && (
                         <Badge tone="amber" className="ml-2">
@@ -396,7 +396,7 @@ export function AsistenciaCliente({
                     </TD>
                     <TD>
                       <div className="flex flex-col gap-1">
-                        <label className="flex items-center gap-1.5 text-xs">
+                        <label className="flex items-center gap-1.5 text-apoyo">
                           <input
                             type="checkbox"
                             checked={b.condicion === 'falta' ? b.faltaJustificada : b.tardanzaJustificada}
@@ -439,7 +439,7 @@ export function AsistenciaCliente({
         </CardContent>
       </Card>
 
-      <p className="mt-4 text-xs text-muted">
+      <p className="mt-4 text-apoyo text-muted">
         Las tardanzas no se marcan acá: las calcula la liquidación comparando la hora de entrada
         contra el horario del contrato, con la tolerancia vigente. Lo que se declara acá es qué pasó
         ese día.

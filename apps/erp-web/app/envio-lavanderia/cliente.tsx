@@ -302,10 +302,10 @@ export function EnvioLavanderiaCliente({
 
         {/* El tipo de envío es la única decisión de nivel lista, y cambia lo que muestran las
             tarjetas de abajo. Por eso va arriba de todas y no adentro de una. */}
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white px-4 py-3 shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-r-medio border border-line bg-white px-4 py-3 shadow-card">
           <div className="min-w-0">
             <LabelGrupo>Tipo de envío</LabelGrupo>
-            <p className="text-xs text-muted">
+            <p className="text-apoyo text-muted">
               {tipo === 'LAV'
                 ? 'Prendas codificadas y accesorios a granel. Cada prenda elige su destino.'
                 : 'Sólo prendas codificadas, y van todas a Compostura: sin accesorios a granel.'}
@@ -355,7 +355,7 @@ export function EnvioLavanderiaCliente({
                   ariaLabel="Destino de la prenda"
                 />
                 {tipo === 'REF' && (
-                  <p className="mt-1 text-xs text-muted">
+                  <p className="mt-1 text-apoyo text-muted">
                     En un envío de refacción todas las prendas van a Compostura.
                   </p>
                 )}
@@ -402,7 +402,7 @@ export function EnvioLavanderiaCliente({
               <div className="relative">
                 <span
                   aria-hidden
-                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full border border-ink/20"
+                  className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 rounded-r-pastilla border border-ink/20"
                   style={{ background: hexColorPrenda[itemColor] ?? PUNTO_OTROS }}
                 />
                 <Select
@@ -437,7 +437,7 @@ export function EnvioLavanderiaCliente({
                   ariaLabel="Prenda sin talla"
                 />
                 <div>
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted">
+                  <span className="mb-1 block text-rotulo font-semibold uppercase text-muted">
                     Adulto
                   </span>
                   <OpcionBotones
@@ -451,7 +451,7 @@ export function EnvioLavanderiaCliente({
                   />
                 </div>
                 <div>
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-muted">
+                  <span className="mb-1 block text-rotulo font-semibold uppercase text-muted">
                     Niño
                   </span>
                   <OpcionBotones
@@ -489,22 +489,22 @@ export function EnvioLavanderiaCliente({
               >
                 <Plus className="h-4 w-4" strokeWidth={2} /> Agregar prenda
               </Button>
-              <p id="motivo-agregar" className="mt-1 text-xs text-muted">
+              <p id="motivo-agregar" className="mt-1 text-apoyo text-muted">
                 {motivoNoAgregar ?? 'También se agrega con Enter.'}
               </p>
             </div>
 
             {items.length > 0 && (
-              <ul className="divide-y divide-line rounded-md border border-line">
+              <ul className="divide-y divide-line rounded-r-chico border border-line">
                 {items.map((it, i) => (
-                  <li key={it.cod + '-' + i} className="flex flex-wrap items-center gap-2 px-3 py-2 text-sm">
+                  <li key={it.cod + '-' + i} className="flex flex-wrap items-center gap-2 px-3 py-2 text-cuerpo">
                     <span className="tabular-nums font-medium text-navy">{it.cod}</span>
                     <span className="text-muted">
                       {it.tipo} · {it.color}
                       {it.talla ? ' · ' + it.talla : ''}
                     </span>
                     {it.destino === 'compostura' && <Badge tone="red">Compostura</Badge>}
-                    {it.obs && <span className="w-full text-xs text-muted sm:w-auto">«{it.obs}»</span>}
+                    {it.obs && <span className="w-full text-apoyo text-muted sm:w-auto">«{it.obs}»</span>}
                     <button
                       type="button"
                       onClick={() => quitarItem(i)}
@@ -538,14 +538,14 @@ export function EnvioLavanderiaCliente({
                       // UN ACCESORIO CONTADO SE ENCIENDE. Seis casillas idénticas en cero se leen
                       // todas igual, y quien carga no tiene cómo ver de un vistazo qué ya contó y
                       // qué no. El que tiene al menos uno se marca en oro.
-                      'flex items-center justify-between rounded-md border px-3 py-2 transition-colors duration-150',
+                      'flex items-center justify-between rounded-r-chico border px-3 py-2 transition-colors duration-150',
                       generales[a.key] > 0 ? 'border-gold bg-gold/10' : 'border-line',
                     )}
                   >
-                    <span className={cn('text-sm text-navy', generales[a.key] > 0 && 'font-semibold')}>
+                    <span className={cn('text-cuerpo text-navy', generales[a.key] > 0 && 'font-semibold')}>
                       {a.label}
                     </span>
-                    <div className="inline-flex items-center gap-0.5 rounded-md border border-line">
+                    <div className="inline-flex items-center gap-0.5 rounded-r-chico border border-line">
                       <button
                         type="button"
                         onClick={() => cambiarGeneral(a.key, -1)}
@@ -556,7 +556,7 @@ export function EnvioLavanderiaCliente({
                       </button>
                       <span
                         className={cn(
-                          'w-8 text-center text-sm font-semibold tabular-nums',
+                          'w-8 text-center text-dato font-semibold tabular-nums',
                           generales[a.key] > 0 ? 'text-gold-deep' : 'text-muted',
                         )}
                       >
@@ -604,19 +604,19 @@ export function EnvioLavanderiaCliente({
           * a subir para seguir. Pegada, el total de lo que se va a mandar y el botón están siempre a
           * la vista — que es además la única forma de darse cuenta de que uno se olvidó de los
           * accesorios. */}
-        <div className="sticky bottom-0 z-20 space-y-2 rounded-lg border border-line bg-white/95 px-4 py-3 shadow-lift backdrop-blur">
-          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+        <div className="sticky bottom-0 z-20 space-y-2 rounded-r-grande border border-line bg-superficie/95 px-4 py-3 shadow-elev-2 backdrop-blur">
+          {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
           {/* El acierto también se anuncia. Antes era un párrafo mudo: con lector de pantalla la
               lista se enviaba y no pasaba nada audible, que es indistinguible de que fallara. */}
-          {ok && <Aviso tono="exito" className="text-sm">{ok}</Aviso>}
+          {ok && <Aviso tono="exito" className="text-cuerpo">{ok}</Aviso>}
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <span className="text-sm text-muted">
-              <span className="tabular-nums font-semibold text-navy">{items.length}</span>{' '}
+            <span className="text-apoyo">
+              <span className="text-dato font-semibold text-navy">{items.length}</span>{' '}
               {items.length === 1 ? 'prenda' : 'prendas'} en lista
               {tipo === 'LAV' && (
                 <>
                   {' · '}
-                  <span className="tabular-nums font-semibold text-navy">{totalGenerales}</span>{' '}
+                  <span className="text-dato font-semibold text-navy">{totalGenerales}</span>{' '}
                   {totalGenerales === 1 ? 'accesorio' : 'accesorios'}
                 </>
               )}
@@ -624,17 +624,18 @@ export function EnvioLavanderiaCliente({
             <div className="flex flex-col items-stretch gap-1 sm:items-end">
               <Button
                 type="button"
+                size="grande"
                 onClick={enviar}
                 disabled={!puedeEnviar}
                 pending={pending}
                 aria-describedby={motivoBloqueo ? 'motivo-envio-lav' : undefined}
-                className="justify-center py-2.5"
+                className="justify-center"
               >
                 {!pending && <Send className="h-4 w-4" strokeWidth={2} />}
                 {pending ? 'Enviando…' : tipo === 'REF' ? 'Enviar a compostura' : 'Enviar a lavandería'}
               </Button>
               {motivoBloqueo && (
-                <span id="motivo-envio-lav" className="text-xs font-medium text-aviso-deep">
+                <span id="motivo-envio-lav" className="text-micro font-medium text-aviso-deep">
                   {motivoBloqueo}
                 </span>
               )}
@@ -675,9 +676,9 @@ export function EnvioLavanderiaCliente({
                   return (
                     <Fragment key={l.id}>
                       <TR>
-                        <TD className="pl-5 tabular-nums text-xs">{l.id.slice(0, 8)}</TD>
+                        <TD className="pl-5 tabular-nums text-dato">{l.id.slice(0, 8)}</TD>
                         <TD>{l.tipo === 'LAV' ? 'General' : 'Refacción'}</TD>
-                        <TD className="tabular-nums text-xs text-muted">{l.fecha.slice(0, 10)}</TD>
+                        <TD className="tabular-nums text-dato text-muted">{l.fecha.slice(0, 10)}</TD>
                         <TD className="text-right tabular-nums">{l.items.length}</TD>
                         <TD>
                           <Badge tone={ESTADO_TONE[l.estado] ?? 'gray'}>{l.estado}</Badge>
@@ -692,7 +693,7 @@ export function EnvioLavanderiaCliente({
                             <Button
                               type="button"
                               variant="outline"
-                              className="px-3 py-1.5 text-xs"
+                              className="px-3 py-1.5 text-apoyo"
                               disabled={pending}
                               aria-expanded={abierta}
                               aria-controls={abierta ? 'revision-' + l.id : undefined}
@@ -703,7 +704,7 @@ export function EnvioLavanderiaCliente({
                             </Button>
                           )}
                           {l.estado === 'Devuelto-Observado' && (
-                            <span className="inline-flex flex-col items-end gap-0.5 text-xs text-error-deep">
+                            <span className="inline-flex flex-col items-end gap-0.5 text-apoyo text-error-deep">
                               <span className="inline-flex items-center gap-1">
                                 <AlertTriangle className="h-3.5 w-3.5" strokeWidth={2} /> Con observación
                               </span>
@@ -725,7 +726,7 @@ export function EnvioLavanderiaCliente({
                             <div className="space-y-4">
                               <div>
                                 <LabelGrupo>Cómo volvió cada prenda</LabelGrupo>
-                                <p className="text-xs text-muted">
+                                <p className="text-apoyo text-muted">
                                   Marca «Con problema» la prenda que volvió mal o que no volvió. Con una sola
                                   marcada, la lista queda como «Devuelto-Observado» y no como validada.
                                 </p>
@@ -735,16 +736,16 @@ export function EnvioLavanderiaCliente({
                                   las que quedaron de antes sí pueden estar así, y un recuadro vacío se lee
                                   como que la pantalla se rompió. */}
                               {l.items.length === 0 && (
-                                <p className="rounded-md border border-dashed border-line px-3 py-2.5 text-sm text-muted">
+                                <p className="rounded-r-chico border border-dashed border-line px-3 py-2.5 text-cuerpo text-muted">
                                   Esta lista no tiene prendas registradas: sólo se puede dar por validada.
                                 </p>
                               )}
 
-                              <ul className="divide-y divide-line rounded-md border border-line empty:hidden">
+                              <ul className="divide-y divide-line rounded-r-chico border border-line empty:hidden">
                                 {l.items.map((i) => (
                                   <li
                                     key={i.id}
-                                    className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 text-sm"
+                                    className="flex flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2.5 text-cuerpo"
                                   >
                                     <span className="tabular-nums font-medium text-navy">{i.cod}</span>
                                     <span className="text-muted">
@@ -753,7 +754,7 @@ export function EnvioLavanderiaCliente({
                                     {/* La observación con la que SALIÓ la prenda: sin ella, quien revisa no
                                         puede saber si la mancha es nueva o si ya iba así. */}
                                     {i.obs && (
-                                      <span className="w-full text-xs text-muted sm:w-auto">«{i.obs}»</span>
+                                      <span className="w-full text-apoyo text-muted sm:w-auto">«{i.obs}»</span>
                                     )}
                                     <OpcionBotones
                                       className="ml-auto"
@@ -795,7 +796,7 @@ export function EnvioLavanderiaCliente({
                               {errorRetorno && <Aviso tono="error">{errorRetorno}</Aviso>}
 
                               <div className="flex flex-wrap items-center justify-between gap-3">
-                                <span className="text-sm text-muted">
+                                <span className="text-cuerpo text-muted">
                                   {conProblema === 0
                                     ? 'Todas las prendas volvieron bien.'
                                     : conProblema === 1

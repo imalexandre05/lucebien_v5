@@ -24,7 +24,7 @@ export default async function PedidosHistorialPage() {
         title="Historial de pedidos"
         subtitle={`${pedidos.length} pedido(s) registrados`}
         action={
-          <Link href="/pedidos" className="text-sm text-muted transition-colors hover:text-navy">
+          <Link href="/pedidos" className="text-cuerpo text-muted transition-colors hover:text-navy">
             ← Pedidos
           </Link>
         }
@@ -49,7 +49,7 @@ export default async function PedidosHistorialPage() {
               {pedidos.map((p) => (
                 <TR key={p.id}>
                   <TD className="pl-5">
-                    <Link href={`/pedidos/${p.id}`} className="tabular-nums text-xs font-medium text-navy transition-colors duration-150 hover:text-gold">
+                    <Link href={`/pedidos/${p.id}`} className="tabular-nums text-dato font-medium text-navy transition-colors duration-150 hover:text-gold">
                       {p.codigo}
                     </Link>
                   </TD>
@@ -57,7 +57,7 @@ export default async function PedidosHistorialPage() {
                   <TD>
                     <Badge tone={TIPO_TONE[p.tipo]}>{TIPO_LABEL[p.tipo]}</Badge>
                   </TD>
-                  <TD className="tabular-nums text-xs">{p.detalle}</TD>
+                  <TD className="tabular-nums text-dato">{p.detalle}</TD>
                   <TD className="tabular-nums text-muted">{p.fecha}</TD>
                   <TD className="tabular-nums text-muted">{p.fechaDevolucion || p.fechaEntrega || '—'}</TD>
                   <TD className="capitalize">{p.estado}</TD>

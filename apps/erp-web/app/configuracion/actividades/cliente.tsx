@@ -77,7 +77,7 @@ function Segmento<T extends string>({
           aria-pressed={valor === o.v}
           onClick={() => onChange(o.v)}
           className={cn(
-            'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
+            'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors duration-150 active:scale-[0.97]',
             valor === o.v
               ? 'border-navy bg-navy text-paper'
               : 'border-line bg-white text-muted hover:border-gold',
@@ -239,33 +239,33 @@ export function ActividadesCliente({
 
   const fila = (a: ActividadAdmin, i: number) => (
     <TR key={a.id} className={cn(!a.activa && 'opacity-55')}>
-      <TD className="pl-5 tabular-nums text-xs text-muted">{i + 1}</TD>
+      <TD className="pl-5 tabular-nums text-dato text-muted">{i + 1}</TD>
       <TD>
         <div className="flex items-center gap-2">
-          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', a.activa ? 'bg-exito' : 'bg-error')} />
+          <span className={cn('h-1.5 w-1.5 shrink-0 rounded-r-pastilla', a.activa ? 'bg-exito' : 'bg-error')} />
           <div className="min-w-0">
-            <div className="truncate text-sm font-medium text-navy">{a.nombre}</div>
-            <div className="tabular-nums text-[10px] text-muted">{a.cod}</div>
+            <div className="truncate text-cuerpo font-medium text-navy">{a.nombre}</div>
+            <div className="tabular-nums text-micro text-muted">{a.cod}</div>
           </div>
         </div>
       </TD>
       <TD>
         <Badge tone={CAT_TONE[a.categoria] ?? 'gray'}>{CAT_LABEL[a.categoria] ?? a.categoria}</Badge>
       </TD>
-      <TD className="text-xs capitalize text-muted">{a.turno === 'ambos' ? 'ambos' : a.turno}</TD>
-      <TD className="text-right tabular-nums text-sm font-semibold text-navy">{a.peso}</TD>
-      <TD className={cn('text-right tabular-nums text-xs', a.descuento > 0 ? 'text-error' : 'text-muted')}>
+      <TD className="text-apoyo capitalize text-muted">{a.turno === 'ambos' ? 'ambos' : a.turno}</TD>
+      <TD className="text-right tabular-nums text-dato font-semibold text-navy">{a.peso}</TD>
+      <TD className={cn('text-right tabular-nums text-dato', a.descuento > 0 ? 'text-error' : 'text-muted')}>
         {a.descuento > 0 ? `-${a.descuento}` : '—'}
       </TD>
-      <TD className="text-xs text-muted">{a.tipoAct === 'obligatoria' ? frecuenciaLabel(a) : '—'}</TD>
-      <TD className="text-center tabular-nums text-xs">{a.tipoAct === 'obligatoria' ? (a.acumula ? 'S' : 'N') : '—'}</TD>
+      <TD className="text-apoyo text-muted">{a.tipoAct === 'obligatoria' ? frecuenciaLabel(a) : '—'}</TD>
+      <TD className="text-center tabular-nums text-dato">{a.tipoAct === 'obligatoria' ? (a.acumula ? 'S' : 'N') : '—'}</TD>
       <TD>
         <button
           type="button"
           onClick={() => toggleActiva(a)}
           disabled={pending}
           className={cn(
-            'rounded-md border px-2 py-1 text-[11px] font-medium transition-colors duration-150 active:scale-[0.97]',
+            'rounded-r-pastilla border px-2 py-1 text-micro font-medium transition-colors duration-150 active:scale-[0.97]',
             a.activa
               ? 'border-line text-muted hover:border-error-line hover:text-error'
               : 'border-exito-line bg-exito-soft text-exito-deep hover:bg-exito-soft',
@@ -279,7 +279,7 @@ export function ActividadesCliente({
           <button
             type="button"
             onClick={() => abrirEditar(a)}
-            className="inline-flex items-center gap-1 rounded-md border border-line px-2 py-1 text-xs text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
+            className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]"
           >
             <Pencil className="h-3 w-3" strokeWidth={2} /> Editar
           </button>
@@ -287,7 +287,7 @@ export function ActividadesCliente({
             type="button"
             onClick={() => setEliminar(a)}
             aria-label={`Eliminar ${a.nombre}`}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
+            className="flex h-7 w-7 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
           >
             <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
           </button>
@@ -307,7 +307,7 @@ export function ActividadesCliente({
               href={`/configuracion/actividades?sede=${s.cod}`}
               aria-current={s.cod === sede ? 'page' : undefined}
               className={cn(
-                'rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150',
+                'rounded-r-pastilla px-3 py-1.5 text-cuerpo font-medium transition-colors duration-150',
                 s.cod === sede ? 'bg-navy text-paper' : 'text-muted hover:bg-navy/5 hover:text-navy',
               )}
             >
@@ -322,11 +322,11 @@ export function ActividadesCliente({
                 setDuplicarAbierto(true);
                 setError('');
               }}
-              className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}
+              className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}
             >
               <Copy className="h-3.5 w-3.5" strokeWidth={2} /> Duplicar de sede
             </button>
-            <Link href="/configuracion/layout" className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
+            <Link href="/configuracion/layout" className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
               Layout
             </Link>
             <button type="button" onClick={abrirNueva} className={buttonVariants({ variant: 'primary' })}>
@@ -339,7 +339,7 @@ export function ActividadesCliente({
       {/* Filtros */}
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-3.5">
-          <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted">
+          <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
           <input
@@ -387,7 +387,7 @@ export function ActividadesCliente({
               <TBody>
                 {obligatorias.length > 0 && (
                   <TR className="bg-paper/60 hover:bg-paper/60">
-                    <TD colSpan={10} className="pl-5 text-xs font-semibold uppercase tracking-wide text-muted">
+                    <TD colSpan={10} className="pl-5 text-rotulo font-semibold uppercase text-muted">
                       Obligatorias ({obligatorias.length})
                     </TD>
                   </TR>
@@ -395,7 +395,7 @@ export function ActividadesCliente({
                 {obligatorias.map(fila)}
                 {extras.length > 0 && (
                   <TR className="bg-paper/60 hover:bg-paper/60">
-                    <TD colSpan={10} className="pl-5 text-xs font-semibold uppercase tracking-wide text-muted">
+                    <TD colSpan={10} className="pl-5 text-rotulo font-semibold uppercase text-muted">
                       Extras · por puntos ({extras.length})
                     </TD>
                   </TR>
@@ -426,7 +426,7 @@ export function ActividadesCliente({
           />
 
           <div>
-            <label htmlFor="act-nombre" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label htmlFor="act-nombre" className="mb-1 block text-rotulo uppercase text-muted">
               Nombre *
             </label>
             <input
@@ -441,7 +441,7 @@ export function ActividadesCliente({
           {!esExtra && (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label htmlFor="act-cat" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+                <label htmlFor="act-cat" className="mb-1 block text-rotulo uppercase text-muted">
                   Categoría
                 </label>
                 <select
@@ -457,7 +457,7 @@ export function ActividadesCliente({
               </div>
               {modal?.modo === 'nueva' && form.categoria !== 'IND' && (
                 <div>
-                  <div className="mb-1 text-xs uppercase tracking-wide text-muted">Relacionado a</div>
+                  <div className="mb-1 text-rotulo uppercase text-muted">Relacionado a</div>
                   <Segmento
                     opciones={[
                       { v: 'T' as const, label: 'Ternos' },
@@ -473,7 +473,7 @@ export function ActividadesCliente({
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="act-peso" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+              <label htmlFor="act-peso" className="mb-1 block text-rotulo uppercase text-muted">
                 Puntos
               </label>
               <input
@@ -488,7 +488,7 @@ export function ActividadesCliente({
             </div>
             {esExtra ? (
               <div>
-                <label htmlFor="act-unidad" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+                <label htmlFor="act-unidad" className="mb-1 block text-rotulo uppercase text-muted">
                   Unidad
                 </label>
                 <input
@@ -501,7 +501,7 @@ export function ActividadesCliente({
               </div>
             ) : (
               <div>
-                <label htmlFor="act-desc" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+                <label htmlFor="act-desc" className="mb-1 block text-rotulo uppercase text-muted">
                   Descuento si no cumple
                 </label>
                 <input
@@ -518,7 +518,7 @@ export function ActividadesCliente({
           </div>
 
           <div>
-            <div className="mb-1 text-xs uppercase tracking-wide text-muted">Sedes</div>
+            <div className="mb-1 text-rotulo uppercase text-muted">Sedes</div>
             <div className="flex flex-wrap gap-1.5">
               {sedes.map((s) => (
                 <button
@@ -527,7 +527,7 @@ export function ActividadesCliente({
                   aria-pressed={formSedes.includes(s.cod)}
                   onClick={() => toggleSedeForm(s.cod)}
                   className={cn(
-                    'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors duration-150 active:scale-[0.97]',
+                    'rounded-r-pastilla border px-3 py-1.5 text-apoyo font-medium transition-colors duration-150 active:scale-[0.97]',
                     formSedes.includes(s.cod)
                       ? 'border-navy bg-navy/10 text-navy'
                       : 'border-line bg-white text-muted hover:border-gold',
@@ -542,7 +542,7 @@ export function ActividadesCliente({
           {!esExtra && (
             <>
               <div>
-                <div className="mb-1 text-xs uppercase tracking-wide text-muted">Turno</div>
+                <div className="mb-1 text-rotulo uppercase text-muted">Turno</div>
                 <Segmento
                   opciones={[
                     { v: 'ambos', label: 'Ambos' },
@@ -555,7 +555,7 @@ export function ActividadesCliente({
               </div>
 
               <div>
-                <div className="mb-1 text-xs uppercase tracking-wide text-muted">Periodicidad</div>
+                <div className="mb-1 text-rotulo uppercase text-muted">Periodicidad</div>
                 <Segmento
                   opciones={[
                     { v: 'diaria' as const, label: 'Cada día' },
@@ -566,7 +566,7 @@ export function ActividadesCliente({
                   onChange={setPeriodicidad}
                 />
                 {periodicidad === 'custom' && (
-                  <div className="mt-2 flex items-center gap-2 text-sm text-muted">
+                  <div className="mt-2 flex items-center gap-2 text-cuerpo text-muted">
                     Cada
                     <input
                       type="number"
@@ -591,7 +591,7 @@ export function ActividadesCliente({
                             aria-pressed={on}
                             onClick={() => toggleDia(d)}
                             className={cn(
-                              'h-8 w-9 rounded-md border tabular-nums text-xs font-semibold transition-colors duration-150 active:scale-[0.97]',
+                              'h-8 w-9 rounded-r-pastilla border tabular-nums text-dato font-semibold transition-colors duration-150 active:scale-[0.97]',
                               on ? 'border-navy bg-navy text-paper' : 'border-line bg-white text-muted hover:border-gold',
                             )}
                           >
@@ -600,7 +600,7 @@ export function ActividadesCliente({
                         );
                       })}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted">
+                    <div className="flex items-center gap-2 text-cuerpo text-muted">
                       Cada
                       <input
                         type="number"
@@ -621,15 +621,15 @@ export function ActividadesCliente({
                 onClick={() => setForm((f) => ({ ...f, acumula: !f.acumula }))}
                 aria-pressed={form.acumula}
                 className={cn(
-                  'w-full rounded-lg border p-3 text-left transition-colors duration-150',
+                  'w-full rounded-r-medio border p-3 text-left transition-colors duration-150',
                   form.acumula ? 'border-exito-line bg-exito-soft' : 'border-line bg-paper/60',
                 )}
               >
-                <div className={cn('text-sm font-semibold', form.acumula ? 'text-exito-deep' : 'text-ink')}>
+                <div className={cn('text-cuerpo font-semibold', form.acumula ? 'text-exito-deep' : 'text-ink')}>
                   {form.acumula ? '✓ ' : ''}Acumula si no se realiza
-                  <span className="ml-1 text-[11px] font-normal text-muted">(arrastre de pendientes)</span>
+                  <span className="ml-1 text-micro font-normal text-muted">(arrastre de pendientes)</span>
                 </div>
-                <p className="mt-1 text-xs leading-relaxed text-muted">
+                <p className="mt-1 text-apoyo leading-relaxed text-muted">
                   Si el turno termina y no fue marcada como realizada, reaparece resaltada como
                   pendiente en el próximo turno en que aplique. Ideal para tareas críticas que no se
                   pueden saltar (p. ej. conteo de caja).
@@ -659,7 +659,7 @@ export function ActividadesCliente({
         icon={<AlertTriangle className="h-5 w-5 shrink-0 text-aviso" strokeWidth={2} aria-hidden />}
       >
         <ModalBody>
-          <p className="text-sm leading-relaxed text-muted">
+          <p className="text-cuerpo leading-relaxed text-muted">
             <span className="font-medium text-ink">{eliminar?.nombre}</span> ({eliminar?.cod}) se quita
             del catálogo de esta sede. Los reportes ya enviados no cambian.
           </p>
@@ -690,7 +690,7 @@ export function ActividadesCliente({
       >
         <ModalBody className="space-y-3">
           <div>
-            <label htmlFor="dup-desde" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label htmlFor="dup-desde" className="mb-1 block text-rotulo uppercase text-muted">
               Copiar desde
             </label>
             <select id="dup-desde" value={duplicarDe} onChange={(e) => setDuplicarDe(e.target.value)} className={cn(fieldCls, 'w-full')}>

@@ -7,10 +7,14 @@ import {
   establecerContrasenaEmpleado,
   actualizarEmpleado,
   crearEmpleado,
+  empleadoBorrarAltaPrevio,
+  empleadoBorrarAlta,
   type EditarEmpleadoInput,
   type NuevoEmpleadoInput,
+  type BorrarAltaPrevio,
 } from '../../lib/empleados-repo';
 import { togglePosCobro } from '../../lib/permisos-repo';
+import { subirDocumento, eliminarDocumento, urlFirmadaDocumento, type DocumentoEmpleado } from '../../lib/documentos-repo';
 
 async function exigirAdmin(): Promise<void> {
   const s = await getSesion();
@@ -63,6 +67,34 @@ export async function accionCrearEmpleado(
   }
 }
 
+// Deshacer un alta hecha por error (docs/superpowers/specs/empleados/
+// 2026-08-25-borrar-alta-por-error-design.md). `accionBorrarAltaPrevio` sólo lee, para el diálogo
+// de C-1 que muestra el costo ANTES de confirmar. Las dos delegan el guard de admin en la RPC
+// (0099) igual que el resto de este archivo — `exigirAdmin()` acá es sólo un mensaje legible antes
+// de intentar, no la única cerradura.
+export async function accionBorrarAltaPrevio(
+  id: string,
+): Promise<{ ok: boolean; error?: string; datos?: BorrarAltaPrevio }> {
+  try {
+    await exigirAdmin();
+    const datos = await empleadoBorrarAltaPrevio(id);
+    return { ok: true, datos };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error' };
+  }
+}
+
+export async function accionBorrarAlta(id: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await exigirAdmin();
+    await empleadoBorrarAlta(id);
+    revalidatePath('/personal');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error' };
+  }
+}
+
 export async function accionEstablecerContrasena(id: string, password: string): Promise<{ ok: boolean; error?: string }> {
   try {
     await exigirAdmin();
@@ -94,5 +126,46 @@ export async function accionTogglePosCobro(rolKey: string, activar: boolean): Pr
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error al cambiar el permiso de caja' };
+  }
+}
+
+// Adjuntos de personal (C-3, migración 0105). `exigirAdmin()` es cinturón y tirantes: la RLS de
+// empleado_documentos/storage.objects ya lo exige en las dos capas (documentos-repo.ts), esto sólo
+// da un mensaje de error legible antes de intentar la subida en vez de dejar que PostgREST lo
+// rechace con un 42501 crudo.
+export async function accionSubirDocumento(
+  empleadoId: string,
+  formData: FormData,
+): Promise<{ ok: boolean; error?: string; documento?: DocumentoEmpleado }> {
+  try {
+    await exigirAdmin();
+    const archivo = formData.get('archivo');
+    if (!(archivo instanceof File) || archivo.size === 0) throw new Error('Elegí un archivo primero');
+    const documento = await subirDocumento(empleadoId, archivo);
+    revalidatePath(`/personal/${empleadoId}/datos`);
+    return { ok: true, documento };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al subir el documento' };
+  }
+}
+
+export async function accionEliminarDocumento(documentoId: string, empleadoId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await exigirAdmin();
+    await eliminarDocumento(documentoId);
+    revalidatePath(`/personal/${empleadoId}/datos`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al borrar el documento' };
+  }
+}
+
+export async function accionUrlDocumento(storagePath: string): Promise<{ ok: boolean; url?: string; error?: string }> {
+  try {
+    await exigirAdmin();
+    const url = await urlFirmadaDocumento(storagePath);
+    return { ok: true, url };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al abrir el documento' };
   }
 }

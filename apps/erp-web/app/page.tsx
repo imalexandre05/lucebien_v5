@@ -9,6 +9,7 @@ import {
   Trophy,
   Activity,
   LayoutGrid,
+  LayoutDashboard,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -32,14 +33,14 @@ import { getSesion } from '../lib/auth';
 import { listarSedes } from '../lib/sedes-repo';
 import { leerMatrizPermisos } from '../lib/permisos-repo';
 import { leerConfigMap, CIERRE_TURNO_DEFAULT } from '../lib/config-repo';
-import { hoyPeru, fechaLargaPeru, etiquetaDia, saludoPeru, tiempoRelativo, fechaHoraCorta } from '../lib/fechas';
-import { LogoMark } from '../components/brand/logo';
+import { hoyPeru, fechaLargaPeru, saludoPeru, tiempoRelativo, fechaHoraCorta } from '../lib/fechas';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table';
 import { Badge, type Tone } from '../components/ui/badge';
 import { StatBox } from '../components/ui/stat-box';
 import { CountUp } from '../components/ui/count-up';
 import { EmptyState } from '../components/ui/empty-state';
+import { BandaModulo } from '../components/ui/banda-modulo';
 import { cn } from '../lib/cn';
 
 const ETAPA_LABEL: Record<string, string> = {
@@ -57,9 +58,11 @@ const ETAPA_LABEL: Record<string, string> = {
   dividido: 'Dividida',
 };
 
-const KPI_TONE = 'border-line bg-white text-navy shadow-card';
+// Segunda pasada visual: el tile pasa a la superficie/sombra teñida del acento del módulo
+// (--acento, fase 5 -- en `/` es navy) en vez del blanco liso de antes.
+const KPI_TONE = 'border-acento-line bg-acento-soft text-acento-deep shadow-elev-1';
 // Semáforo (Fase 6 tarea 3): mismo tile, solo cambia de tono cuando el valor amerita atención.
-const KPI_TONE_AMBER = 'border-aviso-line bg-aviso-soft text-aviso-deep shadow-card';
+const KPI_TONE_AMBER = 'border-aviso-line bg-aviso-soft text-aviso-deep shadow-elev-1';
 
 // Badge de estado por color (Fase 6 tarea 1) — icono circular de la fila de "Actividad reciente"
 // y Badge de texto comparten la misma paleta para que se lean como el mismo estado.
@@ -135,7 +138,6 @@ export default async function Dashboard() {
   const ahora = new Date();
   const primerNombre = sesion?.nombre.trim().split(/\s+/)[0] ?? '';
   const sede = sesion?.usuario.sede ?? '';
-  const dia = etiquetaDia(ahora);
 
   // KPIs del día (§4A del brief): pipeline, evaluación, caja, incidencias.
   const etapas = ETAPAS_PIPELINE as readonly string[];
@@ -227,48 +229,20 @@ export default async function Dashboard() {
     .sort((a, b) => b.ts.localeCompare(a.ts))
     .slice(0, 8);
 
+  // BandaModulo (arquetipo A, spec §5): el saludo y la fecha ya decían todo lo que el
+  // recuadro-espejo del día repetía como adorno — se cae sin perder dato. La sede se suma al
+  // final del subtítulo en vez de vivir en un chip aparte.
+  const saludo = `${saludoPeru(ahora)}${primerNombre ? `, ${primerNombre}` : ''}`;
+  const subtituloBanda = sede
+    ? `${fechaLargaPeru(ahora)} · Sede ${SEDE_NOMBRE[sede] ?? sede}`
+    : fechaLargaPeru(ahora);
+
   return (
     <div>
-      {/* ── Hero: crest + saludo + fecha + sede ── */}
-      <header className="mb-7">
-        <div className="flex items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <LogoMark size="lg" className="animate-scale-in" />
-            <div>
-              <h1 className="animate-rise text-3xl font-semibold leading-none text-navy sm:text-4xl">
-                {saludoPeru(ahora)}
-                {primerNombre ? `, ${primerNombre}` : ''}
-              </h1>
-              <p className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 animate-rise text-sm text-muted [animation-delay:60ms]">
-                {fechaLargaPeru(ahora)}
-                {sede && (
-                  <span className="rounded-full border border-line bg-white px-2.5 py-0.5 text-xs font-medium text-navy">
-                    Sede · {SEDE_NOMBRE[sede] ?? sede}
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-          {/* Etiqueta del día: espejo en blanco del crest (recuadro + filete gold). */}
-          <div
-            aria-hidden="true"
-            className="relative hidden h-20 w-20 shrink-0 animate-scale-in rounded-2xl border border-line bg-white shadow-card sm:block"
-          >
-            <div className="pointer-events-none absolute inset-[5px] rounded-[9px] border border-gold/45" />
-            <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-3xl font-semibold leading-none text-navy">{dia.dia}</span>
-              <span className="mt-1 tabular-nums text-[9px] uppercase tracking-[0.18em] text-muted">
-                {dia.mes} {dia.anio}
-              </span>
-            </div>
-          </div>
-        </div>
-        <div className="gold-rule mt-5" />
-      </header>
+      <BandaModulo titulo={saludo} subtitulo={subtituloBanda} icono={LayoutDashboard} />
 
-      {/* ── KPIs del día ── */}
-      <section aria-label="Indicadores del día">
-        <div className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted">Interno</div>
+      {/* ── KPIs del día: los tiles se montan sobre el borde inferior de la banda (spec §3.10). ── */}
+      <section aria-label="Indicadores del día" className="relative z-10 -mt-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StatBox
             index={0}
@@ -311,13 +285,13 @@ export default async function Dashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2.5">
             Pipeline de lavandería
-            <span className="rounded-full bg-navy/5 px-2.5 py-0.5 tabular-nums text-xs font-semibold text-navy">
+            <span className="rounded-r-pastilla bg-navy/5 px-2.5 py-0.5 tabular-nums text-dato font-semibold text-navy">
               {totalFlujo} en proceso
             </span>
           </CardTitle>
           <Link
             href="/pipeline"
-            className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold"
+            className="text-apoyo font-medium text-navy transition-colors duration-150 hover:text-gold"
           >
             Abrir tablero →
           </Link>
@@ -341,7 +315,7 @@ export default async function Dashboard() {
                         href="/pipeline"
                         title={`${n} prenda(s) en ${ETAPA_LABEL[e]}`}
                         aria-label={`${ETAPA_LABEL[e]}: ${n} prenda(s)`}
-                        className="group flex-1 rounded-t-lg px-1 pt-2 text-center outline-none transition-colors duration-150 hover:bg-navy/[0.04] focus-visible:ring-2 focus-visible:ring-gold/70"
+                        className="anillo group flex-1 rounded-t-lg px-1 pt-2 text-center transition-colors duration-150 hover:bg-navy/[0.04]"
                       >
                         <div
                           className={cn(
@@ -368,14 +342,14 @@ export default async function Dashboard() {
                   })}
                 </div>
                 {/* El hilo del atelier: riel que se enhebra bajo el flujo al montar. */}
-                <div className="h-0.5 overflow-hidden rounded-full bg-line/70">
+                <div className="h-0.5 overflow-hidden rounded-r-pastilla bg-line/70">
                   <div className="h-full origin-left animate-draw-x bg-gradient-to-r from-gold via-gold/80 to-gold/40" />
                 </div>
                 <div className="flex" aria-hidden="true">
                   {ETAPAS_PIPELINE.map((e) => (
                     <div
                       key={e}
-                      className="flex-1 px-0.5 pb-1 pt-2 text-center text-[10px] font-medium uppercase leading-tight tracking-wide text-muted"
+                      className="flex-1 px-0.5 pb-1 pt-2 text-center text-rotulo font-medium uppercase leading-tight text-muted"
                     >
                       {ETAPA_LABEL[e]}
                     </div>
@@ -457,24 +431,24 @@ export default async function Dashboard() {
                         href={ev.href}
                         className="group flex items-center gap-3 px-5 py-3 outline-none transition-colors duration-150 hover:bg-navy/[0.03] focus-visible:bg-navy/[0.05]"
                       >
-                        <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-full', chipCls)}>
+                        <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-r-pastilla', chipCls)}>
                           <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <span className="truncate text-sm text-ink">{ev.titulo}</span>
+                            <span className="truncate text-cuerpo text-ink">{ev.titulo}</span>
                             {esReporte && ev.estado && (
                               <Badge tone={ESTADO_ACTIVIDAD_TONE[ev.estado]}>{ESTADO_ACTIVIDAD_LABEL[ev.estado]}</Badge>
                             )}
                             {esReporte && ev.puntaje != null && <PuntajePill puntaje={ev.puntaje} />}
                           </span>
-                          {ev.detalle && <span className="block truncate text-xs text-muted">{ev.detalle}</span>}
+                          {ev.detalle && <span className="block truncate text-apoyo text-muted">{ev.detalle}</span>}
                         </span>
                         <span className="shrink-0 text-right">
-                          <span className="block tabular-nums text-[11px] text-muted">{tiempoRelativo(ev.ts, ahora)}</span>
+                          <span className="block tabular-nums text-micro text-muted">{tiempoRelativo(ev.ts, ahora)}</span>
                           {/* Fecha absoluta (tarea 1): "hace 3 h" no dice CUÁNDO fue — solo en reportes. */}
                           {esReporte && (
-                            <span className="block tabular-nums text-[10px] text-muted/70">{fechaHoraCorta(ev.ts)}</span>
+                            <span className="block tabular-nums text-micro text-muted/70">{fechaHoraCorta(ev.ts)}</span>
                           )}
                         </span>
                       </Link>
@@ -494,7 +468,7 @@ export default async function Dashboard() {
             </CardTitle>
             <Link
               href="/pipeline"
-              className="text-xs font-medium text-navy transition-colors duration-150 hover:text-gold"
+              className="text-apoyo font-medium text-navy transition-colors duration-150 hover:text-gold"
             >
               Tablero →
             </Link>
@@ -511,21 +485,21 @@ export default async function Dashboard() {
                   <div key={r.nombre} className="animate-rise" style={{ animationDelay: `${i * 50}ms` }}>
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="flex min-w-0 items-baseline gap-2">
-                        <span className="w-6 shrink-0 tabular-nums text-[11px] text-muted">#{i + 1}</span>
-                        <span className="truncate text-sm text-ink">{r.nombre}</span>
+                        <span className="w-6 shrink-0 tabular-nums text-micro text-muted">#{i + 1}</span>
+                        <span className="truncate text-cuerpo text-ink">{r.nombre}</span>
                       </span>
                       <span
                         className={cn(
-                          'tabular-nums text-sm font-bold',
+                          'tabular-nums text-dato font-bold',
                           i === 0 ? 'text-gold-deep' : 'text-navy',
                         )}
                       >
                         {r.total}
                       </span>
                     </div>
-                    <div className="ml-8 mt-1.5 h-1.5 overflow-hidden rounded-full bg-paper">
+                    <div className="ml-8 mt-1.5 h-1.5 overflow-hidden rounded-r-pastilla bg-paper">
                       <div
-                        className={cn('h-full rounded-full', i === 0 ? 'bg-gold' : 'bg-navy')}
+                        className={cn('h-full rounded-r-pastilla', i === 0 ? 'bg-gold' : 'bg-navy')}
                         style={{ width: `${Math.round((r.total / maxPts) * 100)}%` }}
                       />
                     </div>
@@ -552,7 +526,7 @@ function PuntajePill({ puntaje }: { puntaje: number }) {
         ? 'bg-gold/20 text-gold-deep'
         : 'bg-error/15 text-error-deep';
   return (
-    <span className={cn('rounded-full px-2 py-0.5 tabular-nums text-[10px] font-bold', cls)}>
+    <span className={cn('rounded-r-pastilla px-2 py-0.5 tabular-nums text-micro font-bold', cls)}>
       {puntaje}%
     </span>
   );

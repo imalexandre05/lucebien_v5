@@ -25,7 +25,6 @@ import { fileURLToPath } from 'node:url';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dir, '../../..');
-const SQLITE = resolve(ROOT, 'database/lucebien.db');
 const ENV_FILE = resolve(ROOT, 'apps/erp-web/.env.local');
 const IDMAP = resolve(__dir, '_idmap.json');
 const PIPEMAP = resolve(__dir, '_pipeline_idmap.json');
@@ -33,6 +32,8 @@ const PIPEMAP = resolve(__dir, '_pipeline_idmap.json');
 // ── args ──────────────────────────────────────────────────────────
 const RUN = process.argv.slice(2).includes('--run');
 const DRY = !RUN;
+const sqliteArgIdx = process.argv.indexOf('--sqlite');
+const SQLITE = sqliteArgIdx >= 0 ? resolve(process.argv[sqliteArgIdx + 1]) : resolve(ROOT, 'database/lucebien.db');
 
 // ── env ───────────────────────────────────────────────────────────
 const env = {};
@@ -96,6 +97,22 @@ for (const e of empSql) {
   const n = norm(e.nombre);
   if (n) nombreToUuid[n] = nombreToUuid[n] && nombreToUuid[n] !== uuid ? 'AMBIG' : uuid; // homónimos → no resolver por nombre
 }
+// Una fila que una migración desactivó a mano (ej. la 0102, fusión de una identidad que había
+// quedado partida entre este ETL y el huellero en vivo) no debe volver a recibir escrituras en
+// un re-run: el idmap no sabe de esa decisión posterior, así que se lee el estado actual.
+{
+  const r = await fetch(`${SB_URL}/rest/v1/empleados?activo=eq.false&select=id`, { headers: H });
+  const inactivos = new Set(r.ok ? (await r.json()).map((row) => row.id) : []);
+  for (const [k, v] of Object.entries(codToUuid)) if (inactivos.has(v)) delete codToUuid[k];
+  for (const [k, v] of Object.entries(nombreToUuid)) if (inactivos.has(v)) delete nombreToUuid[k];
+}
+// Alias de nombres mal escritos en el origen (confirmados con el responsable) → nombre canónico.
+// 'Marylin' es la misma persona que 'Mary' (E06): el origen guarda ambas grafías.
+// Mismo alias que migra-reportes.mjs — ver docs/mapeo-migracion.md.
+const ALIASES = { marylin: 'mary' };
+for (const [alias, canon] of Object.entries(ALIASES)) {
+  if (nombreToUuid[canon] && nombreToUuid[canon] !== 'AMBIG') nombreToUuid[alias] = nombreToUuid[canon];
+}
 const orphans = new Map(); // clave → veces (para auditar)
 function resolveEmp(cod, nombre) {
   if (cod != null && codToUuid[String(cod)]) return codToUuid[String(cod)];
@@ -123,13 +140,18 @@ const outEnvios = srcEnvios.map((e) => ({
   obs_tienda: e.obs_tienda || null,
 }));
 
+// 'codificacion' es el nombre original de la etapa que hoy es 'planchado' — usado sólo en las
+// primeras prendas (abril-mayo 2026) antes de que la app vieja renombrara la etapa. Confirmado
+// con Alexander el 26-ago-2026 por su posición en el flujo (refaccion → codificacion → control_calidad/listo).
+const ETAPA_ALIAS = { codificacion: 'planchado' };
+
 const outPrendas = srcPrendas.map((p) => ({
   id: uuidFor('prendas', p.id),
   codigo: p.codigo,
   tipo: p.tipo || null,
   color: p.color || null,
   talla: p.talla || null,
-  etapa: p.etapa || 'recepcion',
+  etapa: ETAPA_ALIAS[p.etapa] || p.etapa || 'recepcion',
   tipo_lavado: p.tipo_lavado || null,
   sede_origen_cod: p.sede_origen,
   lavador_id: resolveEmp(p.cod_lavador, null),
@@ -159,15 +181,21 @@ const outHist = srcHist
     fecha: toTs(h.fecha) || new Date().toISOString(),
   }));
 
-const outPuntos = srcPuntos.map((pt) => ({
-  id: uuidFor('puntos', pt.id),
-  empleado_id: resolveEmp(pt.emp_cod, pt.emp_nombre),
-  pasada_id: pt.prenda_id != null && pmap.prendas[pt.prenda_id] ? pmap.prendas[pt.prenda_id] : null,
-  etapa: pt.etapa,
-  puntos: Number(pt.puntos) || 0,
-  detalle: pt.detalle || null,
-  fecha: toTs(pt.fecha) || new Date().toISOString(),
-}));
+// pipeline_puntos.empleado_id es NOT NULL en el destino: una fila sin empleado resuelto
+// (ej. datos de prueba como cod=9999/"admin-smoke") no se puede insertar y se descarta —
+// queda logueada en `orphans`, no es un huérfano silencioso.
+const outPuntos = srcPuntos
+  .map((pt) => ({ pt, empleado_id: resolveEmp(pt.emp_cod, pt.emp_nombre) }))
+  .filter(({ empleado_id }) => empleado_id)
+  .map(({ pt, empleado_id }) => ({
+    id: uuidFor('puntos', pt.id),
+    empleado_id,
+    pasada_id: pt.prenda_id != null && pmap.prendas[pt.prenda_id] ? pmap.prendas[pt.prenda_id] : null,
+    etapa: pt.etapa,
+    puntos: Number(pt.puntos) || 0,
+    detalle: pt.detalle || null,
+    fecha: toTs(pt.fecha) || new Date().toISOString(),
+  }));
 
 const outCalif = srcCalif
   .filter((c) => pmap.prendas[c.prenda_id])

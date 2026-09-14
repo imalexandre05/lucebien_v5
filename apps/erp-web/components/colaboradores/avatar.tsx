@@ -47,8 +47,8 @@ export function tonoAvatar(clave: string): string {
 }
 
 const tamanos = {
-  sm: 'h-8 w-8 text-[11px]',
-  md: 'h-10 w-10 text-xs',
+  sm: 'h-8 w-8 text-micro',
+  md: 'h-10 w-10 text-apoyo',
   lg: 'h-14 w-14 text-base',
 } as const;
 
@@ -67,7 +67,7 @@ export function Avatar({
     <span
       aria-hidden
       className={cn(
-        'flex shrink-0 select-none items-center justify-center rounded-full font-semibold tracking-wide',
+        'flex shrink-0 select-none items-center justify-center rounded-r-pastilla font-semibold tracking-wide',
         tonoAvatar(nombre),
         tamanos[size],
         className,

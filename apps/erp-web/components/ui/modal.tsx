@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
@@ -53,6 +54,17 @@ export function Modal({
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
 
+  // POR QUÉ VA POR PORTAL A <body> (12-sep-2026). `PageTransition` envuelve TODO el contenido de
+  // la ruta en un `animate-page-enter`, y una animación con `transform` crea un contexto de
+  // apilamiento propio. El modal vivía dentro de ese contexto, así que su `z-50` no competía con
+  // la página: competía con sus hermanos. Resultado visible en /solicitudes — el velo oscurecía
+  // todo MENOS la franja de la topbar, que se dibujaba por encima. Sacarlo al body lo devuelve al
+  // contexto raíz y su z-50 vuelve a valer contra header (z-30) y popovers (z-40).
+  //
+  // `montado` evita tocar `document` en el render del servidor.
+  const [montado, setMontado] = useState(false);
+  useEffect(() => setMontado(true), []);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -68,9 +80,9 @@ export function Modal({
     };
   }, [open]);
 
-  if (!open) return null;
+  if (!open || !montado) return null;
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-50 flex animate-fade items-center justify-center bg-navy-deep/40 p-4 backdrop-blur-[2px]"
       onClick={onClose}
@@ -93,7 +105,7 @@ export function Modal({
           //
           // Columna flex: la cabecera y el pie quedan fijos y lo único que scrollea es el cuerpo.
           // Un modal donde el título se va al scrollear pierde de qué estabas hablando.
-          'flex w-full max-h-[calc(100dvh-2rem)] flex-col animate-scale-in rounded-2xl border border-line bg-white shadow-lift outline-none',
+          'flex w-full max-h-[calc(100dvh-2rem)] flex-col animate-scale-in rounded-r-grande border border-line bg-superficie shadow-elev-3 outline-none',
           SIZES[size],
           className,
         )}
@@ -105,16 +117,16 @@ export function Modal({
               {icon}
               <div className="min-w-0">
                 {title && (
-                  <div className="truncate text-lg font-semibold text-navy">{title}</div>
+                  <div className="truncate text-seccion font-display font-semibold text-navy">{title}</div>
                 )}
-                {subtitle && <div className="truncate text-xs text-muted">{subtitle}</div>}
+                {subtitle && <div className="truncate text-apoyo text-muted">{subtitle}</div>}
               </div>
             </div>
             <button
               type="button"
               onClick={onClose}
               aria-label="Cerrar"
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.95]"
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.95]"
             >
               <X className="h-5 w-5" strokeWidth={2} />
             </button>
@@ -122,7 +134,8 @@ export function Modal({
         )}
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

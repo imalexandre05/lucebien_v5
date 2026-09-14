@@ -25,8 +25,8 @@ export type Opcion<T extends string = string> = {
 // con 8px de separación, así que las áreas de una fila se comerían los toques de la de arriba.
 // Cuando el control se toca de verdad, se agranda el control.
 const TAMANOS = {
-  compacto: 'px-3 py-1.5 text-xs',
-  grande: 'px-3 py-2.5 text-sm',
+  compacto: 'px-3 py-1.5 text-apoyo',
+  grande: 'px-3 py-2.5 text-cuerpo',
 } as const;
 
 // FILA vs GRILLA. En fila los botones son pills que se envuelven y ocupan lo que mide su texto:
@@ -74,7 +74,7 @@ export function OpcionBotones<T extends string = string>({
             onClick={() => onChange(o.value)}
             className={cn(
               'flex items-center justify-center gap-2 border font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-              layout === 'grilla' ? 'rounded-md text-center' : 'rounded-full',
+              layout === 'grilla' ? 'rounded-md text-center' : 'rounded-r-pastilla',
               TAMANOS[tamano],
               activo ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:border-gold',
             )}
@@ -83,7 +83,7 @@ export function OpcionBotones<T extends string = string>({
               <span
                 aria-hidden
                 className={cn(
-                  'h-3.5 w-3.5 shrink-0 rounded-full border',
+                  'h-3.5 w-3.5 shrink-0 rounded-r-pastilla border',
                   // El borde va siempre, no sólo en el blanco: sin él, el negro sobre el navy del
                   // botón elegido desaparece.
                   activo ? 'border-paper/60' : 'border-ink/20',

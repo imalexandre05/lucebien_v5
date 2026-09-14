@@ -48,11 +48,19 @@ export function LogoMark({ size = 'md', className }: { size?: Size; className?: 
   );
 }
 
-// Lockup horizontal (ícono + wordmark, ya combinados en el PNG oficial). Proporción real del
-// archivo: 677×203 (~3.34:1) — se respeta siempre para no estirarlo (manual de marca §5).
+// Lockup horizontal (ícono + wordmark). `onDark` es el PNG oficial ya combinado, 677×203
+// (~3.34:1) — se respeta siempre para no estirarlo (manual de marca §5).
+//
+// `onLight` NO usa el lockup oficial: `logo_full_color.png` mide 1937×1796 —es el SELLO
+// cuadrado, no el lockup horizontal— y pedirle a next/image una caja de 677:203 con esa fuente
+// dejaba al logo diminuto y flotando en un rectángulo casi vacío (`object-contain` evita que se
+// estire, pero no arregla la proporción pedida). Hasta que exista un lockup a color en la
+// proporción correcta (spec, sección "La marca"), `onLight` usa el lockup NEGRO —que si es
+// 677×203— sobre el fondo claro: es el mismo criterio que ya rige el documento imprimible,
+// donde el sello a color tampoco va.
 const LOCKUP_SRC: Record<Tone, string> = {
   onDark: '/assets/logo_full_white.png',
-  onLight: '/assets/logo_full_color.png',
+  onLight: '/assets/logo_full_black.png',
 };
 const LOCKUP_RATIO = 677 / 203;
 const LOCKUP_H_PX: Record<Size, number> = { sm: 24, md: 32, lg: 44, xl: 64 };

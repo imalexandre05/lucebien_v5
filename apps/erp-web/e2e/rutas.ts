@@ -28,6 +28,7 @@ export const RUTAS_INTERNO = [
 /** Lo que sólo toca quien administra: personas, plata y reglas. */
 export const RUTAS_ADMIN = [
   '/personal/nuevo',
+  '/personal/dashboard',
   '/sueldos',
   '/sueldos/acuerdos',
   '/sueldos/liquidaciones',
@@ -101,3 +102,24 @@ export const SECCIONES_PERSONA = [
   '/pago',
   '/valores',
 ];
+
+/**
+ * El id de una persona real, sacado de un enlace de verdad en /personal — escrito a mano se pudre
+ * en cuanto cambia la base (mismo criterio que el resto de este archivo).
+ *
+ * NO alcanza con excluir `/personal/nuevo` por nombre: cualquier otra herramienta que cuelgue de
+ * `/personal/<algo-que-no-es-un-id>` (como `/personal/dashboard`, F-2) matchea igual el prefijo y
+ * un `.first()` ciego la toma por una persona — el id termina siendo la palabra "dashboard", y las
+ * pantallas de ficha revientan con "invalid input syntax for type uuid". Se exige la FORMA de un
+ * uuid en vez de mantener una lista de excepciones que hay que acordarse de ampliar cada vez que
+ * se agrega una herramienta nueva bajo /personal/.
+ */
+export async function idDePersonaReal(page: import('@playwright/test').Page): Promise<string> {
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const hrefs = await page.locator('a[href^="/personal/"]').evaluateAll((els) =>
+    els.map((e) => e.getAttribute('href') ?? ''),
+  );
+  const href = hrefs.find((h) => UUID.test(h.split('/')[2] ?? ''));
+  if (!href) throw new Error('la lista de personal no ofrece ningún enlace con forma de id de persona');
+  return href.split('/')[2];
+}

@@ -60,7 +60,7 @@ export function PersonaPicker({
   }
 
   return (
-    <div className="flex flex-col rounded-xl border border-line bg-white shadow-card" data-testid={testId}>
+    <div className="flex flex-col rounded-r-medio border border-line bg-white shadow-card" data-testid={testId}>
       <div className="relative border-b border-line">
         <Search
           className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted"
@@ -70,7 +70,7 @@ export function PersonaPicker({
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-t-xl bg-white py-2.5 pl-9 pr-3 text-sm text-navy outline-none placeholder:text-muted"
+          className="w-full rounded-t-xl bg-white py-2.5 pl-9 pr-3 text-cuerpo text-navy outline-none placeholder:text-muted"
         />
       </div>
 
@@ -86,25 +86,25 @@ export function PersonaPicker({
               data-testid="persona-row"
               onClick={() => toggle(e.id)}
               className={cn(
-                'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition-colors duration-150',
+                'flex w-full items-center gap-3 rounded-r-chico px-2.5 py-2 text-left transition-colors duration-150',
                 on ? 'bg-navy/5' : 'hover:bg-paper',
               )}
             >
               <span
                 className={cn(
-                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold',
+                  'flex h-10 w-10 shrink-0 items-center justify-center rounded-r-pastilla text-apoyo font-bold',
                   tonoAvatar(e.nombre),
                 )}
               >
                 {iniciales(e.nombre)}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-navy">{e.nombre}</span>
-                {tag && <span className="block truncate tabular-nums text-[11px] text-muted">{tag}</span>}
+                <span className="block truncate text-cuerpo font-medium text-navy">{e.nombre}</span>
+                {tag && <span className="block truncate tabular-nums text-micro text-muted">{tag}</span>}
               </span>
               <span
                 className={cn(
-                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 transition-colors duration-150',
+                  'flex h-6 w-6 shrink-0 items-center justify-center rounded-r-chico border-2 transition-colors duration-150',
                   on ? 'border-navy bg-navy text-paper' : 'border-line',
                 )}
               >
@@ -114,20 +114,20 @@ export function PersonaPicker({
           );
         })}
         {filtrados.length === 0 && (
-          <p className="px-3 py-6 text-center text-sm text-muted">Sin coincidencias.</p>
+          <p className="px-3 py-6 text-center text-cuerpo text-muted">Sin coincidencias.</p>
         )}
       </div>
 
       <div className="flex flex-wrap items-center gap-1.5 border-t border-line px-2.5 py-2">
         {selected.length === 0 ? (
-          <span className="text-xs text-muted">{emptyHint ?? (single ? 'Elige al encargado' : 'Ningún colaborador')}</span>
+          <span className="text-apoyo text-muted">{emptyHint ?? (single ? 'Elige al encargado' : 'Ningún colaborador')}</span>
         ) : (
           selected.map((id) => {
             const e = byId.get(id);
             return (
               <span
                 key={id}
-                className="inline-flex items-center gap-1 rounded-full bg-navy px-2.5 py-1 text-xs font-medium text-paper"
+                className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy px-2.5 py-1 text-apoyo font-medium text-paper"
               >
                 {e?.nombre ?? '—'}
                 <button
@@ -142,7 +142,7 @@ export function PersonaPicker({
             );
           })
         )}
-        <span className="ml-auto tabular-nums text-[11px] text-muted">
+        <span className="ml-auto tabular-nums text-micro text-muted">
           {single ? `${selected.length}/1` : `${selected.length} sel.`}
         </span>
       </div>

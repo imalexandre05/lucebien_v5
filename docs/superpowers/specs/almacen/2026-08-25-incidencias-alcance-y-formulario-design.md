@@ -143,3 +143,77 @@ con el patrón autodescartable de la `0092`:
 Para C-2, en la pantalla: elegir «Otro (especificar)» muestra el selector de gravedad y no deja
 guardar sin descripción; elegir cualquier otro tipo no muestra el selector, y la incidencia queda
 guardada con el `nivel_default` y los `puntos_default` de ese tipo.
+
+---
+
+## 6. Addendum (8-sep-2026) — C-1 dependía de un dato que a veces no llegaba a guardarse
+
+> **✅ Aplicado y verificado contra `scilb` el 8-sep.** Migración `0106` + el cambio en
+> `incidencias-repo.ts`. Los 3 casos de la tabla de abajo, `[ok]`.
+
+> **La `0094` (C-1) ya está aplicada.** Este addendum es un hallazgo posterior: la RLS que exige
+> `reportado_por_id = auth.uid()` para que un colaborador vea lo que él mismo reportó **depende de
+> que esa columna se haya guardado bien**, y no siempre pasa.
+
+### El hallazgo, medido contra `scilb`
+
+De las incidencias reales con `origen = 'reporte'` (las que se crean desde el formulario de un
+turno, vía `crearIncidenciasDeReporte()`), **3 de 5 tienen `reportado_por_id` en null** — y las 3
+son más recientes que las 2 que sí lo tienen (23-jul y 26-jul contra 29-jun). Una de ellas es de
+Yessica, encargada real, no una cuenta de prueba: reportó una incidencia y, por este defecto, **ni
+ella ni el administrador la pueden atribuir a nadie** — la `0094` la deja invisible para ella misma,
+tal como el §2 de esta spec advertía que pasaría sin `reportado_por_id = auth.uid()`.
+
+(Las otras 11 incidencias en null son de un lote `origen = 'manual'` migrado del sistema viejo, las
+11 con el mismo `created_at` exacto — no pasaron por este camino y no las toca este addendum.)
+
+### La causa, verificada en el código
+
+`apps/erp-web/app/reportes/actions.ts:109`:
+
+```ts
+reportadoPorId: sesion?.usuario.id ?? null,
+```
+
+`sesion` sale de un segundo llamado a `getSesion()` (`apps/erp-web/lib/auth.ts:107`), que hace su
+**propia** llamada de red a `sb.auth.getUser()` para revalidar el token contra el servidor de Auth.
+Es un camino distinto e independiente del que ya autorizó todo el resto de la misma request: la RPC
+`reportes_crear()` (que sí tuvo éxito en las 5 filas) usa `auth.uid()` **directo**, resuelto por
+Postgres a partir del JWT que ya trae la conexión — sin ninguna llamada de red adicional.
+
+Cuando esa segunda llamada de red falla o tarda —nada raro en un teléfono con señal débil en el
+almacén—, `getSesion()` devuelve `null` **sin lanzar ningún error**, y el `?? null` lo escribe en
+silencio. El reporte se guarda bien (usa el camino robusto); el nombre de quien lo hizo, no.
+
+### El diseño
+
+**No se agrega un reintento ni un manejo de error nuevo en TypeScript.** Se saca la dependencia del
+segundo camino: `reportado_por_id` pasa a tener `default auth.uid()` en la base —el mismo `auth.uid()`
+que ya usa `reportes_crear()` con éxito, sin llamada de red— y `crearIncidenciasDeReporte()` deja de
+mandar la columna cuando no tiene un valor de sesión (en vez de mandar `null` explícito, que
+pisaría el default).
+
+```sql
+alter table incidencias alter column reportado_por_id set default auth.uid();
+```
+
+Si `sesion?.usuario.id` sí está disponible (el caso normal), se sigue mandando explícito —no cambia
+nada ahí—; el default sólo entra a jugar cuando faltaba, que es exactamente el caso que hoy se
+pierde en silencio.
+
+### Lo que este addendum NO hace
+
+- No toca `inc_select`/`inc_insert`/`inc_update`/`inc_delete` de la `0094`: siguen como están.
+- No reintenta ni cambia `getSesion()`: el problema no es esa función, es depender de ella dos veces
+  para el mismo dato cuando ya existe un camino que no falla.
+- No corrige las 11 filas viejas de `origen = 'manual'` ni las 3 ya escritas en null: son
+  históricas, y `reportado_por_id` no admite escribirse después sin inventar quién fue —se dejan
+  como están, visibles para el administrador solamente, que es lo que ya pasa hoy.
+
+### Cómo se comprueba
+
+| # | Caso | Esperado |
+|---|---|---|
+| 7 | `insert into incidencias (...)` sin `reportado_por_id`, como `authenticated` con un `auth.uid()` real | La columna queda con ese `auth.uid()`, no null |
+| 8 | El mismo insert, pasando `reportado_por_id` explícito distinto | Se respeta el valor explícito, no el default |
+| 9 | El mismo insert corrido como `service_role` (sin `auth.uid()`) | Queda en null — no hay nadie a quien atribuir, y no se inventa uno |

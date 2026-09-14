@@ -66,12 +66,12 @@ export default async function EvaluarReportesPage() {
                 {pendientes.map((r) => (
                   <TR key={r.id}>
                     <TD className="pl-5">
-                      <span className="inline-block rounded-md bg-navy px-2.5 py-1 tabular-nums text-xs font-medium text-paper">
+                      <span className="inline-block rounded-r-pastilla bg-navy px-2.5 py-1 tabular-nums text-dato font-medium text-paper">
                         {r.id}
                       </span>
                     </TD>
                     <TD className="tabular-nums">{r.sedeCod}</TD>
-                    <TD className="tabular-nums text-xs text-muted">{r.fecha}</TD>
+                    <TD className="tabular-nums text-dato text-muted">{r.fecha}</TD>
                     <TD>
                       <Badge tone="navy">{TURNO_LABEL[r.turno] ?? r.turno}</Badge>
                     </TD>
@@ -82,7 +82,7 @@ export default async function EvaluarReportesPage() {
                     <TD className="pr-5 text-right">
                       <Link
                         href={`/reportes/${r.id}`}
-                        className={cn(buttonVariants({ variant: 'primary' }), 'px-3 py-1.5 text-xs')}
+                        className={cn(buttonVariants({ variant: 'primary' }), 'px-3 py-1.5 text-apoyo')}
                       >
                         Evaluar <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
                       </Link>

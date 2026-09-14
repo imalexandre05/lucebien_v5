@@ -72,12 +72,12 @@ export default async function PagoColaboradorPage({ params }: { params: { id: st
         migrado={migrado}
       />
 
-      <details className="group rounded-lg border border-line bg-white">
-        <summary className="cursor-pointer select-none px-5 py-3 text-sm font-medium text-navy marker:content-none">
+      <details className="group rounded-r-medio border border-line bg-white">
+        <summary className="cursor-pointer select-none px-5 py-3 text-cuerpo font-medium text-navy marker:content-none">
           Pagos registrados antes del sistema de liquidaciones
         </summary>
         <div className="border-t border-line px-5 py-4">
-          <p className="mb-3 text-xs leading-relaxed text-muted">
+          <p className="mb-3 text-apoyo leading-relaxed text-muted">
             Quedan a la vista, sólo lectura: no se migran a una liquidación —nunca hubo relación
             entre esta tabla y el motor de sueldos— ni se borran.
           </p>

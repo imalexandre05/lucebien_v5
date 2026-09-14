@@ -83,7 +83,7 @@ export function DialogoConfirmar({
     >
       <ModalBody>
         {peticion?.detalle && (
-          <p className="text-sm leading-relaxed text-muted">{peticion.detalle}</p>
+          <p className="text-cuerpo leading-relaxed text-muted">{peticion.detalle}</p>
         )}
         {error && <Aviso tono="error" className="mt-3">{error}</Aviso>}
       </ModalBody>

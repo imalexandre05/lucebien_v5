@@ -106,8 +106,8 @@ export function CajaCliente({
         <Card>
           <CardContent className="mx-auto max-w-md space-y-2 py-10 text-center">
             <Wallet className="mx-auto h-10 w-10 text-line" strokeWidth={1.5} />
-            <p className="text-lg font-semibold text-navy">Caja cerrada</p>
-            <p className="text-sm text-muted">No tienes el permiso de cajero para abrirla. Pide a un cajero de {sede || 'tu sede'} que la abra.</p>
+            <p className="text-seccion font-display font-semibold text-navy">Caja cerrada</p>
+            <p className="text-cuerpo text-muted">No tienes el permiso de cajero para abrirla. Pide a un cajero de {sede || 'tu sede'} que la abra.</p>
           </CardContent>
         </Card>
       );
@@ -117,14 +117,14 @@ export function CajaCliente({
         <CardContent className="mx-auto max-w-md space-y-4 py-10 text-center">
           <Wallet className="mx-auto h-10 w-10 text-gold/80" strokeWidth={1.5} />
           <div>
-            <p className="text-lg font-semibold text-navy">Caja cerrada</p>
-            <p className="mt-1 text-sm text-muted">Abre la caja de {sede || 'tu sede'} para registrar cobros y egresos.</p>
+            <p className="text-seccion font-display font-semibold text-navy">Caja cerrada</p>
+            <p className="mt-1 text-cuerpo text-muted">Abre la caja de {sede || 'tu sede'} para registrar cobros y egresos.</p>
           </div>
           <div className="mx-auto max-w-xs text-left">
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Monto de apertura (efectivo inicial)</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Monto de apertura (efectivo inicial)</label>
             <input type="number" step="0.5" data-testid="monto-apertura" value={montoApertura} onChange={(e) => setMontoApertura(Number(e.target.value))} className={fieldCls} />
           </div>
-          {error && <p className="text-sm text-error">{error}</p>}
+          {error && <p className="text-cuerpo text-error">{error}</p>}
           <Button
             type="button"
             data-testid="abrir-caja"
@@ -144,32 +144,32 @@ export function CajaCliente({
   return (
     <div className="space-y-4">
       {/* Cabecera de la sesión */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-navy-deep px-5 py-4 text-paper shadow-card">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-r-grande bg-navy-deep px-5 py-4 text-paper shadow-card">
         <div>
-          <div className="inline-flex items-center gap-2 text-xl font-semibold leading-none">
-            <span className="h-2 w-2 rounded-full bg-exito" /> Caja abierta · {sesion.sedeCod}
+          <div className="inline-flex items-center gap-2 text-seccion font-display font-semibold leading-none">
+            <span className="h-2 w-2 rounded-r-pastilla bg-exito" /> Caja abierta · {sesion.sedeCod}
           </div>
-          <div className="mt-1 tabular-nums text-[11px] text-paper/60">
+          <div className="mt-1 tabular-nums text-micro text-paper/60">
             Apertura {soles(sesion.montoApertura)} · {sesion.aperturaAt.slice(0, 16).replace('T', ' ')}
           </div>
         </div>
         {puedeCobrar ? (
           <div className="flex flex-wrap items-center gap-2">
-            <button data-testid="abrir-cobro" onClick={() => setModal('cobro')} className="inline-flex items-center gap-1.5 rounded-md bg-gold px-3 py-2 text-sm font-semibold text-navy transition hover:brightness-95">
+            <button data-testid="abrir-cobro" onClick={() => setModal('cobro')} className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-gold px-3 py-2 text-cuerpo font-semibold text-navy transition hover:brightness-95">
               <ArrowDownCircle className="h-4 w-4" strokeWidth={2} /> Cobro
             </button>
-            <button onClick={() => setModal('egreso')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/20">
+            <button onClick={() => setModal('egreso')} className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-white/10 px-3 py-2 text-cuerpo font-medium text-paper transition hover:bg-white/20">
               <ArrowUpCircle className="h-4 w-4" strokeWidth={2} /> Egreso
             </button>
-            <button onClick={() => setModal('garantia')} className="inline-flex items-center gap-1.5 rounded-md bg-white/10 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/20">
+            <button onClick={() => setModal('garantia')} className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-white/10 px-3 py-2 text-cuerpo font-medium text-paper transition hover:bg-white/20">
               <Shield className="h-4 w-4" strokeWidth={2} /> Garantía
             </button>
-            <button data-testid="abrir-cerrar" onClick={() => { setMontoCierre(resumen?.efectivoEsperado ?? 0); setModal('cerrar'); }} className="inline-flex items-center gap-1.5 rounded-md border border-white/25 px-3 py-2 text-sm font-medium text-paper transition hover:bg-white/10">
+            <button data-testid="abrir-cerrar" onClick={() => { setMontoCierre(resumen?.efectivoEsperado ?? 0); setModal('cerrar'); }} className="inline-flex items-center gap-1.5 rounded-r-pastilla border border-white/25 px-3 py-2 text-cuerpo font-medium text-paper transition hover:bg-white/10">
               <Lock className="h-4 w-4" strokeWidth={2} /> Cerrar caja
             </button>
           </div>
         ) : (
-          <span className="rounded-md bg-white/10 px-3 py-2 text-xs text-paper/70">Solo lectura — sin permiso de cajero</span>
+          <span className="rounded-r-pastilla bg-white/10 px-3 py-2 text-apoyo text-paper/70">Solo lectura — sin permiso de cajero</span>
         )}
       </div>
 
@@ -187,7 +187,7 @@ export function CajaCliente({
       <Card>
         <CardHeader>
           <CardTitle>Cobros pendientes</CardTitle>
-          <span className="tabular-nums text-xs text-muted">{pendientes.length}</span>
+          <span className="tabular-nums text-dato text-muted">{pendientes.length}</span>
         </CardHeader>
         <CardContent className="overflow-x-auto px-0 pb-0">
           <Table>
@@ -207,7 +207,7 @@ export function CajaCliente({
                 <TR key={p.pedidoId}>
                   <TD className="pl-5 font-medium text-navy">{p.clienteNombre ?? '—'}</TD>
                   <TD className="capitalize">{p.tipo}</TD>
-                  <TD className="tabular-nums text-xs text-muted">{p.fecha}</TD>
+                  <TD className="tabular-nums text-dato text-muted">{p.fecha}</TD>
                   <TD className="text-right tabular-nums">{soles(p.total)}</TD>
                   <TD className="text-right tabular-nums text-muted">{soles(p.cobrado)}</TD>
                   <TD className="text-right tabular-nums font-semibold text-navy">{soles(p.saldo)}</TD>
@@ -216,7 +216,7 @@ export function CajaCliente({
                       <button
                         type="button"
                         onClick={() => { setCPedido(p.pedidoId); setCMonto(p.saldo); setCMetodo('efectivo'); setModal('cobro'); }}
-                        className="rounded-md border border-line px-2.5 py-1 text-xs text-navy transition hover:border-gold"
+                        className="rounded-r-pastilla border border-line px-2.5 py-1 text-apoyo text-navy transition hover:border-gold"
                       >
                         Cobrar
                       </button>
@@ -256,13 +256,13 @@ export function CajaCliente({
             <TBody>
               {movimientos.map((m) => (
                 <TR key={m.id}>
-                  <TD className="pl-5 tabular-nums text-xs text-muted">{m.createdAt.slice(11, 16)}</TD>
+                  <TD className="pl-5 tabular-nums text-dato text-muted">{m.createdAt.slice(11, 16)}</TD>
                   <TD>
                     <Badge tone={m.tipo === 'ingreso' ? 'green' : 'amber'}>{m.tipo}</Badge>
                   </TD>
                   <TD className="capitalize">{m.categoria.replace(/_/g, ' ')}{m.cobroTipo ? ` · ${m.cobroTipo}` : ''}</TD>
                   <TD className="capitalize">{m.metodo ?? '—'}</TD>
-                  <TD className="text-sm text-muted">{m.registradoPorNombre ?? '—'}</TD>
+                  <TD className="text-cuerpo text-muted">{m.registradoPorNombre ?? '—'}</TD>
                   <TD className={cn('pr-5 text-right tabular-nums font-semibold', m.tipo === 'ingreso' ? 'text-exito-deep' : 'text-error-deep')}>
                     {m.tipo === 'ingreso' ? '+' : '−'} {soles(m.monto)}
                   </TD>
@@ -301,7 +301,7 @@ export function CajaCliente({
           }
         >
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Pedido</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Pedido</label>
             <select data-testid="cobro-pedido" value={cPedido} onChange={(e) => { setCPedido(e.target.value); const p = pendientes.find((x) => x.pedidoId === e.target.value); if (p) setCMonto(p.saldo); }} className={fieldCls}>
               <option value="">Elige un pedido con saldo…</option>
               {pendientes.map((p) => (
@@ -313,18 +313,18 @@ export function CajaCliente({
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Monto</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Monto</label>
               <input type="number" step="0.5" value={cMonto} onChange={(e) => setCMonto(Number(e.target.value))} className={fieldCls} />
             </div>
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Método</label>
               <MetodoPagoBotones value={cMetodo} onChange={setCMetodo} opciones={metodosPago} ariaLabel="Método de pago" />
             </div>
           </div>
           {/* Sin selector de "tipo de cobro": lo deriva pedido_cobrar solo (adelanto/saldo/completo
               según cuánto queda por cobrar) — mismo criterio que el ticket de /pedidos, así los dos
               puntos de entrada producen exactamente el mismo asiento (Fase 10, punto 2). */}
-          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+          {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
         </Modal>
       )}
 
@@ -348,23 +348,23 @@ export function CajaCliente({
         >
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Monto</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Monto</label>
               <input type="number" step="0.5" value={eMonto} onChange={(e) => setEMonto(Number(e.target.value))} className={fieldCls} />
             </div>
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Método</label>
               <MetodoPagoBotones value={eMetodo} onChange={setEMetodo} opciones={metodosPago} ariaLabel="Método de pago" />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Categoría</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Categoría</label>
             <OpcionBotones opciones={OPC_CATEGORIA_EGRESO} value={eCat} onChange={setECat} ariaLabel="Categoría de egreso" />
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Descripción</label>
             <input value={eDesc} onChange={(e) => setEDesc(e.target.value)} placeholder="En qué se usó…" className={fieldCls} />
           </div>
-          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+          {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
         </Modal>
       )}
 
@@ -386,22 +386,22 @@ export function CajaCliente({
             </>
           }
         >
-          <p className="text-xs text-muted">Depósito reembolsable del alquiler. Su devolución se registra luego como egreso.</p>
+          <p className="text-apoyo text-muted">Depósito reembolsable del alquiler. Su devolución se registra luego como egreso.</p>
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Monto</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Monto</label>
               <input type="number" step="0.5" value={gMonto} onChange={(e) => setGMonto(Number(e.target.value))} className={fieldCls} />
             </div>
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Método</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Método</label>
               <MetodoPagoBotones value={gMetodo} onChange={setGMetodo} opciones={metodosPago} ariaLabel="Método de pago" />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Descripción (cliente / prenda)</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Descripción (cliente / prenda)</label>
             <input value={gDesc} onChange={(e) => setGDesc(e.target.value)} placeholder="Ej. Juan Pérez · terno negro" className={fieldCls} />
           </div>
-          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+          {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
         </Modal>
       )}
 
@@ -423,19 +423,19 @@ export function CajaCliente({
             </>
           }
         >
-          <div className="flex justify-between rounded-md bg-navy/5 px-3 py-2 text-sm">
+          <div className="flex justify-between rounded-r-chico bg-navy/5 px-3 py-2 text-cuerpo">
             <span className="text-muted">Efectivo esperado</span>
             <span className="tabular-nums font-semibold text-navy">{soles(resumen.efectivoEsperado)}</span>
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Efectivo contado (arqueo)</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Efectivo contado (arqueo)</label>
             <input type="number" step="0.5" data-testid="monto-cierre" value={montoCierre} onChange={(e) => setMontoCierre(Number(e.target.value))} className={fieldCls} />
           </div>
-          <div className={cn('flex justify-between rounded-md px-3 py-2 text-sm', Math.abs(montoCierre - resumen.efectivoEsperado) < 0.01 ? 'bg-exito-soft text-exito-deep' : 'bg-aviso-soft text-aviso-deep')}>
+          <div className={cn('flex justify-between rounded-r-chico px-3 py-2 text-cuerpo', Math.abs(montoCierre - resumen.efectivoEsperado) < 0.01 ? 'bg-exito-soft text-exito-deep' : 'bg-aviso-soft text-aviso-deep')}>
             <span>Diferencia</span>
             <span className="tabular-nums font-semibold">{soles(montoCierre - resumen.efectivoEsperado)}</span>
           </div>
-          {error && <Aviso tono="error" className="text-sm">{error}</Aviso>}
+          {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
         </Modal>
       )}
     </div>

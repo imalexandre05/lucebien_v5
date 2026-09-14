@@ -17,7 +17,7 @@ export default async function HistorialCajaPage() {
         title="Historial de caja"
         subtitle="Sesiones y arqueos"
         action={
-          <Link href="/caja" className="text-sm text-muted transition-colors hover:text-navy">
+          <Link href="/caja" className="text-cuerpo text-muted transition-colors hover:text-navy">
             ← Caja
           </Link>
         }
@@ -41,7 +41,7 @@ export default async function HistorialCajaPage() {
             <TBody>
               {sesiones.map((s) => (
                 <TR key={s.id}>
-                  <TD className="pl-5 tabular-nums text-xs text-muted">{s.fecha}</TD>
+                  <TD className="pl-5 tabular-nums text-dato text-muted">{s.fecha}</TD>
                   <TD className="tabular-nums">{s.sedeCod}</TD>
                   <TD className="text-right tabular-nums">{soles(s.montoApertura)}</TD>
                   <TD className="text-right tabular-nums text-exito-deep">{soles(s.ingresos)}</TD>
@@ -53,7 +53,7 @@ export default async function HistorialCajaPage() {
                     ) : (
                       <span
                         className={cn(
-                          'tabular-nums text-xs font-medium',
+                          'tabular-nums text-dato font-medium',
                           Math.abs(s.diferencia) < 0.01 ? 'text-exito-deep' : 'text-aviso-deep',
                         )}
                       >

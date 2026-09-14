@@ -86,10 +86,10 @@ function ControlTipado({
             value={hexValido ? valor : '#2e3e6e'}
             disabled={disabled}
             onChange={(e) => onChange(e.target.value)}
-            className="h-8 w-10 cursor-pointer rounded border border-line bg-white p-0.5 disabled:cursor-not-allowed"
+            className="h-8 w-10 cursor-pointer rounded-r-chico border border-line bg-white p-0.5 disabled:cursor-not-allowed"
             aria-label="Color"
           />
-          <span className="tabular-nums text-xs text-muted">{valor || '—'}</span>
+          <span className="tabular-nums text-dato text-muted">{valor || '—'}</span>
         </div>
       );
     }
@@ -135,15 +135,15 @@ function ParametroFila({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-sm font-medium text-navy">{item.etiqueta}</span>
+            <span className="text-cuerpo font-medium text-navy">{item.etiqueta}</span>
             {!item.guardado && (
-              <Badge tone="amber" className="text-[10px]">
+              <Badge tone="amber" className="text-micro">
                 valor por defecto
               </Badge>
             )}
           </div>
-          {item.descripcion && <p className="mt-0.5 max-w-xl text-xs leading-relaxed text-muted">{item.descripcion}</p>}
-          <div className="mt-1 flex items-center gap-2 tabular-nums text-[10px] text-muted/70">
+          {item.descripcion && <p className="mt-0.5 max-w-xl text-apoyo leading-relaxed text-muted">{item.descripcion}</p>}
+          <div className="mt-1 flex items-center gap-2 tabular-nums text-micro text-muted/70">
             {item.clave}
             {item.default != null && <span>· default: {item.default}</span>}
           </div>
@@ -155,7 +155,7 @@ function ParametroFila({
               type="button"
               onClick={onEliminar}
               aria-label={`Eliminar ${item.etiqueta}`}
-              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-error-soft hover:text-error"
             >
               <Trash2 className="h-3.5 w-3.5" strokeWidth={1.75} />
             </button>
@@ -166,7 +166,7 @@ function ParametroFila({
         <button
           type="button"
           onClick={() => item.default != null && onChange(item.default)}
-          className="mt-1.5 flex items-center gap-1 text-[11px] text-muted underline decoration-dotted underline-offset-2 hover:text-navy"
+          className="mt-1.5 flex items-center gap-1 text-micro text-muted underline decoration-dotted underline-offset-2 hover:text-navy"
         >
           <RotateCcw className="h-3 w-3" strokeWidth={2} /> Restaurar valor por defecto
         </button>
@@ -273,7 +273,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
     <div className="space-y-4">
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-3 py-4">
-          <p className="flex items-center gap-2 text-sm text-muted">
+          <p className="flex items-center gap-2 text-cuerpo text-muted">
             <SlidersHorizontal className="h-4 w-4 text-navy/50" strokeWidth={1.75} />
             {items.length} parámetro(s) · {secciones.length} sección(es)
           </p>
@@ -305,7 +305,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
       </div>
 
       {error && (
-        <p className="flex animate-fade items-center gap-1.5 text-sm text-error">
+        <p className="flex animate-fade items-center gap-1.5 text-cuerpo text-error">
           <AlertCircle className="h-4 w-4" strokeWidth={2} /> {error}
         </p>
       )}
@@ -313,7 +313,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
         // `role="status"` y no un Aviso con caja: el acierto tiene que anunciarse —sin eso, con
         // lector de pantalla se guarda y no pasa nada audible— pero una confirmación al lado del
         // propio botón no necesita gritar. Anunciar todo con el mismo peso enseña a ignorarlo.
-        <p role="status" className="flex animate-fade items-center gap-1.5 text-sm text-exito-deep">
+        <p role="status" className="flex animate-fade items-center gap-1.5 text-cuerpo text-exito-deep">
           <Check className="h-4 w-4" strokeWidth={2.5} /> Cambios guardados.
         </p>
       )}
@@ -327,7 +327,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
         <ModalBody className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label htmlFor="cfg-clave" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+              <label htmlFor="cfg-clave" className="mb-1 block text-rotulo uppercase text-muted">
                 Clave interna *
               </label>
               <input
@@ -339,7 +339,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
               />
             </div>
             <div>
-              <label htmlFor="cfg-seccion" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+              <label htmlFor="cfg-seccion" className="mb-1 block text-rotulo uppercase text-muted">
                 Sección
               </label>
               <input
@@ -352,7 +352,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
             </div>
           </div>
           <div>
-            <label htmlFor="cfg-descripcion" className="mb-1 block text-xs uppercase tracking-wide text-muted">
+            <label htmlFor="cfg-descripcion" className="mb-1 block text-rotulo uppercase text-muted">
               Descripción
             </label>
             <input
@@ -364,12 +364,12 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Tipo de control</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Tipo de control</label>
             <OpcionBotones opciones={TIPO_OPCIONES} value={form.tipo} onChange={(tipo) => setForm((f) => ({ ...f, tipo, valor: '' }))} />
           </div>
           {form.tipo === 'lista' && (
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Opciones de la lista</label>
+              <label className="mb-1 block text-rotulo uppercase text-muted">Opciones de la lista</label>
               <div className="flex gap-2">
                 <input
                   value={nuevaOpcion}
@@ -383,14 +383,14 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
                   placeholder="ej. activo"
                   className={cn(fieldCls, 'flex-1')}
                 />
-                <button type="button" onClick={agregarOpcion} className={cn(buttonVariants({ variant: 'outline' }), 'text-xs')}>
+                <button type="button" onClick={agregarOpcion} className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
                   Agregar
                 </button>
               </div>
               {form.opciones.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {form.opciones.map((o) => (
-                    <span key={o} className="inline-flex items-center gap-1 rounded-full bg-navy/5 px-2.5 py-1 text-xs text-navy">
+                    <span key={o} className="inline-flex items-center gap-1 rounded-r-pastilla bg-navy/5 px-2.5 py-1 text-apoyo text-navy">
                       {o}
                       <button type="button" onClick={() => quitarOpcion(o)} aria-label={`Quitar ${o}`} className="text-muted hover:text-error">
                         <X className="h-3 w-3" strokeWidth={2.5} />
@@ -402,7 +402,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
             </div>
           )}
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-muted">Valor inicial</label>
+            <label className="mb-1 block text-rotulo uppercase text-muted">Valor inicial</label>
             <ControlTipado
               tipo={form.tipo}
               valor={form.valor}
@@ -425,9 +425,9 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
       {/* ── Modal: eliminar parámetro personalizado ── */}
       <Modal open={eliminar !== null} onClose={() => !pending && setEliminar(null)} size="sm" title="¿Eliminar parámetro?">
         <ModalBody>
-          <p className="text-sm leading-relaxed text-muted">
+          <p className="text-cuerpo leading-relaxed text-muted">
             <span className="font-medium text-ink">{eliminar?.etiqueta}</span> (
-            <span className="tabular-nums text-xs">{eliminar?.clave}</span>) se borra de Configuración. Si algún código todavía lo lee, volverá a
+            <span className="tabular-nums text-dato">{eliminar?.clave}</span>) se borra de Configuración. Si algún código todavía lo lee, volverá a
             usar su propio valor por defecto interno.
           </p>
         </ModalBody>

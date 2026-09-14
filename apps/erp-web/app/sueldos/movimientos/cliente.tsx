@@ -96,7 +96,7 @@ export function MovimientosCliente({
 
   return (
     <div className="space-y-6">
-      {error && <p className="rounded-md bg-error/10 px-3 py-2 text-sm text-error-deep">{error}</p>}
+      {error && <p className="rounded-r-chico bg-error/10 px-3 py-2 text-cuerpo text-error-deep">{error}</p>}
 
       {/* ── Movimientos ──────────────────────────────────────────────────────────────────── */}
       <Card>
@@ -167,9 +167,9 @@ export function MovimientosCliente({
             </div>
           </div>
 
-          <p className="text-xs text-muted">{ayudaTipo}</p>
+          <p className="text-apoyo text-muted">{ayudaTipo}</p>
           {!conteo && (
-            <p className="text-xs text-muted">
+            <p className="text-apoyo text-muted">
               El monto va <strong>siempre en positivo</strong>, también en un adelanto o un
               descuento: el signo lo pone la regla, no el dato. Un adelanto tipeado en negativo
               pasaría de descontar S/100 a sumarlos.
@@ -183,7 +183,7 @@ export function MovimientosCliente({
 
         <div className="border-t border-line">
           {movimientos.length === 0 ? (
-            <p className="px-5 py-6 text-center text-sm text-muted">Todavía no hay ninguno.</p>
+            <p className="px-5 py-6 text-center text-cuerpo text-muted">Todavía no hay ninguno.</p>
           ) : (
             <Table>
               <THead>
@@ -205,7 +205,7 @@ export function MovimientosCliente({
                     <TD className="text-right tabular-nums">
                       {m.monto == null ? `${m.cantidad} u.` : soles(m.monto)}
                     </TD>
-                    <TD className="text-sm text-muted">{m.motivo}</TD>
+                    <TD className="text-cuerpo text-muted">{m.motivo}</TD>
                     <TD className="text-right">
                       {m.liquidacionId ? (
                         <Badge tone="green">
@@ -236,7 +236,7 @@ export function MovimientosCliente({
           <CardHeader>
             <CardTitle>Ventas del periodo</CardTitle>
           </CardHeader>
-          <p className="px-5 pb-3 text-sm text-muted">
+          <p className="px-5 pb-3 text-cuerpo text-muted">
             Sólo lectura: cargar una venta nueva o asignar un vendedor se hace desde{' '}
             <a className="text-gold-deep underline" href="/sueldos/ventas">
               Ventas y metas
@@ -245,7 +245,7 @@ export function MovimientosCliente({
           </p>
           <div className="border-t border-line">
             {ventas.length === 0 ? (
-              <p className="px-5 py-6 text-center text-sm text-muted">Todavía no hay ninguna.</p>
+              <p className="px-5 py-6 text-center text-cuerpo text-muted">Todavía no hay ninguna.</p>
             ) : (
               <Table>
                 <THead>
@@ -284,7 +284,7 @@ export function MovimientosCliente({
           </div>
         </Card>
       ) : (
-        <p className="text-sm text-muted">
+        <p className="text-cuerpo text-muted">
           Las ventas se cargan en{' '}
           <a className="text-gold-deep underline" href="/sueldos/ventas">
             Ventas y metas

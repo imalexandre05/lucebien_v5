@@ -20,7 +20,8 @@
 | [operacion-diaria.md](operacion-diaria.md) | **Cómo funciona el negocio en la realidad**: qué hace cada rol cada día, en cada sede, y el flujo real de las prendas |
 | [integracion-huellero.md](integracion-huellero.md) | Diseño de la integración del huellero Hikvision del almacén → tabla `asistencias`. Es la entrada del sistema de sueldos |
 | [puesta-en-marcha-huellero.md](puesta-en-marcha-huellero.md) | **Los ocho pasos para encender el huellero**: backup, migración, prueba, usuario del colector, alta del equipo, instalación en la PC del almacén y qué revisar antes de la primera liquidación |
-| [defecto-derivacion-huellero.md](defecto-derivacion-huellero.md) | **Un defecto abierto en la cadena del sueldo**: `huellero_derivar_asistencia()` escribe `'trabajado'` sin hora de salida y puede borrar una hora declarada a mano. 15 días reales sin derivar. Con reproducción y qué tests exige el arreglo |
+| [defecto-derivacion-huellero.md](defecto-derivacion-huellero.md) | **RESUELTO** (verificado 8-sep): `huellero_derivar_asistencia()` ya no escribe `'trabajado'` sin las dos horas ni borra una hora declarada a mano — lo cerraron de paso las migraciones `0096`/`0097` |
+| [huellero-identificadores-sin-asignar-06-sep.md](huellero-identificadores-sin-asignar-06-sep.md) | **880 marcas del huellero sin asignar**, 13 identificadores, 5 de personas activas (622 marcas) y 2 vivos hoy — con quién es cada uno y en qué orden asignarlos |
 | [integracion-tuxedo.md](integracion-tuxedo.md) | Inspección del sistema comercial TUXEDO Pro (inventario, POS, alquiler, caja) y contrato de datos propuesto para que el motor de sueldos consuma ventas/metas por sede sin acoplarse |
 | [hoja-de-ruta-sistema.md](hoja-de-ruta-sistema.md) | Cómo se conecta todo para que la evaluación mensual salga automática y trazable |
 | [entrevista-dueno.md](entrevista-dueno.md) | Primera ronda de preguntas al dueño — **respondida** |
@@ -40,6 +41,7 @@
 | [superpowers/specs/2026-08-20-modulo-colaboradores.md](superpowers/specs/2026-08-20-modulo-colaboradores.md) | **Un módulo en lugar de ocho entradas**: el ERP estaba organizado por tabla y quien administra piensa por persona. `/colaboradores` con período único en la URL y siete secciones que reusan los clientes que ya existían. Incluye el hilo de los cinco pasos que separan a alguien de su pago, y por qué Valores 360° no usa el permiso `valores` |
 | [superpowers/specs/sueldos/2026-08-21-sueldos-flujo-maestro-design.md](superpowers/specs/sueldos/2026-08-21-sueldos-flujo-maestro-design.md) | **El ciclo de vida completo del colaborador en 15 pasos y 6 fases**: qué existe, qué falta (admisión, justificaciones, exámenes, regularizaciones, resumen) y en qué orden se construye. Navegación híbrida: procesos para el admin, expediente por persona, Mi espacio móvil del colaborador. Las decisiones del 21-ago con lo que queda ⚠️ pendiente del dueño |
 | [superpowers/specs/sueldos/2026-08-24-liquidacion-por-tramos-design.md](superpowers/specs/sueldos/2026-08-24-liquidacion-por-tramos-design.md) | **Un contrato de varios meses se liquida en tramos**, no de una sola vez al final. Verificado: el motor de `packages/core` no necesita cambiar, sólo un índice, una RPC y la pantalla. `sueldo_pactado` pasa a ser la cuota de cada liquidación (✅ confirmado, §2) — sin implementar todavía |
+| [superpowers/specs/reportes/2026-09-12-mis-reportes-design.md](superpowers/specs/reportes/2026-09-12-mis-reportes-design.md) | **El operativo ve el estado de sus propios reportes** (evaluado/pendiente, puntaje general) desde «Interno», sin tocar RLS ni exponer los puntos de extras que el dueño decidió ocultarle en la Fase 5. Anota aparte un hallazgo de RLS sin cerrar en `pendientes-negocio.md` |
 
 ## Arquitectura
 
@@ -74,6 +76,7 @@
 | [auditoria-2026-05-10.md](auditoria-2026-05-10.md) | 22 hallazgos, 12 corregidos |
 | [auditoria-2026-07-02.md](auditoria-2026-07-02.md) | Segunda auditoría |
 | [auditoria-2026-08-23.md](auditoria-2026-08-23.md) | **La de antes de entregarlo a la gente.** 125 hallazgos, 58 pasados por refutación adversarial, 22 lotes de corrección. Qué estaba roto, qué atrapó el proceso, y qué queda abierto |
+| [auditoria-2026-09-12-ux-visual.md](auditoria-2026-09-12-ux-visual.md) | **Auditoría visual con sesión real (Playwright).** El desplegable del mapa de piso corregido, la queja de "rústico" no se sostuvo salvo ese caso, y un susto de Server Error que resultó ser dos suites de prueba pisándose el mismo `erp-dev` — no un bug real |
 | [auditoria-pipeline-prendas.md](auditoria-pipeline-prendas.md) | Auditoría específica del pipeline |
 | [informe-avances-2026-07-01.md](informe-avances-2026-07-01.md) | Informe de avance |
 | [fixes/](fixes/) | 15 fichas de corrección, una por hallazgo |

@@ -121,11 +121,17 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
         title="Notificaciones"
         aria-label={noLeidas > 0 ? `Notificaciones, ${noLeidas} sin leer` : 'Notificaciones'}
         aria-expanded={abierto}
-        className="relative flex h-8 w-8 items-center justify-center rounded-full text-muted outline-none transition-colors duration-150 hover:bg-navy/5 hover:text-navy focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-[0.97]"
+        className="anillo relative flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
       >
         <Bell className="h-4 w-4" strokeWidth={1.75} />
         {noLeidas > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold leading-none text-white">
+          // `pulso-acento` una sola vez al aparecer (o al cambiar la cuenta, por la key): el
+          // contador rojo tiene que llamar la atención UNA vez, no latir para siempre en la
+          // esquina — un badge que parpatea sin parar se vuelve parte del fondo y se ignora.
+          <span
+            key={noLeidas}
+            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 animate-pulso-acento items-center justify-center rounded-r-pastilla bg-error px-1 text-micro font-bold leading-none text-white"
+          >
             {noLeidas > 99 ? '99+' : noLeidas}
           </span>
         )}
@@ -134,7 +140,9 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
       {abierto &&
         createPortal(
           <>
-            <div className="fixed inset-0 z-20" onClick={() => setAbierto(false)} aria-hidden />
+            {/* z-30 = mismo nivel que el header: el overlay tiene que tapar TAMBIEN la topbar, si no un
+                clic ahi pasa de largo y el panel se queda abierto. El panel va a z-40, encima. */}
+            <div className="fixed inset-0 z-30" onClick={() => setAbierto(false)} aria-hidden />
             <div
               ref={panelRef}
               role="dialog"
@@ -145,15 +153,15 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
                 visibility: coords.top === null ? 'hidden' : 'visible',
                 maxHeight: 'calc(100vh - 1rem)',
               }}
-              className="fixed z-30 w-80 max-w-[calc(100vw-1rem)] animate-fade overflow-y-auto rounded-xl border border-line bg-white shadow-lift"
+              className="fixed z-40 w-80 max-w-[calc(100vw-1rem)] animate-fade overflow-y-auto rounded-r-medio border border-line bg-white shadow-lift"
             >
               <div className="flex items-center justify-between border-b border-line/60 px-3.5 py-2.5">
-                <span className="text-sm font-semibold text-navy">Notificaciones</span>
+                <span className="text-cuerpo font-semibold text-navy">Notificaciones</span>
                 {noLeidas > 0 && (
                   <button
                     type="button"
                     onClick={marcarTodas}
-                    className="inline-flex items-center gap-1 text-xs text-muted transition-colors hover:text-navy"
+                    className="inline-flex items-center gap-1 text-apoyo text-muted transition-colors hover:text-navy"
                   >
                     <CheckCheck className="h-3.5 w-3.5" strokeWidth={2} /> Marcar todas
                   </button>
@@ -163,7 +171,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
               {recientes.length === 0 ? (
                 <div className="flex flex-col items-center gap-1.5 px-4 py-8 text-center">
                   <Bell className="h-6 w-6 text-line" strokeWidth={1.5} />
-                  <p className="text-xs text-muted">Sin notificaciones.</p>
+                  <p className="text-apoyo text-muted">Sin notificaciones.</p>
                 </div>
               ) : (
                 <ul className="max-h-80 overflow-y-auto">
@@ -174,8 +182,8 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
                       <li key={n.id} className={cn('flex items-start gap-2.5 border-b border-line/40 px-3.5 py-2.5 last:border-0', !n.leida && 'bg-gold/5')}>
                         <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', sev.cls)} strokeWidth={1.75} aria-hidden />
                         <div className="min-w-0 flex-1">
-                          <p className={cn('truncate text-xs font-semibold', !n.leida ? 'text-navy' : 'text-ink')}>{n.titulo}</p>
-                          <p className="mt-0.5 line-clamp-2 text-[11px] text-muted">{n.mensaje}</p>
+                          <p className={cn('truncate text-apoyo font-semibold', !n.leida ? 'text-navy' : 'text-ink')}>{n.titulo}</p>
+                          <p className="mt-0.5 line-clamp-2 text-micro text-muted">{n.mensaje}</p>
                         </div>
                         {!n.leida && (
                           <button
@@ -183,7 +191,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
                             onClick={() => marcar(n.id)}
                             title="Marcar como leída"
                             aria-label="Marcar como leída"
-                            className="shrink-0 rounded-md p-1 text-muted transition-colors hover:bg-navy/5 hover:text-navy"
+                            className="shrink-0 rounded-r-pastilla p-1 text-muted transition-colors hover:bg-navy/5 hover:text-navy"
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={2} />
                           </button>
@@ -197,7 +205,7 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
               <Link
                 href="/notificaciones"
                 onClick={() => setAbierto(false)}
-                className="block w-full rounded-b-xl border-t border-line/60 py-2.5 text-center text-xs font-medium text-navy transition-colors hover:bg-navy/5"
+                className="block w-full rounded-b-xl border-t border-line/60 py-2.5 text-center text-apoyo font-medium text-navy transition-colors hover:bg-navy/5"
               >
                 Mostrar más
               </Link>

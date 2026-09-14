@@ -145,7 +145,7 @@ export function LiquidacionPagoCliente({
               sobre una liquidación CERRADA (0080) y calcular y cerrar se hace en otra pantalla—,
               así que sin este enlace la pestaña era un callejón: el paso «Pago» del hilo mandaba
               para acá y acá no había ninguna salida. */}
-          <CardContent className="space-y-3 py-8 text-center text-sm text-muted">
+          <CardContent className="space-y-3 py-8 text-center text-cuerpo text-muted">
             <p>Esta persona todavía no tiene ninguna liquidación guardada.</p>
             <p>
               La liquidación se calcula y se cierra en{' '}
@@ -185,7 +185,7 @@ export function LiquidacionPagoCliente({
                   </div>
                 </div>
                 <a
-                  className="whitespace-nowrap text-sm text-gold-deep underline"
+                  className="whitespace-nowrap text-cuerpo text-gold-deep underline"
                   href={`/sueldos/liquidaciones/${l.id}/comprobante`}
                 >
                   Ver desglose
@@ -193,22 +193,22 @@ export function LiquidacionPagoCliente({
               </CardHeader>
               <CardContent className="space-y-3">
                 {!cerrada ? (
-                  <p className="text-sm text-muted">
+                  <p className="text-cuerpo text-muted">
                     {EXPLICACION_ESTADO[l.estado === 'borrador' ? 'borrador' : 'anulada']}
                   </p>
                 ) : (
                   <>
                     <div className="grid grid-cols-3 gap-3 sm:max-w-md">
                       <div>
-                        <p className="text-xs text-muted">Total</p>
+                        <p className="text-apoyo text-muted">Total</p>
                         <p className="tabular-nums text-navy">{soles(l.total)}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted">Pagado</p>
+                        <p className="text-apoyo text-muted">Pagado</p>
                         <p className="tabular-nums text-navy">{migrado ? soles(pagado) : '—'}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted">Saldo</p>
+                        <p className="text-apoyo text-muted">Saldo</p>
                         <p
                           className={cn(
                             'tabular-nums font-medium',
@@ -223,7 +223,7 @@ export function LiquidacionPagoCliente({
                     </div>
 
                     {sinMontoAPagar && (
-                      <p className="text-xs text-muted">
+                      <p className="text-apoyo text-muted">
                         Los descuentos igualan o superan los ingresos de este período: no hay
                         monto que pagar, así que no admite abonos.
                       </p>
@@ -244,12 +244,12 @@ export function LiquidacionPagoCliente({
                         <TBody>
                           {pagos.map((p) => (
                             <TR key={p.id} className={p.anulado ? 'opacity-60' : undefined}>
-                              <TD className="tabular-nums text-xs text-muted">{p.fecha}</TD>
+                              <TD className="tabular-nums text-dato text-muted">{p.fecha}</TD>
                               <TD>{p.metodo}</TD>
-                              <TD className="text-xs text-muted">
+                              <TD className="text-apoyo text-muted">
                                 {p.anulado ? `Anulado: ${p.anuladoMotivo ?? '—'}` : p.nota || '—'}
                               </TD>
-                              <TD className="text-xs text-muted">{p.registradoPor ?? '—'}</TD>
+                              <TD className="text-apoyo text-muted">{p.registradoPor ?? '—'}</TD>
                               <TD className={cn('text-right tabular-nums', p.anulado && 'line-through')}>
                                 {soles(p.monto)}
                               </TD>
@@ -270,7 +270,7 @@ export function LiquidacionPagoCliente({
                       <div className="border-t border-line pt-3">
                         {abonoAbierto === l.id ? (
                           <div className="space-y-3">
-                            <p className="text-xs leading-relaxed text-muted">
+                            <p className="text-apoyo leading-relaxed text-muted">
                               Los adelantos ya están descontados dentro del total — acá se registra
                               lo pagado del total.
                             </p>
@@ -318,7 +318,7 @@ export function LiquidacionPagoCliente({
                               <div>
                                 <Aviso tono="error">{errorAbono}</Aviso>
                                 {codigoAbono === 'SALDO' && (
-                                  <p className="mt-1 text-xs text-muted">
+                                  <p className="mt-1 text-apoyo text-muted">
                                     Este abono se pasaría del total: el saldo pendiente es {soles(saldo)}.
                                   </p>
                                 )}
@@ -342,7 +342,7 @@ export function LiquidacionPagoCliente({
                     )}
 
                     {!migrado && (
-                      <p className="text-xs text-muted">
+                      <p className="text-apoyo text-muted">
                         Sin la migración 0080 todavía no se puede registrar ni ver pagos de esta
                         liquidación.
                       </p>
@@ -364,7 +364,7 @@ export function LiquidacionPagoCliente({
       >
         <ModalBody>
           {anulando && (
-            <p className="mb-3 text-sm text-ink">
+            <p className="mb-3 text-cuerpo text-ink">
               {anulando.fecha} · {soles(anulando.monto)} · {anulando.metodo}
             </p>
           )}
@@ -377,7 +377,7 @@ export function LiquidacionPagoCliente({
             onChange={(e) => setMotivo(e.target.value)}
             placeholder="Por qué se anula este pago…"
           />
-          <p className="mt-2 text-xs text-muted">Es obligatorio: sin motivo se pierde el rastro de por qué.</p>
+          <p className="mt-2 text-apoyo text-muted">Es obligatorio: sin motivo se pierde el rastro de por qué.</p>
           {errorAnular && (
             <Aviso tono="error" className="mt-3">
               {errorAnular}

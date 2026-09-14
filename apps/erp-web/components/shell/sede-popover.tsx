@@ -13,9 +13,16 @@ import { cn } from '../../lib/cn';
 //
 // Popover ANCLADO (absolute, no portal): a diferencia de NotificacionesBell — que necesita
 // reposicionarse en scroll/resize y hacer flip porque su panel puede crecer con la lista y el
-// topbar es sticky — acá la lista es corta (≤4 sedes) y el trigger vive siempre arriba del
-// viewport, así que nunca hay riesgo real de recorte. Un simple `absolute right-0 top-full`
-// alcanza sin repetir esa maquinaria.
+// topbar es sticky — acá el trigger vive siempre arriba del viewport. Un simple
+// `absolute right-0 top-full` alcanza sin repetir esa maquinaria.
+//
+// DOS CORRECCIONES DE 2026-09-12, las dos por asumir que la lista era corta:
+//   - `max-h-[70vh] overflow-y-auto`: ya son cinco sedes y pueden ser más. Antes el panel crecía
+//     sin techo y se salía del viewport por abajo.
+//   - El recorte que se veía NO era de este panel: el header es `backdrop-blur`, o sea un
+//     contexto de apilamiento propio, y con su z-10 original empataba con la fila de tiles del
+//     dashboard, que ganaba por orden de DOM y tapaba el desplegable a media lista. El header
+//     pasó a z-30 (ver topbar.tsx) y este panel a z-40 dentro de él.
 export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: { cod: string; nombre: string }[] }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
@@ -41,7 +48,7 @@ export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: 
     const label = sedes[0]?.cod ?? sedeActual;
     if (!label) return null;
     return (
-      <span className="hidden rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-navy sm:inline">
+      <span className="hidden rounded-r-pastilla border border-line bg-white px-3 py-1 text-apoyo font-medium text-navy sm:inline">
         Sede · {label}
       </span>
     );
@@ -65,7 +72,7 @@ export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: 
         aria-expanded={abierto}
         disabled={pending}
         title="Cambiar de sede"
-        className="inline-flex items-center gap-1 rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-navy outline-none transition-colors duration-150 hover:border-gold focus-visible:ring-2 focus-visible:ring-gold/70 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
+        className="anillo inline-flex items-center gap-1 rounded-r-pastilla border border-line bg-white px-3 py-1 text-apoyo font-medium text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-60"
       >
         <MapPin className="h-3 w-3 text-gold" strokeWidth={2} aria-hidden />
         Sede · {sedeActual || '—'}
@@ -76,7 +83,7 @@ export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: 
         <div
           role="menu"
           aria-label="Cambiar de sede"
-          className="absolute right-0 top-full z-30 mt-1.5 w-52 animate-fade overflow-hidden rounded-lg border border-line bg-white py-1 shadow-lift"
+          className="absolute right-0 top-full z-40 mt-1.5 max-h-[70vh] w-52 animate-fade overflow-y-auto rounded-r-medio border border-line bg-white py-1 shadow-lift"
         >
           {sedes.map((s) => (
             <button
@@ -86,7 +93,7 @@ export function SedePopover({ sedeActual, sedes }: { sedeActual: string; sedes: 
               aria-checked={s.cod === sedeActual}
               onClick={() => elegir(s.cod)}
               className={cn(
-                'flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors hover:bg-navy/5',
+                'flex w-full items-center justify-between px-3 py-2 text-left text-cuerpo transition-colors hover:bg-navy/5',
                 s.cod === sedeActual ? 'font-medium text-navy' : 'text-ink',
               )}
             >

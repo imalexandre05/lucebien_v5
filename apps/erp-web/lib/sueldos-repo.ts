@@ -703,6 +703,113 @@ export async function anularLiquidacion(id: string, motivo: string): Promise<voi
   if (error) throw errorSueldo(error);
 }
 
+/**
+ * Lo que puede pasar al crear el borrador de reemplazo DESPUÉS de anular, dentro de
+ * `corregirLiquidacion()`. Anular y crear son dos escrituras separadas, no una transacción: si la
+ * primera corre y la segunda falla, la anulación queda firme igual — el trigger `sueldo_liq_inmutable`
+ * (0072 §8.1) sólo deja pasar de 'cerrada' a 'anulada', nunca al revés, así que no hay forma de
+ * deshacerla. El administrador tiene que enterarse de que el pago SÍ quedó anulado, no leer un error
+ * genérico que lo deje adivinando si algo se guardó o no.
+ */
+export class CorreccionParcialError extends Error {
+  /** Con qué motivo quedó anulada — para no volver a preguntarle algo que ya pasó. */
+  readonly motivoAnulacion: string;
+  readonly acuerdoId: string;
+  readonly periodoDesde: string;
+  readonly periodoHasta: string;
+
+  constructor(
+    motivoAnulacion: string,
+    acuerdoId: string,
+    periodoDesde: string,
+    periodoHasta: string,
+    causa: string,
+  ) {
+    super(
+      `La liquidación se anuló con el motivo "${motivoAnulacion}", pero no se pudo crear el borrador ` +
+        `de reemplazo: ${causa}`,
+    );
+    this.name = 'CorreccionParcialError';
+    this.motivoAnulacion = motivoAnulacion;
+    this.acuerdoId = acuerdoId;
+    this.periodoDesde = periodoDesde;
+    this.periodoHasta = periodoHasta;
+  }
+}
+
+/**
+ * «Corregir esta liquidación» (docs/superpowers/specs/2026-08-25-reunion-admin-hoja-de-ruta.md
+ * §3.1, D-1). NO es un camino nuevo: es `anularLiquidacion()` seguido de `crearBorrador()` para el
+ * MISMO acuerdo y el MISMO período de la liquidación que se corrige — nunca el rango que el
+ * administrador tenga cargado en el selector de arriba, que puede estar mirando otra cosa. Por eso
+ * el acuerdo y el período se leen de la propia fila en la base (`obtenerLiquidacion`); el único dato
+ * que hace falta del cliente es el id y el motivo.
+ *
+ * El congelado no se toca: `anularLiquidacion()` es el único UPDATE que el trigger de la 0072
+ * permite sobre una 'cerrada', y `crearBorrador()` es un INSERT nuevo, no una edición. Que el
+ * borrador nuevo entre sin chocar con el anulado lo garantiza `sueldo_liq_periodo_sin_solape`
+ * (0093): excluye `estado <> 'anulada'`, así que apenas la anulación corre, ese período vuelve a
+ * estar libre para el mismo acuerdo.
+ *
+ * Las dos escrituras NO comparten transacción (son un RPC y un INSERT por separado). Si anular
+ * corre y crear falla, esta función no intenta deshacer nada —no se puede: una 'anulada' no vuelve a
+ * 'cerrada'— y en cambio lanza `CorreccionParcialError`, con el acuerdo y el período exactos para
+ * que la pantalla se lo diga al administrador y le arme el camino de vuelta.
+ *
+ * El tercer parámetro (`colaboradores`) es un punto de inyección SÓLO para tests. `apps/erp-web` no
+ * tiene un runner de tests unitarios (a diferencia de `packages/core`, que sí lo tiene wireado en
+ * `tools/verificar-local.sh`), y las tres funciones de acá abajo hablan con Supabase: no se pueden
+ * ejercitar sin una base real. Con este seam, `lib/__tests__/sueldos-repo.corregir.test.ts` prueba
+ * el ORDEN (anular antes que crear) y que el período que recibe `crearBorrador` es el de la propia
+ * liquidación leída de la base, sin depender de Supabase. Ningún llamador real pasa este parámetro:
+ * los tres defaults son exactamente las funciones exportadas de este archivo.
+ */
+export async function corregirLiquidacion(
+  id: string,
+  motivo: string,
+  colaboradores: {
+    obtener?: typeof obtenerLiquidacion;
+    anular?: typeof anularLiquidacion;
+    crear?: typeof crearBorrador;
+  } = {},
+): Promise<{ nuevoBorradorId: string }> {
+  const obtener = colaboradores.obtener ?? obtenerLiquidacion;
+  const anular = colaboradores.anular ?? anularLiquidacion;
+  const crear = colaboradores.crear ?? crearBorrador;
+
+  const actual = await obtener(id);
+  if (!actual) {
+    throw new SueldoRpcError('No existe esa liquidación.', 'DATO');
+  }
+  if (actual.estado !== 'cerrada') {
+    // Mismo texto que ya usa la RPC para este mismo corte (0073): sólo se corrige — como sólo se
+    // anula — una liquidación cerrada. No es una regla nueva, es la misma dicha antes de intentarlo.
+    throw new SueldoRpcError(`Esta liquidación está ${actual.estado}; sólo se corrige una cerrada.`, 'ESTADO');
+  }
+
+  // anularLiquidacion() valida el motivo (no vacío) antes de tocar la base, y su RPC corre en su
+  // propia transacción: o queda 'anulada' entera —sellos liberados y el acuerdo vuelto a 'vigente'
+  // si correspondía— o no cambia nada. No hay estado intermedio posible acá.
+  await anular(id, motivo);
+
+  // A PARTIR DE ACÁ LA ANULACIÓN YA CORRIÓ. Cualquier error de acá en más se envuelve en
+  // CorreccionParcialError: nunca puede llegarle a la pantalla como un error suelto que sugiera que
+  // no pasó nada.
+  try {
+    const nuevoBorradorId = await crear(actual.acuerdoId, actual.periodoDesde, actual.periodoHasta);
+    return { nuevoBorradorId };
+  } catch (e) {
+    const causa = e instanceof Error ? e.message : 'error desconocido';
+    throw new CorreccionParcialError(
+      motivo.trim(),
+      actual.acuerdoId,
+      actual.periodoDesde,
+      actual.periodoHasta,
+      causa,
+    );
+  }
+}
+
 /** Un borrador se puede descartar; una cerrada o una anulada no (trigger de la 0072). */
 export async function eliminarBorrador(id: string): Promise<void> {
   const sb = getServerClient();

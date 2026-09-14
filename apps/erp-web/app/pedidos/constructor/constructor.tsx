@@ -236,7 +236,7 @@ export function PedidosConstructor({
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <div className="space-y-4 lg:col-span-2">
         {exito && (
-          <div className="flex items-center justify-between gap-3 rounded-md border border-exito-line bg-exito-soft px-4 py-3 text-sm text-exito-deep" data-testid="exito-banner">
+          <div className="flex items-center justify-between gap-3 rounded-r-chico border border-exito-line bg-exito-soft px-4 py-3 text-cuerpo text-exito-deep" data-testid="exito-banner">
             <span>
               Pedido <span className="tabular-nums font-semibold">{exito.codigo}</span> registrado.
             </span>
@@ -259,12 +259,12 @@ export function PedidosConstructor({
         <Card>
           <CardContent className="space-y-4 pt-4">
             <section>
-              <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">① Cliente</h2>
+              <h2 className="mb-1.5 text-rotulo font-semibold uppercase text-muted">① Cliente</h2>
               <ClientePanel clientes={clientes} value={cliente} onChange={setCliente} inputRef={clienteInputRef} />
             </section>
 
             <section className="border-t border-line/60 pt-4">
-              <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">② Líneas</h2>
+              <h2 className="mb-1.5 text-rotulo font-semibold uppercase text-muted">② Líneas</h2>
               <LineasPanel
                 activos={activos}
                 tipoActivo={tipoLinea}
@@ -278,7 +278,7 @@ export function PedidosConstructor({
             </section>
 
             <section className="border-t border-line/60 pt-4">
-              <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">③ Fechas</h2>
+              <h2 className="mb-1.5 text-rotulo font-semibold uppercase text-muted">③ Fechas</h2>
               <FechasPanel
                 hoy={hoy()}
                 fechaEntrega={fechaEntrega}
@@ -291,12 +291,12 @@ export function PedidosConstructor({
             </section>
 
             <section className="border-t border-line/60 pt-4">
-              <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">④ Garantía</h2>
+              <h2 className="mb-1.5 text-rotulo font-semibold uppercase text-muted">④ Garantía</h2>
               <GarantiaPanel value={garantia} onChange={setGarantia} docOpciones={docGarantia} />
             </section>
 
             <section className="border-t border-line/60 pt-4">
-              <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">⑤ Notas</h2>
+              <h2 className="mb-1.5 text-rotulo font-semibold uppercase text-muted">⑤ Notas</h2>
               <textarea
                 value={notas}
                 onChange={(e) => setNotas(e.target.value)}

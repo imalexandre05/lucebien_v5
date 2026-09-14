@@ -60,11 +60,11 @@ export default async function ResumenColaboradorPage({
       <Card>
         <CardHeader>
           <CardTitle>Qué falta para cerrar el período</CardTitle>
-          <span className="text-xs text-muted">{etiquetaPeriodo(periodo)}</span>
+          <span className="text-apoyo text-muted">{etiquetaPeriodo(periodo)}</span>
         </CardHeader>
         <CardContent>
           <HiloPago pasos={pasos} hrefDe={(p) => rutaSeccion(persona.id, p.seccion, query)} className="mt-1" />
-          <p className="mt-5 border-t border-line/60 pt-3 text-xs leading-relaxed text-muted">
+          <p className="mt-5 border-t border-line/60 pt-3 text-apoyo leading-relaxed text-muted">
             {corte ? (
               <>
                 El período se traba en <strong className="font-semibold text-ink">{corte.titulo.toLowerCase()}</strong>:{' '}
@@ -143,9 +143,9 @@ export default async function ResumenColaboradorPage({
                 <TBody>
                   {desempeno.reportes.slice(0, 12).map((r) => (
                     <TR key={r.id}>
-                      <TD className="tabular-nums text-xs">{r.fecha}</TD>
-                      <TD className="text-xs">{r.turno}</TD>
-                      <TD className="text-right tabular-nums text-xs">
+                      <TD className="tabular-nums text-dato">{r.fecha}</TD>
+                      <TD className="text-apoyo">{r.turno}</TD>
+                      <TD className="text-right tabular-nums text-dato">
                         {r.evaluado && r.puntajeEval != null ? (
                           r.puntajeEval.toFixed(1)
                         ) : (
@@ -157,7 +157,7 @@ export default async function ResumenColaboradorPage({
                 </TBody>
               </Table>
               {desempeno.reportes.length > 12 && (
-                <p className="px-5 pt-2 text-[11px] text-muted">
+                <p className="px-5 pt-2 text-micro text-muted">
                   Se muestran los 12 más recientes de {desempeno.reportes.length}.
                 </p>
               )}
@@ -187,9 +187,9 @@ export default async function ResumenColaboradorPage({
                 <TBody>
                   {desempeno.incidencias.map((i) => (
                     <TR key={i.id}>
-                      <TD className="tabular-nums text-xs">{i.fecha}</TD>
-                      <TD className="text-xs">{i.tipo}</TD>
-                      <TD className="text-right text-xs">{i.nivel}</TD>
+                      <TD className="tabular-nums text-dato">{i.fecha}</TD>
+                      <TD className="text-apoyo">{i.tipo}</TD>
+                      <TD className="text-right text-apoyo">{i.nivel}</TD>
                     </TR>
                   ))}
                 </TBody>

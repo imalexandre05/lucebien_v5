@@ -5,7 +5,6 @@ import {
   estadoReporte,
   ESTADO_REPORTE_LABEL,
   puede,
-  type EstadoReporte,
   type MatrizPermisos,
 } from '@scilb/core';
 import { obtenerReporte, listarLayoutZonas } from '../../../lib/reportes-repo';
@@ -14,25 +13,20 @@ import { leerMatrizPermisos } from '../../../lib/permisos-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
-import { Badge, type Tone } from '../../../components/ui/badge';
+import { Badge } from '../../../components/ui/badge';
 import { LogoMark } from '../../../components/brand/logo';
 import { PrintButton } from '../../../components/print-button';
 import { LayoutMap } from '../layout-map';
 import { EvaluarPanel, AccionesAdmin } from './acciones';
-
-const ESTADO_TONE: Record<EstadoReporte, Tone> = {
-  evaluado: 'green',
-  pendiente: 'amber',
-  no_evaluable: 'gray',
-};
+import { ESTADO_TONE } from '../constantes';
 
 const esLimpieza = (cod: string) => cod.startsWith('OL_');
 
 function Campo({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-line/60 py-3">
-      <dt className="text-xs uppercase tracking-wide text-muted">{label}</dt>
-      <dd className="mt-0.5 text-sm text-navy">{children}</dd>
+      <dt className="text-rotulo uppercase text-muted">{label}</dt>
+      <dd className="mt-0.5 text-cuerpo text-navy">{children}</dd>
     </div>
   );
 }
@@ -85,17 +79,17 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
               <div className="text-2xl font-semibold leading-none text-navy">
                 Reporte diario de actividades
               </div>
-              <div className="mt-1 text-xs text-muted">
+              <div className="mt-1 text-apoyo text-muted">
                 LuceBien · Confecciones Aliaga E.I.R.L. · Huancayo
               </div>
             </div>
           </div>
           <div className="text-right">
-            <div className="tabular-nums text-sm font-semibold text-navy">{r.id}</div>
-            <div className="mt-1 tabular-nums text-[11px] text-muted">
+            <div className="tabular-nums text-dato font-semibold text-navy">{r.id}</div>
+            <div className="mt-1 tabular-nums text-micro text-muted">
               {r.sedeCod} · {TURNO_LABEL[r.turno] ?? r.turno} · {r.fecha}
             </div>
-            <div className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted">
+            <div className="mt-0.5 text-rotulo font-medium uppercase text-muted">
               {ESTADO_REPORTE_LABEL[estado]}
             </div>
           </div>
@@ -140,7 +134,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
 
           {r.trabajadores.length > 0 && (
             <div className="mt-4">
-              <div className="text-xs uppercase tracking-wide text-muted">Trabajadores del turno</div>
+              <div className="text-rotulo uppercase text-muted">Trabajadores del turno</div>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
                 {r.trabajadores.map((t) => (
                   <Badge key={t} tone="navy">
@@ -170,7 +164,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
         <>
           {zonas.length > 0 && (
             <>
-              <h2 className="mb-2 mt-6 text-sm font-semibold text-navy">Limpieza</h2>
+              <h2 className="mb-2 mt-6 text-cuerpo font-semibold text-navy">Limpieza</h2>
               <Card>
                 <CardContent>
                   <LayoutMap zonas={zonas} turno={r.turno} selected={limpiezaCods} readOnly />
@@ -179,7 +173,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
             </>
           )}
 
-          <h2 className="mb-2 mt-6 text-sm font-semibold text-navy">Actividades</h2>
+          <h2 className="mb-2 mt-6 text-cuerpo font-semibold text-navy">Actividades</h2>
           <Card>
             <CardContent className="px-0 pb-0">
               <Table>
@@ -195,13 +189,13 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
                 <TBody>
                   {regulares.map((a) => (
                     <TR key={a.id}>
-                      <TD className="pl-5 tabular-nums text-xs">{a.cod}</TD>
+                      <TD className="pl-5 tabular-nums text-dato">{a.cod}</TD>
                       <TD>{a.nombre}</TD>
-                      <TD className="tabular-nums text-xs text-muted">{a.cat ?? '—'}</TD>
+                      <TD className="tabular-nums text-dato text-muted">{a.cat ?? '—'}</TD>
                       <TD className="text-right tabular-nums">
                         {a.calificacion == null ? '—' : a.calificacion}
                       </TD>
-                      <TD className="pr-5 text-xs text-muted">{a.obsEval || a.obs || '—'}</TD>
+                      <TD className="pr-5 text-apoyo text-muted">{a.obsEval || a.obs || '—'}</TD>
                     </TR>
                   ))}
                   {regulares.length === 0 && (
@@ -220,7 +214,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
 
       {r.extras.length > 0 && (
         <>
-          <h2 className="mb-2 mt-6 text-sm font-semibold text-navy">Extras</h2>
+          <h2 className="mb-2 mt-6 text-cuerpo font-semibold text-navy">Extras</h2>
           <Card>
             <CardContent className="px-0 pb-0">
               <Table>
@@ -244,7 +238,7 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
                         {e.detalle || e.nombre}
                         {puedeVerPuntosExtras && e.revisar && <Badge tone="amber">A revisar</Badge>}
                       </TD>
-                      <TD className="text-xs text-muted">{e.registradoPorNombre ?? '—'}</TD>
+                      <TD className="text-apoyo text-muted">{e.registradoPorNombre ?? '—'}</TD>
                       <TD className="text-right tabular-nums">{e.cantidad}</TD>
                       <TD className="text-right tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
                       {puedeVerPuntosExtras && (
@@ -267,13 +261,13 @@ export default async function ReporteDetalle({ params }: { params: { id: string 
 
       <Link
         href={puedeVerLista ? '/administracion/reportes' : '/reportes/nuevo'}
-        className="mt-4 inline-block text-sm text-muted transition-colors duration-150 hover:text-navy print:hidden"
+        className="mt-4 inline-block text-cuerpo text-muted transition-colors duration-150 hover:text-navy print:hidden"
       >
         ← Volver a {puedeVerLista ? 'reportes' : 'mi turno'}
       </Link>
 
       {/* Pie de documento — solo impresión. */}
-      <footer className="mt-8 hidden items-center justify-between border-t border-line pt-3 tabular-nums text-[10px] text-muted print:flex">
+      <footer className="mt-8 hidden items-center justify-between border-t border-line pt-3 tabular-nums text-micro text-muted print:flex">
         <span>SCI-LB · Sistema de Control Interno</span>
         <span>
           {r.id} · impreso {new Intl.DateTimeFormat('es-PE', { dateStyle: 'medium', timeZone: 'America/Lima' }).format(new Date())}

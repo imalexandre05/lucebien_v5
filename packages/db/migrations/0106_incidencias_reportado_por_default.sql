@@ -1,0 +1,46 @@
+-- 0106_incidencias_reportado_por_default.sql — reportado_por_id ya no depende de un segundo
+-- chequeo de sesión que puede fallar por red
+--
+-- Implementa docs/superpowers/specs/almacen/2026-08-25-incidencias-alcance-y-formulario-design.md
+-- §6 (Addendum, 8-sep-2026).
+--
+-- QUÉ PASABA. `crearIncidenciasDeReporte()` (apps/erp-web/lib/incidencias-repo.ts) arma
+-- `reportado_por_id` desde `apps/erp-web/app/reportes/actions.ts:109`
+-- (`reportadoPorId: sesion?.usuario.id ?? null`), donde `sesion` sale de un SEGUNDO llamado a
+-- `getSesion()` que hace su propia llamada de red a `sb.auth.getUser()`. Es un camino distinto e
+-- independiente del que ya autorizó el resto de la misma request: la RPC `reportes_crear()` usa
+-- `auth.uid()` directo, resuelto por Postgres a partir del JWT que ya trae la conexión, sin
+-- ninguna llamada de red adicional, y nunca falló en los casos medidos. Cuando el segundo llamado
+-- falla o tarda (señal débil en el almacén), `getSesion()` devuelve `null` sin lanzar error y el
+-- `?? null` lo escribe en silencio: contra `scilb`, 3 de 5 incidencias con `origen = 'reporte'`
+-- quedaron con `reportado_por_id` en null, incluida una de Yessica (encargada real). Con la RLS de
+-- la 0094 (`reportado_por_id = auth.uid()`), esa incidencia queda invisible hasta para quien la
+-- reportó.
+--
+-- QUÉ CAMBIA. `reportado_por_id` pasa a tener `default auth.uid()` — el mismo `auth.uid()` que ya
+-- usa `reportes_crear()` con éxito, sin llamada de red adicional. El acompañante en TypeScript
+-- (mismo commit) deja de mandar la columna cuando no hay valor de sesión, en vez de mandar `null`
+-- explícito: un `null` explícito en un insert de PostgREST PISA el default de la columna (Postgres
+-- sólo aplica el default cuando la columna se OMITE del insert), así que sin ese cambio el default
+-- de acá no serviría de nada.
+--
+-- NO se toca `inc_select`/`inc_insert`/`inc_update`/`inc_delete` de la 0094: siguen como están. No
+-- se backfillean las filas viejas en null (ni las 3 de `origen = 'reporte'` ni las 11 del lote
+-- `origen = 'manual'` migrado): son históricas y no hay quién atribuirles con certeza — la spec
+-- pide dejarlas como están, visibles sólo para el administrador, que es lo que ya pasa hoy.
+--
+-- Idempotente: `alter table ... alter column ... set default ...` en Postgres ya es en sí mismo
+-- seguro de reaplicar sin fallar (mismo patrón sin envoltorio que
+-- 0051_dispositivos_sede_fk_perfil_sede.sql:25, `alter table sedes alter column perfil set
+-- default 'pos';`) — no hace falta un `do $$ ... $$` ni comprobar pg_attrdef primero.
+--
+-- Recordatorios que este repo pagó caros:
+--   · Los helpers de RLS viven en el schema `private` desde la 0037. Esta migración no agrega
+--     ninguno, así que no aplica.
+--   · Toda tabla con RLS necesita policy de LECTURA **y** de ESCRITURA. `incidencias` ya las
+--     tiene las cuatro desde la 0046/0094; esta migración no toca ninguna política.
+--   · Este default NO es un parámetro de negocio (no-negociable 5): `auth.uid()` es un dato de
+--     sesión, no una regla editable desde /configuracion, así que no corresponde anotarlo en
+--     docs/pendientes-negocio.md.
+
+alter table incidencias alter column reportado_por_id set default auth.uid();
