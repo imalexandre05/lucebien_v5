@@ -67,20 +67,18 @@ export function AsistenciasCliente({
 
   // Filtros.
   const [q, setQ] = useState('');
-  const [fFecha, setFFecha] = useState('');
   const [fTurno, setFTurno] = useState('');
   const [fFuente, setFFuente] = useState('');
 
   const filtradas = useMemo(() => {
     const needle = q.trim().toLowerCase();
     return asistencias.filter((a) => {
-      if (fFecha && a.fecha !== fFecha) return false;
       if (fTurno && a.turno !== fTurno) return false;
       if (fFuente && a.fuente !== fFuente) return false;
       if (needle && !`${a.empleadoNombre ?? ''} ${a.obs ?? ''}`.toLowerCase().includes(needle)) return false;
       return true;
     });
-  }, [asistencias, q, fFecha, fTurno, fFuente]);
+  }, [asistencias, q, fTurno, fFuente]);
 
   // `minutosTardanza` es una columna HEREDADA y ya no se muestra. La liquidación no la lee:
   // calcula la tardanza comparando la hora de entrada contra el horario contratado
@@ -166,7 +164,6 @@ export function AsistenciasCliente({
             placeholder="Buscar empleado…"
             className={`${fieldCls} min-w-[12rem] flex-1`}
           />
-          <input type="date" value={fFecha} onChange={(e) => setFFecha(e.target.value)} className={fieldCls} aria-label="Fecha" />
           <OpcionBotones opciones={OPC_FILTRO_TURNO} value={fTurno} onChange={setFTurno} ariaLabel="Turno" />
           <select value={fFuente} onChange={(e) => setFFuente(e.target.value)} className={fieldCls} aria-label="Fuente">
             <option value="">Toda fuente</option>
@@ -317,7 +314,7 @@ export function AsistenciasCliente({
               {filtradas.length === 0 && (
                 <TR>
                   <TD className="px-5 py-8 text-center text-muted" colSpan={esAdmin ? 8 : 7}>
-                    {asistencias.length === 0 ? 'Sin asistencias registradas.' : 'Ninguna coincide con el filtro.'}
+                    {asistencias.length === 0 ? 'Sin asistencias registradas en este período.' : 'Ninguna coincide con el filtro.'}
                   </TD>
                 </TR>
               )}

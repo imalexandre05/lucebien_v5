@@ -38,15 +38,31 @@ type Row = {
   salida_estimada: boolean | null;
 };
 
-export async function listarAsistencias(): Promise<Asistencia[]> {
+/**
+ * Las asistencias de un rango de fechas (ambos extremos incluidos), las más recientes primero.
+ *
+ * Antes traía las últimas 300 filas sin rango: con 18 personas eso no llegaba a un mes, y un mes
+ * anterior no se podía ver aunque se eligiera el día. Ahora pagina de a 1000 —el tope de filas de
+ * PostgREST— hasta traer el rango entero. La RLS sigue decidiendo qué filas se ven.
+ */
+export async function listarAsistencias(desde: string, hasta: string): Promise<Asistencia[]> {
   const sb = getServerClient();
-  const { data, error } = await sb
-    .from('asistencias')
-    .select('*')
-    .order('fecha', { ascending: false })
-    .limit(300);
-  if (error) throw new Error(error.message);
-  const rows = (data as Row[]) ?? [];
+  const PAGINA = 1000;
+  const rows: Row[] = [];
+  for (let inicio = 0; ; inicio += PAGINA) {
+    const { data, error } = await sb
+      .from('asistencias')
+      .select('*')
+      .gte('fecha', desde)
+      .lte('fecha', hasta)
+      .order('fecha', { ascending: false })
+      .order('id', { ascending: true })
+      .range(inicio, inicio + PAGINA - 1);
+    if (error) throw new Error(error.message);
+    const pagina = (data as Row[]) ?? [];
+    rows.push(...pagina);
+    if (pagina.length < PAGINA) break;
+  }
 
   const nombre = await mapaNombres();
 

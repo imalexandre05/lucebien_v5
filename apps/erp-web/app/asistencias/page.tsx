@@ -2,10 +2,14 @@ import { Lock } from 'lucide-react';
 import { listarAsistencias } from '../../lib/asistencias-repo';
 import { listarEmpleados } from '../../lib/reportes-repo';
 import { getSesion } from '../../lib/auth';
+import { leerVistaRango } from '../../lib/periodo';
 import { PageHeader } from '../../components/shell/page-header';
 import { Card } from '../../components/ui/card';
 import { EmptyState } from '../../components/ui/empty-state';
+import { SelectorRango } from '../../components/ui/selector-rango';
 import { AsistenciasCliente } from './cliente';
+
+export const dynamic = 'force-dynamic';
 
 /**
  * La lista de asistencias de todo el equipo. Es una pantalla del administrador.
@@ -18,7 +22,11 @@ import { AsistenciasCliente } from './cliente';
  *
  * El aislamiento sigue viviendo en la base; esto es la puerta, que también tiene que existir.
  */
-export default async function AsistenciasPage() {
+export default async function AsistenciasPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
 
@@ -36,11 +44,18 @@ export default async function AsistenciasPage() {
     );
   }
 
-  const [asistencias, empleados] = await Promise.all([listarAsistencias(), listarEmpleados()]);
+  // Se mira por día, semana o mes (spec asistencias/2026-10-03-filtros-rango-design.md). Sin
+  // nada en la URL, el mes en curso: es una elección de pantalla, no una regla de negocio.
+  const { rango } = leerVistaRango(searchParams, 'mes')!;
+  const [asistencias, empleados] = await Promise.all([
+    listarAsistencias(rango.desde, rango.hasta),
+    listarEmpleados(),
+  ]);
 
   return (
-    <div>
-      <PageHeader title="Asistencias" subtitle={`${asistencias.length} registros`} />
+    <div className="space-y-4">
+      <PageHeader title="Asistencias" subtitle={`${asistencias.length} registros en el período`} />
+      <SelectorRango porDefecto="mes" />
       <AsistenciasCliente asistencias={asistencias} empleados={empleados} esAdmin={esAdmin} />
     </div>
   );

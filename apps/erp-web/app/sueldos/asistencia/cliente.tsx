@@ -97,11 +97,18 @@ export function AsistenciaCliente({
   acuerdo,
   filas,
   margenMinutos,
+  rango = null,
 }: {
   acuerdos: AcuerdoSueldo[];
   acuerdo: AcuerdoSueldo;
   filas: AsistenciaDia[];
   margenMinutos: number;
+  /**
+   * Acota la tabla a los días del contrato dentro de este rango (vista día/semana/mes). `null`:
+   * el contrato entero. Los contadores y el aviso siguen siendo del contrato entero: lo que frena
+   * la liquidación es el período completo, y achicar la vista no puede esconderlo.
+   */
+  rango?: { desde: string; hasta: string } | null;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -146,6 +153,13 @@ export function AsistenciaCliente({
   const contratados = calendario.filter((d) => d.horasContratadas > 0);
   const sinDeclarar = contratados.filter((d) => (borradores[d.fecha]?.condicion ?? 'sin_dato') === 'sin_dato');
 
+  // Lo que se ve y lo que actúa el botón «Declarar … como trabajados». Con la vista acotada son
+  // sólo los días visibles: declarar algo que no está en pantalla sería pagar a ciegas.
+  const visibles = rango ? calendario.filter((d) => d.fecha >= rango.desde && d.fecha <= rango.hasta) : calendario;
+  const sinDeclararVisibles = rango
+    ? sinDeclarar.filter((d) => d.fecha >= rango.desde && d.fecha <= rango.hasta)
+    : sinDeclarar;
+
   const set = (fecha: string, cambio: Partial<Borrador>) =>
     setBorradores((v) => ({ ...v, [fecha]: { ...v[fecha], ...cambio, sucio: true } }));
 
@@ -180,7 +194,7 @@ export function AsistenciaCliente({
    * contrato. Lo confirma una persona y queda en la auditoría: el sistema no infiere nada solo.
    */
   const declararTodosTrabajados = () => {
-    const cuantos = sinDeclarar.length;
+    const cuantos = sinDeclararVisibles.length;
     // La confirmación más consecuente del sistema: declara N días como trabajados y eso se paga.
     // El confirm nativo la escribía con saltos de línea y en el tono del navegador; acá el título
     // dice cuántos días son y el detalle dice qué hay que hacer después, que es lo que de verdad
@@ -198,7 +212,7 @@ export function AsistenciaCliente({
   const hacerDeclararTodos = () => {
     setError(null);
     empezar(async () => {
-      const dias: DiaForm[] = sinDeclarar.map((d) => {
+      const dias: DiaForm[] = sinDeclararVisibles.map((d) => {
         const b = borradores[d.fecha];
         const salida = hhmm(
           // Última salida del día = entrada del contrato + horas contratadas. Con el horario
@@ -266,9 +280,10 @@ export function AsistenciaCliente({
               )}
             </p>
           </div>
-          {sinDeclarar.length > 0 && acuerdo.turnos.length > 0 && (
+          {sinDeclararVisibles.length > 0 && acuerdo.turnos.length > 0 && (
             <Button variant="outline" onClick={declararTodosTrabajados} pending={pendiente}>
-              Declarar los {sinDeclarar.length} como trabajados
+              Declarar los {sinDeclararVisibles.length}
+              {rango ? ' de la vista' : ''} como trabajados
             </Button>
           )}
         </CardContent>
@@ -290,8 +305,9 @@ export function AsistenciaCliente({
       <Card>
         <CardHeader>
           <CardTitle>{acuerdo.empleadoNombre ?? 'Sin nombre'}</CardTitle>
-          <span className="text-cuerpo text-muted">
+          <span className="text-cuerpo text-muted tabular-nums">
             {acuerdo.fechaInicio} → {acuerdo.fechaFin}
+            {rango && ` · viendo ${visibles.length} día(s)`}
           </span>
         </CardHeader>
         <CardContent className="px-0 pb-0">
@@ -308,7 +324,15 @@ export function AsistenciaCliente({
               </TR>
             </THead>
             <TBody>
-              {calendario.map((d) => {
+              {rango && visibles.length === 0 && (
+                <TR>
+                  <TD className="px-5 py-8 text-center text-muted" colSpan={7}>
+                    El rango elegido no toca este contrato, que va del {acuerdo.fechaInicio} al{' '}
+                    {acuerdo.fechaFin}.
+                  </TD>
+                </TR>
+              )}
+              {visibles.map((d) => {
                 const b = borradores[d.fecha] ?? vacio();
                 const contratado = d.horasContratadas > 0;
                 const horasDeclaradas =
