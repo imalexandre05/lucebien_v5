@@ -23,6 +23,12 @@ export type ConfigCatalogoItem = {
   min?: number;
   max?: number;
   step?: number; // solo si tipo === 'numero'
+  /**
+   * Sólo si tipo === 'numero'. `porcentaje`: se guarda la fracción (`0.015`) pero /configuracion la
+   * muestra y la pide en porcentaje (`1.5`). `min`/`max` siguen hablando de la fracción guardada.
+   * Spec: docs/superpowers/specs/sueldos/2026-10-03-comision-en-porcentaje-design.md
+   */
+  unidad?: 'porcentaje';
 };
 
 const SECCION_PUNTOS = 'Puntos del pipeline';
@@ -456,14 +462,16 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_pct_comision',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Comisión sobre ventas (fracción)',
+    etiqueta: 'Comisión sobre ventas (%)',
     descripcion:
-      'Fracción de la base de comisión que se paga. 0,02 = 2%. Sólo comisionan las semanas en las que la persona llegó a su meta.',
+      'Porcentaje de la base de comisión que se paga: 1,5 = 1,5 %. Sólo comisionan las semanas en las que la persona llegó a su meta.',
     tipo: 'numero',
+    // Se guarda como fracción (0.02 = 2 %), que es lo que multiplica el motor (RN-13); la pantalla
+    // la muestra en porcentaje. min/max son de la fracción: 0 % a 100 %.
     default: '0.02',
     min: 0,
     max: 1,
-    step: 0.005,
+    unidad: 'porcentaje',
   },
   {
     clave: 'sueldo_monto_minimo_comision',
@@ -647,6 +655,7 @@ export type ConfigItem = {
   min?: number;
   max?: number;
   step?: number;
+  unidad?: 'porcentaje';
   guardado: boolean; // false = todavía no hay fila en `config` (se está mostrando el default)
   esPersonalizado: boolean;
 };

@@ -63,6 +63,7 @@ export async function listarConfig(): Promise<ConfigItem[]> {
       min: c.min,
       max: c.max,
       step: c.step,
+      unidad: c.unidad,
       guardado: fila != null,
       esPersonalizado: false,
     });

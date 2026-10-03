@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, AlertCircle, Plus, Trash2, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { accionGuardarConfig, accionCrearParametroConfig, accionEliminarParametroConfig } from './actions';
@@ -12,6 +12,7 @@ import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { Badge } from '../../components/ui/badge';
 import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
+import { fraccionAPorcentaje, porcentajeAFraccion } from '../../lib/porcentaje';
 
 const fieldCls = campoCls;
 
@@ -24,6 +25,73 @@ const TIPO_OPCIONES: Opcion<ConfigTipo>[] = [
   { value: 'texto', label: 'Texto' },
 ];
 
+// ── Un parámetro guardado como fracción que se escribe en porcentaje (hoy, la comisión) ────────
+// Texto propio: si el campo mostrara `fraccionAPorcentaje(valor)` en cada render, «1.» se
+// reescribiría a «1» mientras se tipea. Sólo se vuelve a armar desde `valor` cuando cambia desde
+// afuera (p. ej. «Restaurar valor por defecto»). Spec 2026-10-03-comision-en-porcentaje.
+const aTextoPorcentaje = (valor: string): string => {
+  const n = Number(valor);
+  return valor.trim() !== '' && Number.isFinite(n) ? fraccionAPorcentaje(n) : valor;
+};
+
+function CampoPorcentaje({
+  valor,
+  onChange,
+  onInvalido,
+  disabled,
+}: {
+  valor: string;
+  onChange: (v: string) => void;
+  onInvalido: (error: string | null) => void;
+  disabled?: boolean;
+}) {
+  const [texto, setTexto] = useState(() => aTextoPorcentaje(valor));
+  const [error, setError] = useState<string | null>(null);
+  const emitido = useRef(valor);
+
+  useEffect(() => {
+    if (valor === emitido.current) return;
+    emitido.current = valor;
+    setTexto(aTextoPorcentaje(valor));
+    setError(null);
+    onInvalido(null);
+    // onInvalido cambia de identidad en cada render del padre; sólo importa reaccionar a `valor`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [valor]);
+
+  const cambiar = (t: string) => {
+    setTexto(t);
+    const r = porcentajeAFraccion(t);
+    const msg = r.ok ? null : r.error;
+    setError(msg);
+    onInvalido(msg);
+    if (!r.ok) return;
+    // Vacío viaja vacío: el servidor lo rechaza con su propio mensaje («no puede quedar vacío»).
+    const nuevo = r.valor === null ? '' : String(r.valor);
+    emitido.current = nuevo;
+    onChange(nuevo);
+  };
+
+  return (
+    <div className="flex flex-col items-end">
+      <div className="flex items-center gap-1.5">
+        <input
+          type="text"
+          inputMode="decimal"
+          autoComplete="off"
+          value={texto}
+          disabled={disabled}
+          aria-invalid={error ? true : undefined}
+          onChange={(e) => cambiar(e.target.value)}
+          className={cn(fieldCls, 'w-24 text-right')}
+        />
+        <span className="text-cuerpo text-muted">%</span>
+      </div>
+      {error && <p className="mt-1 w-36 text-right text-micro text-error-deep">{error}</p>}
+    </div>
+  );
+}
+
 // ── Control tipado por parámetro (Fase 13 tarea 1: "controles tipados — número, booleano,
 // lista, color, horario" en vez del único <input> de texto que tenía la versión anterior). ──────
 function ControlTipado({
@@ -33,7 +101,9 @@ function ControlTipado({
   min,
   max,
   step,
+  unidad,
   onChange,
+  onInvalido,
   disabled,
 }: {
   tipo: ConfigTipo;
@@ -42,7 +112,10 @@ function ControlTipado({
   min?: number;
   max?: number;
   step?: number;
+  unidad?: 'porcentaje';
   onChange: (v: string) => void;
+  /** Sólo lo usa un campo en porcentaje; el modal de parámetro nuevo no lo necesita. */
+  onInvalido?: (error: string | null) => void;
   disabled?: boolean;
 }) {
   switch (tipo) {
@@ -94,6 +167,9 @@ function ControlTipado({
       );
     }
     case 'numero':
+      if (unidad === 'porcentaje') {
+        return <CampoPorcentaje valor={valor} onChange={onChange} onInvalido={onInvalido ?? (() => {})} disabled={disabled} />;
+      }
       return (
         <input
           type="number"
@@ -122,11 +198,13 @@ function ParametroFila({
   item,
   valor,
   onChange,
+  onInvalido,
   onEliminar,
 }: {
   item: ConfigItem;
   valor: string;
   onChange: (v: string) => void;
+  onInvalido: (error: string | null) => void;
   onEliminar?: () => void;
 }) {
   const modificado = item.default != null && valor !== item.default;
@@ -145,11 +223,23 @@ function ParametroFila({
           {item.descripcion && <p className="mt-0.5 max-w-xl text-apoyo leading-relaxed text-muted">{item.descripcion}</p>}
           <div className="mt-1 flex items-center gap-2 tabular-nums text-micro text-muted/70">
             {item.clave}
-            {item.default != null && <span>· default: {item.default}</span>}
+            {item.default != null && (
+              <span>· default: {item.unidad === 'porcentaje' ? `${aTextoPorcentaje(item.default)} %` : item.default}</span>
+            )}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <ControlTipado tipo={item.tipo} valor={valor} opciones={item.opciones} min={item.min} max={item.max} step={item.step} onChange={onChange} />
+          <ControlTipado
+            tipo={item.tipo}
+            valor={valor}
+            opciones={item.opciones}
+            min={item.min}
+            max={item.max}
+            step={item.step}
+            unidad={item.unidad}
+            onChange={onChange}
+            onInvalido={onInvalido}
+          />
           {onEliminar && (
             <button
               type="button"
@@ -197,6 +287,18 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
   const [nuevaOpcion, setNuevaOpcion] = useState('');
   const [errorModal, setErrorModal] = useState('');
   const [eliminar, setEliminar] = useState<ConfigItem | null>(null);
+  // Parámetros con un texto que no se puede leer (hoy sólo los que se escriben en porcentaje). Con
+  // alguno acá no se guarda: viajaría el valor anterior sin que nadie lo note.
+  const [invalidos, setInvalidos] = useState<Record<string, string>>({});
+
+  function marcarInvalido(clave: string, msg: string | null) {
+    setInvalidos((p) => {
+      if (msg === null && !(clave in p)) return p;
+      const resto = { ...p };
+      delete resto[clave];
+      return msg === null ? resto : { ...resto, [clave]: msg };
+    });
+  }
 
   const secciones = useMemo(() => ordenarSecciones(items), [items]);
 
@@ -208,6 +310,11 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
   function guardar() {
     setError('');
     setOk(false);
+    const malEscritos = items.filter((i) => i.clave in invalidos).map((i) => i.etiqueta);
+    if (malEscritos.length > 0) {
+      setError(`Revisa antes de guardar: ${malEscritos.join(', ')}.`);
+      return;
+    }
     startTransition(async () => {
       const r = await accionGuardarConfig(items.map((i) => ({ clave: i.clave, valor: vals[i.clave] ?? i.valor })));
       if (!r.ok) {
@@ -296,6 +403,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
                   item={i}
                   valor={vals[i.clave] ?? i.valor}
                   onChange={(v) => set(i.clave, v)}
+                  onInvalido={(msg) => marcarInvalido(i.clave, msg)}
                   onEliminar={i.esPersonalizado ? () => setEliminar(i) : undefined}
                 />
               ))}
