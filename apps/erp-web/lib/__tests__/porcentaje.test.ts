@@ -88,4 +88,8 @@ describe('leerNumero — los demás parámetros del contrato, como texto libre',
     expect(leerNumero('5', { min: 0, max: 4 }).ok).toBe(false);
     expect(leerNumero('abc', { min: 0 }).ok).toBe(false);
   });
+
+  it('rechaza un número que no entra en un double (daría Infinity)', () => {
+    expect(leerNumero('9'.repeat(400), { min: 0 }).ok).toBe(false);
+  });
 });

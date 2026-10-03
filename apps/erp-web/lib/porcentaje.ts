@@ -25,6 +25,8 @@ export function leerNumero(texto: string, rango: { min: number; max?: number }):
   if (t === '') return { ok: true, valor: null };
   if (!NUMERO.test(t)) return { ok: false, error: 'Escribe sólo un número, con punto o coma decimal.' };
   const n = Number(t.replace(',', '.'));
+  // Más de 309 dígitos pasan la expresión y dan `Infinity`, que en jsonb se guarda como null.
+  if (!Number.isFinite(n)) return { ok: false, error: 'El número es demasiado grande.' };
   if (n < rango.min) return { ok: false, error: `No puede ser menor que ${rango.min}.` };
   if (rango.max !== undefined && n > rango.max) return { ok: false, error: `No puede ser mayor que ${rango.max}.` };
   return { ok: true, valor: n };

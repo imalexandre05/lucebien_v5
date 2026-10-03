@@ -936,6 +936,17 @@ export function AcuerdosCliente({
               )}
             </div>
 
+            {/* Con un parámetro mal escrito el botón de guardar queda deshabilitado: sin este aviso
+                no se ve por qué, porque el modal ya está cerrado. */}
+            {Object.keys(erroresParametros).length > 0 && (
+              <Aviso tono="error">
+                Revisa los parámetros del contrato:{' '}
+                {(Object.keys(erroresParametros) as (keyof ParametrosSueldo)[])
+                  .map((c) => ETIQUETA_PARAMETRO.get(c) ?? c)
+                  .join(', ')}
+                .
+              </Aviso>
+            )}
             {error && <Aviso tono="error">{error}</Aviso>}
           </CardContent>
 

@@ -197,17 +197,24 @@ function ControlTipado({
 function ParametroFila({
   item,
   valor,
+  invalido,
   onChange,
   onInvalido,
   onEliminar,
 }: {
   item: ConfigItem;
   valor: string;
+  invalido: boolean;
   onChange: (v: string) => void;
   onInvalido: (error: string | null) => void;
   onEliminar?: () => void;
 }) {
-  const modificado = item.default != null && valor !== item.default;
+  // Un texto inválido también cuenta como modificado: si no, con el último valor válido igual al
+  // default no aparecería «Restaurar» y la fila quedaría trabada.
+  const modificado = item.default != null && (valor !== item.default || invalido);
+  // Restaurar remonta el control: `CampoPorcentaje` sólo se resincroniza cuando `valor` cambia, y
+  // restaurar al mismo valor que ya tenía no lo cambia.
+  const [version, setVersion] = useState(0);
   return (
     <div className="py-3">
       <div className="flex items-start justify-between gap-4">
@@ -230,6 +237,7 @@ function ParametroFila({
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           <ControlTipado
+            key={version}
             tipo={item.tipo}
             valor={valor}
             opciones={item.opciones}
@@ -255,7 +263,12 @@ function ParametroFila({
       {modificado && (
         <button
           type="button"
-          onClick={() => item.default != null && onChange(item.default)}
+          onClick={() => {
+            if (item.default == null) return;
+            onChange(item.default);
+            onInvalido(null);
+            setVersion((v) => v + 1);
+          }}
           className="mt-1.5 flex items-center gap-1 text-micro text-muted underline decoration-dotted underline-offset-2 hover:text-navy"
         >
           <RotateCcw className="h-3 w-3" strokeWidth={2} /> Restaurar valor por defecto
@@ -403,6 +416,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
                   item={i}
                   valor={vals[i.clave] ?? i.valor}
                   onChange={(v) => set(i.clave, v)}
+                  invalido={i.clave in invalidos}
                   onInvalido={(msg) => marcarInvalido(i.clave, msg)}
                   onEliminar={i.esPersonalizado ? () => setEliminar(i) : undefined}
                 />
