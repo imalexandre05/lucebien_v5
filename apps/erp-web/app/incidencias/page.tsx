@@ -9,7 +9,7 @@ import { IncidenciasCliente } from './cliente';
 
 // Módulo solo-admin (Fase 7 del plan): los operativos ENVÍAN incidencias desde su propio reporte
 // de turno, pero no navegan el listado completo (no ven quién reportó a quién).
-export default async function IncidenciasPage() {
+export default async function IncidenciasPage({ searchParams }: { searchParams: { nueva?: string } }) {
   const sesion = await getSesion();
   if (!sesion) redirect('/login');
   let matriz: MatrizPermisos = {};
@@ -30,7 +30,13 @@ export default async function IncidenciasPage() {
   return (
     <div>
       <PageHeader title="Incidencias" subtitle={`${incidencias.length} registradas`} />
-      <IncidenciasCliente incidencias={incidencias} tipos={tipos} empleados={empleados} esAdmin={esAdmin} />
+      <IncidenciasCliente
+        incidencias={incidencias}
+        tipos={tipos}
+        empleados={empleados}
+        esAdmin={esAdmin}
+        pedirAlta={searchParams.nueva === '1'}
+      />
     </div>
   );
 }

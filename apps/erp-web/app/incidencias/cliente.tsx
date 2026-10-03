@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Trash2, Filter, AlertTriangle } from 'lucide-react';
@@ -42,14 +42,18 @@ export function IncidenciasCliente({
   tipos,
   empleados,
   esAdmin,
+  pedirAlta = false,
 }: {
   incidencias: Incidencia[];
   tipos: TipoIncidencia[];
   empleados: Emp[];
   esAdmin: boolean;
+  /** `/incidencias?nueva=1` (acceso rápido de la barra superior): abre el formulario de alta. */
+  pedirAlta?: boolean;
 }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
   const [tipo, setTipo] = useState('');
   const [nivel, setNivel] = useState('Medio');
   const [puntos, setPuntos] = useState(2);
@@ -121,6 +125,19 @@ export function IncidenciasCliente({
     }),
     [filtradas],
   );
+
+  // Acceso rápido: abre el formulario y limpia el parámetro, para que un segundo clic —ya estando
+  // en esta página— vuelva a cambiar la URL y a abrirlo, y para que recargar no lo reabra.
+  useEffect(() => {
+    if (!pedirAlta) return;
+    setAbierto(true);
+    router.replace('/incidencias', { scroll: false });
+  }, [pedirAlta, router]);
+
+  // En móvil el formulario queda debajo del resumen y los filtros, fuera de la pantalla.
+  useEffect(() => {
+    if (abierto) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [abierto]);
 
   function elegirTipo(nombreTipo: string) {
     setTipo(nombreTipo);
@@ -250,109 +267,111 @@ export function IncidenciasCliente({
       </Card>
 
       {abierto && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Registrar incidencia</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-rotulo uppercase text-muted">Tipo</label>
-                <select value={tipo} onChange={(e) => elegirTipo(e.target.value)} className={cn(fieldCls, 'w-full')}>
-                  <option value="">Elige un tipo…</option>
-                  {tiposPorCat.map(([cat, lista]) => (
-                    <optgroup key={cat} label={cat}>
-                      {lista.map((t) => (
-                        <option key={t.id} value={t.tipo}>
-                          {t.tipo}
-                        </option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-rotulo uppercase text-muted">Responsable</label>
-                <select value={responsable} onChange={(e) => setResponsable(e.target.value)} className={cn(fieldCls, 'w-full')}>
-                  <option value="">— sin responsable (el admin investigará) —</option>
-                  {empleados.map((e) => (
-                    <option key={e.id} value={e.id}>
-                      {e.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            {esOtros && (
-              // Sólo la categoría 'Otros' deja elegir gravedad a mano — en el resto de los 20
-              // tipos ya la trae el catálogo (nivel_default) y preguntarla de nuevo es redundante.
-              <div>
-                <label className="mb-1 block text-rotulo uppercase text-muted">Gravedad</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {NIVELES.map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => setNivel(n)}
-                      className={cn(
-                        'rounded-r-pastilla border-2 px-3 py-2 text-cuerpo font-medium transition-colors duration-150',
-                        nivel === n
-                          ? n === 'Alto'
-                            ? 'border-error bg-error-soft text-error-deep'
-                            : n === 'Medio'
-                              ? 'border-aviso bg-aviso-soft text-aviso-deep'
-                              : 'border-muted bg-paper text-ink'
-                          : 'border-line bg-white text-muted hover:border-gold/60',
-                      )}
-                    >
-                      {n}
-                    </button>
-                  ))}
+        <div ref={formRef} className="scroll-mt-20">
+          <Card>
+            <CardHeader>
+              <CardTitle>Registrar incidencia</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Tipo</label>
+                  <select value={tipo} onChange={(e) => elegirTipo(e.target.value)} className={cn(fieldCls, 'w-full')}>
+                    <option value="">Elige un tipo…</option>
+                    {tiposPorCat.map(([cat, lista]) => (
+                      <optgroup key={cat} label={cat}>
+                        {lista.map((t) => (
+                          <option key={t.id} value={t.tipo}>
+                            {t.tipo}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Responsable</label>
+                  <select value={responsable} onChange={(e) => setResponsable(e.target.value)} className={cn(fieldCls, 'w-full')}>
+                    <option value="">— sin responsable (el admin investigará) —</option>
+                    {empleados.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {e.nombre}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
-            )}
-            <div>
-              <label className="mb-1 block text-rotulo uppercase text-muted">
-                Descripción
-                {esOtros && (
-                  <span className="ml-0.5 font-semibold text-gold-deep">
-                    *<span className="sr-only"> (obligatoria)</span>
-                  </span>
-                )}
-              </label>
-              <input
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-                placeholder={esOtros ? 'Qué pasó… (obligatoria para este tipo)' : 'Qué pasó…'}
-                aria-invalid={descripcionFalta}
-                className={cn(fieldCls, 'w-full')}
-              />
-            </div>
-            {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
-            <div className="flex flex-wrap items-center gap-3">
-              <Button
-                type="button"
-                onClick={registrar}
-                disabled={!tipo || descripcionFalta}
-                pending={pending}
-                aria-describedby={!tipo || descripcionFalta ? 'motivo-incidencia' : undefined}
-              >
-                {pending ? 'Registrando…' : 'Registrar incidencia'}
-              </Button>
-              {!tipo ? (
-                <span id="motivo-incidencia" className="text-apoyo font-medium text-aviso-deep">
-                  Elige el tipo de incidencia para poder registrarla.
-                </span>
-              ) : (
-                descripcionFalta && (
-                  <span id="motivo-incidencia" className="text-apoyo font-medium text-aviso-deep">
-                    La descripción es obligatoria para este tipo de incidencia.
-                  </span>
-                )
+              {esOtros && (
+                // Sólo la categoría 'Otros' deja elegir gravedad a mano — en el resto de los 20
+                // tipos ya la trae el catálogo (nivel_default) y preguntarla de nuevo es redundante.
+                <div>
+                  <label className="mb-1 block text-rotulo uppercase text-muted">Gravedad</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {NIVELES.map((n) => (
+                      <button
+                        key={n}
+                        type="button"
+                        onClick={() => setNivel(n)}
+                        className={cn(
+                          'rounded-r-pastilla border-2 px-3 py-2 text-cuerpo font-medium transition-colors duration-150',
+                          nivel === n
+                            ? n === 'Alto'
+                              ? 'border-error bg-error-soft text-error-deep'
+                              : n === 'Medio'
+                                ? 'border-aviso bg-aviso-soft text-aviso-deep'
+                                : 'border-muted bg-paper text-ink'
+                            : 'border-line bg-white text-muted hover:border-gold/60',
+                        )}
+                      >
+                        {n}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
-            </div>
-          </CardContent>
-        </Card>
+              <div>
+                <label className="mb-1 block text-rotulo uppercase text-muted">
+                  Descripción
+                  {esOtros && (
+                    <span className="ml-0.5 font-semibold text-gold-deep">
+                      *<span className="sr-only"> (obligatoria)</span>
+                    </span>
+                  )}
+                </label>
+                <input
+                  value={descripcion}
+                  onChange={(e) => setDescripcion(e.target.value)}
+                  placeholder={esOtros ? 'Qué pasó… (obligatoria para este tipo)' : 'Qué pasó…'}
+                  aria-invalid={descripcionFalta}
+                  className={cn(fieldCls, 'w-full')}
+                />
+              </div>
+              {error && <Aviso tono="error" className="text-cuerpo">{error}</Aviso>}
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  onClick={registrar}
+                  disabled={!tipo || descripcionFalta}
+                  pending={pending}
+                  aria-describedby={!tipo || descripcionFalta ? 'motivo-incidencia' : undefined}
+                >
+                  {pending ? 'Registrando…' : 'Registrar incidencia'}
+                </Button>
+                {!tipo ? (
+                  <span id="motivo-incidencia" className="text-apoyo font-medium text-aviso-deep">
+                    Elige el tipo de incidencia para poder registrarla.
+                  </span>
+                ) : (
+                  descripcionFalta && (
+                    <span id="motivo-incidencia" className="text-apoyo font-medium text-aviso-deep">
+                      La descripción es obligatoria para este tipo de incidencia.
+                    </span>
+                  )
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <Card>
