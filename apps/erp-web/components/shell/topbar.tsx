@@ -88,7 +88,7 @@ export async function Topbar() {
             <Search className="h-4 w-4" strokeWidth={1.75} />
           </Link>
         )}
-        {sesion && <NotificacionesBell notificaciones={notificaciones} />}
+        {sesion && <NotificacionesBell notificaciones={notificaciones} esAdmin={rol === 'admin' || rol === 'dueno'} />}
         {sesion && <SedePopover sedeActual={sede} sedes={sedesDisponibles} />}
         {rol && (
           <span className="hidden rounded-r-pastilla border border-gold/40 bg-gold/10 px-3 py-1 text-apoyo font-medium text-gold-deep md:inline">

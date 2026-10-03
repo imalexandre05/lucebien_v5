@@ -17,7 +17,11 @@ import { LiquidacionesCliente } from './cliente';
  */
 export const dynamic = 'force-dynamic';
 
-export default async function LiquidacionesPage() {
+export default async function LiquidacionesPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
 
@@ -59,7 +63,13 @@ export default async function LiquidacionesPage() {
         title="Liquidaciones"
         subtitle={`${borradores} borrador(es) · ${cerradas} cerrada(s). Una cerrada no se modifica: sólo se anula, con motivo.`}
       />
-      <LiquidacionesCliente acuerdos={acuerdos} liquidaciones={liquidaciones} />
+      <LiquidacionesCliente
+        acuerdos={acuerdos}
+        liquidaciones={liquidaciones}
+        // `?acuerdo=` preselecciona el contrato: lo usa la alerta «Contrato vencido sin
+        // liquidación» para llevar directo al contrato que hay que liquidar (tablero#5).
+        acuerdoInicial={Array.isArray(searchParams?.acuerdo) ? searchParams?.acuerdo[0] : searchParams?.acuerdo}
+      />
     </div>
   );
 }

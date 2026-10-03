@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Bell, Check, CheckCheck, Info, RefreshCw, ShieldAlert } from 'lucide-react';
 import type { Notificacion } from '../../lib/notificaciones-repo';
+import { enlaceNotificacion } from '../../lib/notificaciones-enlace';
 import { generarAlertasAction, marcarLeidaAction, marcarTodasLeidasAction } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -16,23 +17,6 @@ const SEV: Record<Notificacion['severidad'], { icon: typeof Info; cls: string; t
   warn: { icon: AlertTriangle, cls: 'text-aviso', tone: 'amber', label: 'Aviso' },
   info: { icon: Info, cls: 'text-navy', tone: 'navy', label: 'Info' },
 };
-
-// Enlace útil según el origen de la alerta.
-function refHref(n: Notificacion): string | null {
-  if (!n.refId) return null;
-  switch (n.refTipo) {
-    case 'pedido':
-      return `/pedidos/${n.refId}`;
-    case 'material':
-      return '/materiales';
-    case 'caja':
-      return '/caja';
-    case 'reporte':
-      return `/reportes/${n.refId}`;
-    default:
-      return null;
-  }
-}
 
 export function NotificacionesCliente({ notificaciones, esAdmin }: { notificaciones: Notificacion[]; esAdmin: boolean }) {
   const router = useRouter();
@@ -146,7 +130,7 @@ export function NotificacionesCliente({ notificaciones, esAdmin }: { notificacio
           {filtradas.map((n) => {
             const sev = SEV[n.severidad];
             const Icon = sev.icon;
-            const href = refHref(n);
+            const href = enlaceNotificacion(n, esAdmin);
             return (
               <Card key={n.id} className={cn('transition', !n.leida && 'border-l-4 border-l-gold')}>
                 <CardContent className="flex items-start gap-3 py-3.5">
@@ -160,7 +144,7 @@ export function NotificacionesCliente({ notificaciones, esAdmin }: { notificacio
                     <p className="mt-0.5 text-cuerpo text-muted">{n.mensaje}</p>
                     {href && (
                       <Link href={href} className="mt-1 inline-block text-apoyo font-medium text-navy underline underline-offset-2 hover:text-gold">
-                        Ver detalle
+                        Ir a resolverlo
                       </Link>
                     )}
                   </div>

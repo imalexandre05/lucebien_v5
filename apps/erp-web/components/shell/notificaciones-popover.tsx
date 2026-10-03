@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Bell, Check, CheckCheck, Info, AlertTriangle, ShieldAlert } from 'lucide-react';
 import type { Notificacion } from '../../lib/notificaciones-repo';
+import { enlaceNotificacion } from '../../lib/notificaciones-enlace';
 import { marcarLeidaAction, marcarTodasLeidasAction } from '../../app/notificaciones/actions';
 import { cn } from '../../lib/cn';
 
@@ -34,7 +35,11 @@ const ALTURA_ESTIMADA = 420;
 // flotando lejos del botón o cortado por el viewport. `reposicionar` se llama al abrir y de nuevo
 // en cada resize/scroll mientras está abierto, y decide `top` vs `bottom` según la altura real del
 // panel (medida por `panelRef`) contra el espacio disponible.
-export function NotificacionesBell({ notificaciones }: { notificaciones: Notificacion[] }) {
+//
+// Cada fila con un pendiente que se resuelve en otra pantalla es un enlace a esa pantalla (mismo
+// mapeo que /notificaciones: lib/notificaciones-enlace.ts). Abrirla NO la marca como leída: leer
+// el aviso no es resolverlo, y la regla la retira sola cuando la condición deja de ser cierta (0101).
+export function NotificacionesBell({ notificaciones, esAdmin }: { notificaciones: Notificacion[]; esAdmin: boolean }) {
   const router = useRouter();
   const path = usePathname();
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -178,13 +183,21 @@ export function NotificacionesBell({ notificaciones }: { notificaciones: Notific
                   {recientes.map((n) => {
                     const sev = SEV_ICON[n.severidad];
                     const Icon = sev.icon;
+                    const href = enlaceNotificacion(n, esAdmin);
                     return (
                       <li key={n.id} className={cn('flex items-start gap-2.5 border-b border-line/40 px-3.5 py-2.5 last:border-0', !n.leida && 'bg-gold/5')}>
                         <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', sev.cls)} strokeWidth={1.75} aria-hidden />
-                        <div className="min-w-0 flex-1">
-                          <p className={cn('truncate text-apoyo font-semibold', !n.leida ? 'text-navy' : 'text-ink')}>{n.titulo}</p>
-                          <p className="mt-0.5 line-clamp-2 text-micro text-muted">{n.mensaje}</p>
-                        </div>
+                        {href ? (
+                          <Link href={href} onClick={() => setAbierto(false)} className="group min-w-0 flex-1">
+                            <p className={cn('truncate text-apoyo font-semibold group-hover:underline', !n.leida ? 'text-navy' : 'text-ink')}>{n.titulo}</p>
+                            <p className="mt-0.5 line-clamp-2 text-micro text-muted">{n.mensaje}</p>
+                          </Link>
+                        ) : (
+                          <div className="min-w-0 flex-1">
+                            <p className={cn('truncate text-apoyo font-semibold', !n.leida ? 'text-navy' : 'text-ink')}>{n.titulo}</p>
+                            <p className="mt-0.5 line-clamp-2 text-micro text-muted">{n.mensaje}</p>
+                          </div>
+                        )}
                         {!n.leida && (
                           <button
                             type="button"
