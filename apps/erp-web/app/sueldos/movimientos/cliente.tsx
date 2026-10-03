@@ -1,7 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -53,9 +52,24 @@ export function MovimientosCliente({
    */
   ventas?: VentaSueldo[];
 }) {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
+
+  // ── Actualización optimista (spec 2026-10-03-adelantos-rendimiento-design.md) ────────────
+  // Una fila recién registrada se muestra al instante como «guardando…». Cuando la acción
+  // responde trae el id real; la fila provisoria se quita cuando ese id ya llegó en `movimientos`
+  // (el árbol nuevo viaja en la misma respuesta de la acción, no hace falta `router.refresh()`).
+  // Es sólo presentación: lo que se escribe en la base es exactamente lo de siempre.
+  type Provisoria = MovimientoSueldo & { idReal?: string };
+  const [provisorias, setProvisorias] = useState<Provisoria[]>([]);
+  const [borrando, setBorrando] = useState<Set<string>>(() => new Set());
+  const ultimos = useRef(movimientos);
+  ultimos.current = movimientos;
+
+  useEffect(() => {
+    // Llegó un árbol nuevo del servidor: lo que ya tiene id real dejó de ser provisorio.
+    setProvisorias((ps) => (ps.some((p) => p.idReal) ? ps.filter((p) => !p.idReal) : ps));
+  }, [movimientos]);
 
   const [mov, setMov] = useState({
     empleadoId: '',
@@ -69,30 +83,79 @@ export function MovimientosCliente({
   const conteo = esConteo(mov.tipo);
   const ayudaTipo = TIPOS.find((t) => t.valor === mov.tipo)?.ayuda ?? '';
 
-  const correr = (fn: () => Promise<{ ok: boolean; error?: string }>, alTerminar?: () => void) => {
+  const guardarMovimiento = () => {
     setError(null);
+    const tipeado = mov;
+    const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setProvisorias((ps) => [
+      {
+        id: tmpId,
+        empleadoId: tipeado.empleadoId,
+        empleadoNombre: empleados.find((e) => e.id === tipeado.empleadoId)?.nombre ?? null,
+        fecha: tipeado.fecha,
+        tipo: tipeado.tipo,
+        monto: conteo ? null : Number(tipeado.monto),
+        cantidad: conteo ? Number(tipeado.cantidad) : 1,
+        motivo: tipeado.motivo.trim(),
+        liquidacionId: null,
+        creadoEn: '',
+      },
+      ...ps,
+    ]);
+    // El formulario se limpia ya, para poder seguir cargando. Si la base rechaza, vuelve lo tipeado.
+    setMov((v) => ({ ...v, monto: '', cantidad: '1', motivo: '' }));
+
     empezar(async () => {
-      const r = await fn();
-      if (r.ok) {
-        alTerminar?.();
-        router.refresh();
-      } else setError(r.error ?? 'No se pudo guardar.');
+      const r = await accionCrearMovimiento({
+        empleadoId: tipeado.empleadoId,
+        fecha: tipeado.fecha,
+        tipo: tipeado.tipo,
+        monto: conteo ? undefined : Number(tipeado.monto),
+        cantidad: conteo ? Number(tipeado.cantidad) : undefined,
+        motivo: tipeado.motivo,
+      });
+      if (r.ok && r.id) {
+        const idReal = r.id;
+        // Si el árbol nuevo ya llegó antes que esta continuación, se quita ahora; si no, la quita
+        // el efecto de arriba cuando llegue.
+        setProvisorias((ps) =>
+          ultimos.current.some((m) => m.id === idReal)
+            ? ps.filter((p) => p.id !== tmpId)
+            : ps.map((p) => (p.id === tmpId ? { ...p, idReal } : p)),
+        );
+      } else {
+        setProvisorias((ps) => ps.filter((p) => p.id !== tmpId));
+        setMov(tipeado);
+        setError(r.error ?? 'No se pudo guardar.');
+      }
     });
   };
 
-  const guardarMovimiento = () =>
-    correr(
-      () =>
-        accionCrearMovimiento({
-          empleadoId: mov.empleadoId,
-          fecha: mov.fecha,
-          tipo: mov.tipo,
-          monto: conteo ? undefined : Number(mov.monto),
-          cantidad: conteo ? Number(mov.cantidad) : undefined,
-          motivo: mov.motivo,
-        }),
-      () => setMov((v) => ({ ...v, monto: '', cantidad: '1', motivo: '' })),
-    );
+  // Borrar oculta la fila al instante. Si la base corta (p. ej. `CONGELADA`), vuelve a verse. Si
+  // sale bien, el id queda en el conjunto sin hacer daño: ya no viene en `movimientos`.
+  const borrarMovimiento = (id: string) => {
+    setError(null);
+    setBorrando((b) => new Set(b).add(id));
+    empezar(async () => {
+      const r = await accionEliminarMovimiento(id);
+      if (!r.ok) {
+        setBorrando((b) => {
+          const n = new Set(b);
+          n.delete(id);
+          return n;
+        });
+        setError(r.error ?? 'No se pudo borrar.');
+      }
+    });
+  };
+
+  // Lo provisorio arriba (es lo más nuevo), lo real sin lo que se está borrando. Una provisoria con
+  // id real ya no se muestra: la fila de verdad llega en el mismo árbol de la respuesta (o, en la
+  // ficha, puede no llegar nunca si su fecha cae fuera del período — y no debe quedar colgada).
+  const visibles: Provisoria[] = [
+    ...provisorias.filter((p) => !p.idReal),
+    ...movimientos.filter((m) => !borrando.has(m.id)),
+  ];
 
   return (
     <div className="space-y-6">
@@ -182,7 +245,7 @@ export function MovimientosCliente({
         </CardContent>
 
         <div className="border-t border-line">
-          {movimientos.length === 0 ? (
+          {visibles.length === 0 ? (
             <p className="px-5 py-6 text-center text-cuerpo text-muted">Todavía no hay ninguno.</p>
           ) : (
             <Table>
@@ -197,8 +260,8 @@ export function MovimientosCliente({
                 </TR>
               </THead>
               <TBody>
-                {movimientos.map((m) => (
-                  <TR key={m.id}>
+                {visibles.map((m) => (
+                  <TR key={m.id} className={m.id.startsWith('tmp-') ? 'opacity-60' : undefined}>
                     <TD className="whitespace-nowrap">{m.fecha}</TD>
                     <TD className="text-navy">{m.empleadoNombre ?? '—'}</TD>
                     <TD>{LABEL_TIPO[m.tipo] ?? m.tipo}</TD>
@@ -207,7 +270,9 @@ export function MovimientosCliente({
                     </TD>
                     <TD className="text-cuerpo text-muted">{m.motivo}</TD>
                     <TD className="text-right">
-                      {m.liquidacionId ? (
+                      {m.id.startsWith('tmp-') ? (
+                        <span className="text-apoyo text-muted">guardando…</span>
+                      ) : m.liquidacionId ? (
                         <Badge tone="green">
                           <Lock className="mr-1 inline h-3 w-3" />
                           liquidado
@@ -215,7 +280,7 @@ export function MovimientosCliente({
                       ) : (
                         <Button
                           variant="ghost"
-                          onClick={() => correr(() => accionEliminarMovimiento(m.id))}
+                          onClick={() => borrarMovimiento(m.id)}
                           aria-label="Borrar"
                         >
                           <Trash2 className="h-4 w-4" />

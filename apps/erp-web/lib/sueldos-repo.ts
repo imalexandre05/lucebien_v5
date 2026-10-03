@@ -358,12 +358,27 @@ export async function listarMovimientos(f: {
   desde?: string;
   hasta?: string;
   soloSinLiquidar?: boolean;
+  /**
+   * Con `desde` y `hasta`: además del rango, trae TODO lo que siga sin liquidar, sea de la fecha
+   * que sea. Es lo que va a entrar en el próximo pago, así que una pantalla no lo puede esconder
+   * por mirar otro mes (spec 2026-10-03-adelantos-rendimiento-design.md §4). Sin rango no cambia
+   * nada.
+   */
+  incluirSinLiquidar?: boolean;
 }): Promise<MovimientoSueldo[]> {
   const sb = getServerClient();
-  let q = sb.from('sueldo_movimientos').select('*').order('fecha', { ascending: false });
+  let q = sb
+    .from('sueldo_movimientos')
+    .select('*')
+    .order('fecha', { ascending: false })
+    .order('creado_en', { ascending: false });
   if (f.empleadoId) q = q.eq('empleado_id', f.empleadoId);
-  if (f.desde) q = q.gte('fecha', f.desde);
-  if (f.hasta) q = q.lte('fecha', f.hasta);
+  if (f.incluirSinLiquidar && f.desde && f.hasta) {
+    q = q.or(`liquidacion_id.is.null,and(fecha.gte.${f.desde},fecha.lte.${f.hasta})`);
+  } else {
+    if (f.desde) q = q.gte('fecha', f.desde);
+    if (f.hasta) q = q.lte('fecha', f.hasta);
+  }
   if (f.soloSinLiquidar) q = q.is('liquidacion_id', null);
 
   const { data, error } = await q;

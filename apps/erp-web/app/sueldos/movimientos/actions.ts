@@ -27,6 +27,21 @@ import {
 
 type Resultado = { ok: boolean; error?: string; codigo?: string };
 
+/**
+ * Revalida las dos pantallas que muestran movimientos: la general y la ficha de la persona
+ * (`/personal/[id]/movimientos`, que monta el mismo componente). Como `layout` cubre la ficha y
+ * todas sus secciones.
+ *
+ * Basta con esto para que la pantalla se actualice: en Next 14 cualquier `revalidatePath` dentro de
+ * una Server Action hace que la respuesta de la acción traiga ya el árbol nuevo de la página
+ * actual. Por eso el cliente NO llama `router.refresh()` — eso pedía un segundo render completo y
+ * era la mitad de la espera (spec 2026-10-03-adelantos-rendimiento-design.md).
+ */
+function revalidarMovimientos() {
+  revalidatePath('/sueldos/movimientos');
+  revalidatePath('/personal/[id]', 'layout');
+}
+
 async function admin(): Promise<string | null> {
   const sesion = await getSesion();
   if (!sesion) return null;
@@ -41,7 +56,7 @@ function comoResultado(e: unknown): Resultado {
 
 const NEGADO = { ok: false as const, error: 'Sólo el administrador o el dueño pueden cargar esto.' };
 
-export async function accionCrearMovimiento(p: MovimientoInput): Promise<Resultado> {
+export async function accionCrearMovimiento(p: MovimientoInput): Promise<Resultado & { id?: string }> {
   try {
     const admId = await admin();
     if (!admId) return NEGADO;
@@ -50,9 +65,9 @@ export async function accionCrearMovimiento(p: MovimientoInput): Promise<Resulta
       // sin motivo, y sin motivo nadie puede explicarle después a la persona de dónde salió.
       return { ok: false, error: 'El motivo es obligatorio: sin él, nadie puede explicar ese monto después.' };
     }
-    await crearMovimiento(p, admId);
-    revalidatePath('/sueldos/movimientos');
-    return { ok: true };
+    const id = await crearMovimiento(p, admId);
+    revalidarMovimientos();
+    return { ok: true, id };
   } catch (e) {
     return comoResultado(e);
   }
@@ -62,7 +77,7 @@ export async function accionEliminarMovimiento(id: string): Promise<Resultado> {
   try {
     if (!(await admin())) return NEGADO;
     await eliminarMovimiento(id);
-    revalidatePath('/sueldos/movimientos');
+    revalidarMovimientos();
     return { ok: true };
   } catch (e) {
     return comoResultado(e);
