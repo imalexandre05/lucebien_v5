@@ -40,7 +40,7 @@ almuerzosEntregados, personasCapacitadas, parametros`.
 | Números | `100` y `100.0` son iguales como `jsonb`. | Sin tratamiento. |
 
 Decisión: **no se toca `sueldo_entrada`** (cambiarla es cambiar la entrada del sueldo). En su lugar
-la comparación ordena los arreglos de primer nivel con `order by e` (orden total de `jsonb`,
+la comparación ordena los arreglos de primer nivel con `order by e` y lleva los números a doble precisión (hallazgo del verificador: la entrada guardada pasa por JavaScript y pierde dígitos más allá de ~16) (orden total de `jsonb`,
 coherente con su igualdad) antes de comparar.
 
 Consecuencias aceptadas, para que no sorprendan:

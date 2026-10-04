@@ -21,6 +21,8 @@
 --        5a. dos adelantos del mismo día guardados en el orden inverso → cierra;
 --        5b. el helper `private.sueldo_entrada_normalizada` iguala los dos órdenes;
 --        5c. `sueldo_entrada` llamada dos veces seguidas da lo mismo (no hay marcas de tiempo);
+--        5e. los números se comparan en doble precisión (lo que sobrevive al paso por JavaScript
+--            de crearBorrador): un parámetro de más de 16 dígitos no bloquea el cierre;
 --        5d. cambiar un escalar (`modalidad`) en la entrada guardada NO se ignora: se rechaza y
 --            nombra `modalidad`.
 --   6. El mensaje va en español neutral: dice «vuelve a calcular», nunca «volvé».
@@ -125,6 +127,10 @@ begin
         r := r || format('[FALLA] caso1: esperaba DESACTUALIZADA nombrando adelantos, borrador y 0 sellados; vino "%s", estado=%s, sellados=%s; ',
                          v_msg, v_estado, v_sell);
       end if;
+      -- OJO: el estado y los sellados se leen DESPUÉS de que el subbloque volvió a su savepoint, así
+      -- que `borrador` y `0 sellados` se cumplirían aunque la función hubiera sellado antes de
+      -- lanzar. Lo que garantiza «no sella nada» es el ORDEN: la comparación va antes de «1) Las
+      -- líneas» y del sellado en la función (revisado en el cuerpo de la migración).
       -- Caso 6 — el texto va en español neutral.
       if v_msg like '%vuelve a calcular%' and v_msg not like '%volvé%' then
         r := r || '[ok] caso6: el mensaje dice "vuelve a calcular", sin voseo; ';
@@ -230,6 +236,9 @@ begin
     end if;
 
     -- 5b — el helper iguala los dos órdenes de los adelantos del mismo día.
+    -- Los dos órdenes se arman EXPLÍCITOS: el que sale de sueldo_entrada no está garantizado.
+    v_json := jsonb_set(v_json, '{adelantos}',
+                (select jsonb_agg(e order by e) from jsonb_array_elements(v_json->'adelantos') e));
     v_otro := jsonb_set(v_json, '{adelantos}',
                 (select jsonb_agg(e order by e desc) from jsonb_array_elements(v_json->'adelantos') e));
     if v_otro->'adelantos' <> v_json->'adelantos'
@@ -237,6 +246,18 @@ begin
       r := r || '[ok] caso5b: el helper iguala dos ordenes distintos de los adelantos; ';
     else
       r := r || '[FALLA] caso5b: el helper deberia igualar los dos ordenes (y el montaje deberia haberlos invertido); ';
+    end if;
+
+    -- 5e — los números se comparan como los ve el motor (double): un parámetro con más de 16
+    -- dígitos, que pierde precisión al pasar por JavaScript en crearBorrador, NO es un cambio.
+    -- Un monto distinto sí lo es.
+    if private.sueldo_entrada_normalizada('{"parametros":{"metaPorHora":45.454545454545454545}}'::jsonb)
+         = private.sueldo_entrada_normalizada('{"parametros":{"metaPorHora":45.45454545454545}}'::jsonb)
+       and private.sueldo_entrada_normalizada('{"adelantos":[{"monto":100}]}'::jsonb)
+         <> private.sueldo_entrada_normalizada('{"adelantos":[{"monto":300}]}'::jsonb) then
+      r := r || '[ok] caso5e: la precision extra de un numero no cuenta como cambio, un monto distinto si; ';
+    else
+      r := r || '[FALLA] caso5e: los numeros deberian compararse en doble precision; ';
     end if;
 
     -- 5a — guardado en el orden inverso, cierra.
