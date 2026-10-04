@@ -106,7 +106,7 @@ export async function listarEvaluaciones(): Promise<Evaluacion[]> {
 // Componentes auto-calculados desde la data (reportes evaluados/del equipo, asistencias,
 // incidencias, pipeline, extras, ventas) para un rango. Devuelve el jsonb tal cual lo arma
 // private.evaluacion_componentes_datos — ver esa función (packages/db/migrations/
-// 0095_puntos_como_moneda.sql) para el significado exacto de cada clave. `ventasSinTasa` es el
+// 0095_puntos_como_moneda.sql; el filtro de fecha de pipeline, en 0110_puntos_hora_peru.sql) para el significado exacto de cada clave. `ventasSinTasa` es el
 // único campo booleano; el resto son numéricos (o null para 'valores' sin datos ese mes).
 export type ComponentesRPC = {
   operaciones: number;

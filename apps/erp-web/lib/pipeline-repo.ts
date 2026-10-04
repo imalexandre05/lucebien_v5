@@ -52,7 +52,7 @@ const fromRow = (r: Row): PrendaPasada => ({
   listaLavanderiaId: r.lista_lavanderia_id,
   dividida: Boolean(r.dividida),
   divididaEn: r.dividida_en,
-  fechaIngreso: (r.fecha_ingreso ?? '').slice(0, 10),
+  fechaIngreso: r.fecha_ingreso ? diaPeruDe(r.fecha_ingreso) : '',
   fechaActualizado: r.fecha_actualizado,
 });
 
@@ -245,7 +245,8 @@ export async function rankingHoy(): Promise<RankingItem[]> {
 export type Movimiento = { fecha: string; etapaNueva: string };
 export async function movimientosRecientes(dias = 7): Promise<Movimiento[]> {
   const sb = getServerClient();
-  const desde = new Date(Date.now() - dias * 86400000).toISOString();
+  // Desde el inicio del día de Perú de hace (dias-1) días: el día más viejo entra entero.
+  const desde = `${diaPeruDe(new Date(Date.now() - (dias - 1) * 86400000).toISOString())}T00:00:00-05:00`;
   const { data, error } = await sb
     .from('prenda_historial')
     .select('fecha, etapa_nueva')

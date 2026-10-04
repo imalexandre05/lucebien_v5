@@ -15,8 +15,8 @@ import { getServerClient } from './supabase/server';
  * 38,50 con el filtro viejo y 70,50 con éste — acá eso es el número que alguien ve de SÍ MISMO.
  *
  * Copia deliberada de lib/colaboradores-repo.ts: son las dos únicas consultas de la aplicación que
- * filtran esta columna, y este módulo no debe depender del otro. La RPC de la 0057 tiene su propio
- * filtro y otro criterio: no se toca.
+ * filtran esta columna, y este módulo no debe depender del otro. Desde la 0110 la RPC de evaluación (`private.evaluacion_componentes_datos`) usa el mismo criterio
+ * (día de Perú).
  */
 const inicioDiaPeru = (dia: string): string => `${dia}T00:00:00-05:00`;
 

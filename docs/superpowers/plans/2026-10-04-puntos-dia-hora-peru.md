@@ -23,6 +23,10 @@ Nota: 0021/0052/0053/0081 asignan `now() at time zone 'America/Lima'` (un `times
 variable `timestamptz`; da el día de Lima sólo si la sesión corre en UTC. No lee ninguna columna ni
 alimenta puntos: se deja y se anota, no se cambia en este PR.
 
+Añadidos tras la verificación: `huellero/cliente.tsx` (fecha por defecto de `vigente_desde`, cortaba
+`marcada_en` en día UTC y esa fecha se compara en Lima en la 0075), `pipeline-repo.ts`
+`fechaIngreso` (pantalla) y la ventana `desde` de `movimientosRecientes` (ahora inicia en día Perú).
+
 ## Pasos
 
 1. Reservar número de migración (`tools/reservar-migracion.sh puntos-hora-peru`); commit y push.
