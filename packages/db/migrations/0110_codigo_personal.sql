@@ -184,7 +184,7 @@ grant execute on function private.actor_pipeline(uuid) to authenticated;
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 4) pipeline_validar_codigo — la ÚNICA puerta del código
 --    Nunca lanza excepción por código malo: el intento tiene que quedar escrito.
---    Devuelve {ok, token, nombre, expira_en} | {ok:false, bloqueado_min} | {ok:false, intentos_restantes}
+--    Devuelve {ok, token, nombre, expira_en, ventana_min} | {ok:false, bloqueado_min} | {ok:false, intentos_restantes}
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create or replace function pipeline_validar_codigo(p_codigo text, p_device text default null)
   returns jsonb language plpgsql security definer set search_path = public
@@ -228,11 +228,25 @@ begin
     values (v_sesion, v_emp, p_device, v_exp) returning token into v_token;
   select nombre into v_nombre from empleados where id = v_emp;
 
-  return jsonb_build_object('ok', true, 'token', v_token, 'nombre', v_nombre, 'expira_en', v_exp);
+  return jsonb_build_object('ok', true, 'token', v_token, 'nombre', v_nombre, 'expira_en', v_exp,
+                            'ventana_min', v_op_min);
 end;
 $$;
 revoke execute on function pipeline_validar_codigo(text, text) from public, anon;
 grant execute on function pipeline_validar_codigo(text, text) to authenticated;
+
+-- ¿Este equipo está marcado como compartido? La llama la server action (la tabla
+-- dispositivos_autorizados sólo la lee el admin por RLS, 0036). Devuelve sólo un booleano y sólo
+-- para un equipo aprobado cuyo device_id (cookie httpOnly) ya conoce quien pregunta.
+create or replace function dispositivo_compartido(p_device_id text)
+  returns boolean language sql stable security definer set search_path = public
+as $$
+  select coalesce(
+    (select d.compartido from public.dispositivos_autorizados d
+      where d.device_id = p_device_id and d.estado = 'aprobado'), false);
+$$;
+revoke execute on function dispositivo_compartido(text) from public, anon;
+grant execute on function dispositivo_compartido(text) to authenticated;
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 5) Las RPC del pipeline. Mismo cuerpo que su última definición, salvo:
