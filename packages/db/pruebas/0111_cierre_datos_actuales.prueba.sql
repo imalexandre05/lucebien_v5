@@ -25,6 +25,9 @@
 --            de crearBorrador): un parámetro de más de 16 dígitos no bloquea el cierre;
 --        5d. cambiar un escalar (`modalidad`) en la entrada guardada NO se ignora: se rechaza y
 --            nombra `modalidad`.
+--   7. La verificación posterior al sellado salta: un trigger de prueba altera la fila al sellarla
+--      (discrepancia entre lo sellado y la entrada) y se espera DESACTUALIZADA «mientras se
+--      cerraba», con la liquidación aún en borrador y nada sellado.
 --   6. El mensaje va en español neutral: dice «vuelve a calcular», nunca «volvé».
 --
 -- CARRERA (no automatizable acá). Dos sesiones concurrentes contra la misma liquidación en borrador:
@@ -33,7 +36,7 @@
 --      · si B confirma antes de que A capture los ids de sellado: A aborta con «se cargó un dato
 --        mientras se cerraba» y no deja líneas ni sellos (verificación posterior al sellado);
 --      · si B confirma después de la captura: la fila NO se sella (liquidacion_id sigue null) y
---        queda pendiente para el período que corresponda.
+--        queda sin sellar, huérfana en un período ya cerrado (ticket tablero#29).
 --   B': segundo cierre de la MISMA liquidación mientras A está abierta → espera (for update de la
 --       fila de la liquidación) y después falla con «ya está cerrada».
 -- El caso 3 de abajo cubre la parte sin concurrencia: que la verificación posterior no dé falsos
@@ -314,6 +317,53 @@ begin
     end;
   exception when others then
     r := r || format('[FALLA] caso5d: el montaje no deberia cortar y corto con "%s"; ', sqlerrm);
+  end;
+
+  -- ═══ Caso 7 — la verificación posterior al sellado SALTA ═════════════════════════════════════
+  -- Se simula una discrepancia entre lo sellado y la entrada con un trigger de prueba que altera el
+  -- motivo de la fila justo al sellarla. Es la forma de ejercitar el aborto sin concurrencia real.
+  -- El trigger y la función se crean dentro del subbloque: si algo falla, se deshacen con él.
+  begin
+    ac := pg_temp.montar(adm, '2100-02-01', '2100-02-04');
+    insert into sueldo_movimientos(empleado_id, fecha, tipo, monto, motivo, creado_por)
+      values (adm, '2100-02-02', 'adelanto', 100, 'prueba 0111 caso 7', adm);
+    liq := pg_temp.guardar_borrador(ac, adm, '2100-02-01', '2100-02-04');
+
+    execute $t$
+      create function public.prueba_0111_altera_sellado() returns trigger language plpgsql as $f$
+      begin
+        if old.liquidacion_id is null and new.liquidacion_id is not null
+           and new.motivo like 'prueba 0111 caso 7%' then
+          new.motivo := new.motivo || ' (alterado)';
+        end if;
+        return new;
+      end $f$ $t$;
+    execute $t$
+      create trigger trg_aaa_prueba_0111 before update on sueldo_movimientos
+        for each row execute function public.prueba_0111_altera_sellado() $t$;
+
+    begin
+      perform sueldo_liquidacion_cerrar(liq);
+      r := r || '[FALLA] caso7: cerro aunque lo sellado no coincidia con la entrada; ';
+    exception when others then
+      v_msg := sqlerrm;
+      if v_msg like 'DESACTUALIZADA:%' and v_msg like '%mientras se cerraba%' then
+        r := r || '[ok] caso7: una discrepancia entre lo sellado y la entrada aborta con DESACTUALIZADA; ';
+      else
+        r := r || format('[FALLA] caso7: esperaba DESACTUALIZADA «mientras se cerraba» y vino "%s"; ', v_msg);
+      end if;
+    end;
+
+    -- Y el aborto deshizo todo: la liquidación sigue en borrador y la fila sin sellar.
+    select estado into v_estado from sueldo_liquidaciones where id = liq;
+    select count(*) into v_sell from sueldo_movimientos where liquidacion_id = liq;
+    if v_estado <> 'borrador' or v_sell <> 0 then
+      r := r || format('[FALLA] caso7: tras abortar esperaba borrador y 0 sellados; vino estado=%s sellados=%s; ', v_estado, v_sell);
+    else
+      r := r || '[ok] caso7b: tras abortar la liquidacion sigue en borrador y nada quedo sellado; ';
+    end if;
+  exception when others then
+    r := r || format('[FALLA] caso7: el montaje no deberia cortar y corto con "%s"; ', sqlerrm);
   end;
 
   raise exception 'RESULTADO 0111 --> %', r;
