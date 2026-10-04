@@ -1519,5 +1519,9 @@ Otras decisiones del implementador, sin regla de negocio detrás:
   vez de una expiración fija a 10 minutos del ingreso: la spec §5 promete «10 minutos sin actividad».
 - Un intento mientras la sesión está bloqueada **no** se registra (el bloqueo no se alarga por
   insistir): se levanta cuando el fallo que lo completó sale de la ventana.
+- `pipeline_validar_codigo` sólo acepta el código desde un equipo aprobado y compartido, y cuando
+  una sesión se bloquea inserta una notificación para el rol `admin` (tipo
+  `codigo_sesion_bloqueada`) en la tabla del motor existente, sin tocar `generar_alertas()`.
+  Decidido por la sesión maestra el 04-oct-2026; a confirmar por Alexander.
 - El token no limita por sede de la prenda: el pipeline es un flujo central (0006) y el operador
   puede ser de cualquier sede.
