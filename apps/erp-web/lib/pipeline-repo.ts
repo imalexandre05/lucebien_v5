@@ -345,6 +345,13 @@ export async function validarCodigoOperador(codigo: string, deviceId: string | n
   };
 }
 
+// «cambiar» en el chip: revoca el token de operador en la base (sólo los de la propia sesión).
+export async function cerrarOperadorCodigo(token: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_cerrar_operador', { p_token: token });
+  if (error) throw new Error(error.message);
+}
+
 // ¿El equipo de esta cookie `sci_device` está marcado como compartido? (RPC definer: la tabla
 // sólo la lee el admin por RLS.)
 export async function dispositivoCompartido(deviceId: string): Promise<boolean> {

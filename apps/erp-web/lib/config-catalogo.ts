@@ -647,6 +647,17 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 1,
     step: 1,
   },
+  {
+    clave: 'codigo_operador_max_h',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Horas máximas de un operador (desde que ingresó)',
+    descripcion:
+      'Tope de vida de un operador de equipo compartido contada desde que tecleó su código, aunque siga moviendo prendas sin parar (un turno). Pasado ese tiempo tiene que volver a ingresar el código.',
+    tipo: 'numero',
+    default: '8',
+    min: 1,
+    step: 1,
+  },
 ];
 
 export const CONFIG_CATALOGO_MAP: Map<string, ConfigCatalogoItem> = new Map(CONFIG_CATALOGO.map((i) => [i.clave, i]));

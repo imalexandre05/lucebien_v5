@@ -12,6 +12,7 @@ import {
   calificarPasada,
   registrarPasada,
   validarCodigoOperador,
+  cerrarOperadorCodigo,
   type ValidacionCodigo,
 } from '../../lib/pipeline-repo';
 import { deviceIdActual, operadorParaAccion } from '../../lib/pipeline-operador';
@@ -31,49 +32,86 @@ export async function validarCodigo(codigo: string): Promise<ValidacionCodigo> {
   return validarCodigoOperador(limpio, deviceIdActual() || null);
 }
 
-export async function avanzarPrenda(id: string, destino: string, operador?: string): Promise<number> {
+// Los errores `CODIGO:` (token vencido, ajeno o ausente) se devuelven COMO VALOR (string), no como
+// excepción: Next oculta el mensaje de las excepciones en producción y la pantalla no podría saber
+// que tiene que volver a pedir el código. Cualquier otro error sigue lanzándose.
+async function conCodigo<T>(fn: () => Promise<T>): Promise<T | string> {
+  try {
+    return await fn();
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('CODIGO:')) return e.message;
+    throw e;
+  }
+}
+
+export async function avanzarPrenda(id: string, destino: string, operador?: string): Promise<number | string> {
   if (!id || !destino) return 0;
-  const pts = await avanzarPasada(id, destino, await operadorParaAccion(operador));
+  const r = await conCodigo(async () => avanzarPasada(id, destino, await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
-  return pts;
+  return r;
 }
 
-export async function enviarPrenda(id: string, sede: string, operador?: string) {
-  if (!id || !sede) return;
-  await enviarPasada(id, sede, await operadorParaAccion(operador));
+export async function enviarPrenda(id: string, sede: string, operador?: string): Promise<string | null> {
+  if (!id || !sede) return null;
+  const r = await conCodigo(async () => enviarPasada(id, sede, await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
+  return null;
 }
 
-export async function enviarTandaPrendas(ids: string[], sede: string, operador?: string) {
-  if (!ids.length || !sede) return;
-  const token = await operadorParaAccion(operador);
-  await Promise.all(ids.map((id) => enviarPasada(id, sede, token)));
+export async function enviarTandaPrendas(ids: string[], sede: string, operador?: string): Promise<string | null> {
+  if (!ids.length || !sede) return null;
+  const r = await conCodigo(async () => {
+    const token = await operadorParaAccion(operador);
+    await Promise.all(ids.map((id) => enviarPasada(id, sede, token)));
+  });
+  if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
+  return null;
 }
 
-export async function rechazarPrenda(id: string, destino: string, operador?: string) {
-  if (!id || !destino) return;
-  await rechazarPasada(id, destino, await operadorParaAccion(operador));
+export async function rechazarPrenda(id: string, destino: string, operador?: string): Promise<string | null> {
+  if (!id || !destino) return null;
+  const r = await conCodigo(async () => rechazarPasada(id, destino, await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
+  return null;
 }
 
-export async function deshacerPrenda(id: string, etapaAnterior: string, operador?: string) {
-  if (!id || !etapaAnterior) return;
-  await deshacerPasada(id, etapaAnterior, await operadorParaAccion(operador));
+export async function deshacerPrenda(id: string, etapaAnterior: string, operador?: string): Promise<string | null> {
+  if (!id || !etapaAnterior) return null;
+  const r = await conCodigo(async () => deshacerPasada(id, etapaAnterior, await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
+  return null;
 }
 
-export async function avanzarTandaPrendas(ids: string[], destino: string, operador?: string): Promise<number> {
+export async function avanzarTandaPrendas(ids: string[], destino: string, operador?: string): Promise<number | string> {
   if (!ids.length || !destino) return 0;
-  const pts = await avanzarTanda(ids, destino, await operadorParaAccion(operador));
+  const r = await conCodigo(async () => avanzarTanda(ids, destino, await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
-  return pts;
+  return r;
 }
 
-export async function dividirPrenda(id: string, operador?: string) {
-  if (!id) return;
-  await dividirPasada(id, await operadorParaAccion(operador));
+export async function dividirPrenda(id: string, operador?: string): Promise<string | null> {
+  if (!id) return null;
+  const r = await conCodigo(async () => dividirPasada(id, await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
+  return null;
+}
+
+// «cambiar» en el chip del operador: revoca el token en la base. Mejor esfuerzo: si falla, el token
+// igual vence solo por inactividad o por su vida máxima.
+export async function cerrarOperador(token: string): Promise<void> {
+  if (!token) return;
+  try {
+    await cerrarOperadorCodigo(token);
+  } catch {
+    /* el token expira solo */
+  }
 }
 
 // Tarea 6: `id` es el id de la MADRE dividida (no el de una hija — el tablero lo resuelve desde
@@ -90,10 +128,17 @@ export async function deshacerDivisionPrenda(id: string, operador?: string): Pro
   return null;
 }
 
-export async function calificarPrenda(id: string, aceptada: boolean, destino = '', operador?: string) {
-  if (!id) return;
-  await calificarPasada(id, aceptada, destino, '', await operadorParaAccion(operador));
+export async function calificarPrenda(
+  id: string,
+  aceptada: boolean,
+  destino = '',
+  operador?: string,
+): Promise<string | null> {
+  if (!id) return null;
+  const r = await conCodigo(async () => calificarPasada(id, aceptada, destino, '', await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
+  return null;
 }
 
 export async function registrarPrenda(p: {

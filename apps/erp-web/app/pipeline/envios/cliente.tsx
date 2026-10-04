@@ -25,7 +25,7 @@ export function EnviosCliente({
   miSede: string;
   compartido?: boolean;
 }) {
-  const { conOperador, operadorRechazado, chip, dialogo } = useOperador(compartido);
+  const { conOperador, operadorRechazado, renovar, chip, dialogo } = useOperador(compartido);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [destinoObs, setDestinoObs] = useState<Record<string, string>>({});
@@ -52,15 +52,15 @@ export function EnviosCliente({
       startTransition(async () => {
         setError(null);
         try {
-          await calificarPrenda(p.id, aceptada, aceptada ? '' : destinoObs[p.id] || 'recepcion', token);
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : '';
-          if (msg.startsWith('CODIGO:')) {
+          const r = await calificarPrenda(p.id, aceptada, aceptada ? '' : destinoObs[p.id] || 'recepcion', token);
+          if (r) {
             operadorRechazado();
             setError('Operador vencido. Ingresa tu código de nuevo.');
           } else {
-            setError('No se pudo calificar la prenda. Actualiza la lista e inténtalo de nuevo.');
+            renovar();
           }
+        } catch {
+          setError('No se pudo calificar la prenda. Actualiza la lista e inténtalo de nuevo.');
         }
         router.refresh();
       }),

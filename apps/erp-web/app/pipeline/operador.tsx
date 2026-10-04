@@ -13,7 +13,7 @@ import {
   registrarActividad,
   type OperadorActivo,
 } from '../../lib/operador-activo';
-import { validarCodigo } from './actions';
+import { cerrarOperador, validarCodigo } from './actions';
 
 // Código personal en equipos compartidos (spec codigo-personal §5).
 //
@@ -43,15 +43,26 @@ export function useOperador(compartido: boolean) {
     (accion: (token?: string) => void) => {
       if (!compartido) return accion();
       const vigente = operadorVigente(ref.current, Date.now());
-      if (vigente) {
-        fijar(registrarActividad(vigente, Date.now()));
-        return accion(vigente.token);
-      }
+      if (vigente) return accion(vigente.token);
       fijar(null);
       setPendiente(() => accion);
     },
     [compartido, fijar],
   );
+
+  // Renueva la ventana de inactividad de la pantalla. Se llama SÓLO cuando la acción salió bien: la
+  // base renueva la suya (`tocar_operador`) en el mismo caso, y las dos cuentas deben coincidir.
+  const renovar = useCallback(() => {
+    const vigente = operadorVigente(ref.current, Date.now());
+    if (vigente) fijar(registrarActividad(vigente, Date.now()));
+  }, [fijar]);
+
+  // «cambiar»: además de olvidar al operador en pantalla, se REVOCA su token en la base.
+  const cambiar = useCallback(() => {
+    const token = ref.current?.token;
+    fijar(cambiarOperador());
+    if (token) void cerrarOperador(token);
+  }, [fijar]);
 
   // Si el servidor rechaza por operador vencido (p. ej. la base lo venció antes que la pestaña).
   const operadorRechazado = useCallback(() => fijar(null), [fijar]);
@@ -60,7 +71,7 @@ export function useOperador(compartido: boolean) {
     <ChipOperador
       operador={operador}
       onIngresar={() => setPendiente(() => () => undefined)}
-      onCambiar={() => fijar(cambiarOperador())}
+      onCambiar={cambiar}
     />
   ) : null;
 
@@ -77,7 +88,7 @@ export function useOperador(compartido: boolean) {
     />
   ) : null;
 
-  return { conOperador, operadorRechazado, chip, dialogo, operador };
+  return { conOperador, operadorRechazado, renovar, chip, dialogo, operador };
 }
 
 function ChipOperador({
