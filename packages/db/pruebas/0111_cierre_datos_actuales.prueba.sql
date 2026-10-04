@@ -27,6 +27,15 @@
 --            nombra `modalidad`.
 --   6. El mensaje va en español neutral: dice «vuelve a calcular», nunca «volvé».
 --
+-- CARRERA (no automatizable acá). Dos sesiones concurrentes contra la misma liquidación en borrador:
+--   A: begin; select sueldo_liquidacion_cerrar('<liq>');      -- queda abierta, sin commit
+--   B: insert into sueldo_movimientos(...) en el rango; commit  -- fila NUEVA: no la frena ningún
+--      bloqueo, y si B confirma antes del sellado de A, A aborta con «se cargó un dato mientras se
+--      cerraba» y no deja líneas ni sellos (verificación posterior al sellado).
+--   B': update/delete de una fila PENDIENTE existente del rango → espera a que A termine (for update).
+-- El caso 3 de abajo cubre la parte sin concurrencia: que la verificación posterior no dé falsos
+-- positivos con los cinco tipos y una venta.
+--
 -- QUÉ NO PRUEBA. El desglose del motor (packages/core/src/sueldos.ts): `resultado` lleva UNA línea
 -- fake, porque `sueldo_liquidacion_cerrar` corta con «no hay nada que congelar» si no hay líneas.
 -- Tampoco prueba el botón de la pantalla (es TypeScript).
@@ -172,15 +181,25 @@ begin
     ac := pg_temp.montar(adm, '2099-11-21', '2099-11-24');
     insert into sueldo_movimientos(empleado_id, fecha, tipo, monto, motivo, creado_por)
       values (adm, '2099-11-22', 'adelanto', 100, 'prueba 0111 caso 3', adm);
+    -- Los cinco tipos más una venta: ejercitan la verificación posterior al sellado, que compara
+    -- lo sellado con lo que la entrada pagó (si la forma no coincidiera, este caso fallaría).
+    insert into sueldo_movimientos(empleado_id, fecha, tipo, monto, cantidad, motivo, creado_por)
+      values (adm, '2099-11-22', 'reporte',            50,   1, 'prueba 0111 caso 3: reporte', adm),
+             (adm, '2099-11-23', 'bono_extra',         20,   1, 'prueba 0111 caso 3: bono', adm),
+             (adm, '2099-11-23', 'almuerzo_entregado', null, 2, 'prueba 0111 caso 3: almuerzos', adm),
+             (adm, '2099-11-24', 'capacitacion',       null, 3, 'prueba 0111 caso 3: capacitacion', adm);
+    insert into sueldo_ventas(origen, fecha, monto, tipo, empleado_id)
+      values ('manual', '2099-11-23', 300, 'venta', adm);
     liq := pg_temp.guardar_borrador(ac, adm, '2099-11-21', '2099-11-24');
 
     v_json := sueldo_liquidacion_cerrar(liq);
     select estado into v_estado from sueldo_liquidaciones where id = liq;
     select count(*) into v_sell from sueldo_movimientos where liquidacion_id = liq;
-    if v_estado = 'cerrada' and v_json->>'estado' = 'cerrada' and (v_json->>'lineas')::int = 1 and v_sell = 1 then
-      r := r || '[ok] caso3: sin cambios cierra, congela 1 linea y sella el adelanto; ';
+    if v_estado = 'cerrada' and v_json->>'estado' = 'cerrada' and (v_json->>'lineas')::int = 1 and v_sell = 5
+       and (select count(*) from sueldo_ventas where liquidacion_id = liq) = 1 then
+      r := r || '[ok] caso3: sin cambios cierra, congela 1 linea y sella los 5 movimientos y la venta; ';
     else
-      r := r || format('[FALLA] caso3: esperaba cerrada, 1 linea y 1 sellado; vino estado=%s lineas=%s sellados=%s; ',
+      r := r || format('[FALLA] caso3: esperaba cerrada, 1 linea, 5 movimientos y 1 venta sellados; vino estado=%s lineas=%s sellados=%s; ',
                        v_estado, v_json->>'lineas', v_sell);
     end if;
   exception when others then
