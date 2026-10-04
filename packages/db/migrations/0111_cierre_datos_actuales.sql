@@ -21,7 +21,8 @@
 --     barrera barata—, la comparación completa contra `sueldo_entrada(...)`. Si difieren, rechaza
 --     con `DESACTUALIZADA` nombrando las claves que cambiaron y no sella nada.
 --   · Sin carreras: el sellado va por la lista explícita de ids de las filas pendientes (no por
---     rango; una fila insertada después de la captura queda pendiente, sin sellar) y tras sellar
+--     rango; una fila insertada después de la captura queda sin sellar, huérfana en un período ya
+--     cerrado: ticket imalexandre05/lucebien-tablero#29) y tras sellar
 --     se verifica que lo sellado sea exactamente lo que la entrada pagó; si una fila se coló entre
 --     la comparación y la captura, se aborta y se deshace todo.
 --   · El mensaje del conteo pasa de «volvé» a «vuelve» (español neutral).
@@ -209,7 +210,8 @@ begin
   --
   -- Por LISTA EXPLÍCITA DE IDS, no por rango (0111). Las filas pendientes se capturan en una sola
   -- sentencia y se sella exactamente esa lista: un adelanto que otra sesión inserta después de la
-  -- captura NO se sella, queda pendiente para el período que corresponda. (Un `for update` sobre
+  -- captura NO se sella: queda huérfana en un período ya cerrado (ticket
+  -- imalexandre05/lucebien-tablero#29, fuera de alcance). (Un `for update` sobre
   -- las pendientes no serviría: no frena un INSERT nuevo.) La fila que entró entre la comparación
   -- de arriba y esta captura sí quedaría sellada sin estar en la entrada: la verificación de abajo
   -- lo detecta y aborta.
