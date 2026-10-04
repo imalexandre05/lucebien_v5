@@ -11,10 +11,11 @@
 -- conteo igual, se cerraba con el dato viejo y se sellaba el nuevo sin descontarlo.
 --
 -- QUÉ CAMBIA.
---   · `private.sueldo_entrada_normalizada(jsonb)`: ordena los arreglos de PRIMER NIVEL. Es lo
---     único no determinista de la entrada: `sueldo_movimientos_lista` y las ventas ordenan sólo
---     por fecha, y dos movimientos del mismo día salen en cualquier orden. No hay marcas de
---     tiempo (verificado en el plan §2). No se toca `sueldo_entrada`.
+--   · `private.sueldo_entrada_normalizada(jsonb)`: ordena los arreglos de PRIMER NIVEL (lo único
+--     no determinista de la entrada: `sueldo_movimientos_lista` y las ventas ordenan sólo por
+--     fecha, y dos movimientos del mismo día salen en cualquier orden; no hay marcas de tiempo,
+--     plan §2) y lleva los números a doble precisión, que es lo que sobrevive al paso por
+--     JavaScript de `crearBorrador`. No se toca `sueldo_entrada`.
 --   · `sueldo_liquidacion_cerrar(uuid)`: cuerpo de la 0093 ÍNTEGRO (la spec la llama
 --     «sueldo_cerrar»; el nombre real es éste) y, después del conteo —que se conserva como primera
 --     barrera barata—, la comparación completa contra `sueldo_entrada(...)`. Si difieren, rechaza
@@ -34,9 +35,38 @@
 -- Prueba: packages/db/pruebas/0111_cierre_datos_actuales.prueba.sql
 
 -- ═══ 1) El normalizador ══════════════════════════════════════════════════════════════════════
--- Ordena con `order by e` (el orden total de jsonb, coherente con su igualdad: 100 y 100.0 son
--- iguales). Sólo los arreglos de primer nivel; lo de adentro (p. ej. `tramos` de cada día) ya sale
--- en un orden estable y significativo.
+-- Dos normalizaciones, las únicas que se aplican:
+--   a) NÚMEROS a doble precisión. `crearBorrador` guarda la entrada tras pasarla por JavaScript,
+--      que lee cada número como `double` y pierde los dígitos que pasan de ~16: un parámetro como
+--      45.454545454545454545 vuelve recortado y nunca coincidiría con el `numeric` exacto que
+--      devuelve `sueldo_entrada`, con lo que NINGUNA liquidación se podría cerrar. El motor
+--      (packages/core) calcula con esos mismos `double`, así que a ellos se compara. Los montos
+--      son numeric(12,2): caben enteros en un double y una diferencia real sigue detectándose.
+--   b) ARREGLOS de primer nivel ordenados, con `order by e` (el orden total de jsonb, coherente
+--      con su igualdad). Lo de adentro (p. ej. `tramos` de cada día) ya sale en un orden estable
+--      y significativo, y se respeta.
+create or replace function private.sueldo_jsonb_doble(p_valor jsonb)
+  returns jsonb language plpgsql immutable set search_path = public as $fn$
+begin
+  case jsonb_typeof(p_valor)
+    when 'number' then
+      return to_jsonb((p_valor #>> '{}')::float8);
+    when 'array' then
+      return coalesce((
+        select jsonb_agg(private.sueldo_jsonb_doble(e.v) order by e.n)
+        from jsonb_array_elements(p_valor) with ordinality as e(v, n)
+      ), '[]'::jsonb);
+    when 'object' then
+      return coalesce((
+        select jsonb_object_agg(k.key, private.sueldo_jsonb_doble(k.value))
+        from jsonb_each(p_valor) k
+      ), '{}'::jsonb);
+    else
+      return p_valor;
+  end case;
+end;
+$fn$;
+
 create or replace function private.sueldo_entrada_normalizada(p_entrada jsonb)
   returns jsonb language sql immutable set search_path = public as $fn$
   select coalesce(
@@ -47,9 +77,11 @@ create or replace function private.sueldo_entrada_normalizada(p_entrada jsonb)
            else k.value
       end),
     '{}'::jsonb)
-  from jsonb_each(coalesce(p_entrada, '{}'::jsonb)) k;
+  from jsonb_each(private.sueldo_jsonb_doble(coalesce(p_entrada, '{}'::jsonb))) k;
 $fn$;
 
+revoke execute on function private.sueldo_jsonb_doble(jsonb) from public, anon;
+grant  execute on function private.sueldo_jsonb_doble(jsonb) to authenticated, service_role;
 revoke execute on function private.sueldo_entrada_normalizada(jsonb) from public, anon;
 grant  execute on function private.sueldo_entrada_normalizada(jsonb) to authenticated, service_role;
 
