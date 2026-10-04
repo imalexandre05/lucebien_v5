@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowLeft, Gauge, PackageCheck, Send, Trophy, Zap } from 'lucide-react';
 import { listarPasadas, rankingHoy, movimientosRecientes } from '../../../lib/pipeline-repo';
+import { hoyPeru } from '../../../lib/fechas';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
@@ -29,7 +30,7 @@ const diaLabel = (iso: string) => {
 export default async function MetricasPage() {
   const [pasadas, ranking, movs] = await Promise.all([listarPasadas(), rankingHoy(), movimientosRecientes(7)]);
 
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = hoyPeru();
   const enProceso = pasadas.filter((p) => !['enviado', 'recibido'].includes(p.etapa)).length;
   const listas = pasadas.filter((p) => p.etapa === 'listo').length;
   const enCamino = pasadas.filter((p) => p.etapa === 'enviado').length;

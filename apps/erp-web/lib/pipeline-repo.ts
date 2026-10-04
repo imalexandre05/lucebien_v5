@@ -1,5 +1,6 @@
 import type { PrendaPasada } from '@scilb/core';
 import { getServerClient } from './supabase/server';
+import { diaPeruDe } from './fechas';
 
 type Row = {
   id: string;
@@ -253,7 +254,7 @@ export async function movimientosRecientes(dias = 7): Promise<Movimiento[]> {
     .limit(2000);
   if (error) throw new Error(error.message);
   return ((data as { fecha: string; etapa_nueva: string }[]) ?? []).map((r) => ({
-    fecha: (r.fecha ?? '').slice(0, 10),
+    fecha: r.fecha ? diaPeruDe(r.fecha) : '',
     etapaNueva: r.etapa_nueva,
   }));
 }
