@@ -11,15 +11,16 @@ Cada paso termina con `bash tools/verificar-local.sh` en verde y su propio commi
 3. **Tests primero** (commit de tests): casos de §6.1 como script SQL de prueba siguiendo el patrón
    vigente del repo (`tools/probar-migracion.sh` / `tools/pruebas/`), y §6.2 en vitest.
 4. **Migración** (idempotente, `create ... if not exists`, `alter` envuelto):
-   `dispositivos.compartido`, `prenda_historial.registrado_por`, `codigo_intentos` + RLS,
+   `dispositivos.compartido`, `prenda_historial.registrado_por`, `codigo_intentos` + `codigo_operadores` + RLS,
    parámetros default de intentos/ventana en la tabla de configuración vigente (comentados como
-   default), `private.empleado_por_codigo`, `pipeline_validar_codigo`, y `create or replace` de
-   cada RPC con `p_codigo text default null` **conservando el cuerpo actual** salvo la resolución
+   default), `private.empleado_por_codigo`, `private.operador_de_token`, `pipeline_validar_codigo`, y `create or replace` de
+   cada RPC con `p_operador uuid default null` **conservando el cuerpo actual** salvo la resolución
    del actor y `registrado_por`. Cuidado: cambiar la firma crea una sobrecarga; hacer `drop function
    if exists <firma vieja>` antes, y re-otorgar los `grant` que tuviera.
-5. **Repo + server actions:** `pipeline-repo.ts` pasa `p_codigo` opcional; la action lee la cookie
-   `sci_device`, consulta si el equipo es compartido y, si lo es, exige código (validar con
-   `pipeline_validar_codigo` antes de mover).
+5. **Repo + server actions:** `pipeline-repo.ts` pasa `p_operador` (token) opcional; la action lee la cookie
+   `sci_device`, consulta si el equipo es compartido y, si lo es, exige el token de
+   operador (la UI lo obtiene con `pipeline_validar_codigo` al ingresar el código) y rechaza la
+   acción sin token.
 6. **UI:** chip de operador en el tablero (spec §5), sólo si el equipo es compartido; toggle
    «Equipo compartido» en `/dispositivos` (sólo admin).
 7. **Docs:** `docs/pendientes-negocio.md` (los 3 defaults), `docs/mapa-verificado.md` (estado del
