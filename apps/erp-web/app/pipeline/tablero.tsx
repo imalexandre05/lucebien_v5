@@ -30,6 +30,7 @@ import type { RankingItem } from '../../lib/pipeline-repo';
 import { cn } from '../../lib/cn';
 import { OpcionBotones } from '../../components/ui/opcion-botones';
 import { BandaModulo } from '../../components/ui/banda-modulo';
+import { useOperador } from './operador';
 import {
   avanzarPrenda,
   enviarTandaPrendas,
@@ -126,13 +127,18 @@ export function TableroPipeline({
   ranking = [],
   operario = '',
   tiendas = ['LB', 'ST', 'TR'],
+  compartido = false,
 }: {
   pasadas: PrendaPasada[];
   ranking?: RankingItem[];
   operario?: string;
   tiendas?: string[];
+  // Equipo marcado como compartido (/dispositivos): cada movimiento pide el código personal de
+  // quien lo hace y se le atribuye a esa persona (spec codigo-personal).
+  compartido?: boolean;
 }) {
   const [, startTransition] = useTransition();
+  const { conOperador, operadorRechazado, chip: chipOperador, dialogo: dialogoOperador } = useOperador(compartido);
   // Actualización optimista: la prenda se mueve al instante; el servidor confirma después.
   const [optimistas, aplicar] = useOptimistic(pasadas, (state: PrendaPasada[], m: { id: string; etapa: string }) =>
     state.map((p) => (p.id === m.id ? { ...p, etapa: m.etapa as PrendaPasada['etapa'] } : p)),
@@ -157,63 +163,110 @@ export function TableroPipeline({
     setSelEtapa(null);
   };
 
+  // Si el servidor rechaza una acción de un equipo compartido (operador vencido en la base antes
+  // que en la pestaña), se limpia el operador y se avisa; el tablero se refresca solo y la prenda
+  // vuelve a su sitio.
+  const rechazoOperador = () => {
+    operadorRechazado();
+    setToast({ msg: 'Operador vencido. Ingresa tu código de nuevo.', tono: 'warn' });
+  };
+
   const deshacer = (id: string, etapaAnterior: string, pts: number) =>
-    startTransition(async () => {
-      aplicar({ id, etapa: etapaAnterior });
-      if (pts) setSesionPts((s) => Math.round((s - pts) * 10) / 10);
-      setToast(null);
-      await deshacerPrenda(id, etapaAnterior);
-    });
+    conOperador((token) =>
+      startTransition(async () => {
+        aplicar({ id, etapa: etapaAnterior });
+        if (pts) setSesionPts((s) => Math.round((s - pts) * 10) / 10);
+        setToast(null);
+        try {
+          await deshacerPrenda(id, etapaAnterior, token);
+        } catch {
+          rechazoOperador();
+        }
+      }),
+    );
 
   const h: Handlers = {
     avanzar: (id, destino, etapaActual) =>
-      startTransition(async () => {
-        aplicar({ id, etapa: destino });
-        const pts = await avanzarPrenda(id, destino);
-        if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
-        setToast({
-          msg: `${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`,
-          tono: 'ok',
-          undo: () => deshacer(id, etapaActual, pts ?? 0),
-        });
-      }),
+      conOperador((token) =>
+        startTransition(async () => {
+          aplicar({ id, etapa: destino });
+          try {
+            const pts = await avanzarPrenda(id, destino, token);
+            if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
+            setToast({
+              msg: `${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`,
+              tono: 'ok',
+              undo: () => deshacer(id, etapaActual, pts ?? 0),
+            });
+          } catch {
+            rechazoOperador();
+          }
+        }),
+      ),
     enviarTanda: (ids, sede) =>
-      startTransition(async () => {
-        ids.forEach((id) => aplicar({ id, etapa: 'enviado' }));
-        await enviarTandaPrendas(ids, sede);
-        setToast({ msg: `${ids.length} prendas enviadas a ${sede}`, tono: 'gold' });
-      }),
+      conOperador((token) =>
+        startTransition(async () => {
+          ids.forEach((id) => aplicar({ id, etapa: 'enviado' }));
+          try {
+            await enviarTandaPrendas(ids, sede, token);
+            setToast({ msg: `${ids.length} prendas enviadas a ${sede}`, tono: 'gold' });
+          } catch {
+            rechazoOperador();
+          }
+        }),
+      ),
     rechazar: (id, destino) =>
-      startTransition(async () => {
-        aplicar({ id, etapa: destino });
-        await rechazarPrenda(id, destino);
-        setToast({ msg: `Devuelto a ${NOMBRE[destino] ?? destino}`, tono: 'warn' });
-      }),
+      conOperador((token) =>
+        startTransition(async () => {
+          aplicar({ id, etapa: destino });
+          try {
+            await rechazarPrenda(id, destino, token);
+            setToast({ msg: `Devuelto a ${NOMBRE[destino] ?? destino}`, tono: 'warn' });
+          } catch {
+            rechazoOperador();
+          }
+        }),
+      ),
     avanzarTanda: (ids, destino) =>
-      startTransition(async () => {
-        ids.forEach((id) => aplicar({ id, etapa: destino }));
-        const pts = await avanzarTandaPrendas(ids, destino);
-        if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
-        setToast({ msg: `${ids.length} prendas → ${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`, tono: 'ok' });
-      }),
+      conOperador((token) =>
+        startTransition(async () => {
+          ids.forEach((id) => aplicar({ id, etapa: destino }));
+          try {
+            const pts = await avanzarTandaPrendas(ids, destino, token);
+            if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
+            setToast({ msg: `${ids.length} prendas → ${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`, tono: 'ok' });
+          } catch {
+            rechazoOperador();
+          }
+        }),
+      ),
     dividir: (id) =>
-      startTransition(async () => {
-        await dividirPrenda(id);
-        setToast({ msg: 'Terno dividido en saco + pantalón', tono: 'gold' });
-      }),
+      conOperador((token) =>
+        startTransition(async () => {
+          try {
+            await dividirPrenda(id, token);
+            setToast({ msg: 'Terno dividido en saco + pantalón', tono: 'gold' });
+          } catch {
+            rechazoOperador();
+          }
+        }),
+      ),
     // Sin actualización optimista (mismo criterio que dividir): borra 2 tarjetas y resucita la
     // madre en su etapa original, un cambio estructural que conviene dejarle a la revalidación
     // del servidor en vez de simularlo a mano. Si el RPC rechaza (p. ej. una pieza ya avanzó), el
     // mensaje real del RPC llega tal cual al toast — no uno genérico.
     deshacerDivision: (madreId) =>
-      startTransition(async () => {
-        const error = await deshacerDivisionPrenda(madreId);
-        setToast(
-          error
-            ? { msg: error, tono: 'warn' }
-            : { msg: 'División deshecha: vuelve al tablero como una sola prenda', tono: 'gold' },
-        );
-      }),
+      conOperador((token) =>
+        startTransition(async () => {
+          const error = await deshacerDivisionPrenda(madreId, token);
+          if (error?.startsWith('CODIGO:')) return rechazoOperador();
+          setToast(
+            error
+              ? { msg: error, tono: 'warn' }
+              : { msg: 'División deshecha: vuelve al tablero como una sola prenda', tono: 'gold' },
+          );
+        }),
+      ),
   };
 
   // Selección por columna (como el viejo: la barra dice "N en {etapa}"). Cruzar de etapa reinicia.
@@ -313,6 +366,9 @@ export function TableroPipeline({
           }
         />
       </div>
+
+      {chipOperador}
+      {dialogoOperador}
 
       {/* ── Pestañas ── */}
       <div className="mb-3 flex shrink-0 flex-wrap items-center gap-1 border-b border-line">

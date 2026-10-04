@@ -192,36 +192,44 @@ export async function reingresarActivoAPipeline(activoId: string): Promise<void>
 // ── Mutaciones del tablero vía RPC (una sola llamada atómica, ~200ms; ver 0009). ──
 
 // Avanza la prenda y devuelve los puntos ganados por el actor (para feedback en la UI).
-export async function avanzarPasada(id: string, destino: string): Promise<number> {
+export async function avanzarPasada(id: string, destino: string, operador: string | null = null): Promise<number> {
   const sb = getServerClient();
-  const { data, error } = await sb.rpc('pipeline_avanzar', { p_id: id, p_destino: destino });
+  const { data, error } = await sb.rpc('pipeline_avanzar', { p_id: id, p_destino: destino, p_operador: operador });
   if (error) throw new Error(error.message);
   return Number(data) || 0;
 }
 
-export async function enviarPasada(id: string, sedeDestino: string): Promise<void> {
+export async function enviarPasada(id: string, sedeDestino: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_enviar', { p_id: id, p_sede: sedeDestino });
+  const { error } = await sb.rpc('pipeline_enviar', { p_id: id, p_sede: sedeDestino, p_operador: operador });
   if (error) throw new Error(error.message);
 }
 
-export async function rechazarPasada(id: string, destino: string): Promise<void> {
+export async function rechazarPasada(id: string, destino: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_rechazar', { p_id: id, p_destino: destino });
+  const { error } = await sb.rpc('pipeline_rechazar', { p_id: id, p_destino: destino, p_operador: operador });
   if (error) throw new Error(error.message);
 }
 
 // Deshacer: revierte la prenda a la etapa anterior y quita los puntos recién ganados.
-export async function deshacerPasada(id: string, etapaAnterior: string): Promise<void> {
+export async function deshacerPasada(id: string, etapaAnterior: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_deshacer', { p_id: id, p_etapa_anterior: etapaAnterior });
+  const { error } = await sb.rpc('pipeline_deshacer', {
+    p_id: id,
+    p_etapa_anterior: etapaAnterior,
+    p_operador: operador,
+  });
   if (error) throw new Error(error.message);
 }
 
 // Tanda: avanza varias prendas de una etapa de un solo golpe. Devuelve los puntos totales.
-export async function avanzarTanda(ids: string[], destino: string): Promise<number> {
+export async function avanzarTanda(ids: string[], destino: string, operador: string | null = null): Promise<number> {
   const sb = getServerClient();
-  const { data, error } = await sb.rpc('pipeline_avanzar_tanda', { p_ids: ids, p_destino: destino });
+  const { data, error } = await sb.rpc('pipeline_avanzar_tanda', {
+    p_ids: ids,
+    p_destino: destino,
+    p_operador: operador,
+  });
   if (error) throw new Error(error.message);
   return Number(data) || 0;
 }
@@ -259,9 +267,9 @@ export async function movimientosRecientes(dias = 7): Promise<Movimiento[]> {
 }
 
 // Divide un terno en piezas hijas (saco + pantalón); el original sale del tablero.
-export async function dividirPasada(id: string): Promise<void> {
+export async function dividirPasada(id: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_dividir', { p_id: id });
+  const { error } = await sb.rpc('pipeline_dividir', { p_id: id, p_operador: operador });
   if (error) throw new Error(error.message);
 }
 
@@ -269,20 +277,69 @@ export async function dividirPasada(id: string): Promise<void> {
 // madre a su etapa original — SOLO si ninguna hija avanzó de etapa (el RPC lo valida server-side
 // y rechaza con un mensaje claro si no se puede). `id` es el id de la MADRE (mismo parámetro que
 // dividirPasada, no el de una hija — ver deshacerDivisionPrenda en actions.ts).
-export async function deshacerDivisionPasada(id: string): Promise<void> {
+export async function deshacerDivisionPasada(id: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_deshacer_division', { p_id: id });
+  const { error } = await sb.rpc('pipeline_deshacer_division', { p_id: id, p_operador: operador });
   if (error) throw new Error(error.message);
 }
 
 // Calificar en tienda: aceptar (→ recibido) u observar (→ etapa destino, vuelve al trabajo).
-export async function calificarPasada(id: string, aceptada: boolean, destino = '', obs = ''): Promise<void> {
+export async function calificarPasada(
+  id: string,
+  aceptada: boolean,
+  destino = '',
+  obs = '',
+  operador: string | null = null,
+): Promise<void> {
   const sb = getServerClient();
   const { error } = await sb.rpc('pipeline_calificar', {
     p_id: id,
     p_aceptada: aceptada,
     p_destino: destino,
     p_obs: obs,
+    p_operador: operador,
   });
   if (error) throw new Error(error.message);
+}
+
+// ── Código personal (migración 0110, spec codigo-personal) ────────────────────────────────────
+// El código se teclea UNA vez y sólo viaja a pipeline_validar_codigo, que cuenta los intentos y
+// devuelve un token de operador. Las demás RPC reciben ese token (`p_operador`), nunca el código.
+export type ValidacionCodigo =
+  | { ok: true; token: string; nombre: string; expiraEn: string; ventanaMin: number }
+  | { ok: false; bloqueadoMin?: number; intentosRestantes?: number };
+
+export async function validarCodigoOperador(codigo: string, deviceId: string | null): Promise<ValidacionCodigo> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_validar_codigo', { p_codigo: codigo, p_device: deviceId });
+  if (error) throw new Error(error.message);
+  const r = data as {
+    ok: boolean;
+    token?: string;
+    nombre?: string;
+    expira_en?: string;
+    ventana_min?: number;
+    bloqueado_min?: number;
+    intentos_restantes?: number;
+  };
+  if (r.ok && r.token) {
+    return {
+      ok: true,
+      token: r.token,
+      nombre: r.nombre ?? '',
+      expiraEn: r.expira_en ?? '',
+      ventanaMin: Number(r.ventana_min) || 0,
+    };
+  }
+  return { ok: false, bloqueadoMin: r.bloqueado_min, intentosRestantes: r.intentos_restantes };
+}
+
+// ¿El equipo de esta cookie `sci_device` está marcado como compartido? (RPC definer: la tabla
+// sólo la lee el admin por RLS.)
+export async function dispositivoCompartido(deviceId: string): Promise<boolean> {
+  if (!deviceId) return false;
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('dispositivo_compartido', { p_device_id: deviceId });
+  if (error) throw new Error(error.message);
+  return data === true;
 }

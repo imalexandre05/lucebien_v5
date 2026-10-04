@@ -32,6 +32,7 @@ const SECCION_INVENTARIO = 'Inventario';
 const SECCION_VALORES = 'Valores 360°';
 const SECCION_POS = 'Caja y POS';
 const SECCION_SUELDOS = 'Sueldos';
+const SECCION_CODIGO = 'Código personal';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
 // simplemente no se muestran; "Personalizados" — parámetros creados por el admin — va siempre al
@@ -44,6 +45,7 @@ export const ORDEN_SECCIONES = [
   SECCION_INVENTARIO,
   SECCION_POS,
   SECCION_VALORES,
+  SECCION_CODIGO,
 ];
 
 // Puntos de productividad — 10 claves, todas "puntos que suma el operario al completar la etapa
@@ -608,6 +610,41 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     tipo: 'numero',
     default: '2',
     min: 0,
+    step: 1,
+  },
+  // Migración 0110 (spec pipeline/2026-10-04-codigo-personal-design.md §4). Los tres defaults los
+  // eligió el implementador y NO están confirmados por el dueño (docs/pendientes-negocio.md).
+  {
+    clave: 'codigo_max_intentos',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Intentos fallidos antes de bloquear',
+    descripcion:
+      'En un equipo compartido, cuántos códigos incorrectos puede teclear una misma sesión dentro de la ventana de abajo antes de quedar bloqueada (aunque el siguiente código sea el correcto).',
+    tipo: 'numero',
+    default: '5',
+    min: 1,
+    step: 1,
+  },
+  {
+    clave: 'codigo_ventana_intentos_min',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Minutos que cuenta cada intento fallido',
+    descripcion:
+      'Ventana en la que se cuentan los intentos fallidos de una sesión. Pasado ese tiempo el fallo deja de contar y el bloqueo se levanta.',
+    tipo: 'numero',
+    default: '15',
+    min: 1,
+    step: 1,
+  },
+  {
+    clave: 'codigo_operador_min',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Minutos de operador activo sin actividad',
+    descripcion:
+      'Tras ingresar su código, quien opera el tablero de un equipo compartido sigue activo hasta que pasen estos minutos sin mover ninguna prenda; después tiene que volver a ingresar el código.',
+    tipo: 'numero',
+    default: '10',
+    min: 1,
     step: 1,
   },
 ];

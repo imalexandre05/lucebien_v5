@@ -10,7 +10,7 @@ import { StatBox } from '../../components/ui/stat-box';
 import { buttonVariants } from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
-import { accionAprobar, accionRechazar, accionRevocar, accionCambiarSede } from './actions';
+import { accionAprobar, accionRechazar, accionRevocar, accionCambiarSede, accionCambiarCompartido } from './actions';
 
 const TONE: Record<Dispositivo['estado'], Tone> = {
   aprobado: 'green',
@@ -69,6 +69,7 @@ export default async function DispositivosPage() {
                 <TH className="pl-5">Equipo</TH>
                 <TH>Token</TH>
                 <TH>Sede</TH>
+                <TH>Compartido</TH>
                 <TH>Estado</TH>
                 <TH>Registrado</TH>
                 <TH>Últ. visto</TH>
@@ -113,6 +114,27 @@ export default async function DispositivosPage() {
                     </form>
                   </TD>
                   <TD>
+                    <form action={accionCambiarCompartido}>
+                      <input type="hidden" name="id" value={d.id} />
+                      <input type="hidden" name="compartido" value={d.compartido ? 'false' : 'true'} />
+                      <button
+                        type="submit"
+                        aria-pressed={d.compartido}
+                        title={
+                          d.compartido
+                            ? 'Equipo compartido: el pipeline pide el código personal. Clic para quitarlo'
+                            : 'Marcar como compartido: el pipeline pedirá el código personal de quien opera'
+                        }
+                        className={cn(
+                          'rounded-r-pastilla border px-2 py-0.5 text-micro font-medium transition-colors',
+                          d.compartido ? 'border-navy bg-navy text-paper' : 'border-line text-muted hover:border-gold hover:text-navy',
+                        )}
+                      >
+                        {d.compartido ? 'Sí' : 'No'}
+                      </button>
+                    </form>
+                  </TD>
+                  <TD>
                     <Badge tone={TONE[d.estado]}>{LABEL[d.estado]}</Badge>
                   </TD>
                   <TD className="tabular-nums text-dato text-muted">{fecha(d.creadoEn)}</TD>
@@ -149,7 +171,7 @@ export default async function DispositivosPage() {
               ))}
               {disp.length === 0 && (
                 <TR>
-                  <TD colSpan={7} className="p-0">
+                  <TD colSpan={8} className="p-0">
                     <EmptyState icon={Laptop} titulo="Todavía no entró ningún equipo">
                       Cada computadora o teléfono aparece acá la primera vez que alguien abre el ERP
                       desde él. No hay nada que registrar a mano.

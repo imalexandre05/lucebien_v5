@@ -12,6 +12,8 @@ export type Dispositivo = {
   sedeCod: string | null;
   userAgent: string | null;
   estado: 'pendiente' | 'aprobado' | 'rechazado' | 'revocado';
+  // Equipo compartido (migración 0110): el pipeline pide el código personal de quien opera.
+  compartido: boolean;
   creadoEn: string;
   aprobadoEn: string | null;
   ultimoVisto: string;
@@ -48,7 +50,7 @@ export async function listarDispositivos(): Promise<Dispositivo[]> {
   const sb = getServerClient();
   const { data, error } = await sb
     .from('dispositivos_autorizados')
-    .select('id, device_id, nombre, sede_cod, user_agent, estado, creado_en, aprobado_en, ultimo_visto')
+    .select('id, device_id, nombre, sede_cod, user_agent, estado, compartido, creado_en, aprobado_en, ultimo_visto')
     .order('creado_en', { ascending: false });
   if (error) throw error;
   return (data ?? []).map((d) => ({
@@ -58,6 +60,7 @@ export async function listarDispositivos(): Promise<Dispositivo[]> {
     sedeCod: (d.sede_cod as string) ?? null,
     userAgent: (d.user_agent as string) ?? null,
     estado: d.estado as Dispositivo['estado'],
+    compartido: Boolean(d.compartido),
     creadoEn: d.creado_en as string,
     aprobadoEn: (d.aprobado_en as string) ?? null,
     ultimoVisto: d.ultimo_visto as string,
@@ -73,6 +76,14 @@ export async function actualizarSedeDispositivo(id: string, sedeCod: string | nu
     .from('dispositivos_autorizados')
     .update({ sede_cod: sedeCod || null })
     .eq('id', id);
+  if (error) throw error;
+}
+
+// Marca/desmarca un equipo como compartido (migración 0110). Update directo, como la sede: la policy
+// `disp_admin_rw` (0036) ya exige app_es_admin() para escribir cualquier columna.
+export async function actualizarCompartidoDispositivo(id: string, compartido: boolean): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.from('dispositivos_autorizados').update({ compartido }).eq('id', id);
   if (error) throw error;
 }
 
