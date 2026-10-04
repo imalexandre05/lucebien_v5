@@ -29,10 +29,13 @@
 --
 -- CARRERA (no automatizable acá). Dos sesiones concurrentes contra la misma liquidación en borrador:
 --   A: begin; select sueldo_liquidacion_cerrar('<liq>');      -- queda abierta, sin commit
---   B: insert into sueldo_movimientos(...) en el rango; commit  -- fila NUEVA: no la frena ningún
---      bloqueo, y si B confirma antes del sellado de A, A aborta con «se cargó un dato mientras se
---      cerraba» y no deja líneas ni sellos (verificación posterior al sellado).
---   B': update/delete de una fila PENDIENTE existente del rango → espera a que A termine (for update).
+--   B: insert into sueldo_movimientos(...) en el rango; commit  -- fila NUEVA
+--      · si B confirma antes de que A capture los ids de sellado: A aborta con «se cargó un dato
+--        mientras se cerraba» y no deja líneas ni sellos (verificación posterior al sellado);
+--      · si B confirma después de la captura: la fila NO se sella (liquidacion_id sigue null) y
+--        queda pendiente para el período que corresponda.
+--   B': segundo cierre de la MISMA liquidación mientras A está abierta → espera (for update de la
+--       fila de la liquidación) y después falla con «ya está cerrada».
 -- El caso 3 de abajo cubre la parte sin concurrencia: que la verificación posterior no dé falsos
 -- positivos con los cinco tipos y una venta.
 --
