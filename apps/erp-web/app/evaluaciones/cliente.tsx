@@ -229,7 +229,8 @@ export function EvaluacionesCliente({
   // competencias (juicio humano) no dependen del ciclo y se conservan.
   function anularCalculo() {
     setInfoExtra(null);
-    setComp(CERO);
+    // Sólo lo automático; exámenes, descuento y bonus son entradas manuales y se conservan.
+    setComp((p) => ({ ...p, operaciones: 0, software: 0, limpieza: 0, tardanza: 0, valores: 0 }));
   }
   function setCicloDesde(v: string) {
     setCiclo((c) => (c ? { ...c, desde: v } : c));
@@ -448,9 +449,9 @@ export function EvaluacionesCliente({
                   )}
                 </label>
                 <div className="flex items-center gap-2">
-                  <input type="date" value={ciclo?.desde ?? ''} disabled={!ciclo} onChange={(e) => setCicloDesde(e.target.value)} className={cn(fieldCls, 'w-full')} />
+                  <input type="date" value={ciclo?.desde ?? ''} disabled={!ciclo || pending} onChange={(e) => setCicloDesde(e.target.value)} className={cn(fieldCls, 'w-full')} />
                   <span className="text-apoyo text-muted">a</span>
-                  <input type="date" value={ciclo?.hasta ?? ''} disabled={!ciclo} onChange={(e) => setCicloHasta(e.target.value)} className={cn(fieldCls, 'w-full')} />
+                  <input type="date" value={ciclo?.hasta ?? ''} disabled={!ciclo || pending} onChange={(e) => setCicloHasta(e.target.value)} className={cn(fieldCls, 'w-full')} />
                 </div>
               </div>
             </div>
@@ -520,8 +521,11 @@ export function EvaluacionesCliente({
                     min={0}
                     max={20}
                     value={comp[key]}
+                    // Operaciones/software/limpieza/tardanza/valores los fija el servidor al guardar
+                    // (vienen del cálculo); sólo «examenes» se carga a mano.
+                    readOnly={key !== 'examenes'}
                     onChange={(e) => set(key, Number(e.target.value))}
-                    className={cn(fieldCls, 'w-20 text-right')}
+                    className={cn(fieldCls, 'w-20 text-right', key !== 'examenes' && 'bg-paper/60 text-muted')}
                   />
                 </div>
               ))}
