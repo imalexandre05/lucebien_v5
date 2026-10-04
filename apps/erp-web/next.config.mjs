@@ -11,6 +11,13 @@ const nextConfig = {
   // Habilita instrumentation.ts (polyfill de WebSocket para supabase-js en Node < 22).
   experimental: {
     instrumentationHook: true,
+    // Subida de documentos del personal (accionSubirDocumento recibe el archivo como FormData).
+    // Next corta en 1 MB por defecto, antes de llegar a la validación propia. El máximo real es
+    // 10 MB (TAMANO_MAXIMO_BYTES en lib/documentos-repo.ts y file_size_limit del bucket
+    // empleado-documentos, 0105); se suma 1 MB de margen para el sobre multipart.
+    serverActions: {
+      bodySizeLimit: '11mb',
+    },
   },
 };
 

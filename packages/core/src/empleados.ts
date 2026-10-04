@@ -40,3 +40,19 @@ export function elegirCodigoLibre(ocupados: Iterable<string>, aleatorio: () => n
   } while (usados.has(intento));
   return intento;
 }
+
+// Códigos de login ya tomados en Supabase Auth. El email interno es `{cod}@{dominio}`; un usuario
+// de Auth puede seguir vivo aunque su fila de `empleados` ya no exista (alta deshecha, borrado a
+// mano), y entonces `createUser` fallaría por email duplicado. Pura: el llamador lista los emails
+// de Auth y le pasa el resultado a `elegirCodigoLibre` junto con `empleados.cod`.
+export function codigosDeEmails(emails: Iterable<string | null | undefined>, dominio: string): string[] {
+  const sufijo = `@${dominio.toLowerCase()}`;
+  const codigos: string[] = [];
+  for (const email of emails) {
+    const e = (email ?? '').toLowerCase();
+    if (!e.endsWith(sufijo)) continue;
+    const cod = e.slice(0, -sufijo.length);
+    if (/^\d{4}$/.test(cod)) codigos.push(cod);
+  }
+  return codigos;
+}

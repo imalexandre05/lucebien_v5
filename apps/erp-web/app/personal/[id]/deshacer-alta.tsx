@@ -81,6 +81,8 @@ export function BotonDeshacerAlta({ personaId, personaNombre }: { personaId: str
   const [previo, setPrevio] = useState<BorrarAltaPrevio | null>(null);
   const [errorPrevio, setErrorPrevio] = useState('');
   const [errorBorrar, setErrorBorrar] = useState('');
+  // La ficha ya se borró pero el usuario de acceso (Supabase Auth) no: el diálogo no se cierra solo.
+  const [avisoAuth, setAvisoAuth] = useState('');
   const [pendingBorrar, startBorrar] = useTransition();
 
   async function abrir() {
@@ -101,6 +103,7 @@ export function BotonDeshacerAlta({ personaId, personaNombre }: { personaId: str
   function cerrar() {
     if (pendingBorrar) return; // la acción está corriendo: no se abandona a mitad de camino
     setAbierto(false);
+    if (avisoAuth) router.push('/personal'); // la persona ya no existe
   }
 
   function confirmar() {
@@ -111,6 +114,11 @@ export function BotonDeshacerAlta({ personaId, personaNombre }: { personaId: str
         // Condición de carrera real (spec §3, paso 4): algo bloqueó entre el paso 1 y esta
         // confirmación. El diálogo se queda abierto con el motivo a la vista.
         setErrorBorrar(r.error ?? 'No se pudo borrar. Vuelve a intentarlo.');
+        return;
+      }
+      if (r.aviso) {
+        // El alta se deshizo pero Auth falló: se queda el diálogo abierto con el motivo a la vista.
+        setAvisoAuth(r.aviso);
         return;
       }
       setAbierto(false);
@@ -192,6 +200,11 @@ export function BotonDeshacerAlta({ personaId, personaNombre }: { personaId: str
             </div>
           )}
 
+          {avisoAuth && (
+            <Aviso tono="error" className="mt-3">
+              {avisoAuth}
+            </Aviso>
+          )}
           {errorBorrar && (
             <Aviso tono="error" className="mt-3">
               {errorBorrar}
@@ -200,9 +213,9 @@ export function BotonDeshacerAlta({ personaId, personaNombre }: { personaId: str
         </ModalBody>
         <ModalFooter>
           <Button type="button" variant="outline" onClick={cerrar} disabled={pendingBorrar}>
-            {puedeBorrar ? 'Cancelar' : 'Cerrar'}
+            {avisoAuth ? 'Volver a Personal' : puedeBorrar ? 'Cancelar' : 'Cerrar'}
           </Button>
-          {puedeBorrar && (
+          {puedeBorrar && !avisoAuth && (
             <Button type="button" onClick={confirmar} pending={pendingBorrar} className="bg-error hover:bg-error-deep">
               Borrar definitivamente
             </Button>

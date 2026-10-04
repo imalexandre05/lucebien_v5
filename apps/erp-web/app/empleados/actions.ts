@@ -84,12 +84,12 @@ export async function accionBorrarAltaPrevio(
   }
 }
 
-export async function accionBorrarAlta(id: string): Promise<{ ok: boolean; error?: string }> {
+export async function accionBorrarAlta(id: string): Promise<{ ok: boolean; error?: string; aviso?: string }> {
   try {
     await exigirAdmin();
-    await empleadoBorrarAlta(id);
+    const { avisoAuth } = await empleadoBorrarAlta(id);
     revalidatePath('/personal');
-    return { ok: true };
+    return { ok: true, aviso: avisoAuth };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error' };
   }
