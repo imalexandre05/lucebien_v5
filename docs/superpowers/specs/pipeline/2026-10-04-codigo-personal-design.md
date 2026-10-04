@@ -69,9 +69,19 @@ es una pregunta de negocio (§7).
   PostgREST); la escriben y leen sólo funciones definer.
 - RPC `pipeline_validar_codigo(p_codigo text, p_device text default null) returns jsonb`,
   `security definer`, `grant execute to authenticated`. **Es la única puerta del código:**
+  0. **Equipo.** Si `p_device` no corresponde a un `dispositivos_autorizados` con estado
+     `'aprobado'` y `compartido = true` (se compara en la base contra el token real del equipo, no
+     contra lo que diga la app) → `{ok:false, motivo:'equipo_no_compartido'}` **sin registrar
+     intento**. Así nadie puede probar códigos desde su celular ni desde un equipo personal.
+     (Decidido por la sesión maestra el 04-oct-2026 tras la revisión del PR #42; a confirmar por
+     Alexander.)
   1. Si la sesión (`auth.uid()`) está bloqueada por intentos → `{ok:false, bloqueado_min:N}`.
   2. Registra el intento en `codigo_intentos` (siempre, ok o no; **nunca** hace `raise` por código
      malo, así el intento queda escrito).
+  2b. **Aviso al administrador.** Cuando un fallo deja a la sesión bloqueada (el que completa el
+     máximo de intentos), se inserta una notificación para el rol `admin` en la tabla
+     `notificaciones` del motor existente (0041/0109), tipo `codigo_sesion_bloqueada`, severidad
+     `warn`, sin crear un motor nuevo ni tocar `generar_alertas()`. (Misma decisión, mismo estado.)
   3. Si el código es válido → crea fila en `codigo_operadores` con `expira_en = now() + ventana`
      y devuelve `{ok:true, token, nombre, expira_en}`; si no → `{ok:false, intentos_restantes}`.
 - `private.operador_de_token(p_token uuid) returns uuid`, `security definer`, `stable`,
@@ -123,7 +133,9 @@ es una pregunta de negocio (§7).
    `ok:false` y el intento **queda registrado**; empleado suspendido → rechazado (y su token deja de
    valer); 6.º intento fallido en 15 min → bloqueado aun con código bueno; token de **otra sesión**
    → rechazado; token vencido → rechazado; `pipeline_avanzar_tanda` con token malo → no mueve
-   ninguna prenda y lanza error; `p_operador null` → idéntico al comportamiento actual.
+   ninguna prenda y lanza error; `p_operador null` → idéntico al comportamiento actual; código
+   desde un equipo no aprobado/compartido → `motivo:'equipo_no_compartido'` y sin intento
+   registrado; el bloqueo de una sesión genera la notificación para el admin.
 2. Unitarios del cliente: expiración del operador por inactividad, «cambiar» limpia el operador.
 3. Guard: ninguna lectura nueva de `empleados.cod` desde `apps/erp-web` (agregar regla al guard si
    es viable).
