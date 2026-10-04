@@ -42,6 +42,25 @@ sueldo (crítica) · **Nivel:** spec + tests + verificador.
 - La validación del servidor del contrato (`validar()`) **sigue** exigiendo `0 ≤ fracción ≤ 1`;
   sólo cambia el mensaje, que pasa a hablar en porcentaje.
 
+## Aviso por comisión muy baja (decidido el 4-oct-2026)
+
+Quien escriba `0.02` por costumbre de la unidad vieja pacta 0,02 %, cien veces menos. Decisión del
+usuario, que llegó por la sesión maestra el 4-oct-2026:
+
+- **No hay mínimo de comisión.** Todo valor entre 0 y 100 % sigue siendo válido.
+- **Se pide confirmación** cuando la comisión escrita es **mayor que 0 y menor que 0,5 %**, es
+  decir, cuando la fracción está en `0 < f < 0.005`. **0 no pide confirmación.** Exactamente 0,5 %
+  tampoco.
+- El aviso se ve bajo el campo mientras se escribe: «¿Seguro? 0,02 % es muy bajo. Si quisiste 2 %,
+  escribe 2». Al guardar se abre un diálogo de confirmación (`DialogoConfirmar`, tono `aviso`), y
+  sólo se guarda si la persona confirma.
+- Aplica al contrato (`sueldos/acuerdos`) y a `/configuracion` (`sueldo_pct_comision`).
+- **El umbral 0,5 % es un default de interfaz**, no una regla de negocio. Vive como constante
+  comentada (`UMBRAL_AVISO_COMISION` en `lib/porcentaje.ts`) y figura en
+  `docs/pendientes-negocio.md` como «umbral de aviso, confirmar con el cliente». El servidor no lo
+  aplica: sólo avisa, no rechaza.
+- Función pura y probada: `comisionRequiereConfirmacion(fraccion)` → `fraccion > 0 && fraccion < 0.005`.
+
 ## Fuera de alcance
 
 - Ningún cambio de esquema ni migración; ningún valor guardado se reescribe.
@@ -49,4 +68,5 @@ sueldo (crítica) · **Nivel:** spec + tests + verificador.
 
 ## Decisiones de negocio
 
-Ninguna nueva: el rango 0–100 % es el mismo 0–1 que ya existía, expresado en otra unidad.
+El rango 0–100 % es el mismo 0–1 que ya existía, expresado en otra unidad. El umbral del aviso
+(0,5 %) es un default de interfaz y está pendiente de confirmar con el cliente.
