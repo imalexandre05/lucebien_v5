@@ -79,6 +79,10 @@ export default async function AsistenciaSueldosPage({
         subtitle="Qué pasó cada día del periodo. Un día sin declarar no es una falta: es un dato que falta, y frena la liquidación."
       />
       <AsistenciaCliente
+        // key: los borradores de cada día salen de un useState sembrado con el calendario del
+        // contrato. Cambiar sólo `?acuerdo=` (el selector, o un enlace de una notificación) no
+        // remonta el cliente, y quedarían los días del contrato anterior. Con la key, se remonta.
+        key={elegido.id}
         acuerdos={acuerdos}
         acuerdo={elegido}
         filas={filas}
