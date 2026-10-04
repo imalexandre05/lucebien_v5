@@ -7,7 +7,7 @@
 // tiene que convertir en un resultado de error, para que el rollback corra igual que ante un
 // `ok: false`. Si no, un borrado fallido ocultaría un adelanto que sigue en la base.
 import { describe, expect, it } from 'vitest';
-import { correrAccion, planTrasFallo, restaurarSiVacio, sinId } from '../movimientos-optimista';
+import { correrAccion, mensajeIncierto, planTrasFallo, restaurarSiVacio, sinId } from '../movimientos-optimista';
 
 describe('correrAccion', () => {
   it('devuelve el resultado de la acción tal cual', async () => {
@@ -42,11 +42,32 @@ describe('planTrasFallo', () => {
     expect(planTrasFallo(r)).toEqual({ restaurarFormulario: false, refrescar: true });
   });
 
-  it('rechazo del servidor: se sabe que no se escribió, se restaura y no hace falta refrescar', () => {
-    expect(planTrasFallo({ ok: false, error: 'El motivo es obligatorio' })).toEqual({
+  it('rechazo ANTES de escribir (escrito:false): se restaura y no hace falta refrescar', () => {
+    expect(planTrasFallo({ ok: false, escrito: false, error: 'El motivo es obligatorio' })).toEqual({
       restaurarFormulario: true,
       refrescar: false,
     });
+  });
+
+  it('ok:false sin escrito:false (error de Supabase tras intentar el insert) es incierto: no restaura y refresca', () => {
+    expect(planTrasFallo({ ok: false, error: 'fetch failed' })).toEqual({ restaurarFormulario: false, refrescar: true });
+    expect(planTrasFallo({ ok: false, error: 'x', codigo: 'DATO' })).toEqual({
+      restaurarFormulario: false,
+      refrescar: true,
+    });
+  });
+});
+
+describe('mensajeIncierto', () => {
+  it('un fallo incierto no dice «no se guardó»: avisa que puede haberse guardado', () => {
+    const m = mensajeIncierto({ ok: false, error: 'fetch failed' }, 'No se pudo confirmar el registro.');
+    expect(m).toMatch(/^No se pudo confirmar el registro\. \(fetch failed\) Puede que se haya guardado igual/);
+  });
+
+  it('un rechazo seguro muestra el error tal cual', () => {
+    expect(mensajeIncierto({ ok: false, escrito: false, error: 'El motivo es obligatorio' }, 'x')).toBe(
+      'El motivo es obligatorio',
+    );
   });
 });
 

@@ -8,6 +8,11 @@ export type ResultadoAccion = {
   codigo?: string;
   id?: string;
   /**
+   * `false` sólo cuando se sabe con certeza que la base NO se tocó: el servidor cortó antes de
+   * intentar escribir (permiso, validación). Es lo único que habilita devolver lo tipeado.
+   */
+  escrito?: false;
+  /**
    * `true` sólo cuando la promesa de la acción RECHAZÓ (red, timeout, 5xx, deploy). Entonces no se
    * sabe si la base escribió: el insert pudo hacerse y perderse sólo la respuesta.
    */
@@ -43,14 +48,28 @@ export async function correrAccion<R extends ResultadoAccion>(
 /**
  * Qué hacer después de un fallo, según se sepa o no si la base escribió.
  *
- * - `ok:false` del servidor: la acción corrió y dijo que no (validación, RLS, `CONGELADA`). Se sabe
- *   que no se escribió, así que se puede devolver lo tipeado al formulario.
- * - Fallo de transporte: NO se sabe. Devolver lo tipeado invitaría a un segundo clic en «Registrar»
- *   que crearía un segundo adelanto, descontado dos veces. Entonces no se restaura nada y se pide
- *   al servidor la lista real (`router.refresh()`): si el adelanto se guardó, aparece.
+ * - `escrito: false`: el servidor cortó ANTES de escribir (permiso, validación). Se sabe que no se
+ *   escribió, así que se puede devolver lo tipeado al formulario.
+ * - Cualquier otro fallo —un corte de transporte, o un `ok:false` que viene de Supabase después
+ *   de intentar el insert— es INCIERTO: el insert pudo hacerse y perderse sólo la respuesta.
+ *   Devolver lo tipeado invitaría a un segundo clic en «Registrar» que crearía un segundo adelanto,
+ *   descontado dos veces. Entonces no se restaura nada y se pide al servidor la lista real
+ *   (`router.refresh()`): si el adelanto se guardó, aparece.
  */
 export function planTrasFallo(r: ResultadoAccion): { restaurarFormulario: boolean; refrescar: boolean } {
-  return r.transporte ? { restaurarFormulario: false, refrescar: true } : { restaurarFormulario: true, refrescar: false };
+  return r.escrito === false
+    ? { restaurarFormulario: true, refrescar: false }
+    : { restaurarFormulario: false, refrescar: true };
+}
+
+/** El mensaje de un fallo incierto: no dice «no se guardó», porque no se sabe. */
+export function mensajeIncierto(
+  r: ResultadoAccion,
+  mensaje: string,
+  cola = 'Puede que se haya guardado igual: revise la lista antes de volver a registrar.',
+): string {
+  if (r.transporte || r.escrito === false) return r.error ?? mensaje;
+  return `${mensaje} ${r.error ? `(${r.error}) ` : ''}${cola}`;
 }
 
 type FormMovimiento = { empleadoId: string; fecha: string; tipo: string; monto: string; cantidad: string; motivo: string };

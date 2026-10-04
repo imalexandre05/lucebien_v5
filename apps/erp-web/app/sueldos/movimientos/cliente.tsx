@@ -11,7 +11,7 @@ import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import { hoyPeru } from '../../../lib/fechas';
 import { esConteo, type TipoMovimiento } from '../../../lib/sueldos-tipos';
 import type { MovimientoSueldo, VentaSueldo } from '../../../lib/sueldos-repo';
-import { correrAccion, planTrasFallo, restaurarSiVacio, sinId } from '../../../lib/movimientos-optimista';
+import { correrAccion, mensajeIncierto, planTrasFallo, restaurarSiVacio, sinId } from '../../../lib/movimientos-optimista';
 import { accionCrearMovimiento, accionEliminarMovimiento } from './actions';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
@@ -54,7 +54,7 @@ export function MovimientosCliente({
    */
   ventas?: VentaSueldo[];
 }) {
-  // Sólo para resincronizar tras un fallo de transporte (ver planTrasFallo). En el camino normal
+  // Sólo para resincronizar tras un fallo incierto (ver planTrasFallo). En el camino normal
   // NO se usa: el árbol nuevo llega en la respuesta de la acción.
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
@@ -139,7 +139,7 @@ export function MovimientosCliente({
         const plan = planTrasFallo(r);
         setProvisorias((ps) => ps.filter((p) => p.id !== tmpId));
         if (plan.restaurarFormulario) setMov((actual) => restaurarSiVacio(actual, tipeado));
-        setError(r.error ?? 'No se pudo guardar.');
+        setError(mensajeIncierto(r, 'No se pudo confirmar el registro.'));
         if (plan.refrescar) router.refresh();
       }
     });
@@ -154,8 +154,10 @@ export function MovimientosCliente({
       const r = await correrAccion(() => accionEliminarMovimiento(id), 'No se pudo confirmar el borrado.');
       if (!r.ok) {
         setBorrando((b) => sinId(b, id));
-        setError(r.error ?? 'No se pudo borrar.');
-        // Ante un corte no se sabe si se borró: la lista real lo dice.
+        setError(
+          mensajeIncierto(r, 'No se pudo confirmar el borrado.', 'Revise la lista: si la fila sigue ahí, no se borró.'),
+        );
+        // Si no se sabe si se borró (corte, o error de la base), la lista real lo dice.
         if (planTrasFallo(r).refrescar) router.refresh();
       }
     });

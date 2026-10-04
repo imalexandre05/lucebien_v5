@@ -416,8 +416,12 @@ export type MovimientoInput = {
  * La base ya lo exige (`sueldo_mov_monto_chk`), y el motivo está en la 0072: un adelanto tipeado
  * en negativo invertía la línea, de descontar S/100 a sumar S/100. Acá se corta antes, con un
  * mensaje que un administrador entiende.
+ *
+ * Son las validaciones de `crearMovimiento`, separadas para que la acción pueda correrlas ANTES de
+ * intentar el insert y saber con certeza que un rechazo acá no escribió nada (spec
+ * 2026-10-03-adelantos-rendimiento-design.md). Lanza `SueldoRpcError` con código `DATO`.
  */
-export async function crearMovimiento(p: MovimientoInput, creadoPor: string): Promise<string> {
+export function validarMovimiento(p: MovimientoInput): void {
   const conteo = esConteo(p.tipo);
 
   if (conteo) {
@@ -436,6 +440,11 @@ export async function crearMovimiento(p: MovimientoInput, creadoPor: string): Pr
       'DATO',
     );
   }
+}
+
+export async function crearMovimiento(p: MovimientoInput, creadoPor: string): Promise<string> {
+  validarMovimiento(p);
+  const conteo = esConteo(p.tipo);
 
   const sb = getServerClient();
   const { data, error } = await sb
