@@ -4,7 +4,7 @@
 
 ## 1. El problema (verificado en el código)
 
-`sueldo_cerrar` (última definición: `packages/db/migrations/0093_liquidacion_por_tramos.sql`,
+`sueldo_liquidacion_cerrar` (errata del 04-oct: la spec la llamaba `sueldo_cerrar`; última definición: `packages/db/migrations/0093_liquidacion_por_tramos.sql`,
 bloque «La carrera», ~l. 355-395) detecta que los datos cambiaron desde el cálculo **contando
 filas**: adelantos + reportes + bonos extra, ventas, y suma de cantidad de almuerzos y
 capacitaciones. No compara **montos** ni **asistencia**.
@@ -17,7 +17,7 @@ capacitaciones. No compara **montos** ni **asistencia**.
 
 **Una liquidación sólo se cierra si su entrada guardada es idéntica a la que se calcularía ahora.**
 
-- Dentro de `sueldo_cerrar`, antes de sellar: recalcular la entrada con **la misma función** que la
+- Dentro de `sueldo_liquidacion_cerrar`, antes de sellar: recalcular la entrada con **la misma función** que la
   armó (`sueldo_entrada(...)`, última definición vigente — hoy `0098`) para el mismo empleado,
   acuerdo y rango, y compararla con `l.entrada`.
 - Si difieren → `raise exception 'DESACTUALIZADA: los datos cambiaron desde que se calculó
@@ -28,6 +28,9 @@ capacitaciones. No compara **montos** ni **asistencia**.
   garantizado de arreglos), se excluyen o normalizan antes de comparar. El plan debe listarlos
   verificándolos contra el cuerpo real de `sueldo_entrada`; si un arreglo no tiene `order by`
   estable, se agrega en la función (sin cambiar su contenido) o se compara ordenado.
+- **Sin carreras:** antes de recalcular y comparar, bloquear con `select ... for update` las filas
+  pendientes (`liquidacion_id is null`) de `sueldo_movimientos` y `sueldo_ventas` del empleado en el
+  rango, y la fila de la liquidación, para que nada se cuele entre la comparación y el sellado.
 - El conteo actual se **conserva** como primera barrera barata; la comparación completa va después.
 - El texto de los mensajes en español neutral (el actual dice «volvé»: corregirlo).
 
