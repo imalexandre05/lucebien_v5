@@ -11,7 +11,7 @@ export default async function PipelinePage() {
     rankingHoy(),
     getSesion(),
     listarSedes().catch(() => []),
-    equipoCompartido().catch(() => false),
+    equipoCompartido(),
   ]);
   // Destinos de despacho: las sedes de perfil 'pos' del catálogo (una sede nueva aparece sola).
   const tiendas = sedes.filter((s) => s.perfil !== 'almacen').map((s) => s.cod);

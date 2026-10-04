@@ -28,6 +28,11 @@ type Row = {
   fecha_actualizado: string | null;
 };
 
+// Sólo se manda `p_operador` cuando hay token. PostgREST resuelve la función por los NOMBRES de los
+// argumentos: mandar la clave siempre (aunque valga null) rompe todo el pipeline (PGRST202) si la
+// app se despliega antes de aplicar la migración 0112. Sin la clave, la llamada es la de siempre.
+const conOperador = (operador: string | null) => (operador ? { p_operador: operador } : {});
+
 const fromRow = (r: Row): PrendaPasada => ({
   id: r.id,
   activoId: r.activo_id,
@@ -194,20 +199,20 @@ export async function reingresarActivoAPipeline(activoId: string): Promise<void>
 // Avanza la prenda y devuelve los puntos ganados por el actor (para feedback en la UI).
 export async function avanzarPasada(id: string, destino: string, operador: string | null = null): Promise<number> {
   const sb = getServerClient();
-  const { data, error } = await sb.rpc('pipeline_avanzar', { p_id: id, p_destino: destino, p_operador: operador });
+  const { data, error } = await sb.rpc('pipeline_avanzar', { p_id: id, p_destino: destino, ...conOperador(operador) });
   if (error) throw new Error(error.message);
   return Number(data) || 0;
 }
 
 export async function enviarPasada(id: string, sedeDestino: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_enviar', { p_id: id, p_sede: sedeDestino, p_operador: operador });
+  const { error } = await sb.rpc('pipeline_enviar', { p_id: id, p_sede: sedeDestino, ...conOperador(operador) });
   if (error) throw new Error(error.message);
 }
 
 export async function rechazarPasada(id: string, destino: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_rechazar', { p_id: id, p_destino: destino, p_operador: operador });
+  const { error } = await sb.rpc('pipeline_rechazar', { p_id: id, p_destino: destino, ...conOperador(operador) });
   if (error) throw new Error(error.message);
 }
 
@@ -217,7 +222,7 @@ export async function deshacerPasada(id: string, etapaAnterior: string, operador
   const { error } = await sb.rpc('pipeline_deshacer', {
     p_id: id,
     p_etapa_anterior: etapaAnterior,
-    p_operador: operador,
+    ...conOperador(operador),
   });
   if (error) throw new Error(error.message);
 }
@@ -228,7 +233,7 @@ export async function avanzarTanda(ids: string[], destino: string, operador: str
   const { data, error } = await sb.rpc('pipeline_avanzar_tanda', {
     p_ids: ids,
     p_destino: destino,
-    p_operador: operador,
+    ...conOperador(operador),
   });
   if (error) throw new Error(error.message);
   return Number(data) || 0;
@@ -269,7 +274,7 @@ export async function movimientosRecientes(dias = 7): Promise<Movimiento[]> {
 // Divide un terno en piezas hijas (saco + pantalón); el original sale del tablero.
 export async function dividirPasada(id: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_dividir', { p_id: id, p_operador: operador });
+  const { error } = await sb.rpc('pipeline_dividir', { p_id: id, ...conOperador(operador) });
   if (error) throw new Error(error.message);
 }
 
@@ -279,7 +284,7 @@ export async function dividirPasada(id: string, operador: string | null = null):
 // dividirPasada, no el de una hija — ver deshacerDivisionPrenda en actions.ts).
 export async function deshacerDivisionPasada(id: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_deshacer_division', { p_id: id, p_operador: operador });
+  const { error } = await sb.rpc('pipeline_deshacer_division', { p_id: id, ...conOperador(operador) });
   if (error) throw new Error(error.message);
 }
 
@@ -297,7 +302,7 @@ export async function calificarPasada(
     p_aceptada: aceptada,
     p_destino: destino,
     p_obs: obs,
-    p_operador: operador,
+    ...conOperador(operador),
   });
   if (error) throw new Error(error.message);
 }
@@ -340,6 +345,10 @@ export async function dispositivoCompartido(deviceId: string): Promise<boolean> 
   if (!deviceId) return false;
   const sb = getServerClient();
   const { data, error } = await sb.rpc('dispositivo_compartido', { p_device_id: deviceId });
+  // PGRST202: la función no existe todavía (migración 0112 sin aplicar) → ningún equipo es
+  // compartido y el pipeline funciona como siempre. Cualquier otro error sí se propaga: fallar en
+  // silencio en un equipo compartido le atribuiría todo a la dueña de la sesión.
+  if (error?.code === 'PGRST202') return false;
   if (error) throw new Error(error.message);
   return data === true;
 }

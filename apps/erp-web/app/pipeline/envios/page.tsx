@@ -11,7 +11,7 @@ export default async function EnviosPage() {
   const [prendas, sesion, compartido] = await Promise.all([
     listarPrendasEnviadas(),
     getSesion(),
-    equipoCompartido().catch(() => false),
+    equipoCompartido(),
   ]);
   return (
     <div>

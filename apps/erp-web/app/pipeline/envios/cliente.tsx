@@ -7,6 +7,7 @@ import { Check, Eye, Truck, ArrowLeft } from 'lucide-react';
 import type { PrendaEnviada } from '../../../lib/envios-repo';
 import { calificarPrenda } from '../actions';
 import { useOperador } from '../operador';
+import { Aviso } from '../../../components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
@@ -28,6 +29,7 @@ export function EnviosCliente({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [destinoObs, setDestinoObs] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
 
   const enCamino = prendas.filter((p) => p.etapa === 'enviado');
   const recibidas = prendas.filter((p) => p.etapa === 'recibido').slice(0, 20);
@@ -48,10 +50,17 @@ export function EnviosCliente({
   function calificar(p: PrendaEnviada, aceptada: boolean) {
     conOperador((token) =>
       startTransition(async () => {
+        setError(null);
         try {
           await calificarPrenda(p.id, aceptada, aceptada ? '' : destinoObs[p.id] || 'recepcion', token);
-        } catch {
-          operadorRechazado();
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : '';
+          if (msg.startsWith('CODIGO:')) {
+            operadorRechazado();
+            setError('Operador vencido. Ingresa tu código de nuevo.');
+          } else {
+            setError('No se pudo calificar la prenda. Actualiza la lista e inténtalo de nuevo.');
+          }
         }
         router.refresh();
       }),
@@ -62,6 +71,7 @@ export function EnviosCliente({
     <div className="space-y-5">
       {chip}
       {dialogo}
+      {error && <Aviso tono="error">{error}</Aviso>}
       <div className="flex items-center gap-2">
         <Link
           href="/pipeline"

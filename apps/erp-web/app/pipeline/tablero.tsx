@@ -163,27 +163,35 @@ export function TableroPipeline({
     setSelEtapa(null);
   };
 
-  // Si el servidor rechaza una acción de un equipo compartido (operador vencido en la base antes
-  // que en la pestaña), se limpia el operador y se avisa; el tablero se refresca solo y la prenda
-  // vuelve a su sitio.
-  const rechazoOperador = () => {
-    operadorRechazado();
-    setToast({ msg: 'Operador vencido. Ingresa tu código de nuevo.', tono: 'warn' });
+  // Si el servidor rechaza una acción: sólo un error `CODIGO:` (operador vencido en la base antes
+  // que en la pestaña) limpia al operador y pide el código otra vez. Cualquier otro error
+  // (transición inválida, prenda ya dividida, red) se muestra como lo que es y deja al operador
+  // donde estaba. Next enmascara el texto de los errores en producción: en ese caso sale el aviso
+  // genérico y la ventana de la pestaña (misma duración que la de la base) pide el código sola.
+  const falla = (e: unknown) => {
+    const msg = e instanceof Error ? e.message : '';
+    if (msg.startsWith('CODIGO:')) {
+      operadorRechazado();
+      setToast({ msg: 'Operador vencido. Ingresa tu código de nuevo.', tono: 'warn' });
+    } else {
+      setToast({ msg: 'No se pudo completar la acción. Actualiza el tablero e inténtalo de nuevo.', tono: 'warn' });
+    }
   };
 
-  const deshacer = (id: string, etapaAnterior: string, pts: number) =>
-    conOperador((token) =>
-      startTransition(async () => {
-        aplicar({ id, etapa: etapaAnterior });
-        if (pts) setSesionPts((s) => Math.round((s - pts) * 10) / 10);
-        setToast(null);
-        try {
-          await deshacerPrenda(id, etapaAnterior, token);
-        } catch {
-          rechazoOperador();
-        }
-      }),
-    );
+  // «Deshacer» usa el token CON EL QUE SE AVANZÓ la prenda, no el de quien esté operando cuando se
+  // pulsa: pipeline_deshacer le borra el último punto al actor, y si fuera otro se le quitaría el
+  // punto a quien no corresponde (o no se quitaría ninguno y el original cobraría dos veces).
+  const deshacer = (id: string, etapaAnterior: string, pts: number, token?: string) =>
+    startTransition(async () => {
+      aplicar({ id, etapa: etapaAnterior });
+      if (pts) setSesionPts((s) => Math.round((s - pts) * 10) / 10);
+      setToast(null);
+      try {
+        await deshacerPrenda(id, etapaAnterior, token);
+      } catch (e) {
+        falla(e);
+      }
+    });
 
   const h: Handlers = {
     avanzar: (id, destino, etapaActual) =>
@@ -196,10 +204,10 @@ export function TableroPipeline({
             setToast({
               msg: `${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`,
               tono: 'ok',
-              undo: () => deshacer(id, etapaActual, pts ?? 0),
+              undo: () => deshacer(id, etapaActual, pts ?? 0, token),
             });
-          } catch {
-            rechazoOperador();
+          } catch (e) {
+            falla(e);
           }
         }),
       ),
@@ -210,8 +218,8 @@ export function TableroPipeline({
           try {
             await enviarTandaPrendas(ids, sede, token);
             setToast({ msg: `${ids.length} prendas enviadas a ${sede}`, tono: 'gold' });
-          } catch {
-            rechazoOperador();
+          } catch (e) {
+            falla(e);
           }
         }),
       ),
@@ -222,8 +230,8 @@ export function TableroPipeline({
           try {
             await rechazarPrenda(id, destino, token);
             setToast({ msg: `Devuelto a ${NOMBRE[destino] ?? destino}`, tono: 'warn' });
-          } catch {
-            rechazoOperador();
+          } catch (e) {
+            falla(e);
           }
         }),
       ),
@@ -235,8 +243,8 @@ export function TableroPipeline({
             const pts = await avanzarTandaPrendas(ids, destino, token);
             if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
             setToast({ msg: `${ids.length} prendas → ${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`, tono: 'ok' });
-          } catch {
-            rechazoOperador();
+          } catch (e) {
+            falla(e);
           }
         }),
       ),
@@ -246,8 +254,8 @@ export function TableroPipeline({
           try {
             await dividirPrenda(id, token);
             setToast({ msg: 'Terno dividido en saco + pantalón', tono: 'gold' });
-          } catch {
-            rechazoOperador();
+          } catch (e) {
+            falla(e);
           }
         }),
       ),
@@ -259,7 +267,7 @@ export function TableroPipeline({
       conOperador((token) =>
         startTransition(async () => {
           const error = await deshacerDivisionPrenda(madreId, token);
-          if (error?.startsWith('CODIGO:')) return rechazoOperador();
+          if (error?.startsWith('CODIGO:')) return falla(new Error(error));
           setToast(
             error
               ? { msg: error, tono: 'warn' }

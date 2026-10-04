@@ -160,14 +160,18 @@ function DialogoCodigo({
           <Label htmlFor="codigo-personal">Código</Label>
           <Input
             id="codigo-personal"
-            type="password"
+            type="text"
             inputMode="numeric"
-            autoComplete="off"
+            autoComplete="one-time-code"
+            autoCapitalize="off"
+            spellCheck={false}
             autoFocus
             maxLength={12}
             value={codigo}
             onChange={(e) => setCodigo(e.target.value)}
-            className="tabular-nums"
+            // Enmascarado por CSS y no con type="password": Chrome ofrece guardar las contraseñas y, en
+            // una PC compartida, el código de una persona se autocompletaría para la siguiente.
+            className="tabular-nums [-webkit-text-security:disc]"
           />
         </div>
         {error && <Aviso tono="error">{error}</Aviso>}
