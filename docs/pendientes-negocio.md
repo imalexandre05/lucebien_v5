@@ -1496,18 +1496,22 @@ separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propi
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
 
-## Pendiente del 3-oct-2026 — comisión escrita en la unidad vieja (tablero#1)
+## Comisión escrita en la unidad vieja (tablero#1): umbral de aviso, confirmar con el cliente
 
 Desde la [spec de la comisión en porcentaje](superpowers/specs/sueldos/2026-10-03-comision-en-porcentaje-design.md)
 el contrato y `/configuracion` piden la comisión en **porcentaje** (`1.5` = 1,5 %). Antes pedían la
-**fracción** (`0.02` = 2 %). Quien por costumbre escriba `0.02` ahora pacta **0,02 %**: 100 veces
-menos. El sistema lo acepta porque `0.0002` está dentro del rango válido 0–1. La única señal es la
-etiqueta «(%)» del campo. Lo encontró el verificador.
+**fracción** (`0.02` = 2 %). Quien por costumbre escriba `0.02` ahora pacta **0,02 %**, cien veces
+menos. El verificador encontró el caso el 3-oct-2026.
 
-**Sin decidir, y no se inventó ningún umbral:** ¿se pide confirmación («¿quisiste decir 2 %?»)
-cuando el porcentaje escrito está entre 0 y algún mínimo, por ejemplo 0,1 %? ¿O se fija un mínimo
-distinto de cero? ¿Cuál? Lo decide Alexander. Si se decide, primero va la spec en un commit propio
-y después el código.
+**Decidido el 4-oct-2026** (usuario, vía sesión maestra):
+- No hay mínimo de comisión.
+- Entre 0 y 0,5 % (sin incluir los extremos) la pantalla avisa y pide confirmación antes de
+  guardar. 0 es válido sin aviso.
+
+**Default a confirmar con el cliente: el umbral de aviso, 0,5 %.** Vive en
+`UMBRAL_AVISO_COMISION`, en `apps/erp-web/lib/porcentaje.ts`. Es un default de interfaz y no es
+editable desde `/configuracion`, porque no es un parámetro de negocio: sólo avisa, nunca rechaza.
+Si el cliente pide otro umbral, se cambia esa constante y su test.
 
 Verificado contra `scilb` el 3-oct-2026, con una consulta de solo lectura: hoy no hay valores mal
 interpretados. Un solo contrato pisa la comisión (`0.01` = 1 %) y el global
