@@ -1,4 +1,4 @@
--- 0110_cierre_datos_actuales.sql — una liquidación sólo se cierra si su entrada guardada es
+-- 0111_cierre_datos_actuales.sql — una liquidación sólo se cierra si su entrada guardada es
 -- idéntica a la que se calcularía ahora.
 --
 -- Implementa docs/superpowers/specs/sueldos/2026-10-04-cierre-con-datos-actuales-design.md
@@ -31,7 +31,7 @@
 --
 -- Idempotente: todo es `create or replace`.
 --
--- Prueba: packages/db/pruebas/0110_cierre_datos_actuales.prueba.sql
+-- Prueba: packages/db/pruebas/0111_cierre_datos_actuales.prueba.sql
 
 -- ═══ 1) El normalizador ══════════════════════════════════════════════════════════════════════
 -- Ordena con `order by e` (el orden total de jsonb, coherente con su igualdad: 100 y 100.0 son
@@ -66,7 +66,7 @@ declare
   v_esp_mov   int;
   v_esp_ven   int;
   v_sellados  int;
-  v_nueva     jsonb;   -- 0110: la entrada recalculada ahora
+  v_nueva     jsonb;   -- 0111: la entrada recalculada ahora
   v_vieja_n   jsonb;   -- la guardada, con los arreglos ordenados
   v_nueva_n   jsonb;   -- la recalculada, con los arreglos ordenados
   v_dif       text;    -- claves de primer nivel que difieren
@@ -125,7 +125,7 @@ begin
       v_cap, coalesce((l.entrada ->> 'personasCapacitadas')::int, 0);
   end if;
 
-  -- ── La comparación completa (0110) ───────────────────────────────────────────────────────
+  -- ── La comparación completa (0111) ───────────────────────────────────────────────────────
   -- El conteo de arriba sólo detecta filas que aparecen o desaparecen. Un adelanto borrado y
   -- recargado con otro monto, o un día de asistencia corregido, dejan el conteo igual y se pagaba
   -- con el dato viejo. Acá se recalcula la entrada con LA MISMA función que armó el borrador y se

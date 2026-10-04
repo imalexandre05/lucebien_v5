@@ -1,4 +1,4 @@
--- Prueba de la migración 0110_cierre_datos_actuales.sql
+-- Prueba de la migración 0111_cierre_datos_actuales.sql
 --
 -- Spec: docs/superpowers/specs/sueldos/2026-10-04-cierre-con-datos-actuales-design.md §4.
 -- Plan: docs/superpowers/plans/2026-10-04-cierre-con-datos-actuales.md.
@@ -37,8 +37,8 @@
 -- null, así que sin el `set_config('request.jwt.claims', ...)` de más abajo todo devuelve PERMISO.
 -- Correr el archivo ENTERO de una sola vez.
 --
--- Cómo se corre:  bash tools/probar-migracion.sh 0110
--- (o pegar el archivo entero en el SQL editor de Supabase y leer el error P0001 «RESULTADO 0110»)
+-- Cómo se corre:  bash tools/probar-migracion.sh 0111
+-- (o pegar el archivo entero en el SQL editor de Supabase y leer el error P0001 «RESULTADO 0111»)
 
 -- Dos ayudantes de montaje, temporales (mueren con la sesión; no dejan nada en el esquema).
 create or replace function pg_temp.montar(p_adm uuid, p_desde date, p_hasta date)
@@ -73,8 +73,8 @@ begin
   ) values (
     p_ac, p_adm, p_desde, p_hasta, 'borrador',
     sueldo_entrada(p_ac, p_desde, p_hasta), '{}'::jsonb,
-    '{"lineas":[{"grupo":"ingreso","concepto":"Sueldo","detalle":"prueba 0110","regla":"RN-19","monto":440}]}'::jsonb,
-    440, 5.000000, 'prueba-0110'
+    '{"lineas":[{"grupo":"ingreso","concepto":"Sueldo","detalle":"prueba 0111","regla":"RN-19","monto":440}]}'::jsonb,
+    440, 5.000000, 'prueba-0111'
   ) returning id into liq;
   return liq;
 end $f$;
@@ -104,13 +104,13 @@ begin
   begin
     ac := pg_temp.montar(adm, '2099-11-01', '2099-11-04');
     insert into sueldo_movimientos(empleado_id, fecha, tipo, monto, motivo, creado_por)
-      values (adm, '2099-11-02', 'adelanto', 100, 'prueba 0110 caso 1: adelanto original', adm);
+      values (adm, '2099-11-02', 'adelanto', 100, 'prueba 0111 caso 1: adelanto original', adm);
     liq := pg_temp.guardar_borrador(ac, adm, '2099-11-01', '2099-11-04');
 
     delete from sueldo_movimientos
      where empleado_id = adm and fecha = '2099-11-02' and tipo = 'adelanto' and liquidacion_id is null;
     insert into sueldo_movimientos(empleado_id, fecha, tipo, monto, motivo, creado_por)
-      values (adm, '2099-11-02', 'adelanto', 300, 'prueba 0110 caso 1: adelanto recargado', adm);
+      values (adm, '2099-11-02', 'adelanto', 300, 'prueba 0111 caso 1: adelanto recargado', adm);
 
     begin
       perform sueldo_liquidacion_cerrar(liq);
@@ -165,7 +165,7 @@ begin
   begin
     ac := pg_temp.montar(adm, '2099-11-21', '2099-11-24');
     insert into sueldo_movimientos(empleado_id, fecha, tipo, monto, motivo, creado_por)
-      values (adm, '2099-11-22', 'adelanto', 100, 'prueba 0110 caso 3', adm);
+      values (adm, '2099-11-22', 'adelanto', 100, 'prueba 0111 caso 3', adm);
     liq := pg_temp.guardar_borrador(ac, adm, '2099-11-21', '2099-11-24');
 
     v_json := sueldo_liquidacion_cerrar(liq);
@@ -185,13 +185,13 @@ begin
   begin
     ac := pg_temp.montar(adm, '2099-12-01', '2099-12-04');
     insert into sueldo_movimientos(empleado_id, fecha, tipo, monto, motivo, creado_por)
-      values (adm, '2099-12-02', 'adelanto', 100, 'prueba 0110 caso 4: original', adm);
+      values (adm, '2099-12-02', 'adelanto', 100, 'prueba 0111 caso 4: original', adm);
     liq := pg_temp.guardar_borrador(ac, adm, '2099-12-01', '2099-12-04');
 
     delete from sueldo_movimientos
      where empleado_id = adm and fecha = '2099-12-02' and tipo = 'adelanto' and liquidacion_id is null;
     insert into sueldo_movimientos(empleado_id, fecha, tipo, monto, motivo, creado_por)
-      values (adm, '2099-12-02', 'adelanto', 300, 'prueba 0110 caso 4: recargado', adm);
+      values (adm, '2099-12-02', 'adelanto', 300, 'prueba 0111 caso 4: recargado', adm);
 
     -- Es lo que hace «Recalcular borrador»: descartar el borrador y guardar uno nuevo.
     delete from sueldo_liquidaciones where id = liq;
@@ -216,8 +216,8 @@ begin
   begin
     ac := pg_temp.montar(adm, '2100-01-01', '2100-01-04');
     insert into sueldo_movimientos(empleado_id, fecha, tipo, monto, motivo, creado_por)
-      values (adm, '2100-01-02', 'adelanto', 100, 'prueba 0110 caso 5: primero', adm),
-             (adm, '2100-01-02', 'adelanto', 200, 'prueba 0110 caso 5: segundo', adm);
+      values (adm, '2100-01-02', 'adelanto', 100, 'prueba 0111 caso 5: primero', adm),
+             (adm, '2100-01-02', 'adelanto', 200, 'prueba 0111 caso 5: segundo', adm);
     liq := pg_temp.guardar_borrador(ac, adm, '2100-01-01', '2100-01-04');
 
     -- 5c — sin marcas de tiempo: dos llamadas seguidas dan lo mismo.
@@ -273,5 +273,5 @@ begin
     r := r || format('[FALLA] caso5d: el montaje no deberia cortar y corto con "%s"; ', sqlerrm);
   end;
 
-  raise exception 'RESULTADO 0110 --> %', r;
+  raise exception 'RESULTADO 0111 --> %', r;
 end $$;

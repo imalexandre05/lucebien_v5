@@ -679,7 +679,7 @@ export async function crearBorrador(acuerdoId: string, desde: string, hasta: str
  * al final pasa a `cerrada`. Todo dentro de la RPC, en una transacción.
  *
  * Devuelve `DESACTUALIZADA` si la entrada guardada ya no es idéntica a la que se calcularía ahora
- * (migración 0110): un movimiento o una venta cargados, borrados o con otro monto, o una asistencia
+ * (migración 0111): un movimiento o una venta cargados, borrados o con otro monto, o una asistencia
  * corregida. No es un error del administrador: hay que recalcular el borrador y cerrar de nuevo. Sin esa comprobación, esa fila quedaría sellada sin haber entrado en el pago.
  */
 export async function cerrarLiquidacion(id: string): Promise<void> {
