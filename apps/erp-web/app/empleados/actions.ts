@@ -88,7 +88,9 @@ export async function accionBorrarAlta(id: string): Promise<{ ok: boolean; error
   try {
     await exigirAdmin();
     const { avisoAuth } = await empleadoBorrarAlta(id);
-    revalidatePath('/personal');
+    // Con aviso NO se revalida: la página actual (/personal/[id]) ya no existe y revalidarla
+    // devolvería un 404 que desmonta el diálogo antes de que el administrador lea el aviso.
+    if (!avisoAuth) revalidatePath('/personal');
     return { ok: true, aviso: avisoAuth };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error' };

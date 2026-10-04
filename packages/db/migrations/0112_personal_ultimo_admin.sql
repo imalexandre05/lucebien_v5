@@ -59,6 +59,8 @@ begin
   -- No dejar la empresa sin administrador activo (0112; mismo criterio que empleado_borrar_alta,
   -- 0099 §3): si la persona es admin/dueño activo, el rol nuevo ya no lo es y no queda ningún otro
   -- admin/dueño activo, se niega. Pasar de admin a dueño (o al revés) sí se permite.
+  -- El `for update` serializa dos cambios de rol simultáneos entre los últimos administradores.
+  perform 1 from empleados where rol in ('admin', 'dueno') and activo for update;
   if exists (
        select 1 from empleados where id = p_id and rol in ('admin', 'dueno') and activo
      )
@@ -67,7 +69,7 @@ begin
        select 1 from empleados where rol in ('admin', 'dueno') and activo and id <> p_id
      )
   then
-    raise exception 'ESTADO:no se puede quitar el rol de administrador al último administrador activo. Nombra a otro administrador antes de cambiar el rol de este.';
+    raise exception 'No se puede quitar el rol de administrador al último administrador activo. Nombra a otro administrador antes de cambiar el rol de este.';
   end if;
 
   update empleados set
