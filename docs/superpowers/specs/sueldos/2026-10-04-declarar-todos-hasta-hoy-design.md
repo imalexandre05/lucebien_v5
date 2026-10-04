@@ -31,3 +31,10 @@
 
 `packages/core/src/sueldos.test.ts`: hoy incluido, mañana excluido, ayer incluido, lista vacía,
 fecha inválida lanza error, no muta la entrada.
+
+## 4. Ajuste tras la verificación
+
+- Si el servidor descarta días (reloj del dispositivo adelantado respecto del servidor), no responde
+  `ok` en silencio: lo informa en `error` para que el administrador sepa que esos días siguen sin declarar.
+- Una fecha mal formada en la lista no tumba la acción entera: se responde `{ ok: false, error }` sin declarar nada.
+- Decisión abierta para Alexander: «hoy» entra en la acción masiva aunque la jornada no haya terminado.
