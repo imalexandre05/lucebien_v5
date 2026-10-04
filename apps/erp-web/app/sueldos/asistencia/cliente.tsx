@@ -160,6 +160,12 @@ export function AsistenciaCliente({
     ? sinDeclarar.filter((d) => d.fecha >= rango.desde && d.fecha <= rango.hasta)
     : sinDeclarar;
 
+  // Un cambio sin guardar en un día que la vista dejó afuera no se ve, y no está en la base:
+  // esconderlo sin avisar haría creer que se guardó.
+  const suciosFuera = rango
+    ? calendario.filter((d) => borradores[d.fecha]?.sucio && (d.fecha < rango.desde || d.fecha > rango.hasta))
+    : [];
+
   const set = (fecha: string, cambio: Partial<Borrador>) =>
     setBorradores((v) => ({ ...v, [fecha]: { ...v[fecha], ...cambio, sucio: true } }));
 
@@ -296,6 +302,17 @@ export function AsistenciaCliente({
             Quedan {sinDeclarar.length} día(s) contratados sin declarar. La liquidación no se va a
             poder calcular hasta que cada uno diga si se trabajó o se faltó — un día sin dato no es
             una falta, y darlo por falta costaría dos días de sueldo.
+          </span>
+        </p>
+      )}
+
+      {suciosFuera.length > 0 && (
+        <p className="mb-4 flex gap-2 rounded-r-chico bg-aviso/10 px-3 py-2 text-cuerpo text-aviso-deep">
+          <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+          <span>
+            Hay {suciosFuera.length} día(s) con cambios sin guardar fuera de esta vista (
+            <span className="tabular-nums">{suciosFuera.map((d) => d.fecha).join(', ')}</span>). Esos
+            cambios todavía no están en la base: vuelve a «Contrato» para verlos y guardarlos.
           </span>
         </p>
       )}

@@ -70,6 +70,13 @@ export function queryPeriodo(p: Periodo): string {
 }
 
 /**
+ * Tope del rango personalizado, en días. DEFAULT DE PANTALLA, no regla de negocio: un año más el
+ * día bisiesto. Existe para que una URL como `desde=1900-01-01&hasta=9999-12-31` no recorra la
+ * tabla entera (spec asistencias/2026-10-03-filtros-rango-design.md).
+ */
+export const MAX_DIAS_RANGO = 366;
+
+/**
  * Vista y rango de una pantalla que se mira por día, semana, mes o rango
  * (spec asistencias/2026-10-03-filtros-rango-design.md). Viajan en la URL como
  * `?vista=…&desde=…&hasta=…`; la lógica vive en el core (`resolverRango`) y acá sólo se le pasa

@@ -102,9 +102,11 @@ export function resolverRango(
   return { vista, rango: rangoDeVista(vista, desde ?? hoy) };
 }
 
-/** Intersección de dos rangos, o `null` si no se tocan. */
-export function interseccionRangos(a: RangoFechas, b: RangoFechas): RangoFechas | null {
-  const desde = a.desde > b.desde ? a.desde : b.desde;
-  const hasta = a.hasta < b.hasta ? a.hasta : b.hasta;
-  return desde <= hasta ? { desde, hasta } : null;
+/**
+ * Recorta un rango a `maxDias` como máximo, conservando `hasta` (lo más reciente es lo que se
+ * vino a mirar). `recortado` dice si hubo que cortar, para que la pantalla lo avise.
+ */
+export function recortarRango(r: RangoFechas, maxDias: number): { rango: RangoFechas; recortado: boolean } {
+  if (diasDelRango(r) <= maxDias) return { rango: r, recortado: false };
+  return { rango: { desde: sumarDias(r.hasta, -(maxDias - 1)), hasta: r.hasta }, recortado: true };
 }

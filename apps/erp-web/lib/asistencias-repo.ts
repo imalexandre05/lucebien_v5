@@ -1,5 +1,6 @@
 import { getServerClient } from './supabase/server';
 import { mapaNombres } from './directorio';
+import { MAX_DIAS_RANGO, diasDelPeriodo } from './periodo';
 
 export type Asistencia = {
   id: string;
@@ -46,6 +47,10 @@ type Row = {
  * PostgREST— hasta traer el rango entero. La RLS sigue decidiendo qué filas se ven.
  */
 export async function listarAsistencias(desde: string, hasta: string): Promise<Asistencia[]> {
+  // Defensa para futuros llamadores: la pantalla ya recorta el rango antes de llegar acá.
+  if (diasDelPeriodo({ desde, hasta }) > MAX_DIAS_RANGO) {
+    throw new Error(`El rango pasa de ${MAX_DIAS_RANGO} días; recórtalo antes de consultar.`);
+  }
   const sb = getServerClient();
   const PAGINA = 1000;
   const rows: Row[] = [];

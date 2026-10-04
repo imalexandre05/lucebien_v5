@@ -3,9 +3,9 @@ import {
   desplazarRango,
   diasDelRango,
   esFechaValida,
-  interseccionRangos,
   lunesDeSemana,
   rangoDeVista,
+  recortarRango,
   resolverRango,
 } from './rangos-fecha';
 
@@ -110,13 +110,16 @@ describe('resolverRango', () => {
   });
 });
 
-describe('interseccionRangos', () => {
-  it('recorta al tramo común o devuelve null si no se tocan', () => {
-    const contrato = { desde: '2026-09-16', hasta: '2026-10-15' };
-    expect(interseccionRangos(contrato, { desde: '2026-10-01', hasta: '2026-10-31' })).toEqual({
-      desde: '2026-10-01',
-      hasta: '2026-10-15',
-    });
-    expect(interseccionRangos(contrato, { desde: '2026-11-01', hasta: '2026-11-30' })).toBeNull();
+describe('recortarRango', () => {
+  it('deja igual un rango dentro del tope', () => {
+    const r = { desde: '2026-01-01', hasta: '2026-12-31' };
+    expect(recortarRango(r, 366)).toEqual({ rango: r, recortado: false });
+  });
+
+  it('conserva hasta y corta desde a maxDias', () => {
+    const { rango, recortado } = recortarRango({ desde: '1900-01-01', hasta: '2026-10-03' }, 366);
+    expect(recortado).toBe(true);
+    expect(rango).toEqual({ desde: '2025-10-03', hasta: '2026-10-03' });
+    expect(diasDelRango(rango)).toBe(366);
   });
 });
