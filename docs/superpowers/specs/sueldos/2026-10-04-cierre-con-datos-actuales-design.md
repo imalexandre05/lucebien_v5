@@ -28,9 +28,13 @@ capacitaciones. No compara **montos** ni **asistencia**.
   garantizado de arreglos), se excluyen o normalizan antes de comparar. El plan debe listarlos
   verificándolos contra el cuerpo real de `sueldo_entrada`; si un arreglo no tiene `order by`
   estable, se agrega en la función (sin cambiar su contenido) o se compara ordenado.
-- **Sin carreras:** antes de recalcular y comparar, bloquear con `select ... for update` las filas
-  pendientes (`liquidacion_id is null`) de `sueldo_movimientos` y `sueldo_ventas` del empleado en el
-  rango, y la fila de la liquidación, para que nada se cuele entre la comparación y el sellado.
+- **Sin carreras** (corregido: un `for update` sobre filas pendientes no frena un INSERT nuevo, la
+  «fila fantasma»): se mantiene el `for update` de la fila de la liquidación (evita dos cierres
+  simultáneos); el sellado va por la **lista explícita de ids** de movimientos y ventas pendientes
+  capturada en una sola sentencia, no por rango, de modo que una fila insertada después de la
+  captura no se sella (queda pendiente para el período que corresponda); y tras sellar se verifica
+  que lo sellado sea exactamente lo que la entrada guardada pagó, y si no, se aborta y se deshace
+  todo (cubre la fila insertada entre la comparación y la captura).
 - El conteo actual se **conserva** como primera barrera barata; la comparación completa va después.
 - El texto de los mensajes en español neutral (el actual dice «volvé»: corregirlo).
 
