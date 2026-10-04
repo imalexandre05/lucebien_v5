@@ -218,9 +218,14 @@ begin
 
   -- ── 9) Un authenticated no lee tokens ni intentos ───────────────────────────────────────────
   perform pg_temp.como(s_a);
-  select count(*) into v_n from codigo_operadores;
+  begin
+    select count(*) into v_n from codigo_operadores;   -- sin grant: lo normal es 'permission denied'
+    v_err := null;
+  exception when insufficient_privilege then
+    v_err := 'denegado'; v_n := 0;
+  end;
   if v_n = 0 then
-    r := r || '[ok] caso 9a: authenticated no ve ninguna fila de codigo_operadores;';
+    r := r || '[ok] caso 9a: authenticated no ve ninguna fila de codigo_operadores (' || coalesce(v_err, '0 filas') || ');';
   else
     r := r || format('[FALLA] caso 9a: ve %s tokens;', v_n);
   end if;
