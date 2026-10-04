@@ -1501,14 +1501,15 @@ directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sól
 ## Código personal en equipos compartidos — defaults del 04-oct-2026
 
 Migración `0112` ([spec](superpowers/specs/pipeline/2026-10-04-codigo-personal-design.md) §4/§5).
-Los tres valores los eligió el implementador siguiendo la spec; **ninguno está confirmado por el
-dueño**. Los tres se editan desde `/configuracion` → «Código personal» sin migrar de nuevo.
+Los valores los eligió el implementador siguiendo la spec; **ninguno está confirmado por el
+dueño**. Todos se editan desde `/configuracion` → «Código personal» sin migrar de nuevo.
 
 | Parámetro (`config.clave`) | Default | Qué controla |
 |---|---|---|
 | `codigo_max_intentos` | 5 | Fallos permitidos antes de bloquear una sesión |
 | `codigo_ventana_intentos_min` | 15 | Minutos que cuenta cada fallo |
 | `codigo_operador_min` | 10 | Minutos de operador activo sin actividad (el token se renueva con cada acción) |
+| `codigo_operador_max_h` | 8 | Horas máximas de vida de un token desde su emisión (un turno), aunque se renueve; «cambiar» además lo revoca en la base |
 
 Preguntas abiertas para el dueño (spec §7): si la fase 2 (firma del FR-01, evaluar reporte,
 solicitudes) debe pedir código en los mismos cuatro lugares que el sistema viejo; si en un equipo
