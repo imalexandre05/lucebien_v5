@@ -1495,3 +1495,12 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+## Pendiente del 4-oct-2026 — evaluaciones ya cerradas con puntos asignados al día UTC
+
+La migración 0110 ([spec](superpowers/specs/sueldos/2026-10-04-puntos-dia-hora-peru-design.md),
+ticket lucebien-tablero#37) hace que los puntos del pipeline cuenten en su día de Perú. Las
+evaluaciones ya guardadas **no se recalculan** (la 0095 lo prohíbe: nunca cambian de método ni de
+cifra), así que un cierre anterior pudo dejar fuera puntos trabajados después de las 19:00 del
+último día del mes. Decidir con Alexander si alguno se corrige a mano, y cuáles. Sin default
+inventado: no hay ninguno.
