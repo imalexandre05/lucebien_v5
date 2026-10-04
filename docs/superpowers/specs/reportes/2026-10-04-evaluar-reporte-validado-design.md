@@ -40,6 +40,13 @@
    Como `calificacion` vale 1 por defecto en la base, la UI ignora el valor que trae un reporte sin evaluar. Los botones «Todo» siguen marcando masivamente, pero es una acción
    explícita. Cada estado (aprobar/observar/rechazar) sigue siendo 1 / 0.5 / 0.
 
+   Nunca debe quedar una pendiente sin forma de marcarla: el mapa sólo dibuja zonas del turno que
+   hoy existen en el layout, pero el reporte puede traer zonas `OL_` cuyo código ya no existe, que
+   pasaron a otro turno o a tipo `area`. Por eso la pantalla lista aparte, con su control de tres
+   estados, **toda zona de limpieza que siga sin marcar**; al marcarla sale de esa lista. Si el
+   reporte trae dos filas con el mismo código (`layout_zonas` no tiene único por sede+código), la UI
+   las trata como una sola y la RPC actualiza ambas.
+
 ## Sin cambios
 
 Pesos, fórmula de `puntaje_eval`, fórmula de puntos de 0095, guard de sede, regla del evaluador
@@ -47,7 +54,8 @@ externo, grants. Fuera de alcance: `reportes_crear`, extras, atomicidad del env�
 
 ## Pruebas (antes del código)
 
-Prueba SQL en `packages/db/pruebas/` corrida en Postgres local: rango (>1, <0, null, texto),
+Se ajusta la prueba 0081 (su caso J evaluaba un reporte que el montaje deja `evaluado=true`) y el e2e de
+evaluación (debe marcar todo y exigir el botón habilitado, no saltarse el tramo). Prueba SQL en `packages/db/pruebas/` corrida en Postgres local: rango (>1, <0, null, texto),
 doble evaluación, no_evaluable, omitida, sobrante, repetida, y caso feliz con el mismo puntaje que
 da la 0081 para el mismo juego de calificaciones.
 
