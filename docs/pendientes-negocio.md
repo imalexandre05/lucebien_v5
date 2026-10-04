@@ -1495,3 +1495,29 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+---
+
+## Código personal en equipos compartidos — defaults del 04-oct-2026
+
+Migración `0110` ([spec](superpowers/specs/pipeline/2026-10-04-codigo-personal-design.md) §4/§5).
+Los tres valores los eligió el implementador siguiendo la spec; **ninguno está confirmado por el
+dueño**. Los tres se editan desde `/configuracion` → «Código personal» sin migrar de nuevo.
+
+| Parámetro (`config.clave`) | Default | Qué controla |
+|---|---|---|
+| `codigo_max_intentos` | 5 | Fallos permitidos antes de bloquear una sesión |
+| `codigo_ventana_intentos_min` | 15 | Minutos que cuenta cada fallo |
+| `codigo_operador_min` | 10 | Minutos de operador activo sin actividad (el token se renueva con cada acción) |
+
+Preguntas abiertas para el dueño (spec §7): si la fase 2 (firma del FR-01, evaluar reporte,
+solicitudes) debe pedir código en los mismos cuatro lugares que el sistema viejo; si en un equipo
+**no** compartido también quieren el código; y si estos tres números les parecen bien.
+
+Otras decisiones del implementador, sin regla de negocio detrás:
+- Cada acción exitosa con token renueva la ventana de inactividad (`private.tocar_operador`), en
+  vez de una expiración fija a 10 minutos del ingreso: la spec §5 promete «10 minutos sin actividad».
+- Un intento mientras la sesión está bloqueada **no** se registra (el bloqueo no se alarga por
+  insistir): se levanta cuando el fallo que lo completó sale de la ventana.
+- El token no limita por sede de la prenda: el pipeline es un flujo central (0006) y el operador
+  puede ser de cualquier sede.
