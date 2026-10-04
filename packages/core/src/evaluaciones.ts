@@ -232,6 +232,8 @@ export type ComponentesDeData = {
   limpieza: number;
   tardanza: number;
   valores: number | null;
+  descuento: number;
+  bonusVentas: number;
   puntosTotal?: number;
   ventasSinTasa?: boolean;
 };
@@ -240,8 +242,6 @@ export type ComponentesDeData = {
 export type EntradaManualEval = {
   competencias: number;
   examenes: number;
-  descuentoIncidencias: number;
-  bonusVentas: number;
 };
 
 /**
@@ -268,10 +268,14 @@ export function armarEvaluacionAGuardar(
       throw new Error(`"${k}" debe ser un número entre 0 y 20 (${String(v)}).`);
     }
   }
-  for (const k of ['descuentoIncidencias', 'bonusVentas'] as const) {
-    if (!esNumeroValido(manual[k])) throw new Error(`"${k}" no es un número (${String(manual[k])}).`);
-  }
-  const automaticos = { operaciones: data.operaciones, software: data.software, limpieza: data.limpieza, tardanza: data.tardanza };
+  const automaticos = {
+    operaciones: data.operaciones,
+    software: data.software,
+    limpieza: data.limpieza,
+    tardanza: data.tardanza,
+    descuentoIncidencias: data.descuento,
+    bonusVentas: data.bonusVentas,
+  };
   for (const [k, v] of Object.entries(automaticos)) {
     if (!esNumeroValido(v)) throw new Error(`"${k}" del cálculo no es un número (${String(v)}).`);
   }
@@ -285,8 +289,6 @@ export function armarEvaluacionAGuardar(
       valores: data.valores ?? 0,
       competencias: manual.competencias,
       examenes: manual.examenes,
-      descuentoIncidencias: manual.descuentoIncidencias,
-      bonusVentas: manual.bonusVentas,
     },
   };
 }

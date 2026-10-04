@@ -333,9 +333,9 @@ describe('armarEvaluacionAGuardar', () => {
   const rpc = {
     operaciones: 12, software: 11, limpieza: 10, tardanza: 15, descuento: 200, puntosPipeline: 4000,
     extrasMonto: 0, extrasCantidad: 0, extrasPuntos: 0, valores: 17 as number | null, valoresCantidad: 3,
-    bonusVentas: 0, puntosActividades: 500, puntosVentas: 0, ventasSinTasa: false, puntosTotal: 5000,
+    bonusVentas: 2, puntosActividades: 500, puntosVentas: 0, ventasSinTasa: false, puntosTotal: 5000,
   };
-  const manual = { competencias: 14, examenes: 9, descuentoIncidencias: 1, bonusVentas: 2 };
+  const manual = { competencias: 14, examenes: 9 };
 
   it('la nota y los puntos salen de la RPC, no del cliente', () => {
     const r = armarEvaluacionAGuardar(rpc, escala, manual);
@@ -351,7 +351,7 @@ describe('armarEvaluacionAGuardar', () => {
     const r = armarEvaluacionAGuardar(rpc, escala, manual);
     expect(r.componentes).toEqual({
       operaciones: 12, software: 11, limpieza: 10, tardanza: 15, valores: 17,
-      competencias: 14, examenes: 9, descuentoIncidencias: 1, bonusVentas: 2,
+      competencias: 14, examenes: 9, descuentoIncidencias: 200, bonusVentas: 2,
     });
   });
   it('valores null (sin evaluaciones ese mes) se guarda como 0', () => {
@@ -366,7 +366,13 @@ describe('armarEvaluacionAGuardar', () => {
   });
   it('una entrada manual no finita lanza', () => {
     expect(() => armarEvaluacionAGuardar(rpc, escala, { ...manual, competencias: NaN })).toThrow(/competencias/);
-    expect(() => armarEvaluacionAGuardar(rpc, escala, { ...manual, bonusVentas: Infinity })).toThrow(/bonusVentas/);
+    expect(() => armarEvaluacionAGuardar(rpc, escala, { ...manual, examenes: Infinity })).toThrow(/examenes/);
+    expect(() => armarEvaluacionAGuardar({ ...rpc, bonusVentas: NaN }, escala, manual)).toThrow(/bonusVentas/);
+  });
+  it('descuento y bonus salen de la RPC aunque el cliente mande otros', () => {
+    const r = armarEvaluacionAGuardar(rpc, escala, { ...manual, descuentoIncidencias: 0, bonusVentas: 99 } as typeof manual);
+    expect(r.componentes.descuentoIncidencias).toBe(200);
+    expect(r.componentes.bonusVentas).toBe(2);
   });
   it('una competencia fuera de 0-20 lanza', () => {
     expect(() => armarEvaluacionAGuardar(rpc, escala, { ...manual, competencias: 25 })).toThrow(/competencias/);

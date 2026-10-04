@@ -229,8 +229,8 @@ export function EvaluacionesCliente({
   // competencias (juicio humano) no dependen del ciclo y se conservan.
   function anularCalculo() {
     setInfoExtra(null);
-    // Sólo lo automático; exámenes, descuento y bonus son entradas manuales y se conservan.
-    setComp((p) => ({ ...p, operaciones: 0, software: 0, limpieza: 0, tardanza: 0, valores: 0 }));
+    // Sólo lo automático; exámenes (entrada manual) se conserva.
+    setComp((p) => ({ ...p, operaciones: 0, software: 0, limpieza: 0, tardanza: 0, valores: 0, descuentoIncidencias: 0, bonusVentas: 0 }));
   }
   function setCicloDesde(v: string) {
     setCiclo((c) => (c ? { ...c, desde: v } : c));
@@ -279,8 +279,7 @@ export function EvaluacionesCliente({
           puntosVentas: c.puntosVentas ?? 0,
           ventasSinTasa: c.ventasSinTasa === true,
           // El valor QUE DE VERDAD entra en puntosTotal, congelado tal como lo devolvió el RPC —
-          // no comp.descuentoIncidencias, que sigue siendo editable a mano después de este cálculo
-          // y ya no tiene ningún efecto sobre la nota (sólo sobre el perfil que se guarda).
+          // no comp.descuentoIncidencias, que es sólo lo que se muestra en el perfil.
           descuento: c.descuento ?? 0,
           puntosTotal: c.puntosTotal,
         });
@@ -305,8 +304,6 @@ export function EvaluacionesCliente({
         manual: {
           competencias: competenciaNota,
           examenes: comp.examenes,
-          descuentoIncidencias: comp.descuentoIncidencias,
-          bonusVentas: comp.bonusVentas,
         },
       });
       if (!r.ok || !r.id || r.notaFinal == null || !r.banda) {
@@ -429,7 +426,7 @@ export function EvaluacionesCliente({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-rotulo uppercase text-muted">Empleado</label>
-                <select value={empleadoId} onChange={(e) => elegirEmpleado(e.target.value)} className={cn(fieldCls, 'w-full')} aria-label="Empleado">
+                <select value={empleadoId} onChange={(e) => elegirEmpleado(e.target.value)} disabled={pending} className={cn(fieldCls, 'w-full')} aria-label="Empleado">
                   <option value="">Elige…</option>
                   {empleados.map((e) => (
                     <option key={e.id} value={e.id}>
@@ -509,7 +506,7 @@ export function EvaluacionesCliente({
             </div>
 
             {/* Ya no pesan sobre la nota (por eso sin "×peso" al lado, a diferencia del perfil de
-                arriba): son la carga a mano de los mismos siete componentes que arma el perfil. */}
+                arriba): son los mismos siete componentes que arma el perfil; sólo exámenes se carga a mano. */}
             <div className="text-rotulo uppercase text-muted">Componentes (escala /20) — perfil, no fórmula</div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {COMPONENTES.filter(({ key }) => key !== 'competencias').map(({ key, label }) => (
@@ -521,8 +518,7 @@ export function EvaluacionesCliente({
                     min={0}
                     max={20}
                     value={comp[key]}
-                    // Operaciones/software/limpieza/tardanza/valores los fija el servidor al guardar
-                    // (vienen del cálculo); sólo «examenes» se carga a mano.
+                    // Todo menos «examenes» lo fija el servidor al guardar (viene del cálculo).
                     readOnly={key !== 'examenes'}
                     onChange={(e) => set(key, Number(e.target.value))}
                     className={cn(fieldCls, 'w-20 text-right', key !== 'examenes' && 'bg-paper/60 text-muted')}
@@ -565,11 +561,11 @@ export function EvaluacionesCliente({
             <div className="grid grid-cols-1 gap-2 border-t border-line/60 pt-3 sm:grid-cols-2">
               <div className="flex items-center gap-2">
                 <label className="flex-1 text-cuerpo text-navy">Descuento por incidencias</label>
-                <input type="number" step="0.5" value={comp.descuentoIncidencias} onChange={(e) => set('descuentoIncidencias', Number(e.target.value))} className={cn(fieldCls, 'w-20 text-right')} />
+                <input type="number" step="0.5" readOnly value={comp.descuentoIncidencias} onChange={(e) => set('descuentoIncidencias', Number(e.target.value))} className={cn(fieldCls, 'w-20 bg-paper/60 text-right text-muted')} />
               </div>
               <div className="flex items-center gap-2">
                 <label className="flex-1 text-cuerpo text-navy">Bonus por ventas</label>
-                <input type="number" step="0.5" value={comp.bonusVentas} onChange={(e) => set('bonusVentas', Number(e.target.value))} className={cn(fieldCls, 'w-20 text-right')} />
+                <input type="number" step="0.5" readOnly value={comp.bonusVentas} onChange={(e) => set('bonusVentas', Number(e.target.value))} className={cn(fieldCls, 'w-20 bg-paper/60 text-right text-muted')} />
               </div>
             </div>
 
