@@ -42,12 +42,15 @@ componente: ahí sólo se refrescaba gracias al `router.refresh()`.
    fila provisoria se reemplaza por la real. Si la acción falla, la fila provisoria se quita, el
    formulario recupera lo que se había tipeado y se muestra el error. Borrar oculta la fila al
    instante y la restituye si la base corta (p. ej. `CONGELADA`).
-   - **Fallo de transporte** (red caída, timeout, 5xx, deploy que invalida la acción): se trata
-     igual que un rechazo — se deshace lo optimista y se muestra el error —, porque si no un borrado
-     fallido ocultaría un adelanto que sigue en la base y se descontaría en la próxima liquidación.
-     El mensaje **no** dice «no se guardó»: un timeout puede caer después del insert, así que pide
-     recargar y revisar la lista antes de reintentar, para no duplicar un adelanto.
-   - Lo tipeado vuelve al formulario sólo si la persona no empezó a cargar otro mientras tanto.
+   - **Rechazo del servidor** (`ok:false`: validación, RLS, `CONGELADA`): se sabe que no se
+     escribió. Se quita lo optimista, se muestra el error y lo tipeado vuelve al formulario.
+   - **Fallo de transporte** (la promesa rechaza: red, timeout, 5xx, deploy que invalida la acción):
+     **no se sabe** si la base escribió — el insert pudo hacerse y perderse sólo la respuesta. Se
+     quita lo optimista, **no** se devuelve lo tipeado al formulario (un segundo clic crearía un
+     segundo adelanto, descontado dos veces) y se pide la lista real con `router.refresh()`. El
+     mensaje dice que revise la lista antes de volver a registrar.
+   - Lo tipeado vuelve al formulario sólo si la persona no tocó nada desde que registró: campos
+     limpios y la misma persona, fecha y tipo.
    - Si la acción responde `ok`, nunca se deshace ni se devuelve al formulario.
 4. **Listado acotado en `/sueldos/movimientos`.** Se muestra el período elegido con la barra de
    período (default: mes calendario en curso, `lib/periodo.ts`) **más todo lo que siga sin
