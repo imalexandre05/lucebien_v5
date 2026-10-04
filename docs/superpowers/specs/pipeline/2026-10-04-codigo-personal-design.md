@@ -148,7 +148,26 @@ es una pregunta de negocio (§7).
    sesión? (Esta spec asume que basta la sesión.)
 3. ¿5 intentos / 15 minutos y 10 minutos de operador activo les parecen bien?
 
-## 8. Fuera de alcance
+## 8. Límite conocido: la base no exige el código
+
+Esta spec **no** obliga a nadie a usar el código. En la PC compartida, quien tenga el JWT de la
+sesión puede llamar `pipeline_avanzar` y las demás RPC **sin** `p_operador` (el camino «`null` →
+actor = `auth.uid()`», que existe a propósito para no romper los equipos no compartidos) y la acción
+se atribuye a la dueña de la sesión. La server action sí lo exige leyendo la cookie `sci_device`,
+pero esa cookie es visible en el navegador y la base no la comprueba. El código ordena el uso
+honesto del equipo compartido; no es una barrera contra alguien que se salte la pantalla.
+
+**Propuesta (no implementada; la decide el dueño):** marcar en la base la CUENTA que se usa en el
+equipo compartido (p. ej. `empleados.cuenta_compartida boolean`) y que las RPC del pipeline exijan
+`p_operador` no nulo cuando `auth.uid()` sea esa cuenta. Así, para esa cuenta, ya no existe el camino
+sin código. (Pedido por la sesión maestra el 04-oct-2026, a confirmar por Alexander.)
+
+También, decidido el mismo día y a confirmar por Alexander: «cambiar» **revoca** el token en la base
+(`pipeline_cerrar_operador`, sólo tokens de la propia sesión) y la renovación por actividad tiene una
+**vida máxima** desde la emisión del token (`codigo_operador_max_h`, default 8 h, un turno), para que
+una renovación continua no deje vivo un token indefinidamente.
+
+## 9. Fuera de alcance
 
 - Cambiar el login (sigue usuario + contraseña con `LOGIN_V2`).
 - Mostrar o editar el código desde la UI (sigue siendo dato de admin).
