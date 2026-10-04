@@ -1,4 +1,4 @@
--- 0112_personal_ultimo_admin.sql — empleado_actualizar no deja la empresa sin administrador activo
+-- 0114_personal_ultimo_admin.sql — empleado_actualizar no deja la empresa sin administrador activo
 --
 -- Implementa docs/superpowers/specs/2026-10-04-personal-ultimo-admin-alta-design.md §1.
 --
@@ -56,7 +56,7 @@ begin
     v_rol := p_rol_base;
   end if;
 
-  -- No dejar la empresa sin administrador activo (0112; mismo criterio que empleado_borrar_alta,
+  -- No dejar la empresa sin administrador activo (0114; mismo criterio que empleado_borrar_alta,
   -- 0099 §3): si la persona es admin/dueño activo, el rol nuevo ya no lo es y no queda ningún otro
   -- admin/dueño activo, se niega. Pasar de admin a dueño (o al revés) sí se permite.
   -- El `for update` serializa dos cambios de rol simultáneos entre los últimos administradores.
