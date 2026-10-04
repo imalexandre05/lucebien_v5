@@ -42,13 +42,17 @@ componente: ahí sólo se refrescaba gracias al `router.refresh()`.
    fila provisoria se reemplaza por la real. Si la acción falla, la fila provisoria se quita, el
    formulario recupera lo que se había tipeado y se muestra el error. Borrar oculta la fila al
    instante y la restituye si la base corta (p. ej. `CONGELADA`).
-   - **Rechazo del servidor** (`ok:false`: validación, RLS, `CONGELADA`): se sabe que no se
-     escribió. Se quita lo optimista, se muestra el error y lo tipeado vuelve al formulario.
-   - **Fallo de transporte** (la promesa rechaza: red, timeout, 5xx, deploy que invalida la acción):
-     **no se sabe** si la base escribió — el insert pudo hacerse y perderse sólo la respuesta. Se
-     quita lo optimista, **no** se devuelve lo tipeado al formulario (un segundo clic crearía un
-     segundo adelanto, descontado dos veces) y se pide la lista real con `router.refresh()`. El
-     mensaje dice que revise la lista antes de volver a registrar.
+   - **Regla: se restaura sólo lo que se sabe que no se escribió.** La acción marca
+     `escrito: false` en los rechazos que corta ANTES de intentar el insert o el delete (sin
+     permiso, motivo vacío, las validaciones de `validarMovimiento`). Sólo con esa marca lo
+     tipeado vuelve al formulario.
+   - **Todo otro fallo es incierto:** un corte de transporte (la promesa rechaza) o un `ok:false`
+     que viene de Supabase después de intentar escribir (supabase-js devuelve `{error}` sin lanzar
+     ante un `fetch failed` o un timeout servidor→base; el insert pudo hacerse y perderse sólo la
+     respuesta). Se quita lo optimista, **no** se devuelve lo tipeado (un segundo clic crearía un
+     segundo adelanto, descontado dos veces), se pide la lista real con `router.refresh()` y el
+     mensaje avisa que puede haberse guardado y que revise la lista antes de volver a registrar.
+   - Si el insert salió y lo que falla es la revalidación, la acción responde `ok: true` igual.
    - Lo tipeado vuelve al formulario sólo si la persona no tocó nada desde que registró: campos
      limpios y la misma persona, fecha y tipo.
    - Si la acción responde `ok`, nunca se deshace ni se devuelve al formulario.
