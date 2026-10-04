@@ -20,9 +20,10 @@
 --     «sueldo_cerrar»; el nombre real es éste) y, después del conteo —que se conserva como primera
 --     barrera barata—, la comparación completa contra `sueldo_entrada(...)`. Si difieren, rechaza
 --     con `DESACTUALIZADA` nombrando las claves que cambiaron y no sella nada.
---   · Sin carreras: se bloquean (`for update`) las filas pendientes de movimientos y ventas del
---     empleado en el rango, y tras el sellado se verifica que lo sellado sea exactamente lo que
---     la entrada pagó; si una fila nueva se coló, se aborta y se deshace todo.
+--   · Sin carreras: el sellado va por la lista explícita de ids de las filas pendientes (no por
+--     rango; una fila insertada después de la captura queda pendiente, sin sellar) y tras sellar
+--     se verifica que lo sellado sea exactamente lo que la entrada pagó; si una fila se coló entre
+--     la comparación y la captura, se aborta y se deshace todo.
 --   · El mensaje del conteo pasa de «volvé» a «vuelve» (español neutral).
 --
 -- La firma no cambia: `create or replace` conserva el `revoke`/`grant` de la 0073.
@@ -106,6 +107,8 @@ declare
   v_nueva_n   jsonb;   -- la recalculada, con los arreglos ordenados
   v_dif       text;    -- claves de primer nivel que difieren
   v_sellado   jsonb;   -- 0111: lo que quedó sellado, con la forma de la entrada
+  v_ids_mov   uuid[];  -- 0111: ids de movimientos pendientes que se sellan
+  v_ids_ven   uuid[];  -- 0111: ids de ventas pendientes que se sellan
 begin
   if not private.app_es_admin() then
     raise exception 'PERMISO:sólo el administrador puede cerrar una liquidación';
@@ -127,24 +130,6 @@ begin
   -- criterio con el que sueldo_entrada() los juntó. Si alguien cargó un adelanto entre el cálculo
   -- y el cierre, esa fila quedaría sellada SIN ESTAR en el snapshot que se paga. Se recuenta
   -- contra la entrada guardada y se corta si no coincide.
-  -- ── Bloqueo (0111) ───────────────────────────────────────────────────────────────────────
-  -- La fila de la liquidación ya está bloqueada (`for update`). Se bloquean además las filas
-  -- PENDIENTES del empleado en el rango —movimientos y ventas—: otra sesión que las corrija o las
-  -- borre espera a que este cierre termine, en vez de colarse entre la comparación y el sellado.
-  -- Esto no frena una fila NUEVA que otra sesión inserte justo ahora: de esas se encarga la
-  -- verificación posterior al sellado (más abajo), que aborta todo si algo sellado no estaba en
-  -- la entrada.
-  perform 1 from sueldo_movimientos m
-   where m.empleado_id = l.empleado_id
-     and m.fecha between l.periodo_desde and l.periodo_hasta
-     and m.liquidacion_id is null
-   for update;
-  perform 1 from sueldo_ventas v
-   where v.empleado_id = l.empleado_id
-     and v.fecha between l.periodo_desde and l.periodo_hasta
-     and v.liquidacion_id is null
-   for update;
-
   v_esp_mov := jsonb_array_length(coalesce(l.entrada -> 'adelantos',   '[]'::jsonb))
              + jsonb_array_length(coalesce(l.entrada -> 'reportes',    '[]'::jsonb))
              + jsonb_array_length(coalesce(l.entrada -> 'bonosExtras', '[]'::jsonb));
@@ -221,22 +206,36 @@ begin
 
   -- ── 2) El sellado, todavía en borrador ───────────────────────────────────────────────────
   -- Se sellan los CINCO tipos: los tres de plata y los dos de conteo. Todos fueron consumidos.
+  --
+  -- Por LISTA EXPLÍCITA DE IDS, no por rango (0111). Las filas pendientes se capturan en una sola
+  -- sentencia y se sella exactamente esa lista: un adelanto que otra sesión inserta después de la
+  -- captura NO se sella, queda pendiente para el período que corresponda. (Un `for update` sobre
+  -- las pendientes no serviría: no frena un INSERT nuevo.) La fila que entró entre la comparación
+  -- de arriba y esta captura sí quedaría sellada sin estar en la entrada: la verificación de abajo
+  -- lo detecta y aborta.
+  v_ids_mov := array(
+    select m.id from sueldo_movimientos m
+     where m.empleado_id = l.empleado_id
+       and m.fecha between l.periodo_desde and l.periodo_hasta
+       and m.liquidacion_id is null);
+  v_ids_ven := array(
+    select v.id from sueldo_ventas v
+     where v.empleado_id = l.empleado_id
+       and v.fecha between l.periodo_desde and l.periodo_hasta
+       and v.liquidacion_id is null);
+
   update sueldo_movimientos set liquidacion_id = p_liquidacion
-  where empleado_id = l.empleado_id
-    and fecha between l.periodo_desde and l.periodo_hasta
-    and liquidacion_id is null;
+  where id = any(v_ids_mov) and liquidacion_id is null;
   get diagnostics v_sellados = row_count;
 
   update sueldo_ventas set liquidacion_id = p_liquidacion
-  where empleado_id = l.empleado_id
-    and fecha between l.periodo_desde and l.periodo_hasta
-    and liquidacion_id is null;
+  where id = any(v_ids_ven) and liquidacion_id is null;
 
   -- ── 2b) Verificación posterior al sellado (0111) ─────────────────────────────────────────
   -- Lo que quedó sellado contra esta liquidación tiene que ser EXACTAMENTE lo que la entrada
   -- guardada pagó, con la misma forma que arma sueldo_entrada(). Si otra sesión confirmó una fila
-  -- nueva entre la comparación y el sellado, el `update` de arriba la selló sin que entrara en el
-  -- pago: acá se detecta y se aborta, y al lanzar la excepción se deshace TODO (líneas y sellos).
+  -- nueva entre la comparación y la captura de ids, se selló sin que entrara en el pago: acá se
+  -- detecta y se aborta, y al lanzar la excepción se deshace TODO (líneas y sellos).
   v_sellado := jsonb_build_object(
     'adelantos',   (select coalesce(jsonb_agg(jsonb_build_object(
                       'fecha', to_char(m.fecha, 'YYYY-MM-DD'), 'motivo', m.motivo, 'monto', m.monto)), '[]'::jsonb)
