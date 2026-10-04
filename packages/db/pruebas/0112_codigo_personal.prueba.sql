@@ -1,4 +1,4 @@
--- Prueba de la migración 0110_codigo_personal.sql
+-- Prueba de la migración 0112_codigo_personal.sql
 --
 -- Contrato: docs/superpowers/specs/pipeline/2026-10-04-codigo-personal-design.md §4 y §6.1.
 -- Esta prueba se escribió ANTES que la migración (Zone Guard): si falla, se corrige el código,
@@ -27,14 +27,14 @@
 --
 -- MONTAJE. Todo sintético (ningún empleado real): cuatro sesiones con rol 'encargado_almacen'
 -- (para que la RLS de pipeline las deje operar) y dos operadores con código propio. Los códigos
--- llevan prefijo 'P0110' para no chocar con ninguno real.
+-- llevan prefijo 'P0112' para no chocar con ninguno real.
 --
 -- SE DESCARTA SOLA: termina lanzando una excepción con el resultado; eso aborta la transacción y
 -- no queda ni una fila. El "error" final ES la salida esperada.
 --
--- Cómo se corre:  bash tools/probar-migracion.sh 0110
+-- Cómo se corre:  bash tools/probar-migracion.sh 0112
 -- (o pegar el archivo entero, de una sola vez, en el SQL editor de Supabase —proyecto scilb— y
--- leer el mensaje de error P0001 que empieza con "RESULTADO 0110")
+-- leer el mensaje de error P0001 que empieza con "RESULTADO 0112")
 --
 -- NO SE HA EJECUTADO contra ninguna base al escribir este archivo: la migración no está aplicada
 -- en ningún lado (la aplica el dueño después de revisar).
@@ -67,24 +67,24 @@ begin
   select cod into v_sede from sedes order by cod limit 1;
   if v_sede is null then raise exception 'La prueba necesita al menos una sede'; end if;
 
-  insert into empleados (cod, nombre, iniciales, rol) values ('P0110-SA', 'Prueba 0110 Sesion A', 'SA', 'encargado_almacen') returning id into s_a;
-  insert into empleados (cod, nombre, iniciales, rol) values ('P0110-SB', 'Prueba 0110 Sesion B', 'SB', 'encargado_almacen') returning id into s_b;
-  insert into empleados (cod, nombre, iniciales, rol) values ('P0110-SC', 'Prueba 0110 Sesion C', 'SC', 'encargado_almacen') returning id into s_c;
-  insert into empleados (cod, nombre, iniciales, rol) values ('P0110-SD', 'Prueba 0110 Sesion D', 'SD', 'encargado_almacen') returning id into s_d;
-  insert into empleados (cod, nombre, iniciales, rol) values ('P0110-O1', 'Prueba 0110 Operador 1', 'O1', 'confeccionista') returning id into op1;
-  insert into empleados (cod, nombre, iniciales, rol) values ('P0110-O2', 'Prueba 0110 Operador 2', 'O2', 'confeccionista') returning id into op2;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-SA', 'Prueba 0112 Sesion A', 'SA', 'encargado_almacen') returning id into s_a;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-SB', 'Prueba 0112 Sesion B', 'SB', 'encargado_almacen') returning id into s_b;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-SC', 'Prueba 0112 Sesion C', 'SC', 'encargado_almacen') returning id into s_c;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-SD', 'Prueba 0112 Sesion D', 'SD', 'encargado_almacen') returning id into s_d;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-O1', 'Prueba 0112 Operador 1', 'O1', 'confeccionista') returning id into op1;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-O2', 'Prueba 0112 Operador 2', 'O2', 'confeccionista') returning id into op2;
 
-  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0110-1', 'Chaqueta', v_sede, 'recepcion') returning id into p1;
-  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0110-2', 'Chaqueta', v_sede, 'recepcion') returning id into p2;
-  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0110-3', 'Chaqueta', v_sede, 'recepcion') returning id into p3;
-  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0110-4', 'Chaqueta', v_sede, 'recepcion') returning id into p4;
+  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-1', 'Chaqueta', v_sede, 'recepcion') returning id into p1;
+  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-2', 'Chaqueta', v_sede, 'recepcion') returning id into p2;
+  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-3', 'Chaqueta', v_sede, 'recepcion') returning id into p3;
+  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-4', 'Chaqueta', v_sede, 'recepcion') returning id into p4;
 
   r := r || 'montaje=ok; ';
 
   -- ── 1) Código válido → token; con el token los puntos van al dueño del código ──────────────
   perform pg_temp.como(s_a);
-  j := pipeline_validar_codigo('P0110-O1', 'equipo-prueba');
-  if (j->>'ok')::boolean and (j->>'token') is not null and j->>'nombre' = 'Prueba 0110 Operador 1' then
+  j := pipeline_validar_codigo('P0112-O1', 'equipo-prueba');
+  if (j->>'ok')::boolean and (j->>'token') is not null and j->>'nombre' = 'Prueba 0112 Operador 1' then
     r := r || '[ok] caso 1a: código válido devuelve ok, token y nombre;';
     v_token := (j->>'token')::uuid;
   else
@@ -116,7 +116,7 @@ begin
   -- ── 2) Código inválido → ok:false sin excepción, y el intento queda escrito ────────────────
   perform pg_temp.como(s_b);
   begin
-    j := pipeline_validar_codigo('NO-EXISTE-0110', 'equipo-prueba');
+    j := pipeline_validar_codigo('NO-EXISTE-0112', 'equipo-prueba');
     v_err := null;
   exception when others then
     v_err := sqlerrm;
@@ -131,7 +131,7 @@ begin
 
   -- ── 3) Suspendido: su código no da token; un token ya emitido deja de valer ────────────────
   perform pg_temp.como(s_a);
-  j := pipeline_validar_codigo('P0110-O2', 'equipo-prueba');
+  j := pipeline_validar_codigo('P0112-O2', 'equipo-prueba');
   v_token_op2 := (j->>'token')::uuid;
   perform pg_temp.dueno();
   update empleados set activo = false where id = op2;
@@ -145,7 +145,7 @@ begin
   else
     r := r || format('[FALLA] caso 3a: err=%s;', v_err);
   end if;
-  j := pipeline_validar_codigo('P0110-O2', 'equipo-prueba');
+  j := pipeline_validar_codigo('P0112-O2', 'equipo-prueba');
   if not (j->>'ok')::boolean and (j->>'token') is null then
     r := r || '[ok] caso 3b: el código de un suspendido no emite token;';
   else
@@ -212,7 +212,7 @@ begin
   for i in 1..5 loop
     perform pipeline_validar_codigo('MALO-' || i, 'equipo-prueba');
   end loop;
-  j := pipeline_validar_codigo('P0110-O1', 'equipo-prueba');   -- correcto, pero ya bloqueado
+  j := pipeline_validar_codigo('P0112-O1', 'equipo-prueba');   -- correcto, pero ya bloqueado
   if not (j->>'ok')::boolean and (j->>'token') is null and coalesce((j->>'bloqueado_min')::int, 0) > 0 then
     r := r || '[ok] caso 4: tras 5 fallos el código correcto responde bloqueado y no emite token;';
   else
@@ -241,21 +241,21 @@ begin
 
   -- ── 10) dispositivo_compartido ──────────────────────────────────────────────────────────────
   perform pg_temp.dueno();
-  insert into dispositivos_autorizados (device_id, estado, compartido) values ('P0110-DEV-C', 'aprobado', true);
-  insert into dispositivos_autorizados (device_id, estado, compartido) values ('P0110-DEV-N', 'aprobado', false);
-  insert into dispositivos_autorizados (device_id, estado, compartido) values ('P0110-DEV-P', 'pendiente', true);
+  insert into dispositivos_autorizados (device_id, estado, compartido) values ('P0112-DEV-C', 'aprobado', true);
+  insert into dispositivos_autorizados (device_id, estado, compartido) values ('P0112-DEV-N', 'aprobado', false);
+  insert into dispositivos_autorizados (device_id, estado, compartido) values ('P0112-DEV-P', 'pendiente', true);
   perform pg_temp.como(s_a);
-  if dispositivo_compartido('P0110-DEV-C') and not dispositivo_compartido('P0110-DEV-N')
-     and not dispositivo_compartido('P0110-DEV-P') and not dispositivo_compartido('P0110-DEV-X') then
+  if dispositivo_compartido('P0112-DEV-C') and not dispositivo_compartido('P0112-DEV-N')
+     and not dispositivo_compartido('P0112-DEV-P') and not dispositivo_compartido('P0112-DEV-X') then
     r := r || '[ok] caso 10a: compartido sólo para el equipo aprobado y marcado;';
   else
     r := r || '[FALLA] caso 10a: dispositivo_compartido devolvió algo inesperado;';
   end if;
-  if (select (pipeline_validar_codigo('P0110-O1', 'equipo-prueba') ->> 'ventana_min')::int) = 10 then
+  if (select (pipeline_validar_codigo('P0112-O1', 'equipo-prueba') ->> 'ventana_min')::int) = 10 then
     r := r || '[ok] caso 10b: la validación devuelve ventana_min (default 10);';
   else
     r := r || '[FALLA] caso 10b: ventana_min ausente o distinta de 10;';
   end if;
 
-  raise exception 'RESULTADO 0110 --> %', r;
+  raise exception 'RESULTADO 0112 --> %', r;
 end $$;

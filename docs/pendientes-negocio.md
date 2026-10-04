@@ -1500,7 +1500,7 @@ directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sól
 
 ## Código personal en equipos compartidos — defaults del 04-oct-2026
 
-Migración `0110` ([spec](superpowers/specs/pipeline/2026-10-04-codigo-personal-design.md) §4/§5).
+Migración `0112` ([spec](superpowers/specs/pipeline/2026-10-04-codigo-personal-design.md) §4/§5).
 Los tres valores los eligió el implementador siguiendo la spec; **ninguno está confirmado por el
 dueño**. Los tres se editan desde `/configuracion` → «Código personal» sin migrar de nuevo.
 

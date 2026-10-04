@@ -12,7 +12,7 @@ export type Dispositivo = {
   sedeCod: string | null;
   userAgent: string | null;
   estado: 'pendiente' | 'aprobado' | 'rechazado' | 'revocado';
-  // Equipo compartido (migración 0110): el pipeline pide el código personal de quien opera.
+  // Equipo compartido (migración 0112): el pipeline pide el código personal de quien opera.
   compartido: boolean;
   creadoEn: string;
   aprobadoEn: string | null;
@@ -79,7 +79,7 @@ export async function actualizarSedeDispositivo(id: string, sedeCod: string | nu
   if (error) throw error;
 }
 
-// Marca/desmarca un equipo como compartido (migración 0110). Update directo, como la sede: la policy
+// Marca/desmarca un equipo como compartido (migración 0112). Update directo, como la sede: la policy
 // `disp_admin_rw` (0036) ya exige app_es_admin() para escribir cualquier columna.
 export async function actualizarCompartidoDispositivo(id: string, compartido: boolean): Promise<void> {
   const sb = getServerClient();

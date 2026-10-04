@@ -1,9 +1,9 @@
--- 0110_codigo_personal.sql — en un equipo compartido, cada acción del pipeline se atribuye a la
+-- 0112_codigo_personal.sql — en un equipo compartido, cada acción del pipeline se atribuye a la
 -- persona que tecleó su código personal, no a la dueña de la sesión.
 --
 -- Implementa docs/superpowers/specs/pipeline/2026-10-04-codigo-personal-design.md §3 y §4
 -- (versión con TOKEN DE OPERADOR, corregida el 04-oct-2026 tras la revisión del PR #42).
--- Prueba: packages/db/pruebas/0110_codigo_personal.prueba.sql  (bash tools/probar-migracion.sh 0110)
+-- Prueba: packages/db/pruebas/0112_codigo_personal.prueba.sql  (bash tools/probar-migracion.sh 0112)
 --
 -- EL PROBLEMA. El sistema nuevo atribuye todo a auth.uid(): en la PC del almacén, abierta con UNA
 -- cuenta, los puntos de lo que mueven varias personas van a la dueña de la sesión, y los puntos
@@ -593,5 +593,5 @@ $$;
 revoke execute on function pipeline_calificar(uuid, boolean, text, text, uuid) from public;
 grant execute on function pipeline_calificar(uuid, boolean, text, text, uuid) to authenticated;
 
--- Prueba de ataque: packages/db/pruebas/0110_codigo_personal.prueba.sql
---   bash tools/probar-migracion.sh 0110
+-- Prueba de ataque: packages/db/pruebas/0112_codigo_personal.prueba.sql
+--   bash tools/probar-migracion.sh 0112

@@ -302,7 +302,7 @@ export async function calificarPasada(
   if (error) throw new Error(error.message);
 }
 
-// ── Código personal (migración 0110, spec codigo-personal) ────────────────────────────────────
+// ── Código personal (migración 0112, spec codigo-personal) ────────────────────────────────────
 // El código se teclea UNA vez y sólo viaja a pipeline_validar_codigo, que cuenta los intentos y
 // devuelve un token de operador. Las demás RPC reciben ese token (`p_operador`), nunca el código.
 export type ValidacionCodigo =

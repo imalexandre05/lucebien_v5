@@ -612,7 +612,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 0,
     step: 1,
   },
-  // Migración 0110 (spec pipeline/2026-10-04-codigo-personal-design.md §4). Los tres defaults los
+  // Migración 0112 (spec pipeline/2026-10-04-codigo-personal-design.md §4). Los tres defaults los
   // eligió el implementador y NO están confirmados por el dueño (docs/pendientes-negocio.md).
   {
     clave: 'codigo_max_intentos',
