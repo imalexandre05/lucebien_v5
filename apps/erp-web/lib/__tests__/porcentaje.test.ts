@@ -6,7 +6,13 @@
 //
 // Spec: docs/superpowers/specs/sueldos/2026-10-03-comision-en-porcentaje-design.md
 import { describe, expect, it } from 'vitest';
-import { fraccionAPorcentaje, leerNumero, porcentajeAFraccion } from '../porcentaje';
+import {
+  avisoComisionBaja,
+  comisionRequiereConfirmacion,
+  fraccionAPorcentaje,
+  leerNumero,
+  porcentajeAFraccion,
+} from '../porcentaje';
 
 const valor = (texto: string) => {
   const r = porcentajeAFraccion(texto);
@@ -91,5 +97,32 @@ describe('leerNumero — los demás parámetros del contrato, como texto libre',
 
   it('rechaza un número que no entra en un double (daría Infinity)', () => {
     expect(leerNumero('9'.repeat(400), { min: 0 }).ok).toBe(false);
+  });
+});
+
+describe('comisionRequiereConfirmacion — aviso por comisión muy baja (spec §Aviso)', () => {
+  it('pide confirmación entre 0 y 0,5 % sin incluirlos', () => {
+    expect(comisionRequiereConfirmacion(valor('0.02'))).toBe(true); // el caso del ticket: unidad vieja
+    expect(comisionRequiereConfirmacion(valor('0.001'))).toBe(true);
+    expect(comisionRequiereConfirmacion(valor('0.49'))).toBe(true);
+  });
+
+  it('0 es válido sin aviso, y 0,5 % o más tampoco avisa', () => {
+    expect(comisionRequiereConfirmacion(valor('0'))).toBe(false);
+    expect(comisionRequiereConfirmacion(valor('0.5'))).toBe(false);
+    expect(comisionRequiereConfirmacion(valor('1.5'))).toBe(false);
+    expect(comisionRequiereConfirmacion(valor('100'))).toBe(false);
+  });
+
+  it('sin valor (usa el global) no avisa', () => {
+    expect(comisionRequiereConfirmacion(null)).toBe(false);
+    expect(comisionRequiereConfirmacion(undefined)).toBe(false);
+  });
+
+  it('el aviso sugiere el número leído en la unidad vieja', () => {
+    expect(avisoComisionBaja(valor('0.02'))).toBe('¿Seguro? 0,02 % es muy bajo. Si quisiste 2 %, escribe 2.');
+    expect(avisoComisionBaja(valor('0.015'))).toBe('¿Seguro? 0,015 % es muy bajo. Si quisiste 1,5 %, escribe 1.5.');
+    expect(avisoComisionBaja(valor('2'))).toBeNull();
+    expect(avisoComisionBaja(0)).toBeNull();
   });
 });

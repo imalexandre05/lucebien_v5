@@ -51,3 +51,27 @@ export function porcentajeAFraccion(texto: string): Lectura {
 export function fraccionAPorcentaje(fraccion: number): string {
   return String(Math.round(fraccion * ESCALA * 100) / ESCALA);
 }
+
+/**
+ * DEFAULT DE INTERFAZ, no regla de negocio: por debajo de esta fracción (0,5 %) una comisión mayor
+ * que 0 pide confirmación antes de guardarse. Existe porque hasta el 3-oct-2026 la comisión se
+ * escribía como fracción, y un `0.02` tipeado por costumbre ahora significa 0,02 %, cien veces
+ * menos. Decidido el 4-oct-2026, pendiente de confirmar con el cliente (docs/pendientes-negocio.md).
+ * No hay mínimo: el servidor no lo aplica, sólo avisa la pantalla.
+ */
+export const UMBRAL_AVISO_COMISION = 0.005;
+
+/** `true` si la comisión guardada (fracción) es mayor que 0 y menor que el umbral de aviso. */
+export function comisionRequiereConfirmacion(fraccion: number | null | undefined): boolean {
+  return typeof fraccion === 'number' && fraccion > 0 && fraccion < UMBRAL_AVISO_COMISION;
+}
+
+/** El aviso para una comisión muy baja, o `null` si no corresponde. Habla en porcentaje. */
+export function avisoComisionBaja(fraccion: number | null | undefined): string | null {
+  if (!comisionRequiereConfirmacion(fraccion)) return null;
+  const f = fraccion as number;
+  const escrito = fraccionAPorcentaje(f).replace('.', ',');
+  // Lo que probablemente se quiso: el mismo número leído en la unidad vieja (fracción → %).
+  const quisoDecir = fraccionAPorcentaje(f * 100);
+  return `¿Seguro? ${escrito} % es muy bajo. Si quisiste ${quisoDecir.replace('.', ',')} %, escribe ${quisoDecir}.`;
+}

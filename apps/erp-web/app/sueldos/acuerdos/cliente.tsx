@@ -23,7 +23,15 @@ import { OpcionBotones, type Opcion } from '../../../components/ui/opcion-botone
 import { PersonaPicker } from '../../../components/ui/persona-picker';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import type { AcuerdoSueldo, EstadoAcuerdo, ModalidadAcuerdo } from '../../../lib/sueldos-repo';
-import { fraccionAPorcentaje, leerNumero, porcentajeAFraccion, type Lectura } from '../../../lib/porcentaje';
+import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
+import {
+  avisoComisionBaja,
+  comisionRequiereConfirmacion,
+  fraccionAPorcentaje,
+  leerNumero,
+  porcentajeAFraccion,
+  type Lectura,
+} from '../../../lib/porcentaje';
 import { accionActualizarAcuerdo, accionCambiarEstado, accionCrearAcuerdo, type AcuerdoForm } from './actions';
 
 // C-2: dni/telefono/recomendaciones sólo llegan poblados cuando este tipo se usa como
@@ -400,6 +408,7 @@ export function AcuerdosCliente({
   // sin que nadie lo note.
   const [textosParametros, setTextosParametros] = useState<Partial<Record<keyof ParametrosSueldo, string>>>({});
   const [erroresParametros, setErroresParametros] = useState<Partial<Record<keyof ParametrosSueldo, string>>>({});
+  const confirmacion = useConfirmacion();
   // F-1: si al arrancar directo en el editor (alta encadenada) hay un borrador guardado, se
   // restaura en vez de empezar vacío — `leerBorrador` es null en el server (sin localStorage), así
   // que el primer render en SSR siempre es el vacío y el cliente lo corrige en el montaje si hace
@@ -497,6 +506,25 @@ export function AcuerdosCliente({
       );
       return;
     }
+    // Una comisión entre 0 y 0,5 % suele ser la unidad vieja (`0.02` pensando en 2 %): se pide
+    // confirmación, no se rechaza (spec 2026-10-03-comision-en-porcentaje §Aviso).
+    if (comisionRequiereConfirmacion(b.parametros.pctComision)) {
+      confirmacion.pedir({
+        titulo: '¿La comisión es correcta?',
+        detalle: avisoComisionBaja(b.parametros.pctComision),
+        confirmarLabel: editando ? 'Guardar igual' : 'Pactar igual',
+        tono: 'aviso',
+        alConfirmar: () => {
+          confirmacion.cerrar();
+          enviar();
+        },
+      });
+      return;
+    }
+    enviar();
+  };
+
+  const enviar = () => {
     const form: AcuerdoForm = {
       empleadoId: b.empleadoId,
       fechaInicio: b.fechaInicio,
@@ -976,6 +1004,7 @@ export function AcuerdosCliente({
               {PARAMETROS.map((p) => {
                 const global = PARAMETROS_SUELDO_DEFAULT[p.clave];
                 const errorCampo = erroresParametros[p.clave];
+                const avisoCampo = p.clave === 'pctComision' ? avisoComisionBaja(b.parametros.pctComision) : null;
                 return (
                   <div key={p.clave}>
                     <Label htmlFor={p.clave}>{p.label}</Label>
@@ -991,6 +1020,8 @@ export function AcuerdosCliente({
                     />
                     {errorCampo ? (
                       <p className="mt-1 text-apoyo text-error-deep">{errorCampo}</p>
+                    ) : avisoCampo ? (
+                      <p className="mt-1 text-apoyo text-aviso-deep">{avisoCampo}</p>
                     ) : (
                       <p className="mt-1 text-apoyo text-muted">{p.ayuda}</p>
                     )}
@@ -1011,6 +1042,7 @@ export function AcuerdosCliente({
             <Button onClick={() => setParametrosAbierto(false)}>Listo</Button>
           </ModalFooter>
         </Modal>
+        <DialogoConfirmar {...confirmacion.props} pending={pendiente} />
       </>
     );
   }

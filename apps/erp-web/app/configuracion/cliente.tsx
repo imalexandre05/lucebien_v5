@@ -12,7 +12,8 @@ import { OpcionBotones, type Opcion } from '../../components/ui/opcion-botones';
 import { Badge } from '../../components/ui/badge';
 import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
-import { fraccionAPorcentaje, porcentajeAFraccion } from '../../lib/porcentaje';
+import { DialogoConfirmar, useConfirmacion } from '../../components/ui/confirmar';
+import { avisoComisionBaja, fraccionAPorcentaje, porcentajeAFraccion } from '../../lib/porcentaje';
 
 const fieldCls = campoCls;
 
@@ -48,6 +49,7 @@ function CampoPorcentaje({
   const [texto, setTexto] = useState(() => aTextoPorcentaje(valor));
   const [error, setError] = useState<string | null>(null);
   const emitido = useRef(valor);
+  const aviso = valor.trim() === '' ? null : avisoComisionBaja(Number(valor));
 
   useEffect(() => {
     if (valor === emitido.current) return;
@@ -88,6 +90,8 @@ function CampoPorcentaje({
         <span className="text-cuerpo text-muted">%</span>
       </div>
       {error && <p className="mt-1 w-36 text-right text-micro text-error-deep">{error}</p>}
+      {/* Spec 2026-10-03-comision-en-porcentaje §Aviso: entre 0 y 0,5 % se avisa, no se rechaza. */}
+      {!error && aviso && <p className="mt-1 w-48 text-right text-micro text-aviso-deep">{aviso}</p>}
     </div>
   );
 }
@@ -303,6 +307,7 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
   // Parámetros con un texto que no se puede leer (hoy sólo los que se escriben en porcentaje). Con
   // alguno acá no se guarda: viajaría el valor anterior sin que nadie lo note.
   const [invalidos, setInvalidos] = useState<Record<string, string>>({});
+  const confirmacion = useConfirmacion();
 
   function marcarInvalido(clave: string, msg: string | null) {
     setInvalidos((p) => {
@@ -328,6 +333,28 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
       setError(`Revisa antes de guardar: ${malEscritos.join(', ')}.`);
       return;
     }
+    // Una comisión CAMBIADA a menos de 0,5 % (y más de 0) pide confirmación: suele ser la unidad
+    // vieja, `0.02` pensando en 2 %. Una que ya estaba guardada así no vuelve a preguntar.
+    const bajo = items.find(
+      (i) => i.unidad === 'porcentaje' && (vals[i.clave] ?? i.valor) !== i.valor && avisoComisionBaja(Number(vals[i.clave])),
+    );
+    if (bajo) {
+      confirmacion.pedir({
+        titulo: `¿«${bajo.etiqueta}» es correcta?`,
+        detalle: avisoComisionBaja(Number(vals[bajo.clave])),
+        confirmarLabel: 'Guardar igual',
+        tono: 'aviso',
+        alConfirmar: () => {
+          confirmacion.cerrar();
+          enviar();
+        },
+      });
+      return;
+    }
+    enviar();
+  }
+
+  function enviar() {
     startTransition(async () => {
       const r = await accionGuardarConfig(items.map((i) => ({ clave: i.clave, valor: vals[i.clave] ?? i.valor })));
       if (!r.ok) {
@@ -443,6 +470,8 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
       <Button type="button" onClick={guardar} pending={pending}>
         {pending ? 'Guardando…' : 'Guardar cambios'}
       </Button>
+
+      <DialogoConfirmar {...confirmacion.props} pending={pending} />
 
       {/* ── Modal: nuevo parámetro ── */}
       <Modal open={modalNuevo} onClose={() => !pending && setModalNuevo(false)} size="lg" title="Nuevo parámetro">
