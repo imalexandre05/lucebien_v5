@@ -128,16 +128,23 @@ export function IncidenciasCliente({
 
   // Acceso rápido: abre el formulario y limpia el parámetro, para que un segundo clic —ya estando
   // en esta página— vuelva a cambiar la URL y a abrirlo, y para que recargar no lo reabra.
+  // Contador y no booleano: si el formulario ya estaba abierto, el segundo clic igual tiene que
+  // volver a llevar hasta él (en móvil queda debajo del resumen y los filtros).
+  const [saltoAlta, setSaltoAlta] = useState(0);
   useEffect(() => {
     if (!pedirAlta) return;
     setAbierto(true);
+    setSaltoAlta((n) => n + 1);
     router.replace('/incidencias', { scroll: false });
   }, [pedirAlta, router]);
 
-  // En móvil el formulario queda debajo del resumen y los filtros, fuera de la pantalla.
+  // El scroll sólo acompaña al acceso rápido: el botón «Nueva incidencia» de la propia página ya
+  // está a la vista y no debe mover la pantalla.
   useEffect(() => {
-    if (abierto) formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [abierto]);
+    if (saltoAlta === 0) return;
+    const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    formRef.current?.scrollIntoView({ behavior: sinMovimiento ? 'auto' : 'smooth', block: 'start' });
+  }, [saltoAlta]);
 
   function elegirTipo(nombreTipo: string) {
     setTipo(nombreTipo);
