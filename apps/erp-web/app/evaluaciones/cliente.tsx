@@ -224,13 +224,22 @@ export function EvaluacionesCliente({
     setCiclo(emp ? calcularCiclo(emp.fechaIngreso, hoyPeru()) : null);
   }
 
+  // Cambiar el rango invalida lo calculado: los puntos y componentes mostrados son de OTRO ciclo.
+  // Se anulan y hay que pulsar «Calcular desde la data» de nuevo antes de guardar. Las
+  // competencias (juicio humano) no dependen del ciclo y se conservan.
+  function anularCalculo() {
+    setInfoExtra(null);
+    setComp(CERO);
+  }
   function setCicloDesde(v: string) {
     setCiclo((c) => (c ? { ...c, desde: v } : c));
     setCicloEditado(true);
+    anularCalculo();
   }
   function setCicloHasta(v: string) {
     setCiclo((c) => (c ? { ...c, hasta: v } : c));
     setCicloEditado(true);
+    anularCalculo();
   }
 
   function calcularDesdeData() {
@@ -287,20 +296,19 @@ export function EvaluacionesCliente({
     if (!ciclo || nota === null || banda === null || ventasSinTasa || infoExtra === null) return;
     setError('');
     startTransition(async () => {
+      // La nota y los puntos los recalcula el servidor para este ciclo; acá sólo va el juicio humano.
       const r = await accionCrearEvaluacion({
         empleadoId,
-        mes: ciclo.desde.slice(0, 7),
-        notaFinal: nota,
-        componentes: compParaCalculo as unknown as Record<string, number>,
-        pesos,
         cicloDesde: ciclo.desde,
         cicloHasta: ciclo.hasta,
-        // Spec puntos-como-moneda §2 C-5: toda evaluación nueva se guarda con metodo='puntos' — el
-        // valor 'ponderado' de MetodoEvaluacion queda para leer lo que ya existía antes de la 0095.
-        metodo: 'puntos',
-        puntosTotal: infoExtra.puntosTotal,
+        manual: {
+          competencias: competenciaNota,
+          examenes: comp.examenes,
+          descuentoIncidencias: comp.descuentoIncidencias,
+          bonusVentas: comp.bonusVentas,
+        },
       });
-      if (!r.ok || !r.id) {
+      if (!r.ok || !r.id || r.notaFinal == null || !r.banda) {
         setError(r.error ?? 'Error al guardar');
         return;
       }
@@ -309,8 +317,8 @@ export function EvaluacionesCliente({
         id: r.id,
         empleadoId,
         nombre: emp?.nombre ?? '',
-        notaFinal: nota,
-        banda,
+        notaFinal: r.notaFinal,
+        banda: r.banda,
         cicloDesde: ciclo.desde,
         cicloHasta: ciclo.hasta,
       });

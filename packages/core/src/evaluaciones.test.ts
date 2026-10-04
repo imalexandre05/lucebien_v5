@@ -7,6 +7,7 @@ import {
   revisarPesos,
   notaDesdePuntos,
   bandaDesdeNota,
+  armarEvaluacionAGuardar,
   PESOS_DEFAULT,
   type ComponentesEval,
   type EscalaPuntos,
@@ -322,5 +323,55 @@ describe('calcularCiclo', () => {
       hasta: '2027-01-30',
       fuente: 'aniversario',
     });
+  });
+});
+
+// Spec 2026-10-04-evaluacion-guardar-recalculada §2/§4: lo que se guarda lo arma el servidor desde
+// la salida de la RPC del ciclo exacto; del cliente sólo entra el juicio humano / entrada manual.
+describe('armarEvaluacionAGuardar', () => {
+  const escala: EscalaPuntos = { puntosPromedio: 5000, notaPromedio: 16, puntosExcelente: 7500, bandaRiesgo: 13, bandaIdeal: 18 };
+  const rpc = {
+    operaciones: 12, software: 11, limpieza: 10, tardanza: 15, descuento: 200, puntosPipeline: 4000,
+    extrasMonto: 0, extrasCantidad: 0, extrasPuntos: 0, valores: 17 as number | null, valoresCantidad: 3,
+    bonusVentas: 0, puntosActividades: 500, puntosVentas: 0, ventasSinTasa: false, puntosTotal: 5000,
+  };
+  const manual = { competencias: 14, examenes: 9, descuentoIncidencias: 1, bonusVentas: 2 };
+
+  it('la nota y los puntos salen de la RPC, no del cliente', () => {
+    const r = armarEvaluacionAGuardar(rpc, escala, manual);
+    expect(r.puntosTotal).toBe(5000);
+    expect(r.notaFinal).toBe(notaDesdePuntos(5000, escala).nota);
+    expect(r.notaFinal).toBe(16);
+    expect(r.banda).toBe('en_desarrollo');
+  });
+  it('otros puntos de la RPC dan otra nota (ciclo distinto)', () => {
+    expect(armarEvaluacionAGuardar({ ...rpc, puntosTotal: 7500 }, escala, manual).notaFinal).toBe(20);
+  });
+  it('los componentes automáticos vienen de la RPC y los manuales del cliente', () => {
+    const r = armarEvaluacionAGuardar(rpc, escala, manual);
+    expect(r.componentes).toEqual({
+      operaciones: 12, software: 11, limpieza: 10, tardanza: 15, valores: 17,
+      competencias: 14, examenes: 9, descuentoIncidencias: 1, bonusVentas: 2,
+    });
+  });
+  it('valores null (sin evaluaciones ese mes) se guarda como 0', () => {
+    expect(armarEvaluacionAGuardar({ ...rpc, valores: null }, escala, manual).componentes.valores).toBe(0);
+  });
+  it('sin puntosTotal (migración 0095 sin aplicar) lanza', () => {
+    const { puntosTotal: _omitido, ...sinTotal } = rpc;
+    expect(() => armarEvaluacionAGuardar(sinTotal, escala, manual)).toThrow(/puntos/i);
+  });
+  it('ventas sin tasa lanza', () => {
+    expect(() => armarEvaluacionAGuardar({ ...rpc, ventasSinTasa: true }, escala, manual)).toThrow(/ventas/i);
+  });
+  it('una entrada manual no finita lanza', () => {
+    expect(() => armarEvaluacionAGuardar(rpc, escala, { ...manual, competencias: NaN })).toThrow(/competencias/);
+    expect(() => armarEvaluacionAGuardar(rpc, escala, { ...manual, bonusVentas: Infinity })).toThrow(/bonusVentas/);
+  });
+  it('una competencia fuera de 0-20 lanza', () => {
+    expect(() => armarEvaluacionAGuardar(rpc, escala, { ...manual, competencias: 25 })).toThrow(/competencias/);
+  });
+  it('escala rota lanza (no guarda Infinity/NaN)', () => {
+    expect(() => armarEvaluacionAGuardar(rpc, { ...escala, puntosExcelente: 5000 }, manual)).toThrow();
   });
 });
