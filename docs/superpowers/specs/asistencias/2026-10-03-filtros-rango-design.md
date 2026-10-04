@@ -41,7 +41,8 @@ ni los reemplaza.
 
 **En la URL.** `?vista=dia|semana|mes|rango&desde=YYYY-MM-DD&hasta=YYYY-MM-DD`. En día, semana y
 mes manda `desde` como ancla y `hasta` se recalcula; en rango mandan los dos (si vienen al revés,
-se dan vuelta, igual que `leerPeriodo()`). Una fecha inválida (`2026-02-30`, basura) se descarta:
+se dan vuelta, igual que `leerPeriodo()`). Una fecha inválida (`2026-02-30`, basura, o un año fuera de 2000–2100 —default de pantalla para
+que `9999-12-31` no empuje la semana al año 10000—) se descarta:
 en día, semana y mes el ancla pasa a ser **hoy**; en rango, el extremo inválido se completa con el
 otro, y si los dos son inválidos, con hoy. Una `vista` desconocida cae a la vista por defecto de la
 pantalla. Un enlace copiado muestra exactamente lo mismo.
@@ -87,4 +88,5 @@ Nada nuevo. Las dos pantallas siguen siendo del administrador/dueño, las lectur
 
 `packages/core/src/rangos-fecha.test.ts`: semana de lunes a domingo (incluye domingo y cruce de
 mes y año), meses de 28/29/30/31 días, desplazamiento de mes desde el 31, rango personalizado
-invertido y desplazado, fechas inválidas que caen a hoy, y el recorte del rango a 366 días.
+invertido y desplazado, fechas inválidas y años fuera de margen que caen a hoy, y el recorte del
+rango con sus bordes exactos (366 no se recorta, 367 sí).
