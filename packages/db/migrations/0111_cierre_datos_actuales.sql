@@ -20,6 +20,9 @@
 --     «sueldo_cerrar»; el nombre real es éste) y, después del conteo —que se conserva como primera
 --     barrera barata—, la comparación completa contra `sueldo_entrada(...)`. Si difieren, rechaza
 --     con `DESACTUALIZADA` nombrando las claves que cambiaron y no sella nada.
+--   · Sin carreras: se bloquean (`for update`) las filas pendientes de movimientos y ventas del
+--     empleado en el rango, y tras el sellado se verifica que lo sellado sea exactamente lo que
+--     la entrada pagó; si una fila nueva se coló, se aborta y se deshace todo.
 --   · El mensaje del conteo pasa de «volvé» a «vuelve» (español neutral).
 --
 -- La firma no cambia: `create or replace` conserva el `revoke`/`grant` de la 0073.
@@ -102,6 +105,7 @@ declare
   v_vieja_n   jsonb;   -- la guardada, con los arreglos ordenados
   v_nueva_n   jsonb;   -- la recalculada, con los arreglos ordenados
   v_dif       text;    -- claves de primer nivel que difieren
+  v_sellado   jsonb;   -- 0111: lo que quedó sellado, con la forma de la entrada
 begin
   if not private.app_es_admin() then
     raise exception 'PERMISO:sólo el administrador puede cerrar una liquidación';
@@ -123,6 +127,24 @@ begin
   -- criterio con el que sueldo_entrada() los juntó. Si alguien cargó un adelanto entre el cálculo
   -- y el cierre, esa fila quedaría sellada SIN ESTAR en el snapshot que se paga. Se recuenta
   -- contra la entrada guardada y se corta si no coincide.
+  -- ── Bloqueo (0111) ───────────────────────────────────────────────────────────────────────
+  -- La fila de la liquidación ya está bloqueada (`for update`). Se bloquean además las filas
+  -- PENDIENTES del empleado en el rango —movimientos y ventas—: otra sesión que las corrija o las
+  -- borre espera a que este cierre termine, en vez de colarse entre la comparación y el sellado.
+  -- Esto no frena una fila NUEVA que otra sesión inserte justo ahora: de esas se encarga la
+  -- verificación posterior al sellado (más abajo), que aborta todo si algo sellado no estaba en
+  -- la entrada.
+  perform 1 from sueldo_movimientos m
+   where m.empleado_id = l.empleado_id
+     and m.fecha between l.periodo_desde and l.periodo_hasta
+     and m.liquidacion_id is null
+   for update;
+  perform 1 from sueldo_ventas v
+   where v.empleado_id = l.empleado_id
+     and v.fecha between l.periodo_desde and l.periodo_hasta
+     and v.liquidacion_id is null
+   for update;
+
   v_esp_mov := jsonb_array_length(coalesce(l.entrada -> 'adelantos',   '[]'::jsonb))
              + jsonb_array_length(coalesce(l.entrada -> 'reportes',    '[]'::jsonb))
              + jsonb_array_length(coalesce(l.entrada -> 'bonosExtras', '[]'::jsonb));
@@ -209,6 +231,43 @@ begin
   where empleado_id = l.empleado_id
     and fecha between l.periodo_desde and l.periodo_hasta
     and liquidacion_id is null;
+
+  -- ── 2b) Verificación posterior al sellado (0111) ─────────────────────────────────────────
+  -- Lo que quedó sellado contra esta liquidación tiene que ser EXACTAMENTE lo que la entrada
+  -- guardada pagó, con la misma forma que arma sueldo_entrada(). Si otra sesión confirmó una fila
+  -- nueva entre la comparación y el sellado, el `update` de arriba la selló sin que entrara en el
+  -- pago: acá se detecta y se aborta, y al lanzar la excepción se deshace TODO (líneas y sellos).
+  v_sellado := jsonb_build_object(
+    'adelantos',   (select coalesce(jsonb_agg(jsonb_build_object(
+                      'fecha', to_char(m.fecha, 'YYYY-MM-DD'), 'motivo', m.motivo, 'monto', m.monto)), '[]'::jsonb)
+                    from sueldo_movimientos m where m.liquidacion_id = p_liquidacion and m.tipo = 'adelanto'),
+    'reportes',    (select coalesce(jsonb_agg(jsonb_build_object(
+                      'fecha', to_char(m.fecha, 'YYYY-MM-DD'), 'motivo', m.motivo, 'monto', m.monto)), '[]'::jsonb)
+                    from sueldo_movimientos m where m.liquidacion_id = p_liquidacion and m.tipo = 'reporte'),
+    'bonosExtras', (select coalesce(jsonb_agg(jsonb_build_object(
+                      'fecha', to_char(m.fecha, 'YYYY-MM-DD'), 'motivo', m.motivo, 'monto', m.monto)), '[]'::jsonb)
+                    from sueldo_movimientos m where m.liquidacion_id = p_liquidacion and m.tipo = 'bono_extra'),
+    'almuerzosEntregados', (select coalesce(sum(m.cantidad), 0)::int
+                    from sueldo_movimientos m where m.liquidacion_id = p_liquidacion and m.tipo = 'almuerzo_entregado'),
+    'personasCapacitadas', (select coalesce(sum(m.cantidad), 0)::int
+                    from sueldo_movimientos m where m.liquidacion_id = p_liquidacion and m.tipo = 'capacitacion'),
+    'ventas',      (select coalesce(jsonb_agg(jsonb_build_object(
+                      'fecha', to_char(v.fecha, 'YYYY-MM-DD'), 'monto', v.monto,
+                      'tipo', v.tipo, 'tiendaId', v.sede_cod)), '[]'::jsonb)
+                    from sueldo_ventas v where v.liquidacion_id = p_liquidacion)
+  );
+
+  if private.sueldo_entrada_normalizada(v_sellado)
+     is distinct from private.sueldo_entrada_normalizada(jsonb_build_object(
+          'adelantos',   coalesce(l.entrada -> 'adelantos',   '[]'::jsonb),
+          'reportes',    coalesce(l.entrada -> 'reportes',    '[]'::jsonb),
+          'bonosExtras', coalesce(l.entrada -> 'bonosExtras', '[]'::jsonb),
+          'almuerzosEntregados', coalesce((l.entrada ->> 'almuerzosEntregados')::int, 0),
+          'personasCapacitadas', coalesce((l.entrada ->> 'personasCapacitadas')::int, 0),
+          'ventas',      coalesce(l.entrada -> 'ventas',      '[]'::jsonb)))
+  then
+    raise exception 'DESACTUALIZADA:se cargó un dato mientras se cerraba; no se selló nada, vuelve a calcular antes de cerrar';
+  end if;
 
   -- ── 3) Recién ahora, cerrar ──────────────────────────────────────────────────────────────
   update sueldo_liquidaciones
