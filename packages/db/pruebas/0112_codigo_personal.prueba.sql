@@ -26,6 +26,8 @@
 --      token (actor = dueño del código, registrado_por = sesión) y enviar sin token (= sesión).
 --  13. Cada acción con token renueva expira_en.
 --  14. Un valor no entero en config (p. ej. '5.5') no rompe pipeline_validar_codigo.
+--  15. Equipo no aprobado/compartido o ausente → motivo 'equipo_no_compartido', sin intento.
+--  16. El bloqueo de una sesión deja UNA notificación para el rol admin (motor existente).
 --  10. dispositivo_compartido(device): true sólo para un equipo APROBADO y marcado compartido;
 --      falso para uno no compartido, uno no aprobado y uno desconocido. La validación devuelve
 --      además ventana_min (la UI la usa para su cuenta de inactividad).
@@ -94,6 +96,9 @@ begin
   insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-6', 'Chaqueta', v_sede, 'listo') returning id into p6;
   insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-7', 'Chaqueta', v_sede, 'listo') returning id into p7;
   insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-8', 'Chaqueta', v_sede, 'recepcion') returning id into p8;
+
+  -- El equipo desde el que se teclea el código tiene que estar aprobado y marcado como compartido.
+  insert into dispositivos_autorizados (device_id, estado, compartido) values ('equipo-prueba', 'aprobado', true);
 
   r := r || 'montaje=ok; ';
 
@@ -358,6 +363,34 @@ begin
   end if;
   perform pg_temp.dueno();
   update config set valor = '5' where clave = 'codigo_max_intentos';
+
+  -- ── 15) Equipo no compartido / no aprobado / ausente → motivo y SIN intento registrado ──────
+  perform pg_temp.dueno();
+  insert into dispositivos_autorizados (device_id, estado, compartido) values ('equipo-personal-0112', 'aprobado', false);
+  perform pg_temp.como(s_b);
+  j := pipeline_validar_codigo('P0112-O1', 'equipo-personal-0112');
+  v_err := j->>'motivo';
+  j := pipeline_validar_codigo('P0112-O1', 'equipo-que-no-existe');
+  v_n2 := case when j->>'motivo' = 'equipo_no_compartido' then 1 else 0 end;
+  j := pipeline_validar_codigo('P0112-O1', null);
+  perform pg_temp.dueno();
+  select count(*) into v_n from codigo_intentos where sesion_uid = s_b;
+  if v_err = 'equipo_no_compartido' and v_n2 = 1 and j->>'motivo' = 'equipo_no_compartido'
+     and not (j->>'ok')::boolean and v_n = 1 then   -- el 1 es el intento fallido del caso 2
+    r := r || '[ok] caso 15: equipo no compartido, desconocido o ausente responde equipo_no_compartido sin registrar intento;';
+  else
+    r := r || format('[FALLA] caso 15: motivo=%s intentos=%s;', v_err, v_n);
+  end if;
+
+  -- ── 16) El bloqueo de una sesión avisa al administrador (una sola vez) ───────────────────────
+  -- La sesión s_d quedó bloqueada en el caso 4 (5 fallos).
+  select count(*) into v_n from notificaciones
+    where tipo = 'codigo_sesion_bloqueada' and destinatario_rol = 'admin' and ref_id = s_d::text;
+  if v_n = 1 then
+    r := r || '[ok] caso 16: el bloqueo generó una sola notificación para el rol admin;';
+  else
+    r := r || format('[FALLA] caso 16: notificaciones de bloqueo=%s (esperaba 1);', v_n);
+  end if;
 
   -- ── 10) dispositivo_compartido ──────────────────────────────────────────────────────────────
   perform pg_temp.dueno();
