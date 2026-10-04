@@ -15,6 +15,8 @@ const nextConfig = {
     // Next corta en 1 MB por defecto, antes de llegar a la validación propia. El máximo real es
     // 10 MB (TAMANO_MAXIMO_BYTES en lib/documentos-repo.ts y file_size_limit del bucket
     // empleado-documentos, 0105); se suma 1 MB de margen para el sobre multipart.
+    // OJO: en Vercel el cuerpo de una función tiene tope de ~4,5 MB, así que entre 4,5 y 10 MB la
+    // subida puede fallar en producción hasta pasar a subida directa con URL firmada (ver spec).
     serverActions: {
       bodySizeLimit: '11mb',
     },
