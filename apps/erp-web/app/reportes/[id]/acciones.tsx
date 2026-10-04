@@ -68,10 +68,22 @@ function Estado3({
   );
 }
 
+// `layout_zonas` no tiene único por (sede, código): un reporte puede traer dos filas con el mismo
+// código. La RPC exige un `cal` por código y actualiza todas las filas que lo comparten.
+function sinRepetidos<T>(items: T[], clave: (x: T) => string): T[] {
+  const vistos = new Set<string>();
+  return items.filter((x) => {
+    const k = clave(x);
+    if (vistos.has(k)) return false;
+    vistos.add(k);
+    return true;
+  });
+}
+
 export function EvaluarPanel({
   id,
-  actividades,
-  limpieza = [],
+  actividades: actividadesProp,
+  limpieza: limpiezaProp = [],
   zonas = [],
   turno,
   trabajadores = [],
@@ -84,6 +96,8 @@ export function EvaluarPanel({
   trabajadores?: string[];
 }) {
   const router = useRouter();
+  const actividades = useMemo(() => sinRepetidos(actividadesProp, (a) => a.cod), [actividadesProp]);
+  const limpieza = useMemo(() => sinRepetidos(limpiezaProp, (z) => z.zoneCod), [limpiezaProp]);
   // Arrancan vacías a propósito. `reporte_actividades.calificacion` vale 1 por defecto en la base,
   // así que lo que llega en `a.calificacion` de un reporte sin evaluar no es una decisión de nadie:
   // el evaluador marca cada actividad y cada zona (reportes_evaluar exige todas, migración 0113).
@@ -102,9 +116,11 @@ export function EvaluarPanel({
       ]),
     [actividades, limpieza, cal, estLimp],
   );
-  const pendientes =
-    actividades.filter((a) => cal[a.cod] === undefined).length +
-    limpieza.filter((z) => estLimp[z.zoneCod] === undefined).length;
+  // El mapa sólo dibuja zonas del turno que existen hoy en el layout; el reporte puede traer otras
+  // (código borrado, otro turno, tipo `area`). Toda zona sin marcar se lista aparte para que nunca
+  // quede una pendiente sin forma de marcarla.
+  const zonasPendientes = limpieza.filter((z) => estLimp[z.zoneCod] === undefined);
+  const pendientes = actividades.filter((a) => cal[a.cod] === undefined).length + zonasPendientes.length;
 
   function masivoActs(v: number) {
     setCal(Object.fromEntries(actividades.map((a) => [a.cod, v])));
@@ -186,6 +202,27 @@ export function EvaluarPanel({
               onMass={masivoLimp}
               panelEval
             />
+          </CardContent>
+        </Card>
+      )}
+
+      {zonasPendientes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Zonas de limpieza sin marcar</CardTitle>
+            <span className="text-apoyo text-muted">{zonasPendientes.length} pendientes</span>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {zonasPendientes.map((z) => {
+              const nombre = zonas.find((x) => x.cod === z.zoneCod)?.nombre || z.zoneCod;
+              return (
+                <div key={z.zoneCod} className="flex flex-wrap items-center gap-3 rounded-r-chico border border-line bg-white px-3 py-2.5">
+                  <span className="w-16 shrink-0 tabular-nums text-dato text-muted">{z.zoneCod}</span>
+                  <span className="min-w-0 flex-1 text-cuerpo font-medium text-navy">{nombre}</span>
+                  <Estado3 value={undefined} onChange={(v) => setEstLimp((p) => ({ ...p, [z.zoneCod]: v }))} nombre={nombre} />
+                </div>
+              );
+            })}
           </CardContent>
         </Card>
       )}
