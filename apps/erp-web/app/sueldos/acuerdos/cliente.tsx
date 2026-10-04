@@ -507,8 +507,11 @@ export function AcuerdosCliente({
       return;
     }
     // Una comisión entre 0 y 0,5 % suele ser la unidad vieja (`0.02` pensando en 2 %): se pide
-    // confirmación, no se rechaza (spec 2026-10-03-comision-en-porcentaje §Aviso).
-    if (comisionRequiereConfirmacion(b.parametros.pctComision)) {
+    // confirmación, no se rechaza (spec 2026-10-03-comision-en-porcentaje §Aviso). Sólo si cambió:
+    // una ya guardada así en este contrato no vuelve a preguntar en cada guardado.
+    const comisionGuardada = editando ? acuerdos.find((a) => a.id === editando)?.parametros.pctComision : undefined;
+    const comision = b.parametros.pctComision;
+    if (comision !== comisionGuardada && comisionRequiereConfirmacion(comision)) {
       confirmacion.pedir({
         titulo: '¿La comisión es correcta?',
         detalle: avisoComisionBaja(b.parametros.pctComision),
@@ -1014,7 +1017,9 @@ export function AcuerdosCliente({
                       inputMode="decimal"
                       autoComplete="off"
                       value={textosParametros[p.clave] ?? ''}
-                      placeholder={global == null ? 'sin meta pactada' : typeof global === 'number' ? aTextoParametro(p, global) : String(global)}
+                      // Sin número: el default del core no es el global real de Configuración, y
+                      // esta pantalla no lo recibe (spec 2026-10-03-comision-en-porcentaje).
+                      placeholder={global == null ? 'sin meta pactada' : 'Si lo dejas vacío se usa el valor de Configuración'}
                       aria-invalid={errorCampo ? true : undefined}
                       onChange={(e) => setParametro(p, e.target.value)}
                     />
