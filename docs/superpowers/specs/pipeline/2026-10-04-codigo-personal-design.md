@@ -53,42 +53,63 @@ es una pregunta de negocio (§7).
 
 ## 4. Verificación — siempre en el servidor
 
-- El código **nunca** se descarga al navegador. Se teclea, viaja en la llamada y se compara en la
-  base.
-- Función nueva `private.empleado_por_codigo(p_codigo text) returns uuid`, `security definer`,
-  `set search_path = public`, sin `grant` a `anon`/`authenticated` (sólo la llaman las RPC).
-  Devuelve el `empleados.id` si el código existe y el empleado está **activo**; si no, `null`.
-  (Si además conviene exigir acceso a la sede de la prenda, se decide en el plan mirando cómo
-  resuelve hoy `app_sedes()` las sedes de un empleado; no inventar otra fuente.)
-- RPC nueva `pipeline_validar_codigo(p_codigo text) returns jsonb`, `security definer`, con
-  `grant execute to authenticated`. Es **la única que registra intentos**: inserta en
-  `codigo_intentos`, aplica el límite y devuelve `{ok, nombre, bloqueado_min}`. Nunca lanza
-  excepción por código malo. Motivo: si el registro del intento viviera dentro de una RPC que
-  después hace `raise`, el `rollback` borraría el intento y el límite nunca se alcanzaría.
-- Flujo de la server action: primero `pipeline_validar_codigo`; si `ok`, llama la RPC del pipeline
-  con el mismo `p_codigo`, que **vuelve a resolverlo** (no confía en el cliente ni en la llamada
-  anterior) pero no registra intentos.
-- Cada RPC del pipeline de §2 suma un parámetro **opcional** `p_codigo text default null`:
+- El código **nunca** se descarga al navegador. Se teclea **una vez** y viaja sólo a la función
+  de validación; las acciones del pipeline reciben un **token de operador**, no el código.
+  (Corregido el 04-oct-2026 tras la revisión de la sesión de implementación, PR #42: la versión
+  anterior permitía probar códigos llamando directo a las RPC del pipeline, porque cada fallo hacía
+  `raise` y el `rollback` borraba el rastro; y el helper sin `grant` no era invocable desde RPC
+  `security invoker`.)
+- `private.empleado_por_codigo(p_codigo text) returns uuid`, `security definer`,
+  `set search_path = public`, **sin** `grant` (sólo la usa la función de validación, que también es
+  definer). Devuelve el `empleados.id` si el código existe y el empleado está **activo**; si no,
+  `null`.
+- Tabla `codigo_operadores (token uuid pk default gen_random_uuid(), sesion_uid uuid not null,
+  empleado_id uuid not null, device_id text, creado_en timestamptz default now(),
+  expira_en timestamptz not null)`. RLS activa sin policies para `authenticated` (nadie la lee por
+  PostgREST); la escriben y leen sólo funciones definer.
+- RPC `pipeline_validar_codigo(p_codigo text, p_device text default null) returns jsonb`,
+  `security definer`, `grant execute to authenticated`. **Es la única puerta del código:**
+  1. Si la sesión (`auth.uid()`) está bloqueada por intentos → `{ok:false, bloqueado_min:N}`.
+  2. Registra el intento en `codigo_intentos` (siempre, ok o no; **nunca** hace `raise` por código
+     malo, así el intento queda escrito).
+  3. Si el código es válido → crea fila en `codigo_operadores` con `expira_en = now() + ventana`
+     y devuelve `{ok:true, token, nombre, expira_en}`; si no → `{ok:false, intentos_restantes}`.
+- `private.operador_de_token(p_token uuid) returns uuid`, `security definer`, `stable`,
+  `grant execute to authenticated` (mismo patrón que `app_es_admin`/`app_sedes`, migración 0037;
+  el schema `private` no lo expone PostgREST). Devuelve el `empleado_id` sólo si el token existe,
+  **pertenece a la sesión que llama** (`sesion_uid = auth.uid()`), no expiró y el empleado sigue
+  activo; si no, `null`. Al usarlo con éxito extiende `expira_en` (ventana por inactividad).
+  Como es `stable` no puede escribir: la extensión la hace la RPC del pipeline vía otra función
+  definer `private.tocar_operador(p_token)`, o se descarta la extensión y el operador expira a los
+  10 min del ingreso (decidir en el plan; ambas cumplen la spec).
+- Cada RPC del pipeline de §2 suma un parámetro **opcional** `p_operador uuid default null`
+  (el token):
   - `null` → actor = `auth.uid()` (comportamiento actual, sin cambios).
-  - no nulo → actor = `private.empleado_por_codigo(p_codigo)`; si da `null` →
-    `raise exception 'CODIGO: código incorrecto'` y no se escribe nada.
+  - no nulo → actor = `private.operador_de_token(p_operador)`; si da `null` →
+    `raise exception 'CODIGO: operador vencido, vuelve a ingresar tu código'`. Este `raise` ya no
+    abre un ataque: sin un token emitido por la validación (que cuenta intentos) no hay forma de
+    llegar aquí con un actor ajeno.
+  - `pipeline_avanzar_tanda`: resuelve el token **antes** del bucle y aborta todo si es inválido
+    (hoy el bucle traga excepciones por prenda; un token malo no debe convertirse en «no movió
+    nada» silencioso).
   - El actor resuelto es quien recibe `prenda_historial.empleado_id` y `pipeline_puntos.empleado_id`.
   - Se guarda además **quién tenía la sesión**: columna nueva
     `prenda_historial.registrado_por uuid` (= `auth.uid()`), para auditoría.
 - **Límite de intentos:** tabla `codigo_intentos (id, sesion_uid, device_id, ok, creado_en)`.
-  Tras **5** fallos en **15** minutos desde la misma sesión, las RPC rechazan con
-  `CODIGO: demasiados intentos, espera N minutos` aunque el código sea correcto. Los dos números
+  Tras **5** fallos en **15** minutos desde la misma sesión, `pipeline_validar_codigo` responde
+  bloqueado aunque el código sea correcto. Ventana de operador: **10** minutos. Los tres números
   son **defaults** (no-negociable 5): editables en `/configuracion`, comentados como default en la
   migración y anotados en `docs/pendientes-negocio.md`.
-- RLS: `codigo_intentos` sin lectura para nadie salvo admin; la escriben sólo las funciones.
-- Fechas: `creado_en timestamptz default now()`; la ventana se calcula en la base (no hay fechas de
-  negocio en hora Perú aquí, sólo intervalos).
+- RLS: `codigo_intentos` y `codigo_operadores` sin lectura para nadie salvo admin (intentos); la
+  escriben sólo las funciones.
+- Fechas: `timestamptz default now()`; las ventanas se calculan en la base (sólo intervalos, sin
+  fechas de negocio en hora Perú).
 
 ## 5. Interfaz (pipeline en equipo compartido)
 
 - Encima del tablero: chip **«Operando: — · Ingresar código»**. Se teclea el código (4 dígitos,
-  enmascarado, teclado numérico en móvil). La primera acción lo valida; si es correcto el chip
-  muestra **«Operando: Nombre · cambiar»**.
+  enmascarado, teclado numérico en móvil). Se valida al confirmar (llama `pipeline_validar_codigo`); si es correcto el
+  chip muestra **«Operando: Nombre · cambiar»** y la página guarda el token en memoria.
 - El operador queda activo en esa pestaña hasta **10 minutos sin actividad** (default de pantalla,
   editable) o hasta que toque «cambiar». No se guarda en `localStorage`: sólo en memoria.
 - Sin operador activo, los botones de mover piden el código antes de ejecutar.
@@ -97,10 +118,12 @@ es una pregunta de negocio (§7).
 
 ## 6. Tests exigidos (antes del código)
 
-1. SQL/integración (`tools/probar-migracion.sh` o el patrón vigente): código válido → puntos al
-   dueño del código y `registrado_por` = sesión; código inválido → excepción y cero filas nuevas;
-   empleado suspendido → rechazado; 6.º intento fallido en 15 min → bloqueado aun con código bueno;
-   `p_codigo null` → idéntico al comportamiento actual.
+1. SQL/integración (`tools/probar-migracion.sh` o el patrón vigente): código válido → token, y con
+   ese token los puntos van al dueño del código y `registrado_por` = sesión; código inválido →
+   `ok:false` y el intento **queda registrado**; empleado suspendido → rechazado (y su token deja de
+   valer); 6.º intento fallido en 15 min → bloqueado aun con código bueno; token de **otra sesión**
+   → rechazado; token vencido → rechazado; `pipeline_avanzar_tanda` con token malo → no mueve
+   ninguna prenda y lanza error; `p_operador null` → idéntico al comportamiento actual.
 2. Unitarios del cliente: expiración del operador por inactividad, «cambiar» limpia el operador.
 3. Guard: ninguna lectura nueva de `empleados.cod` desde `apps/erp-web` (agregar regla al guard si
    es viable).
