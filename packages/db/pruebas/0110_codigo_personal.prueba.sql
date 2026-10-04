@@ -21,6 +21,9 @@
 --   8. p_operador null → comportamiento de hoy: el actor es auth.uid().
 --   9. Un authenticated no puede leer codigo_operadores ni codigo_intentos (nadie ve tokens ni
 --      intentos por PostgREST).
+--  10. dispositivo_compartido(device): true sólo para un equipo APROBADO y marcado compartido;
+--      falso para uno no compartido, uno no aprobado y uno desconocido. La validación devuelve
+--      además ventana_min (la UI la usa para su cuenta de inactividad).
 --
 -- MONTAJE. Todo sintético (ningún empleado real): cuatro sesiones con rol 'encargado_almacen'
 -- (para que la RLS de pipeline las deje operar) y dos operadores con código propio. Los códigos
@@ -234,6 +237,24 @@ begin
     r := r || '[ok] caso 9b: un no-admin no ve ninguna fila de codigo_intentos;';
   else
     r := r || format('[FALLA] caso 9b: ve %s intentos;', v_n);
+  end if;
+
+  -- ── 10) dispositivo_compartido ──────────────────────────────────────────────────────────────
+  perform pg_temp.dueno();
+  insert into dispositivos_autorizados (device_id, estado, compartido) values ('P0110-DEV-C', 'aprobado', true);
+  insert into dispositivos_autorizados (device_id, estado, compartido) values ('P0110-DEV-N', 'aprobado', false);
+  insert into dispositivos_autorizados (device_id, estado, compartido) values ('P0110-DEV-P', 'pendiente', true);
+  perform pg_temp.como(s_a);
+  if dispositivo_compartido('P0110-DEV-C') and not dispositivo_compartido('P0110-DEV-N')
+     and not dispositivo_compartido('P0110-DEV-P') and not dispositivo_compartido('P0110-DEV-X') then
+    r := r || '[ok] caso 10a: compartido sólo para el equipo aprobado y marcado;';
+  else
+    r := r || '[FALLA] caso 10a: dispositivo_compartido devolvió algo inesperado;';
+  end if;
+  if (select (pipeline_validar_codigo('P0110-O1', 'equipo-prueba') ->> 'ventana_min')::int) = 10 then
+    r := r || '[ok] caso 10b: la validación devuelve ventana_min (default 10);';
+  else
+    r := r || '[FALLA] caso 10b: ventana_min ausente o distinta de 10;';
   end if;
 
   raise exception 'RESULTADO 0110 --> %', r;
