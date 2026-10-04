@@ -119,6 +119,18 @@ on conflict (clave) do nothing;
 -- 3) Resolución de código y de token
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 
+-- Lee un parámetro entero de config tolerando basura: si el administrador guarda «5.5» o texto, se
+-- usa la parte entera o el default en vez de romper la validación para todos.
+create or replace function private.codigo_param(p_clave text, p_defecto int)
+  returns int language sql stable security definer set search_path = public
+as $$
+  select coalesce(
+    (select case when c.valor ~ '^\s*[0-9]+(\.[0-9]+)?\s*$' then greatest(floor(c.valor::numeric)::int, 1) end
+       from public.config c where c.clave = p_clave),
+    p_defecto);
+$$;
+revoke execute on function private.codigo_param(text, int) from public, anon, authenticated;
+
 -- Código → empleado activo (o null). SIN grant: sólo la usa pipeline_validar_codigo.
 create or replace function private.empleado_por_codigo(p_codigo text)
   returns uuid language sql stable security definer set search_path = public
@@ -152,7 +164,7 @@ create or replace function private.tocar_operador(p_token uuid)
 as $$
 declare v_min int;
 begin
-  select coalesce((select valor::int from public.config where clave = 'codigo_operador_min'), 10) into v_min;
+  v_min := private.codigo_param('codigo_operador_min', 10);
   update public.codigo_operadores
     set expira_en = now() + make_interval(mins => v_min)
     where token = p_token and sesion_uid = auth.uid() and expira_en > now();
@@ -197,10 +209,13 @@ declare
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
 
-  select coalesce((select valor::int from config where clave = 'codigo_max_intentos'), 5),
-         coalesce((select valor::int from config where clave = 'codigo_ventana_intentos_min'), 15),
-         coalesce((select valor::int from config where clave = 'codigo_operador_min'), 10)
-    into v_max, v_ventana, v_op_min;
+  -- Serializa a las peticiones de la MISMA sesión: sin esto, varias llamadas en paralelo leen el
+  -- mismo conteo de fallos antes de que se inserte el suyo y el límite se vuelve el tamaño del pool.
+  perform pg_advisory_xact_lock(hashtext(v_sesion::text));
+
+  v_max     := private.codigo_param('codigo_max_intentos', 5);
+  v_ventana := private.codigo_param('codigo_ventana_intentos_min', 15);
+  v_op_min  := private.codigo_param('codigo_operador_min', 10);
 
   -- 1) ¿Sesión bloqueada? El bloqueo se levanta cuando el fallo que lo completó sale de la ventana.
   select count(*) into v_fallos from codigo_intentos
@@ -318,7 +333,7 @@ begin
   return coalesce(v_pts, 0);
 end;
 $$;
-revoke execute on function pipeline_avanzar(uuid, text, uuid) from public;
+revoke execute on function pipeline_avanzar(uuid, text, uuid) from public, anon;
 grant execute on function pipeline_avanzar(uuid, text, uuid) to authenticated;
 
 -- Tanda: el token se resuelve ANTES del bucle. El bucle traga las excepciones por prenda (las que
@@ -340,7 +355,7 @@ begin
   return v_total;
 end;
 $$;
-revoke execute on function pipeline_avanzar_tanda(uuid[], text, uuid) from public;
+revoke execute on function pipeline_avanzar_tanda(uuid[], text, uuid) from public, anon;
 grant execute on function pipeline_avanzar_tanda(uuid[], text, uuid) to authenticated;
 
 drop function if exists pipeline_enviar(uuid, text);
@@ -369,7 +384,7 @@ begin
   end if;
 end;
 $$;
-revoke execute on function pipeline_enviar(uuid, text, uuid) from public;
+revoke execute on function pipeline_enviar(uuid, text, uuid) from public, anon;
 grant execute on function pipeline_enviar(uuid, text, uuid) to authenticated;
 
 drop function if exists pipeline_rechazar(uuid, text);
@@ -412,7 +427,7 @@ begin
   end if;
 end;
 $$;
-revoke execute on function pipeline_rechazar(uuid, text, uuid) from public;
+revoke execute on function pipeline_rechazar(uuid, text, uuid) from public, anon;
 grant execute on function pipeline_rechazar(uuid, text, uuid) to authenticated;
 
 drop function if exists pipeline_deshacer(uuid, text);
@@ -436,7 +451,7 @@ begin
   );
 end;
 $$;
-revoke execute on function pipeline_deshacer(uuid, text, uuid) from public;
+revoke execute on function pipeline_deshacer(uuid, text, uuid) from public, anon;
 grant execute on function pipeline_deshacer(uuid, text, uuid) to authenticated;
 
 drop function if exists pipeline_dividir(uuid);
@@ -483,7 +498,7 @@ begin
     values (p_id, v_pr.etapa, 'dividido', v_actor, 'Terno dividido en Saco + Pantalón', v_sesion);
 end;
 $$;
-revoke execute on function pipeline_dividir(uuid, uuid) from public;
+revoke execute on function pipeline_dividir(uuid, uuid) from public, anon;
 grant execute on function pipeline_dividir(uuid, uuid) to authenticated;
 
 drop function if exists pipeline_deshacer_division(uuid);
@@ -559,7 +574,7 @@ begin
     values (p_id, 'dividido', v_etapa_original, v_actor, 'Deshacer división: vuelve a ' || v_etapa_original, v_sesion);
 end;
 $$;
-revoke execute on function pipeline_deshacer_division(uuid, uuid) from public;
+revoke execute on function pipeline_deshacer_division(uuid, uuid) from public, anon;
 grant execute on function pipeline_deshacer_division(uuid, uuid) to authenticated;
 
 drop function if exists pipeline_calificar(uuid, boolean, text, text);
@@ -590,7 +605,7 @@ begin
   end if;
 end;
 $$;
-revoke execute on function pipeline_calificar(uuid, boolean, text, text, uuid) from public;
+revoke execute on function pipeline_calificar(uuid, boolean, text, text, uuid) from public, anon;
 grant execute on function pipeline_calificar(uuid, boolean, text, text, uuid) to authenticated;
 
 -- Prueba de ataque: packages/db/pruebas/0112_codigo_personal.prueba.sql
