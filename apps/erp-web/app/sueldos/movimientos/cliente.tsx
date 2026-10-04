@@ -10,6 +10,7 @@ import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import { hoyPeru } from '../../../lib/fechas';
 import { esConteo, type TipoMovimiento } from '../../../lib/sueldos-tipos';
 import type { MovimientoSueldo, VentaSueldo } from '../../../lib/sueldos-repo';
+import { correrAccion, restaurarSiVacio, sinId } from '../../../lib/movimientos-optimista';
 import { accionCrearMovimiento, accionEliminarMovimiento } from './actions';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
@@ -106,16 +107,23 @@ export function MovimientosCliente({
     setMov((v) => ({ ...v, monto: '', cantidad: '1', motivo: '' }));
 
     empezar(async () => {
-      const r = await accionCrearMovimiento({
-        empleadoId: tipeado.empleadoId,
-        fecha: tipeado.fecha,
-        tipo: tipeado.tipo,
-        monto: conteo ? undefined : Number(tipeado.monto),
-        cantidad: conteo ? Number(tipeado.cantidad) : undefined,
-        motivo: tipeado.motivo,
-      });
-      if (r.ok && r.id) {
-        const idReal = r.id;
+      // correrAccion: un fallo de transporte también tiene que deshacer lo optimista.
+      const r = await correrAccion(
+        () =>
+          accionCrearMovimiento({
+            empleadoId: tipeado.empleadoId,
+            fecha: tipeado.fecha,
+            tipo: tipeado.tipo,
+            monto: conteo ? undefined : Number(tipeado.monto),
+            cantidad: conteo ? Number(tipeado.cantidad) : undefined,
+            motivo: tipeado.motivo,
+          }),
+        'No se pudo confirmar el registro.',
+      );
+      if (r.ok) {
+        // Guardado. Sin id (no debería pasar) se marca igual como resuelta: nunca se deshace ni se
+        // devuelve al formulario algo que la base sí guardó, porque volver a registrarlo lo duplica.
+        const idReal = r.id ?? tmpId;
         // Si el árbol nuevo ya llegó antes que esta continuación, se quita ahora; si no, la quita
         // el efecto de arriba cuando llegue.
         setProvisorias((ps) =>
@@ -125,7 +133,7 @@ export function MovimientosCliente({
         );
       } else {
         setProvisorias((ps) => ps.filter((p) => p.id !== tmpId));
-        setMov(tipeado);
+        setMov((actual) => restaurarSiVacio(actual, tipeado));
         setError(r.error ?? 'No se pudo guardar.');
       }
     });
@@ -137,13 +145,9 @@ export function MovimientosCliente({
     setError(null);
     setBorrando((b) => new Set(b).add(id));
     empezar(async () => {
-      const r = await accionEliminarMovimiento(id);
+      const r = await correrAccion(() => accionEliminarMovimiento(id), 'No se pudo confirmar el borrado.');
       if (!r.ok) {
-        setBorrando((b) => {
-          const n = new Set(b);
-          n.delete(id);
-          return n;
-        });
+        setBorrando((b) => sinId(b, id));
         setError(r.error ?? 'No se pudo borrar.');
       }
     });
