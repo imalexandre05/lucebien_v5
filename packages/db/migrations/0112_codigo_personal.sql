@@ -193,10 +193,23 @@ $$;
 revoke execute on function private.actor_pipeline(uuid) from public, anon;
 grant execute on function private.actor_pipeline(uuid) to authenticated;
 
+-- ¿Este equipo está marcado como compartido? La llama la server action (la tabla
+-- dispositivos_autorizados sólo la lee el admin por RLS, 0036). Devuelve sólo un booleano y sólo
+-- para un equipo aprobado cuyo device_id (cookie httpOnly) ya conoce quien pregunta.
+create or replace function dispositivo_compartido(p_device_id text)
+  returns boolean language sql stable security definer set search_path = public
+as $$
+  select coalesce(
+    (select d.compartido from public.dispositivos_autorizados d
+      where d.device_id = p_device_id and d.estado = 'aprobado'), false);
+$$;
+revoke execute on function dispositivo_compartido(text) from public, anon;
+grant execute on function dispositivo_compartido(text) to authenticated;
+
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 4) pipeline_validar_codigo — la ÚNICA puerta del código
 --    Nunca lanza excepción por código malo: el intento tiene que quedar escrito.
---    Devuelve {ok, token, nombre, expira_en, ventana_min} | {ok:false, bloqueado_min} | {ok:false, intentos_restantes}
+--    Devuelve {ok, token, nombre, expira_en, ventana_min} | {ok:false, motivo:'equipo_no_compartido'} | {ok:false, bloqueado_min} | {ok:false, intentos_restantes}
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 create or replace function pipeline_validar_codigo(p_codigo text, p_device text default null)
   returns jsonb language plpgsql security definer set search_path = public
@@ -208,6 +221,13 @@ declare
   v_emp uuid; v_nombre text; v_token uuid; v_exp timestamptz;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
+
+  -- 0) El código sólo se acepta desde un equipo aprobado y marcado como compartido. Se compara con
+  --    el token real del equipo (cookie httpOnly) guardado en la base, no con lo que diga la app.
+  --    No se registra intento: un equipo personal no puede gastar ni probar códigos.
+  if not coalesce(dispositivo_compartido(p_device), false) then
+    return jsonb_build_object('ok', false, 'motivo', 'equipo_no_compartido');
+  end if;
 
   -- Serializa a las peticiones de la MISMA sesión: sin esto, varias llamadas en paralelo leen el
   -- mismo conteo de fallos antes de que se inserte el suyo y el límite se vuelve el tamaño del pool.
@@ -233,6 +253,21 @@ begin
   insert into codigo_intentos (sesion_uid, device_id, ok) values (v_sesion, p_device, v_emp is not null);
 
   if v_emp is null then
+    -- Este fallo completa el máximo: la sesión queda bloqueada. Se avisa al administrador por la
+    -- tabla del motor de notificaciones existente (0041/0109): no se crea un motor nuevo ni se toca
+    -- generar_alertas(). dedup_key única por bloqueo (la hora del fallo) para que dos bloqueos
+    -- distintos de la misma sesión no se pisen.
+    if v_fallos + 1 >= v_max and v_fallos < v_max then
+      insert into notificaciones (tipo, titulo, mensaje, severidad, destinatario_rol,
+                                  ref_tipo, ref_id, dedup_key)
+      values ('codigo_sesion_bloqueada', 'Sesión bloqueada por intentos de código',
+              'La sesión de ' || coalesce((select nombre from empleados where id = v_sesion), 'una persona')
+                || ' falló ' || v_max || ' veces el código personal en ' || v_ventana
+                || ' minutos y quedó bloqueada. Puede ser un error al teclear o alguien probando códigos.',
+              'warn', 'admin', 'empleado', v_sesion::text,
+              'codigo_sesion_bloqueada:' || v_sesion::text || ':' || extract(epoch from now())::bigint::text)
+      on conflict (dedup_key) do nothing;
+    end if;
     return jsonb_build_object('ok', false, 'intentos_restantes', greatest(v_max - v_fallos - 1, 0));
   end if;
 
@@ -250,18 +285,6 @@ $$;
 revoke execute on function pipeline_validar_codigo(text, text) from public, anon;
 grant execute on function pipeline_validar_codigo(text, text) to authenticated;
 
--- ¿Este equipo está marcado como compartido? La llama la server action (la tabla
--- dispositivos_autorizados sólo la lee el admin por RLS, 0036). Devuelve sólo un booleano y sólo
--- para un equipo aprobado cuyo device_id (cookie httpOnly) ya conoce quien pregunta.
-create or replace function dispositivo_compartido(p_device_id text)
-  returns boolean language sql stable security definer set search_path = public
-as $$
-  select coalesce(
-    (select d.compartido from public.dispositivos_autorizados d
-      where d.device_id = p_device_id and d.estado = 'aprobado'), false);
-$$;
-revoke execute on function dispositivo_compartido(text) from public, anon;
-grant execute on function dispositivo_compartido(text) to authenticated;
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 5) Las RPC del pipeline. Mismo cuerpo que su última definición, salvo:
