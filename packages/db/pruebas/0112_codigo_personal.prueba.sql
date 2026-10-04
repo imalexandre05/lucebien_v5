@@ -28,6 +28,8 @@
 --  14. Un valor no entero en config (p. ej. '5.5') no rompe pipeline_validar_codigo.
 --  15. Equipo no aprobado/compartido o ausente → motivo 'equipo_no_compartido', sin intento.
 --  16. El bloqueo de una sesión deja UNA notificación para el rol admin (motor existente).
+--  17. pipeline_cerrar_operador revoca el token (sólo los de la propia sesión).
+--  18. Vida máxima del token desde su emisión (codigo_operador_max_h, default 8).
 --  10. dispositivo_compartido(device): true sólo para un equipo APROBADO y marcado compartido;
 --      falso para uno no compartido, uno no aprobado y uno desconocido. La validación devuelve
 --      además ventana_min (la UI la usa para su cuenta de inactividad).
@@ -390,6 +392,47 @@ begin
     r := r || '[ok] caso 16: el bloqueo generó una sola notificación para el rol admin;';
   else
     r := r || format('[FALLA] caso 16: notificaciones de bloqueo=%s (esperaba 1);', v_n);
+  end if;
+
+  -- ── 17) «cambiar» revoca el token en la base, y sólo los de la propia sesión ───────────────
+  perform pg_temp.como(s_a);
+  j := pipeline_validar_codigo('P0112-O1', 'equipo-prueba');
+  v_token := (j->>'token')::uuid;
+  perform pg_temp.como(s_c);
+  perform pipeline_cerrar_operador(v_token);          -- otra sesión: no debe borrar nada
+  perform pg_temp.dueno();
+  select count(*) into v_n from codigo_operadores where token = v_token;
+  perform pg_temp.como(s_a);
+  perform pipeline_cerrar_operador(v_token);          -- la dueña: sí
+  begin
+    perform pipeline_avanzar(p3, 'empatado', v_token);
+    v_err := null;
+  exception when others then v_err := sqlerrm; end;
+  perform pg_temp.dueno();
+  select count(*) into v_n2 from codigo_operadores where token = v_token;
+  if v_n = 1 and v_n2 = 0 and v_err like 'CODIGO:%' then
+    r := r || '[ok] caso 17: cerrar_operador borra sólo los tokens de la propia sesión y el token revocado deja de valer;';
+  else
+    r := r || format('[FALLA] caso 17: tras_otra_sesion=%s tras_dueña=%s err=%s;', v_n, v_n2, v_err);
+  end if;
+
+  -- ── 18) Vida máxima: un token emitido hace más de codigo_operador_max_h horas ya no vale ────
+  perform pg_temp.como(s_a);
+  j := pipeline_validar_codigo('P0112-O1', 'equipo-prueba');
+  v_token := (j->>'token')::uuid;
+  perform pg_temp.dueno();
+  update codigo_operadores
+    set creado_en = now() - interval '9 hours', expira_en = now() + interval '1 minute'
+    where token = v_token;
+  perform pg_temp.como(s_a);
+  begin
+    perform pipeline_avanzar(p3, 'empatado', v_token);
+    v_err := null;
+  exception when others then v_err := sqlerrm; end;
+  if v_err like 'CODIGO:%' then
+    r := r || '[ok] caso 18: un token con más de 8 horas de vida ya no vale aunque no haya vencido por inactividad;';
+  else
+    r := r || format('[FALLA] caso 18: err=%s;', v_err);
   end if;
 
   -- ── 10) dispositivo_compartido ──────────────────────────────────────────────────────────────
