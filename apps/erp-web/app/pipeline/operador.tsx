@@ -138,9 +138,11 @@ function DialogoCodigo({
         }
         setCodigo('');
         setError(
-          r.bloqueadoMin
-            ? `Demasiados intentos. Espera ${r.bloqueadoMin} ${r.bloqueadoMin === 1 ? 'minuto' : 'minutos'}.`
-            : 'Código incorrecto.',
+          r.motivo === 'equipo_no_compartido'
+            ? 'Este equipo no está marcado como compartido. Pídele al administrador que lo active en Dispositivos.'
+            : r.bloqueadoMin
+              ? `Demasiados intentos. Espera ${r.bloqueadoMin} ${r.bloqueadoMin === 1 ? 'minuto' : 'minutos'}.`
+              : 'Código incorrecto.',
         );
       } catch {
         setError('No se pudo validar el código. Inténtalo de nuevo.');

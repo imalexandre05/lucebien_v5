@@ -312,7 +312,7 @@ export async function calificarPasada(
 // devuelve un token de operador. Las demás RPC reciben ese token (`p_operador`), nunca el código.
 export type ValidacionCodigo =
   | { ok: true; token: string; nombre: string; expiraEn: string; ventanaMin: number }
-  | { ok: false; bloqueadoMin?: number; intentosRestantes?: number };
+  | { ok: false; bloqueadoMin?: number; intentosRestantes?: number; motivo?: 'equipo_no_compartido' };
 
 export async function validarCodigoOperador(codigo: string, deviceId: string | null): Promise<ValidacionCodigo> {
   const sb = getServerClient();
@@ -326,6 +326,7 @@ export async function validarCodigoOperador(codigo: string, deviceId: string | n
     ventana_min?: number;
     bloqueado_min?: number;
     intentos_restantes?: number;
+    motivo?: string;
   };
   if (r.ok && r.token) {
     return {
@@ -336,7 +337,12 @@ export async function validarCodigoOperador(codigo: string, deviceId: string | n
       ventanaMin: Number(r.ventana_min) || 0,
     };
   }
-  return { ok: false, bloqueadoMin: r.bloqueado_min, intentosRestantes: r.intentos_restantes };
+  return {
+    ok: false,
+    bloqueadoMin: r.bloqueado_min,
+    intentosRestantes: r.intentos_restantes,
+    motivo: r.motivo === 'equipo_no_compartido' ? 'equipo_no_compartido' : undefined,
+  };
 }
 
 // ¿El equipo de esta cookie `sci_device` está marcado como compartido? (RPC definer: la tabla
