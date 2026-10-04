@@ -51,3 +51,9 @@ jobs:
 
       - name: Tests unitarios (@scilb/core)
         run: pnpm --filter @scilb/core test
+
+      # `apps/erp-web` no tiene vitest propio: se le presta el de packages/core, igual que el
+      # paso 4 de tools/verificar-local.sh. Sin este paso los tests de lib/__tests__ pasaban en
+      # local y CI nunca los corría: un test verde que nadie ejecuta da confianza sin respaldo.
+      - name: Tests de los repos de erp-web
+        run: pnpm --filter @scilb/core exec vitest run --root ../../apps/erp-web --reporter=dot lib/__tests__
