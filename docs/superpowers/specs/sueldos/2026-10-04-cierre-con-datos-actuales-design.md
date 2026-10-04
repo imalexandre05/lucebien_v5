@@ -32,7 +32,8 @@ capacitaciones. No compara **montos** ni **asistencia**.
   «fila fantasma»): se mantiene el `for update` de la fila de la liquidación (evita dos cierres
   simultáneos); el sellado va por la **lista explícita de ids** de movimientos y ventas pendientes
   capturada en una sola sentencia, no por rango, de modo que una fila insertada después de la
-  captura no se sella (queda pendiente para el período que corresponda); y tras sellar se verifica
+  captura no se sella (queda sin sellar, huérfana en un período ya cerrado: es el caso del ticket
+  imalexandre05/lucebien-tablero#29, fuera de alcance); y tras sellar se verifica
   que lo sellado sea exactamente lo que la entrada guardada pagó, y si no, se aborta y se deshace
   todo (cubre la fila insertada entre la comparación y la captura).
 - El conteo actual se **conserva** como primera barrera barata; la comparación completa va después.
