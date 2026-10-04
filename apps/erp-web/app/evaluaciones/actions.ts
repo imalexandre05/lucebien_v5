@@ -74,8 +74,6 @@ export async function accionCrearEvaluacion(input: {
     const r = armarEvaluacionAGuardar(data, escala, {
       competencias: m.competencias,
       examenes: m.examenes,
-      descuentoIncidencias: m.descuentoIncidencias,
-      bonusVentas: m.bonusVentas,
     });
     const id = await crearEvaluacion({
       empleadoId: input.empleadoId,
