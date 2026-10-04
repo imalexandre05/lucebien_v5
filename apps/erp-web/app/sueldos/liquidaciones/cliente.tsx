@@ -246,7 +246,14 @@ export function LiquidacionesCliente({
       if (!d.ok) return fallo(d);
       const r = await accionCrearBorrador(l.acuerdoId, l.periodoDesde, l.periodoHasta);
       if (r.ok) router.refresh();
-      else fallo(r);
+      else {
+        // El borrador viejo ya se descartó: se dice, para que no se busque en la lista.
+        fallo({
+          ...r,
+          error: `${r.error ?? 'No se pudo recalcular.'} El borrador anterior ya se descartó; corrige lo indicado y vuelve a calcular el período.`,
+        });
+        router.refresh();
+      }
     });
   };
 
