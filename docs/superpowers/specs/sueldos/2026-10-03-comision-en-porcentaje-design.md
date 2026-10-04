@@ -36,6 +36,10 @@ sueldo (crítica) · **Nivel:** spec + tests + verificador.
   se deriva del texto, nunca al revés mientras se edita. Un texto inválido muestra el error bajo el
   campo y **bloquea guardar el contrato** (no se guarda un valor viejo en silencio).
 - El resumen de parámetros propios muestra la comisión como `1,5 %`.
+- El placeholder de los parámetros del contrato **no muestra un número**: dice «Si lo dejas vacío se
+  usa el valor de Configuración». Antes mostraba `PARAMETROS_SUELDO_DEFAULT` del core, que no es el
+  global real: si el global es 3 %, se leía «2». La pantalla no recibe el global y no se agrega una
+  consulta nueva para eso (ajuste del 4-oct-2026). `metaSemanal` mantiene «sin meta pactada».
 - `/configuracion` muestra y edita `sueldo_pct_comision` en porcentaje (etiqueta «Comisión sobre
   ventas (%)», default visible `2`), y guarda la fracción. La validación del servidor de
   `/configuracion` sigue mirando la fracción contra `min 0`/`max 1`.
@@ -55,6 +59,10 @@ usuario, que llegó por la sesión maestra el 4-oct-2026:
   escribe 2». Al guardar se abre un diálogo de confirmación (`DialogoConfirmar`, tono `aviso`), y
   sólo se guarda si la persona confirma.
 - Aplica al contrato (`sueldos/acuerdos`) y a `/configuracion` (`sueldo_pct_comision`).
+- **Sólo pregunta si el valor cambió** (ajuste del 4-oct-2026, verificación de la sesión maestra).
+  En `/configuracion`, contra el valor guardado. En un contrato existente, contra la comisión que
+  ya tenía guardada. Un contrato nuevo pregunta siempre que la comisión esté en el rango del aviso.
+  Una comisión ya guardada en ese rango no vuelve a preguntar en cada guardado.
 - **El umbral 0,5 % es un default de interfaz**, no una regla de negocio. Vive como constante
   comentada (`UMBRAL_AVISO_COMISION` en `lib/porcentaje.ts`) y figura en
   `docs/pendientes-negocio.md` como «umbral de aviso, confirmar con el cliente». El servidor no lo
