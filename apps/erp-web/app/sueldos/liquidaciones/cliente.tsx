@@ -166,6 +166,8 @@ export function LiquidacionesCliente({
   const [errorCorregir, setErrorCorregir] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [codigo, setCodigo] = useState<string | null>(null);
+  // El borrador cuyo cierre se rechazó por DESACTUALIZADA: es el que «Recalcular borrador» reemplaza.
+  const [desactualizada, setDesactualizada] = useState<LiquidacionResumen | null>(null);
   const [pendiente, empezar] = useTransition();
   const conf = useConfirmacion();
 
@@ -176,6 +178,7 @@ export function LiquidacionesCliente({
   const limpiar = () => {
     setError(null);
     setCodigo(null);
+    setDesactualizada(null);
   };
 
   const elegirAcuerdo = (id: string) => {
@@ -222,9 +225,28 @@ export function LiquidacionesCliente({
           if (r.ok) {
             conf.cerrar();
             router.refresh();
-          } else fallo(r);
+          } else {
+            // El diálogo de confirmación tapa el banner: se cierra para que se vea el motivo y,
+            // si los datos cambiaron, el botón para recalcular.
+            if (r.codigo === 'DESACTUALIZADA') conf.cerrar();
+            fallo(r);
+            if (r.codigo === 'DESACTUALIZADA') setDesactualizada(l);
+          }
         });
       },
+    });
+  };
+
+  // «Recalcular borrador»: descarta el borrador desactualizado y guarda uno nuevo del mismo contrato
+  // y rango. Reutiliza las dos acciones que ya existen; el total lo vuelve a calcular el servidor.
+  const recalcular = (l: LiquidacionResumen) => {
+    limpiar();
+    empezar(async () => {
+      const d = await accionEliminarBorrador(l.id);
+      if (!d.ok) return fallo(d);
+      const r = await accionCrearBorrador(l.acuerdoId, l.periodoDesde, l.periodoHasta);
+      if (r.ok) router.refresh();
+      else fallo(r);
     });
   };
 
@@ -389,9 +411,20 @@ export function LiquidacionesCliente({
           )}
           {codigo === 'DESACTUALIZADA' && (
             <p className="mt-1 text-apoyo">
-              Se cargó algo después de calcular. Descartá el borrador, volvé a calcular y cerrá de
-              nuevo: si no, esa fila quedaría sellada sin estar en el pago.
+              Se cargó o se corrigió algo después de calcular. Recalcula el borrador y ciérralo de
+              nuevo: si no, ese dato quedaría fuera del pago o sellado sin estar en él.
             </p>
+          )}
+          {codigo === 'DESACTUALIZADA' && desactualizada && (
+            <div className="mt-3">
+              <Button
+                variant="outline"
+                onClick={() => recalcular(desactualizada)}
+                pending={pendiente}
+              >
+                Recalcular borrador
+              </Button>
+            </div>
           )}
           {codigo === 'PARCIAL' && (
             <p className="mt-1 text-apoyo font-medium">
