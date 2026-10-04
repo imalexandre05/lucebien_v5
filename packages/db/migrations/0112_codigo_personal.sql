@@ -27,6 +27,8 @@
 --   codigo_max_intentos          = 5   fallos permitidos antes de bloquear la sesión
 --   codigo_ventana_intentos_min  = 15  minutos que cuenta cada fallo
 --   codigo_operador_min          = 10  minutos de operador activo sin actividad
+--   codigo_operador_max_h        = 8   horas máximas de vida de un token desde su emisión (un
+--                                      turno), aunque se renueve por actividad (spec §8)
 --
 -- PERMISOS. Las RPC del pipeline son `security invoker` (la RLS sigue mandando) y por eso los dos
 -- helpers que llaman (`operador_de_token`, `tocar_operador`) llevan `grant execute to authenticated`
@@ -112,7 +114,8 @@ grant select on codigo_intentos to authenticated;   -- la policy lo reduce al ad
 insert into config (clave, valor) values
   ('codigo_max_intentos',         '5'),    -- default provisional (spec §4), sin confirmar
   ('codigo_ventana_intentos_min', '15'),   -- default provisional (spec §4), sin confirmar
-  ('codigo_operador_min',         '10')    -- default provisional (spec §4/§5), sin confirmar
+  ('codigo_operador_min',         '10'),   -- default provisional (spec §4/§5), sin confirmar
+  ('codigo_operador_max_h',       '8')     -- default provisional (spec §8: un turno), sin confirmar
 on conflict (clave) do nothing;
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -152,6 +155,7 @@ as $$
   where o.token = p_token
     and o.sesion_uid = auth.uid()
     and o.expira_en > now()
+    and o.creado_en + make_interval(hours => private.codigo_param('codigo_operador_max_h', 8)) > now()
     and e.activo
   limit 1;
 $$;
@@ -165,13 +169,25 @@ as $$
 declare v_min int;
 begin
   v_min := private.codigo_param('codigo_operador_min', 10);
+  -- La renovación nunca pasa de la vida máxima desde la emisión (codigo_operador_max_h).
   update public.codigo_operadores
-    set expira_en = now() + make_interval(mins => v_min)
+    set expira_en = least(now() + make_interval(mins => v_min),
+                          creado_en + make_interval(hours => private.codigo_param('codigo_operador_max_h', 8)))
     where token = p_token and sesion_uid = auth.uid() and expira_en > now();
 end;
 $$;
 revoke execute on function private.tocar_operador(uuid) from public, anon;
 grant execute on function private.tocar_operador(uuid) to authenticated;
+
+-- «cambiar» en la pantalla: revoca el token en la base (no basta olvidarlo en el navegador). Sólo
+-- borra tokens de la propia sesión, así que no sirve para tumbar el de otra persona.
+create or replace function pipeline_cerrar_operador(p_token uuid)
+  returns void language sql volatile security definer set search_path = public
+as $$
+  delete from public.codigo_operadores where token = p_token and sesion_uid = auth.uid();
+$$;
+revoke execute on function pipeline_cerrar_operador(uuid) from public, anon;
+grant execute on function pipeline_cerrar_operador(uuid) to authenticated;
 
 -- Quién actúa en una RPC del pipeline: la sesión si no hay token; si hay, el dueño del token
 -- (y se renueva su ventana). Token inválido, ajeno o vencido → excepción, y no se escribe nada.
