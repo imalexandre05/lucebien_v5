@@ -1124,3 +1124,12 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     advertencias,
   };
 }
+
+/**
+ * Conserva sólo los elementos cuya `fecha` es hoy o anterior. `hoy` lo entrega quien invoca (hora
+ * Perú): el core no llama `new Date()`. Sirve para que una acción masiva no declare días futuros.
+ */
+export function soloHastaHoy<T extends { fecha: string }>(items: readonly T[], hoy: string): T[] {
+  validarFecha(hoy, 'soloHastaHoy (hoy)');
+  return items.filter((i) => validarFecha(i.fecha, 'soloHastaHoy') <= hoy);
+}

@@ -7,6 +7,7 @@ import {
   diaSemanaISO,
   sueldoSugerido,
   finDePeriodo,
+  soloHastaHoy,
   PARAMETROS_SUELDO_DEFAULT,
   type EntradaLiquidacion,
   type RegistroVenta,
@@ -1065,5 +1066,26 @@ describe('aviso de horas estimadas por el sistema (RPC sueldo_entrada, migració
     const aviso = l.advertencias.find((a) => a.includes('hora puesta por el sistema'));
     expect(aviso).toMatch(/^1 día\(s\) tienen una hora puesta por el sistema.*2025-07-10/);
     expect(l.total).toBe(base.total);
+  });
+});
+
+describe('soloHastaHoy', () => {
+  const dias = ['2026-10-03', '2026-10-04', '2026-10-05'].map((fecha) => ({ fecha }));
+
+  it('incluye hoy y excluye mañana', () => {
+    expect(soloHastaHoy(dias, '2026-10-04').map((d) => d.fecha)).toEqual(['2026-10-03', '2026-10-04']);
+  });
+  it('si hoy es anterior a todo, no queda nada; si es posterior, queda todo', () => {
+    expect(soloHastaHoy(dias, '2026-10-02')).toEqual([]);
+    expect(soloHastaHoy(dias, '2026-10-05')).toHaveLength(3);
+  });
+  it('lista vacía y sin mutar la entrada', () => {
+    expect(soloHastaHoy([], '2026-10-04')).toEqual([]);
+    soloHastaHoy(dias, '2026-10-04');
+    expect(dias).toHaveLength(3);
+  });
+  it('rechaza fechas inválidas', () => {
+    expect(() => soloHastaHoy(dias, '04/10/2026')).toThrow();
+    expect(() => soloHastaHoy([{ fecha: '2026-10-31x' }], '2026-10-04')).toThrow();
   });
 });

@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../../lib/auth';
+import { soloHastaHoy } from '@scilb/core';
+import { hoyPeru } from '../../../lib/fechas';
 import { declararDia, type CondicionDia } from '../../../lib/asistencias-repo';
 
 /**
@@ -62,7 +64,8 @@ export async function accionDeclararVarios(dias: DiaForm[]): Promise<Resultado &
 
   const fallos: string[] = [];
   let hechos = 0;
-  for (const d of dias) {
+  // El servidor no confía en la lista del cliente: los días futuros no entran en la acción masiva.
+  for (const d of soloHastaHoy(dias, hoyPeru())) {
     try {
       await declararDia(d);
       hechos += 1;
