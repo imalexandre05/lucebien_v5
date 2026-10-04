@@ -20,9 +20,20 @@ const ms = (f: string): number => {
 };
 const fmt = (t: number): string => new Date(t).toISOString().slice(0, 10);
 
-/** `true` sólo para una fecha 'YYYY-MM-DD' que existe en el calendario (rechaza 2026-02-30). */
+// Años que se aceptan desde la URL. DEFAULT DE PANTALLA, no regla de negocio: fuera de este margen
+// una fecha como 9999-12-31 empuja la semana al año 10000, toISOString() devuelve '+010000-…' y la
+// consulta revienta. Una fecha fuera del margen se trata como inválida y cae a hoy.
+const ANIO_MIN = 2000;
+const ANIO_MAX = 2100;
+
+/**
+ * `true` sólo para una fecha 'YYYY-MM-DD' que existe en el calendario (rechaza 2026-02-30) y cuyo
+ * año está entre ANIO_MIN y ANIO_MAX.
+ */
 export function esFechaValida(f: unknown): f is string {
-  return typeof f === 'string' && ES_FECHA.test(f) && fmt(ms(f)) === f;
+  if (typeof f !== 'string' || !ES_FECHA.test(f) || fmt(ms(f)) !== f) return false;
+  const anio = Number(f.slice(0, 4));
+  return anio >= ANIO_MIN && anio <= ANIO_MAX;
 }
 
 /** Suma (o resta) días a una fecha. */

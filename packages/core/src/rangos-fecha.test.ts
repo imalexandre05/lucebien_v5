@@ -98,6 +98,17 @@ describe('resolverRango', () => {
     expect(esFechaValida('2028-02-29')).toBe(true);
   });
 
+  it('un año fuera de 2000–2100 cae a hoy (9999-12-31 no empuja la semana al año 10000)', () => {
+    expect(esFechaValida('9999-12-31')).toBe(false);
+    expect(esFechaValida('1999-12-31')).toBe(false);
+    expect(esFechaValida('2000-01-01')).toBe(true);
+    expect(esFechaValida('2100-12-31')).toBe(true);
+    expect(resolverRango({ vista: 'semana', desde: '9999-12-31' }, hoy, null)?.rango).toEqual({
+      desde: '2026-09-28',
+      hasta: '2026-10-04',
+    });
+  });
+
   it('rango invertido se da vuelta; el extremo que falta se completa con el otro', () => {
     expect(resolverRango({ vista: 'rango', desde: '2026-10-10', hasta: '2026-10-01' }, hoy, null)?.rango).toEqual({
       desde: '2026-10-01',
@@ -114,6 +125,18 @@ describe('recortarRango', () => {
   it('deja igual un rango dentro del tope', () => {
     const r = { desde: '2026-01-01', hasta: '2026-12-31' };
     expect(recortarRango(r, 366)).toEqual({ rango: r, recortado: false });
+  });
+
+  it('borde exacto: 366 días no se recorta, 367 se recorta a 366', () => {
+    const r366 = { desde: '2025-10-03', hasta: '2026-10-03' };
+    expect(diasDelRango(r366)).toBe(366);
+    expect(recortarRango(r366, 366)).toEqual({ rango: r366, recortado: false });
+
+    const r367 = { desde: '2025-10-02', hasta: '2026-10-03' };
+    expect(diasDelRango(r367)).toBe(367);
+    const { rango, recortado } = recortarRango(r367, 366);
+    expect(recortado).toBe(true);
+    expect(rango).toEqual(r366);
   });
 
   it('conserva hasta y corta desde a maxDias', () => {
