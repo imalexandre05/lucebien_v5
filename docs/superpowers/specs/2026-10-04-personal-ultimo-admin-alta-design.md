@@ -9,7 +9,7 @@ grants por columna.
 
 | Ítem | Hallazgo |
 |---|---|
-| 1 | `empleado_actualizar` tiene una sola definición, la de `0050` (`0067` y `0104` sólo la mencionan en comentarios). Cambia `empleados.rol`/`rol_cod` sin ninguna comprobación de administradores: un admin puede degradarse a sí mismo o al último y dejar la empresa sin administrador. `empleado_borrar_alta` (0099 §3) y `actualizarEstadoEmpleado()` (suspender) sí la tienen. |
+| 1 | `empleado_actualizar` tiene una sola definición, la de `0050` (`0067` y `0104` sólo la mencionan en comentarios). Cambia `empleados.rol`/`rol_cod` sin ninguna comprobación de administradores: un admin puede quitarse el rol a sí mismo (el chequeo sólo puede saltar cuando `p_id = auth.uid()`, porque quien llama ya es admin activo) y dejar la empresa sin administrador. `empleado_borrar_alta` (0099 §3) y `actualizarEstadoEmpleado()` (suspender) sí la tienen. |
 | 2 | `empleadoBorrarAlta()` (`empleados-repo.ts`) sólo llama a la RPC: el usuario de Auth queda vivo, con su email `{cod}@lucebien.local`. `crearEmpleado()` elige el código con `elegirCodigoLibre()` pasándole únicamente `empleados.cod`, así que un código cuyo empleado se borró pero cuyo usuario de Auth sigue vivo se puede volver a elegir y `createUser` falla por email duplicado. |
 | 3 | El máximo real de un documento es 10 MB: `TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024` (`documentos-repo.ts`) y `file_size_limit = 10485760` del bucket `empleado-documentos` (`0105`). `next.config.mjs` no define `serverActions.bodySizeLimit`, y Next 14.2 usa 1 MB por defecto: la subida llega como `FormData` a `accionSubirDocumento` y se corta antes de llegar a la validación de 10 MB. |
 
@@ -25,8 +25,9 @@ Aplicado al cambio de rol: tras calcular el rol efectivo (`v_rol`), si el emplea
 activo, se lanza excepción y no se escribe nada. Cambiar entre `admin` y `dueno` sí se permite
 (sigue habiendo administrador). El mensaje sigue el de 0099, adaptado a la acción y sin voseo:
 `No se puede quitar el rol de administrador al último administrador activo. Nombra a otro administrador antes de cambiar el rol de este.`
-(prefijo `ESTADO:` como en 0099; el resto de la RPC no usa prefijos, se conserva el de 0099 porque
-es el que el repo ya traduce.)
+(Sin prefijo `ESTADO:`: `actualizarEmpleado` muestra `error.message` tal cual y la pantalla
+no traduce prefijos. Un `select ... for update` sobre los admin activos serializa dos cambios
+simultáneos.)
 
 No cambia ningún parámetro de negocio ni se inventa regla nueva.
 
@@ -45,6 +46,12 @@ No cambia ningún parámetro de negocio ni se inventa regla nueva.
 ### 3. `experimental.serverActions.bodySizeLimit`
 `'11mb'`: los 10 MB del archivo (techo del bucket y de `TAMANO_MAXIMO_BYTES`) más el sobre
 multipart del `FormData`. Quedar justo en 10 MB rechazaría archivos válidos cercanos al máximo.
+
+**Riesgo abierto (no resuelto aquí).** La documentación del repo (`docs/auditoria-2026-07-02.md`)
+dice que producción corre en Vercel, que corta los pedidos a funciones en 4,5 MB antes de llegar a
+Next. Con `11mb` Next ya no es el freno, pero entre ~4,5 y 10 MB la subida puede seguir fallando
+en producción. Salidas: subida directa a Storage con URL firmada, o bajar el máximo (regla de
+negocio: confirmar con Alexander). Queda anotado en el PR; no se verificó contra el despliegue.
 
 ## Pruebas (antes del código)
 - SQL `packages/db/pruebas/<n>_personal_ultimo_admin.prueba.sql`: (a) el último admin no puede
