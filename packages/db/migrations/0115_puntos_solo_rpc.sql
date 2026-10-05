@@ -481,7 +481,8 @@ revoke execute on function pipeline_calificar(uuid, boolean, text, text, uuid) f
 grant execute on function pipeline_calificar(uuid, boolean, text, text, uuid) to authenticated;
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 4) lavanderia_enviar (0066): el historial de cada prenda ingresada pasa por la función.
---    Mismo cuerpo salvo ese bloque (antes un `insert ... select` directo). Gana `registrado_por`.
+--    Mismo cuerpo salvo ese bloque (antes un `insert ... select` directo). Gana `registrado_por`, y
+--    cada prenda ingresada queda con su historial aunque el código se repita en la lista.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 
 create or replace function lavanderia_enviar(
@@ -533,19 +534,15 @@ begin
     ) values (
       v_activo_id, v_item->>'cod', v_item->>'tipo', v_item->>'color', v_item->>'talla',
       p_sede, v_etapa, v_id
-    );
+    ) returning id into v_pasada;
 
     -- prenda_historial usa empleado_id (uuid, ya migrado del pseudo-FK por nombre TEXT que
     -- describe CLAUDE.md) — v_actor es quien ejecuta el envío, no resp_traslado (nombre libre
-    -- sin garantía de tener cuenta en el sistema). Misma búsqueda de la prenda que antes.
-    select p.id into v_pasada
-      from prenda_pasada p
-      where p.lista_lavanderia_id = v_id and p.codigo = v_item->>'cod'
-      order by p.fecha_ingreso desc limit 1;
-    if v_pasada is not null then
-      perform private.prenda_historial_registrar(v_pasada, null, v_etapa, v_actor,
-        'Lista ' || v_id || coalesce(' · traslado: ' || nullif(p_resp_traslado, ''), ''));
-    end if;
+    -- sin garantía de tener cuenta en el sistema). El id sale del propio insert: la búsqueda
+    -- por (lista, código) de la 0066 elegía UNA prenda cuando el mismo código venía dos veces
+    -- en la lista y dejaba a la otra sin historial.
+    perform private.prenda_historial_registrar(v_pasada, null, v_etapa, v_actor,
+      'Lista ' || v_id || coalesce(' · traslado: ' || nullif(p_resp_traslado, ''), ''));
   end loop;
 
   return v_id;

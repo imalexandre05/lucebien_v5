@@ -18,10 +18,13 @@
 --   B_fuera_de_rango     puntos mayores que el peso máximo configurado para la etapa (config.pts_*;
 --                        si la clave no existe, 1: es lo que usa la RPC), o con el signo cambiado
 --                        (positivo en un rechazo, negativo fuera de un rechazo).
---   C_duplicado          filas idénticas (empleado, prenda, etapa, puntos, detalle, fecha), o el
---                        mismo empleado/prenda/etapa/puntos repetido a menos de 1 minuto.
+--   C_duplicado          el mismo empleado/prenda/etapa/puntos repetido, sea cual sea la distancia
+--                        en el tiempo (tras un deshacer el punto se borra: no debería haber dos).
+--   F_rechazo_sin_negativo  una fila de historial «Rechazado → X» sin su punto `X_rechazo`: ninguna RPC
+--                        borra negativos, así que si falta, alguien lo borró (o no había culpable).
 --   D_prenda_inexistente puntos sin prenda (`pasada_id` nulo, o que no existe en prenda_pasada;
 --                        la FK impide lo segundo, pero se comprueba igual).
+--   F_rechazo_sin_negativo  historial de rechazo sin su punto negativo (el abuso de borrar el castigo).
 --   E_total_mes          total por empleado y mes (hora de Perú) para compararlo con lo que se
 --                        liquidó; `filas_sospechosas` y `puntos_sospechosos` dicen cuánto de ese
 --                        total cae en A–D.
@@ -35,6 +38,10 @@
 --   · Una fila sospechosa NO es una prueba: es la lista de dónde mirar. El historial puede
 --     faltar porque `pipeline_deshacer` lo agrega pero el punto fue borrado, etc. Cada fila trae
 --     el detalle para revisarla.
+--   · NO detecta (límites conocidos): un par punto+historial falsificado juntos; una media pieza
+--     inflada al peso entero; puntos inflados antes de que se SUBIERA un pts_*. E_total_mes agrupa por
+--     mes calendario de Lima, mientras el pago usa el ciclo de liquidación y la fecha en UTC de la
+--     sesión (0091/0095): los puntos de 19:00-24:00 del último día no van a cuadrar al céntimo.
 --   · No dice QUIÉN escribió: la API directa no deja rastro de la sesión. Los pagos ya hechos con
 --     un punto dudoso se revisan a mano con el dueño.
 
@@ -95,20 +102,19 @@ hallazgos as (
      or pe.etapa is null
      or abs(b.puntos) > pe.peso_max
   union all
-  -- C) duplicados exactos o casi (mismo empleado/prenda/etapa/puntos a menos de 1 minuto)
+  -- C) duplicados: idénticos, o el mismo empleado/prenda/etapa/puntos repetido SIN importar el
+  --    tiempo que pasó (una vez deshecho, el punto se borra: un repetido no debería existir)
   select 'C_duplicado', b.id,
-         'otra fila igual: ' || (select count(*) from base o
-                                 where o.id <> b.id and o.empleado_id = b.empleado_id
-                                   and o.pasada_id is not distinct from b.pasada_id
-                                   and o.etapa = b.etapa and o.puntos = b.puntos
-                                   and abs(extract(epoch from (o.fecha - b.fecha))) < 60) || ' a menos de 1 min'
+         'otras ' || (select count(*) from base o
+                       where o.id <> b.id and o.empleado_id = b.empleado_id
+                         and o.pasada_id is not distinct from b.pasada_id
+                         and o.etapa = b.etapa and o.puntos = b.puntos) || ' filas iguales (revisar fechas)'
   from base b
   where exists (
     select 1 from base o
     where o.id <> b.id and o.empleado_id = b.empleado_id
       and o.pasada_id is not distinct from b.pasada_id
-      and o.etapa = b.etapa and o.puntos = b.puntos
-      and abs(extract(epoch from (o.fecha - b.fecha))) < 60)
+      and o.etapa = b.etapa and o.puntos = b.puntos)
   union all
   -- D) sin prenda
   select 'D_prenda_inexistente', b.id,
@@ -123,9 +129,26 @@ detalle as (
          h.motivo || coalesce(' · ' || nullif(b.detalle, ''), '') as motivo, b.id::text as id
   from hallazgos h join base b on b.id = h.id
 ),
+faltantes as (   -- F) rechazo en el historial sin su punto negativo `<etapa>_rechazo`
+  select 'F_rechazo_sin_negativo'::text as seccion, e.nombre as empleado, pp.codigo as prenda,
+         h.etapa_nueva as etapa, null::numeric as puntos, h.fecha,
+         null::text as mes, null::bigint as filas, null::numeric as filas_sospechosas,
+         null::numeric as puntos_sospechosos,
+         'historial «' || h.obs || '» sin punto ' || h.etapa_nueva || '_rechazo (ninguna RPC borra negativos; '
+           || 'es legítimo si no había culpable o el peso era 0)' as motivo,
+         h.id::text as id
+  from prenda_historial h
+  join params on h.fecha >= params.desde
+  left join empleados e on e.id = h.empleado_id
+  left join prenda_pasada pp on pp.id = h.pasada_id
+  where h.obs like 'Rechazado%'
+    and not exists (select 1 from pipeline_puntos p
+                    where p.pasada_id = h.pasada_id and p.etapa = h.etapa_nueva || '_rechazo'
+                      and p.fecha between h.fecha - interval '5 minutes' and h.fecha + interval '5 minutes')
+),
 sospechosa as (select distinct id from hallazgos),
 totales as (
-  select 'E_total_mes'::text as seccion, b.empleado, null::text as prenda, null::text as etapa,
+  select 'E_total_mes'::text as seccion, b.empleado || ' (' || left(b.empleado_id::text, 8) || ')' as empleado, null::text as prenda, null::text as etapa,
          sum(b.puntos) as puntos, null::timestamptz as fecha,
          to_char(date_trunc('month', b.fecha at time zone 'America/Lima'), 'YYYY-MM') as mes,
          count(*) as filas,
@@ -133,13 +156,16 @@ totales as (
          coalesce(sum(b.puntos) filter (where s.id is not null), 0) as puntos_sospechosos,
          null::text as motivo, null::text as id
   from base b left join sospechosa s on s.id = b.id
-  group by b.empleado, to_char(date_trunc('month', b.fecha at time zone 'America/Lima'), 'YYYY-MM')
+  group by b.empleado_id, b.empleado, to_char(date_trunc('month', b.fecha at time zone 'America/Lima'), 'YYYY-MM')
 )
 select seccion, empleado, mes, prenda, etapa, puntos, fecha, filas, filas_sospechosas,
        puntos_sospechosos, motivo, id
 from (
   select seccion, empleado, mes, prenda, etapa, puntos, fecha, filas, filas_sospechosas,
          puntos_sospechosos, motivo, id from detalle
+  union all
+  select seccion, empleado, mes, prenda, etapa, puntos, fecha, filas, filas_sospechosas,
+         puntos_sospechosos, motivo, id from faltantes
   union all
   select seccion, empleado, mes, prenda, etapa, puntos, fecha, filas, filas_sospechosas,
          puntos_sospechosos, motivo, id from totales
