@@ -358,7 +358,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     tipo: 'numero',
     default: '3',
     min: 1,
-    max: 20,
+    max: 100,
     step: 1,
   },
 

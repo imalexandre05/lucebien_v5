@@ -58,7 +58,7 @@ set search_path to ''
 as $function$
   with minimo as (
     select coalesce(
-      (select case when c.valor ~ '^\s*[0-9]+\s*$' and btrim(c.valor)::int >= 1
+      (select case when c.valor ~ '^\s*[0-9]{1,3}\s*$' and btrim(c.valor)::int >= 1
                    then btrim(c.valor)::int end
          from public.config c where c.clave = 'valores_min_evaluaciones'),
       3) as n

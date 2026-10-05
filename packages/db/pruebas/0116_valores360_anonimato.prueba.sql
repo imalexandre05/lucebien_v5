@@ -122,14 +122,14 @@ begin
     else          r := r || format(' [FALLA] con el mínimo en 4 y 3 evaluaciones devolvió %s fila(s);', n); end if;
   exception when others then r := r || format(' [FALLA] mínimo 4: %s;', sqlerrm); end;
 
-  foreach c in array array[0, 1] loop  -- 0 = '0'; 1 = 'abc'
+  foreach c in array array[0, 1, 2] loop  -- 0 = '0'; 1 = 'abc'; 2 = desborda int
     perform set_config('role', v_super, true);
-    update config set valor = case c when 0 then '0' else 'abc' end where clave = 'valores_min_evaluaciones';
+    update config set valor = case c when 0 then '0' when 1 then 'abc' else '99999999999' end where clave = 'valores_min_evaluaciones';
     perform set_config('role', 'authenticated', true);
     begin
       execute $q$ select count(*) from valores_mis_puntajes('2099-01') $q$ into n;
-      if n = 0 then r := r || format(' [ok] mínimo inválido (%s) cae a 3: con 2 evaluaciones no se devuelve nada;', case c when 0 then '0' else 'abc' end);
-      else          r := r || format(' [FALLA] mínimo inválido (%s) apagó el anonimato: devolvió %s fila(s);', case c when 0 then '0' else 'abc' end, n); end if;
+      if n = 0 then r := r || format(' [ok] mínimo inválido (%s) cae a 3: con 2 evaluaciones no se devuelve nada;', case c when 0 then '0' when 1 then 'abc' else '99999999999' end);
+      else          r := r || format(' [FALLA] mínimo inválido (%s) apagó el anonimato: devolvió %s fila(s);', case c when 0 then '0' when 1 then 'abc' else '99999999999' end, n); end if;
     exception when others then r := r || format(' [FALLA] mínimo inválido: %s;', sqlerrm); end;
   end loop;
 

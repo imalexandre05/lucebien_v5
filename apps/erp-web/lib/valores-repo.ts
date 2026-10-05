@@ -179,7 +179,12 @@ export async function miResumenValores(empleadoId: string, mes: string): Promise
       throw new Error(error.message);
     }
     const fila = ((data as MiResultadoValoresFila[] | null) ?? [])[0];
-    if (!fila) return { recibidas: null, promedios: null, nota20: null, minimoEvaluaciones, suficientes: false };
+    // Sin fila, o con una fila sin `cantidad`: la base todavía tiene la función ANTERIOR a 0116, que
+    // devolvía el vector crudo de cada evaluador. Ese formato no se calcula ni se muestra: no hay
+    // mínimo que lo proteja. Se trata como «aún no hay resultado» hasta que se aplique la migración.
+    if (!fila || fila.cantidad == null) {
+      return { recibidas: null, promedios: null, nota20: null, minimoEvaluaciones, suficientes: false };
+    }
     const promedios: Partial<Record<ValorKey, number>> = {};
     for (const { key } of VALORES) promedios[key] = Number(fila[key]);
     return { recibidas: Number(fila.cantidad), promedios, nota20: notaValores360(promedios), minimoEvaluaciones, suficientes: true };
