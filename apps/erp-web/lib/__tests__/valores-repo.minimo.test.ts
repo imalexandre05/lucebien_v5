@@ -15,7 +15,7 @@ import { minimoEvaluacionesValores } from '../valores-repo';
 
 describe('minimoEvaluacionesValores', () => {
   it('usa 3 si la clave falta', () => expect(minimoEvaluacionesValores({})).toBe(3));
-  it.each(['', '  ', '0', '-2', 'abc', '2.5', '1e3'])('cae a 3 con %j', (v) =>
+  it.each(['', '  ', '0', '-2', 'abc', '2.5', '1e3', '1000', '99999999999'])('cae a 3 con %j', (v) =>
     expect(minimoEvaluacionesValores({ valores_min_evaluaciones: v })).toBe(3));
   it.each([['1', 1], [' 4 ', 4], ['5', 5], ['17', 17]])('lee %j como %i', (v, n) =>
     expect(minimoEvaluacionesValores({ valores_min_evaluaciones: v })).toBe(n));

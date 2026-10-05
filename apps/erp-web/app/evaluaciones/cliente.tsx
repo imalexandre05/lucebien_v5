@@ -683,7 +683,7 @@ export function EvaluacionesCliente({
                       <TR className="hover:bg-transparent">
                         <TD colSpan={5} className="bg-paper/50 px-6 py-4">
                           {e.componentes ? (
-                            <PerfilComponentes componentes={e.componentes} pesos={e.pesosUsados ?? (pesos as unknown as Record<string, number>)} />
+                            <PerfilComponentes valoresOculto={e.valoresOculto} componentes={e.componentes} pesos={e.pesosUsados ?? (pesos as unknown as Record<string, number>)} />
                           ) : (
                             <p className="text-apoyo text-muted">Esta evaluación no guardó desglose por componente.</p>
                           )}

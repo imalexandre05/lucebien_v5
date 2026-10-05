@@ -138,7 +138,8 @@ export const MINIMO_EVALUACIONES_VALORES_DEFAULT = 3;
 
 export function minimoEvaluacionesValores(cfg: Record<string, string>): number {
   const crudo = (cfg.valores_min_evaluaciones ?? '').trim();
-  const n = /^\d+$/.test(crudo) ? Number(crudo) : NaN;
+  // 1 a 3 dígitos, igual que la función SQL (0116): un valor más largo cae a 3 en las dos capas.
+  const n = /^\d{1,3}$/.test(crudo) ? Number(crudo) : NaN;
   return Number.isInteger(n) && n >= 1 ? n : MINIMO_EVALUACIONES_VALORES_DEFAULT;
 }
 

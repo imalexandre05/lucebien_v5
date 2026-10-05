@@ -3,6 +3,7 @@
 // pipeline) más su última evaluación mensual. Consultas explícitamente acotadas al propio id
 // (independiente del alcance más amplio por sede que tiene la RLS de reportes/incidencias).
 import { getServerClient } from './supabase/server';
+import { VALORES, notaValores360, type ValorKey } from '@scilb/core';
 import { getSesion } from './auth';
 
 /**
@@ -101,22 +102,30 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
 
   const evalRow = evalRes.data as Record<string, unknown> | null;
 
-  // La nota de Valores 360° guardada en `componentes.valores` es, con pocas evaluaciones, el voto de
-  // una persona. Quien mira lo SUYO la ve sólo si `valores_mis_puntajes` (0116) devuelve fila para
-  // el mes de la evaluación: mes cerrado y con el mínimo. Un administrador mirando a OTRA persona
-  // ve todo (esa lectura la autoriza la RLS). Si la función es la anterior a 0116 o falla, se oculta:
-  // ante la duda, no se muestra. El valor guardado no se toca: el pago sigue leyéndolo igual.
+  // La nota de Valores 360° guardada en `componentes.valores` se calculó cuando el administrador
+  // evaluó, tal vez EN VIVO y con menos votos que el mínimo: con uno solo, es el voto de una
+  // persona. Quien mira lo SUYO no ve ese número guardado: ve el que devuelve `valores_mis_puntajes`
+  // (0116) para el mes de la evaluación, que sólo existe si el mes está cerrado y con el mínimo. Si
+  // no hay fila, o la función es anterior a 0116 o falla, se oculta: ante la duda, no se muestra. Un
+  // administrador mirando a OTRA persona ve todo (esa lectura la autoriza la RLS). El valor guardado
+  // no se toca: el pago sigue leyéndolo igual.
   const sesion = await getSesion();
   let valoresOculto = false;
+  let componentes = (evalRow?.componentes as Record<string, number> | null) ?? null;
   if (evalRow && sesion?.usuario.id === empleadoId) {
     const { data: vp, error: vpError } = await sb.rpc('valores_mis_puntajes', { p_mes: String(evalRow.mes ?? '') });
-    const fila = vpError ? null : ((vp as { cantidad?: number }[] | null) ?? [])[0];
+    const fila = vpError ? undefined : ((vp as Record<string, number | string>[] | null) ?? [])[0];
     valoresOculto = !fila || fila.cantidad == null;
-  }
-  let componentes = (evalRow?.componentes as Record<string, number> | null) ?? null;
-  if (valoresOculto && componentes) {
-    const { valores: _v, valoresCantidad: _c, ...resto } = componentes;
-    componentes = resto;
+    if (componentes) {
+      const { valores: _v, valoresCantidad: _c, ...resto } = componentes;
+      componentes = resto;
+      if (fila && !valoresOculto) {
+        const promedios: Partial<Record<ValorKey, number>> = {};
+        for (const { key } of VALORES) promedios[key] = Number(fila[key]);
+        const nota = notaValores360(promedios);
+        if (nota != null) componentes = { ...componentes, valores: nota, valoresCantidad: Number(fila.cantidad) };
+      }
+    }
   }
 
   const ultimaEvaluacion: MiEvaluacion = evalRow
