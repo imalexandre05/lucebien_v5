@@ -84,3 +84,40 @@ Nada se aplica a ninguna base: la migración queda para que la aplique Alexander
 - Con exactamente 3 evaluaciones, quien conozca su propio voto acota los otros dos; es el mínimo
   razonable para un equipo chico. Subirlo es editar una clave.
 - Los encargados dejan de ver quién puntuó. Es intencional: es la decisión del dueño.
+
+---
+
+## 6. Regla única: nunca en vivo (decisión del dueño, 05-oct-2026, tras la verificación)
+
+El verificador encontró tres caminos por los que un no-administrador veía su resultado sin pasar por
+el mínimo del §2.2 (o lo veía en vivo, lo que permite despejar cada voto nuevo restando dos lecturas
+consecutivas). El dueño decidió cerrar las tres con **una sola regla**, que **reemplaza** lo que el
+§2.2 dice sobre el mes consultado:
+
+> **El resultado de Valores 360° que ve un no-administrador es siempre el de un MES YA CERRADO
+> (mes < mes actual, hora Perú) y sólo si ese mes tiene ≥ `valores_min_evaluaciones` evaluaciones.
+> Nunca en vivo.**
+
+El administrador no cambia: ve todo, en vivo, y la nota del mes que calcula para la evaluación y el
+pago no se toca (no-negociable 1).
+
+| # | Camino | Qué cambia |
+|---|---|---|
+| 1 | RPC `valores_mis_puntajes` | Deja de recibir «el mes en curso». Devuelve el **último mes cerrado que cumpla el mínimo** (con una columna `mes` que dice cuál). `p_mes` pasa a ser opcional: si se pasa un mes en curso o futuro, o sin mínimo, devuelve vacío. Lecturas sucesivas ya no revelan votos nuevos: el mes cerrado no cambia. |
+| 2 | `/mi-desempeno` | La nota de Valores 360° guardada en `evaluaciones_mensuales.componentes.valores` sólo se muestra si `valores_mis_puntajes(mes de la evaluación)` devuelve fila (mes cerrado, con mínimo). Si no: «Aún no hay suficientes evaluaciones» y la barra de Valores 360° se oculta. El valor guardado no se modifica. |
+| 3 | `public.evaluacion_componentes` (envoltorio) | Si quien llama **no es administrador** (sólo puede ser sí mismo), `valores` y `valoresCantidad` vienen en `null` salvo que el mes de `p_desde` esté cerrado y alcance el mínimo. Para el administrador no cambia nada, y **`private.evaluacion_componentes_datos` no se toca** (alimenta la evaluación y el pago). |
+
+### Pruebas SQL añadidas (en la misma prueba 0116, antes del código)
+- Con 3 votos en el **mes en curso** no se ve nada por ninguna de las tres vías hasta que el mes cierre.
+- Mes cerrado con 2 votos → vacío; con 3 → una fila con `mes`, `cantidad` y promedios.
+- Con dos meses cerrados que cumplen, devuelve el más reciente; con el más reciente sin mínimo, cae al anterior que sí cumple.
+- `evaluacion_componentes` a sí mismo: `valores`/`valoresCantidad` en `null` en el mes en curso y con mínimo no alcanzado; presentes en mes cerrado con mínimo.
+- `evaluacion_componentes` como administrador: idéntico a antes, en vivo.
+
+### Riesgos residuales (no se cierran aquí)
+- Un evaluador puede insertar por la API un voto con `mes` pasado (la policy de escritura sólo pide
+  `evaluador_id = auth.uid()`); eso movería un mes ya cerrado. Es el ítem «mes evaluado» del ticket,
+  fuera de alcance.
+- `evaluaciones_mensuales.nota_final` (método ponderado) incluye el componente de valores y se muestra
+  a la propia persona; deducir de ahí el voto de un solo evaluador exigiría que el mes ya esté cerrado
+  y evaluado, pero no está sujeto al mínimo. Queda anotado para decisión del dueño.
