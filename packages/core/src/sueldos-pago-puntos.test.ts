@@ -11,10 +11,10 @@ import {
 // Pago por puntos sobre la meta mensual.
 // Spec: docs/superpowers/specs/sueldos/2026-10-05-pago-por-puntos-design.md §3 y §6.
 //
-// Estos tests se escribieron ANTES del código (Zone Guard, no-negociable 6). Mientras el código no
-// existe, el bloque va en `describe.skip`; el commit que escribe el código lo activa sin tocar ni
-// una aserción. Las dos claves nuevas se arman con un tipo ampliado para que el archivo compile
-// antes y después de que `ParametrosSueldo`/`EntradaLiquidacion` las tengan.
+// Estos tests se escribieron ANTES del código (Zone Guard, no-negociable 6) y se activaron en el
+// commit que lo escribió sin tocar ni una aserción. Las dos claves nuevas se arman con un tipo
+// ampliado (intersección inocua hoy) para que el archivo compilara antes de que
+// `ParametrosSueldo`/`EntradaLiquidacion` las tuvieran.
 
 type Entrada = EntradaLiquidacion & { puntosPeriodo?: number };
 type Params = Partial<ParametrosSueldo> & { puntosMetaMensual?: number | null; solesPorPunto?: number | null };
@@ -41,7 +41,7 @@ const SEMANAL = tramo('2026-10-05', '2026-10-11'); // 7 de 31 días
 const PAGO: Params = { puntosMetaMensual: 5000, solesPorPunto: 0.05 };
 const linea = (l: ReturnType<typeof liquidarPeriodo>) => l.lineas.find((x) => x.concepto === 'Bono por puntos');
 
-describe.skip('pago por puntos (spec §6)', () => {
+describe('pago por puntos (spec §6)', () => {
   it('1. parámetros vacíos → ninguna línea y liquidación idéntica a la de hoy', () => {
     const hoy = liquidarPeriodo(MENSUAL);
     // Con muchos puntos pero sin parámetros: nada cambia, ni una línea ni un centavo.
