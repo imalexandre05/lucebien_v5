@@ -9,7 +9,11 @@
 --   3. `valores_mis_puntajes` devuelve vacío con menos del mínimo (default 3) y, con el mínimo,
 --      UNA fila con la cantidad y los promedios por valor — nunca el vector de un evaluador,
 --   4. el mínimo se lee de config y un valor inválido (0, 'abc') cae a 3 en vez de apagar el anonimato,
---   5. `anon` no ejecuta la función.
+--   5. `anon` no ejecuta la función,
+--   6. spec §6: el resultado de un no-administrador es SIEMPRE de un mes cerrado y con mínimo, nunca en
+--      vivo — por la función, y por `evaluacion_componentes` llamada a sí mismo; el administrador
+--      sigue viendo el mes en curso. Los meses de prueba son 2000-0x (cerrados); el mes en curso se
+--      calcula en hora Perú.
 --
 -- Cada comprobación de la función va en su propio bloque con `exception`: contra el estado ANTERIOR
 -- a la migración (donde la función no tiene `cantidad`) la prueba tiene que fallar con [FALLA], no
@@ -37,6 +41,9 @@ declare
   c         int;
   p_int     numeric;
   p_res     numeric;
+  mes_hoy   text := to_char(now() at time zone 'America/Lima', 'YYYY-MM');
+  j         jsonb;
+  r_mes     text;
 begin
   insert into empleados(id, cod, nombre, iniciales, rol) values
     (admin_id, 'T-ADM', 'Prueba Admin 0116',   'PA', 'admin'),
@@ -50,16 +57,22 @@ begin
   insert into permisos_modulos(rol, modulo, acciones) values ('encargado_tienda', 'datos_personas', array['ver'])
   on conflict (rol, modulo) do update set acciones = array['ver'];
 
-  -- 2099-01: 2 evaluaciones (no alcanza). 2099-02: 3 (alcanza). 2099-03: 3 más, para el mínimo en 4.
+  -- 2000-01: 2 evaluaciones (no alcanza). 2000-02: 3 (alcanza). 2000-03: 3 más, para el mínimo en 4.
   insert into evaluaciones_valores(evaluador_id, evaluado_id, mes, integridad, respeto, honestidad, amabilidad, relacion, actitud) values
-    (ev1, evaluada, '2099-01', 5, 5, 5, 5, 5, 5),
-    (ev2, evaluada, '2099-01', 1, 1, 1, 1, 1, 1),
-    (ev1, evaluada, '2099-02', 3, 5, 4, 4, 4, 4),
-    (ev2, evaluada, '2099-02', 4, 5, 4, 4, 4, 4),
-    (ev3, evaluada, '2099-02', 5, 4, 4, 4, 4, 4),
-    (ev1, evaluada, '2099-03', 3, 3, 3, 3, 3, 3),
-    (ev2, evaluada, '2099-03', 3, 3, 3, 3, 3, 3),
-    (ev3, evaluada, '2099-03', 3, 3, 3, 3, 3, 3);
+    (ev1, evaluada, '2000-01', 5, 5, 5, 5, 5, 5),
+    (ev2, evaluada, '2000-01', 1, 1, 1, 1, 1, 1),
+    (ev1, evaluada, '2000-02', 3, 5, 4, 4, 4, 4),
+    (ev2, evaluada, '2000-02', 4, 5, 4, 4, 4, 4),
+    (ev3, evaluada, '2000-02', 5, 4, 4, 4, 4, 4),
+    (ev1, evaluada, '2000-03', 3, 3, 3, 3, 3, 3),
+    (ev2, evaluada, '2000-03', 3, 3, 3, 3, 3, 3),
+    (ev3, evaluada, '2000-03', 3, 3, 3, 3, 3, 3),
+    -- 2000-04: 2 votos (cerrado, sin mínimo). Mes en curso (hora Perú): 3 votos, que NO se ven en vivo.
+    (ev1, evaluada, '2000-04', 4, 4, 4, 4, 4, 4),
+    (ev2, evaluada, '2000-04', 4, 4, 4, 4, 4, 4),
+    (ev1, evaluada, mes_hoy, 5, 5, 5, 5, 5, 5),
+    (ev2, evaluada, mes_hoy, 5, 5, 5, 5, 5, 5),
+    (ev3, evaluada, mes_hoy, 5, 5, 5, 5, 5, 5);
   insert into config(clave, valor) values ('valores_min_evaluaciones', '3')
   on conflict (clave) do update set valor = '3';
 
@@ -74,13 +87,13 @@ begin
   -- ── 2) Administrador y evaluador ─────────────────────────────────────────────────────────
   perform set_config('request.jwt.claims', json_build_object('sub', admin_id, 'role','authenticated')::text, true);
   select count(*) into n from evaluaciones_valores where evaluador_id in (ev1, ev2, ev3);
-  if n = 8 then r := r || ' [ok] el administrador ve las 8 filas con su evaluador;';
-  else          r := r || format(' [FALLA] el administrador ve %s fila(s) en vez de 8;', n); end if;
+  if n = 13 then r := r || ' [ok] el administrador ve las 13 filas con su evaluador;';
+  else           r := r || format(' [FALLA] el administrador ve %s fila(s) en vez de 13;', n); end if;
 
   perform set_config('request.jwt.claims', json_build_object('sub', ev1, 'role','authenticated')::text, true);
   select count(*), count(*) filter (where evaluador_id = ev1) into n, c from evaluaciones_valores;
-  if n = 3 and c = 3 then r := r || ' [ok] quien puntuó ve sólo lo que envió (3 de 3 suyas);';
-  else                    r := r || format(' [FALLA] quien puntuó ve %s fila(s), %s suyas (esperado 3 y 3);', n, c); end if;
+  if n = 5 and c = 5 then r := r || ' [ok] quien puntuó ve sólo lo que envió (5 de 5 suyas);';
+  else                    r := r || format(' [FALLA] quien puntuó ve %s fila(s), %s suyas (esperado 5 y 5);', n, c); end if;
 
   -- ── 3) La función ────────────────────────────────────────────────────────────────────────
   perform set_config('request.jwt.claims', json_build_object('sub', evaluada, 'role','authenticated')::text, true);
@@ -90,13 +103,13 @@ begin
   else          r := r || format(' [FALLA] la evaluada lee %s fila(s) suyas;', n); end if;
 
   begin
-    execute $q$ select count(*) from valores_mis_puntajes('2099-01') $q$ into n;
+    execute $q$ select count(*) from valores_mis_puntajes('2000-01') $q$ into n;
     if n = 0 then r := r || ' [ok] con 2 evaluaciones no se devuelve nada;';
     else          r := r || format(' [FALLA] con 2 evaluaciones devolvió %s fila(s);', n); end if;
   exception when others then r := r || format(' [FALLA] la función con 2 evaluaciones: %s;', sqlerrm); end;
 
   begin
-    execute $q$ select count(*), max(cantidad), max(integridad), max(respeto) from valores_mis_puntajes('2099-02') $q$
+    execute $q$ select count(*), max(cantidad), max(integridad), max(respeto) from valores_mis_puntajes('2000-02') $q$
       into n, c, p_int, p_res;
     if n = 1 and c = 3 and p_int = 4.00 and p_res = 4.67 then
       r := r || ' [ok] con 3 evaluaciones: una fila, cantidad 3 y promedios 4.00 / 4.67;';
@@ -108,8 +121,8 @@ begin
   select count(*) into n
   from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
   where ns.nspname = 'public' and p.proname = 'valores_mis_puntajes'
-    and pg_get_function_result(p.oid) ~* '(evaluador|evaluado_id|\mid\M|created|mes)';
-  if n = 0 then r := r || ' [ok] la función no expone evaluador, id ni fechas;';
+    and pg_get_function_result(p.oid) ~* '(evaluador|evaluado_id|\mid\M|created)';
+  if n = 0 then r := r || ' [ok] la función no expone evaluador, id ni fechas de envío;';
   else          r := r || ' [FALLA] la función expone evaluador, id o fechas;'; end if;
 
   -- ── 4) El mínimo sale de config ──────────────────────────────────────────────────────────
@@ -117,7 +130,7 @@ begin
   update config set valor = '4' where clave = 'valores_min_evaluaciones';
   perform set_config('role', 'authenticated', true);
   begin
-    execute $q$ select count(*) from valores_mis_puntajes('2099-03') $q$ into n;
+    execute $q$ select count(*) from valores_mis_puntajes('2000-03') $q$ into n;
     if n = 0 then r := r || ' [ok] con el mínimo en 4 y 3 evaluaciones no se devuelve nada;';
     else          r := r || format(' [FALLA] con el mínimo en 4 y 3 evaluaciones devolvió %s fila(s);', n); end if;
   exception when others then r := r || format(' [FALLA] mínimo 4: %s;', sqlerrm); end;
@@ -127,7 +140,7 @@ begin
     update config set valor = case c when 0 then '0' when 1 then 'abc' else '99999999999' end where clave = 'valores_min_evaluaciones';
     perform set_config('role', 'authenticated', true);
     begin
-      execute $q$ select count(*) from valores_mis_puntajes('2099-01') $q$ into n;
+      execute $q$ select count(*) from valores_mis_puntajes('2000-01') $q$ into n;
       if n = 0 then r := r || format(' [ok] mínimo inválido (%s) cae a 3: con 2 evaluaciones no se devuelve nada;', case c when 0 then '0' when 1 then 'abc' else '99999999999' end);
       else          r := r || format(' [FALLA] mínimo inválido (%s) apagó el anonimato: devolvió %s fila(s);', case c when 0 then '0' when 1 then 'abc' else '99999999999' end, n); end if;
     exception when others then r := r || format(' [FALLA] mínimo inválido: %s;', sqlerrm); end;
@@ -139,6 +152,66 @@ begin
   else
     r := r || ' [ok] anon no ejecuta valores_mis_puntajes;';
   end if;
+
+  -- ── 6) Nunca en vivo: sólo un mes CERRADO y con mínimo (spec §6) ─────────────────────────
+  perform set_config('request.jwt.claims', json_build_object('sub', evaluada, 'role','authenticated')::text, true);
+
+  -- 6a) El mes en curso tiene 3 votos y aun así no se ve nada.
+  begin
+    execute format($q$ select count(*) from valores_mis_puntajes(%L) $q$, mes_hoy) into n;
+    if n = 0 then r := r || ' [ok] con 3 votos en el mes en curso no se ve nada;';
+    else          r := r || format(' [FALLA] el mes en curso se ve en vivo (%s fila);', n); end if;
+  exception when others then r := r || format(' [FALLA] mes en curso: %s;', sqlerrm); end;
+
+  -- 6b) Sin parámetro: el último mes cerrado que cumple. 2000-04 es el más reciente pero sólo tiene 2.
+  begin
+    execute $q$ select count(*), max(mes), max(cantidad) from valores_mis_puntajes() $q$ into n, p_res, c;
+    execute $q$ select max(mes) from valores_mis_puntajes() $q$ into r_mes;
+    if n = 1 and r_mes = '2000-03' and c = 3 then
+      r := r || ' [ok] sin parámetro devuelve el último mes cerrado que cumple (2000-03), no el 2000-04 con 2 votos ni el mes en curso;';
+    else
+      r := r || format(' [FALLA] sin parámetro: filas=%s mes=%s cantidad=%s;', n, r_mes, c);
+    end if;
+  exception when others then r := r || format(' [FALLA] sin parámetro: %s;', sqlerrm); end;
+
+  -- 6c) evaluacion_componentes a sí mismo: en vivo no, en mes cerrado con mínimo sí.
+  begin
+    j := public.evaluacion_componentes(evaluada, (mes_hoy || '-01')::date, (mes_hoy || '-01')::date);
+    if (j -> 'valores') = 'null'::jsonb and (j -> 'valoresCantidad') = 'null'::jsonb then
+      r := r || ' [ok] evaluacion_componentes a sí mismo no da valores ni cantidad en el mes en curso;';
+    else
+      r := r || format(' [FALLA] evaluacion_componentes a sí mismo filtra el mes en curso: valores=%s cantidad=%s;', j -> 'valores', j -> 'valoresCantidad');
+    end if;
+    j := public.evaluacion_componentes(evaluada, '2000-04-01', '2000-04-30');
+    if (j -> 'valores') = 'null'::jsonb and (j -> 'valoresCantidad') = 'null'::jsonb then
+      r := r || ' [ok] ni en un mes cerrado con 2 votos (sin mínimo);';
+    else
+      r := r || format(' [FALLA] evaluacion_componentes filtra un mes cerrado sin mínimo: cantidad=%s;', j -> 'valoresCantidad');
+    end if;
+    j := public.evaluacion_componentes(evaluada, '2000-02-01', '2000-02-29');
+    if (j ->> 'valoresCantidad')::int = 3 and (j ->> 'valores') is not null then
+      r := r || ' [ok] sí en un mes cerrado con 3 votos;';
+    else
+      r := r || format(' [FALLA] mes cerrado con mínimo no se ve: valores=%s cantidad=%s;', j -> 'valores', j -> 'valoresCantidad');
+    end if;
+  exception when others then r := r || format(' [FALLA] evaluacion_componentes (propio): %s;', sqlerrm); end;
+
+  -- 6d) El administrador, igual que antes: en vivo y sin mínimo (la nota del mes no se toca).
+  perform set_config('request.jwt.claims', json_build_object('sub', admin_id, 'role','authenticated')::text, true);
+  begin
+    j := public.evaluacion_componentes(evaluada, (mes_hoy || '-01')::date, (mes_hoy || '-01')::date);
+    if (j ->> 'valoresCantidad')::int = 3 and (j ->> 'valores') is not null then
+      r := r || ' [ok] el administrador sigue viendo el mes en curso en evaluacion_componentes;';
+    else
+      r := r || format(' [FALLA] el administrador perdió el mes en curso: valores=%s cantidad=%s;', j -> 'valores', j -> 'valoresCantidad');
+    end if;
+    j := public.evaluacion_componentes(evaluada, '2000-04-01', '2000-04-30');
+    if (j ->> 'valoresCantidad')::int = 2 and (j ->> 'valores') is not null then
+      r := r || ' [ok] y un mes con 2 votos;';
+    else
+      r := r || format(' [FALLA] el administrador no ve un mes con 2 votos: cantidad=%s;', j -> 'valoresCantidad');
+    end if;
+  exception when others then r := r || format(' [FALLA] evaluacion_componentes (admin): %s;', sqlerrm); end;
 
   raise exception 'RESULTADO 0116 -->%', r;
 end $$;
