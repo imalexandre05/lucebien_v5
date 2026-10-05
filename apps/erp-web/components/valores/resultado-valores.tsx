@@ -51,7 +51,7 @@ export function ResultadoValores({
         <CardContent>
           <div className="flex items-baseline justify-between gap-3 border-b border-line/60 pb-3">
             <span className="text-apoyo text-muted">Nota de Valores 360°, la que entra a la evaluación mensual</span>
-            <span className="tabular-nums text-3xl font-bold text-navy">
+            <span className="tabular-nums font-display text-titulo font-semibold text-navy">
               {nota20 == null ? '—' : nota20.toFixed(1)}
               <span className="ml-1 text-cuerpo font-normal text-muted">/20</span>
             </span>
