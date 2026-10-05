@@ -131,7 +131,7 @@ casos como «esperados» en vez de ocultarlos.
 
 ## 6. Pruebas (se escriben antes que la migración — Zone Guard)
 
-`packages/db/pruebas/0113_puntos_solo_rpc.prueba.sql` (el número real lo da `reservar-migracion.sh`):
+`packages/db/pruebas/0115_puntos_solo_rpc.prueba.sql` (el número real lo da `reservar-migracion.sh`):
 
 1. `authenticated` NO puede `insert`, `update` ni `delete` directos en las dos tablas —probado con
    admin, almacén, tienda y un empleado sobre sus propios puntos—.
@@ -156,7 +156,7 @@ casos como «esperados» en vez de ocultarlos.
 5. `tools/auditoria-puntos.sql` (sólo lectura).
 6. Una regla en el guard (`regla2-puntos`) que falla si `apps/erp-web` escribe directo sobre las dos
    tablas (mira la cadena `.from(...)…insert/update/delete/upsert`, también en varias líneas).
-   Las migraciones futuras no se pueden vigilar igual de bien: ahí manda la prueba 0113 y el
+   Las migraciones futuras no se pueden vigilar igual de bien: ahí manda la prueba 0115 y el
    `verificador`.
 7. `bash tools/verificar-local.sh` verde antes de cada commit; subagente `verificador` al final.
 8. PR en borrador con base `feat/codigo-personal`, `Closes imalexandre05/lucebien-tablero#36`.
