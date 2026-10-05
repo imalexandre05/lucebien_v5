@@ -143,6 +143,9 @@ export function minimoEvaluacionesValores(cfg: Record<string, string>): number {
 }
 
 export type MiResumenValores = {
+  // Mes del resultado mostrado. Para quien mira lo suyo es el último mes YA CERRADO que cumple el
+  // mínimo (0116), no el mes en curso: nunca en vivo. `null` si no hay ninguno.
+  mes: string | null;
   // `null` cuando todavía no alcanza el mínimo: ni la cantidad se revela («hay 2» ya es información).
   recibidas: number | null;
   promedios: Partial<Record<ValorKey, number>> | null;
@@ -173,21 +176,27 @@ export async function miResumenValores(empleadoId: string, mes: string): Promise
   const minimoEvaluaciones = minimoEvaluacionesValores(await leerConfigMap());
 
   if (esPropio) {
-    const { data, error } = await sb.rpc('valores_mis_puntajes', { p_mes: mes });
-    if (error) {
-      if (esTablaOFuncionInexistente(error)) throw new ValoresNoMigradoError();
-      throw new Error(error.message);
-    }
-    const fila = ((data as MiResultadoValoresFila[] | null) ?? [])[0];
-    // Sin fila, o con una fila sin `cantidad`: la base todavía tiene la función ANTERIOR a 0116, que
-    // devolvía el vector crudo de cada evaluador. Ese formato no se calcula ni se muestra: no hay
-    // mínimo que lo proteja. Se trata como «aún no hay resultado» hasta que se aplique la migración.
+    // Sin `p_mes`: la función elige el último mes cerrado que cumple el mínimo (spec §6). Lo que
+    // pida la pantalla («este mes») no importa: el mes en curso nunca se ve en vivo.
+    const { data, error } = await sb.rpc('valores_mis_puntajes');
+    // Función ausente o anterior a 0116 (no acepta la llamada sin argumento): no hay nada seguro que
+    // mostrar, así que se trata como «aún no hay resultado» en vez de caerse o, peor, calcular sobre
+    // el formato viejo, que traía el voto de cada evaluador.
+    if (error && !esTablaOFuncionInexistente(error)) throw new Error(error.message);
+    const fila = error ? undefined : ((data as MiResultadoValoresFila[] | null) ?? [])[0];
     if (!fila || fila.cantidad == null) {
-      return { recibidas: null, promedios: null, nota20: null, minimoEvaluaciones, suficientes: false };
+      return { mes: null, recibidas: null, promedios: null, nota20: null, minimoEvaluaciones, suficientes: false };
     }
     const promedios: Partial<Record<ValorKey, number>> = {};
     for (const { key } of VALORES) promedios[key] = Number(fila[key]);
-    return { recibidas: Number(fila.cantidad), promedios, nota20: notaValores360(promedios), minimoEvaluaciones, suficientes: true };
+    return {
+      mes: String(fila.mes),
+      recibidas: Number(fila.cantidad),
+      promedios,
+      nota20: notaValores360(promedios),
+      minimoEvaluaciones,
+      suficientes: true,
+    };
   }
 
   const { data, error } = await sb
@@ -200,13 +209,13 @@ export async function miResumenValores(empleadoId: string, mes: string): Promise
     throw new Error(error.message);
   }
   const rows = (data as PuntajeValores[]) ?? [];
-  if (!rows.length) return { recibidas: 0, promedios: null, nota20: null, minimoEvaluaciones, suficientes: true };
+  if (!rows.length) return { mes, recibidas: 0, promedios: null, nota20: null, minimoEvaluaciones, suficientes: true };
   const promedios = promediosPorValor(rows);
-  return { recibidas: rows.length, promedios, nota20: notaValores360(promedios), minimoEvaluaciones, suficientes: true };
+  return { mes, recibidas: rows.length, promedios, nota20: notaValores360(promedios), minimoEvaluaciones, suficientes: true };
 }
 
-// Lo que devuelve `valores_mis_puntajes` (0116): la cantidad y el promedio por valor. Nada por evaluador.
-type MiResultadoValoresFila = { cantidad: number } & Record<ValorKey, number | string>;
+// Lo que devuelve `valores_mis_puntajes` (0116): el mes, la cantidad y el promedio por valor. Nada por evaluador.
+type MiResultadoValoresFila = { mes: string; cantidad: number } & Record<ValorKey, number | string>;
 
 export type SeguimientoValorFila = {
   id: string;

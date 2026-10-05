@@ -105,7 +105,7 @@ export default async function MiDesempenoPage() {
                 0027) no hay nada que mostrar acá, y se omite en vez de dibujar barras en cero. */}
             {d.ultimaEvaluacion.componentes && (
               <div className="border-t border-line/60 pt-3">
-                <PerfilComponentes componentes={d.ultimaEvaluacion.componentes} pesos={d.ultimaEvaluacion.pesosUsados ?? (pesos as unknown as Record<string, number>)} />
+                <PerfilComponentes valoresOculto={d.ultimaEvaluacion.valoresOculto} componentes={d.ultimaEvaluacion.componentes} pesos={d.ultimaEvaluacion.pesosUsados ?? (pesos as unknown as Record<string, number>)} />
               </div>
             )}
           </CardContent>

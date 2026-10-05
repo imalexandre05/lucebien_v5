@@ -22,12 +22,15 @@ export function ResultadoValores({
   titulo?: string;
 }) {
   const { suficientes, recibidas, promedios, nota20, minimoEvaluaciones } = resumen;
+  // Lo propio es siempre de un mes ya cerrado: el título dice cuál. El administrador mirando a otra
+  // persona ve el mes que eligió.
+  const mesMostrado = resumen.mes ?? mes;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>
-          {titulo} · {mes}
+          {titulo} · {suficientes ? mesMostrado : mes}
         </CardTitle>
         {suficientes && recibidas != null && recibidas > 0 && (
           <Badge tone="navy">
@@ -38,9 +41,9 @@ export function ResultadoValores({
 
       {!suficientes ? (
         <EmptyState icon={ShieldCheck} titulo="Tu resultado aparece cuando hay suficientes evaluaciones" compacto>
-          Aún no hay suficientes evaluaciones para mostrar tu resultado (mínimo {minimoEvaluaciones}). Se
-          pide un mínimo para que nadie pueda deducir quién puntuó qué: las evaluaciones son anónimas
-          y sólo el administrador ve a su autor.
+          Aún no hay suficientes evaluaciones para mostrar tu resultado (mínimo {minimoEvaluaciones}). Tu
+          resultado se publica cuando el mes cierra y reúne ese mínimo, para que nadie pueda deducir
+          quién puntuó qué: las evaluaciones son anónimas y sólo el administrador ve a su autor.
         </EmptyState>
       ) : !promedios || !recibidas ? (
         <EmptyState icon={ShieldCheck} titulo="Todavía nadie la puntuó este mes" compacto>

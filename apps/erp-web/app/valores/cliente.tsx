@@ -126,10 +126,10 @@ export function ValoresCliente({
           valor={pendientes}
           tone={pendientes > 0 ? 'border-aviso-line bg-aviso-soft text-aviso-deep' : 'border-exito-line bg-exito-soft text-exito-deep'}
         />
-        <StatBox index={2} label="Recibidas (yo)" valor={miResumen.recibidas ?? '—'} tone="neutro" />
+        <StatBox index={2} label="Recibidas · último mes" valor={miResumen.recibidas ?? '—'} tone="neutro" />
         <StatBox
           index={3}
-          label="Mi nota /20"
+          label="Mi nota /20 · último mes"
           valor={miResumen.nota20 != null ? miResumen.nota20.toFixed(1) : '—'}
           tone="gold"
         />
