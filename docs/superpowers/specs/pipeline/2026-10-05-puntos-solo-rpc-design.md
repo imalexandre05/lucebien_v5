@@ -167,7 +167,44 @@ revisar; la auditoría la corre la sesión maestra.
 ## 8. Decisiones tomadas al diseñar (no son reglas de negocio nuevas)
 
 - Se **quita** la rama «sus propios puntos» de la condición de escritura (§3.3). Es un
-  endurecimiento, no un parámetro: no se puede escribir un punto propio por ningún camino.
+  endurecimiento, no un parámetro: por `pipeline_puntos` y `prenda_historial` ya no se puede escribir
+  un punto propio. (Ojo: NO es «ningún camino»; ver §9.)
 - `lavanderia_enviar` pasa a guardar `registrado_por` (antes quedaba vacío en sus filas de
   historial). Sólo agrega auditoría.
 - Nada hardcodeado ni inventado: no hay parámetros nuevos.
+
+## 9. Lo que esta migración NO cierra (hallado por el verificador, 05-oct-2026)
+
+La regla de §2 vale para **estas dos tablas**. El verificador probó en Postgres local, como
+`authenticated`, que alrededor de ellas quedan tres caminos abiertos. Ninguno lo crea la 0115, pero
+la spec no debe afirmar que no existen:
+
+1. **`prenda_pasada` sigue siendo `FOR ALL` (`pasada_rw`, 0006).** Alguien de la sede puede insertar
+   una prenda (o retroceder su etapa) directo y llamar a la RPC legítima `pipeline_avanzar` una y
+   otra vez: medido, 5 vueltas = 15 puntos a su nombre con `pts_planchado = 3`. Los puntos son
+   legítimos para la RPC pero la prenda no. **Es el mismo hueco un nivel más arriba**
+   (no-negociable 2: «nunca un `update` plano sobre `prenda_pasada`») y requiere su propia spec:
+   hay muchos escritores legítimos de `prenda_pasada` (entradas desde lavandería, inventario).
+2. **El historial se puede borrar por cascada.** `prenda_historial.pasada_id` es `ON DELETE CASCADE`;
+   un `delete from prenda_pasada` directo de una prenda sin puntos se lleva sus filas de historial
+   (medido: 2 → 0). Se cierra con el punto 1 (o cambiando la FK a `restrict`).
+3. **`pipeline_deshacer` (0112) no valida `p_etapa_anterior`** contra el historial: recepción →
+   refacción → planchado → control de calidad, deshacer a recepción y repetir deja 5 puntos en vez
+   de 3 (la RPC sólo borra el último punto positivo). Es de la 0112, no de este cambio.
+
+Tres de ellos tocan la cadena del sueldo: **van a spec propia** y están anotados en
+`docs/pendientes-negocio.md`. Mientras tanto, `tools/auditoria-puntos.sql` ayuda a verlos
+(puntos duplicados, sin historial) pero **no los detecta todos** (límites en su cabecera).
+
+Además, dos supuestos de este documento no se verificaron contra la base real (no-negociable 7):
+que el schema `private` no esté entre los expuestos de PostgREST (se apoya en la 0037, que es otro
+documento) y que `pg_graphql` no lo refleje. **Hay que comprobarlo en la configuración de Supabase
+antes de aplicar la 0115.** Si estuviera expuesto, las tres funciones serían llamables con un
+`p_empleado` y un `p_puntos` arbitrarios sobre prendas de la propia sede.
+
+## 10. Cambios a esta spec después de escribir el código (Zone Guard)
+
+El commit `005ba2a` ajustó §6.6 (la reaplicación se comprueba a mano) y §7.6 (el guard cubre sólo
+`apps/erp-web`) **después** de existir el código, para describir lo que el código hace; no
+cambia ninguna regla de negocio, pero queda registrado aquí y **pendiente de que Alexander lo
+confirme**.
