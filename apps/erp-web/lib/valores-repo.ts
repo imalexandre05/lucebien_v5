@@ -131,7 +131,7 @@ export async function enviarEvaluacionValores(
 }
 
 // Mínimo de evaluaciones recibidas para mostrarle a alguien su resultado. Default 3, editable en
-// /configuracion (`valores_min_evaluaciones`, migración 0112). La misma regla vive en la función SQL
+// /configuracion (`valores_min_evaluaciones`, migración 0116). La misma regla vive en la función SQL
 // `valores_mis_puntajes`, que es la que de verdad decide: acá sólo sirve para el texto de la pantalla.
 // Un valor ausente o que no sea un entero >= 1 cae a 3, NUNCA a 0 (apagaría el anonimato en silencio).
 export const MINIMO_EVALUACIONES_VALORES_DEFAULT = 3;
@@ -156,7 +156,7 @@ export type MiResumenValores = {
 // Mi resumen del mes: promedio recibido por valor + nota/20, SIN revelar quién evaluó.
 //
 // EL ANONIMATO NO PUEDE DEPENDER DE ESTE `select`. La base ya no deja leer a nadie las filas que lo
-// nombran (política `eval_valores_select`, 0112: sólo el administrador y quien envió). Lo propio
+// nombran (política `eval_valores_select`, 0116: sólo el administrador y quien envió). Lo propio
 // llega por la función `security definer` `valores_mis_puntajes`, que devuelve a lo sumo UNA fila
 // —la cantidad y el promedio por valor— y sólo si hay al menos el mínimo de evaluaciones (default 3).
 // Con menos devuelve vacío. Antes devolvía el vector de cada evaluador, y con una o dos evaluaciones
@@ -200,7 +200,7 @@ export async function miResumenValores(empleadoId: string, mes: string): Promise
   return { recibidas: rows.length, promedios, nota20: notaValores360(promedios), minimoEvaluaciones, suficientes: true };
 }
 
-// Lo que devuelve `valores_mis_puntajes` (0112): la cantidad y el promedio por valor. Nada por evaluador.
+// Lo que devuelve `valores_mis_puntajes` (0116): la cantidad y el promedio por valor. Nada por evaluador.
 type MiResultadoValoresFila = { cantidad: number } & Record<ValorKey, number | string>;
 
 export type SeguimientoValorFila = {

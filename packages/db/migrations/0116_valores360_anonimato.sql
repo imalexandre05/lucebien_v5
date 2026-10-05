@@ -1,4 +1,4 @@
--- 0112_valores360_anonimato.sql — Valores 360°: sólo el administrador ve quién puntuó a quién.
+-- 0116_valores360_anonimato.sql — Valores 360°: sólo el administrador ve quién puntuó a quién.
 --
 -- Implementa docs/superpowers/specs/evaluaciones/2026-10-05-valores360-anonimato-design.md §2.
 -- Decisión del dueño (05-oct-2026): «sólo el administrador puede ver quién puntuó a quién».
@@ -8,7 +8,7 @@
 -- (cambia el tipo de retorno, así que `create or replace` no alcanza); el `insert` de config lleva
 -- `on conflict do nothing`.
 --
--- NO APLICADA a ninguna base. La aplica Alexander. Prueba: packages/db/pruebas/0112_valores360_anonimato.prueba.sql
+-- NO APLICADA a ninguna base. La aplica Alexander. Prueba: packages/db/pruebas/0116_valores360_anonimato.prueba.sql
 
 -- ── 1) La policy: se quita `app_ve_datos_personas()` ────────────────────────────────────────
 -- Con ese término, un encargado con permiso `datos_personas` leía la fila completa, `evaluador_id`

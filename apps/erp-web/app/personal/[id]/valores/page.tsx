@@ -12,7 +12,7 @@ import { SeccionHeader } from '../../../../components/colaboradores/seccion-head
 // Lo que el equipo puntuó de esta persona, en promedio.
 //
 // AISLAMIENTO 3, Y ACÁ SE VE POR QUÉ IMPORTA. Esta pantalla muestra el promedio y la nota /20, y
-// NUNCA quién puso qué: sólo el administrador puede leer esas filas (0112), y aun él las ve
+// NUNCA quién puso qué: sólo el administrador puede leer esas filas (0116), y aun él las ve
 // promediadas acá. Si alguien supiera quién lo puntuó bajo, el peer review dejaría de
 // decir la verdad en una semana.
 //

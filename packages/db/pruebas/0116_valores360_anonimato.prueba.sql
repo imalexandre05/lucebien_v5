@@ -1,4 +1,4 @@
--- Prueba de la migración 0112_valores360_anonimato.sql
+-- Prueba de la migración 0116_valores360_anonimato.sql
 --
 -- Spec: docs/superpowers/specs/evaluaciones/2026-10-05-valores360-anonimato-design.md §3.
 -- Decisión del dueño (05-oct-2026): sólo el administrador puede ver quién puntuó a quién.
@@ -21,7 +21,7 @@
 -- OJO: sin cambiar de rol las políticas no se evalúan. El montaje va ANTES del cambio de rol, y
 -- para tocar `config` a mitad de la prueba se vuelve al rol de sesión y se regresa.
 --
--- Cómo se corre:  bash tools/probar-migracion.sh 0112
+-- Cómo se corre:  bash tools/probar-migracion.sh 0116
 
 do $$
 declare
@@ -39,12 +39,12 @@ declare
   p_res     numeric;
 begin
   insert into empleados(id, cod, nombre, iniciales, rol) values
-    (admin_id, 'T-ADM', 'Prueba Admin 0112',   'PA', 'admin'),
-    (enc_id,   'T-ENC', 'Prueba Encargado 0112','PE', 'encargado_tienda'),
-    (evaluada, 'T-EVD', 'Prueba Evaluada 0112', 'PV', 'confeccionista'),
-    (ev1,      'T-EV1', 'Prueba Evaluador Uno 0112',  'P1', 'confeccionista'),
-    (ev2,      'T-EV2', 'Prueba Evaluador Dos 0112',  'P2', 'confeccionista'),
-    (ev3,      'T-EV3', 'Prueba Evaluador Tres 0112', 'P3', 'confeccionista');
+    (admin_id, 'T-ADM', 'Prueba Admin 0116',   'PA', 'admin'),
+    (enc_id,   'T-ENC', 'Prueba Encargado 0116','PE', 'encargado_tienda'),
+    (evaluada, 'T-EVD', 'Prueba Evaluada 0116', 'PV', 'confeccionista'),
+    (ev1,      'T-EV1', 'Prueba Evaluador Uno 0116',  'P1', 'confeccionista'),
+    (ev2,      'T-EV2', 'Prueba Evaluador Dos 0116',  'P2', 'confeccionista'),
+    (ev3,      'T-EV3', 'Prueba Evaluador Tres 0116', 'P3', 'confeccionista');
 
   -- El encargado SÍ tiene `datos_personas`: ése es justamente el caso que la policy dejaba pasar.
   insert into permisos_modulos(rol, modulo, acciones) values ('encargado_tienda', 'datos_personas', array['ver'])
@@ -140,5 +140,5 @@ begin
     r := r || ' [ok] anon no ejecuta valores_mis_puntajes;';
   end if;
 
-  raise exception 'RESULTADO 0112 -->%', r;
+  raise exception 'RESULTADO 0116 -->%', r;
 end $$;
