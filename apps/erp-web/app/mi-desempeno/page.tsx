@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation';
 import { TURNO_LABEL, tramoEval, TRAMO_LABEL, bandaDesdeNota, BANDA_LABEL, type TramoEval, type BandaEval } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
 import { miDesempeno } from '../../lib/desempeno-repo';
-import { leerPesosEval, leerEscalaPuntos } from '../../lib/evaluaciones-repo';
+import { leerPesosEval, leerEscalaPuntos, componentesEvaluacion } from '../../lib/evaluaciones-repo';
+import { leerConfigMap } from '../../lib/config-repo';
+import { CLAVE_PUNTOS_META, CLAVE_SOLES_POR_PUNTO } from '../../lib/config-catalogo';
 import { mesPeru } from '../../lib/fechas';
 import { tieneReauth } from '../../lib/reauth';
 import { PageHeader } from '../../components/shell/page-header';
@@ -12,6 +14,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
+import { Aviso } from '../../components/ui/form';
 import { PerfilComponentes } from '../../components/ui/perfil-componentes';
 import { ClipboardList, Award, AlertTriangle } from 'lucide-react';
 
@@ -63,6 +66,20 @@ export default async function MiDesempenoPage() {
     leerEscalaPuntos(),
   ]);
   const extrasTotal = d.extras.reduce((s, e) => s + e.montoTotal, 0);
+
+  // Pago por puntos (spec sueldos/2026-10-05-pago-por-puntos-design.md §5): el aviso sólo aparece
+  // si el dueño ya encendió las dos claves. Con cualquiera vacía no se menciona, porque no se paga.
+  // La lectura nunca tumba la pantalla: si falla, simplemente no hay aviso. Los puntos son los
+  // TOTALES del propio usuario (la RPC sólo deja a cada quien leerse a sí mismo), no el desglose
+  // de extras, que sigue oculto al operativo.
+  const numero = (v: string | undefined) => (v !== undefined && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
+  const cfg = await leerConfigMap().catch(() => ({}) as Record<string, string>);
+  const metaPuntos = numero(cfg[CLAVE_PUNTOS_META]);
+  const pagoPorPuntos = metaPuntos !== null && numero(cfg[CLAVE_SOLES_POR_PUNTO]) !== null;
+  const puntosMes = pagoPorPuntos
+    ? ((await componentesEvaluacion(sesion.usuario.id, desde, hasta).catch(() => null))?.puntosTotal ?? null)
+    : null;
+  const fmtPuntos = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 });
   // Spec puntos-como-moneda §2 C-5: la última evaluación se lee con el sistema con el que se
   // guardó — banda si 'puntos' (desde el 25-ago-2026), tramo si 'ponderado' (todo lo de antes).
   // La nota (notaFinal) NUNCA se recalcula acá: sale tal cual quedó congelada al guardarse.
@@ -80,6 +97,13 @@ export default async function MiDesempenoPage() {
         <StatBox index={2} label="Extras" valor={`S/ ${extrasTotal.toFixed(2)}`} tone="exito" />
         <StatBox index={3} label="Incidencias" valor={d.incidencias.length} tone="neutro" />
       </div>
+
+      {pagoPorPuntos && metaPuntos !== null && puntosMes !== null && (
+        <Aviso tono="info" className="mt-4">
+          Este mes llevas <span className="tabular-nums font-semibold">{fmtPuntos(puntosMes)} puntos</span>. Desde{' '}
+          <span className="tabular-nums font-semibold">{fmtPuntos(metaPuntos)} puntos</span> cobras extra.
+        </Aviso>
+      )}
 
       {d.ultimaEvaluacion && (banda || tramo) && (
         <Card className="mt-4">

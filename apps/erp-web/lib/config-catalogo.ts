@@ -23,6 +23,8 @@ export type ConfigCatalogoItem = {
   min?: number;
   max?: number;
   step?: number; // solo si tipo === 'numero'
+  /** Un número que puede quedar en blanco: en blanco significa «desactivado», no «falta el dato». */
+  permiteVacio?: boolean;
 };
 
 const SECCION_PUNTOS = 'Puntos del pipeline';
@@ -32,6 +34,10 @@ const SECCION_INVENTARIO = 'Inventario';
 const SECCION_VALORES = 'Valores 360°';
 const SECCION_POS = 'Caja y POS';
 const SECCION_SUELDOS = 'Sueldos';
+/** Sección con tarjeta propia en /configuracion (app/configuracion/cliente.tsx). */
+export const SECCION_PAGO_PUNTOS = 'Pago por puntos';
+export const CLAVE_PUNTOS_META = 'sueldo_puntos_meta_mensual';
+export const CLAVE_SOLES_POR_PUNTO = 'sueldo_soles_por_punto';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
 // simplemente no se muestran; "Personalizados" — parámetros creados por el admin — va siempre al
@@ -40,6 +46,7 @@ export const ORDEN_SECCIONES = [
   SECCION_PUNTOS,
   SECCION_EVALUACION,
   SECCION_SUELDOS,
+  SECCION_PAGO_PUNTOS,
   SECCION_REPORTES,
   SECCION_INVENTARIO,
   SECCION_POS,
@@ -610,6 +617,32 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 0,
     step: 1,
   },
+  // Pago por puntos (migración 0117, spec sueldos/2026-10-05-pago-por-puntos-design.md). SIN default
+  // a propósito: la meta la fija el dueño después de un mes de uso, mirando el promedio real. En
+  // blanco = desactivado; con cualquiera de las dos en blanco no se paga nada por puntos.
+  {
+    clave: CLAVE_PUNTOS_META,
+    seccion: SECCION_PAGO_PUNTOS,
+    etiqueta: 'Meta de puntos del mes',
+    descripcion:
+      'A partir de cuántos puntos en el mes se empieza a pagar extra. Se paga por los puntos que pasen de esta meta. En un tramo que no es un mes completo (una semana, por ejemplo) la meta se reparte por días.',
+    tipo: 'numero',
+    default: '',
+    min: 0,
+    step: 50,
+    permiteVacio: true,
+  },
+  {
+    clave: CLAVE_SOLES_POR_PUNTO,
+    seccion: SECCION_PAGO_PUNTOS,
+    etiqueta: 'Soles por cada punto sobre la meta',
+    descripcion: 'Cuánto se le suma a la liquidación por cada punto que supere la meta. Con 0,05, mil puntos sobre la meta son S/50.',
+    tipo: 'numero',
+    default: '',
+    min: 0,
+    step: 0.01,
+    permiteVacio: true,
+  },
 ];
 
 export const CONFIG_CATALOGO_MAP: Map<string, ConfigCatalogoItem> = new Map(CONFIG_CATALOGO.map((i) => [i.clave, i]));
@@ -647,6 +680,7 @@ export type ConfigItem = {
   min?: number;
   max?: number;
   step?: number;
+  permiteVacio?: boolean;
   guardado: boolean; // false = todavía no hay fila en `config` (se está mostrando el default)
   esPersonalizado: boolean;
 };

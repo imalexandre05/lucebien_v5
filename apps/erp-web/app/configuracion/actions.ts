@@ -29,6 +29,8 @@ function primerErrorDeCatalogo(items: { clave: string; valor: string }[]): strin
     const def = CONFIG_CATALOGO_MAP.get(item.clave);
     if (!def || def.tipo !== 'numero') continue;
     const crudo = (item.valor ?? '').trim();
+    // En blanco = desactivado (pago por puntos): el único caso donde un número puede ir vacío.
+    if (crudo === '' && def.permiteVacio) continue;
     if (crudo === '') return `"${def.etiqueta}" no puede quedar vacío: es un número.`;
     const n = Number(crudo);
     if (!Number.isFinite(n)) return `"${def.etiqueta}" debe ser un número (se recibió "${item.valor}").`;

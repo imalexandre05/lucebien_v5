@@ -164,6 +164,37 @@ export async function empleadosParaEvaluacion(): Promise<EmpleadoParaEvaluacion[
   }));
 }
 
+/**
+ * Promedio de puntos por persona en los últimos 30 días (pago por puntos, spec
+ * 2026-10-05-pago-por-puntos-design.md §5): es la cifra con la que el dueño decide la meta mensual.
+ *
+ * Se lee con la sesión del administrador, persona por persona, por la MISMA RPC que usa
+ * /evaluaciones (`evaluacion_componentes`, con su portero de la 0067): no se calcula la suma aparte.
+ * Cuenta a todas las personas activas, también a quien tuvo 0 puntos en el período: un promedio
+ * sólo de quienes sumaron dejaría la meta más alta de lo que el equipo en realidad hace.
+ *
+ * Nunca rompe la pantalla de configuración: si algo falla (la 0095 sin aplicar, una persona sin
+ * permiso) devuelve `null` y la tarjeta simplemente no muestra la ayuda.
+ */
+export type PromedioPuntos = { promedio: number; personas: number; desde: string; hasta: string };
+
+export async function promedioPuntosUltimosDias(hoy: string, dias = 30): Promise<PromedioPuntos | null> {
+  try {
+    const fin = new Date(`${hoy}T00:00:00Z`);
+    const ini = new Date(fin.getTime() - (dias - 1) * 24 * 60 * 60 * 1000);
+    const desde = ini.toISOString().slice(0, 10);
+    const gente = await empleadosParaEvaluacion();
+    if (gente.length === 0) return null;
+    const puntos = await Promise.all(gente.map((e) => componentesEvaluacion(e.id, desde, hoy)));
+    const valores = puntos.map((c) => c.puntosTotal);
+    if (valores.some((v) => typeof v !== 'number' || !Number.isFinite(v))) return null;
+    const suma = (valores as number[]).reduce((t, v) => t + v, 0);
+    return { promedio: Math.round((suma / gente.length) * 100) / 100, personas: gente.length, desde, hasta: hoy };
+  } catch {
+    return null;
+  }
+}
+
 // Catálogo editable de las 8 competencias con rúbrica (Fase 12 tarea 2, migración 0057,
 // competencias_config) — reemplaza la constante COMPETENCIAS hardcodeada de public/js/data.js
 // del sistema viejo. select('*') a propósito (lección de la Fase 4): si 0057 no corrió todavía,

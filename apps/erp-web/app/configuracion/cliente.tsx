@@ -4,7 +4,15 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, AlertCircle, Plus, Trash2, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { accionGuardarConfig, accionCrearParametroConfig, accionEliminarParametroConfig } from './actions';
-import { ordenarSecciones, type ConfigItem, type ConfigTipo } from '../../lib/config-catalogo';
+import {
+  ordenarSecciones,
+  SECCION_PAGO_PUNTOS,
+  CLAVE_PUNTOS_META,
+  CLAVE_SOLES_POR_PUNTO,
+  type ConfigItem,
+  type ConfigTipo,
+} from '../../lib/config-catalogo';
+import type { PromedioPuntos } from '../../lib/evaluaciones-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Button, buttonVariants } from '../../components/ui/button';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
@@ -145,7 +153,7 @@ function ParametroFila({
           {item.descripcion && <p className="mt-0.5 max-w-xl text-apoyo leading-relaxed text-muted">{item.descripcion}</p>}
           <div className="mt-1 flex items-center gap-2 tabular-nums text-micro text-muted/70">
             {item.clave}
-            {item.default != null && <span>· default: {item.default}</span>}
+            {item.default != null && item.default !== '' && <span>· default: {item.default}</span>}
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
@@ -168,10 +176,77 @@ function ParametroFila({
           onClick={() => item.default != null && onChange(item.default)}
           className="mt-1.5 flex items-center gap-1 text-micro text-muted underline decoration-dotted underline-offset-2 hover:text-navy"
         >
-          <RotateCcw className="h-3 w-3" strokeWidth={2} /> Restaurar valor por defecto
+          <RotateCcw className="h-3 w-3" strokeWidth={2} />{' '}
+          {item.default === '' ? 'Dejar vacío (desactivar)' : 'Restaurar valor por defecto'}
         </button>
       )}
     </div>
+  );
+}
+
+// Mismo formato que el motor (packages/core/src/sueldos.ts): 5000 → «5.000», 0.05 → «0,05».
+const fmtNum = (n: number, dec = 2) => n.toLocaleString('es-PE', { maximumFractionDigits: dec });
+const comoNumero = (v: string): number | null => (v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
+
+// Pago por puntos (spec sueldos/2026-10-05-pago-por-puntos-design.md §5). Tarjeta propia porque
+// estos dos números sólo tienen sentido juntos y el dueño todavía no sabe qué poner: la tarjeta
+// tiene que decirle qué hacen, si están encendidos, y con qué cifra real decidir la meta.
+function TarjetaPagoPorPuntos({
+  items,
+  vals,
+  onChange,
+  promedio,
+}: {
+  items: ConfigItem[];
+  vals: Record<string, string>;
+  onChange: (clave: string, v: string) => void;
+  promedio: PromedioPuntos | null;
+}) {
+  const meta = comoNumero(vals[CLAVE_PUNTOS_META] ?? '');
+  const soles = comoNumero(vals[CLAVE_SOLES_POR_PUNTO] ?? '');
+  const activo = meta !== null && soles !== null;
+  const ejemploExtra = 1000;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{SECCION_PAGO_PUNTOS}</CardTitle>
+        <Badge tone={activo ? 'green' : 'gray'}>{activo ? 'Activo' : 'Desactivado'}</Badge>
+      </CardHeader>
+      <CardContent className="py-0">
+        <p className="pb-3 text-apoyo leading-relaxed text-muted">
+          Además del sueldo, se paga un extra por los puntos que pasen de una meta mensual. Déjalos vacíos hasta decidir la meta: mientras
+          estén vacíos no se paga por puntos y la liquidación no muestra la línea.
+        </p>
+        <div className="divide-y divide-line/60 border-t border-line/60">
+          {items.map((i) => (
+            <ParametroFila key={i.clave} item={i} valor={vals[i.clave] ?? i.valor} onChange={(v) => onChange(i.clave, v)} />
+          ))}
+        </div>
+        <div className="space-y-1.5 border-t border-line/60 py-3 text-apoyo leading-relaxed text-muted">
+          {promedio ? (
+            <p>
+              Para decidir la meta: en los últimos 30 días cada persona hizo en promedio{' '}
+              <span className="tabular-nums font-semibold text-navy">{fmtNum(promedio.promedio)} puntos</span> ({promedio.personas} personas
+              activas, del {promedio.desde} al {promedio.hasta}).
+            </p>
+          ) : (
+            <p>No pude calcular el promedio de puntos de los últimos 30 días. Míralo en Evaluaciones antes de fijar la meta.</p>
+          )}
+          {activo ? (
+            <p>
+              Ejemplo: quien haga{' '}
+              <span className="tabular-nums font-semibold text-navy">{fmtNum(meta + ejemploExtra, 0)} puntos</span> en el mes cobra{' '}
+              <span className="tabular-nums font-semibold text-navy">S/ {fmtNum(ejemploExtra * soles)}</span> extra; quien no llegue a la
+              meta no cobra nada por puntos.
+            </p>
+          ) : (
+            meta !== null || soles !== null ? (
+              <p className="text-aviso-deep">Falta uno de los dos: con uno solo no se paga por puntos.</p>
+            ) : null
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -186,7 +261,7 @@ type FormNuevo = {
 };
 const VACIO: FormNuevo = { clave: '', etiqueta: '', descripcion: '', seccion: 'Personalizados', tipo: 'texto', valor: '', opciones: [] };
 
-export function ConfigCliente({ items }: { items: ConfigItem[] }) {
+export function ConfigCliente({ items, promedioPuntos = null }: { items: ConfigItem[]; promedioPuntos?: PromedioPuntos | null }) {
   const router = useRouter();
   const [vals, setVals] = useState<Record<string, string>>(() => Object.fromEntries(items.map((i) => [i.clave, i.valor])));
   const [error, setError] = useState('');
@@ -284,24 +359,28 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
       </Card>
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-        {secciones.map((s) => (
-          <Card key={s.nombre}>
-            <CardHeader>
-              <CardTitle>{s.nombre}</CardTitle>
-            </CardHeader>
-            <CardContent className="divide-y divide-line/60 py-0">
-              {s.items.map((i) => (
-                <ParametroFila
-                  key={i.clave}
-                  item={i}
-                  valor={vals[i.clave] ?? i.valor}
-                  onChange={(v) => set(i.clave, v)}
-                  onEliminar={i.esPersonalizado ? () => setEliminar(i) : undefined}
-                />
-              ))}
-            </CardContent>
-          </Card>
-        ))}
+        {secciones.map((s) =>
+          s.nombre === SECCION_PAGO_PUNTOS ? (
+            <TarjetaPagoPorPuntos key={s.nombre} items={s.items} vals={vals} onChange={set} promedio={promedioPuntos} />
+          ) : (
+            <Card key={s.nombre}>
+              <CardHeader>
+                <CardTitle>{s.nombre}</CardTitle>
+              </CardHeader>
+              <CardContent className="divide-y divide-line/60 py-0">
+                {s.items.map((i) => (
+                  <ParametroFila
+                    key={i.clave}
+                    item={i}
+                    valor={vals[i.clave] ?? i.valor}
+                    onChange={(v) => set(i.clave, v)}
+                    onEliminar={i.esPersonalizado ? () => setEliminar(i) : undefined}
+                  />
+                ))}
+              </CardContent>
+            </Card>
+          ),
+        )}
       </div>
 
       {error && (
