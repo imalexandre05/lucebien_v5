@@ -1495,3 +1495,40 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+---
+
+## Pago por puntos sobre la meta mensual (05-oct-2026) — defaults y lo que falta decidir
+
+Spec: [`sueldos/2026-10-05-pago-por-puntos-design.md`](superpowers/specs/sueldos/2026-10-05-pago-por-puntos-design.md).
+Migración `0117` (escrita, **no aplicada**). Decisión del dueño: los puntos pagan, los extras en soles no.
+
+### Los dos parámetros nuevos — sin valor a propósito
+
+| Clave (`/configuracion` › Pago por puntos) | Default | Quién lo decide |
+|---|---|---|
+| `sueldo_puntos_meta_mensual` | **vacío = desactivado** | El dueño, después de un mes de uso, con el promedio de la tarjeta |
+| `sueldo_soles_por_punto` | **vacío = desactivado** | El dueño, junto con la meta |
+
+Con cualquiera de las dos vacía no se paga nada y la liquidación no muestra la línea: se puede
+desplegar hoy sin inventar ninguna cifra.
+
+### 🟡 Default elegido, no confirmado — meta de un tramo que no es un mes
+
+La meta es mensual. En un tramo semanal (u otro) se **prorratea por días**:
+`meta × días del tramo ÷ días del mes en que el tramo empieza` (7 de 31 días → 22,6 % de la meta).
+Un mes completo da exactamente la meta. Lo eligió quien implementó; el dueño puede preferir otra
+regla para los semanales (p. ej. una meta semanal propia). Editarlo no requiere tocar la base: es
+una fórmula del motor (`bonoPorPuntos`, `packages/core/src/sueldos.ts`).
+
+### 🔴 Sin decidir
+
+- **Pactar los dos valores por contrato.** Hoy se leen de `/configuracion`, como los demás
+  parámetros; un cambio ahí afecta a toda liquidación nueva. El ticket #20 los congelará al crear
+  el contrato igual que al resto. La lista blanca `sueldo_acuerdos_parametros_chk` **no** se amplió.
+- **Mi desempeño y la ficha del colaborador siguen mostrando soles por extras.** La spec sólo
+  pidió quitarlos de `/evaluaciones`. No se tocaron porque la Fase 5 decidió que el operativo no ve
+  los puntos de extras (`puedeVerPuntosExtras`), y cambiar «S/» por puntos en su propia pantalla lo
+  contradiría. Hay que decidir si ahí también se oculta el monto.
+- **Aviso en la ficha del colaborador** (spec §5): sólo se implementó en Mi desempeño.
+
