@@ -25,11 +25,13 @@ envíos por tienda.
 
 ## 2. Qué cambia
 
-**Filtros por URL** (`?sede=TR&desde=2026-09-01&hasta=2026-09-30&pag=2`). Son un formulario GET
-sin JavaScript, así un enlace filtrado se puede compartir y el filtro sobrevive a la recarga que
-hace «Aceptar»/«Observar».
+**Filtros por URL** (`?sede=TR&desde=2026-09-01&hasta=2026-09-30&pag=2`). Un enlace filtrado se
+puede compartir, y el filtro sobrevive a la recarga que hace «Aceptar»/«Observar». Viven en la
+`BarraFiltros` del sistema de diseño, con «Limpiar» cuando hay alguno activo.
 
-- **Selector de tienda.** Las opciones son las sedes destino que la persona puede ver:
+- **Selector de tienda.** Botones (`OpcionBotones`) con el nombre de cada tienda: un toque y
+  filtra, sin pasar por «Aplicar», porque son 3 o 4 y un `<select>` esconde las opciones. Las
+  opciones son las sedes destino que la persona puede ver:
   - admin, dueño, `encargado_almacen` y `confeccionista`: todas las sedes del catálogo que no son
     de perfil `almacen`, las mismas que el kanban ofrece como destino de despacho, más «Todas».
   - el resto: sus tiendas (`sesion.usuario.tiendas`).
@@ -48,15 +50,19 @@ hace «Aceptar»/«Observar».
 **Consultas separadas y filtradas en la base**, no en el cliente:
 
 1. `listarEnviosEnCamino({ sede })`: `etapa = 'enviado'`, con un join `envios_prendas!inner` para
-   que la RLS y el filtro de sede actúen antes del `limit`. Tope: 1000, que es el máximo de filas
-   que Supabase devuelve por defecto. Es una cola operativa de 4 sedes, que hoy tiene decenas. Si
-   se alcanza el tope, la pantalla lo avisa en vez de cortar en silencio.
+   que la RLS y el filtro de sede actúen antes del `limit`. Tope: 1000, **default de pantalla**
+   comentado en `envios-repo.ts`. Coincide con el `max_rows` por defecto de PostgREST en Supabase,
+   pero este repo no versiona esa configuración. Es una cola operativa de 4 sedes con despachos
+   diarios: lo esperable son decenas. Si se alcanza el tope, la pantalla lo avisa con un `Aviso`
+   en vez de cortar en silencio.
 2. `listarEnviosRecibidos({ sede, desde, hasta, pagina })`: `etapa = 'recibido'`, mismo join,
    paginado de a 50 con `range()`. Se pide una fila extra para saber si hay página siguiente, sin
    `count`. Navegación «Más recientes / Anteriores». Reemplaza el `.slice(0, 20)` del cliente.
 
 La lógica de qué sedes puede filtrar cada quien y cómo se leen los parámetros es pura y vive en
-`packages/core/src/pipeline.ts` (`sedesFiltroEnvios`, `leerFiltrosEnvios`), con tests. El repo
+`packages/core/src/envios.ts` (`sedesFiltroEnvios`, `leerFiltrosEnvios`, `limitesRangoPeru`), con
+tests en `envios.test.ts`. Es un archivo propio y no `pipeline.ts`, para no pisar a otros PR
+abiertos sobre el pipeline. El repo
 sólo traduce el filtro a la consulta.
 
 ## 3. Cuando algo falla
