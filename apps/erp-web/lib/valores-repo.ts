@@ -130,49 +130,78 @@ export async function enviarEvaluacionValores(
   }
 }
 
+// Mínimo de evaluaciones recibidas para mostrarle a alguien su resultado. Default 3, editable en
+// /configuracion (`valores_min_evaluaciones`, migración 0112). La misma regla vive en la función SQL
+// `valores_mis_puntajes`, que es la que de verdad decide: acá sólo sirve para el texto de la pantalla.
+// Un valor ausente o que no sea un entero >= 1 cae a 3, NUNCA a 0 (apagaría el anonimato en silencio).
+export const MINIMO_EVALUACIONES_VALORES_DEFAULT = 3;
+
+export function minimoEvaluacionesValores(cfg: Record<string, string>): number {
+  const crudo = (cfg.valores_min_evaluaciones ?? '').trim();
+  const n = /^\d+$/.test(crudo) ? Number(crudo) : NaN;
+  return Number.isInteger(n) && n >= 1 ? n : MINIMO_EVALUACIONES_VALORES_DEFAULT;
+}
+
 export type MiResumenValores = {
-  recibidas: number;
+  // `null` cuando todavía no alcanza el mínimo: ni la cantidad se revela («hay 2» ya es información).
+  recibidas: number | null;
   promedios: Partial<Record<ValorKey, number>> | null;
   nota20: number | null;
+  minimoEvaluaciones: number;
+  // false = no se muestra el resultado todavía (menos evaluaciones que el mínimo). El administrador
+  // mirando a OTRA persona siempre ve todo, así que ahí es true.
+  suficientes: boolean;
 };
 
 // Mi resumen del mes: promedio recibido por valor + nota/20, SIN revelar quién evaluó.
 //
-// EL ANONIMATO NO PUEDE DEPENDER DE ESTE `select`. Hasta la migración 0082 esta función leía la
-// tabla directamente y confiaba en pedir sólo las seis columnas de puntaje: la política de RLS
-// dejaba leer la fila entera a quien fuera `evaluado_id`, y la fila trae `evaluador_id`. Cualquiera
-// con su sesión iniciada podía preguntarle a PostgREST lo mismo con `select=*` y ver quién lo
-// había puntuado. En un equipo de once personas, eso identifica a la persona sin margen.
+// EL ANONIMATO NO PUEDE DEPENDER DE ESTE `select`. La base ya no deja leer a nadie las filas que lo
+// nombran (política `eval_valores_select`, 0112: sólo el administrador y quien envió). Lo propio
+// llega por la función `security definer` `valores_mis_puntajes`, que devuelve a lo sumo UNA fila
+// —la cantidad y el promedio por valor— y sólo si hay al menos el mínimo de evaluaciones (default 3).
+// Con menos devuelve vacío. Antes devolvía el vector de cada evaluador, y con una o dos evaluaciones
+// eso identificaba a quien puntuó. Puerto de routes/valores.js:200-219.
 //
-// Ahora la política ya no le da acceso a esas filas, y esto pasa por una función `security
-// definer` que devuelve las seis notas y nada más. Puerto de routes/valores.js:200-219.
-//
-// DOS CAMINOS, NO UNO. La misma función la usan dos pantallas distintas: «Valores 360°», donde
-// alguien mira lo suyo, y la ficha de una persona en Personal, donde el administrador mira lo de
-// otro. El primero pasa por la función `security definer`, que sólo sabe devolver lo del que
-// pregunta. El segundo lee la tabla, donde la política ya decide quién puede: un administrador ve
-// todo, y cualquier otro que intente mirar la ficha ajena se lleva cero filas.
+// DOS CAMINOS, NO UNO. La misma función la usan dos pantallas: «Valores 360°», donde alguien mira lo
+// suyo, y la ficha de una persona en Personal, donde el administrador mira lo de otro. Lo propio pasa
+// por la función. Lo ajeno lee la tabla, donde la política decide quién puede: sólo un administrador
+// ve algo (y ve todo, sin mínimo); cualquier otro que intente mirar la ficha ajena se lleva cero filas.
 export async function miResumenValores(empleadoId: string, mes: string): Promise<MiResumenValores> {
   const sb = getServerClient();
   const sesion = await getSesion();
   const esPropio = sesion?.usuario.id === empleadoId;
+  const minimoEvaluaciones = minimoEvaluacionesValores(await leerConfigMap());
 
-  const { data, error } = esPropio
-    ? await sb.rpc('valores_mis_puntajes', { p_mes: mes })
-    : await sb
-        .from('evaluaciones_valores')
-        .select('integridad, respeto, honestidad, amabilidad, relacion, actitud')
-        .eq('evaluado_id', empleadoId)
-        .eq('mes', mes);
+  if (esPropio) {
+    const { data, error } = await sb.rpc('valores_mis_puntajes', { p_mes: mes });
+    if (error) {
+      if (esTablaOFuncionInexistente(error)) throw new ValoresNoMigradoError();
+      throw new Error(error.message);
+    }
+    const fila = ((data as MiResultadoValoresFila[] | null) ?? [])[0];
+    if (!fila) return { recibidas: null, promedios: null, nota20: null, minimoEvaluaciones, suficientes: false };
+    const promedios: Partial<Record<ValorKey, number>> = {};
+    for (const { key } of VALORES) promedios[key] = Number(fila[key]);
+    return { recibidas: Number(fila.cantidad), promedios, nota20: notaValores360(promedios), minimoEvaluaciones, suficientes: true };
+  }
+
+  const { data, error } = await sb
+    .from('evaluaciones_valores')
+    .select('integridad, respeto, honestidad, amabilidad, relacion, actitud')
+    .eq('evaluado_id', empleadoId)
+    .eq('mes', mes);
   if (error) {
     if (esTablaOFuncionInexistente(error)) throw new ValoresNoMigradoError();
     throw new Error(error.message);
   }
   const rows = (data as PuntajeValores[]) ?? [];
-  if (!rows.length) return { recibidas: 0, promedios: null, nota20: null };
+  if (!rows.length) return { recibidas: 0, promedios: null, nota20: null, minimoEvaluaciones, suficientes: true };
   const promedios = promediosPorValor(rows);
-  return { recibidas: rows.length, promedios, nota20: notaValores360(promedios) };
+  return { recibidas: rows.length, promedios, nota20: notaValores360(promedios), minimoEvaluaciones, suficientes: true };
 }
+
+// Lo que devuelve `valores_mis_puntajes` (0112): la cantidad y el promedio por valor. Nada por evaluador.
+type MiResultadoValoresFila = { cantidad: number } & Record<ValorKey, number | string>;
 
 export type SeguimientoValorFila = {
   id: string;
