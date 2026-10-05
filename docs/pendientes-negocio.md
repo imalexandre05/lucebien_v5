@@ -1495,3 +1495,26 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+---
+
+## Hallazgo del 03-oct-2026 — la tienda no ve lo que le mandan desde otra sede
+
+Apareció al construir el filtro por tienda de `/pipeline/envios`
+([spec](superpowers/specs/pipeline/2026-10-03-envios-filtro-tienda-design.md) §4, ticket
+lucebien-tablero#7), y no es parte de ese trabajo. La pantalla lee desde `prenda_pasada`, cuya
+política `pasada_rw` (`packages/db/migrations/0006_pipeline_rls.sql:31-34`) filtra por **sede de
+origen**. `envios_rw` filtra por **sede de destino**. Una encargada de tienda, entonces, sólo ve una
+prenda enviada cuando el origen **y** el destino son sedes suyas. Una prenda que entró por otra
+tienda y el almacén despachó a la suya no le aparece, y no puede aceptarla ni observarla. Admin,
+dueño y almacén no lo sufren porque ven todo.
+
+No es una fuga, porque nadie ve de más. Es una restricción de más. Cerrarlo toca RLS (nivel 3, con
+spec y verificador propios): por ejemplo, que `pasada_rw` deje leer también las prendas cuyo envío
+va a una sede propia. Falta decidir **qué espera el negocio**: ¿las prendas vuelven siempre a la
+tienda de donde salieron, o el almacén reparte entre tiendas? Si vuelven siempre al origen, el
+hallazgo no tiene efecto práctico.
+
+**Defaults de pantalla del mismo trabajo** (no son reglas de negocio, comentados en
+`apps/erp-web/lib/envios-repo.ts`): hasta 1000 prendas en camino visibles a la vez, con aviso si hay
+más, y el historial de recibidas de a 50 por página.
