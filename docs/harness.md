@@ -10,7 +10,7 @@ que dos secciones avancen en paralelo sin pisarse.**
 
 ---
 
-## 1. Las cuatro redes, de más barata a más cara
+## 1. Las cinco redes, de más barata a más cara
 
 | Red | Cuándo salta | Qué cuesta |
 |---|---|---|
@@ -19,6 +19,7 @@ que dos secciones avancen en paralelo sin pisarse.**
 | **`tools/verificar-local.sh`** | Antes de commitear | ~1 minuto |
 | **`tools/probar-migracion.sh`** | Después de aplicar una migración | Segundos, contra la base |
 | **`pnpm --filter erp-web test:e2e`** | Después de desplegar | Un minuto, con la aplicación levantada |
+| **Semgrep** (job `semgrep` de CI; reglas propias en `.semgrep/sci-lb.yml`) | En cada push y cada PR | Un minuto, sin token. Análisis de AST: `new Date()` en el core, `getAdminClient()` fuera de la lista, `update/delete` sobre `prenda_pasada`, más `p/typescript`, `p/nextjs` y `p/secrets`. Con `--baseline-commit` sólo rompe lo **nuevo** |
 | **CI** (GitHub Actions) | En cada push y cada PR | Minutos, y ya commiteaste |
 | **Subagente `verificador`** | Antes de mergear algo de zona crítica | Caro, pero encuentra lo que ninguna máquina puede |
 

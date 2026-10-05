@@ -10,7 +10,7 @@
 | [mapa-verificado.md](mapa-verificado.md) | **El estado real del sistema**, verificado contra código y base. Alcance, adopción, decisiones tomadas, qué falta definir |
 | [rigor-por-zona.md](rigor-por-zona.md) | Cuánto proceso exige un cambio según dónde cae. La matriz zona → nivel de spec |
 | [pendientes-negocio.md](pendientes-negocio.md) | Parámetros sembrados con un default que nadie confirmó. Se lee antes de tocar cualquier regla de negocio |
-| [harness.md](harness.md) | **Cómo trabajar en varias secciones a la vez sin pisarse**: las cuatro redes de verificación, los tres agentes, el protocolo de paralelo y el ciclo completo |
+| [harness.md](harness.md) | **Cómo trabajar en varias secciones a la vez sin pisarse**: las cinco redes de verificación, los tres agentes, el protocolo de paralelo y el ciclo completo |
 | [aprendizajes.md](aprendizajes.md) | **Los errores ya cometidos y cómo se detectan ahora.** Cada fila la puso un error real. Se lee al empezar algo del área que toca, y se le suma una fila cada vez que algo sale mal |
 
 ## Negocio y procesos
