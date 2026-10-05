@@ -60,6 +60,13 @@ describe('leerFiltrosEnvios', () => {
     expect(leerFiltrosEnvios({ pag: 'abc' }, opciones).pagina).toBe(1);
     expect(leerFiltrosEnvios({ pag: '3' }, opciones).pagina).toBe(3);
   });
+  it('una página absurda (1e20) es la página 1, no un offset que rompe la consulta', () => {
+    expect(leerFiltrosEnvios({ pag: '1e20' }, opciones).pagina).toBe(1);
+  });
+  it('ignora años fuera de 2000-9998', () => {
+    const f = leerFiltrosEnvios({ desde: '1999-12-31', hasta: '9999-12-31' }, opciones);
+    expect([f.desde, f.hasta]).toEqual([null, null]);
+  });
 });
 
 describe('limitesRangoPeru', () => {

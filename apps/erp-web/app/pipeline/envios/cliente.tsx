@@ -17,7 +17,13 @@ import { Aviso, campoCls } from '../../../components/ui/form';
 import { OpcionBotones } from '../../../components/ui/opcion-botones';
 import { cn } from '../../../lib/cn';
 
-const fecha = (iso: string | null) => (iso ? iso.slice(0, 10) : '—');
+// El día en hora Perú (no-negociable 4). Un `slice(0, 10)` del timestamptz daba el día en UTC: un
+// envío de las 20:00 del 30-sep salía como 1-oct, y contradecía el filtro de fechas de al lado.
+const diaPeru = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' });
+const fecha = (iso: string | null) => {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isNaN(t) ? '—' : diaPeru.format(t);
+};
 
 const RUTA = '/pipeline/envios';
 
@@ -72,7 +78,8 @@ export function EnviosCliente({
     router.push(urlCon(filtros, { desde: val('desde'), hasta: val('hasta'), pag: null }));
   }
 
-  // Agrupadas por sede destino; la sede activa primero (es la que debe confirmar).
+  // Agrupadas por sede destino; la sede activa primero (es la que debe confirmar). Dentro de cada
+  // grupo, la más antigua arriba: así llegan del repo.
   const porSede = useMemo(() => {
     const m = new Map<string, PrendaEnviada[]>();
     for (const p of enCamino) {
@@ -141,7 +148,7 @@ export function EnviosCliente({
 
       {enCaminoTruncado && (
         <Aviso tono="aviso" titulo="Hay más prendas en camino de las que se muestran">
-          Se ven las {topeEnCamino} más recientes.
+          Se ven las {topeEnCamino} que llevan más tiempo esperando.
           {opcionesSede.length > 0 && !filtros.sede && ' Elige una tienda para ver todas las suyas.'}
         </Aviso>
       )}

@@ -30,10 +30,13 @@ export interface FiltrosEnvios {
 }
 
 const FECHA_ISO = /^\d{4}-\d{2}-\d{2}$/;
+const PAGINA_MAXIMA = 100_000;
 
 function fechaValida(v: string | undefined): string | null {
   if (!v || !FECHA_ISO.test(v)) return null;
   const [a, m, d] = v.split('-').map(Number);
+  // Fuera de este rango el día siguiente deja de ser un ISO de 4 dígitos y Postgres lo rechaza.
+  if (a < 2000 || a > 9998) return null;
   const t = new Date(Date.UTC(a, m - 1, d));
   return t.getUTCFullYear() === a && t.getUTCMonth() === m - 1 && t.getUTCDate() === d ? v : null;
 }
@@ -54,7 +57,8 @@ export function leerFiltrosEnvios(
   let hasta = fechaValida(uno('hasta'));
   if (desde && hasta && desde > hasta) [desde, hasta] = [hasta, desde];
   const pag = Number(uno('pag'));
-  const pagina = Number.isInteger(pag) && pag >= 1 ? pag : 1;
+  // Tope de página: más allá, el offset deja de ser un entero que PostgREST acepte.
+  const pagina = Number.isSafeInteger(pag) && pag >= 1 && pag <= PAGINA_MAXIMA ? pag : 1;
   return { sede, desde, hasta, pagina };
 }
 

@@ -36,6 +36,8 @@ const COLUMNAS =
 // diarios, la cola esperable es de decenas. Si se llega al tope, la pantalla lo avisa.
 export const TOPE_EN_CAMINO = 1000;
 // DEFAULT DE PANTALLA: filas del historial por página (antes se mostraban 20 de un lote de 300).
+// Paginación por offset: si alguien acepta prendas mientras otro navega, entre una página y la
+// siguiente puede repetirse una fila. Es un historial de consulta; se acepta.
 export const POR_PAGINA_RECIBIDAS = 50;
 
 function mapear(r: Record<string, unknown>): PrendaEnviada {
@@ -66,10 +68,15 @@ export async function listarEnviosEnCamino(f: {
     .eq('etapa', 'enviado')
     .not('envio_id', 'is', null);
   if (f.sede) q = q.eq('envios_prendas.sede_destino_cod', f.sede);
-  const { data, error } = await q.order('fecha_actualizado', { ascending: false }).limit(TOPE_EN_CAMINO);
+  // Las más antiguas primero: si algún día se llega al tope, lo que queda fuera es lo último que
+  // llegó, nunca lo que lleva más tiempo esperando. Una fila de más dice si hay más.
+  const { data, error } = await q
+    .order('fecha_actualizado', { ascending: true })
+    .order('id', { ascending: true })
+    .limit(TOPE_EN_CAMINO + 1);
   if (error) throw new Error(error.message);
   const filas = (data as Record<string, unknown>[]) ?? [];
-  return { prendas: filas.map(mapear), truncado: filas.length >= TOPE_EN_CAMINO };
+  return { prendas: filas.slice(0, TOPE_EN_CAMINO).map(mapear), truncado: filas.length > TOPE_EN_CAMINO };
 }
 
 /** Historial de recibidas, paginado. El rango filtra por la fecha del envío, en hora Perú. */
