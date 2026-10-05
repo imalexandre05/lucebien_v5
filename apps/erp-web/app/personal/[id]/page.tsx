@@ -6,18 +6,19 @@ import { obtenerColaborador, estadoDeColaborador } from '../../../lib/colaborado
 import { pendientesDelPeriodo, corteDelHilo } from '../../../lib/colaboradores-pasos';
 import { rutaSeccion } from '../../../lib/colaboradores-secciones';
 import { miDesempeno } from '../../../lib/desempeno-repo';
+import { metaPagoPorPuntos } from '../../../lib/config-repo';
+import { componentesEvaluacion } from '../../../lib/evaluaciones-repo';
 import { leerPeriodo, queryPeriodo, etiquetaPeriodo } from '../../../lib/periodo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
 import { StatBox } from '../../../components/ui/stat-box';
+import { Aviso } from '../../../components/ui/form';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { HiloPago } from '../../../components/colaboradores/hilo-pago';
 
 // El resumen contesta dos preguntas, en este orden: qué falta para cerrar el período, y qué pasó
 // en él. El orden importa: lo primero es accionable y lo segundo es contexto.
-
-const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 
 export default async function ResumenColaboradorPage({
   params,
@@ -53,7 +54,16 @@ export default async function ResumenColaboradorPage({
 
   const pasos = pendientesDelPeriodo(estado);
   const corte = corteDelHilo(pasos);
-  const extrasTotal = desempeno.extras.reduce((s, e) => s + e.montoTotal, 0);
+  // Los extras se miden en puntos, no en soles (decisión del dueño, 05-oct-2026).
+  const extrasPuntos = Math.round(desempeno.extras.reduce((s, e) => s + e.puntosTotal, 0) * 100) / 100;
+
+  // Pago por puntos (spec sueldos/2026-10-05-pago-por-puntos-design.md §5): sólo si está activo.
+  const metaPuntos = await metaPagoPorPuntos();
+  const puntosPeriodo =
+    metaPuntos !== null
+      ? ((await componentesEvaluacion(persona.id, periodo.desde, periodo.hasta).catch(() => null))?.puntosTotal ?? null)
+      : null;
+  const fmtPuntos = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 });
 
   return (
     <div className="space-y-4">
@@ -87,6 +97,13 @@ export default async function ResumenColaboradorPage({
         </CardContent>
       </Card>
 
+      {metaPuntos !== null && puntosPeriodo !== null && (
+        <Aviso tono="info">
+          En este período lleva <span className="tabular-nums font-semibold">{fmtPuntos(puntosPeriodo)} puntos</span>. Desde{' '}
+          <span className="tabular-nums font-semibold">{fmtPuntos(metaPuntos)} puntos</span> al mes cobra extra.
+        </Aviso>
+      )}
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatBox
           index={0}
@@ -105,7 +122,7 @@ export default async function ResumenColaboradorPage({
         <StatBox
           index={2}
           label="Extras registrados"
-          valor={soles(extrasTotal)}
+          valor={`${extrasPuntos} pts`}
           sub={`${desempeno.extras.length} en el período`}
           size="md"
           tone="exito"

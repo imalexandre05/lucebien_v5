@@ -1526,11 +1526,12 @@ una fórmula del motor (`bonoPorPuntos`, `packages/core/src/sueldos.ts`).
 - **Pactar los dos valores por contrato.** Hoy se leen de `/configuracion`, como los demás
   parámetros; un cambio ahí afecta a toda liquidación nueva. El ticket #20 los congelará al crear
   el contrato igual que al resto. La lista blanca `sueldo_acuerdos_parametros_chk` **no** se amplió.
-- **Mi desempeño y la ficha del colaborador siguen mostrando soles por extras.** La spec sólo
-  pidió quitarlos de `/evaluaciones`. No se tocaron porque la Fase 5 decidió que el operativo no ve
-  los puntos de extras (`puedeVerPuntosExtras`), y cambiar «S/» por puntos en su propia pantalla lo
-  contradiría. Hay que decidir si ahí también se oculta el monto.
-- **Aviso en la ficha del colaborador** (spec §5): sólo se implementó en Mi desempeño.
+- ~~Mi desempeño y la ficha mostraban soles por extras~~ — resuelto el 05-oct a pedido de la sesión
+  maestra («los extras no se pagan»): ambas pantallas muestran puntos. Ojo: la Fase 5 decidió que el
+  operativo no ve los puntos de extras (`puedeVerPuntosExtras`); Mi desempeño ahora le muestra los
+  **suyos**. Confirmar con Alexander que eso es lo que quiere.
+- El aviso de la ficha habla del período mostrado («En este período lleva X puntos. Desde Y puntos al
+  mes cobra extra»); la meta que cita es la mensual, sin prorratear.
 
 ### 🟡 Consecuencia del prorrateo que el dueño debe conocer
 

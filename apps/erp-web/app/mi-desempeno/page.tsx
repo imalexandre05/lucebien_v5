@@ -3,8 +3,7 @@ import { TURNO_LABEL, tramoEval, TRAMO_LABEL, bandaDesdeNota, BANDA_LABEL, type 
 import { getSesion } from '../../lib/auth';
 import { miDesempeno } from '../../lib/desempeno-repo';
 import { leerPesosEval, leerEscalaPuntos, componentesEvaluacion } from '../../lib/evaluaciones-repo';
-import { leerConfigMap } from '../../lib/config-repo';
-import { CLAVE_PUNTOS_META, CLAVE_SOLES_POR_PUNTO } from '../../lib/config-catalogo';
+import { metaPagoPorPuntos } from '../../lib/config-repo';
 import { mesPeru } from '../../lib/fechas';
 import { tieneReauth } from '../../lib/reauth';
 import { PageHeader } from '../../components/shell/page-header';
@@ -65,17 +64,13 @@ export default async function MiDesempenoPage() {
     leerPesosEval(),
     leerEscalaPuntos(),
   ]);
-  const extrasTotal = d.extras.reduce((s, e) => s + e.montoTotal, 0);
+  // Los extras no se pagan en soles (decisión del dueño, 05-oct-2026): se muestran en puntos.
+  const extrasPuntos = Math.round(d.extras.reduce((s, e) => s + e.puntosTotal, 0) * 100) / 100;
 
   // Pago por puntos (spec sueldos/2026-10-05-pago-por-puntos-design.md §5): el aviso sólo aparece
-  // si el dueño ya encendió las dos claves. Con cualquiera vacía no se menciona, porque no se paga.
-  // La lectura nunca tumba la pantalla: si falla, simplemente no hay aviso. Los puntos son los
-  // TOTALES del propio usuario (la RPC sólo deja a cada quien leerse a sí mismo), no el desglose
-  // de extras, que sigue oculto al operativo.
-  const numero = (v: string | undefined) => (v !== undefined && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
-  const cfg = await leerConfigMap().catch(() => ({}) as Record<string, string>);
-  const metaPuntos = numero(cfg[CLAVE_PUNTOS_META]);
-  const pagoPorPuntos = metaPuntos !== null && numero(cfg[CLAVE_SOLES_POR_PUNTO]) !== null;
+  // si el dueño ya encendió las dos claves. La lectura nunca tumba la pantalla.
+  const metaPuntos = await metaPagoPorPuntos();
+  const pagoPorPuntos = metaPuntos !== null;
   const puntosMes = pagoPorPuntos
     ? ((await componentesEvaluacion(sesion.usuario.id, desde, hasta).catch(() => null))?.puntosTotal ?? null)
     : null;
@@ -94,7 +89,7 @@ export default async function MiDesempenoPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatBox index={0} label="Reportes del mes" valor={d.reportes.length} tone="navy" />
         <StatBox index={1} label="Puntos pipeline" valor={d.puntosPipeline} tone="gold" />
-        <StatBox index={2} label="Extras" valor={`S/ ${extrasTotal.toFixed(2)}`} tone="exito" />
+        <StatBox index={2} label="Puntos de extras" valor={extrasPuntos} tone="exito" />
         <StatBox index={3} label="Incidencias" valor={d.incidencias.length} tone="neutro" />
       </div>
 
@@ -185,7 +180,7 @@ export default async function MiDesempenoPage() {
                 <TR>
                   <TH className="pl-5">Fecha</TH>
                   <TH>Descripción</TH>
-                  <TH className="pr-5 text-right">Monto</TH>
+                  <TH className="pr-5 text-right">Puntos</TH>
                 </TR>
               </THead>
               <TBody>
@@ -193,7 +188,7 @@ export default async function MiDesempenoPage() {
                   <TR key={e.id}>
                     <TD className="pl-5 tabular-nums text-dato text-muted">{e.fecha}</TD>
                     <TD>{e.nombre}</TD>
-                    <TD className="pr-5 text-right tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
+                    <TD className="pr-5 text-right tabular-nums">{e.puntosTotal}</TD>
                   </TR>
                 ))}
               </TBody>
