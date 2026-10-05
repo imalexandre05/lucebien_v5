@@ -1500,7 +1500,7 @@ directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sól
 
 Decisión del dueño: **sólo el administrador puede ver quién puntuó a quién** (ticket
 imalexandre05/lucebien-tablero#40). Spec: `docs/superpowers/specs/evaluaciones/2026-10-05-valores360-anonimato-design.md`.
-Migración `0112` (escrita, **no aplicada** a ninguna base: la aplica Alexander).
+Migración `0116` (escrita, **no aplicada** a ninguna base: la aplica Alexander).
 
 - **`valores_min_evaluaciones` = 3 — default inventado, no confirmado por el dueño.** Es el mínimo de
   evaluaciones recibidas en el mes para que una persona vea su resultado; con menos, la pantalla dice

@@ -61,7 +61,7 @@ equivaldría a apagar el anonimato en silencio).
   admin. Ninguna otra depende de ver `evaluador_id` siendo no-administrador (verificado con grep).
 
 ## 3. Prueba SQL (antes del código, regla 6)
-`packages/db/pruebas/0112_valores360_anonimato.prueba.sql` (número reservado: 0112):
+`packages/db/pruebas/0116_valores360_anonimato.prueba.sql` (número reservado: 0116):
 
 | Caso | Esperado |
 |---|---|
