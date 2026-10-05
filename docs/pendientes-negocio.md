@@ -1515,21 +1515,17 @@ Migración `0116` (escrita, **no aplicada** a ninguna base: la aplica Alexander)
 - Un administrador mirando **su propio** resultado también pasa por el mínimo (usa la misma función
   que todos); mirando a **otra** persona, ve todo sin mínimo.
 
-### Hallazgos del verificador sobre el anonimato de Valores 360° (05-oct-2026) — **abiertos, sin arreglar en este PR**
+### Hallazgos del verificador sobre el anonimato de Valores 360° (05-oct-2026) — **cerrados en este PR**
 
-Corregidos en la rama: formato viejo de la función antes de aplicar 0116, desborde de `int` en el
-mínimo, tests del mínimo en TS. El tope del mínimo en `/configuracion` pasó de 20 a 100 (con 18
-empleados el máximo real de evaluaciones recibidas es 17: fijarlo en 18 o más oculta el resultado a
-todos, sin aviso). Quedan **tres fugas del mismo dato por otros caminos**, que tocan la cadena del
-sueldo y por eso piden spec propia (no-negociable 1):
+Decisión del dueño (05-oct, tarde): sí cerrar las tres fugas, con una regla única — *el resultado que
+ve un no-administrador es siempre el de un mes ya cerrado (mes < mes actual, hora Perú) y sólo si ese
+mes tiene ≥ `valores_min_evaluaciones` evaluaciones; nunca en vivo* (spec §6). Cerradas en la 0116:
+`/mi-desempeno`, `evaluacion_componentes(self, …)` (el envoltorio; el cuerpo que alimenta la evaluación
+y el pago no se tocó) y la diferencia de lecturas sucesivas de `valores_mis_puntajes`.
 
-1. **`/mi-desempeno`** (`desempeno-repo.ts` → `perfil-componentes.tsx`) muestra la nota de Valores 360°
-   guardada en `evaluaciones_mensuales.componentes.valores`, sin mínimo. Con una sola evaluación, esa
-   nota *es* el voto de una persona.
-2. **`public.evaluacion_componentes(self, …)`** (0095/0067) devuelve `valoresCantidad` y `valores` a la
-   propia persona, también sin mínimo y por API directa. Arreglo propuesto: aplicar el mínimo en el
-   envoltorio público para quien no es administrador, **no** en `private.evaluacion_componentes_datos`
-   (alimenta la evaluación del admin y el pago).
-3. **Diferencia de snapshots:** al publicar `cantidad` y promedios, dos lecturas consecutivas despejan
-   cada voto posterior al tercero. Opciones: no devolver `cantidad`, o publicar el resultado sólo al
-   cerrar la ventana del mes. **Pregunta para el dueño.**
+Residual, sin decidir (también en la spec §6):
+- Un evaluador puede insertar por la API un voto con `mes` pasado; movería un mes ya cerrado. Es el
+  ítem «mes evaluado» del ticket.
+- `evaluaciones_mensuales.nota_final` (método ponderado) incluye el componente de valores y la ve la
+  propia persona, sin mínimo. **Pregunta para el dueño:** ¿también se oculta hasta que el mes cierre y
+  haya mínimo?
