@@ -10,6 +10,8 @@
 --      de pipeline un día dentro del rango y se piden dos rangos: uno que los incluye y uno que no.
 --   3. «En blanco = no configurado»: una clave vacía NO aparece en `parametros`.
 --   4. Basura en la clave corta con CONFIG: (misma trampa que documenta la 0073).
+--   5. Aislamiento: alguien que no es administrador no puede pedir los puntos de otra persona.
+--      Todo corre como el rol `authenticated`, no como superusuario (ver el comentario del montaje).
 --
 -- QUÉ NO PRUEBA. La fórmula del bono (core: sueldos-pago-puntos.test.ts) ni el cierre seguro con
 -- datos actuales (PR #44, aún no está en main).
@@ -57,7 +59,16 @@ begin
   -- 40,5 puntos de pipeline el 3-feb, a mediodía UTC (el mismo día en UTC y en hora Perú).
   insert into pipeline_puntos(empleado_id, etapa, puntos, fecha)
     values (adm, 'prueba', 40.5, timestamptz '2099-02-03 12:00:00+00');
+  -- La referencia se calcula ACÁ, como superusuario: la 0067 le quitó a `authenticated` el EXECUTE
+  -- de esta función, y justamente por eso `sueldo_entrada` la llama a través de un wrapper.
+  v_ref  := (private.evaluacion_componentes_datos(adm, '2099-02-02', '2099-02-03')->>'puntosTotal')::numeric;
+  v_ref2 := (private.evaluacion_componentes_datos(adm, '2099-02-02', '2099-02-02')->>'puntosTotal')::numeric;
   r := r || 'montaje=ok; ';
+
+  -- Desde acá la prueba corre COMO `authenticated` (el rol real de la app), no como superusuario:
+  -- la 0067 le quitó el EXECUTE a `evaluacion_componentes_datos`, y un superusuario no notaría que
+  -- `sueldo_entrada` (que corre como quien la llama) ya no puede llamarla.
+  set local role authenticated;
 
   -- ═══ 1. Parámetros vacíos (el estado en que se despliega) ══════════════════════════════════
   delete from config where clave in ('sueldo_puntos_meta_mensual', 'sueldo_soles_por_punto');
@@ -86,8 +97,6 @@ begin
     update config set valor = '0.05' where clave = 'sueldo_soles_por_punto';
     v_def := sueldo_entrada(ac, '2099-02-02', '2099-02-03');
     v_pts := (v_def->>'puntosPeriodo')::numeric;
-    v_ref := (private.evaluacion_componentes_datos(adm, '2099-02-02', '2099-02-03')->>'puntosTotal')::numeric;
-    v_ref2 := (private.evaluacion_componentes_datos(adm, '2099-02-02', '2099-02-02')->>'puntosTotal')::numeric;
 
     if (v_def->'parametros'->>'puntosMetaMensual')::numeric = 5000
        and (v_def->'parametros'->>'solesPorPunto')::numeric = 0.05
@@ -137,6 +146,21 @@ begin
       r := r || '[ok] caso4: texto no numérico corta con CONFIG:; ';
     else
       r := r || format('[FALLA] caso4: esperaba CONFIG: y salió "%s"; ', v_msg);
+    end if;
+  end;
+
+  -- ═══ 5. Aislamiento: el wrapper de puntos es sólo para el administrador ═════════════════════
+  begin
+    perform set_config('request.jwt.claims',
+      json_build_object('sub', gen_random_uuid(), 'role','authenticated')::text, true);
+    perform private.sueldo_puntos_periodo(adm, '2099-02-02', '2099-02-03');
+    r := r || '[FALLA] caso5: alguien que no es admin pudo leer los puntos de otra persona; ';
+  exception when others then
+    get stacked diagnostics v_msg = message_text;
+    if v_msg like 'PERMISO:%' then
+      r := r || '[ok] caso5: quien no es administrador recibe PERMISO al pedir los puntos; ';
+    else
+      r := r || format('[FALLA] caso5: esperaba PERMISO y salió "%s"; ', v_msg);
     end if;
   end;
 
