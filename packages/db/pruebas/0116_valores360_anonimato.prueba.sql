@@ -165,7 +165,7 @@ begin
 
   -- 6b) Sin parámetro: el último mes cerrado que cumple. 2000-04 es el más reciente pero sólo tiene 2.
   begin
-    execute $q$ select count(*), max(mes), max(cantidad) from valores_mis_puntajes() $q$ into n, p_res, c;
+    execute $q$ select count(*), max(cantidad) from valores_mis_puntajes() $q$ into n, c;
     execute $q$ select max(mes) from valores_mis_puntajes() $q$ into r_mes;
     if n = 1 and r_mes = '2000-03' and c = 3 then
       r := r || ' [ok] sin parámetro devuelve el último mes cerrado que cumple (2000-03), no el 2000-04 con 2 votos ni el mes en curso;';
