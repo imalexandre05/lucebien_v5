@@ -1495,3 +1495,22 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+## Valores 360° — anonimato (05-oct-2026) — parámetro provisional
+
+Decisión del dueño: **sólo el administrador puede ver quién puntuó a quién** (ticket
+imalexandre05/lucebien-tablero#40). Spec: `docs/superpowers/specs/evaluaciones/2026-10-05-valores360-anonimato-design.md`.
+Migración `0112` (escrita, **no aplicada** a ninguna base: la aplica Alexander).
+
+- **`valores_min_evaluaciones` = 3 — default inventado, no confirmado por el dueño.** Es el mínimo de
+  evaluaciones recibidas en el mes para que una persona vea su resultado; con menos, la pantalla dice
+  «Aún no hay suficientes evaluaciones para mostrar tu resultado (mínimo 3)» y la función SQL devuelve
+  vacío (ni siquiera la cantidad). Se eligió 3 por ser el menor número con el que no se deduce por
+  descarte el voto de una persona; con exactamente 3, quien conozca su propio voto sigue acotando los
+  otros dos. Editable en `/configuracion` → Valores 360°. Un valor vacío, `0` o no numérico cae a 3
+  (nunca a 0: apagaría el anonimato en silencio).
+  **Pregunta para el dueño:** ¿3 está bien para un equipo de ~11 evaluadores, o prefiere 4 o 5?
+- Efecto colateral aceptado: un encargado con permiso `datos_personas` **deja de ver** `evaluador_id`
+  (antes lo leía por la policy). Es lo que pidió el dueño.
+- Un administrador mirando **su propio** resultado también pasa por el mínimo (usa la misma función
+  que todos); mirando a **otra** persona, ve todo sin mínimo.
