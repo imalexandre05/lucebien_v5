@@ -115,9 +115,17 @@ pago no se toca (no-negociable 1).
 - `evaluacion_componentes` como administrador: idéntico a antes, en vivo.
 
 ### Riesgos residuales (no se cierran aquí)
-- Un evaluador puede insertar por la API un voto con `mes` pasado (la policy de escritura sólo pide
-  `evaluador_id = auth.uid()`); eso movería un mes ya cerrado. Es el ítem «mes evaluado» del ticket,
+- Un evaluador puede insertar —y también actualizar: `eval_valores_update` deja cambiar `mes` y
+  `evaluado_id`— por la API un voto en un mes ya cerrado (la policy de escritura sólo pide
+  `evaluador_id = auth.uid()`); eso movería un mes ya publicado. Es el ítem «mes evaluado» del ticket,
   fuera de alcance.
+- **Abierto:** `evaluaciones_mensuales.componentes.valores` (el promedio guardado al evaluar) sigue
+  legible por la propia persona por PostgREST directo (`eval_select`, 0082), sin mes cerrado ni mínimo.
+  Las pantallas ya no lo muestran, pero eso no es una garantía de base. Cerrarlo toca la RLS de la
+  cadena del sueldo y pide spec propia (vista/RPC que quite `valores` con esta regla).
+- El administrador mirando **su propio** resultado pasa por la misma regla de mes cerrado y mínimo
+  (usa la misma función); el «no cambia» de arriba se refiere a lo que ve del equipo y a la nota
+  que calcula para la evaluación y el pago.
 - `evaluaciones_mensuales.nota_final` (método ponderado) incluye el componente de valores y se muestra
   a la propia persona; deducir de ahí el voto de un solo evaluador exigiría que el mes ya esté cerrado
   y evaluado, pero no está sujeto al mínimo. Queda anotado para decisión del dueño.
