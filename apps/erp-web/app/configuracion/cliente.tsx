@@ -291,8 +291,11 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
               {/* Spec 2026-10-05-contrato-valores-pactados: cada contrato guarda sus propios valores. */}
               {s.nombre === 'Sueldos' && (
                 <p className="mt-1 text-apoyo text-muted">
-                  Estos valores se usan para los contratos <strong className="font-medium text-navy">nuevos</strong>.
-                  Los contratos ya creados conservan los suyos.
+                  Los valores de sueldo que también figuran como «Valores pactados» en cada contrato
+                  (tolerancia, tardanzas, almuerzo, capacitación, meta, comisión, faltas, pausas) se
+                  usan para los contratos <strong className="font-medium text-navy">nuevos</strong>. Los
+                  contratos ya creados conservan los suyos. Los demás de esta sección (margen de horas,
+                  métodos de pago y huellero) aplican a todos de inmediato.
                 </p>
               )}
             </CardHeader>

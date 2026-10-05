@@ -39,8 +39,12 @@ export function parametrosDeContratoNuevo(
   propios: Partial<ParametrosSueldo> = {},
 ): Partial<ParametrosSueldo> {
   const efectivos = resolverParametros({ ...globales, ...definidos(propios) });
-  const { metaSemanal, ...resto } = efectivos;
-  return metaSemanal == null ? resto : { ...resto, metaSemanal };
+  // Sólo las claves que el contrato guarda (la lista blanca de la base): si el core suma un
+  // parámetro que todavía no está en el `check` de sueldo_acuerdos.parametros, no se copia.
+  const salida: Record<string, unknown> = {};
+  for (const clave of CLAVES_PARAMETROS_CONTRATO) salida[clave] = efectivos[clave];
+  if (efectivos.metaSemanal != null) salida.metaSemanal = efectivos.metaSemanal;
+  return salida as Partial<ParametrosSueldo>;
 }
 
 // Un campo en blanco del formulario (`undefined`, o `null` salvo en `metaSemanal`) no tiene que

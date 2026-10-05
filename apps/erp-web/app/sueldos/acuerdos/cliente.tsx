@@ -53,6 +53,11 @@ const OPC_MODALIDAD: Opcion[] = [
   { value: 'semanal', label: 'Semanal' },
 ];
 
+const OPC_META_FIJA: Opcion[] = [
+  { value: 'no', label: 'Sube con las horas trabajadas' },
+  { value: 'si', label: 'Fija: no cambia' },
+];
+
 const OPC_ALMUERZO: Opcion[] = [
   { value: 'no', label: 'Sólo en días de tiempo completo' },
   { value: 'si', label: 'Cualquier día trabajado' },
@@ -328,18 +333,26 @@ function borradorNuevo(
 // de hoy.
 const claveBorrador = (personaFija: Emp | undefined) => `sueldos-acuerdo-borrador:${personaFija?.id ?? 'picker'}`;
 
-function leerBorrador(personaFija: Emp | undefined): Borrador | null {
+function leerBorrador(personaFija: Emp | undefined, vigentes: ParametrosSueldo): Borrador | null {
   try {
     const crudo = localStorage.getItem(claveBorrador(personaFija));
-    return crudo ? (JSON.parse(crudo) as Borrador) : null;
+    if (!crudo) return null;
+    const b = JSON.parse(crudo) as Borrador;
+    // El borrador guarda sólo lo que se cambió: lo demás sale de los valores vigentes de AHORA.
+    return { ...b, parametros: parametrosDeContratoNuevo(vigentes, b.parametros) };
   } catch {
     return null;
   }
 }
 
-function guardarBorrador(personaFija: Emp | undefined, b: Borrador): void {
+function guardarBorrador(personaFija: Emp | undefined, b: Borrador, vigentes: ParametrosSueldo): void {
   try {
-    localStorage.setItem(claveBorrador(personaFija), JSON.stringify(b));
+    // Sólo los valores que el administrador cambió frente a los vigentes: un borrador viejo no
+    // tiene que fijar valores de hace días (spec 2026-10-05, enmienda).
+    const cambiados = Object.fromEntries(
+      Object.entries(b.parametros).filter(([k, v]) => vigentes[k as keyof ParametrosSueldo] !== v),
+    );
+    localStorage.setItem(claveBorrador(personaFija), JSON.stringify({ ...b, parametros: cambiados }));
   } catch {
     // Cuota llena o localStorage inaccesible: se sigue trabajando sin borrador, sin avisar en cada
     // tecla — el aviso sería más ruido que la pérdida ocasional que esto mismo existe para evitar.
@@ -404,7 +417,7 @@ export function AcuerdosCliente({
 
   useEffect(() => {
     if (!arrancaEnEditor || editando) return;
-    const guardado = leerBorrador(personaFija);
+    const guardado = leerBorrador(personaFija, vigentes);
     if (guardado) {
       setB(guardado);
       setBorradorRestaurado(true);
@@ -432,7 +445,7 @@ export function AcuerdosCliente({
     setEditando(null);
     // F-1: un borrador sin guardar de un contrato nuevo gana al vacío — es exactamente el caso que
     // esto existe para cubrir (cambiar de pantalla y volver a «Nuevo contrato»).
-    const guardado = leerBorrador(personaFija);
+    const guardado = leerBorrador(personaFija, vigentes);
     if (guardado) {
       setB(guardado);
       setBorradorRestaurado(true);
@@ -471,11 +484,11 @@ export function AcuerdosCliente({
   // debounce: `b` es un objeto chico, escribirlo en cada tecla no se nota.
   useEffect(() => {
     if (!enEditor || editando) return;
-    guardarBorrador(personaFija, b);
+    guardarBorrador(personaFija, b, vigentes);
     // personaFija no cambia dentro de la vida de este componente; incluirlo en las dependencias
     // sólo agregaría ruido a la lista sin cambiar cuándo corre esto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [b, enEditor, editando]);
+  }, [b, enEditor, editando, vigentes]);
 
   const guardar = () => {
     setError(null);
@@ -932,6 +945,15 @@ export function AcuerdosCliente({
                   </div>
                 );
               })}
+            </div>
+            <div className="mt-4">
+              <LabelGrupo>Meta semanal</LabelGrupo>
+              <OpcionBotones
+                opciones={OPC_META_FIJA}
+                value={(b.parametros.metaSemanalFija ?? vigentes.metaSemanalFija) ? 'si' : 'no'}
+                onChange={(x) => setB((v) => ({ ...v, parametros: { ...v.parametros, metaSemanalFija: x === 'si' } }))}
+                ariaLabel="Meta semanal fija"
+              />
             </div>
           </ModalBody>
           <ModalFooter>

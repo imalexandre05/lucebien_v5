@@ -17,6 +17,11 @@ vi.mock('../supabase/server', () => ({
         ? { data: vigentesDeConfig, error: null }
         : { data: null, error: { message: `rpc inesperada ${nombre}` } },
     from: () => ({
+      update: (fila: Record<string, unknown>) => {
+        insertado.fila = fila;
+        return { eq: async () => ({ error: null }), };
+      },
+      delete: () => ({ eq: async () => ({ error: null }) }),
       insert: (fila: Record<string, unknown>) => {
         insertado.fila = fila;
         return { select: () => ({ single: async () => ({ data: { id: 'nuevo-1' }, error: null }) }) };
@@ -25,7 +30,7 @@ vi.mock('../supabase/server', () => ({
   }),
 }));
 
-import { crearAcuerdo, type AcuerdoInput } from '../sueldos-repo';
+import { actualizarAcuerdo, crearAcuerdo, type AcuerdoInput } from '../sueldos-repo';
 
 const base: AcuerdoInput = {
   empleadoId: 'e1',
@@ -57,5 +62,16 @@ describe('crearAcuerdo — el contrato nuevo nace con todos sus valores pactados
     const p = insertado.fila!.parametros as Record<string, unknown>;
     expect(p.toleranciaMinutos).toBe(20);
     expect(p.metaSemanal).toBe(1800);
+  });
+});
+
+describe('actualizarAcuerdo — vaciar un campo no lo devuelve a seguir a Configuración', () => {
+  it('completa la clave que falta con el valor vigente', async () => {
+    vigentesDeConfig = { valorAlmuerzo: 10 };
+    await actualizarAcuerdo('a1', { ...base, parametros: { toleranciaMinutos: 15 } });
+    const p = insertado.fila!.parametros as Record<string, unknown>;
+    expect(p.toleranciaMinutos).toBe(15);
+    expect(p.valorAlmuerzo).toBe(10);
+    expect(Object.keys(p)).toHaveLength(15);
   });
 });

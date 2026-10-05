@@ -45,6 +45,11 @@ describe('parametrosDeContratoNuevo — un contrato nace con TODOS sus valores p
     expect(contrato.toleranciaMinutos).toBe(10);
   });
 
+  it('no copia claves del core que la base todavía no admite (p. ej. las de #54)', () => {
+    const p = parametrosDeContratoNuevo({}, {});
+    expect(Object.keys(p).every((k) => (CLAVES_PARAMETROS_CONTRATO as readonly string[]).includes(k))).toBe(true);
+  });
+
   it('rechaza lo que el motor rechazaría: clave desconocida, negativo', () => {
     expect(() => parametrosDeContratoNuevo({}, { tolerancia_minutos: 5 } as never)).toThrow(/desconocido/);
     expect(() => parametrosDeContratoNuevo({ tardanzasLibres: -1 }, {})).toThrow(/negativo/);

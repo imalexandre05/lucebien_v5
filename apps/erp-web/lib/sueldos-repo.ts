@@ -293,7 +293,9 @@ export async function crearAcuerdo(p: AcuerdoInput, creadoPor: string): Promise<
 
 export async function actualizarAcuerdo(id: string, p: AcuerdoInput): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.from('sueldo_acuerdos').update(filaAcuerdo(p)).eq('id', id);
+  // Vaciar un campo no devuelve el parámetro a seguir a /configuracion: queda con el valor vigente.
+  const parametros = parametrosDeContratoNuevo(await parametrosVigentes(), p.parametros);
+  const { error } = await sb.from('sueldo_acuerdos').update(filaAcuerdo({ ...p, parametros })).eq('id', id);
   if (error) throw errorSueldo(error);
   await guardarTurnos(id, p.turnos);
 }
