@@ -1608,3 +1608,19 @@ Otras decisiones del implementador, sin regla de negocio detrás:
   compartido»): para esa cuenta la base rechaza toda acción del pipeline sin código. **Pregunta
   para el dueño:** ¿qué cuentas se usan hoy en las PC compartidas?
 - Deshacer quita los puntos del movimiento deshecho (a quien lo hizo), no los de quien deshace.
+## Huecos abiertos alrededor de los puntos — hallados el 05-oct-2026 (migración `0115`)
+
+La `0115` cierra la escritura directa sobre `pipeline_puntos` y `prenda_historial`. El verificador
+encontró lo que queda (detalle y mediciones en
+[la spec §9](superpowers/specs/pipeline/2026-10-05-puntos-solo-rpc-design.md)). **Ninguno tiene
+decisión del dueño todavía; ninguno es un parámetro nuevo:**
+
+- 🔴 `prenda_pasada` es `FOR ALL`: se pueden fabricar prendas y retroceder etapas directo y cobrar
+  puntos por la RPC (5 vueltas = 15 puntos medidos). Necesita spec propia (nivel 3).
+- 🔴 El historial se borra por cascada con un `delete from prenda_pasada` directo. Se cierra con lo anterior.
+- 🟠 `pipeline_deshacer` (0112) no valida a qué etapa se vuelve: se pueden repetir avances y cobrar de más.
+- 🟠 Confirmar en Supabase que el schema `private` no está expuesto por PostgREST ni `pg_graphql`
+  **antes de aplicar la 0115**.
+- ⚪ `tools/auditoria-puntos.sql` no detecta: un par punto+historial falsificado juntos, una media
+  pieza inflada a pieza entera, ni puntos inflados antes de subir un `pts_*`.
+
