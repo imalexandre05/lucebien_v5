@@ -24,7 +24,11 @@
 
 - **Una sola fuente del mapeo `config → parámetro`:** el que ya existe en `private.sueldo_parametros_config()`. Se expone con una RPC delgada `public.sueldo_parametros_vigentes()` (sólo admin, `private.app_es_admin()`) que devuelve ese jsonb **sin** defaults del código. El servidor lo completa con `resolverParametros()` (core), que es la única fuente de los defaults. Así no se duplica ni el mapa ni los defaults en TypeScript.
 - **`crearAcuerdo` (sesión del admin, sin `getAdminClient`):** `parametros = { ...vigentes, ...lo que el formulario trae }`, con `metaSemanal` null fuera. Autoritativo en el servidor: aunque la pantalla mande `{}`, el contrato queda completo.
-- **`actualizarAcuerdo`** no completa nada: se guarda lo que el administrador ve y edita.
+- **`actualizarAcuerdo`** también completa con los valores vigentes cualquier clave que falte (p. ej. un campo que el administrador vació): vaciar un campo NO devuelve el parámetro a seguir a `/configuracion`, lo deja con el valor vigente. (Enmienda 05-oct tras la verificación: la versión anterior dejaba ese hueco.)
+- **Salida acotada a la lista de claves del contrato** (`CLAVES_PARAMETROS_CONTRATO` + `metaSemanal` si está pactada), no «todo lo que devuelva `resolverParametros`»: si #54 agrega `puntosMetaMensual`/`solesPorPunto` al core sin ampliar el `check` de `sueldo_acuerdos.parametros`, todo contrato nuevo fallaría.
+- **Borrador del navegador (localStorage):** guarda sólo los valores que el administrador cambió frente a los vigentes; al restaurarlo, lo no tocado vuelve a salir de los vigentes de ESE momento. Así un borrador viejo no fija valores de hace días.
+- **Aviso en `/configuracion`:** la sección «Sueldos» también tiene claves que NO viven en el contrato y aplican a todos al instante (margen de horas, métodos de pago, `huellero_*`). El aviso «contratos nuevos» se limita a los parámetros del contrato y dice explícitamente que las demás aplican de inmediato.
+- **`metaSemanalFija`** es parámetro del contrato y se edita en el editor (control sí/no).
 - **Migración 0118** (datos): `update sueldo_acuerdos set parametros = <defaults hoy> || <config hoy> || parametros`. Los defaults de la migración son una **foto** de `PARAMETROS_SUELDO_DEFAULT` a la fecha; un test de vitest compara el literal de la migración con el core para detectar deriva.
 - **Pruebas:** vitest (copia/completado, `metaSemanal` fuera, deriva de defaults) + prueba SQL en Postgres local.
 
