@@ -1,6 +1,7 @@
 import {
   MOTOR_VERSION,
   liquidarPeriodo,
+  parametrosDeContratoNuevo,
   resolverParametros,
   type EntradaLiquidacion,
   type Liquidacion,
@@ -261,11 +262,26 @@ function filaAcuerdo(p: Omit<AcuerdoInput, 'turnos'>) {
   };
 }
 
+/**
+ * Lo que /configuracion tiene fijado HOY para el sueldo, completado con los defaults del código.
+ * Sólo admin (la RPC lo exige). Es de donde parte un contrato nuevo.
+ */
+export async function parametrosVigentes(): Promise<ParametrosSueldo> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('sueldo_parametros_vigentes');
+  if (error) throw errorSueldo(error);
+  return resolverParametros((data ?? {}) as Partial<ParametrosSueldo>);
+}
+
 export async function crearAcuerdo(p: AcuerdoInput, creadoPor: string): Promise<string> {
   const sb = getServerClient();
+  // Un contrato nuevo se queda con TODOS los valores vigentes de este momento, vengan o no del
+  // formulario: así un cambio posterior en /configuracion no lo mueve (spec 2026-10-05). Se
+  // completa acá, en el servidor, y no se confía en que la pantalla haya mandado el conjunto.
+  const parametros = parametrosDeContratoNuevo(await parametrosVigentes(), p.parametros);
   const { data, error } = await sb
     .from('sueldo_acuerdos')
-    .insert({ ...filaAcuerdo(p), creado_por: creadoPor })
+    .insert({ ...filaAcuerdo({ ...p, parametros }), creado_por: creadoPor })
     .select('id')
     .single();
   if (error) throw errorSueldo(error);

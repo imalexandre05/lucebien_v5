@@ -9,6 +9,7 @@ import {
   diaSemanaISO,
   diasDelPeriodo,
   finDePeriodo,
+  parametrosDeContratoNuevo,
   resumirHorario,
   sueldoSugerido,
   type ParametrosSueldo,
@@ -61,7 +62,7 @@ const soles = (n: number): string =>
   `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /**
- * Los 13 parámetros que un contrato puede pisar. El orden agrupa por tema, no por importancia.
+ * Los parámetros que se editan en un contrato (los demás se copian pero no se ajustan acá). El orden agrupa por tema, no por importancia.
  *
  * Se listan acá y no se generan desde `PARAMETROS_SUELDO_DEFAULT` porque cada uno necesita una
  * etiqueta que un administrador entienda, un paso de edición propio y su rango: `factorMeta` se
@@ -101,6 +102,8 @@ const PARAMETROS: ParametroEditable[] = [
   // campo vacío pactaba un 50% de comisión y un «2» escrito pensando en 2% pactaba un 200%.
   { clave: 'pctComision', label: 'Comisión', ayuda: 'fracción sobre la base: 0,02 = 2%', paso: 0.005, min: 0, max: 1 },
   { clave: 'montoMinimoComision', label: 'Boleta mínima', ayuda: 'sólo boletas por encima entran a la comisión', paso: 10, min: 0 },
+  { clave: 'factorHoraFueraContrato', label: 'Hora fuera de contrato', ayuda: 'cuántas veces vale la hora trabajada fuera del horario pactado', paso: 0.1, min: 0 },
+  { clave: 'pausaMinimaMinutos', label: 'Pausa mínima', ayuda: 'minutos de hueco a partir de los cuales no se paga', paso: 5, min: 0 },
 ];
 
 const ETIQUETA_PARAMETRO = new Map(PARAMETROS.map((p) => [p.clave, p.label]));
@@ -179,7 +182,7 @@ const pctBarra = (hhmm: string): number => {
  * el número que el administrador ve al pactar y el que después le paga al colaborador podrían
  * separarse sin que nadie lo note.
  */
-function analizar(b: Borrador): {
+function analizar(b: Borrador, vigentes: ParametrosSueldo): {
   horas: number;
   dias: number;
   valorHora: number | null;
@@ -228,8 +231,8 @@ function analizar(b: Borrador): {
     const horasTramo = fechasTramo.reduce((s, f) => s + (porDia.get(diaSemanaISO(f))?.horas ?? 0), 0);
 
     const meses = fechas.length / 30;
-    const horasMin = b.parametros.horasMinimasAlmuerzo ?? PARAMETROS_SUELDO_DEFAULT.horasMinimasAlmuerzo;
-    const valorAlm = b.parametros.valorAlmuerzo ?? PARAMETROS_SUELDO_DEFAULT.valorAlmuerzo;
+    const horasMin = b.parametros.horasMinimasAlmuerzo ?? vigentes.horasMinimasAlmuerzo;
+    const valorAlm = b.parametros.valorAlmuerzo ?? vigentes.valorAlmuerzo;
     // Techo de almuerzos (C-4): cuenta los días del periodo cuyo horario contratado llega a las
     // horas mínimas — o todos los días con horario, si el almuerzo está habilitado a mano. Es lo
     // MÁXIMO si cumple el horario todos los días; el real sale de la asistencia (RN-15).
@@ -295,16 +298,24 @@ function analizar(b: Borrador): {
  * necesita scroll interno es un formulario que quería ser una página.
  *
  * Así que el editor vive en la misma página, dentro del contenedor de contratos, y reemplaza a la
- * lista mientras se trabaja. Lo único que sigue en modal son los parámetros: trece números que casi
+ * lista mientras se trabaja. Lo único que sigue en modal son los valores pactados: números que casi
  * nunca se tocan y que, en línea, tapaban lo que sí se mira siempre.
  */
 // El borrador con el que arranca un contrato nuevo: vacío, salvo que sea el PRIMER contrato de
 // una persona fija — ahí la fecha de inicio se precompleta con su fecha de ingreso (C-2). Función
 // aparte para que abrirNuevo() y el arranque directo de la alta encadenada (abrirNuevoAlMontar)
 // no repitan el mismo literal por separado.
-function borradorNuevo(personaFija: Emp | undefined, fechaIngresoPersona: string | null | undefined, esPrimero: boolean): Borrador {
+function borradorNuevo(
+  personaFija: Emp | undefined,
+  fechaIngresoPersona: string | null | undefined,
+  esPrimero: boolean,
+  vigentes: ParametrosSueldo,
+): Borrador {
   return {
     ...VACIO,
+    // Valores pactados: el contrato nuevo parte de lo que dice /configuracion HOY y lo guarda como
+    // suyo (spec 2026-10-05-contrato-valores-pactados-design.md). El servidor vuelve a copiarlos.
+    parametros: parametrosDeContratoNuevo(vigentes),
     empleadoId: personaFija?.id ?? '',
     fechaInicio: personaFija && esPrimero ? (fechaIngresoPersona ?? '') : '',
   };
@@ -349,6 +360,7 @@ export function AcuerdosCliente({
   personaFija,
   fechaIngresoPersona,
   abrirNuevoAlMontar,
+  valoresVigentes,
 }: {
   acuerdos: AcuerdoSueldo[];
   empleados: Emp[];
@@ -363,8 +375,14 @@ export function AcuerdosCliente({
    * inicial, no un efecto: así no puede pisar una edición que la persona ya esté haciendo.
    */
   abrirNuevoAlMontar?: boolean;
+  /**
+   * Lo que /configuracion tiene HOY (ya completado con los defaults del código). Es de dónde parte
+   * un contrato nuevo, y lo que se muestra como respaldo si a un contrato le faltara una clave.
+   */
+  valoresVigentes?: ParametrosSueldo;
 }) {
   const router = useRouter();
+  const vigentes = valoresVigentes ?? PARAMETROS_SUELDO_DEFAULT;
   // R2 (spec §2.4) más el hallazgo F6 del validador de flujo (23-ago-2026): con `personaFija`
   // (montado en /personal/[id]/contrato) y CERO contratos, arranca directo en el editor aunque no
   // venga `?continuar=alta` — quien vuelve a una ficha sin contrato (alta interrumpida, o
@@ -380,7 +398,7 @@ export function AcuerdosCliente({
   // falta (ver el useEffect de abajo), sin desajuste de hidratación visible: el usuario no llega a
   // ver el formulario vacío antes del reemplazo.
   const [b, setB] = useState<Borrador>(() =>
-    arrancaEnEditor ? borradorNuevo(personaFija, fechaIngresoPersona, true) : VACIO,
+    arrancaEnEditor ? borradorNuevo(personaFija, fechaIngresoPersona, true, vigentes) : VACIO,
   );
   const [borradorRestaurado, setBorradorRestaurado] = useState(false);
 
@@ -401,8 +419,8 @@ export function AcuerdosCliente({
   const [errorLista, setErrorLista] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
 
-  const analisis = useMemo(() => analizar(b), [b]);
-  const propios = Object.keys(b.parametros) as (keyof ParametrosSueldo)[];
+  const analisis = useMemo(() => analizar(b, vigentes), [b, vigentes]);
+  const pactados = PARAMETROS.filter((p) => b.parametros[p.clave] != null);
 
   // Al entrar o salir del editor cambia todo lo que hay en pantalla. Sin volver arriba, quien abre
   // un contrato desde el final de una lista larga cae en la mitad del formulario.
@@ -421,7 +439,7 @@ export function AcuerdosCliente({
     } else {
       // C-2: el PRIMER contrato de la persona arranca en su fecha de ingreso, editable. Una
       // renovación no: tiene su propia fecha y atarla al ingreso original la pisaría.
-      setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0));
+      setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0, vigentes));
       setBorradorRestaurado(false);
     }
     setError(null);
@@ -441,7 +459,7 @@ export function AcuerdosCliente({
   const descartarBorrador = () => {
     borrarBorrador(personaFija);
     setBorradorRestaurado(false);
-    setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0));
+    setB(borradorNuevo(personaFija, fechaIngresoPersona, acuerdos.length === 0, vigentes));
   };
 
   const volver = () => {
@@ -843,26 +861,27 @@ export function AcuerdosCliente({
               ))}
             </div>
 
-            {/* ── Parámetros propios: lo único que sigue siendo un modal ─────────────────── */}
+            {/* ── Valores pactados: lo único que sigue siendo un modal ───────────────────── */}
             <div className="rounded-r-chico border border-line px-4 py-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-cuerpo font-medium text-navy">Parámetros propios de este contrato</p>
+                  <p className="text-cuerpo font-medium text-navy">Valores pactados de este contrato</p>
                   <p className="text-apoyo text-muted">
-                    En blanco usa el valor global de Configuración. Lo que se escriba acá vale sólo
-                    para esta persona y sólo en este contrato.
+                    {editando
+                      ? 'La liquidación usa estos valores. Cambiar Configuración no los mueve.'
+                      : 'Parten de lo que dice Configuración hoy y quedan como valores de este contrato: cambiar Configuración después no los mueve.'}
                   </p>
                 </div>
                 <Button variant="outline" onClick={() => setParametrosAbierto(true)} className="shrink-0">
                   <SlidersHorizontal className="h-4 w-4" />
-                  {propios.length === 0 ? 'Ajustar parámetros' : `Ajustar (${propios.length})`}
+                  Ver y ajustar
                 </Button>
               </div>
-              {propios.length > 0 && (
+              {pactados.length > 0 && (
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {propios.map((clave) => (
-                    <Badge key={clave} tone="gold">
-                      {ETIQUETA_PARAMETRO.get(clave) ?? clave}: {String(b.parametros[clave])}
+                  {pactados.map((p) => (
+                    <Badge key={p.clave} tone="gold">
+                      {p.label}: <span className="tabular-nums">{String(b.parametros[p.clave])}</span>
                     </Badge>
                   ))}
                 </div>
@@ -885,15 +904,15 @@ export function AcuerdosCliente({
         <Modal
           open={parametrosAbierto}
           onClose={() => setParametrosAbierto(false)}
-          title="Parámetros de este contrato"
-          subtitle="Un campo en blanco usa el valor global de Configuración."
+          title="Valores pactados de este contrato"
+          subtitle="Son los valores de este contrato; no cambian si se modifica Configuración."
           size="xl"
         >
           <ModalBody>
             <div className="grid gap-3 sm:grid-cols-2">
               {PARAMETROS.map((p) => {
-                const global = PARAMETROS_SUELDO_DEFAULT[p.clave];
                 const actual = b.parametros[p.clave];
+                const respaldo = vigentes[p.clave];
                 return (
                   <div key={p.clave}>
                     <Label htmlFor={p.clave}>{p.label}</Label>
@@ -904,7 +923,9 @@ export function AcuerdosCliente({
                       min={p.min}
                       max={p.max}
                       value={actual == null ? '' : String(actual)}
-                      placeholder={global == null ? 'sin meta pactada' : String(global)}
+                      // El campo muestra el valor pactado. Sólo si le falta (un contrato raro) dice
+                      // qué valor de Configuración se usaría: nunca un texto de ejemplo.
+                      placeholder={respaldo == null ? 'sin meta pactada' : `usa ${respaldo} de Configuración`}
                       onChange={(e) => setParametro(p.clave, e.target.value)}
                     />
                     <p className="mt-1 text-apoyo text-muted">{p.ayuda}</p>
@@ -917,9 +938,12 @@ export function AcuerdosCliente({
             {/* Nada se guarda desde acá: los cambios quedan en el formulario y viajan cuando se
                 guarda el contrato. Por eso no hay «Cancelar»: prometería deshacer algo que este
                 diálogo no escribió. */}
-            {propios.length > 0 && (
-              <Button variant="ghost" onClick={() => setB((v) => ({ ...v, parametros: {} }))}>
-                Volver a los globales
+            {!editando && (
+              <Button
+                variant="ghost"
+                onClick={() => setB((v) => ({ ...v, parametros: parametrosDeContratoNuevo(vigentes) }))}
+              >
+                Volver a los de Configuración
               </Button>
             )}
             <Button onClick={() => setParametrosAbierto(false)}>Listo</Button>

@@ -288,6 +288,13 @@ export function ConfigCliente({ items }: { items: ConfigItem[] }) {
           <Card key={s.nombre}>
             <CardHeader>
               <CardTitle>{s.nombre}</CardTitle>
+              {/* Spec 2026-10-05-contrato-valores-pactados: cada contrato guarda sus propios valores. */}
+              {s.nombre === 'Sueldos' && (
+                <p className="mt-1 text-apoyo text-muted">
+                  Estos valores se usan para los contratos <strong className="font-medium text-navy">nuevos</strong>.
+                  Los contratos ya creados conservan los suyos.
+                </p>
+              )}
             </CardHeader>
             <CardContent className="divide-y divide-line/60 py-0">
               {s.items.map((i) => (
