@@ -97,10 +97,10 @@ revisar "regla2" "Regla 2 — sin update/delete directos sobre prenda_pasada" \
 # fallaría con 42501 en producción: el guard lo atrapa antes. Se mira la cadena entera, no la
 # línea, porque `.from('pipeline_puntos')` y `.insert(...)` casi siempre van en líneas distintas.
 revisar "regla2-puntos" "Regla 2 — sin escrituras directas sobre pipeline_puntos ni prenda_historial" \
-  "Escribe a través de una RPC del pipeline (pipeline-repo.ts) o de private.pipeline_registrar_punto / prenda_historial_registrar." \
-  "$(grep -rlE "from\(['\"](pipeline_puntos|prenda_historial)['\"]\)" apps/erp-web --include="*.ts" --include="*.tsx" 2>/dev/null \
+  "Escribe a través de una RPC del pipeline (pipeline-repo.ts); las funciones private.* las llaman las RPC en SQL, no el ERP." \
+  "$(grep -rlE "from\(['\"\`](pipeline_puntos|prenda_historial)['\"\`]\)" apps/erp-web --include="*.ts" --include="*.tsx" 2>/dev/null \
      | while IFS= read -r f; do
-         perl -0777 -ne 'while (/from\(\s*[\x27"](pipeline_puntos|prenda_historial)[\x27"]\s*\)((?:(?!from\().){0,400}?)\.(insert|update|delete|upsert)\(/sg) { my $antes = substr($_, 0, $-[0]); my $n = 1 + ($antes =~ tr/\n//); print "$ARGV:$n: escritura directa sobre $1 (.$3)\n"; }' "$f"
+         perl -0777 -ne 'while (/from\(\s*[\x27"`](pipeline_puntos|prenda_historial)[\x27"`]\s*\)((?:(?!from\().){0,400}?)\.(insert|update|delete|upsert)\(/sg) { my $antes = substr($_, 0, $-[0]); my $n = 1 + ($antes =~ tr/\n//); print "$ARGV:$n: escritura directa sobre $1 (.$3)\n"; }' "$f"
        done || true)"
 
 # ── Regla 3: RLS sin filtro real ───────────────────────────────────────────────────────────

@@ -354,6 +354,21 @@ begin
     r := r || format('[FALLA] caso 4h-2: registrado_por=%s, esperaba %s;', v_reg, e_ta);
   end if;
 
+  -- 4h-3) El mismo código dos veces en la lista: cada prenda queda con su historial.
+  perform pg_temp.como(e_ta);
+  v_err := pg_temp.mensaje(format(
+    $q$select lavanderia_enviar(%L, 'NORMAL', 'P0115', 'P0115', '{}'::jsonb,
+         '[{"cod":"P0115-DUP","tipo":"Chaqueta"},{"cod":"P0115-DUP","tipo":"Chaqueta"}]'::jsonb)$q$, v_a));
+  perform pg_temp.dueno();
+  select count(*) into v_n from prenda_pasada where codigo = 'P0115-DUP';
+  select count(*) into v_n2 from prenda_pasada p
+    where p.codigo = 'P0115-DUP' and exists (select 1 from prenda_historial h where h.pasada_id = p.id);
+  if v_err = 'ok' and v_n = 2 and v_n2 = 2 then
+    r := r || '[ok] caso 4h-3: con un código repetido en la lista, cada prenda queda con su historial;';
+  else
+    r := r || format('[FALLA] caso 4h-3: err=%s prendas=%s con_historial=%s;', v_err, v_n, v_n2);
+  end if;
+
   -- ── 5) Las funciones privadas no son una puerta nueva ───────────────────────────────────────
   -- La tienda A intenta escribir sobre una prenda de la sede B.
   perform pg_temp.como(e_ta);
