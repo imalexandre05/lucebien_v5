@@ -1,4 +1,4 @@
--- Prueba de la migración 0113_puntos_solo_rpc.sql
+-- Prueba de la migración 0115_puntos_solo_rpc.sql
 --
 -- Contrato: docs/superpowers/specs/pipeline/2026-10-05-puntos-solo-rpc-design.md §3 y §6.
 -- Esta prueba se escribió ANTES que la migración (Zone Guard): si falla, se corrige el código,
@@ -22,16 +22,16 @@
 --   6. `registrado_por` no se puede falsificar (siempre es auth.uid()).
 --   7. `anon` no ejecuta las funciones privadas.
 --
--- MONTAJE. Todo sintético: el prefijo 'P0113' en códigos y detalles. Dos sedes (las dos primeras
+-- MONTAJE. Todo sintético: el prefijo 'P0115' en códigos y detalles. Dos sedes (las dos primeras
 -- que existan), un admin, una encargada de almacén, una encargada de tienda por sede y un
 -- empleado de ventas con sus propios puntos.
 --
 -- SE DESCARTA SOLA: termina lanzando una excepción con el resultado; eso aborta la transacción y
 -- no queda ni una fila. El "error" final ES la salida esperada.
 --
--- Cómo se corre:  bash tools/probar-migracion.sh 0113
+-- Cómo se corre:  bash tools/probar-migracion.sh 0115
 -- (o pegar el archivo entero, de una sola vez, en el SQL editor de Supabase y leer el mensaje de
--- error P0001 que empieza con "RESULTADO 0113")
+-- error P0001 que empieza con "RESULTADO 0115")
 --
 -- NO SE HA EJECUTADO contra ninguna base real: la migración no está aplicada en ningún lado (la
 -- aplica el dueño después de revisar). Se corrió sólo contra un Postgres local con las 112
@@ -100,35 +100,35 @@ begin
   select cod into v_b from sedes where not interna and cod <> v_a order by cod limit 1;
   if v_a is null or v_b is null then raise exception 'La prueba necesita al menos dos sedes no internas'; end if;
 
-  insert into empleados (cod, nombre, iniciales, rol) values ('P0113-AD', 'Prueba 0113 Admin', 'AD', 'admin') returning id into e_admin;
-  insert into empleados (cod, nombre, iniciales, rol) values ('P0113-AL', 'Prueba 0113 Almacen', 'AL', 'encargado_almacen') returning id into e_alm;
-  insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P0113-TA', 'Prueba 0113 Tienda A', 'TA', 'encargado_tienda', v_a) returning id into e_ta;
-  insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P0113-TB', 'Prueba 0113 Tienda B', 'TB', 'encargado_tienda', v_b) returning id into e_tb;
-  insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P0113-EM', 'Prueba 0113 Empleado', 'EM', 'ventas_junior', v_b) returning id into e_emp;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0115-AD', 'Prueba 0115 Admin', 'AD', 'admin') returning id into e_admin;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0115-AL', 'Prueba 0115 Almacen', 'AL', 'encargado_almacen') returning id into e_alm;
+  insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P0115-TA', 'Prueba 0115 Tienda A', 'TA', 'encargado_tienda', v_a) returning id into e_ta;
+  insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P0115-TB', 'Prueba 0115 Tienda B', 'TB', 'encargado_tienda', v_b) returning id into e_tb;
+  insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P0115-EM', 'Prueba 0115 Empleado', 'EM', 'ventas_junior', v_b) returning id into e_emp;
 
   -- Pesos conocidos para que los puntos sean predecibles.
   insert into config (clave, valor) values ('pts_recepcion', '1') on conflict (clave) do update set valor = '1';
   insert into config (clave, valor) values ('pts_lavado_normal', '2') on conflict (clave) do update set valor = '2';
 
-  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0113-A1', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into pa1;
-  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0113-A2', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into pa2;
-  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0113-A3', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into pa3;
-  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0113-A4', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into pa4;
-  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0113-B1', 'Chaqueta', 'normal', v_b, 'recepcion') returning id into pb1;
-  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0113-T1', 'Terno completo', 'normal', v_a, 'recepcion') returning id into pt;
-  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0113-L1', 'Chaqueta', 'normal', v_a, 'listo') returning id into pl;
-  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0113-N1', 'Chaqueta', 'normal', v_b, 'recepcion') returning id into pn;
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-A1', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into pa1;
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-A2', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into pa2;
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-A3', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into pa3;
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-A4', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into pa4;
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-B1', 'Chaqueta', 'normal', v_b, 'recepcion') returning id into pb1;
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-T1', 'Terno completo', 'normal', v_a, 'recepcion') returning id into pt;
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-L1', 'Chaqueta', 'normal', v_a, 'listo') returning id into pl;
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-N1', 'Chaqueta', 'normal', v_b, 'recepcion') returning id into pn;
 
   -- Filas sembradas para comprobar lecturas y que nada se edite ni se borre.
   --   r1: puntos de la almacén sobre una prenda de A · r2: sobre una de B · r3: del empleado
   --   (sede B) sobre una prenda de A.
   insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle) values
-    (e_alm, pa4, 'recepcion', 1, 'P0113 r1'),
-    (e_alm, pb1, 'recepcion', 1, 'P0113 r2'),
-    (e_emp, pa4, 'recepcion', 1, 'P0113 r3');
+    (e_alm, pa4, 'recepcion', 1, 'P0115 r1'),
+    (e_alm, pb1, 'recepcion', 1, 'P0115 r2'),
+    (e_emp, pa4, 'recepcion', 1, 'P0115 r3');
   insert into prenda_historial (pasada_id, etapa_nueva, empleado_id, obs) values
-    (pa4, 'recepcion', e_alm, 'P0113 h1'),
-    (pb1, 'recepcion', e_alm, 'P0113 h2');
+    (pa4, 'recepcion', e_alm, 'P0115 h1'),
+    (pb1, 'recepcion', e_alm, 'P0115 h2');
 
   r := r || 'montaje=ok; ';
 
@@ -140,14 +140,14 @@ begin
     v_nom := v_roles[i]; v_uid := v_uids[i];
     perform pg_temp.como(v_uid);
     foreach v_sql in array array[
-      format($q$insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle) values ('%s', '%s', 'recepcion', 500, 'P0113 directo')$q$, v_uid, pa4),
-      $q$update pipeline_puntos set puntos = 500 where detalle = 'P0113 r1'$q$,
-      $q$update pipeline_puntos set puntos = 500 where detalle = 'P0113 r3'$q$,
-      $q$delete from pipeline_puntos where detalle = 'P0113 r1'$q$,
-      $q$delete from pipeline_puntos where detalle = 'P0113 r3'$q$,
-      format($q$insert into prenda_historial (pasada_id, etapa_nueva, empleado_id, obs) values ('%s', 'listo', '%s', 'P0113 directo')$q$, pa4, v_uid),
-      $q$update prenda_historial set obs = 'P0113 editado' where obs = 'P0113 h1'$q$,
-      $q$delete from prenda_historial where obs = 'P0113 h1'$q$
+      format($q$insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle) values ('%s', '%s', 'recepcion', 500, 'P0115 directo')$q$, v_uid, pa4),
+      $q$update pipeline_puntos set puntos = 500 where detalle = 'P0115 r1'$q$,
+      $q$update pipeline_puntos set puntos = 500 where detalle = 'P0115 r3'$q$,
+      $q$delete from pipeline_puntos where detalle = 'P0115 r1'$q$,
+      $q$delete from pipeline_puntos where detalle = 'P0115 r3'$q$,
+      format($q$insert into prenda_historial (pasada_id, etapa_nueva, empleado_id, obs) values ('%s', 'listo', '%s', 'P0115 directo')$q$, pa4, v_uid),
+      $q$update prenda_historial set obs = 'P0115 editado' where obs = 'P0115 h1'$q$,
+      $q$delete from prenda_historial where obs = 'P0115 h1'$q$
     ] loop
       v_res := pg_temp.intentar(v_sql);
       if v_res <> '42501' then
@@ -157,8 +157,8 @@ begin
   end loop;
   perform pg_temp.como_anon();
   foreach v_sql in array array[
-    format($q$insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle) values ('%s', '%s', 'recepcion', 500, 'P0113 directo')$q$, e_emp, pa4),
-    format($q$insert into prenda_historial (pasada_id, etapa_nueva, empleado_id, obs) values ('%s', 'listo', '%s', 'P0113 directo')$q$, pa4, e_emp)
+    format($q$insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle) values ('%s', '%s', 'recepcion', 500, 'P0115 directo')$q$, e_emp, pa4),
+    format($q$insert into prenda_historial (pasada_id, etapa_nueva, empleado_id, obs) values ('%s', 'listo', '%s', 'P0115 directo')$q$, pa4, e_emp)
   ] loop
     v_res := pg_temp.intentar(v_sql);
     if v_res <> '42501' then v_fallas := v_fallas || format('anon→%s; ', v_res); end if;
@@ -170,11 +170,11 @@ begin
   end if;
 
   perform pg_temp.dueno();
-  select count(*) into v_n from pipeline_puntos where detalle in ('P0113 directo', 'P0113 editado') or puntos = 500;
-  select count(*) into v_n2 from prenda_historial where obs in ('P0113 directo', 'P0113 editado');
-  select count(*) into v_est from pipeline_puntos where detalle in ('P0113 r1', 'P0113 r2', 'P0113 r3') and puntos = 1;
+  select count(*) into v_n from pipeline_puntos where detalle in ('P0115 directo', 'P0115 editado') or puntos = 500;
+  select count(*) into v_n2 from prenda_historial where obs in ('P0115 directo', 'P0115 editado');
+  select count(*) into v_est from pipeline_puntos where detalle in ('P0115 r1', 'P0115 r2', 'P0115 r3') and puntos = 1;
   if v_n = 0 and v_n2 = 0 and v_est::int = 3
-     and (select count(*) from prenda_historial where obs in ('P0113 h1', 'P0113 h2')) = 2 then
+     and (select count(*) from prenda_historial where obs in ('P0115 h1', 'P0115 h2')) = 2 then
     r := r || '[ok] caso 1b: tras los intentos no hay filas nuevas, editadas ni borradas;';
   else
     r := r || format('[FALLA] caso 1b: puntos_extra=%s historial_extra=%s sembrados_intactos=%s;', v_n, v_n2, v_est);
@@ -189,8 +189,8 @@ begin
     v_uid := (array[e_admin, e_alm, e_ta, e_emp, e_tb])[i];
     v_nom := (array['admin', 'almacen', 'tienda_A', 'empleado', 'tienda_B'])[i];
     perform pg_temp.como(v_uid);
-    select count(*) into v_n  from pipeline_puntos  where detalle like 'P0113 r%';
-    select count(*) into v_n2 from prenda_historial where obs like 'P0113 h%';
+    select count(*) into v_n  from pipeline_puntos  where detalle like 'P0115 r%';
+    select count(*) into v_n2 from prenda_historial where obs like 'P0115 h%';
     if v_n <> (array[3, 3, 2, 2, 1])[i] or v_n2 <> (array[2, 2, 1, 1, 1])[i] then
       v_fallas := v_fallas || format('%s ve puntos=%s historial=%s; ', v_nom, v_n, v_n2);
     end if;
@@ -274,21 +274,21 @@ begin
   perform pipeline_dividir(pt);
   perform pg_temp.dueno();
   select count(*) into v_n from prenda_historial h join prenda_pasada p on p.id = h.pasada_id
-    where p.codigo in ('P0113-T1-S', 'P0113-T1-P') and h.registrado_por = e_alm;
+    where p.codigo in ('P0115-T1-S', 'P0115-T1-P') and h.registrado_por = e_alm;
   select count(*) into v_n2 from prenda_historial
     where pasada_id = pt and etapa_nueva = 'dividido' and registrado_por = e_alm;
-  select id into v_hija from prenda_pasada where codigo = 'P0113-T1-S';
+  select id into v_hija from prenda_pasada where codigo = 'P0115-T1-S';
   if v_n = 2 and v_n2 = 1 and v_hija is not null then
     r := r || '[ok] caso 4e-1: pipeline_dividir deja las tres filas de historial;';
   else
     r := r || format('[FALLA] caso 4e-1: historial_hijas=%s historial_madre=%s;', v_n, v_n2);
   end if;
-  insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle) values (e_alm, v_hija, 'recepcion', 1, 'P0113 hija');
+  insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle) values (e_alm, v_hija, 'recepcion', 1, 'P0115 hija');
   perform pg_temp.como(e_alm);
   v_err := pg_temp.mensaje(format('select pipeline_deshacer_division(%L)', pt));
   perform pg_temp.dueno();
-  select count(*) into v_n from prenda_pasada where codigo in ('P0113-T1-S', 'P0113-T1-P');
-  select count(*) into v_n2 from pipeline_puntos where detalle = 'P0113 hija';
+  select count(*) into v_n from prenda_pasada where codigo in ('P0115-T1-S', 'P0115-T1-P');
+  select count(*) into v_n2 from pipeline_puntos where detalle = 'P0115 hija';
   select etapa into v_etapa from prenda_pasada where id = pt;
   if v_err = 'ok' and v_n = 0 and v_n2 = 0 and v_etapa = 'recepcion'
      and exists (select 1 from prenda_historial where pasada_id = pt and obs like 'Deshacer división%' and registrado_por = e_alm) then
@@ -336,20 +336,20 @@ begin
   -- 4h) lavanderia_enviar (tienda A): crea la prenda y su fila de historial.
   perform pg_temp.como(e_ta);
   v_err := pg_temp.mensaje(format(
-    $q$select lavanderia_enviar(%L, 'NORMAL', 'P0113', 'P0113', '{}'::jsonb,
-         '[{"cod":"P0113-LV","tipo":"Chaqueta","color":"negro","talla":"M"}]'::jsonb)$q$, v_a));
+    $q$select lavanderia_enviar(%L, 'NORMAL', 'P0115', 'P0115', '{}'::jsonb,
+         '[{"cod":"P0115-LV","tipo":"Chaqueta","color":"negro","talla":"M"}]'::jsonb)$q$, v_a));
   perform pg_temp.dueno();
   select count(*), min(h.etapa_nueva), (array_agg(h.registrado_por))[1]
     into v_n, v_etapa, v_reg
     from prenda_historial h join prenda_pasada p on p.id = h.pasada_id
-    where p.codigo = 'P0113-LV' and h.empleado_id = e_ta;
+    where p.codigo = 'P0115-LV' and h.empleado_id = e_ta;
   if v_err = 'ok' and v_n = 1 and v_etapa = 'recepcion' then
     r := r || '[ok] caso 4h-1: lavanderia_enviar crea la prenda y su historial;';
   else
     r := r || format('[FALLA] caso 4h-1: err=%s historial=%s etapa=%s;', v_err, v_n, v_etapa);
   end if;
   if v_reg = e_ta then
-    r := r || '[ok] caso 4h-2: el historial de lavanderia_enviar guarda registrado_por = sesión (mejora de la 0113);';
+    r := r || '[ok] caso 4h-2: el historial de lavanderia_enviar guarda registrado_por = sesión (mejora de la 0115);';
   else
     r := r || format('[FALLA] caso 4h-2: registrado_por=%s, esperaba %s;', v_reg, e_ta);
   end if;
@@ -358,31 +358,31 @@ begin
   -- La tienda A intenta escribir sobre una prenda de la sede B.
   perform pg_temp.como(e_ta);
   v_fallas := '';
-  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 5, 'P0113 ajena')$q$, e_ta, pb1));
+  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 5, 'P0115 ajena')$q$, e_ta, pb1));
   if v_err not like 'PERMISO%' then v_fallas := v_fallas || format('registrar ajena→%s; ', v_err); end if;
   v_err := pg_temp.mensaje(format($q$select private.pipeline_borrar_punto(%L, %L)$q$, pb1, e_alm));
   if v_err not like 'PERMISO%' then v_fallas := v_fallas || format('borrar ajena→%s; ', v_err); end if;
   v_err := pg_temp.mensaje(format($q$select private.pipeline_borrar_punto(%L, %L, true)$q$, pb1, e_alm));
   if v_err not like 'PERMISO%' then v_fallas := v_fallas || format('borrar todos ajena→%s; ', v_err); end if;
-  v_err := pg_temp.mensaje(format($q$select private.prenda_historial_registrar(%L, 'recepcion', 'listo', %L, 'P0113 ajena')$q$, pb1, e_ta));
+  v_err := pg_temp.mensaje(format($q$select private.prenda_historial_registrar(%L, 'recepcion', 'listo', %L, 'P0115 ajena')$q$, pb1, e_ta));
   if v_err not like 'PERMISO%' then v_fallas := v_fallas || format('historial ajena→%s; ', v_err); end if;
   -- Prenda inexistente o nula.
-  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 5, 'P0113 fantasma')$q$, e_ta, gen_random_uuid()));
+  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 5, 'P0115 fantasma')$q$, e_ta, gen_random_uuid()));
   if v_err not like 'PERMISO%' then v_fallas := v_fallas || format('registrar inexistente→%s; ', v_err); end if;
-  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, null, 'recepcion', 5, 'P0113 nula')$q$, e_ta));
+  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, null, 'recepcion', 5, 'P0115 nula')$q$, e_ta));
   if v_err not like 'PERMISO%' then v_fallas := v_fallas || format('registrar nula→%s; ', v_err); end if;
-  v_err := pg_temp.mensaje(format($q$select private.prenda_historial_registrar(%L, 'recepcion', 'listo', %L, 'P0113 fantasma')$q$, gen_random_uuid(), e_ta));
+  v_err := pg_temp.mensaje(format($q$select private.prenda_historial_registrar(%L, 'recepcion', 'listo', %L, 'P0115 fantasma')$q$, gen_random_uuid(), e_ta));
   if v_err not like 'PERMISO%' then v_fallas := v_fallas || format('historial inexistente→%s; ', v_err); end if;
   -- El empleado «sobre sus propios puntos» (sede B) sobre una prenda de la sede A: la rama que
   -- hoy deja sumarse puntos a uno mismo desaparece.
   perform pg_temp.como(e_emp);
-  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 500, 'P0113 autopuntos')$q$, e_emp, pa4));
+  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 500, 'P0115 autopuntos')$q$, e_emp, pa4));
   if v_err not like 'PERMISO%' then v_fallas := v_fallas || format('autopuntos→%s; ', v_err); end if;
   v_err := pg_temp.mensaje(format($q$select private.pipeline_borrar_punto(%L, %L)$q$, pa4, e_emp));
   if v_err not like 'PERMISO%' then v_fallas := v_fallas || format('borrarse puntos→%s; ', v_err); end if;
   -- Sin sesión.
   perform pg_temp.como_sin_sesion();
-  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 5, 'P0113 sin sesion')$q$, e_ta, pa4));
+  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 5, 'P0115 sin sesion')$q$, e_ta, pa4));
   if v_err = 'ok' then v_fallas := v_fallas || 'sin sesión→ok; '; end if;
   perform pg_temp.dueno();
   if v_fallas = '' then
@@ -390,10 +390,10 @@ begin
   else
     r := r || format('[FALLA] caso 5a: %s;', v_fallas);
   end if;
-  select count(*) into v_n from pipeline_puntos where detalle like 'P0113 %' and detalle in ('P0113 ajena', 'P0113 fantasma', 'P0113 nula', 'P0113 autopuntos', 'P0113 sin sesion');
-  select count(*) into v_n2 from prenda_historial where obs in ('P0113 ajena', 'P0113 fantasma');
-  if v_n = 0 and v_n2 = 0 and exists (select 1 from pipeline_puntos where detalle = 'P0113 r2')
-     and exists (select 1 from pipeline_puntos where detalle = 'P0113 r1') then
+  select count(*) into v_n from pipeline_puntos where detalle like 'P0115 %' and detalle in ('P0115 ajena', 'P0115 fantasma', 'P0115 nula', 'P0115 autopuntos', 'P0115 sin sesion');
+  select count(*) into v_n2 from prenda_historial where obs in ('P0115 ajena', 'P0115 fantasma');
+  if v_n = 0 and v_n2 = 0 and exists (select 1 from pipeline_puntos where detalle = 'P0115 r2')
+     and exists (select 1 from pipeline_puntos where detalle = 'P0115 r1') then
     r := r || '[ok] caso 5b: los rechazos no dejaron filas nuevas ni borraron las sembradas;';
   else
     r := r || format('[FALLA] caso 5b: puntos_nuevos=%s historial_nuevo=%s;', v_n, v_n2);
@@ -401,9 +401,9 @@ begin
 
   -- Control positivo: la tienda A sobre una prenda de SU sede sí puede.
   perform pg_temp.como(e_ta);
-  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 1, 'P0113 propia')$q$, e_alm, pa3));
+  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 1, 'P0115 propia')$q$, e_alm, pa3));
   perform pg_temp.dueno();
-  select count(*) into v_n from pipeline_puntos where detalle = 'P0113 propia' and pasada_id = pa3;
+  select count(*) into v_n from pipeline_puntos where detalle = 'P0115 propia' and pasada_id = pa3;
   if v_err = 'ok' and v_n = 1 then
     r := r || '[ok] caso 5c: con derecho sobre la prenda, registrar_punto escribe;';
   else
@@ -412,9 +412,9 @@ begin
 
   -- ── 6) registrado_por no se puede falsificar ────────────────────────────────────────────────
   perform pg_temp.como(e_ta);
-  v_err := pg_temp.mensaje(format($q$select private.prenda_historial_registrar(%L, 'recepcion', 'lavado', %L, 'P0113 firma')$q$, pa3, e_alm));
+  v_err := pg_temp.mensaje(format($q$select private.prenda_historial_registrar(%L, 'recepcion', 'lavado', %L, 'P0115 firma')$q$, pa3, e_alm));
   perform pg_temp.dueno();
-  select empleado_id, registrado_por into v_emp, v_reg from prenda_historial where obs = 'P0113 firma';
+  select empleado_id, registrado_por into v_emp, v_reg from prenda_historial where obs = 'P0115 firma';
   if v_err = 'ok' and v_emp = e_alm and v_reg = e_ta then
     r := r || '[ok] caso 6: registrado_por es siempre la sesión (auth.uid()), no un parámetro;';
   else
@@ -431,5 +431,5 @@ begin
     r := r || '[FALLA] caso 7: las funciones no existen con esa firma o anon puede ejecutarlas;';
   end if;
 
-  raise exception 'RESULTADO 0113 --> %', r;
+  raise exception 'RESULTADO 0115 --> %', r;
 end $$;

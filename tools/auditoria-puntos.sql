@@ -3,7 +3,7 @@
 -- SÓLO LECTURA: una sola sentencia `select`. No hace insert, update, delete ni DDL, y no necesita
 -- permisos de escritura. Se puede correr con el rol de sólo lectura o con `execute_sql`.
 --
--- POR QUÉ EXISTE. Hasta la migración 0113, `puntos_rw` (pipeline_puntos) y `hist_rw`
+-- POR QUÉ EXISTE. Hasta la migración 0115, `puntos_rw` (pipeline_puntos) y `hist_rw`
 -- (prenda_historial) eran `FOR ALL`: cualquier sesión podía insertar, editar o borrar por la API
 -- directa. Esa migración cierra el hueco hacia adelante; esto mira hacia atrás: lista lo que se ve
 -- raro en lo ya escrito (docs/superpowers/specs/pipeline/2026-10-05-puntos-solo-rpc-design.md §4).
