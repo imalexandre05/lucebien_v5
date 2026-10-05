@@ -274,9 +274,18 @@ revisar "acento" "Diseno -- el acento de modulo sale de ModuloAcento, no a mano"
 # Una sola pasada: se junta `número<TAB>nombre<TAB>dónde` de la copia de trabajo y de cada rama, y
 # después awk marca los números que tienen más de un nombre distinto. Con ~30 ramas y ~70
 # migraciones, hacerlo con grep anidados tarda minutos en Windows; así son segundos.
+# shellcheck source=tools/lib-migraciones-remotas.sh
+source "$(dirname "$0")/lib-migraciones-remotas.sh"
 listar_migraciones() {
   ls packages/db/migrations 2>/dev/null | grep -E '^[0-9]{4}.*\.sql$' \
     | awk '{printf "%s\t%s\t%s\n", substr($0,1,4), $0, "esta rama"}'
+  # Ramas del remoto consultadas de verdad (el clon de una sesión en la nube sólo conoce la suya).
+  # En el guard la falta de red no rompe: se avisa y se sigue con lo que el clon conoce.
+  if remotas=$(migraciones_remotas); then
+    printf '%s\n' "$remotas" | grep -E '^[0-9]{4}'
+  elif [ $? -eq 2 ]; then
+    echo "AVISO: sin red, el guard compara migraciones sólo con las ramas que el clon conoce." >&2
+  fi
   for ref in $(git for-each-ref --format='%(refname:short)' refs/heads refs/remotes 2>/dev/null); do
     git ls-tree --name-only "$ref" packages/db/migrations/ 2>/dev/null \
       | sed 's|.*/||' | grep -E '^[0-9]{4}.*\.sql$' \
