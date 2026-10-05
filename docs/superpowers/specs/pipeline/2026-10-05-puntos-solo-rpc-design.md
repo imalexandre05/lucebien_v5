@@ -127,7 +127,7 @@ casos como «esperados» en vez de ocultarlos.
   table …`.
 - Una llamada a una función privada sobre una prenda ajena lanza `PERMISO: …`.
 - Si una RPC futura vuelve a escribir directo: el permiso ya no existe y falla en la prueba; además
-  el guard debe fallar (ver §6).
+  el guard debe fallar (ver §7, paso 6).
 
 ## 6. Pruebas (se escriben antes que la migración — Zone Guard)
 
@@ -143,7 +143,7 @@ casos como «esperados» en vez de ocultarlos.
    prenda ajena (otra sede, sin ser almacén ni admin) se rechazan; sobre `pasada_id` inexistente o
    nulo también.
 5. El `registrado_por` no se puede falsificar.
-6. La migración se puede reaplicar sin fallar.
+6. La migración se puede reaplicar sin fallar (se comprueba a mano, aplicándola dos veces: la prueba corre dentro de una transacción y no puede reaplicar el archivo).
 
 ## 7. Plan de ejecución
 
@@ -154,8 +154,10 @@ casos como «esperados» en vez de ocultarlos.
 4. La migración idempotente; correr la prueba y ver que pasa; correr también las pruebas anteriores
    del pipeline (`0086`, `0095`, `0112`) para comprobar que nada se rompió.
 5. `tools/auditoria-puntos.sql` (sólo lectura).
-6. Una regla en el guard que impida que vuelva a haber un `insert`/`update`/`delete` directo sobre
-   las dos tablas fuera de las funciones permitidas, si cabe sin falsos positivos.
+6. Una regla en el guard (`regla2-puntos`) que falla si `apps/erp-web` escribe directo sobre las dos
+   tablas (mira la cadena `.from(...)…insert/update/delete/upsert`, también en varias líneas).
+   Las migraciones futuras no se pueden vigilar igual de bien: ahí manda la prueba 0113 y el
+   `verificador`.
 7. `bash tools/verificar-local.sh` verde antes de cada commit; subagente `verificador` al final.
 8. PR en borrador con base `feat/codigo-personal`, `Closes imalexandre05/lucebien-tablero#36`.
 
