@@ -1,8 +1,8 @@
--- 0113_puntos_solo_rpc.sql — sólo las RPC del pipeline escriben `pipeline_puntos` y `prenda_historial`.
+-- 0115_puntos_solo_rpc.sql — sólo las RPC del pipeline escriben `pipeline_puntos` y `prenda_historial`.
 --
 -- Implementa docs/superpowers/specs/pipeline/2026-10-05-puntos-solo-rpc-design.md (ticket
--- imalexandre05/lucebien-tablero#36). Prueba: packages/db/pruebas/0113_puntos_solo_rpc.prueba.sql
--- (bash tools/probar-migracion.sh 0113). Va encima de la 0112 (PR #42): reescribe las mismas RPC.
+-- imalexandre05/lucebien-tablero#36). Prueba: packages/db/pruebas/0115_puntos_solo_rpc.prueba.sql
+-- (bash tools/probar-migracion.sh 0115). Va encima de la 0112 (PR #42): reescribe las mismas RPC.
 --
 -- EL PROBLEMA. `puntos_rw` (pipeline_puntos) y `hist_rw` (prenda_historial) eran `FOR ALL` (0006):
 -- cualquier sesión que cumpliera la condición de lectura —incluido un empleado sobre SUS PROPIOS
@@ -552,5 +552,5 @@ begin
 end;
 $$;
 
--- Prueba de ataque: packages/db/pruebas/0113_puntos_solo_rpc.prueba.sql
---   bash tools/probar-migracion.sh 0113
+-- Prueba de ataque: packages/db/pruebas/0115_puntos_solo_rpc.prueba.sql
+--   bash tools/probar-migracion.sh 0115

@@ -92,7 +92,7 @@ revisar "regla2" "Regla 2 — sin update/delete directos sobre prenda_pasada" \
   "$(grep -rn "from('prenda_pasada')\|from(\"prenda_pasada\")" apps/erp-web --include="*.ts" 2>/dev/null | grep -E "\.update\(|\.delete\(" | sin_comentarios || true)"
 
 # ── Regla 2 (puntos e historial): sólo las RPC escriben `pipeline_puntos` y `prenda_historial` ──
-# Desde la 0113 `authenticated` ya no tiene insert/update/delete sobre esas dos tablas (los puntos
+# Desde la 0115 `authenticated` ya no tiene insert/update/delete sobre esas dos tablas (los puntos
 # alimentan reportes → nota → pago; el historial es la evidencia). Un `.insert()` desde el ERP
 # fallaría con 42501 en producción: el guard lo atrapa antes. Se mira la cadena entera, no la
 # línea, porque `.from('pipeline_puntos')` y `.insert(...)` casi siempre van en líneas distintas.
