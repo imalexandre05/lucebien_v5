@@ -641,7 +641,9 @@ function bonoPorPuntos(
   const [anio, mes] = entrada.fechaInicio.split('-').map(Number);
   const diasDelMes = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
   const meta = (p.puntosMetaMensual * diasTramo) / diasDelMes;
-  const excedente = Math.max(0, puntos - meta);
+  // El excedente se redondea ANTES de multiplicar: es el que se muestra en el detalle, y el monto
+  // tiene que salir de lo que la persona lee en su comprobante (si no, un centavo no cuadra).
+  const excedente = r2(Math.max(0, puntos - meta));
   const monto = r2(excedente * p.solesPorPunto);
   if (monto <= 0) return null;
   return {

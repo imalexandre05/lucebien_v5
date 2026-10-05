@@ -170,7 +170,7 @@ export async function empleadosParaEvaluacion(): Promise<EmpleadoParaEvaluacion[
  *
  * Se lee con la sesión del administrador, persona por persona, por la MISMA RPC que usa
  * /evaluaciones (`evaluacion_componentes`, con su portero de la 0067): no se calcula la suma aparte.
- * Cuenta a todas las personas activas, también a quien tuvo 0 puntos en el período: un promedio
+ * Cuenta a todas las personas activas salvo admin/dueño, también a quien tuvo 0 puntos en el período: un promedio
  * sólo de quienes sumaron dejaría la meta más alta de lo que el equipo en realidad hace.
  *
  * Nunca rompe la pantalla de configuración: si algo falla (la 0095 sin aplicar, una persona sin
@@ -183,7 +183,12 @@ export async function promedioPuntosUltimosDias(hoy: string, dias = 30): Promise
     const fin = new Date(`${hoy}T00:00:00Z`);
     const ini = new Date(fin.getTime() - (dias - 1) * 24 * 60 * 60 * 1000);
     const desde = ini.toISOString().slice(0, 10);
-    const gente = await empleadosParaEvaluacion();
+    // Sin admin/dueño: no hacen trabajo puntuable y sus ceros bajarían la cifra con la que se fija
+    // la meta. (Los demás roles cuentan, incluso con 0 puntos.)
+    const { data: sinGestion, error } = await getServerClient().from('empleados').select('id').eq('activo', true).not('rol', 'in', '(admin,dueno)');
+    if (error) return null;
+    const ids = new Set(((sinGestion as { id: string }[]) ?? []).map((r) => r.id));
+    const gente = (await empleadosParaEvaluacion()).filter((e) => ids.has(e.id));
     if (gente.length === 0) return null;
     const puntos = await Promise.all(gente.map((e) => componentesEvaluacion(e.id, desde, hoy)));
     const valores = puntos.map((c) => c.puntosTotal);

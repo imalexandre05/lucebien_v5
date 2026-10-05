@@ -113,6 +113,14 @@ describe('pago por puntos (spec §6)', () => {
     expect(liquidarPeriodo(con(MENSUAL, 6200, { ...PAGO, puntosMetaMensual: 6000 })).total).toBeLessThan(a.total);
   });
 
+  it('el detalle cuadra con el monto: el excedente mostrado es el que se multiplica', () => {
+    // 2.000 puntos, meta prorrateada 1.129,03…, S/3: con el excedente SIN redondear daba 2.612,90 y
+    // el detalle decía «870,97 × S/3» (= 2.612,91). Un centavo que no cuadra en un comprobante.
+    const l = linea(liquidarPeriodo(con(SEMANAL, 2000, { puntosMetaMensual: 5000, solesPorPunto: 3 })))!;
+    expect(l.detalle).toContain('= 870,97 × S/3');
+    expect(l.monto).toBe(2612.91);
+  });
+
   it('un 0 es un valor, no «vacío»: meta 0 paga todos los puntos', () => {
     expect(linea(liquidarPeriodo(con(MENSUAL, 100, { puntosMetaMensual: 0, solesPorPunto: 0.05 })))?.monto).toBe(5);
   });

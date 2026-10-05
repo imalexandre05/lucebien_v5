@@ -1532,3 +1532,18 @@ una fórmula del motor (`bonoPorPuntos`, `packages/core/src/sueldos.ts`).
   contradiría. Hay que decidir si ahí también se oculta el monto.
 - **Aviso en la ficha del colaborador** (spec §5): sólo se implementó en Mi desempeño.
 
+### 🟡 Consecuencia del prorrateo que el dueño debe conocer
+
+El `max(0, …)` se aplica en **cada tramo**, así que el bono no es aditivo: los mismos puntos del mes
+pagan distinto si se liquida por semanas o por mes completo. Con meta 5.000 y S/0,05: semanas de
+2.000, 0, 0 y 0 puntos → el semanal cobra S/43,55 y el mensual S/0; 1.550 puntos parejos por semana
+→ el semanal cobra unos S/84 y el mensual S/60. Si se quiere que no dependa de cómo se parta el mes,
+hay que decidir otra regla (p. ej. pagar el bono sólo en el tramo que cierra el mes, sobre los
+puntos acumulados del mes).
+
+### Orden de despliegue
+
+Aplicar la `0110` (hora Perú de los puntos, PR #45) **antes de encender** el pago; con la `0117` sola
+los puntos se cuentan por día UTC. Apagado no importa. Mientras esté apagado `puntosPeriodo` viaja
+`null`, así el cierre del PR #44 no se ve afectado.
+

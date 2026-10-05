@@ -18,7 +18,13 @@
 --      `sueldo_entrada` corre como quien la llama. El wrapper es SECURITY DEFINER pero exige
 --      `private.app_es_admin()` adentro: un no-admin recibe PERMISO, igual que en `sueldo_entrada`.
 --   4) `public.sueldo_entrada(uuid,date,date)` — cuerpo de la 0098 sin otro cambio que la clave
---      `puntosPeriodo` en la entrada (los puntos del MISMO rango que se liquida).
+--      `puntosPeriodo` en la entrada (los puntos del MISMO rango que se liquida; `null` mientras
+--      el pago por puntos esté apagado).
+
+-- ORDEN DE DESPLIEGUE (no-negociable 4): aplicar la 0110 (hora Perú de los puntos, PR #45) ANTES de
+-- ENCENDER el pago. Con la 0117 sola los puntos se cuentan por día UTC y los ganados entre las
+-- 19:00 y las 23:59 de Perú del último día del tramo caerían en el tramo siguiente. Apagado no
+-- importa: nada se paga por puntos.
 --
 -- QUÉ NO HACE
 --   · No amplía `sueldo_acuerdos_parametros_chk`: pactar estos dos valores por contrato lo resuelve
@@ -135,6 +141,7 @@ declare
   v_fuera    jsonb;
   v_ventas   jsonb;
   v_puntos   numeric;
+  v_cfg      jsonb;
 begin
   if not private.app_es_admin() then
     raise exception 'PERMISO:sólo el administrador puede liquidar';
@@ -310,7 +317,15 @@ begin
   -- Es el `puntosTotal` de evaluacion_componentes_datos para el mismo empleado y el mismo rango,
   -- a través de private.sueldo_puntos_periodo (esa función es sólo de servicio y el wrapper
   -- exige administrador). NO se recalcula la suma aquí: una sola definición de «puntos».
-  v_puntos := private.sueldo_puntos_periodo(a.empleado_id, p_desde, p_hasta);
+  --
+  -- SÓLO si el pago está activo (las dos claves definidas). Apagado viaja `null`: así la liquidación
+  -- de hoy no depende de la configuración de la evaluación (un eval_tardanza_min_por_punto en 0 la
+  -- haría fallar) y la clave no cambia entre cálculos, con lo que el cierre del PR #44 no se
+  -- rechaza por puntos que no pagan nada.
+  v_cfg := private.sueldo_parametros_config();
+  if v_cfg ? 'puntosMetaMensual' and v_cfg ? 'solesPorPunto' then
+    v_puntos := private.sueldo_puntos_periodo(a.empleado_id, p_desde, p_hasta);
+  end if;
 
   -- Los nulls NO se quitan: `horaIngreso: null` ES la declaración de una falta (sueldos.ts:569
   -- lee `== null`), y quien abra este snapshot dentro de un año tiene que verlo.

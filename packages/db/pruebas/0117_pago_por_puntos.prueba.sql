@@ -82,14 +82,27 @@ begin
     elsif (select count(*) from jsonb_object_keys(v_vacio - 'puntosPeriodo')) <> 17 then
       r := r || format('[FALLA] caso1: la entrada de siempre tenía 17 claves y ahora tiene %s; ',
                        (select count(*) from jsonb_object_keys(v_vacio - 'puntosPeriodo')));
-    elsif not (v_vacio ? 'puntosPeriodo') then
-      r := r || '[FALLA] caso1: falta puntosPeriodo en la entrada; ';
+    elsif not (v_vacio ? 'puntosPeriodo') or jsonb_typeof(v_vacio->'puntosPeriodo') <> 'null' then
+      r := r || format('[FALLA] caso1: apagado, puntosPeriodo debe viajar como null y vino %s; ', v_vacio->'puntosPeriodo');
     else
-      r := r || '[ok] caso1: parámetros vacíos → mismas 17 claves, ninguna clave nueva en parametros, puntosPeriodo viaja; ';
+      r := r || '[ok] caso1: parámetros vacíos → mismas 17 claves, ninguna clave nueva en parametros, puntosPeriodo=null (estable); ';
     end if;
   exception when others then
     r := r || format('[FALLA] caso1: sueldo_entrada cortó con "%s"; ', sqlerrm);
   end;
+
+  -- ═══ 1b. Apagado, la liquidación NO depende de la evaluación ════════════════════════════════
+  -- Un eval_tardanza_min_por_punto en 0 hace fallar evaluacion_componentes_datos (división por
+  -- cero). Con el pago apagado, sueldo_entrada no debe ni llamarla.
+  begin
+    insert into config(clave, valor) values ('eval_tardanza_min_por_punto', '0')
+      on conflict (clave) do update set valor = '0';
+    perform sueldo_entrada(ac, '2099-02-02', '2099-02-03');
+    r := r || '[ok] caso1b: apagado, sueldo_entrada no toca la configuración de la evaluación; ';
+  exception when others then
+    r := r || format('[FALLA] caso1b: apagado, sueldo_entrada cortó por la evaluación: "%s"; ', sqlerrm);
+  end;
+  delete from config where clave = 'eval_tardanza_min_por_punto';
 
   -- ═══ 2. Con parámetros: puntosPeriodo = lo que da evaluacion_componentes_datos ══════════════
   begin

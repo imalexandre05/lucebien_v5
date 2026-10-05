@@ -223,6 +223,8 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '',
     min: 0,
     step: 0.5,
+    // Vacío a propósito (0095). Sin esto, guardar /configuracion exigía inventar la tasa.
+    permiteVacio: true,
   },
 
   // ── Reportes de turno (Fase 4, migración 0052 — pendiente de aplicar) ──────────────────────
