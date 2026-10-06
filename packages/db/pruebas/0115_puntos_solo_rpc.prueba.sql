@@ -312,14 +312,14 @@ begin
     r := r || format('[FALLA] caso 4f: enviar=%s calificar=%s;', v_n, v_n2);
   end if;
 
-  -- 4g) Una tienda mueve lo de SU sede (con su punto) y no lo de otra sede.
+  -- 4g) Una tienda mueve lo de SU sede (SIN punto: spec §11, H-4) y no lo de otra sede.
   perform pg_temp.como(e_ta);
   v_err := pg_temp.mensaje(format('select pipeline_avanzar(%L, %L)', pa4, 'lavado'));
   perform pg_temp.dueno();
   select count(*) into v_n from pipeline_puntos where pasada_id = pa4 and empleado_id = e_ta and etapa = 'recepcion';
   select count(*) into v_n2 from prenda_historial where pasada_id = pa4 and empleado_id = e_ta and registrado_por = e_ta;
-  if v_err = 'ok' and v_n = 1 and v_n2 = 1 then
-    r := r || '[ok] caso 4g-1: una tienda avanza una prenda de su sede y se atribuye el punto;';
+  if v_err = 'ok' and v_n = 0 and v_n2 = 1 then
+    r := r || '[ok] caso 4g-1: una tienda avanza una prenda de su sede, queda en el historial y no cobra punto (H-4);';
   else
     r := r || format('[FALLA] caso 4g-1: err=%s puntos=%s historial=%s;', v_err, v_n, v_n2);
   end if;
@@ -479,12 +479,13 @@ begin
   end if;
 
   -- ── 10) H-2: deshacer a una etapa que no es la del último movimiento ───────────────────────
+  select etapa into v_est from prenda_pasada where id = pl;
   perform pg_temp.como(e_alm);
   v_err := pg_temp.mensaje(format($q$select pipeline_deshacer(%L, 'recepcion')$q$, pl));
   v_err2 := pg_temp.mensaje(format($q$select pipeline_deshacer(%L, 'recepcion')$q$, v_hija));
   perform pg_temp.dueno();
   if v_err like 'TRANSICION:%' and v_err2 like 'TRANSICION:%'
-     and (select etapa from prenda_pasada where id = pl) = 'listo'
+     and (select etapa from prenda_pasada where id = pl) = v_est
      and (select etapa from prenda_pasada where id = v_hija) = 'lavado' then
     r := r || '[ok] caso 10: deshacer a una etapa arbitraria lanza TRANSICION y no mueve nada;';
   else
