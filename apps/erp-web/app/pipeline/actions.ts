@@ -24,12 +24,13 @@ import { deviceIdActual, operadorParaAccion } from '../../lib/pipeline-operador'
 // operador que el chip del tablero obtuvo de `validarCodigo`. En un equipo compartido sin token la
 // acción se rechaza aquí; en uno no compartido el token se ignora (`operadorParaAccion`).
 
-// Única puerta del código: lo valida la base, que cuenta los intentos y emite el token. El código
-// no se guarda ni se registra en ningún otro lado.
-export async function validarCodigo(codigo: string): Promise<ValidacionCodigo> {
-  const limpio = (codigo ?? '').trim();
-  if (!limpio) return { ok: false };
-  return validarCodigoOperador(limpio, deviceIdActual() || null);
+// Única puerta del código: usuario + PIN los valida la base, que cuenta los intentos y emite el
+// token. El PIN no se guarda ni se registra en ningún otro lado.
+export async function validarCodigo(usuario: string, pin: string): Promise<ValidacionCodigo> {
+  const u = (usuario ?? '').trim();
+  const p = (pin ?? '').trim();
+  if (!u || !p) return { ok: false };
+  return validarCodigoOperador(u, p, deviceIdActual() || null);
 }
 
 // Los errores `CODIGO:` (token vencido, ajeno o ausente) se devuelven COMO VALOR (string), no como
@@ -120,7 +121,8 @@ export async function cerrarOperador(token: string): Promise<void> {
 export async function deshacerDivisionPrenda(id: string, operador?: string): Promise<string | null> {
   if (!id) return 'Falta el id de la prenda dividida.';
   try {
-    await deshacerDivisionPasada(id, await operadorParaAccion(operador));
+    const r = await conCodigo(async () => deshacerDivisionPasada(id, await operadorParaAccion(operador)));
+    if (typeof r === 'string') return r;
   } catch (e) {
     return e instanceof Error ? e.message : 'No se pudo deshacer la división.';
   }

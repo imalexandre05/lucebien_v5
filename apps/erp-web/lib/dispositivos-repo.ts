@@ -105,3 +105,25 @@ export async function sedeDispositivoPublico(deviceId: string): Promise<string |
     return null;
   }
 }
+
+// Personas activas con la marca de «cuenta de equipo compartido» (migración 0112, spec
+// codigo-personal §0 E-3). Sólo admin usa esta lista (/dispositivos). No lee `cod`: el PIN y el
+// usuario se validan sólo en la base.
+export type CuentaEquipo = { id: string; nombre: string; cuentaCompartida: boolean };
+
+export async function listarCuentasEquipo(): Promise<CuentaEquipo[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('empleados')
+    .select('id, nombre, cuenta_compartida')
+    .eq('activo', true)
+    .order('nombre');
+  // 42703: la columna no existe todavía (0112 sin aplicar) → lista vacía, la sección no se muestra.
+  if (error?.code === '42703') return [];
+  if (error) throw error;
+  return (data ?? []).map((e) => ({
+    id: e.id as string,
+    nombre: e.nombre as string,
+    cuentaCompartida: Boolean(e.cuenta_compartida),
+  }));
+}

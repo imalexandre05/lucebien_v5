@@ -1,6 +1,6 @@
 import { ShieldCheck, ShieldX, Ban, Laptop } from 'lucide-react';
 import { getSesion } from '../../lib/auth';
-import { listarDispositivos, type Dispositivo } from '../../lib/dispositivos-repo';
+import { listarDispositivos, listarCuentasEquipo, type Dispositivo } from '../../lib/dispositivos-repo';
 import { listarSedes } from '../../lib/sedes-repo';
 import { PageHeader } from '../../components/shell/page-header';
 import { Card, CardContent } from '../../components/ui/card';
@@ -10,7 +10,15 @@ import { StatBox } from '../../components/ui/stat-box';
 import { buttonVariants } from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/empty-state';
 import { cn } from '../../lib/cn';
-import { accionAprobar, accionRechazar, accionRevocar, accionCambiarSede, accionCambiarCompartido } from './actions';
+import {
+  accionAprobar,
+  accionRechazar,
+  accionRevocar,
+  accionCambiarSede,
+  accionCambiarCompartido,
+  accionCuentaCompartida,
+  accionBorrarPin,
+} from './actions';
 
 const TONE: Record<Dispositivo['estado'], Tone> = {
   aprobado: 'green',
@@ -44,7 +52,12 @@ export default async function DispositivosPage() {
     );
   }
 
-  const [disp, sedes] = await Promise.all([listarDispositivos(), listarSedes().catch(() => [])]);
+  const [disp, sedes, cuentas] = await Promise.all([
+    listarDispositivos(),
+    listarSedes().catch(() => []),
+    listarCuentasEquipo().catch(() => []),
+  ]);
+  const marcadas = cuentas.filter((c) => c.cuentaCompartida);
   const n = (e: Dispositivo['estado']) => disp.filter((d) => d.estado === e).length;
 
   return (
@@ -183,6 +196,99 @@ export default async function DispositivosPage() {
           </Table>
         </CardContent>
       </Card>
+
+      {cuentas.length > 0 && (
+        <Card className="mt-5">
+          <CardContent className="space-y-4 py-4">
+            <div>
+              <h2 className="text-cuerpo font-medium text-navy">Cuentas de equipo compartido</h2>
+              <p className="mt-1 text-apoyo text-muted">
+                Marca la cuenta con la que se abre la PC compartida. Para esa cuenta la base rechaza todo movimiento del
+                pipeline sin el usuario y PIN de quien opera, aunque alguien se salte la pantalla.
+              </p>
+            </div>
+            {marcadas.length > 0 && (
+              <ul className="flex flex-wrap gap-2">
+                {marcadas.map((c) => (
+                  <li key={c.id}>
+                    <form action={accionCuentaCompartida} className="inline-flex">
+                      <input type="hidden" name="empleado" value={c.id} />
+                      <input type="hidden" name="valor" value="false" />
+                      <button
+                        type="submit"
+                        title="Quitar la marca de cuenta compartida"
+                        className="toque rounded-r-pastilla border border-navy bg-navy px-2.5 py-1 text-apoyo font-medium text-paper transition-colors hover:bg-paper hover:text-navy"
+                      >
+                        {c.nombre} · quitar
+                      </button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <form action={accionCuentaCompartida} className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="valor" value="true" />
+              <label htmlFor="cuenta-compartida" className="text-apoyo text-muted">
+                Marcar cuenta:
+              </label>
+              <select
+                id="cuenta-compartida"
+                name="empleado"
+                required
+                defaultValue=""
+                className="rounded-r-chico border border-line bg-paper px-2 py-1.5 text-apoyo text-navy"
+              >
+                <option value="" disabled>
+                  Elige una persona
+                </option>
+                {cuentas
+                  .filter((c) => !c.cuentaCompartida)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.nombre}
+                    </option>
+                  ))}
+              </select>
+              <button type="submit" className={cn(buttonVariants({ variant: 'outline' }), 'toque')}>
+                Marcar
+              </button>
+            </form>
+
+            <div className="border-t border-line pt-4">
+              <h2 className="text-cuerpo font-medium text-navy">PIN olvidado</h2>
+              <p className="mt-1 text-apoyo text-muted">
+                Borra el PIN de una persona para que defina otro desde «Mi desempeño». Nadie puede ver un PIN.
+              </p>
+              <form action={accionBorrarPin} className="mt-2 flex flex-wrap items-center gap-2">
+                <label htmlFor="borrar-pin" className="sr-only">
+                  Persona
+                </label>
+                <select
+                  id="borrar-pin"
+                  name="empleado"
+                  required
+                  defaultValue=""
+                  className="rounded-r-chico border border-line bg-paper px-2 py-1.5 text-apoyo text-navy"
+                >
+                  <option value="" disabled>
+                    Elige una persona
+                  </option>
+                  {cuentas
+                    .filter((c) => !c.cuentaCompartida)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nombre}
+                      </option>
+                    ))}
+                </select>
+                <button type="submit" className={cn(buttonVariants({ variant: 'outline' }), 'toque')}>
+                  Borrar PIN
+                </button>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <p className="mt-3 text-apoyo text-muted">
         La <strong className="font-medium text-navy">sede</strong> es la que este equipo pre-marca como botón en su

@@ -168,16 +168,21 @@ export function TableroPipeline({
   // enteraría de que el token venció en la base. Eso limpia al operador y pide el código otra vez.
   // Cualquier otra excepción (transición inválida, prenda ya dividida, red) se muestra como un
   // aviso genérico y deja al operador donde estaba.
-  const rechazoCodigo = () => {
+  // La cuenta de un equipo compartido sin código trae su propio motivo desde la base (0112).
+  const rechazoCodigo = (motivo?: string | null) => {
     operadorRechazado();
-    setToast({ msg: 'Operador vencido. Ingresa tu código de nuevo.', tono: 'warn' });
+    const cuenta = motivo?.includes('equipo compartido') ? motivo.replace(/^CODIGO:\s*/, '') : null;
+    setToast({
+      msg: cuenta ? `${cuenta.charAt(0).toUpperCase()}${cuenta.slice(1)}.` : 'Operador vencido. Ingresa tu código de nuevo.',
+      tono: 'warn',
+    });
   };
   const falloGenerico = () =>
     setToast({ msg: 'No se pudo completar la acción. Actualiza el tablero e inténtalo de nuevo.', tono: 'warn' });
 
-  // «Deshacer» usa el token CON EL QUE SE AVANZÓ la prenda, no el de quien esté operando cuando se
-  // pulsa: pipeline_deshacer le borra el último punto al actor, y si fuera otro se le quitaría el
-  // punto a quien no corresponde (o no se quitaría ninguno y el original cobraría dos veces).
+  // «Deshacer» usa el token con el que se avanzó la prenda (quien avanzó es quien deshace su propio
+  // movimiento). Los puntos que borra la base son los DE ESE movimiento, sean de quien sean
+  // (migración 0112, spec §0 E-4), así que un cambio de operador entre medio no se los quita a otro.
   const deshacer = (id: string, etapaAnterior: string, pts: number, token?: string) =>
     startTransition(async () => {
       aplicar({ id, etapa: etapaAnterior });
@@ -185,7 +190,7 @@ export function TableroPipeline({
       setToast(null);
       try {
         const r = await deshacerPrenda(id, etapaAnterior, token);
-        if (r) return rechazoCodigo();
+        if (r) return rechazoCodigo(r);
         renovar();
       } catch {
         falloGenerico();
@@ -201,7 +206,7 @@ export function TableroPipeline({
           aplicar({ id, etapa: destino });
           try {
             const pts = await avanzarPrenda(id, destino, token);
-            if (typeof pts === 'string') return rechazoCodigo();
+            if (typeof pts === 'string') return rechazoCodigo(pts);
             renovar();
             if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
             setToast({
@@ -219,7 +224,8 @@ export function TableroPipeline({
         startTransition(async () => {
           ids.forEach((id) => aplicar({ id, etapa: 'enviado' }));
           try {
-            if (await enviarTandaPrendas(ids, sede, token)) return rechazoCodigo();
+            const r = await enviarTandaPrendas(ids, sede, token);
+            if (r) return rechazoCodigo(r);
             renovar();
             setToast({ msg: `${ids.length} prendas enviadas a ${sede}`, tono: 'gold' });
           } catch {
@@ -232,7 +238,8 @@ export function TableroPipeline({
         startTransition(async () => {
           aplicar({ id, etapa: destino });
           try {
-            if (await rechazarPrenda(id, destino, token)) return rechazoCodigo();
+            const r = await rechazarPrenda(id, destino, token);
+            if (r) return rechazoCodigo(r);
             renovar();
             setToast({ msg: `Devuelto a ${NOMBRE[destino] ?? destino}`, tono: 'warn' });
           } catch {
@@ -246,7 +253,7 @@ export function TableroPipeline({
           ids.forEach((id) => aplicar({ id, etapa: destino }));
           try {
             const pts = await avanzarTandaPrendas(ids, destino, token);
-            if (typeof pts === 'string') return rechazoCodigo();
+            if (typeof pts === 'string') return rechazoCodigo(pts);
             renovar();
             if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
             setToast({ msg: `${ids.length} prendas → ${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`, tono: 'ok' });
@@ -259,7 +266,8 @@ export function TableroPipeline({
       conOperador((token) =>
         startTransition(async () => {
           try {
-            if (await dividirPrenda(id, token)) return rechazoCodigo();
+            const r = await dividirPrenda(id, token);
+            if (r) return rechazoCodigo(r);
             renovar();
             setToast({ msg: 'Terno dividido en saco + pantalón', tono: 'gold' });
           } catch {
@@ -275,7 +283,7 @@ export function TableroPipeline({
       conOperador((token) =>
         startTransition(async () => {
           const error = await deshacerDivisionPrenda(madreId, token);
-          if (error?.startsWith('CODIGO:')) return rechazoCodigo();
+          if (error?.startsWith('CODIGO:')) return rechazoCodigo(error);
           if (!error) renovar();
           setToast(
             error

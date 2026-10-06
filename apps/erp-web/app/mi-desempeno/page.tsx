@@ -5,6 +5,8 @@ import { miDesempeno } from '../../lib/desempeno-repo';
 import { leerPesosEval, leerEscalaPuntos } from '../../lib/evaluaciones-repo';
 import { mesPeru } from '../../lib/fechas';
 import { tieneReauth } from '../../lib/reauth';
+import { tengoPin } from '../../lib/pipeline-repo';
+import { PinPersonal } from './pin';
 import { PageHeader } from '../../components/shell/page-header';
 import { ReauthGate } from '../../components/ui/reauth-gate';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -57,10 +59,11 @@ export default async function MiDesempenoPage() {
   const desde = `${mes}-01`;
   const hasta = `${mes}-${String(ultimoDia).padStart(2, '0')}`;
 
-  const [d, pesos, escala] = await Promise.all([
+  const [d, pesos, escala, tienePin] = await Promise.all([
     miDesempeno(sesion.usuario.id, desde, hasta),
     leerPesosEval(),
     leerEscalaPuntos(),
+    tengoPin().catch(() => false),
   ]);
   const extrasTotal = d.extras.reduce((s, e) => s + e.montoTotal, 0);
   // Spec puntos-como-moneda §2 C-5: la última evaluación se lee con el sistema con el que se
@@ -223,6 +226,8 @@ export default async function MiDesempenoPage() {
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" strokeWidth={2} /> Aún no tienes una evaluación mensual registrada.
         </p>
       )}
+
+      <PinPersonal tienePin={tienePin} />
     </div>
   );
 }

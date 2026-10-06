@@ -4,6 +4,83 @@
 > no-negociable 1), las RPC del pipeline (no-negociable 2) y la autenticación (no-negociable 3).
 > Ticket: imalexandre05/lucebien-tablero (se crea con esta spec). Fecha: 04-oct-2026.
 
+## 0. Enmienda del 06-oct-2026 (auditorías de pipeline y de seguridad)
+
+> Fuente: `docs/auditorias/2026-10-06-pipeline.md` (H-1, H-3, H-10) y
+> `docs/auditorias/2026-10-06-seguridad.md` (H2, H5), ramas `audit/2026-10-06-*`. Pedido por la
+> sesión maestra del dueño el 06-oct-2026. **Esta sección manda sobre las de abajo cuando chocan.**
+> Lo que aquí cambia quedó marcado en cada sección con «(enmienda 06-oct)».
+
+**E-1. El código personal deja de ser `empleados.cod`.** Con 4 dígitos, ~18 códigos activos y un
+límite sólo por sesión, la probabilidad de acertar el código de **alguien** en un día con una sola
+cuenta era ≈ 56 % (auditoría de seguridad H2). Además `cod` es el usuario de login.
+
+- Cada persona **define su propio PIN** desde su sesión personal (pantalla «Mi desempeño», que ya
+  exige reautenticación). Para cambiarlo debe teclear el PIN actual. Si lo olvida, el
+  administrador lo **borra** (no lo ve ni lo define) y la persona define uno nuevo.
+- Sólo dígitos, **largo mínimo 6** (default provisional `codigo_pin_min_largo = 6`, comentado en la
+  migración, editable en `/configuracion`, anotado en `docs/pendientes-negocio.md`). Se rechazan
+  PIN triviales: todos los dígitos iguales, secuencias (`123456`, `654321`) y el propio `cod`.
+- Se guarda **sólo el hash** (`crypt` + `gen_salt('bf')` de pgcrypto) en una tabla
+  `codigo_pines (empleado_id pk, pin_hash, actualizado_en)` que nadie lee por PostgREST.
+- En el equipo compartido se teclea **usuario (`cod`) + PIN**. El `cod` sólo identifica (no es
+  secreto); el secreto es el PIN. Así el límite se puede contar **por persona** (E-2) y no hace
+  falta que los PIN sean únicos (exigir unicidad revelaría el PIN de otra persona).
+- Quien no definió PIN no puede operar en el equipo compartido: la base responde
+  `motivo:'sin_pin'` (el intento cuenta como fallo, para que no sirva para enumerar usuarios).
+
+**E-2. El límite de intentos vale por persona además de por sesión.** `pipeline_validar_codigo`
+registra en `codigo_intentos` también el `empleado_id` al que se apuntó (el del usuario tecleado,
+exista o no PIN). Responde bloqueado si en la ventana hay `codigo_max_intentos` fallos o más contra
+**esa persona** (desde cualquier sesión o equipo) o desde **esa sesión** — aunque el PIN sea
+correcto. Cambiar de cuenta o de equipo ya no da intentos nuevos contra la misma persona. Con PIN de
+6 dígitos, 5 intentos cada 15 min por persona y 18 personas, acertar el PIN de **alguien** en un día
+ronda el 0,9 % (antes ≈ 56 %). No se agrega un límite por equipo: en la PC compartida los errores de
+tipeo de todos bloquearían a todos, y el límite por persona ya cubre al que prueba desde otro equipo.
+Cuando una persona o una sesión quedan bloqueadas se avisa al administrador con **una** notificación
+(tabla `notificaciones`; tipo `codigo_persona_bloqueada` si se bloqueó la persona, si no
+`codigo_sesion_bloqueada`). Costo aceptado: alguien puede bloquear 15 minutos a otra persona
+tecleando mal a propósito; el aviso al admin lo deja a la vista. Cambiar el PIN con un PIN actual
+equivocado cuenta como fallo contra la propia persona (si no, sería un atajo para probar PIN sin
+límite). La respuesta de fallo trae `intentos_restantes` y la pantalla los muestra (H-10).
+
+**E-3. La exigencia del token vive en la base, no sólo en la app** (seguridad H5). Columna nueva
+`empleados.cuenta_compartida boolean not null default false`: la marca el administrador desde
+`/dispositivos` para la cuenta con la que se abre el equipo compartido (RPC admin
+`empleado_marcar_cuenta_compartida`). Si la sesión es una cuenta compartida:
+
+- toda RPC del pipeline con `p_operador null` **lanza** `CODIGO: esta cuenta es de un equipo
+  compartido, ingresa tu código` y no escribe nada (en `private.actor_pipeline`);
+- la cuenta compartida no puede definir PIN ni recibir puntos por sí misma.
+
+En una cuenta personal (no marcada) sigue el comportamiento de hoy. Lo que la base **no** puede
+saber es desde qué equipo llega una llamada: si alguien abre una cuenta **personal** en la PC
+compartida, el control sigue siendo el de la server action (cookie `sci_device`). §8 queda
+reemplazado por esto.
+
+**E-4. Deshacer quita los puntos del movimiento deshecho, no los del actor** (pipeline H-1).
+
+- `pipeline_puntos` guarda `historial_id` (el `prenda_historial` que originó el punto).
+- `pipeline_deshacer` toma el **último** `prenda_historial` de la prenda y exige que
+  `etapa_nueva` sea la etapa actual y que `p_etapa_anterior` sea su `etapa_anterior`; si no →
+  `TRANSICION:` y no escribe nada (cierra también pipeline H-2 dentro de esta RPC, compatible con
+  la 0122 de `fix/seguridad-produccion`, que exige lo mismo).
+- Borra los puntos con ese `historial_id`, **sean de quien sean** (quien avanzó, no quien deshace).
+  Para puntos anteriores a esta columna (`historial_id` nulo), borra el último punto positivo de esa
+  prenda con `etapa = etapa_anterior` del movimiento, también sin mirar el empleado.
+- El historial del «Deshacer» se atribuye a quien deshace (actor), como hoy.
+
+**E-5. Defaults nuevos (no-negociable 5):** `codigo_pin_min_largo = 6`. Los demás no cambian
+(5 intentos / 15 min / 10 min de operador / 8 h de vida máxima), pero ahora cuentan por persona
+y por sesión.
+
+**Tests nuevos exigidos (antes del código):** PIN ≠ cod (el `cod` solo ya no da token); PIN corto o
+trivial rechazado; el hash no es el PIN; cambiar PIN exige el actual; admin borra PIN y un no-admin
+no; 5 fallos contra una persona desde dos sesiones distintas → la persona queda bloqueada y el PIN
+correcto responde bloqueado; cuenta compartida sin token → `CODIGO:` en las RPC; cuenta personal
+sin token → como hoy; A avanza y B deshace → A pierde ese punto y B no pierde nada; deshacer a una
+etapa que no es la del último movimiento → `TRANSICION:`.
+
 ## 1. El problema
 
 En el sistema viejo cada persona tenía un **código de 4 dígitos** (`empleados.cod`) y lo tecleaba
@@ -59,6 +136,7 @@ es una pregunta de negocio (§7).
   anterior permitía probar códigos llamando directo a las RPC del pipeline, porque cada fallo hacía
   `raise` y el `rollback` borraba el rastro; y el helper sin `grant` no era invocable desde RPC
   `security invoker`.)
+- (enmienda 06-oct: el código pasa a ser `cod` + PIN propio con hash; ver §0 E-1/E-2.)
 - `private.empleado_por_codigo(p_codigo text) returns uuid`, `security definer`,
   `set search_path = public`, **sin** `grant` (sólo la usa la función de validación, que también es
   definer). Devuelve el `empleados.id` si el código existe y el empleado está **activo**; si no,
@@ -117,6 +195,8 @@ es una pregunta de negocio (§7).
 
 ## 5. Interfaz (pipeline en equipo compartido)
 
+- (enmienda 06-oct) El diálogo pide **usuario + PIN** y muestra los intentos que quedan. El chip
+  tiene área táctil de 44 px y el PIN se enmascara también en Firefox.
 - Encima del tablero: chip **«Operando: — · Ingresar código»**. Se teclea el código (4 dígitos,
   enmascarado, teclado numérico en móvil). Se valida al confirmar (llama `pipeline_validar_codigo`); si es correcto el
   chip muestra **«Operando: Nombre · cambiar»** y la página guarda el token en memoria.
@@ -148,7 +228,7 @@ es una pregunta de negocio (§7).
    sesión? (Esta spec asume que basta la sesión.)
 3. ¿5 intentos / 15 minutos y 10 minutos de operador activo les parecen bien?
 
-## 8. Límite conocido: la base no exige el código
+## 8. Límite conocido: la base no exige el código (reemplazado por §0 E-3, enmienda 06-oct)
 
 Esta spec **no** obliga a nadie a usar el código. En la PC compartida, quien tenga el JWT de la
 sesión puede llamar `pipeline_avanzar` y las demás RPC **sin** `p_operador` (el camino «`null` →

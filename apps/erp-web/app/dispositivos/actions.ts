@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { getServerClient } from '../../lib/supabase/server';
 import { actualizarSedeDispositivo, actualizarCompartidoDispositivo } from '../../lib/dispositivos-repo';
+import { borrarPin, marcarCuentaCompartida } from '../../lib/pipeline-repo';
 
 // Cambios de estado de un equipo (admin). La RPC dispositivo_set_estado valida app_es_admin().
 async function setEstado(id: string, estado: string) {
@@ -37,5 +38,22 @@ export async function accionCambiarCompartido(formData: FormData) {
   const id = String(formData.get('id') ?? '');
   if (!id) return;
   await actualizarCompartidoDispositivo(id, formData.get('compartido') === 'true');
+  revalidatePath('/dispositivos');
+}
+
+// Cuenta de equipo compartido (spec codigo-personal §0 E-3): para esa cuenta la BASE rechaza toda
+// acción del pipeline sin código. La RPC exige admin.
+export async function accionCuentaCompartida(formData: FormData) {
+  const id = String(formData.get('empleado') ?? '');
+  if (!id) return;
+  await marcarCuentaCompartida(id, formData.get('valor') === 'true');
+  revalidatePath('/dispositivos');
+}
+
+// Borra el PIN de quien lo olvidó; la persona define otro desde «Mi desempeño». La RPC exige admin.
+export async function accionBorrarPin(formData: FormData) {
+  const id = String(formData.get('empleado') ?? '');
+  if (!id) return;
+  await borrarPin(id);
   revalidatePath('/dispositivos');
 }
