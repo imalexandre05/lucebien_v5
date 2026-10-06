@@ -19,8 +19,16 @@
 --        private.prenda_historial_registrar(...)
 --   3) Esas funciones validan por sí mismas que quien llama tenga derecho sobre la prenda (la
 --      misma condición que daba `pasada_rw` para escribir: admin, almacén o prenda de su sede),
---      para no ser una puerta nueva. SE ENDURECE un punto: desaparece la rama «o `empleado_id =
---      auth.uid()`», que es la que dejaba sumarse puntos a uno mismo. Las RPC nunca la necesitan.
+--      para no ser una puerta nueva. Desaparece la rama «o `empleado_id = auth.uid()`» de la
+--      ESCRITURA DIRECTA a la tabla. OJO (corregido el 06-oct, auditoría de pipeline H-4): eso
+--      solo NO impedía que una tienda se acreditara puntos llamando a pipeline_avanzar sobre sus
+--      prendas. Lo impide la regla de abajo (5).
+--   5) (enmienda 06-oct, H-4) `pipeline_registrar_punto` sólo escribe si quien RECIBE el punto
+--      tiene rol de pipeline: admin, dueno, encargado_almacen o confeccionista. Una tienda mueve
+--      sus prendas pero no cobra por ello (la RPC devuelve 0).
+--   6) (enmienda 06-oct, H-1) Cada punto guarda el movimiento que lo originó (historial_id, 0112);
+--      deshacer borra los puntos DE ESE movimiento, sean de quien sean, y sólo deshace el último
+--      movimiento de la prenda (H-2 dentro de la RPC).
 --   4) Las RPC siguen `security invoker` (la RLS de `prenda_pasada` sigue mandando). Mismos
 --      cuerpos y firmas que en la 0112; sólo cambian las líneas que escribían directo.
 --   `lavanderia_enviar` (0066) también escribía en `prenda_historial`: pasa por la función.
@@ -103,41 +111,63 @@ end;
 $$;
 revoke execute on function private.pipeline_exigir_derecho(uuid) from public, anon, authenticated;
 
+-- La firma vieja (sin p_historial) se borra: con un parámetro con default, una llamada de cinco
+-- argumentos sería ambigua entre las dos.
+drop function if exists private.pipeline_registrar_punto(uuid, uuid, text, numeric, text);
 create or replace function private.pipeline_registrar_punto(
-  p_empleado uuid, p_pasada uuid, p_etapa text, p_puntos numeric, p_detalle text)
+  p_empleado uuid, p_pasada uuid, p_etapa text, p_puntos numeric, p_detalle text, p_historial uuid default null)
   returns uuid language plpgsql volatile security definer set search_path = public
 as $$
 declare v_id uuid;
 begin
   perform private.pipeline_exigir_derecho(p_pasada);
-  insert into public.pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle, fecha)
-    values (p_empleado, p_pasada, p_etapa, p_puntos, p_detalle, now())
+  -- H-4: sólo cobra (o se descuenta) quien tiene rol de pipeline. Sin rol → no se escribe nada.
+  if not exists (
+    select 1 from public.empleados e
+    where e.id = p_empleado and e.rol in ('admin', 'dueno', 'encargado_almacen', 'confeccionista')
+  ) then
+    return null;
+  end if;
+  insert into public.pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle, fecha, historial_id)
+    values (p_empleado, p_pasada, p_etapa, p_puntos, p_detalle, now(), p_historial)
     returning id into v_id;
   return v_id;
 end;
 $$;
-revoke execute on function private.pipeline_registrar_punto(uuid, uuid, text, numeric, text) from public, anon;
-grant  execute on function private.pipeline_registrar_punto(uuid, uuid, text, numeric, text) to authenticated;
+revoke execute on function private.pipeline_registrar_punto(uuid, uuid, text, numeric, text, uuid) from public, anon;
+grant  execute on function private.pipeline_registrar_punto(uuid, uuid, text, numeric, text, uuid) to authenticated;
 
--- p_todos = false → borra el ÚLTIMO punto positivo de p_empleado en esa prenda (deshacer).
--- p_todos = true  → borra todos los puntos de esa prenda (deshacer división). Devuelve las filas borradas.
+-- p_todos = false → borra los puntos DEL MOVIMIENTO p_historial (deshacer), sean de quien sean; si
+--                  no hay ninguno ligado (puntos de antes de historial_id), el último positivo de
+--                  esa prenda en la etapa de origen de ese movimiento, sin mirar el empleado.
+-- p_todos = true  → borra todos los puntos de esa prenda (deshacer división).
+-- Devuelve las filas borradas. Antes recibía un empleado y borraba «su último punto»: si B deshacía
+-- lo de A, A conservaba el punto y B perdía uno suyo (auditoría de pipeline H-1).
+drop function if exists private.pipeline_borrar_punto(uuid, uuid, boolean);
 create or replace function private.pipeline_borrar_punto(
-  p_pasada uuid, p_empleado uuid default null, p_todos boolean default false)
+  p_pasada uuid, p_historial uuid default null, p_todos boolean default false)
   returns int language plpgsql volatile security definer set search_path = public
 as $$
-declare v_n int;
+declare v_n int; v_h public.prenda_historial;
 begin
   perform private.pipeline_exigir_derecho(p_pasada);
   if p_todos then
     delete from public.pipeline_puntos where pasada_id = p_pasada;
-  else
+    get diagnostics v_n = row_count;
+    return v_n;
+  end if;
+  select * into v_h from public.prenda_historial where id = p_historial and pasada_id = p_pasada;
+  if v_h.id is null then return 0; end if;
+  delete from public.pipeline_puntos where historial_id = v_h.id;
+  get diagnostics v_n = row_count;
+  if v_n = 0 and v_h.obs is null then
     delete from public.pipeline_puntos where id = (
       select id from public.pipeline_puntos
-      where pasada_id = p_pasada and empleado_id = p_empleado and puntos > 0
+      where pasada_id = p_pasada and historial_id is null and etapa = v_h.etapa_anterior and puntos > 0
       order by fecha desc limit 1
     );
+    get diagnostics v_n = row_count;
   end if;
-  get diagnostics v_n = row_count;
   return v_n;
 end;
 $$;
@@ -145,14 +175,20 @@ revoke execute on function private.pipeline_borrar_punto(uuid, uuid, boolean) fr
 grant  execute on function private.pipeline_borrar_punto(uuid, uuid, boolean) to authenticated;
 
 -- `registrado_por` no es un parámetro: siempre es auth.uid() (quien tenía la sesión), no se falsifica.
+-- Devuelve el id de la fila (los puntos lo guardan en historial_id) y fecha = clock_timestamp(), para
+-- que «el último movimiento» sea inequívoco aun dentro de una misma transacción (enmienda 06-oct).
+drop function if exists private.prenda_historial_registrar(uuid, text, text, uuid, text);
 create or replace function private.prenda_historial_registrar(
   p_pasada uuid, p_etapa_anterior text, p_etapa_nueva text, p_empleado uuid, p_obs text)
-  returns void language plpgsql volatile security definer set search_path = public
+  returns uuid language plpgsql volatile security definer set search_path = public
 as $$
+declare v_id uuid;
 begin
   perform private.pipeline_exigir_derecho(p_pasada);
-  insert into public.prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por)
-    values (p_pasada, p_etapa_anterior, p_etapa_nueva, p_empleado, p_obs, auth.uid());
+  insert into public.prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
+    values (p_pasada, p_etapa_anterior, p_etapa_nueva, p_empleado, p_obs, auth.uid(), clock_timestamp())
+    returning id into v_id;
+  return v_id;
 end;
 $$;
 revoke execute on function private.prenda_historial_registrar(uuid, text, text, uuid, text) from public, anon;
@@ -171,7 +207,7 @@ declare
   v_actor uuid;
   v_etapa text; v_tipo text; v_tlav text; v_codigo text; v_dividida boolean;
   v_clave text; v_peso numeric; v_pts numeric; v_media boolean;
-  v_permitidos text[];
+  v_permitidos text[]; v_hist uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
   v_actor := private.actor_pipeline(p_operador);
@@ -213,11 +249,15 @@ begin
     planchador_id = case when v_etapa = 'planchado' then v_actor else planchador_id end
   where id = p_id;
 
-  perform private.prenda_historial_registrar(p_id, v_etapa, p_destino, v_actor, null);
+  v_hist := private.prenda_historial_registrar(p_id, v_etapa, p_destino, v_actor, null);
 
   if v_pts > 0 then
-    perform private.pipeline_registrar_punto(v_actor, p_id, v_etapa, v_pts,
-            v_codigo || ': ' || v_etapa || ' → ' || p_destino || case when v_media then ' (½)' else '' end);
+    -- null = quien actúa no tiene rol de pipeline (H-4): la prenda avanza pero no cobra.
+    if private.pipeline_registrar_punto(v_actor, p_id, v_etapa, v_pts,
+            v_codigo || ': ' || v_etapa || ' → ' || p_destino || case when v_media then ' (½)' else '' end,
+            v_hist) is null then
+      v_pts := 0;
+    end if;
   end if;
   return coalesce(v_pts, 0);
 end;
@@ -281,7 +321,7 @@ declare
   v_sesion uuid := auth.uid();
   v_actor uuid;
   v_etapa text; v_tipo text; v_tlav text; v_codigo text;
-  v_culpable uuid; v_clave text; v_peso numeric; v_pts numeric; v_media boolean;
+  v_culpable uuid; v_clave text; v_peso numeric; v_pts numeric; v_media boolean; v_hist uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
   v_actor := private.actor_pipeline(p_operador);
@@ -294,7 +334,7 @@ begin
     order by fecha desc limit 1;
 
   update prenda_pasada set etapa = p_destino, aprobada = false, fecha_actualizado = now() where id = p_id;
-  perform private.prenda_historial_registrar(p_id, v_etapa, p_destino, v_actor, 'Rechazado → ' || p_destino);
+  v_hist := private.prenda_historial_registrar(p_id, v_etapa, p_destino, v_actor, 'Rechazado → ' || p_destino);
 
   if v_culpable is not null then
     if p_destino = 'lavado' then v_clave := 'pts_lavado_' || coalesce(v_tlav, 'normal');
@@ -306,7 +346,7 @@ begin
     v_pts := case when v_media then round(v_peso / 2, 1) else v_peso end;
     if v_pts > 0 then
       perform private.pipeline_registrar_punto(v_culpable, p_id, p_destino || '_rechazo', -v_pts,
-              'Rechazo: ' || v_codigo || ' de ' || v_etapa || ' → ' || p_destino);
+              'Rechazo: ' || v_codigo || ' de ' || v_etapa || ' → ' || p_destino, v_hist);
     end if;
   end if;
 end;
@@ -314,19 +354,32 @@ $$;
 revoke execute on function pipeline_rechazar(uuid, text, uuid) from public, anon;
 grant execute on function pipeline_rechazar(uuid, text, uuid) to authenticated;
 
+-- Deshacer (enmienda 06-oct, H-1/H-2): sólo el ÚLTIMO movimiento de la prenda, y borra los puntos
+-- de ESE movimiento (de quien lo hizo), no los del actor. Misma validación que la 0112.
 create or replace function pipeline_deshacer(p_id uuid, p_etapa_anterior text, p_operador uuid default null)
   returns void language plpgsql security invoker set search_path = public
 as $$
-declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text;
+declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_ult prenda_historial;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
   v_actor := private.actor_pipeline(p_operador);
-  select etapa into v_etapa from prenda_pasada where id = p_id;
+  select etapa into v_etapa from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
+  if v_etapa = 'dividido' then
+    raise exception 'TRANSICION: una prenda dividida se deshace con «deshacer división»';
+  end if;
+
+  select * into v_ult from prenda_historial where pasada_id = p_id order by fecha desc limit 1;
+  if v_ult.id is null or v_ult.etapa_anterior is null
+     or v_ult.etapa_nueva is distinct from v_etapa
+     or v_ult.etapa_anterior is distinct from p_etapa_anterior then
+    raise exception 'TRANSICION: sólo se deshace el último movimiento de la prenda (de "%" a "%")',
+      coalesce(v_ult.etapa_anterior, '—'), coalesce(v_ult.etapa_nueva, '—');
+  end if;
 
   update prenda_pasada set etapa = p_etapa_anterior, fecha_actualizado = now() where id = p_id;
   perform private.prenda_historial_registrar(p_id, v_etapa, p_etapa_anterior, v_actor, 'Deshacer');
-  perform private.pipeline_borrar_punto(p_id, v_actor);   -- el último punto positivo del actor
+  perform private.pipeline_borrar_punto(p_id, v_ult.id);   -- los puntos del movimiento deshecho
 end;
 $$;
 revoke execute on function pipeline_deshacer(uuid, text, uuid) from public, anon;
