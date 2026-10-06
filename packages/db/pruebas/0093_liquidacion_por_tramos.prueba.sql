@@ -53,6 +53,20 @@
 -- (o pegar el archivo entero en el SQL editor de Supabase, proyecto scilb, y leer el mensaje de
 -- error P0001 que empieza con "RESULTADO 0093")
 
+-- 0121: crearBorrador guarda, además de sueldo_entrada, los datos del calendario de pago
+-- (sueldo_entrada_pago), y el cierre los compara. Si la 0121 todavía no está aplicada, la entrada es
+-- la de siempre.
+create or replace function pg_temp.entrada_borrador(p_ac uuid, p_desde date, p_hasta date)
+returns jsonb language plpgsql as $f$
+declare e jsonb;
+begin
+  e := sueldo_entrada(p_ac, p_desde, p_hasta);
+  if to_regprocedure('public.sueldo_entrada_pago(uuid)') is not null then
+    execute 'select $1 || public.sueldo_entrada_pago($2)' into e using e, p_ac;
+  end if;
+  return e;
+end $f$;
+
 do $$
 declare
   adm            uuid;
@@ -257,7 +271,7 @@ begin
       ac, adm, '2099-07-01', '2099-07-31', 'borrador',
       -- Desde la 0111 el cierre recalcula la entrada y la compara: un `{}` ya no cierra. Se guarda
       -- la entrada real, como hace crearBorrador().
-      sueldo_entrada(ac, '2099-07-01', '2099-07-31'), '{}'::jsonb,
+      pg_temp.entrada_borrador(ac, '2099-07-01', '2099-07-31'), '{}'::jsonb,
       '{"lineas":[{"grupo":"ingreso","concepto":"Sueldo","detalle":"prueba 0093","regla":"RN-19","monto":600}]}'::jsonb,
       600, 3.870000, 'prueba-0093'
     ) returning id into liq_julio2;
@@ -334,7 +348,7 @@ begin
       entrada, parametros_usados, resultado, total, valor_por_hora, motor_version
     ) values (
       ac, adm, '2099-09-01', '2099-09-30', 'borrador',
-      sueldo_entrada(ac, '2099-09-01', '2099-09-30'), '{}'::jsonb,
+      pg_temp.entrada_borrador(ac, '2099-09-01', '2099-09-30'), '{}'::jsonb,
       '{"lineas":[{"grupo":"ingreso","concepto":"Sueldo","detalle":"prueba 0093","regla":"RN-19","monto":600}]}'::jsonb,
       600, 3.870000, 'prueba-0093'
     ) returning id into liq_septiembre;

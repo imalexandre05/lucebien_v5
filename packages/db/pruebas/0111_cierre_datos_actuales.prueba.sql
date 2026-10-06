@@ -58,6 +58,20 @@
 -- (o pegar el archivo entero en el SQL editor de Supabase y leer el error P0001 «RESULTADO 0111»)
 
 -- Dos ayudantes de montaje, temporales (mueren con la sesión; no dejan nada en el esquema).
+-- 0121: crearBorrador guarda, además de sueldo_entrada, los datos del calendario de pago
+-- (sueldo_entrada_pago), y el cierre los compara. Si la 0121 todavía no está aplicada, la entrada es
+-- la de siempre.
+create or replace function pg_temp.entrada_borrador(p_ac uuid, p_desde date, p_hasta date)
+returns jsonb language plpgsql as $f$
+declare e jsonb;
+begin
+  e := sueldo_entrada(p_ac, p_desde, p_hasta);
+  if to_regprocedure('public.sueldo_entrada_pago(uuid)') is not null then
+    execute 'select $1 || public.sueldo_entrada_pago($2)' into e using e, p_ac;
+  end if;
+  return e;
+end $f$;
+
 create or replace function pg_temp.montar(p_adm uuid, p_desde date, p_hasta date)
 returns uuid language plpgsql as $f$
 declare ac uuid;
@@ -89,7 +103,7 @@ begin
     entrada, parametros_usados, resultado, total, valor_por_hora, motor_version
   ) values (
     p_ac, p_adm, p_desde, p_hasta, 'borrador',
-    sueldo_entrada(p_ac, p_desde, p_hasta), '{}'::jsonb,
+    pg_temp.entrada_borrador(p_ac, p_desde, p_hasta), '{}'::jsonb,
     '{"lineas":[{"grupo":"ingreso","concepto":"Sueldo","detalle":"prueba 0111","regla":"RN-19","monto":440}]}'::jsonb,
     440, 5.000000, 'prueba-0111'
   ) returning id into liq;
@@ -252,8 +266,8 @@ begin
     liq := pg_temp.guardar_borrador(ac, adm, '2100-01-01', '2100-01-04');
 
     -- 5c — sin marcas de tiempo: dos llamadas seguidas dan lo mismo.
-    v_json := sueldo_entrada(ac, '2100-01-01', '2100-01-04');
-    v_otro := sueldo_entrada(ac, '2100-01-01', '2100-01-04');
+    v_json := pg_temp.entrada_borrador(ac, '2100-01-01', '2100-01-04');
+    v_otro := pg_temp.entrada_borrador(ac, '2100-01-01', '2100-01-04');
     if private.sueldo_entrada_normalizada(v_json) = private.sueldo_entrada_normalizada(v_otro) then
       r := r || '[ok] caso5c: dos llamadas seguidas a sueldo_entrada dan la misma entrada; ';
     else
