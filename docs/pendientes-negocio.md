@@ -1508,7 +1508,10 @@ sembrados en `0123_login_seguro.sql` con el comentario de default provisional.
   `validarContrasenaNueva()` (core), no un parámetro.
 - **`acceso_intentos_max` = 5** fallos seguidos antes de bloquear.
 - **`acceso_bloqueo_min` = 15** minutos de bloqueo.
-- **Sistema viejo, `/api/auth/login-code`:** 5 fallos por IP en 15 min y 30 fallos globales en 24 h
+- **Sistema viejo, `/api/auth/login-code`:** 5 fallos por IP en 15 min y 20 fallos globales en 1 h
   (fijos en `routes/limitador-intentos.js`: el sistema está congelado y no tiene pantalla de
-  configuración). Riesgo residual ≈ 5 % por día de que un atacante sostenido acierte algún código.
-  **Pendiente de decisión:** retirar `/login-code` cuando el kanban viejo deje de usarse.
+  configuración). 1 h y no 24 h porque `/login-code` se usa a diario (kanban, cambio de sede).
+- **🔴 Pendiente de decisión del dueño — `/api/auth/login` del sistema viejo acepta el código como
+  contraseña y no tiene límite** (`routes/auth.js:45-50`, comparación con `cod_hash`). Es la puerta
+  grande de H3 y no estaba dentro de la autorización. Opciones: el mismo limitador, o quitar esa
+  comparación. A largo plazo: retirar `/login-code` cuando el kanban viejo deje de usarse.
