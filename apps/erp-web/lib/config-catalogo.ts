@@ -619,7 +619,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     seccion: SECCION_CODIGO,
     etiqueta: 'Intentos fallidos antes de bloquear',
     descripcion:
-      'En un equipo compartido, cuántos códigos incorrectos puede teclear una misma sesión dentro de la ventana de abajo antes de quedar bloqueada (aunque el siguiente código sea el correcto).',
+      'En un equipo compartido, cuántos PIN incorrectos se aceptan dentro de la ventana de abajo, contados por sesión y por persona, antes de bloquear (aunque el siguiente sea el correcto). El administrador recibe un aviso.',
     tipo: 'numero',
     default: '5',
     min: 1,
@@ -656,6 +656,17 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     tipo: 'numero',
     default: '8',
     min: 1,
+    step: 1,
+  },
+  {
+    clave: 'codigo_pin_min_largo',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Dígitos mínimos del PIN personal',
+    descripcion:
+      'Largo mínimo del PIN que cada persona define en «Mi desempeño» para operar en un equipo compartido. Sólo afecta a los PIN que se definan o cambien después.',
+    tipo: 'numero',
+    default: '6',
+    min: 4,
     step: 1,
   },
 ];
