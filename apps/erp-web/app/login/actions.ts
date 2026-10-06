@@ -1,34 +1,25 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { loginSchema, loginUsuarioSchema } from '@scilb/core';
-import { isOn } from '@scilb/adapter-lucebien';
-import { login, loginConUsuario, logout } from '../../lib/auth';
+import { loginUsuarioSchema } from '@scilb/core';
+import { loginConUsuario, logout } from '../../lib/auth';
 
+// Login usuario + contraseña (spec permisos/2026-10-06-login-usuario-contrasena). La rama cod+sede
+// —el código de 4 dígitos como contraseña— se eliminó el 6-oct-2026 (H0 de la auditoría).
 export async function iniciarSesion(formData: FormData) {
-  if (isOn('LOGIN_V2')) {
-    const parsed = loginUsuarioSchema.safeParse({
-      usuario: formData.get('usuario'),
-      password: formData.get('password'),
-    });
-    if (!parsed.success) redirect('/login?error=datos');
-    // `sede` (Fase 2): botón pre-marcado por el equipo (SedeBotones) — no forma parte del schema
-    // de credenciales porque no es una entrada de seguridad, solo la sede activa inicial.
-    const sede = String(formData.get('sede') ?? '');
-    const res = await loginConUsuario(parsed.data.usuario, parsed.data.password, sede);
-    if (!res.ok) redirect('/login?error=credenciales');
-    redirect('/');
-  }
-
-  const parsed = loginSchema.safeParse({
-    sede: formData.get('sede'),
-    cod: formData.get('cod'),
+  const parsed = loginUsuarioSchema.safeParse({
+    usuario: formData.get('usuario'),
+    password: formData.get('password'),
   });
   if (!parsed.success) redirect('/login?error=datos');
-
-  const res = await login(parsed.data.cod, parsed.data.sede);
-  if (!res.ok) redirect('/login?error=credenciales');
-
+  // `sede` (Fase 2): botón pre-marcado por el equipo (SedeBotones) — no forma parte del schema
+  // de credenciales porque no es una entrada de seguridad, solo la sede activa inicial.
+  const sede = String(formData.get('sede') ?? '');
+  const res = await loginConUsuario(parsed.data.usuario, parsed.data.password, sede);
+  if (!res.ok) {
+    if (res.motivo === 'bloqueado') redirect(`/login?error=bloqueado&min=${res.minutos}`);
+    redirect('/login?error=credenciales');
+  }
   redirect('/');
 }
 

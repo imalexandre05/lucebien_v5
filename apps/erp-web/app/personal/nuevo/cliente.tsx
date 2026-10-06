@@ -54,8 +54,10 @@ export function NuevaPersonaCliente({
       setError('Elige una sede primaria');
       return;
     }
-    if (password.length < 4) {
-      setError('La contraseña debe tener al menos 4 caracteres');
+    // Las reglas de la contraseña (largo mínimo editable, sin el nombre…) las aplica el servidor y
+    // devuelve el mensaje con qué corregir: aquí sólo se evita mandarla vacía.
+    if (!password) {
+      setError('Escribe una contraseña inicial: la persona la cambiará al entrar por primera vez.');
       return;
     }
     const opcion = opciones.find((o) => o.valor === rolValor);
@@ -110,7 +112,7 @@ export function NuevaPersonaCliente({
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mínimo 4 caracteres"
+            placeholder="Temporal: al entrar, la persona la cambia"
             className={cn(campoCls, 'w-full')}
           />
         </div>

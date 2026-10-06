@@ -32,6 +32,7 @@ const SECCION_INVENTARIO = 'Inventario';
 const SECCION_VALORES = 'Valores 360°';
 const SECCION_POS = 'Caja y POS';
 const SECCION_SUELDOS = 'Sueldos';
+const SECCION_ACCESO = 'Acceso';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
 // simplemente no se muestran; "Personalizados" — parámetros creados por el admin — va siempre al
@@ -44,6 +45,7 @@ export const ORDEN_SECCIONES = [
   SECCION_INVENTARIO,
   SECCION_POS,
   SECCION_VALORES,
+  SECCION_ACCESO,
 ];
 
 // Puntos de productividad — 10 claves, todas "puntos que suma el operario al completar la etapa
@@ -304,6 +306,45 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
       'Regla de negocio para sugerir/exigir garantía en un pedido con alquiler (ej. monto mínimo, o a partir de qué total del pedido es obligatoria). NO CONFIRMADA por el dueño — hoy no se aplica en ningún cálculo, la garantía la decide el cajero a mano en cada pedido. Ver docs/pendientes-negocio.md.',
     tipo: 'texto',
     default: '',
+  },
+
+  // ── Acceso (spec permisos/2026-10-06-login-usuario-contrasena, migración 0123) ─────────────
+  // Defaults provisionales, anotados en docs/pendientes-negocio.md. Los rangos son los mismos que
+  // aplica leerReglasAcceso() en el core: fuera de rango, el login usa el default.
+  {
+    clave: 'acceso_contrasena_min',
+    seccion: SECCION_ACCESO,
+    etiqueta: 'Largo mínimo de contraseña',
+    descripcion:
+      'Caracteres mínimos de una contraseña nueva (al cambiarla o al dar de alta a alguien). Se aplica a las contraseñas que se creen desde ahora, no a las que ya existen. Entre 6 y 72.',
+    tipo: 'numero',
+    default: '8',
+    min: 6,
+    max: 72,
+    step: 1,
+  },
+  {
+    clave: 'acceso_intentos_max',
+    seccion: SECCION_ACCESO,
+    etiqueta: 'Intentos fallidos antes de bloquear',
+    descripcion:
+      'Contraseñas incorrectas seguidas que bloquean la cuenta por un rato. Al generar una contraseña temporal, la cuenta se desbloquea. Entre 3 y 20.',
+    tipo: 'numero',
+    default: '5',
+    min: 3,
+    max: 20,
+    step: 1,
+  },
+  {
+    clave: 'acceso_bloqueo_min',
+    seccion: SECCION_ACCESO,
+    etiqueta: 'Minutos de bloqueo',
+    descripcion: 'Cuánto dura el bloqueo después de los intentos fallidos. Entre 1 y 1440 (un día).',
+    tipo: 'numero',
+    default: '15',
+    min: 1,
+    max: 1440,
+    step: 1,
   },
 
   // ── Valores 360° (Fase 13 tarea 3, migración 0058) ─────────────────────────────────────────

@@ -1,5 +1,4 @@
 import { cookies } from 'next/headers';
-import { isOn } from '@scilb/adapter-lucebien';
 import { iniciarSesion } from './actions';
 import { Card, CardContent } from '../../components/ui/card';
 import { Input, Label } from '../../components/ui/form';
@@ -11,18 +10,30 @@ import { BotonIngresar } from './boton';
 
 const DEVICE_COOKIE = 'sci_device';
 
-// Primera impresión (§4B): entrada escalonada crest → wordmark → tarjeta → pie,
-// código estilo "cerradura" (mono, centrado, tracking ancho). Con LOGIN_V2 apagado (default)
-// se mantiene el login híbrido cod+sede; encendido, pide usuario+contraseña — ver
-// C:\Users\ASUS\.claude\plans\glittery-plotting-shannon.md. Las sedes salen de la BD: crear una
-// sede nueva en Configuración la habilita aquí sin tocar código (solo aplica al modo cod+sede).
+// Primera impresión (§4B): entrada escalonada crest → wordmark → tarjeta → pie. Pide usuario +
+// contraseña; el modo cod+sede (código de 4 dígitos como contraseña) se eliminó el 6-oct-2026 —
+// spec docs/superpowers/specs/permisos/2026-10-06-login-usuario-contrasena-design.md. Las sedes
+// salen de la BD: crear una sede nueva en Configuración la habilita aquí sin tocar código.
 //
 // "El dispositivo manda" (Fase 2): el admin asigna una sede a cada equipo desde /dispositivos
 // (dispositivos_autorizados.sede_cod). Este equipo se identifica por la cookie `sci_device` (la
 // pone el middleware, siempre, incluso sin sesión) y login la resuelve ANTES de pintar para
-// pre-marcar el botón correspondiente — en los dos modos de login, no solo en cod+sede.
-export default async function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
-  const loginV2 = isOn('LOGIN_V2');
+// pre-marcar el botón correspondiente.
+// Cada error dice qué hacer (principio de producto). Usuario inexistente y contraseña incorrecta
+// dan el MISMO mensaje: no se revela qué nombres existen.
+function mensajeError(error: string, min?: string): string {
+  if (error === 'suspendido') return 'Tu acceso está suspendido. Habla con el administrador.';
+  if (error === 'bloqueado') {
+    const n = Number(min);
+    const espera = Number.isFinite(n) && n > 0 ? `${n} min` : 'unos minutos';
+    return `Demasiados intentos fallidos. Espera ${espera} y vuelve a intentar, o pide al administrador una contraseña temporal.`;
+  }
+  if (error === 'credenciales')
+    return 'Usuario o contraseña incorrectos. Revisa que el nombre esté bien escrito y vuelve a intentar. Si olvidaste tu contraseña, pide al administrador una temporal.';
+  return 'Escribe tu usuario (tu nombre) y tu contraseña.';
+}
+
+export default async function LoginPage({ searchParams }: { searchParams: { error?: string; min?: string } }) {
   const deviceId = cookies().get(DEVICE_COOKIE)?.value ?? '';
   const [SEDES, sedeDispositivo] = await Promise.all([listarSedesPublico(), sedeDispositivoPublico(deviceId)]);
   const defaultSede = SEDES.some((s) => s.cod === sedeDispositivo) ? (sedeDispositivo as string) : (SEDES[0]?.cod ?? '');
@@ -45,66 +56,35 @@ export default async function LoginPage({ searchParams }: { searchParams: { erro
           <CardContent className="pt-6">
             {searchParams.error && (
               <p role="alert" className="mb-4 animate-rise rounded-r-chico bg-aviso/15 px-3 py-2 text-apoyo text-aviso-deep">
-                {searchParams.error === 'suspendido'
-                  ? 'Tu acceso está suspendido. Habla con el administrador.'
-                  : searchParams.error === 'credenciales'
-                    ? loginV2
-                      ? 'Usuario o contraseña incorrectos.'
-                      : 'Código o sede incorrectos.'
-                    : loginV2
-                      ? 'Datos inválidos. Revisa el usuario y la contraseña.'
-                      : 'Datos inválidos. Revisa la sede y el código (4 dígitos).'}
+                {mensajeError(searchParams.error, searchParams.min)}
               </p>
             )}
-            {loginV2 ? (
-              <form action={iniciarSesion} className="space-y-4">
-                <SedeBotones sedes={SEDES} defaultSede={defaultSede} />
-                <div>
-                  <Label htmlFor="login-usuario">Usuario</Label>
-                  <Input
-                    id="login-usuario"
-                    name="usuario"
-                    autoComplete="username"
-                    placeholder="Tu nombre"
-                    required
-                    autoFocus
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="login-password">Contraseña</Label>
-                  <Input id="login-password" name="password" type="password" autoComplete="current-password" required />
-                </div>
-                <BotonIngresar />
-              </form>
-            ) : (
-              <form action={iniciarSesion} className="space-y-4">
-                <SedeBotones sedes={SEDES} defaultSede={defaultSede} />
-                <div>
-                  <Label htmlFor="login-cod">Código</Label>
-                  <Input
-                    id="login-cod"
-                    name="cod"
-                    inputMode="numeric"
-                    pattern="[0-9]{4}"
-                    maxLength={4}
-                    placeholder="····"
-                    autoComplete="off"
-                    className="py-2.5 text-center tabular-nums text-lg tracking-[0.5em] placeholder:tracking-[0.3em]"
-                    aria-describedby="login-ayuda"
-                    required
-                    autoFocus
-                  />
-                </div>
-                <BotonIngresar />
-              </form>
-            )}
+            <form action={iniciarSesion} className="space-y-4">
+              <SedeBotones sedes={SEDES} defaultSede={defaultSede} />
+              <div>
+                <Label htmlFor="login-usuario">Usuario</Label>
+                <Input
+                  id="login-usuario"
+                  name="usuario"
+                  autoComplete="username"
+                  placeholder="Tu nombre"
+                  required
+                  autoFocus
+                />
+              </div>
+              <div>
+                <Label htmlFor="login-password">Contraseña</Label>
+                <Input id="login-password" name="password" type="password" autoComplete="current-password" required />
+              </div>
+              <BotonIngresar />
+            </form>
           </CardContent>
         </Card>
         <p
           id="login-ayuda"
           className="mt-4 animate-rise text-center text-micro text-muted [animation-delay:270ms]"
         >
-          {loginV2 ? 'Ingresa con tu usuario y contraseña' : 'Ingresa con tu código de 4 dígitos y tu sede'}
+          Ingresa con tu usuario y contraseña
         </p>
       </div>
     </div>
