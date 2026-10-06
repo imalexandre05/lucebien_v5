@@ -208,3 +208,48 @@ El commit `005ba2a` ajustó §6.6 (la reaplicación se comprueba a mano) y §7.6
 `apps/erp-web`) **después** de existir el código, para describir lo que el código hace; no
 cambia ninguna regla de negocio, pero queda registrado aquí y **pendiente de que Alexander lo
 confirme**.
+
+## 11. Enmienda del 06-oct-2026 (auditoría de pipeline H-1, H-4)
+
+> Fuente: `docs/auditorias/2026-10-06-pipeline.md` (rama `audit/2026-10-06-pipeline`). Pedido por la
+> sesión maestra del dueño el 06-oct-2026. Se escribe antes del código (Zone Guard).
+
+**H-4 — una tienda no se acredita puntos avanzando prendas.** La cabecera de la 0115 decía que
+desaparecía «la rama que dejaba sumarse puntos a uno mismo», pero cualquier rol de tienda puede
+llamar `pipeline_avanzar` sobre prendas de su sede y se acreditaba cada etapa (medido: +7 en 7
+llamadas). Regla nueva:
+
+- `private.pipeline_registrar_punto` sólo escribe el punto si **quien lo recibe** tiene rol de
+  pipeline: `admin`, `dueno`, `encargado_almacen` o `confeccionista` (los mismos roles de
+  `private.app_es_admin()` y `private.app_es_almacen()`, 0006/0083). Si no, no escribe nada y
+  devuelve `null`; la RPC devuelve 0 puntos. La prenda **sí** avanza (la tienda puede mover sus
+  prendas; sólo no cobra por ello).
+- Vale igual para el negativo de un rechazo: si la etapa la hizo alguien sin rol de pipeline (que no
+  cobró por ella), tampoco se le descuenta.
+- Quien recibe el punto es el actor resuelto (dueño del código en el equipo compartido, o la
+  sesión), no necesariamente quien tiene la sesión.
+- La cabecera de la 0115 se corrige para decir esto (no-negociable 7).
+
+**H-1 — deshacer quita los puntos del movimiento deshecho.** Mismo diseño que la enmienda de la
+0112 (spec del código personal §0 E-4), ahora a través de las funciones privadas:
+
+- `private.pipeline_registrar_punto` recibe además `p_historial uuid` (el `prenda_historial` que
+  originó el punto) y lo guarda en `pipeline_puntos.historial_id`.
+- `private.prenda_historial_registrar` devuelve el `id` de la fila (antes `void`) y fija
+  `fecha = clock_timestamp()`, para que «el último movimiento» sea inequívoco aun dentro de una
+  misma transacción.
+- `private.pipeline_borrar_punto(p_pasada, p_historial, p_todos)`: con `p_todos = false` borra los
+  puntos de ese movimiento, sean de quien sean; para puntos anteriores a la columna, el último
+  positivo de esa prenda en la etapa de origen del movimiento, sin mirar el empleado. Ya no recibe
+  un empleado.
+- `pipeline_deshacer` sólo deshace el último movimiento (la misma validación que la 0112; cierra
+  el punto 3 de §9 dentro de esta RPC).
+
+Compatibilidad con la 0122 (`fix/seguridad-produccion`, otra sesión): esa migración cierra la
+escritura directa de `prenda_pasada` (§9.1) y valida el deshacer en `main`. Las RPC de esta rama
+siguen siendo `security invoker`; quien mergee la segunda debe reconciliar las definiciones (la
+última que se aplique manda).
+
+**Tests nuevos:** un `encargado_tienda` avanza su prenda y no recibe puntos (la prenda sí avanza);
+A avanza, B avanza y A deshace lo de B → B pierde ese punto y A conserva el suyo; deshacer a una
+etapa que no es la del último movimiento → `TRANSICION:`.
