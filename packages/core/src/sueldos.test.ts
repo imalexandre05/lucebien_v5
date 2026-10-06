@@ -11,6 +11,7 @@ import {
   calendarioDePagos,
   frecuenciaVigente,
   cuotaDeLiquidacion,
+  proximoPagoPendiente,
   liquidacionesCruzadas,
   PARAMETROS_SUELDO_DEFAULT,
   type EntradaLiquidacion,
@@ -1265,5 +1266,22 @@ describe('cuotaDeLiquidacion — la cuota que recibe el motor para el tramo que 
   it('último tramo corto bajo una frecuencia cambiada: prorrateo sobre la quincena', () => {
     // 10-feb a 14-feb es una quincena completa (10 al 24-feb) cortada en 5 de 15 días.
     expect(cuotaDeLiquidacion(contrato, cambios, '2027-02-10', '2027-02-14')).toBe(108.33);
+  });
+});
+
+describe('proximoPagoPendiente — dónde puede empezar un cambio de frecuencia (spec §3.2)', () => {
+  const contrato = { fechaInicio: '2026-08-10', fechaFin: '2027-02-09', modalidad: 'mensual' as const, sueldoPactado: 650 };
+
+  it('es el primer pago que arranca después de lo último pagado', () => {
+    expect(proximoPagoPendiente(contrato, [], '2026-11-09')?.desde).toBe('2026-11-10');
+    expect(proximoPagoPendiente(contrato, [], '2026-10-09')?.desde).toBe('2026-10-10');
+  });
+
+  it('sin nada pagado es el primero del contrato', () => {
+    expect(proximoPagoPendiente(contrato, [], null)?.desde).toBe('2026-08-10');
+  });
+
+  it('con todo pagado no queda ninguno', () => {
+    expect(proximoPagoPendiente(contrato, [], '2027-02-09')).toBeNull();
   });
 });
