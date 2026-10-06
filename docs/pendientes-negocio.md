@@ -1495,3 +1495,26 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+---
+
+## Defaults inventados el 6-oct-2026 — frecuencia de pago flexible
+
+Implementación de la [spec](superpowers/specs/sueldos/2026-10-06-frecuencia-pago-flexible-design.md)
+(migración `0120`, `packages/core/src/sueldos.ts`). Tres defaults que la spec ya marcaba como
+provisionales; ninguno está hardcodeado en silencio: viven en el core y el administrador los
+decide contrato por contrato.
+
+| Default | Dónde vive | Pendiente de confirmar con el dueño |
+|---|---|---|
+| **Quincenal anclado al día de inicio** de la frecuencia (del día *d* al *d+14* y del *d+15* al día anterior a *d* del mes siguiente) | `finDeQuincena()` en `sueldos.ts` | Si prefiere quincenas fijas 1–15 / 16–fin de mes: se agrega como otra opción, sin tocar las demás |
+| **El último pago más corto que la frecuencia se prorratea por días** (S/650 mensual, 5 de 30 días = S/108,33) | `cuotaDelTramo()` / `cuotaDeLiquidacion()` | Si el último pago corto debe cobrar entero o redondear distinto. El administrador puede ajustar la cuota antes de confirmar |
+| **«Cada N días»: N entre 1 y 62** | `validarCadaDias()` y los `check` de la `0120` | El tope de 62 días (dos meses) |
+
+Efecto a tener presente: un contrato **existente** cuyo último tramo ya era más corto que su
+frecuencia cobraba la cuota entera (el borde #33); desde esta versión ese último tramo se
+prorratea. Los demás tramos de contratos existentes liquidan exactamente igual que antes.
+
+Sin decidir: al crear un contrato la pantalla **avisa** cuando el último pago queda corto y
+sugiere la fecha de fin que lo completa, pero no propone una fecha de fin por defecto con el
+contrato vacío (la spec §3.3 dice «sugiere el día anterior al aniversario» sin fijar cuántos meses).
