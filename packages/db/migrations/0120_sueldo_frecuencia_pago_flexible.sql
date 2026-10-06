@@ -83,15 +83,22 @@ create index if not exists idx_sueldo_cambios_acuerdo on sueldo_acuerdo_cambios(
 comment on table sueldo_acuerdo_cambios is
   'Historial de cambios de frecuencia y cuota de un acuerdo (spec frecuencia-pago-flexible §4). La frecuencia vigente para una fecha es la última fila con desde <= fecha; sin filas, la del acuerdo.';
 
--- `desde` tiene que caer dentro del contrato y después de su primer día: un cambio el primer día es
--- simplemente editar el contrato.
+-- `desde` tiene que caer dentro del contrato y después de su primer día (un cambio el primer día es
+-- simplemente editar el contrato), y NUNCA dentro de lo ya pagado: lo cerrado no se toca (spec §3.2).
+-- Este último chequeo vive acá y no sólo en el repo porque dos administradores pueden confirmar a la
+-- vez: la base es la que decide.
 create or replace function sueldo_cambio_coherente() returns trigger
 language plpgsql set search_path = public, pg_temp as $$
-declare v_ini date; v_fin date;
+declare v_ini date; v_fin date; v_pagado date;
 begin
   select fecha_inicio, fecha_fin into v_ini, v_fin from sueldo_acuerdos where id = new.acuerdo_id;
   if new.desde <= v_ini or new.desde > v_fin then
     raise exception 'DATO:el cambio de frecuencia tiene que caer después del inicio y hasta el fin del contrato (% a %)', v_ini, v_fin;
+  end if;
+  select max(periodo_hasta) into v_pagado from sueldo_liquidaciones
+    where acuerdo_id = new.acuerdo_id and estado = 'cerrada';
+  if v_pagado is not null and new.desde <= v_pagado then
+    raise exception 'ESTADO:el cambio de frecuencia tiene que empezar después de lo ya pagado (hasta %)', v_pagado;
   end if;
   return new;
 end $$;

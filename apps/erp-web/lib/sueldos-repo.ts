@@ -344,6 +344,21 @@ export async function crearAcuerdo(p: AcuerdoInput, creadoPor: string): Promise<
 }
 
 export async function actualizarAcuerdo(id: string, p: AcuerdoInput): Promise<void> {
+  // Con cambios de frecuencia registrados, el inicio y la frecuencia base ya no se editan: los
+  // cambios están anclados a ese calendario y quedarían a mitad de un pago o antes del inicio.
+  const actual = await obtenerAcuerdo(id);
+  if (
+    actual &&
+    actual.cambios.length > 0 &&
+    (actual.fechaInicio !== p.fechaInicio ||
+      actual.modalidad !== p.modalidad ||
+      (actual.cadaDias ?? null) !== (p.modalidad === 'dias' ? p.cadaDias : null))
+  ) {
+    throw new SueldoRpcError(
+      'Este contrato ya tiene cambios de frecuencia: no se puede cambiar su inicio ni su frecuencia base. Usa «Cambiar cómo se paga».',
+      'ESTADO',
+    );
+  }
   const sb = getServerClient();
   const { error } = await sb.from('sueldo_acuerdos').update(filaAcuerdo(p)).eq('id', id);
   if (error) throw errorSueldo(error);
@@ -443,15 +458,35 @@ export async function cambiarFrecuencia(
   const anterior = frecuenciaVigente(acuerdo, cambiosParaCore(acuerdo.cambios), p.desde);
 
   const sb = getServerClient();
+
+  // Nada se ha pagado: el «próximo pago» es el primero del contrato, y un cambio ahí es simplemente
+  // el contrato (la base rechaza un cambio el primer día). Se edita el contrato base.
+  if (p.desde === acuerdo.fechaInicio) {
+    const { error: eBase } = await sb
+      .from('sueldo_acuerdos')
+      .update({ modalidad: p.modalidad, cada_dias: cadaDias, sueldo_pactado: p.sueldoPactado })
+      .eq('id', acuerdoId);
+    if (eBase) throw errorSueldo(eBase);
+    return { borradores };
+  }
+
+  // Corregir un cambio mal cargado: si ya hay uno que arranca ese día, se reemplaza (el anterior,
+  // mientras no se haya pagado nada de ahí en adelante, no tiene por qué quedar).
+  const previo = acuerdo.cambios.find((c) => c.desde === p.desde);
+  if (previo) {
+    const { error: eDel } = await sb.from('sueldo_acuerdo_cambios').delete().eq('id', previo.id);
+    if (eDel) throw errorSueldo(eDel);
+  }
   const { error } = await sb.from('sueldo_acuerdo_cambios').insert({
     acuerdo_id: acuerdoId,
     desde: p.desde,
     modalidad: p.modalidad,
     cada_dias: cadaDias,
     sueldo_pactado: p.sueldoPactado,
-    modalidad_anterior: anterior.modalidad,
-    cada_dias_anterior: anterior.cadaDias ?? null,
-    sueldo_pactado_anterior: anterior.sueldoPactado,
+    // Si se reemplaza un cambio, «antes» es lo que había antes de ese cambio, no el cambio borrado.
+    modalidad_anterior: previo?.modalidadAnterior ?? anterior.modalidad,
+    cada_dias_anterior: previo ? previo.cadaDiasAnterior : (anterior.cadaDias ?? null),
+    sueldo_pactado_anterior: previo?.sueldoPactadoAnterior ?? anterior.sueldoPactado,
     creado_por: creadoPor,
   });
   if (error) throw errorSueldo(error);
@@ -723,6 +758,8 @@ export async function entradaDeAcuerdo(
   acuerdoId: string,
   desde: string,
   hasta: string,
+  /** Fuerza la cuota (la de una liquidación que se corrige): no se recalcula con la regla de hoy. */
+  cuotaFija?: number,
 ): Promise<EntradaConContexto> {
   const sb = getServerClient();
   const { data, error } = await sb.rpc('sueldo_entrada', {
@@ -738,10 +775,13 @@ export async function entradaDeAcuerdo(
   // se resuelve en el core y se reemplaza ACÁ, en el servidor, antes del cálculo. El snapshot
   // `entrada` que se guarda en el borrador ya lleva la cuota usada. Sin cambios ni último tramo
   // corto, el resultado es el mismo número que mandó la RPC.
-  const acuerdo = await obtenerAcuerdo(acuerdoId);
-  if (acuerdo) {
-    entrada.sueldoPactado = cuotaDeLiquidacion(acuerdo, cambiosParaCore(acuerdo.cambios), desde, hasta);
+  if (cuotaFija !== undefined) {
+    entrada.sueldoPactado = cuotaFija;
+    return entrada;
   }
+  const acuerdo = await obtenerAcuerdo(acuerdoId);
+  if (!acuerdo) throw new SueldoRpcError('No pude leer el contrato para calcular la cuota del tramo.', 'DATO');
+  entrada.sueldoPactado = cuotaDeLiquidacion(acuerdo, cambiosParaCore(acuerdo.cambios), desde, hasta);
   return entrada;
 }
 
@@ -771,8 +811,13 @@ export async function calcularPreview(
  * Se guardan los tres snapshots (entrada, parámetros resueltos y resultado completo), no sólo el
  * total: el total es la suma de líneas ya redondeadas y no se llega a él de ninguna otra forma.
  */
-export async function crearBorrador(acuerdoId: string, desde: string, hasta: string): Promise<string> {
-  const entrada = await entradaDeAcuerdo(acuerdoId, desde, hasta);
+export async function crearBorrador(
+  acuerdoId: string,
+  desde: string,
+  hasta: string,
+  cuotaFija?: number,
+): Promise<string> {
+  const entrada = await entradaDeAcuerdo(acuerdoId, desde, hasta, cuotaFija);
   const liquidacion = liquidarPeriodo(entrada);
   const parametros = resolverParametros(entrada.parametros);
 
@@ -834,6 +879,21 @@ export async function crearBorrador(acuerdoId: string, desde: string, hasta: str
  * cerrar de nuevo. Sin esa comprobación, esa fila quedaría sellada sin haber entrado en el pago.
  */
 export async function cerrarLiquidacion(id: string): Promise<void> {
+  // Un borrador calculado con una cuota que después cambió (cambio de frecuencia, spec §3.2) no se
+  // cierra: habría que pagar la vieja. Mismo código que la carrera de movimientos.
+  const liq = await obtenerLiquidacion(id);
+  if (liq && liq.estado === 'borrador') {
+    const acuerdo = await obtenerAcuerdo(liq.acuerdoId);
+    if (acuerdo) {
+      const cuota = cuotaDeLiquidacion(acuerdo, cambiosParaCore(acuerdo.cambios), liq.periodoDesde, liq.periodoHasta);
+      if (cuota !== liq.entrada.sueldoPactado) {
+        throw new SueldoRpcError(
+          'La cuota de este tramo cambió después de calcular el borrador. Elimínalo y vuelve a calcularlo.',
+          'DESACTUALIZADA',
+        );
+      }
+    }
+  }
   const sb = getServerClient();
   const { error } = await sb.rpc('sueldo_liquidacion_cerrar', { p_liquidacion: id });
   if (error) throw errorSueldo(error);
@@ -947,7 +1007,13 @@ export async function corregirLiquidacion(
   // CorreccionParcialError: nunca puede llegarle a la pantalla como un error suelto que sugiera que
   // no pasó nada.
   try {
-    const nuevoBorradorId = await crear(actual.acuerdoId, actual.periodoDesde, actual.periodoHasta);
+    // Misma cuota con la que se pagó: corregir cambia datos, no la cuota.
+    const nuevoBorradorId = await crear(
+      actual.acuerdoId,
+      actual.periodoDesde,
+      actual.periodoHasta,
+      actual.entrada?.sueldoPactado,
+    );
     return { nuevoBorradorId };
   } catch (e) {
     const causa = e instanceof Error ? e.message : 'error desconocido';

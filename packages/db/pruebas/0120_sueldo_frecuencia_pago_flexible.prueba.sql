@@ -61,6 +61,23 @@ begin
     values (ac,'2099-05-10','dias', 1); r := r || 'D5-DIAS-SIN-N=FALLA ';
   exception when check_violation then r := r || 'D5=ok '; end;
 
+  -- F) Lo ya pagado no se toca: con una liquidación cerrada hasta 2099-03-09, un cambio que empieza
+  --    dentro de ese período se rechaza y uno posterior entra. (Si los triggers de congelado de la
+  --    0072 impiden fabricar la cerrada a mano, esta parte queda como F=sin-probar.)
+  begin
+    insert into sueldo_liquidaciones(acuerdo_id, empleado_id, periodo_desde, periodo_hasta, estado,
+      entrada, parametros_usados, resultado, total, valor_por_hora, motor_version)
+      values (ac, adm, '2099-01-10','2099-03-09','cerrada','{}','{}','{}', 1, 1, 'prueba');
+    begin insert into sueldo_acuerdo_cambios(acuerdo_id, desde, modalidad, sueldo_pactado)
+      values (ac,'2099-02-10','semanal', 1); r := r || 'F1-PAGADO=FALLA ';
+    exception when others then r := r || 'F1=ok '; end;
+    insert into sueldo_acuerdo_cambios(acuerdo_id, desde, modalidad, sueldo_pactado)
+      values (ac,'2099-05-10','semanal', 1);
+    delete from sueldo_acuerdo_cambios where acuerdo_id = ac and desde = '2099-05-10';
+    r := r || 'F2=ok ';
+  exception when others then r := r || 'F=sin-probar(' || sqlerrm || ') ';
+  end;
+
   -- E) RLS: el admin ve el cambio; otro empleado, que no es dueño del acuerdo, no ve ninguno.
   select count(*) into n from sueldo_acuerdo_cambios; r := r || 'E-admin=' || n || ' ';
   perform set_config('request.jwt.claims', json_build_object('sub', otro, 'role','authenticated')::text, true);
@@ -73,4 +90,4 @@ begin
 
   raise exception 'RESULTADO: %', r;
 end $$;
--- Esperado: A=ok B=ok C1..C4=ok D1=ok D2..D5=ok E-admin=1 E-otro=0 E-escribe=ok
+-- Esperado: A=ok B=ok C1..C4=ok D1=ok D2..D5=ok F1=ok F2=ok E-admin=1 E-otro=0 E-escribe=ok

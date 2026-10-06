@@ -1508,12 +1508,22 @@ decide contrato por contrato.
 | Default | Dónde vive | Pendiente de confirmar con el dueño |
 |---|---|---|
 | **Quincenal anclado al día de inicio** de la frecuencia (del día *d* al *d+14* y del *d+15* al día anterior a *d* del mes siguiente) | `finDeQuincena()` en `sueldos.ts` | Si prefiere quincenas fijas 1–15 / 16–fin de mes: se agrega como otra opción, sin tocar las demás |
-| **El último pago más corto que la frecuencia se prorratea por días** (S/650 mensual, 5 de 30 días = S/108,33) | `cuotaDelTramo()` / `cuotaDeLiquidacion()` | Si el último pago corto debe cobrar entero o redondear distinto. El administrador puede ajustar la cuota antes de confirmar |
+| **El último pago más corto que la frecuencia se prorratea por días** (S/650 mensual, 5 de 30 días = S/108,33) | `cuotaDelTramo()` / `cuotaDeLiquidacion()` | Si el último pago corto debe cobrar entero o redondear distinto. |
 | **«Cada N días»: N entre 1 y 62** | `validarCadaDias()` y los `check` de la `0120` | El tope de 62 días (dos meses) |
+| **Cuota sugerida al cambiar de frecuencia**: la misma plata por mes en más pagos (quincenal ×1/2, semanal ×12/52, cada N días ×12·N/365). Sólo se sugiere; el administrador la confirma | `cuotaProporcional()` en `cambiar-frecuencia.tsx` | Si prefiere otra proporción (p. ej. semanal = mensual/4) |
 
 Efecto a tener presente: un contrato **existente** cuyo último tramo ya era más corto que su
 frecuencia cobraba la cuota entera (el borde #33); desde esta versión ese último tramo se
 prorratea. Los demás tramos de contratos existentes liquidan exactamente igual que antes.
+
+**Falta, y la spec §3.3 lo pide:** ajustar la cuota del último pago corto antes de confirmar. Hoy
+no hay dónde: `crearBorrador` no recibe cuota. Alternativa disponible hoy: un bono o ajuste manual en
+la liquidación. Pendiente de decidir si se implementa en este PR o en el de #44.
+
+**Borde conocido de la modalidad mensual (existía antes):** un contrato que arranca el 29, 30 o 31
+y cruza febrero «se corre» (30-ene → 28-feb, luego 1-mar → 31-mar…). Con el prorrateo, el último
+tramo de un contrato «30-ene al 29-abr» queda corto y cobra S/580 de S/600. No se ancló la mensual
+al día de inicio porque cambiaría los cortes de contratos que ya liquidan; decisión del dueño.
 
 Sin decidir: al crear un contrato la pantalla **avisa** cuando el último pago queda corto y
 sugiere la fecha de fin que lo completa, pero no propone una fecha de fin por defecto con el

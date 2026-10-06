@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { finDePeriodo, validarCadaDias, type ModalidadPago } from '@scilb/core';
+import { validarCadaDias, type ModalidadPago } from '@scilb/core';
 import { Button } from '../../../components/ui/button';
 import { Aviso, Input, Label } from '../../../components/ui/form';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
@@ -10,23 +10,27 @@ import type { AcuerdoSueldo } from '../../../lib/sueldos-repo';
 import { accionCambiarFrecuencia, accionPlanDeCambio, type PlanCambio } from './actions';
 import { ComoSePaga, fechaCorta, nombreFrecuencia, soles } from './como-se-paga';
 
-const diasDe = (desde: string, hasta: string): number =>
-  Math.round((Date.parse(`${hasta}T00:00:00Z`) - Date.parse(`${desde}T00:00:00Z`)) / 86_400_000) + 1;
+/** Cuántos pagos caen en un mes promedio con cada frecuencia (semanal = 52/12, cada N días = 365/12/N). */
+function pagosPorMes(f: { modalidad: ModalidadPago; cadaDias: number | null }): number {
+  if (f.modalidad === 'mensual') return 1;
+  if (f.modalidad === 'quincenal') return 2;
+  if (f.modalidad === 'semanal') return 52 / 12;
+  const n = validarCadaDias(f.cadaDias);
+  return 365 / 12 / n;
+}
 
 /**
- * La cuota que se SUGIERE al cambiar de frecuencia: la actual, proporcional a los días de cada
- * pago (S/650 mensual → S/325 quincenal). Es sólo un punto de partida: el administrador la
- * confirma o la cambia, nunca se aplica sola (no-negociable 5).
+ * La cuota que se SUGIERE al cambiar de frecuencia: la misma plata por mes repartida en más o menos
+ * pagos (S/650 mensual → S/325 quincenal). Es un default anotado en docs/pendientes-negocio.md y
+ * sólo un punto de partida: el administrador la confirma o la cambia, nunca se aplica sola
+ * (no-negociable 5). No depende de cuántos días tenga el mes en que arranca el cambio.
  */
 function cuotaProporcional(
-  desde: string,
   actual: PlanCambio['frecuenciaActual'],
   nueva: { modalidad: ModalidadPago; cadaDias: number | null },
 ): number | null {
   try {
-    const diasActual = diasDe(desde, finDePeriodo(desde, actual, undefined, desde));
-    const diasNueva = diasDe(desde, finDePeriodo(desde, nueva, undefined, desde));
-    return Math.round(((actual.sueldoPactado * diasNueva) / diasActual) * 100) / 100;
+    return Math.round(((actual.sueldoPactado * pagosPorMes(actual)) / pagosPorMes(nueva)) * 100) / 100;
   } catch {
     return null;
   }
@@ -55,7 +59,7 @@ export function CambiarFrecuencia({ acuerdo, onClose }: { acuerdo: AcuerdoSueldo
       if (!r.ok || !r.plan) return setError(r.error ?? 'No se pudo preparar el cambio.');
       setPlan(r.plan);
       const sug = r.plan.desde
-        ? cuotaProporcional(r.plan.desde, r.plan.frecuenciaActual, { modalidad: 'quincenal', cadaDias: null })
+        ? cuotaProporcional(r.plan.frecuenciaActual, { modalidad: 'quincenal', cadaDias: null })
         : null;
       setCuota(sug == null ? '' : String(sug));
     });
@@ -65,7 +69,7 @@ export function CambiarFrecuencia({ acuerdo, onClose }: { acuerdo: AcuerdoSueldo
     setModalidad(m);
     setCadaDias(n);
     if (!cuotaTocada && plan?.desde) {
-      const sug = cuotaProporcional(plan.desde, plan.frecuenciaActual, {
+      const sug = cuotaProporcional(plan.frecuenciaActual, {
         modalidad: m,
         cadaDias: m === 'dias' ? Number(n) : null,
       });
