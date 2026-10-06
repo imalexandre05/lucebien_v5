@@ -616,6 +616,29 @@ export function calendarioDePagos(contrato: ContratoPago, cambios: CambioFrecuen
 }
 
 /**
+ * La cuota que recibe `liquidarPeriodo` (`entrada.sueldoPactado`) para liquidar `desde`–`hasta`.
+ * El motor no cambia de fórmula: sólo recibe la cuota correcta.
+ *
+ * - Un tramo cobra la cuota VIGENTE en `desde` entera, como siempre: el administrador puede elegir
+ *   un rango que no coincide con la frecuencia y eso no prorratea nada (regresión, spec §7.6).
+ * - Sólo el ÚLTIMO tramo del contrato (termina en `fechaFin`), si es más corto que la frecuencia,
+ *   se prorratea por días (spec §3.3, default anotado en docs/pendientes-negocio.md).
+ */
+export function cuotaDeLiquidacion(
+  contrato: ContratoPago,
+  cambios: CambioFrecuencia[],
+  desde: string,
+  hasta: string,
+): number {
+  const v = frecuenciaVigente(contrato, cambios, desde);
+  const natural = finDePeriodo(desde, v, undefined, v.ancla);
+  if (hasta === contrato.fechaFin && hasta < natural) {
+    return cuotaDelTramo(v.sueldoPactado, desde, hasta, v, v.ancla);
+  }
+  return v.sueldoPactado;
+}
+
+/**
  * Los borradores que un cambio de frecuencia a partir de `desde` deja desactualizados (spec §3.2):
  * los que todavía cubren días desde esa fecha. Las cerradas no se tocan nunca y las anuladas ya
  * no cuentan.
