@@ -308,15 +308,30 @@ export async function calificarPasada(
 }
 
 // ── Código personal (migración 0112, spec codigo-personal) ────────────────────────────────────
-// El código se teclea UNA vez y sólo viaja a pipeline_validar_codigo, que cuenta los intentos y
-// devuelve un token de operador. Las demás RPC reciben ese token (`p_operador`), nunca el código.
+// Usuario + PIN se teclean UNA vez y sólo viajan a pipeline_validar_codigo, que cuenta los intentos
+// (por sesión y por persona) y devuelve un token de operador. Las demás RPC reciben ese token
+// (`p_operador`), nunca el PIN. El PIN lo define cada persona (`definirPin`); la base guarda sólo el
+// hash.
 export type ValidacionCodigo =
   | { ok: true; token: string; nombre: string; expiraEn: string; ventanaMin: number }
-  | { ok: false; bloqueadoMin?: number; intentosRestantes?: number; motivo?: 'equipo_no_compartido' };
+  | {
+      ok: false;
+      bloqueadoMin?: number;
+      intentosRestantes?: number;
+      motivo?: 'equipo_no_compartido' | 'sin_pin';
+    };
 
-export async function validarCodigoOperador(codigo: string, deviceId: string | null): Promise<ValidacionCodigo> {
+export async function validarCodigoOperador(
+  usuario: string,
+  pin: string,
+  deviceId: string | null,
+): Promise<ValidacionCodigo> {
   const sb = getServerClient();
-  const { data, error } = await sb.rpc('pipeline_validar_codigo', { p_codigo: codigo, p_device: deviceId });
+  const { data, error } = await sb.rpc('pipeline_validar_codigo', {
+    p_usuario: usuario,
+    p_pin: pin,
+    p_device: deviceId,
+  });
   if (error) throw new Error(error.message);
   const r = data as {
     ok: boolean;
@@ -341,8 +356,64 @@ export async function validarCodigoOperador(codigo: string, deviceId: string | n
     ok: false,
     bloqueadoMin: r.bloqueado_min,
     intentosRestantes: r.intentos_restantes,
-    motivo: r.motivo === 'equipo_no_compartido' ? 'equipo_no_compartido' : undefined,
+    motivo: r.motivo === 'equipo_no_compartido' || r.motivo === 'sin_pin' ? r.motivo : undefined,
   };
+}
+
+export type ResultadoPin =
+  | { ok: true }
+  | {
+      ok: false;
+      motivo?: 'pin_corto' | 'pin_trivial' | 'pin_actual_incorrecto' | 'cuenta_compartida' | 'sin_permiso';
+      largoMin?: number;
+      intentosRestantes?: number;
+      bloqueadoMin?: number;
+    };
+
+// La propia persona define o cambia su PIN (para cambiarlo, da el actual).
+export async function definirPin(nuevo: string, actual: string | null): Promise<ResultadoPin> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_definir_pin', { p_pin_nuevo: nuevo, p_pin_actual: actual });
+  if (error) throw new Error(error.message);
+  const r = data as {
+    ok: boolean;
+    motivo?: string;
+    largo_min?: number;
+    intentos_restantes?: number;
+    bloqueado_min?: number;
+  };
+  if (r.ok) return { ok: true };
+  return {
+    ok: false,
+    motivo: r.motivo as Extract<ResultadoPin, { ok: false }>['motivo'],
+    largoMin: r.largo_min,
+    intentosRestantes: r.intentos_restantes,
+    bloqueadoMin: r.bloqueado_min,
+  };
+}
+
+// ¿La sesión ya tiene PIN? PGRST202 = migración sin aplicar → se trata como «sin PIN».
+export async function tengoPin(): Promise<boolean> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_tengo_pin');
+  if (error?.code === 'PGRST202') return false;
+  if (error) throw new Error(error.message);
+  return data === true;
+}
+
+// Admin: borra el PIN de quien lo olvidó (la base exige admin).
+export async function borrarPin(empleadoId: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_borrar_pin', { p_empleado: empleadoId });
+  if (error) throw new Error(error.message);
+}
+
+// Admin: marca la cuenta con la que se abre un equipo compartido. Para esa cuenta la base rechaza
+// toda acción del pipeline sin código (spec §0 E-3).
+export async function marcarCuentaCompartida(empleadoId: string, valor: boolean): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('empleado_marcar_cuenta_compartida', { p_empleado: empleadoId, p_valor: valor });
+  if (error) throw new Error(error.message);
 }
 
 // «cambiar» en el chip: revoca el token de operador en la base (sólo los de la propia sesión).

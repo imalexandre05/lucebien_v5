@@ -18,7 +18,7 @@ import { cerrarOperador, validarCodigo } from './actions';
 // Código personal en equipos compartidos (spec codigo-personal §5).
 //
 // El operador vive SÓLO en memoria de la pestaña: ni localStorage ni cookie. El código se teclea,
-// viaja una vez a `validarCodigo` (que lo valida la base y cuenta los intentos) y aquí se guarda
+// (usuario + PIN) viaja una vez a `validarCodigo` (que lo valida la base y cuenta los intentos) y aquí se guarda
 // únicamente el token que devuelve. Si el equipo no es compartido, `conOperador` ejecuta la acción
 // tal cual y no se muestra nada.
 export function useOperador(compartido: boolean) {
@@ -109,9 +109,9 @@ function ChipOperador({
       <button
         type="button"
         onClick={operador ? onCambiar : onIngresar}
-        className="font-medium text-navy underline-offset-2 hover:text-gold hover:underline"
+        className="toque inline-flex items-center px-1 font-medium text-navy underline-offset-2 hover:text-gold hover:underline"
       >
-        {operador ? 'cambiar' : 'Ingresar código'}
+        {operador ? 'cambiar' : 'Ingresar PIN'}
       </button>
     </div>
   );
@@ -126,13 +126,15 @@ function DialogoCodigo({
   onCerrar: () => void;
   onValidado: (op: OperadorActivo) => void;
 }) {
-  const [codigo, setCodigo] = useState('');
+  const [usuario, setUsuario] = useState('');
+  const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   useEffect(() => {
     if (abierto) {
-      setCodigo('');
+      setUsuario('');
+      setPin('');
       setError(null);
     }
   }, [abierto]);
@@ -141,62 +143,94 @@ function DialogoCodigo({
     start(async () => {
       setError(null);
       try {
-        const r = await validarCodigo(codigo);
+        const r = await validarCodigo(usuario, pin);
         if (r.ok) {
-          setCodigo('');
+          setUsuario('');
+          setPin('');
           onValidado(nuevoOperador({ token: r.token, nombre: r.nombre, ventanaMin: r.ventanaMin }, Date.now()));
           return;
         }
-        setCodigo('');
-        setError(
-          r.motivo === 'equipo_no_compartido'
-            ? 'Este equipo no está marcado como compartido. Pídele al administrador que lo active en Dispositivos.'
-            : r.bloqueadoMin
-              ? `Demasiados intentos. Espera ${r.bloqueadoMin} ${r.bloqueadoMin === 1 ? 'minuto' : 'minutos'}.`
-              : 'Código incorrecto.',
-        );
+        setPin('');
+        setError(mensajeFallo(r));
       } catch {
         setError('No se pudo validar el código. Inténtalo de nuevo.');
       }
     });
 
   return (
-    <Modal open={abierto} onClose={onCerrar} title="¿Quién opera?" subtitle="Ingresa tu código personal" size="sm">
+    <Modal open={abierto} onClose={onCerrar} title="¿Quién opera?" subtitle="Ingresa tu usuario y tu PIN personal" size="sm">
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          if (codigo.trim() && !pending) confirmar();
+          if (usuario.trim() && pin.trim() && !pending) confirmar();
         }}
         className="space-y-3"
       >
         <div>
-          <Label htmlFor="codigo-personal">Código</Label>
+          <Label htmlFor="codigo-usuario">Usuario</Label>
           <Input
-            id="codigo-personal"
+            id="codigo-usuario"
             type="text"
             inputMode="numeric"
-            autoComplete="one-time-code"
+            autoComplete="off"
             autoCapitalize="off"
             spellCheck={false}
             autoFocus
             maxLength={12}
-            value={codigo}
-            onChange={(e) => setCodigo(e.target.value)}
-            // Enmascarado por CSS y no con type="password": Chrome ofrece guardar las contraseñas y, en
-            // una PC compartida, el código de una persona se autocompletaría para la siguiente.
-            className="tabular-nums [-webkit-text-security:disc]"
+            value={usuario}
+            onChange={(e) => setUsuario(e.target.value)}
+            className="tabular-nums"
+          />
+        </div>
+        <div>
+          <Label htmlFor="codigo-pin">PIN</Label>
+          <Input
+            id="codigo-pin"
+            // type="password" enmascara en todos los navegadores (el -webkit-text-security de antes
+            // no enmascaraba en Firefox). autoComplete="new-password" evita que el navegador
+            // autocomplete el PIN de una persona para la siguiente en la PC compartida.
+            type="password"
+            inputMode="numeric"
+            autoComplete="new-password"
+            data-lpignore="true"
+            maxLength={12}
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            className="tabular-nums"
           />
         </div>
         {error && <Aviso tono="error">{error}</Aviso>}
+        <p className="text-micro text-muted">
+          ¿Aún no tienes PIN? Defínelo desde tu propia sesión, en «Mi desempeño».
+        </p>
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCerrar}>
             Cancelar
           </Button>
-          <Button type="submit" pending={pending} disabled={!codigo.trim()}>
+          <Button type="submit" pending={pending} disabled={!usuario.trim() || !pin.trim()}>
             Confirmar
           </Button>
         </div>
       </form>
     </Modal>
   );
+}
+
+function mensajeFallo(r: { bloqueadoMin?: number; intentosRestantes?: number; motivo?: string }): string {
+  if (r.motivo === 'equipo_no_compartido') {
+    return 'Este equipo no está marcado como compartido. Pídele al administrador que lo active en Dispositivos.';
+  }
+  if (r.bloqueadoMin) {
+    return `Demasiados intentos. Espera ${r.bloqueadoMin} ${r.bloqueadoMin === 1 ? 'minuto' : 'minutos'}.`;
+  }
+  const quedan =
+    typeof r.intentosRestantes === 'number'
+      ? r.intentosRestantes === 0
+        ? ' No quedan intentos: espera unos minutos.'
+        : ` ${r.intentosRestantes === 1 ? 'Queda 1 intento' : `Quedan ${r.intentosRestantes} intentos`}.`
+      : '';
+  if (r.motivo === 'sin_pin') {
+    return `Esa persona aún no definió su PIN. Puede hacerlo desde su sesión, en «Mi desempeño».${quedan}`;
+  }
+  return `Usuario o PIN incorrectos.${quedan}`;
 }
