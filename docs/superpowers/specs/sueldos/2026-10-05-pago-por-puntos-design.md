@@ -83,3 +83,51 @@ muestra sólo sus **puntos**. La columna `monto_total` queda en la base sin uso 
 
 Definir la meta y el valor (los decide el dueño después de un mes de uso); recalcular meses ya
 pagados; ventas en puntos (`pts_por_sol_vendido` sigue en 0).
+
+## 8. Enmienda del 06-oct-2026 (auditoría de dinero D-3, D-8, D-9)
+
+> Origen: `docs/auditorias/2026-10-06-sueldos.md` (rama `audit/2026-10-06-sueldos`). **Pendiente de
+> confirmación de Alexander** antes de encender el pago por puntos: 8.2 cambia la regla de §3 para
+> los pagos que no son mensuales.
+
+### 8.1 Valores pactados por contrato (D-3; reemplaza el párrafo «Valores pactados» de §3)
+
+- `puntosMetaMensual` y `solesPorPunto` se **congelan en cada contrato** como los otros 15 valores
+  pactados (#55, 0118): al crear un contrato se copian los vigentes de `/configuracion`; cambiar
+  `/configuracion` después **no** mueve contratos ya creados.
+- Los contratos que ya existen se congelan con lo que diga `/configuracion` al aplicar la migración.
+  Hoy eso es **vacío**: siguen sin cobrar por puntos.
+- **Apagado por defecto**: vacío (`null`) en el contrato significa «este contrato no cobra por
+  puntos», aunque `/configuracion` se encienda después. Para que un contrato existente cobre por
+  puntos, el administrador lo enciende en los valores pactados de ese contrato.
+- La liquidación usa los valores **del contrato**: el pago por puntos se activa con los dos valores
+  del contrato definidos, no con los de `/configuracion`.
+
+### 8.2 La meta se mide por mes del contrato (D-8, D-9; reemplaza «Puntos del período» y «Meta del período» de §3)
+
+- La meta es **mensual** y se mide sobre **meses del contrato**: del día de inicio al día anterior
+  del mismo día del mes siguiente (recortado a fin de mes). Es el mismo criterio de la frecuencia
+  mensual, contada desde el día en que empezó el contrato (decisión del dueño del 06-oct).
+- Cada mes del contrato se cobra **una sola vez**, en la liquidación cuyo rango incluye el **último
+  día** de ese mes, con **todos los puntos del mes**: `max(0, puntos_del_mes − meta) × soles_por_punto`.
+- Con pagos semanales o quincenales, los pagos que no cierran un mes no llevan bono por puntos. El
+  que lo cierra lo lleva completo.
+- Ejemplo de la auditoría (E7): semanas con 0, 0, 2500 y 2500 puntos, meta 5000. El mes suma 5000
+  contra 5000 y paga **S/0**, no S/125. Así se cumple «cuando se llegue a cierta cantidad de
+  puntos… recién cobrarán».
+- Un tramo mensual que coincide con el mes del contrato usa la meta **entera** (D-8). Ejemplo:
+  30-ene a 28-feb con 5000 puntos y meta 5000 paga S/0, no S/8,06.
+- El último mes, cortado por el fin del contrato, prorratea la meta por días contra el mes completo.
+  Es un default anotado en `docs/pendientes-negocio.md`.
+- El redondeo sigue §3, sobre el producto: `round2(max(0, puntos − meta) × soles)`. Se corrige la
+  diferencia de a70df2d (D-12).
+- Los puntos de cada mes viajan en la entrada guardada (`puntosMeses`), así el cierre de #44 detecta
+  si cambiaron.
+
+### 8.3 Tests (antes del código)
+
+7. Contrato con valores congelados: cambiar `/configuracion` no mueve `puntosMetaMensual` ni
+   `solesPorPunto` del contrato (prueba SQL E3).
+8. Semanas 0, 0, 2500 y 2500 con meta 5000 → S/0 en todo el mes.
+9. Tramo mensual del 30-ene al 28-feb con 5000 puntos y meta 5000 → S/0.
+10. Redondeo sobre el producto: 2000 puntos, meta 1129,03, S/3 → S/2612,90.
