@@ -126,6 +126,11 @@ export async function enviarEvaluacionValores(
     );
   if (error) {
     if (esTablaOFuncionInexistente(error)) throw new ValoresNoMigradoError();
+    // 42501 = la policy de la base (0119) rechazó el voto: mes que no es el actual, o ventana cerrada.
+    // La app ya revisó la ventana arriba; llegar acá es un mes distinto al actual o una carrera con el cambio de config.
+    if (error.code === '42501' || /row-level security/i.test(error.message)) {
+      throw new Error('Sólo se puede enviar una evaluación del mes en curso y dentro de la ventana habilitada.');
+    }
     throw new Error(error.message);
   }
 }

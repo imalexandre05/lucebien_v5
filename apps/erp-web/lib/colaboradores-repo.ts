@@ -10,6 +10,7 @@
 // cada sección antes de llamar: unificar la navegación no puede ampliar lo que alguien ve.
 
 import { getServerClient } from './supabase/server';
+import { getSesion } from './auth';
 import type { Periodo } from './periodo';
 import { estadoVacio, type EstadoPeriodo } from './colaboradores-pasos';
 import { listarPagosDeLiquidaciones, LiquidacionPagosNoMigradoError } from './sueldos-repo';
@@ -305,21 +306,37 @@ export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<s
 
   // Evaluación del período: la más reciente cuyo ciclo se solape con el rango elegido.
   try {
-    const { data, error } = await sb
-      .from('evaluaciones_mensuales')
-      .select('empleado_id, nota_final, ciclo_desde, ciclo_hasta, created_at')
-      .in('empleado_id', ids)
-      .order('created_at', { ascending: false });
+    // Sólo el administrador lee la tabla directo (0119). Un encargado con `datos_personas` la lee por
+    // `evaluaciones_mensuales_visibles`, que entrega la nota en null («en cálculo») mientras el
+    // Valores 360° del mes no sea público.
+    const sesion = await getSesion();
+    const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
+    const { data, error } = esAdmin
+      ? await sb
+          .from('evaluaciones_mensuales')
+          .select('empleado_id, nota_final, ciclo_desde, ciclo_hasta, created_at')
+          .in('empleado_id', ids)
+          .order('created_at', { ascending: false })
+      : await sb
+          .rpc('evaluaciones_mensuales_visibles')
+          .select('empleado_id, nota_final, ciclo_desde, ciclo_hasta, created_at')
+          .in('empleado_id', ids)
+          .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
+    const sinNotaAun = new Set<string>(); // evaluación más nueva «en cálculo»: no se cae a una anterior
     for (const r of (data as Fila[]) ?? []) {
       const e = de(r.empleado_id);
-      if (!e || e.nota != null) continue;
+      if (!e || e.nota != null || sinNotaAun.has(String(r.empleado_id))) continue;
       const desde = r.ciclo_desde ? String(r.ciclo_desde).slice(0, 10) : null;
       const hasta = r.ciclo_hasta ? String(r.ciclo_hasta).slice(0, 10) : null;
       if (desde && hasta && (hasta < p.desde || desde > p.hasta)) continue;
-      e.nota = Number(r.nota_final ?? 0);
+      // Sin nota todavía («en cálculo»): no es un 0, se deja sin nota.
+      if (r.nota_final == null) { sinNotaAun.add(String(r.empleado_id)); continue; }
+      e.nota = Number(r.nota_final);
     }
-  } catch {
+  } catch (err) {
+    // La función de 0119 ausente NO se disfraza de «sin evaluar»: se propaga (spec §3.5).
+    if (err instanceof Error && err.message.includes('evaluaciones_mensuales_visibles')) throw err;
     // 0057 sin aplicar: la nota queda en null y la pantalla lo muestra como "sin evaluar".
   }
 

@@ -67,8 +67,11 @@ export default async function MiDesempenoPage() {
   // guardó — banda si 'puntos' (desde el 25-ago-2026), tramo si 'ponderado' (todo lo de antes).
   // La nota (notaFinal) NUNCA se recalcula acá: sale tal cual quedó congelada al guardarse.
   const esPuntos = d.ultimaEvaluacion?.metodo === 'puntos';
-  const banda = d.ultimaEvaluacion && esPuntos ? bandaDesdeNota(d.ultimaEvaluacion.notaFinal, escala.bandaRiesgo, escala.bandaIdeal) : null;
-  const tramo = d.ultimaEvaluacion && !esPuntos ? tramoEval(d.ultimaEvaluacion.notaFinal) : null;
+  // `notaFinal` null = «en cálculo» (0119): evaluación `ponderado` cuyo Valores 360° aún no es público.
+  const notaFinal = d.ultimaEvaluacion?.notaFinal ?? null;
+  const banda = notaFinal != null && esPuntos ? bandaDesdeNota(notaFinal, escala.bandaRiesgo, escala.bandaIdeal) : null;
+  const tramo = notaFinal != null && !esPuntos ? tramoEval(notaFinal) : null;
+  const enCalculo = Boolean(d.ultimaEvaluacion) && notaFinal == null;
 
   return (
     <div>
@@ -81,18 +84,20 @@ export default async function MiDesempenoPage() {
         <StatBox index={3} label="Incidencias" valor={d.incidencias.length} tone="neutro" />
       </div>
 
-      {d.ultimaEvaluacion && (banda || tramo) && (
+      {d.ultimaEvaluacion && (banda || tramo || enCalculo) && (
         <Card className="mt-4">
           <CardHeader>
             <CardTitle>Última evaluación</CardTitle>
-            {banda ? (
+            {enCalculo ? (
+              <Badge tone="gray">Nota en cálculo</Badge>
+            ) : banda ? (
               <Badge tone={BANDA_TONE[banda]}>
-                {d.ultimaEvaluacion.notaFinal.toFixed(2)} · {BANDA_LABEL[banda]}
+                {notaFinal?.toFixed(2)} · {BANDA_LABEL[banda]}
               </Badge>
             ) : (
               tramo && (
                 <Badge tone={TRAMO_TONE[tramo]}>
-                  {d.ultimaEvaluacion.notaFinal.toFixed(2)} · {TRAMO_LABEL[tramo]}
+                  {notaFinal?.toFixed(2)} · {TRAMO_LABEL[tramo]}
                 </Badge>
               )
             )}

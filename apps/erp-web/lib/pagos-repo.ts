@@ -1,5 +1,6 @@
 import { getServerClient } from './supabase/server';
 import { mapaNombres } from './directorio';
+import { getSesion } from './auth';
 
 export type Pago = {
   id: string;
@@ -84,7 +85,8 @@ export async function listarPagos(): Promise<Pago[]> {
   return rows.map((r) => fromRow(r, nombre.get(String(r.empleado_id)) ?? null));
 }
 
-// Empleados con su salario base y la última nota (para sugerir el monto = salario×nota/20).
+// Empleados con su salario base y la última nota (para sugerir el monto = salario×nota/20). Es una
+// pantalla del administrador, que lee la tabla directo; con otra sesión (0119) las notas llegan vacías.
 export async function empleadosParaPago(): Promise<EmpleadoPago[]> {
   const sb = getServerClient();
   const { data: emps, error } = await sb.from('empleados').select('id, nombre, salario_base').order('nombre');
@@ -180,12 +182,16 @@ export async function obtenerPago(id: string): Promise<PagoDetalle | null> {
   // — sale de evaluaciones_mensuales.nota_final, no se duplica en `pagos`.
   let notaFinal: number | null = null;
   if (r.evaluacion_id) {
-    const { data: ev } = await sb
-      .from('evaluaciones_mensuales')
-      .select('nota_final')
-      .eq('id', String(r.evaluacion_id))
-      .maybeSingle();
-    if (ev) notaFinal = Number((ev as { nota_final: number }).nota_final ?? 0);
+    // Sólo el administrador lee la tabla directo (0119). Quien mira un comprobante propio (o un
+    // encargado con `datos_personas`) la lee por `evaluaciones_mensuales_visibles`: una nota «en
+    // cálculo» (Valores 360° aún no público en una evaluación `ponderado`) llega en null y se omite.
+    const sesion = await getSesion();
+    const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
+    const { data: ev } = esAdmin
+      ? await sb.from('evaluaciones_mensuales').select('nota_final').eq('id', String(r.evaluacion_id)).maybeSingle()
+      : await sb.rpc('evaluaciones_mensuales_visibles').select('nota_final').eq('id', String(r.evaluacion_id)).maybeSingle();
+    const nf = (ev as { nota_final: number | null } | null)?.nota_final;
+    if (nf != null) notaFinal = Number(nf);
   }
 
   return {

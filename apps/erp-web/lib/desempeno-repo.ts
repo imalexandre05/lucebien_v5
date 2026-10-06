@@ -34,7 +34,8 @@ export type MiIncidencia = { id: string; fecha: string; tipo: string; nivel: str
 // criterio que el historial de /evaluaciones) y el desglose para mostrar el perfil propio.
 export type MiEvaluacion = {
   mes: string;
-  notaFinal: number;
+  // null = «en cálculo» (0119): evaluación `ponderado` cuyo Valores 360° aún no es público.
+  notaFinal: number | null;
   metodo: 'ponderado' | 'puntos';
   componentes: Record<string, number> | null;
   pesosUsados: Record<string, number> | null;
@@ -55,6 +56,19 @@ export type MiDesempeno = {
 export async function miDesempeno(empleadoId: string, desde: string, hasta: string): Promise<MiDesempeno> {
   const sb = getServerClient();
 
+  // `evaluaciones_mensuales` sólo la lee directo el administrador (0119). Lo propio va por
+  // `mi_evaluacion_mensual`; lo de otra persona, para un administrador va por la tabla y para un
+  // encargado con `datos_personas` por `evaluaciones_mensuales_visibles`. Las dos funciones devuelven la
+  // fila sin `valores`/`valoresCantidad` y con `nota_final` en null mientras el mes no sea público.
+  const sesion = await getSesion();
+  const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
+  const esPropia = sesion?.usuario.id === empleadoId;
+  const consultaEvaluacion = esPropia
+    ? sb.rpc('mi_evaluacion_mensual').order('created_at', { ascending: false }).limit(1).maybeSingle()
+    : esAdmin
+      ? sb.from('evaluaciones_mensuales').select('*').eq('empleado_id', empleadoId).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      : sb.rpc('evaluaciones_mensuales_visibles').eq('empleado_id', empleadoId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+
   const [repRes, extRes, incRes, pipeRes, evalRes] = await Promise.all([
     sb.from('reportes').select('id, fecha, turno, evaluado, puntaje_eval').eq('encargado_id', empleadoId).gte('fecha', desde).lte('fecha', hasta).order('fecha', { ascending: false }),
     sb.from('reporte_extras').select('id, nombre, monto_total, reportes!inner(fecha)').eq('registrado_por_id', empleadoId).gte('reportes.fecha', desde).lte('reportes.fecha', hasta),
@@ -67,10 +81,7 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
       .eq('empleado_id', empleadoId)
       .gte('fecha', inicioDiaPeru(desde))
       .lt('fecha', inicioDiaPeru(diaSiguiente(hasta))),
-    // select('*') a propósito (mismo criterio que el resto de esta función, y que evaluaciones-
-    // repo.ts): si la 0095 todavía no corrió, faltan metodo/componentes/pesos_usados y esto sigue
-    // devolviendo lo que ya devolvía antes, no un 500.
-    sb.from('evaluaciones_mensuales').select('*').eq('empleado_id', empleadoId).order('created_at', { ascending: false }).limit(1).maybeSingle(),
+    consultaEvaluacion,
   ]);
   for (const r of [repRes, extRes, incRes, pipeRes, evalRes]) {
     if (r.error) throw new Error(r.error.message);
@@ -109,10 +120,13 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
   // no hay fila, o la función es anterior a 0116 o falla, se oculta: ante la duda, no se muestra. Un
   // administrador mirando a OTRA persona ve todo (esa lectura la autoriza la RLS). El valor guardado
   // no se toca: el pago sigue leyéndolo igual.
-  const sesion = await getSesion();
   let valoresOculto = false;
   let componentes = (evalRow?.componentes as Record<string, number> | null) ?? null;
-  if (evalRow && sesion?.usuario.id === empleadoId) {
+  if (evalRow && !esPropia && !esAdmin) {
+    // Encargado con `datos_personas` mirando a otra persona: la función ya quitó `valores`.
+    valoresOculto = evalRow.valores_publicos !== true;
+  }
+  if (evalRow && esPropia) {
     const { data: vp, error: vpError } = await sb.rpc('valores_mis_puntajes', { p_mes: String(evalRow.mes ?? '') });
     const fila = vpError ? undefined : ((vp as Record<string, number | string>[] | null) ?? [])[0];
     valoresOculto = !fila || fila.cantidad == null;
@@ -131,7 +145,7 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
   const ultimaEvaluacion: MiEvaluacion = evalRow
     ? {
         mes: String(evalRow.mes ?? ''),
-        notaFinal: Number(evalRow.nota_final ?? 0),
+        notaFinal: evalRow.nota_final == null ? null : Number(evalRow.nota_final),
         // undefined (0095 sin aplicar) cae en 'ponderado', igual que el default de la columna en
         // la base — una fila vieja sin `metodo` ES una evaluación 'ponderado'.
         metodo: (evalRow.metodo as 'ponderado' | 'puntos' | undefined) ?? 'ponderado',
