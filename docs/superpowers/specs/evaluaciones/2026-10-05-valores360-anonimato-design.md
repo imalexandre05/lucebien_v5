@@ -129,3 +129,6 @@ pago no se toca (no-negociable 1).
 - `evaluaciones_mensuales.nota_final` (método ponderado) incluye el componente de valores y se muestra
   a la propia persona; deducir de ahí el voto de un solo evaluador exigiría que el mes ya esté cerrado
   y evaluado, pero no está sujeto al mínimo. Queda anotado para decisión del dueño.
+
+> **Actualización 06-oct-2026:** los residuales «mes evaluado» y la lectura directa de `evaluaciones_mensuales`
+> (incluido el despeje por `nota_final`) se cierran en `2026-10-06-valores360-base-design.md` (migración 0119).
