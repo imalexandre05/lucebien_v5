@@ -92,7 +92,7 @@ declare
   v_hija uuid; v_pts numeric; v_id uuid;
   v_n int; v_n2 int; v_err text; v_est text;
   v_roles text[]; v_uids uuid[]; v_nom text; v_uid uuid; v_sql text; v_res text; v_fallas text;
-  v_reg uuid; v_emp uuid; v_lista uuid; v_etapa text;
+  v_reg uuid; v_emp uuid; v_lista uuid; v_etapa text; v_err2 text;
   r text := '';
 begin
   -- ── Montaje (como dueño de las tablas) ─────────────────────────────────────────────────────
@@ -437,13 +437,58 @@ begin
   end if;
 
   -- ── 7) anon no ejecuta las funciones privadas ───────────────────────────────────────────────
-  if to_regprocedure('private.pipeline_registrar_punto(uuid, uuid, text, numeric, text)') is not null
-     and not has_function_privilege('anon', 'private.pipeline_registrar_punto(uuid, uuid, text, numeric, text)', 'execute')
+  if to_regprocedure('private.pipeline_registrar_punto(uuid, uuid, text, numeric, text, uuid)') is not null
+     and to_regprocedure('private.pipeline_registrar_punto(uuid, uuid, text, numeric, text)') is null
+     and not has_function_privilege('anon', 'private.pipeline_registrar_punto(uuid, uuid, text, numeric, text, uuid)', 'execute')
      and not has_function_privilege('anon', 'private.pipeline_borrar_punto(uuid, uuid, boolean)', 'execute')
      and not has_function_privilege('anon', 'private.prenda_historial_registrar(uuid, text, text, uuid, text)', 'execute') then
     r := r || '[ok] caso 7: anon no ejecuta ninguna de las tres funciones privadas;';
   else
     r := r || '[FALLA] caso 7: las funciones no existen con esa firma o anon puede ejecutarlas;';
+  end if;
+
+  -- ── 8) H-4: una tienda mueve su prenda pero no se acredita puntos ──────────────────────────
+  perform pg_temp.dueno();
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-H4', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into v_id;
+  perform pg_temp.como(e_ta);
+  v_pts := pipeline_avanzar(v_id, 'lavado');
+  perform pg_temp.dueno();
+  select count(*) into v_n from pipeline_puntos where pasada_id = v_id;
+  select etapa into v_etapa from prenda_pasada where id = v_id;
+  if v_pts = 0 and v_n = 0 and v_etapa = 'lavado' then
+    r := r || '[ok] caso 8: la tienda avanza su prenda sin acreditarse puntos;';
+  else
+    r := r || format('[FALLA] caso 8: devolvió %s, puntos=%s, etapa=%s;', v_pts, v_n, v_etapa);
+  end if;
+
+  -- ── 9) H-1: deshacer quita los puntos del movimiento deshecho, no los de quien deshace ──────
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-H1', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into v_hija;
+  perform pg_temp.como(e_alm);
+  perform pipeline_avanzar(v_hija, 'lavado');             -- almacén +1
+  perform pg_temp.como(e_admin);
+  perform pipeline_avanzar(v_hija, 'empatado');           -- admin +2
+  perform pg_temp.como(e_alm);
+  perform pipeline_deshacer(v_hija, 'lavado');            -- almacén deshace lo del admin
+  perform pg_temp.dueno();
+  select count(*) into v_n  from pipeline_puntos where pasada_id = v_hija and empleado_id = e_alm;
+  select count(*) into v_n2 from pipeline_puntos where pasada_id = v_hija and empleado_id = e_admin;
+  if v_n = 1 and v_n2 = 0 then
+    r := r || '[ok] caso 9: deshacer borra el punto del movimiento (admin) y no el de quien deshace (almacén);';
+  else
+    r := r || format('[FALLA] caso 9: almacén=%s admin=%s (esperaba 1/0);', v_n, v_n2);
+  end if;
+
+  -- ── 10) H-2: deshacer a una etapa que no es la del último movimiento ───────────────────────
+  perform pg_temp.como(e_alm);
+  v_err := pg_temp.mensaje(format($q$select pipeline_deshacer(%L, 'recepcion')$q$, pl));
+  v_err2 := pg_temp.mensaje(format($q$select pipeline_deshacer(%L, 'recepcion')$q$, v_hija));
+  perform pg_temp.dueno();
+  if v_err like 'TRANSICION:%' and v_err2 like 'TRANSICION:%'
+     and (select etapa from prenda_pasada where id = pl) = 'listo'
+     and (select etapa from prenda_pasada where id = v_hija) = 'lavado' then
+    r := r || '[ok] caso 10: deshacer a una etapa arbitraria lanza TRANSICION y no mueve nada;';
+  else
+    r := r || format('[FALLA] caso 10: listo→%s / lavado→%s;', v_err, v_err2);
   end if;
 
   raise exception 'RESULTADO 0115 --> %', r;
