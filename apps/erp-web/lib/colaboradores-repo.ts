@@ -306,9 +306,9 @@ export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<s
 
   // Evaluación del período: la más reciente cuyo ciclo se solape con el rango elegido.
   try {
-    // Sólo el administrador lee la tabla directo (0119). Un encargado con `datos_personas` la lee por
-    // `evaluaciones_mensuales_visibles`, que entrega la nota en null («en cálculo») mientras el
-    // Valores 360° del mes no sea público.
+    // Sólo el administrador lee la tabla directo (0119). Para cualquier otra persona
+    // `evaluaciones_mensuales_visibles` devuelve sólo las propias (decisión del dueño, 06-oct-2026; spec
+    // valores360-base §8.1): un encargado no ve la nota de su equipo.
     const sesion = await getSesion();
     const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
     const { data, error } = esAdmin

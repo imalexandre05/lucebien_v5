@@ -57,9 +57,11 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
   const sb = getServerClient();
 
   // `evaluaciones_mensuales` sólo la lee directo el administrador (0119). Lo propio va por
-  // `mi_evaluacion_mensual`; lo de otra persona, para un administrador va por la tabla y para un
-  // encargado con `datos_personas` por `evaluaciones_mensuales_visibles`. Las dos funciones devuelven la
-  // fila sin `valores`/`valoresCantidad` y con `nota_final` en null mientras el mes no sea público.
+  // `mi_evaluacion_mensual`; lo de otra persona sólo lo ve el administrador, por la tabla. Para nadie más
+  // `evaluaciones_mensuales_visibles` devuelve filas ajenas (decisión del dueño, 06-oct-2026; spec
+  // valores360-base §8.1): un encargado que abre a otra persona ve «sin evaluación». Las funciones
+  // devuelven la fila sin `valores`/`valoresCantidad` y con `nota_final` en null mientras el mes no sea
+  // público.
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
   const esPropia = sesion?.usuario.id === empleadoId;

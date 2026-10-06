@@ -111,8 +111,9 @@ create policy eval_select on public.evaluaciones_mensuales
 --     evaluaciones nuevas) calculan la nota sólo con puntos: no dependen de `valores` y se ven siempre.
 -- La cantidad de votos de un mes no público NUNCA sale de acá («hay 2» ya es información).
 --
--- `p_solo_propias`: true = sólo las de quien llama; false = además las de otras personas SI quien llama
--- tiene `datos_personas` (permiso que ya leía notas ajenas en la policy anterior). `auth.uid()` se lee
+-- Sólo las de quien llama (decisión del dueño, 06-oct-2026: «cada persona sólo ve lo suyo, excepto los
+-- admins»; spec §8.1). El administrador lee la tabla directo. `p_solo_propias` queda sin efecto: antes,
+-- con false, sumaba las de otras personas si quien llamaba tenía `datos_personas`. `auth.uid()` se lee
 -- acá adentro: como parámetro, cualquiera pediría la evaluación de otra persona.
 create or replace function private.evaluaciones_mensuales_publicas(p_solo_propias boolean, p_mes text)
 returns table (
@@ -155,7 +156,7 @@ as $$
                              then (e.componentes ->> 'valoresCantidad')::int end, 0) >= private.valores_min_evaluaciones()
            as publico
   ) p
-  where (e.empleado_id = auth.uid() or (not p_solo_propias and private.app_ve_datos_personas()))
+  where e.empleado_id = auth.uid()
     and (p_mes is null or e.mes = p_mes)
   order by e.created_at desc
 $$;
@@ -185,10 +186,9 @@ security definer
 set search_path to ''
 as $$ select * from private.evaluaciones_mensuales_publicas(true, p_mes) $$;
 
--- `evaluaciones_mensuales_visibles()`: las propias y, con `datos_personas`, las de otras personas, con
--- la misma regla. Existe para no quitarle a un encargado una pantalla que hoy usa; si el dueño prefiere
--- que los encargados dejen de ver notas ajenas, se quita la segunda mitad del `where` de la función
--- privada y listo.
+-- `evaluaciones_mensuales_visibles()`: las propias, con la misma regla. Ya no devuelve las de otras
+-- personas aunque se tenga `datos_personas` (decisión del dueño, 06-oct-2026; spec §8.1). Se conserva
+-- para no romper la app, que la llama para un no-administrador.
 create or replace function public.evaluaciones_mensuales_visibles()
 returns table (
   id               uuid,

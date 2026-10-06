@@ -83,8 +83,8 @@ export async function listarEvaluaciones(): Promise<Evaluacion[]> {
   const sb = getServerClient();
 
   // Sólo el administrador lee la tabla directo (0119: `eval_select` quedó en `app_es_admin()`). Cualquier
-  // otro —la propia persona, o un encargado con `datos_personas`— la lee por `evaluaciones_mensuales_
-  // visibles`, que ya devuelve la fila SIN `valores`/`valoresCantidad` y con `nota_final` en null
+  // otro lee por `evaluaciones_mensuales_visibles` SÓLO lo propio (un encargado ya no ve notas ajenas,
+  // ni con `datos_personas`: decisión del dueño, 06-oct-2026), sin `valores`/`valoresCantidad` y con `nota_final` en null
   // (nota «en cálculo») mientras el Valores 360° del mes no sea público: mes cerrado y con el mínimo de
   // evaluaciones. No hay respaldo que lea la tabla si la función falta: sería justo la fuga que se cierra.
   const sesion = await getSesion();
