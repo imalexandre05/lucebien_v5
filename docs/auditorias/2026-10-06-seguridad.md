@@ -28,7 +28,7 @@ de S2). Nada se corrió contra producción. Lo que no se pudo ejecutar está mar
 | #44 | cierre exige datos actuales (0111) | **LISTO** | `sueldo_liquidacion_cerrar` exige admin (*ejecutado*) |
 | #45 | puntos en día Perú (0110) | **LISTO** | — |
 | #46 | evaluación recalculada en servidor | **LISTO** | Acción con `esAdmin()` |
-| #47 | `reportes_evaluar` valida (0113) | **LISTO** | Definer con `search_path` fijo, sin grant a anon |
+| #47 | `reportes_evaluar` valida (0113) | **LISTO** | Definer con `search_path` fijo, sin grant a anon. No empeora H14, pero es el lugar natural para cerrarlo |
 | #48 | último admin, borrar Auth, subida | **LISTO CON ARREGLOS MENORES** | H7 (guard sólo en la RPC), H11 (límite de 11 MB global) |
 | #49 | docs | **LISTO** | — |
 | #50 | filtro de envíos por tienda | **LISTO** | — |
@@ -54,6 +54,29 @@ sueldo rechazan a no-admin; `getAdminClient()` sigue en los 6 archivos permitido
 
 ## Hallazgos
 
+### H0 — ALTA · `main` (ningún PR lo toca) — en el ERP, la contraseña es el mismo código de 4 dígitos
+**Dónde:** `apps/erp-web/lib/auth.ts:58-62`: `signInWithPassword({ email: `${cod}@…`, password: cod })`.
+**Por lectura** (no se probó contra GoTrue de producción). Quien sepa o adivine el código de 4 dígitos
+de otra persona entra al ERP como ella, y los cuatro aislamientos dejan de existir. Si es el código del
+admin, entra con todos los permisos. El único freno es el rate limit por IP de Supabase Auth, que no
+se verificó. Además, H2 y H3 giran sobre este mismo secreto. **Arreglo:** contraseña propia (o PIN de
+≥ 6 dígitos) distinta del código, cambio obligatorio en el primer ingreso y revisar el rate limit de
+Auth en el panel de Supabase. Es lo primero de la lista.
+
+### H14 — ALTA · `main` (#47 reescribe `reportes_evaluar` pero no lo cierra) — reporte fabricado a nombre de otra persona
+**Dónde:** `0081_reportes_escritura_directa.sql:57-62` (`reportes_crear` acepta `p_encargado`
+libre y la sede que se le pase; quien llama no queda como trabajador) y `0113_evaluar_reporte_validado.sql:40-47`
+(sólo excluye a quien figura en `reporte_trabajadores`).
+**Ataque (*ejecutado*, con rollback):** el confeccionista c1, que es almacén y por eso escribe en
+cualquier sede, llama `reportes_crear('02-09-26_S2_M','S2','M',…, p_trabajadores => [f2], p_encargado => f2)`
+y después `reportes_evaluar(…, [{cod:A1, cal:0}])`. Resultado: reporte de S2 a nombre de la
+vendedora f2, evaluado por c1, puntaje 0. El verificador midió además el efecto en la nota:
+`evaluacion_componentes(f2)->>'operaciones'` = 0,00. Funciona al revés: dos compañeros se fabrican
+reportes con nota 1 el uno al otro. Es la cadena del sueldo (no-negociable 1).
+**Arreglo:** `p_encargado` sólo para admin (si no, `auth.uid()`); quien crea queda en
+`reporte_trabajadores` o se guarda `creado_por` y se le impide evaluar; `app_es_almacen()` no debería
+crear reportes de tiendas.
+
 ### H1 — ALTA · `main` (ningún PR lo cierra; #51 lo deja abierto, #54 lo monetiza) — fabricar puntos con dos llamadas
 **Dónde:** `packages/db/migrations/0006_pipeline_rls.sql:32` (`pasada_rw` FOR ALL con
 `app_es_almacen()`, que es true para `confeccionista`) + las RPC del pipeline son `security invoker`.
@@ -65,6 +88,10 @@ luego `select pipeline_avanzar(X,'lavado')`. Repetido 5 veces → 5 filas en `pi
 0115 sí cierra el insert directo a `pipeline_puntos`/`prenda_historial` (*ejecutado*: `permission
 denied`), pero la prenda sigue siendo editable. Con #54, esos puntos entran a la liquidación vía
 `private.sueldo_puntos_periodo` → `evaluacion_componentes_datos` (0117:113).
+El verificador repitió el ataque y midió el efecto en el pago: `private.sueldo_puntos_periodo(c1)`
+pasó de 6,00 a 8,00. Agregó una variante condicional: `private.pipeline_registrar_punto(auth.uid(), X, 'x', 999, …)`
+acepta empleado y puntos libres. Sólo es explotable si `private` está expuesto en PostgREST, cosa que
+no se pudo verificar en producción (ver H9).
 **Arreglo propuesto (migración nueva, no aplicada):** revocar `insert/update/delete` de
 `prenda_pasada` a `authenticated` y reemplazar `pasada_rw` por `pasada_sel` (FOR SELECT); mover las
 escrituras de las RPC a un helper `private` definer con `pipeline_exigir_derecho` (mismo patrón que
@@ -79,7 +106,11 @@ equipo arranca con 5 intentos nuevos (el límite es por sesión, no por equipo n
 es `empleados.cod`: 4 dígitos (`elegirCodigoLibre`, core/empleados.ts:34) y además es el usuario de
 login (`{cod}@lucebien.local`) y la credencial del kanban viejo. Con 5 intentos cada 15 min = 480
 por día por sesión y ~18 códigos activos en 10 000, la probabilidad de acertar **algún** código en un
-día con una sola cuenta es ≈ 1 − (1 − 18/10 000)^480 ≈ **58 %**. Con el código ajeno se le atribuyen
+día con una sola cuenta es ≈ 1 − (1 − 17/10 000)^480 ≈ **56 %** (en promedio, el primer acierto
+llega en ~28 h; cada cuenta que coopere suma su propio cupo). El acierto no reinicia el contador, la
+respuesta distingue acierto de fallo y devuelve el nombre de la persona. `p_device` es un texto: quien
+conozca el `device_id` del equipo compartido (está en su cookie) prueba códigos desde su propio
+teléfono. Con el código ajeno se le atribuyen
 movimientos (y rechazos) a otra persona; el admin recibe una alerta por bloqueo, pero no por acierto.
 También se acepta el código del administrador (*ejecutado*: el punto quedó a nombre del admin).
 **Arreglo propuesto:** un PIN propio (no `cod`), guardado con hash, de 6 dígitos; límite también por
@@ -176,7 +207,9 @@ Optimization. **Arreglo:** plan de subida de Next a 15.5.x (cambio mayor, spec a
 
 ## Orden sugerido
 
-1. Migración nueva que cierre H1 **antes** de mergear #54.
+0. H0: separar la contraseña del código. Hasta entonces, todo aislamiento depende de que nadie
+   sepa el código de 4 dígitos de otra persona.
+1. Migración nueva que cierre H1 y H14 **antes** de mergear #54.
 2. Rediseñar el secreto de #42 (H2, H5) antes de mergearlo; #51 va detrás.
 3. H4: decidir si `datos_personas` debe existir para no-admins; si sí, con sede.
 4. El resto (H6–H12) cabe en los PRs como arreglos menores o en un lote de endurecimiento.
