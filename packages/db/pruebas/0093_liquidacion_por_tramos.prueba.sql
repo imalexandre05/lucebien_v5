@@ -255,7 +255,9 @@ begin
       entrada, parametros_usados, resultado, total, valor_por_hora, motor_version
     ) values (
       ac, adm, '2099-07-01', '2099-07-31', 'borrador',
-      '{}'::jsonb, '{}'::jsonb,
+      -- Desde la 0111 el cierre recalcula la entrada y la compara: un `{}` ya no cierra. Se guarda
+      -- la entrada real, como hace crearBorrador().
+      sueldo_entrada(ac, '2099-07-01', '2099-07-31'), '{}'::jsonb,
       '{"lineas":[{"grupo":"ingreso","concepto":"Sueldo","detalle":"prueba 0093","regla":"RN-19","monto":600}]}'::jsonb,
       600, 3.870000, 'prueba-0093'
     ) returning id into liq_julio2;
@@ -320,12 +322,19 @@ begin
   -- ═══ Caso F2b — cerrar un tramo cuyo periodo_hasta SI llega a fecha_fin del acuerdo (septiembre,
   --     el tramo final) recien ahi lo marca 'liquidado' ══════════════════════════════════════════
   begin
+    -- Desde la 0111 el cierre recalcula la entrada: septiembre necesita su asistencia declarada
+    -- (si no, sueldo_entrada corta con DATO) y el borrador guarda la entrada real.
+    insert into asistencias(empleado_id, fecha, turno, condicion, hora_entrada, hora_salida, fuente)
+    select adm, d::date, t.turno, 'trabajado', t.desde, t.hasta, 'manual'
+    from generate_series('2099-09-01'::date, '2099-09-30'::date, interval '1 day') d,
+         (values ('M', time '09:00', time '13:00'), ('T', time '13:00', time '20:00')) as t(turno, desde, hasta);
+
     insert into sueldo_liquidaciones(
       acuerdo_id, empleado_id, periodo_desde, periodo_hasta, estado,
       entrada, parametros_usados, resultado, total, valor_por_hora, motor_version
     ) values (
       ac, adm, '2099-09-01', '2099-09-30', 'borrador',
-      '{}'::jsonb, '{}'::jsonb,
+      sueldo_entrada(ac, '2099-09-01', '2099-09-30'), '{}'::jsonb,
       '{"lineas":[{"grupo":"ingreso","concepto":"Sueldo","detalle":"prueba 0093","regla":"RN-19","monto":600}]}'::jsonb,
       600, 3.870000, 'prueba-0093'
     ) returning id into liq_septiembre;

@@ -874,9 +874,9 @@ export async function crearBorrador(
  * Congela el pago: escribe el desglose, sella los movimientos y las ventas consumidos, y recién
  * al final pasa a `cerrada`. Todo dentro de la RPC, en una transacción.
  *
- * Devuelve `DESACTUALIZADA` si entre el cálculo y el cierre se cargó un adelanto, una venta, un
- * almuerzo o una capacitación. No es un error del administrador: hay que volver a calcular y
- * cerrar de nuevo. Sin esa comprobación, esa fila quedaría sellada sin haber entrado en el pago.
+ * Devuelve `DESACTUALIZADA` si la entrada guardada ya no es idéntica a la que se calcularía ahora
+ * (migración 0111): un movimiento o una venta cargados, borrados o con otro monto, o una asistencia
+ * corregida. No es un error del administrador: hay que recalcular el borrador y cerrar de nuevo. Sin esa comprobación, esa fila quedaría sellada sin haber entrado en el pago.
  */
 export async function cerrarLiquidacion(id: string): Promise<void> {
   // Un borrador calculado con una cuota que después cambió (cambio de frecuencia, spec §3.2) no se
