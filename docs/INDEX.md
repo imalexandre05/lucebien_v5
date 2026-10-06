@@ -78,6 +78,7 @@
 | [auditoria-2026-08-23.md](auditoria-2026-08-23.md) | **La de antes de entregarlo a la gente.** 125 hallazgos, 58 pasados por refutación adversarial, 22 lotes de corrección. Qué estaba roto, qué atrapó el proceso, y qué queda abierto |
 | [auditoria-2026-09-12-ux-visual.md](auditoria-2026-09-12-ux-visual.md) | **Auditoría visual con sesión real (Playwright).** El desplegable del mapa de piso corregido, la queja de "rústico" no se sostuvo salvo ese caso, y un susto de Server Error que resultó ser dos suites de prueba pisándose el mismo `erp-dev` — no un bug real |
 | [auditoria-pipeline-prendas.md](auditoria-pipeline-prendas.md) | Auditoría específica del pipeline |
+| [auditorias/2026-10-06-pipeline.md](auditorias/2026-10-06-pipeline.md) | Auditoría de los PR #36–#56 (pipeline, evaluación, pantallas): veredicto por PR, escenarios en Postgres local, tests que faltan |
 | [informe-avances-2026-07-01.md](informe-avances-2026-07-01.md) | Informe de avance |
 | [fixes/](fixes/) | 15 fichas de corrección, una por hallazgo |
 
