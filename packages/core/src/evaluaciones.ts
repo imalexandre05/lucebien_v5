@@ -25,6 +25,10 @@ export type PesosEval = Record<ComponenteKey, number>;
 export type ComponentesEval = Record<ComponenteKey, number> & {
   descuentoIncidencias: number;
   bonusVentas: number;
+  // Cuántas evaluaciones 360° dieron `valores` en ese ciclo. Sólo se guarda (no entra en la nota):
+  // la base publica el 360° de una fila guardada si llega al mínimo (0119; spec
+  // 2026-10-04-evaluacion-guardar-recalculada §7).
+  valoresCantidad?: number;
 };
 
 // Pesos por defecto (se sobreescriben con los de config). Suman 1.0.
@@ -232,6 +236,7 @@ export type ComponentesDeData = {
   limpieza: number;
   tardanza: number;
   valores: number | null;
+  valoresCantidad?: number | null;
   descuento: number;
   bonusVentas: number;
   puntosTotal?: number;
@@ -287,6 +292,9 @@ export function armarEvaluacionAGuardar(
     componentes: {
       ...automaticos,
       valores: data.valores ?? 0,
+      // Sale de la RPC, nunca del cliente. Sin dato → 0: la base no publica un 360° sin saber con
+      // cuántos votos se calculó (spec §7, H-6).
+      valoresCantidad: esNumeroValido(data.valoresCantidad) ? data.valoresCantidad : 0,
       competencias: manual.competencias,
       examenes: manual.examenes,
     },
