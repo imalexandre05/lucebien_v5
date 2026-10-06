@@ -524,8 +524,27 @@ export function cuotaDelTramo(
   ancla?: string,
 ): number {
   const completo = finDePeriodo(desde, frecuencia, undefined, ancla);
-  if (hasta >= completo) return cuota;
+  if (hasta >= completo || cierraEnAniversario(hasta, frecuencia, ancla)) return cuota;
   return r2((cuota * diasEntre(desde, hasta)) / diasEntre(desde, completo));
+}
+
+/**
+ * Enmienda 9.1 de la spec (auditoría D-2). El calendario mensual se corre en los meses cortos
+ * (31-ene → 28-feb, 1-mar → 31-mar…), así que un tramo que termina el día anterior a un ANIVERSARIO
+ * del día de inicio de la frecuencia parece corto sin serlo. Decisión del dueño (06-oct): la mensual
+ * se cuenta desde el día en que empezó el contrato. Sólo decide si el tramo es corto: los cortes del
+ * calendario no cambian. Sin ancla (llamadas viejas) no hay aniversario que mirar.
+ */
+function cierraEnAniversario(
+  hasta: string,
+  frecuencia: ModalidadPago | FrecuenciaPago,
+  ancla: string | undefined,
+): boolean {
+  const modalidad = typeof frecuencia === 'string' ? frecuencia : frecuencia.modalidad;
+  if (modalidad !== 'mensual' || ancla === undefined) return false;
+  const diaAncla = Number(validarFecha(ancla, 'cuotaDelTramo: ancla').slice(8, 10));
+  const [y, m, d] = fmtFecha(msDeFecha(hasta) + MS_DIA).split('-').map(Number);
+  return d === Math.min(diaAncla, ultimoDiaDelMes(y, m - 1));
 }
 
 /** Los datos de pago de un contrato: lo que vive en `sueldo_acuerdos`. */
@@ -614,7 +633,7 @@ export function calendarioDePagos(contrato: ContratoPago, cambios: CambioFrecuen
       dias: diasEntre(cursor, hasta),
       cuota: cuotaDelTramo(v.sueldoPactado, cursor, hasta, v, v.ancla),
       cuotaCompleta: v.sueldoPactado,
-      corto: hasta < natural,
+      corto: hasta < natural && !cierraEnAniversario(hasta, v, v.ancla),
       modalidad: v.modalidad,
       cadaDias: v.cadaDias ?? null,
     });
@@ -631,7 +650,10 @@ export function calendarioDePagos(contrato: ContratoPago, cambios: CambioFrecuen
  *   un rango que no coincide con la frecuencia y eso no prorratea nada (regresión, spec §7.6).
  * - Sólo el ÚLTIMO tramo (termina en `fechaFin` o justo antes de un cambio de frecuencia), si es más
  *   corto que la frecuencia, se prorratea por días (spec §3.3, default anotado en
- *   docs/pendientes-negocio.md).
+ *   docs/pendientes-negocio.md). Un tramo mensual que termina antes de un aniversario del inicio
+ *   no es corto (enmienda 9.1).
+ * - Un rango alineado con varios pagos del calendario cobra la suma de sus cuotas; uno desalineado
+ *   que cruza un cambio de frecuencia se rechaza (enmienda 9.2).
  */
 export function cuotaDeLiquidacion(
   contrato: ContratoPago,
@@ -639,6 +661,23 @@ export function cuotaDeLiquidacion(
   desde: string,
   hasta: string,
 ): number {
+  // Enmienda 9.2 (auditoría D-4): un rango que cubre VARIOS pagos del calendario.
+  const cubiertos = calendarioDePagos(contrato, cambios).filter((p) => p.desde <= hasta && p.hasta >= desde);
+  if (cubiertos.length > 1) {
+    const ultimo = cubiertos[cubiertos.length - 1];
+    // Alineado con los bordes: una cuota por pago (`sueldo_pactado` es la cuota de CADA pago).
+    if (cubiertos[0].desde === desde && ultimo.hasta === hasta) {
+      return r2(cubiertos.reduce((s, p) => s + p.cuota, 0));
+    }
+    // Desalineado y cruzando un cambio de frecuencia: no hay una cuota que tenga sentido.
+    if (cambios.some((c) => c.desde > desde && c.desde <= hasta)) {
+      throw new Error(
+        `El rango ${desde} a ${hasta} cruza un cambio de frecuencia y no coincide con los pagos del calendario ` +
+          `(${cubiertos.map((p) => `${p.desde} a ${p.hasta}`).join(', ')}). Liquida cada pago por separado.`,
+      );
+    }
+    // Desalineado sin cambio de por medio: como antes (§7.6), la cuota vigente entera.
+  }
   const v = frecuenciaVigente(contrato, cambios, desde);
   const natural = finDePeriodo(desde, v, undefined, v.ancla);
   // Mismo criterio de corte que calendarioDePagos(): el fin del contrato o el día antes del próximo
