@@ -9,6 +9,16 @@
 -- cuenta, los puntos de lo que mueven varias personas van a la dueña de la sesión, y los puntos
 -- alimentan reportes → nota /20 → pago.
 --
+-- ENMIENDA 06-oct-2026 (spec §0; auditorías docs/auditorias/2026-10-06-{pipeline,seguridad}.md):
+--   · El código deja de ser empleados.cod (4 dígitos, además usuario de login): se teclea
+--     usuario (cod) + un PIN propio de ≥ codigo_pin_min_largo dígitos, guardado sólo como hash
+--     bcrypt en codigo_pines. Cada persona lo define con pipeline_definir_pin; el admin lo borra.
+--   · El límite de intentos cuenta por PERSONA (contra quien se apunta) además de por sesión.
+--   · empleados.cuenta_compartida: para esa cuenta las RPC rechazan p_operador null (la exigencia
+--     vive en la base, no sólo en la server action).
+--   · pipeline_puntos.historial_id: deshacer borra los puntos DEL MOVIMIENTO deshecho (de quien
+--     lo hizo), no los del actor; y sólo deshace el último movimiento de la prenda (H-1, H-2).
+--
 -- EL DISEÑO (resumen; el detalle está en la spec):
 --   · El código (empleados.cod) se teclea UNA vez y sólo lo ve pipeline_validar_codigo, que es
 --     security definer, cuenta los intentos SIN lanzar excepción (un raise haría rollback del
@@ -29,6 +39,7 @@
 --   codigo_operador_min          = 10  minutos de operador activo sin actividad
 --   codigo_operador_max_h        = 8   horas máximas de vida de un token desde su emisión (un
 --                                      turno), aunque se renueve por actividad (spec §8)
+--   codigo_pin_min_largo         = 6   dígitos mínimos del PIN personal (enmienda 06-oct, spec §0)
 --
 -- PERMISOS. Las RPC del pipeline son `security invoker` (la RLS sigue mandando) y por eso los dos
 -- helpers que llaman (`operador_de_token`, `tocar_operador`) llevan `grant execute to authenticated`
@@ -65,7 +76,29 @@ alter table dispositivos_autorizados add column if not exists compartido boolean
 -- operador real (el dueño del código) cuando hay token.
 alter table prenda_historial add column if not exists registrado_por uuid;
 
--- Intentos de validar un código. Sólo los escribe pipeline_validar_codigo.
+-- Cuenta con la que se abre un equipo compartido (la marca el admin desde /dispositivos). Para
+-- ella las RPC del pipeline exigen token: sin código no se mueve nada (spec §0 E-3).
+alter table empleados add column if not exists cuenta_compartida boolean not null default false;
+
+-- El movimiento que originó cada punto: deshacer borra los puntos de ESE movimiento (spec §0 E-4).
+alter table pipeline_puntos add column if not exists historial_id uuid
+  references prenda_historial(id) on delete set null;
+create index if not exists idx_pipeline_puntos_historial on pipeline_puntos(historial_id)
+  where historial_id is not null;
+
+-- PIN personal: sólo el hash bcrypt. Nadie lo lee por PostgREST; lo escriben y comparan funciones
+-- definer.
+create table if not exists codigo_pines (
+  empleado_id    uuid primary key references empleados(id) on delete cascade,
+  pin_hash       text not null,
+  actualizado_en timestamptz not null default now()
+);
+alter table codigo_pines enable row level security;
+drop policy if exists codigo_pines_cerrada on codigo_pines;
+create policy codigo_pines_cerrada on codigo_pines for all using (false) with check (false);
+revoke all on codigo_pines from anon, authenticated;
+
+-- Intentos de validar un código. Sólo los escriben pipeline_validar_codigo y pipeline_definir_pin.
 create table if not exists codigo_intentos (
   id         uuid primary key default gen_random_uuid(),
   sesion_uid uuid not null,
@@ -74,6 +107,10 @@ create table if not exists codigo_intentos (
   creado_en  timestamptz not null default now()
 );
 create index if not exists idx_codigo_intentos_sesion on codigo_intentos(sesion_uid, creado_en desc);
+-- Persona contra la que se apuntó (el usuario tecleado). El límite también cuenta por persona.
+alter table codigo_intentos add column if not exists empleado_id uuid;
+create index if not exists idx_codigo_intentos_empleado on codigo_intentos(empleado_id, creado_en desc)
+  where empleado_id is not null;
 
 -- Tokens de operador. Un token sólo vale para la sesión que lo pidió. Nadie lo lee por PostgREST.
 create table if not exists codigo_operadores (
@@ -115,7 +152,8 @@ insert into config (clave, valor) values
   ('codigo_max_intentos',         '5'),    -- default provisional (spec §4), sin confirmar
   ('codigo_ventana_intentos_min', '15'),   -- default provisional (spec §4), sin confirmar
   ('codigo_operador_min',         '10'),   -- default provisional (spec §4/§5), sin confirmar
-  ('codigo_operador_max_h',       '8')     -- default provisional (spec §8: un turno), sin confirmar
+  ('codigo_operador_max_h',       '8'),    -- default provisional (spec §8: un turno), sin confirmar
+  ('codigo_pin_min_largo',        '6')     -- default provisional (spec §0 E-1), sin confirmar
 on conflict (clave) do nothing;
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -134,15 +172,115 @@ as $$
 $$;
 revoke execute on function private.codigo_param(text, int) from public, anon, authenticated;
 
--- Código → empleado activo (o null). SIN grant: sólo la usa pipeline_validar_codigo.
-create or replace function private.empleado_por_codigo(p_codigo text)
-  returns uuid language sql stable security definer set search_path = public
+-- La versión anterior comparaba el código contra empleados.cod. Ya no existe (spec §0 E-1).
+drop function if exists private.empleado_por_codigo(text);
+
+-- ¿El PIN coincide con el hash guardado de esta persona? SIN grant: sólo la usan
+-- pipeline_validar_codigo y pipeline_definir_pin, que son definer. pgcrypto vive en `extensions`
+-- en Supabase: por eso el search_path.
+create or replace function private.codigo_pin_valido(p_empleado uuid, p_pin text)
+  returns boolean language sql stable security definer set search_path = public, extensions
 as $$
-  select e.id from public.empleados e
-  where e.cod = btrim(p_codigo) and e.activo
-  limit 1;
+  select coalesce(
+    (select p.pin_hash = crypt(coalesce(p_pin, ''), p.pin_hash)
+       from public.codigo_pines p where p.empleado_id = p_empleado),
+    false);
 $$;
-revoke execute on function private.empleado_por_codigo(text) from public, anon, authenticated;
+revoke execute on function private.codigo_pin_valido(uuid, text) from public, anon, authenticated;
+
+-- PIN trivial: todos los dígitos iguales, una secuencia ascendente o descendente (123456, 654321)
+-- o el propio usuario (cod). Sin grant.
+create or replace function private.codigo_pin_trivial(p_pin text, p_cod text)
+  returns boolean language plpgsql immutable set search_path = public
+as $$
+declare v_sube boolean := true; v_baja boolean := true; i int;
+begin
+  if p_pin ~ '^(.)\1*$' or p_pin = btrim(coalesce(p_cod, '')) then return true; end if;
+  for i in 2..length(p_pin) loop
+    if substr(p_pin, i, 1)::int <> (substr(p_pin, i - 1, 1)::int + 1) % 10 then v_sube := false; end if;
+    if substr(p_pin, i, 1)::int <> (substr(p_pin, i - 1, 1)::int + 9) % 10 then v_baja := false; end if;
+  end loop;
+  return v_sube or v_baja;
+end;
+$$;
+revoke execute on function private.codigo_pin_trivial(text, text) from public, anon, authenticated;
+
+-- Minutos que faltan para que se levante el bloqueo de una sesión (p_sesion) o de una persona
+-- (p_empleado); 0 si no está bloqueada. El bloqueo se levanta cuando el fallo que lo completó sale
+-- de la ventana. Sin grant.
+create or replace function private.codigo_min_bloqueo(p_sesion uuid, p_empleado uuid, p_max int, p_ventana int)
+  returns int language plpgsql stable security definer set search_path = public
+as $$
+declare v_fallos int; v_levanta timestamptz;
+begin
+  if p_sesion is null and p_empleado is null then return 0; end if;
+  select count(*) into v_fallos from public.codigo_intentos
+    where not ok and creado_en > now() - make_interval(mins => p_ventana)
+      and (p_sesion is null or sesion_uid = p_sesion)
+      and (p_empleado is null or empleado_id = p_empleado);
+  if v_fallos < p_max then return 0; end if;
+  select creado_en + make_interval(mins => p_ventana) into v_levanta from public.codigo_intentos
+    where not ok and creado_en > now() - make_interval(mins => p_ventana)
+      and (p_sesion is null or sesion_uid = p_sesion)
+      and (p_empleado is null or empleado_id = p_empleado)
+    order by creado_en asc offset (v_fallos - p_max) limit 1;
+  return greatest(1, ceil(extract(epoch from (v_levanta - now())) / 60.0)::int);
+end;
+$$;
+revoke execute on function private.codigo_min_bloqueo(uuid, uuid, int, int) from public, anon, authenticated;
+
+-- Registra un fallo y, si con él se completa el máximo de una sesión o de una persona, deja UNA
+-- notificación para el admin (motor existente 0041/0109). Devuelve los intentos que quedan antes
+-- del bloqueo (el menor entre sesión y persona). Sin grant.
+create or replace function private.codigo_registrar_fallo(p_sesion uuid, p_device text, p_empleado uuid,
+                                                           p_max int, p_ventana int)
+  returns int language plpgsql volatile security definer set search_path = public
+as $$
+declare v_ses int; v_emp int := 0; v_tipo text; v_msg text; v_ref uuid;
+begin
+  insert into public.codigo_intentos (sesion_uid, device_id, empleado_id, ok)
+    values (p_sesion, p_device, p_empleado, false);
+  select count(*) into v_ses from public.codigo_intentos
+    where sesion_uid = p_sesion and not ok and creado_en > now() - make_interval(mins => p_ventana);
+  if p_empleado is not null then
+    select count(*) into v_emp from public.codigo_intentos
+      where empleado_id = p_empleado and not ok and creado_en > now() - make_interval(mins => p_ventana);
+  end if;
+
+  if v_emp = p_max then
+    v_tipo := 'codigo_persona_bloqueada'; v_ref := p_empleado;
+    v_msg := 'El PIN de ' || coalesce((select nombre from public.empleados where id = p_empleado), 'una persona')
+      || ' se tecleó mal ' || p_max || ' veces en ' || p_ventana
+      || ' minutos y quedó bloqueado. Puede ser un error al teclear o alguien probando su PIN.';
+  elsif v_ses = p_max then
+    v_tipo := 'codigo_sesion_bloqueada'; v_ref := p_sesion;
+    v_msg := 'La sesión de ' || coalesce((select nombre from public.empleados where id = p_sesion), 'una persona')
+      || ' falló ' || p_max || ' veces el código personal en ' || p_ventana
+      || ' minutos y quedó bloqueada. Puede ser un error al teclear o alguien probando códigos.';
+  end if;
+  if v_tipo is not null then
+    insert into public.notificaciones (tipo, titulo, mensaje, severidad, destinatario_rol,
+                                       ref_tipo, ref_id, dedup_key)
+    values (v_tipo,
+            case when v_tipo = 'codigo_persona_bloqueada' then 'PIN bloqueado por intentos'
+                 else 'Sesión bloqueada por intentos de código' end,
+            v_msg, 'warn', 'admin', 'empleado', v_ref::text,
+            v_tipo || ':' || v_ref::text || ':' || extract(epoch from now())::bigint::text)
+    on conflict (dedup_key) do nothing;
+  end if;
+  return greatest(p_max - greatest(v_ses, v_emp), 0);
+end;
+$$;
+revoke execute on function private.codigo_registrar_fallo(uuid, text, uuid, int, int) from public, anon, authenticated;
+
+-- ¿La sesión es la cuenta de un equipo compartido? Sin grant a anon.
+create or replace function private.sesion_es_cuenta_compartida()
+  returns boolean language sql stable security definer set search_path = public
+as $$
+  select coalesce((select e.cuenta_compartida from public.empleados e where e.id = auth.uid()), false);
+$$;
+revoke execute on function private.sesion_es_cuenta_compartida() from public, anon;
+grant execute on function private.sesion_es_cuenta_compartida() to authenticated;
 
 -- Token → empleado (o null). Sólo vale si es de la sesión que llama, no venció y el empleado
 -- sigue activo. `stable`: no escribe; la renovación la hace tocar_operador.
@@ -156,7 +294,7 @@ as $$
     and o.sesion_uid = auth.uid()
     and o.expira_en > now()
     and o.creado_en + make_interval(hours => private.codigo_param('codigo_operador_max_h', 8)) > now()
-    and e.activo
+    and e.activo and not e.cuenta_compartida
   limit 1;
 $$;
 revoke execute on function private.operador_de_token(uuid) from public, anon;
@@ -191,13 +329,19 @@ grant execute on function pipeline_cerrar_operador(uuid) to authenticated;
 
 -- Quién actúa en una RPC del pipeline: la sesión si no hay token; si hay, el dueño del token
 -- (y se renueva su ventana). Token inválido, ajeno o vencido → excepción, y no se escribe nada.
+-- Si la sesión es una cuenta de equipo compartido, el token es OBLIGATORIO (spec §0 E-3).
 -- `security invoker`: sólo ordena las llamadas de arriba; no ve nada que el llamador no vea.
 create or replace function private.actor_pipeline(p_operador uuid)
   returns uuid language plpgsql volatile security invoker set search_path = public
 as $$
 declare v_actor uuid;
 begin
-  if p_operador is null then return auth.uid(); end if;
+  if p_operador is null then
+    if private.sesion_es_cuenta_compartida() then
+      raise exception 'CODIGO: esta cuenta es de un equipo compartido, ingresa tu código';
+    end if;
+    return auth.uid();
+  end if;
   v_actor := private.operador_de_token(p_operador);
   if v_actor is null then
     raise exception 'CODIGO: operador vencido, vuelve a ingresar tu código';
@@ -223,18 +367,20 @@ revoke execute on function dispositivo_compartido(text) from public, anon;
 grant execute on function dispositivo_compartido(text) to authenticated;
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
--- 4) pipeline_validar_codigo — la ÚNICA puerta del código
---    Nunca lanza excepción por código malo: el intento tiene que quedar escrito.
---    Devuelve {ok, token, nombre, expira_en, ventana_min} | {ok:false, motivo:'equipo_no_compartido'} | {ok:false, bloqueado_min} | {ok:false, intentos_restantes}
+-- 4) pipeline_validar_codigo — la ÚNICA puerta del código (usuario + PIN)
+--    Nunca lanza excepción por PIN malo: el intento tiene que quedar escrito.
+--    Devuelve {ok, token, nombre, expira_en, ventana_min} | {ok:false, motivo:'equipo_no_compartido'}
+--           | {ok:false, bloqueado_min} | {ok:false, intentos_restantes[, motivo:'sin_pin']}
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
-create or replace function pipeline_validar_codigo(p_codigo text, p_device text default null)
+drop function if exists pipeline_validar_codigo(text, text);
+create or replace function pipeline_validar_codigo(p_usuario text, p_pin text, p_device text)
   returns jsonb language plpgsql security definer set search_path = public
 as $$
 declare
   v_sesion uuid := auth.uid();
-  v_max int; v_ventana int; v_op_min int;
-  v_fallos int; v_levanta timestamptz; v_min int;
-  v_emp uuid; v_nombre text; v_token uuid; v_exp timestamptz;
+  v_max int; v_ventana int; v_op_min int; v_min int;
+  v_emp uuid; v_activo boolean; v_compartida boolean; v_tiene_pin boolean;
+  v_nombre text; v_token uuid; v_exp timestamptz; v_restan int;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
 
@@ -245,49 +391,46 @@ begin
     return jsonb_build_object('ok', false, 'motivo', 'equipo_no_compartido');
   end if;
 
-  -- Serializa a las peticiones de la MISMA sesión: sin esto, varias llamadas en paralelo leen el
-  -- mismo conteo de fallos antes de que se inserte el suyo y el límite se vuelve el tamaño del pool.
-  perform pg_advisory_xact_lock(hashtext(v_sesion::text));
-
   v_max     := private.codigo_param('codigo_max_intentos', 5);
   v_ventana := private.codigo_param('codigo_ventana_intentos_min', 15);
   v_op_min  := private.codigo_param('codigo_operador_min', 10);
 
-  -- 1) ¿Sesión bloqueada? El bloqueo se levanta cuando el fallo que lo completó sale de la ventana.
-  select count(*) into v_fallos from codigo_intentos
-    where sesion_uid = v_sesion and not ok and creado_en > now() - make_interval(mins => v_ventana);
-  if v_fallos >= v_max then
-    select creado_en + make_interval(mins => v_ventana) into v_levanta from codigo_intentos
-      where sesion_uid = v_sesion and not ok and creado_en > now() - make_interval(mins => v_ventana)
-      order by creado_en asc offset (v_fallos - v_max) limit 1;
-    v_min := greatest(1, ceil(extract(epoch from (v_levanta - now())) / 60.0)::int);
+  -- El usuario sólo identifica (no es secreto). Se resuelve aunque esté suspendido: los fallos
+  -- cuentan contra la persona igual.
+  select e.id, e.activo, e.cuenta_compartida into v_emp, v_activo, v_compartida
+    from empleados e where e.cod = btrim(coalesce(p_usuario, '')) limit 1;
+
+  -- Serializa por sesión y por persona: sin esto, varias llamadas en paralelo leen el mismo conteo
+  -- de fallos antes de que se inserte el suyo y el límite se vuelve el tamaño del pool. Orden fijo
+  -- (sesión, persona) para no cruzar bloqueos.
+  perform pg_advisory_xact_lock(hashtext('codigo-sesion:' || v_sesion::text));
+  if v_emp is not null then
+    perform pg_advisory_xact_lock(hashtext('codigo-persona:' || v_emp::text));
+  end if;
+
+  -- 1) ¿Sesión o persona bloqueadas? Aunque el PIN sea correcto.
+  v_min := greatest(private.codigo_min_bloqueo(v_sesion, null, v_max, v_ventana),
+                    private.codigo_min_bloqueo(null, v_emp, v_max, v_ventana));
+  if v_min > 0 then
     return jsonb_build_object('ok', false, 'bloqueado_min', v_min);
   end if;
 
-  -- 2) Registrar el intento (siempre) y resolver el código.
-  v_emp := private.empleado_por_codigo(p_codigo);
-  insert into codigo_intentos (sesion_uid, device_id, ok) values (v_sesion, p_device, v_emp is not null);
+  v_tiene_pin := v_emp is not null and exists (select 1 from codigo_pines where empleado_id = v_emp);
 
-  if v_emp is null then
-    -- Este fallo completa el máximo: la sesión queda bloqueada. Se avisa al administrador por la
-    -- tabla del motor de notificaciones existente (0041/0109): no se crea un motor nuevo ni se toca
-    -- generar_alertas(). dedup_key única por bloqueo (la hora del fallo) para que dos bloqueos
-    -- distintos de la misma sesión no se pisen.
-    if v_fallos + 1 >= v_max and v_fallos < v_max then
-      insert into notificaciones (tipo, titulo, mensaje, severidad, destinatario_rol,
-                                  ref_tipo, ref_id, dedup_key)
-      values ('codigo_sesion_bloqueada', 'Sesión bloqueada por intentos de código',
-              'La sesión de ' || coalesce((select nombre from empleados where id = v_sesion), 'una persona')
-                || ' falló ' || v_max || ' veces el código personal en ' || v_ventana
-                || ' minutos y quedó bloqueada. Puede ser un error al teclear o alguien probando códigos.',
-              'warn', 'admin', 'empleado', v_sesion::text,
-              'codigo_sesion_bloqueada:' || v_sesion::text || ':' || extract(epoch from now())::bigint::text)
-      on conflict (dedup_key) do nothing;
+  -- 2) Fallo: usuario inexistente, suspendido, cuenta compartida, sin PIN o PIN malo. Se registra
+  --    y se responde sin raise. 'sin_pin' cuenta como fallo para que no sirva para enumerar.
+  if v_emp is null or not v_activo or v_compartida or not v_tiene_pin
+     or not private.codigo_pin_valido(v_emp, p_pin) then
+    v_restan := private.codigo_registrar_fallo(v_sesion, p_device, v_emp, v_max, v_ventana);
+    if v_emp is not null and v_activo and not v_compartida and not v_tiene_pin then
+      return jsonb_build_object('ok', false, 'motivo', 'sin_pin', 'intentos_restantes', v_restan);
     end if;
-    return jsonb_build_object('ok', false, 'intentos_restantes', greatest(v_max - v_fallos - 1, 0));
+    return jsonb_build_object('ok', false, 'intentos_restantes', v_restan);
   end if;
 
-  -- 3) Emitir el token. De paso se barren los tokens vencidos hace más de un día.
+  -- 3) Acierto: se registra y se emite el token. De paso se barren los tokens vencidos hace más
+  --    de un día.
+  insert into codigo_intentos (sesion_uid, device_id, empleado_id, ok) values (v_sesion, p_device, v_emp, true);
   delete from codigo_operadores where expira_en < now() - interval '1 day';
   v_exp := now() + make_interval(mins => v_op_min);
   insert into codigo_operadores (sesion_uid, empleado_id, device_id, expira_en)
@@ -298,8 +441,111 @@ begin
                             'ventana_min', v_op_min);
 end;
 $$;
-revoke execute on function pipeline_validar_codigo(text, text) from public, anon;
-grant execute on function pipeline_validar_codigo(text, text) to authenticated;
+revoke execute on function pipeline_validar_codigo(text, text, text) from public, anon;
+grant execute on function pipeline_validar_codigo(text, text, text) to authenticated;
+
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+-- 4b) PIN personal: definirlo (la propia persona), borrarlo (admin) y saber si existe
+-- ═══════════════════════════════════════════════════════════════════════════════════════════
+
+-- La persona define o cambia SU PIN desde su sesión. Para cambiarlo debe dar el actual; un actual
+-- equivocado cuenta como fallo contra ella misma (si no, sería un atajo para probar PIN sin
+-- límite). Al cambiarlo se revocan sus tokens vivos.
+-- Devuelve {ok:true} | {ok:false, motivo: 'pin_corto'|'pin_trivial'|'pin_actual_incorrecto'|
+--          'cuenta_compartida'|'sin_permiso', largo_min?, intentos_restantes?, bloqueado_min?}
+create or replace function pipeline_definir_pin(p_pin_nuevo text, p_pin_actual text default null)
+  returns jsonb language plpgsql security definer set search_path = public, extensions
+as $$
+declare
+  v_emp uuid := auth.uid();
+  v_cod text; v_activo boolean; v_compartida boolean;
+  v_largo int; v_max int; v_ventana int; v_min int;
+begin
+  if v_emp is null then raise exception 'No autenticado'; end if;
+  select cod, activo, cuenta_compartida into v_cod, v_activo, v_compartida from empleados where id = v_emp;
+  if not found or not v_activo then
+    return jsonb_build_object('ok', false, 'motivo', 'sin_permiso');
+  end if;
+  if v_compartida then
+    return jsonb_build_object('ok', false, 'motivo', 'cuenta_compartida');
+  end if;
+
+  v_largo := private.codigo_param('codigo_pin_min_largo', 6);
+  if p_pin_nuevo is null or p_pin_nuevo !~ '^[0-9]+$' or length(p_pin_nuevo) < v_largo then
+    return jsonb_build_object('ok', false, 'motivo', 'pin_corto', 'largo_min', v_largo);
+  end if;
+  if private.codigo_pin_trivial(p_pin_nuevo, v_cod) then
+    return jsonb_build_object('ok', false, 'motivo', 'pin_trivial');
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('codigo-sesion:' || v_emp::text));
+  perform pg_advisory_xact_lock(hashtext('codigo-persona:' || v_emp::text));
+  if exists (select 1 from codigo_pines where empleado_id = v_emp) then
+    v_max     := private.codigo_param('codigo_max_intentos', 5);
+    v_ventana := private.codigo_param('codigo_ventana_intentos_min', 15);
+    v_min := private.codigo_min_bloqueo(null, v_emp, v_max, v_ventana);
+    if v_min > 0 then
+      return jsonb_build_object('ok', false, 'bloqueado_min', v_min);
+    end if;
+    if not private.codigo_pin_valido(v_emp, p_pin_actual) then
+      return jsonb_build_object('ok', false, 'motivo', 'pin_actual_incorrecto', 'intentos_restantes',
+        private.codigo_registrar_fallo(v_emp, null, v_emp, v_max, v_ventana));
+    end if;
+  end if;
+
+  insert into codigo_pines (empleado_id, pin_hash, actualizado_en)
+    values (v_emp, crypt(p_pin_nuevo, gen_salt('bf')), now())
+    on conflict (empleado_id) do update set pin_hash = excluded.pin_hash, actualizado_en = now();
+  delete from codigo_operadores where empleado_id = v_emp;
+  return jsonb_build_object('ok', true);
+end;
+$$;
+revoke execute on function pipeline_definir_pin(text, text) from public, anon;
+grant execute on function pipeline_definir_pin(text, text) to authenticated;
+
+-- ¿La sesión ya definió su PIN? (La pantalla decide si pide el actual.)
+create or replace function pipeline_tengo_pin()
+  returns boolean language sql stable security definer set search_path = public
+as $$
+  select exists (select 1 from public.codigo_pines where empleado_id = auth.uid());
+$$;
+revoke execute on function pipeline_tengo_pin() from public, anon;
+grant execute on function pipeline_tengo_pin() to authenticated;
+
+-- Admin: borra el PIN de una persona que lo olvidó (no lo ve ni lo define) y revoca sus tokens.
+create or replace function pipeline_borrar_pin(p_empleado uuid)
+  returns void language plpgsql security definer set search_path = public
+as $$
+begin
+  if not private.app_es_admin() then
+    raise exception 'PERMISO: sólo el administrador puede borrar un PIN';
+  end if;
+  delete from codigo_pines where empleado_id = p_empleado;
+  delete from codigo_operadores where empleado_id = p_empleado;
+end;
+$$;
+revoke execute on function pipeline_borrar_pin(uuid) from public, anon;
+grant execute on function pipeline_borrar_pin(uuid) to authenticated;
+
+-- Admin: marca o desmarca la cuenta con la que se abre un equipo compartido. Marcarla borra su PIN
+-- y sus tokens (esa cuenta no opera por sí misma).
+create or replace function empleado_marcar_cuenta_compartida(p_empleado uuid, p_valor boolean)
+  returns void language plpgsql security definer set search_path = public
+as $$
+begin
+  if not private.app_es_admin() then
+    raise exception 'PERMISO: sólo el administrador marca una cuenta de equipo compartido';
+  end if;
+  update empleados set cuenta_compartida = coalesce(p_valor, false) where id = p_empleado;
+  if not found then raise exception 'Empleado no encontrado'; end if;
+  if coalesce(p_valor, false) then
+    delete from codigo_pines where empleado_id = p_empleado;
+    delete from codigo_operadores where empleado_id = p_empleado;
+  end if;
+end;
+$$;
+revoke execute on function empleado_marcar_cuenta_compartida(uuid, boolean) from public, anon;
+grant execute on function empleado_marcar_cuenta_compartida(uuid, boolean) to authenticated;
 
 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
@@ -319,7 +565,7 @@ declare
   v_actor uuid;
   v_etapa text; v_tipo text; v_tlav text; v_codigo text; v_dividida boolean;
   v_clave text; v_peso numeric; v_pts numeric; v_media boolean;
-  v_permitidos text[];
+  v_permitidos text[]; v_hist uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
   v_actor := private.actor_pipeline(p_operador);
@@ -361,13 +607,15 @@ begin
     planchador_id = case when v_etapa = 'planchado' then v_actor else planchador_id end
   where id = p_id;
 
-  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por)
-  values (p_id, v_etapa, p_destino, v_actor, null, v_sesion);
+  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
+  values (p_id, v_etapa, p_destino, v_actor, null, v_sesion, clock_timestamp())
+  returning id into v_hist;
 
   if v_pts > 0 then
-    insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle, fecha)
+    insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle, fecha, historial_id)
     values (v_actor, p_id, v_etapa, v_pts,
-            v_codigo || ': ' || v_etapa || ' → ' || p_destino || case when v_media then ' (½)' else '' end, now());
+            v_codigo || ': ' || v_etapa || ' → ' || p_destino || case when v_media then ' (½)' else '' end, now(),
+            v_hist);
   end if;
   return coalesce(v_pts, 0);
 end;
@@ -412,8 +660,8 @@ begin
   insert into envios_prendas (sede_destino_cod, fecha, responsable_id, estado)
     values (p_sede, now(), v_actor, 'enviado') returning id into v_envio;
   update prenda_pasada set etapa = 'enviado', envio_id = v_envio, fecha_actualizado = now() where id = p_id;
-  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por)
-    values (p_id, 'listo', 'enviado', v_actor, 'Envío ' || substr(v_envio::text, 1, 8) || ' → ' || p_sede, v_sesion);
+  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
+    values (p_id, 'listo', 'enviado', v_actor, 'Envío ' || substr(v_envio::text, 1, 8) || ' → ' || p_sede, v_sesion, clock_timestamp());
 
   -- Fase 7 tarea 2 (0055): el activo vinculado sale del pipeline y queda disponible.
   if v_activo_id is not null then
@@ -434,7 +682,7 @@ declare
   v_sesion uuid := auth.uid();
   v_actor uuid;
   v_etapa text; v_tipo text; v_tlav text; v_codigo text;
-  v_culpable uuid; v_clave text; v_peso numeric; v_pts numeric; v_media boolean;
+  v_culpable uuid; v_clave text; v_peso numeric; v_pts numeric; v_media boolean; v_hist uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
   v_actor := private.actor_pipeline(p_operador);
@@ -447,8 +695,9 @@ begin
     order by fecha desc limit 1;
 
   update prenda_pasada set etapa = p_destino, aprobada = false, fecha_actualizado = now() where id = p_id;
-  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por)
-    values (p_id, v_etapa, p_destino, v_actor, 'Rechazado → ' || p_destino, v_sesion);
+  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
+    values (p_id, v_etapa, p_destino, v_actor, 'Rechazado → ' || p_destino, v_sesion, clock_timestamp())
+    returning id into v_hist;
 
   if v_culpable is not null then
     if p_destino = 'lavado' then v_clave := 'pts_lavado_' || coalesce(v_tlav, 'normal');
@@ -459,9 +708,9 @@ begin
                and lower(coalesce(v_tipo, '')) ~ '(saco|pantal|falda|chaleco|blazer)';
     v_pts := case when v_media then round(v_peso / 2, 1) else v_peso end;
     if v_pts > 0 then
-      insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle, fecha)
+      insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle, fecha, historial_id)
       values (v_culpable, p_id, p_destino || '_rechazo', -v_pts,
-              'Rechazo: ' || v_codigo || ' de ' || v_etapa || ' → ' || p_destino, now());
+              'Rechazo: ' || v_codigo || ' de ' || v_etapa || ' → ' || p_destino, now(), v_hist);
     end if;
   end if;
 end;
@@ -469,25 +718,45 @@ $$;
 revoke execute on function pipeline_rechazar(uuid, text, uuid) from public, anon;
 grant execute on function pipeline_rechazar(uuid, text, uuid) to authenticated;
 
+-- Deshacer (spec §0 E-4, auditoría de pipeline H-1/H-2): sólo deshace el ÚLTIMO movimiento de la
+-- prenda (p_etapa_anterior tiene que ser su etapa_anterior y la prenda tiene que seguir en su
+-- etapa_nueva) y borra los puntos DE ESE movimiento, sean de quien sean. Antes borraba «el último
+-- punto positivo del actor»: si B deshacía lo de A, A conservaba el punto y B perdía uno suyo.
 drop function if exists pipeline_deshacer(uuid, text);
 create or replace function pipeline_deshacer(p_id uuid, p_etapa_anterior text, p_operador uuid default null)
   returns void language plpgsql security invoker set search_path = public
 as $$
-declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text;
+declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_ult prenda_historial;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
   v_actor := private.actor_pipeline(p_operador);
-  select etapa into v_etapa from prenda_pasada where id = p_id;
+  select etapa into v_etapa from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
+  if v_etapa = 'dividido' then
+    raise exception 'TRANSICION: una prenda dividida se deshace con «deshacer división»';
+  end if;
+
+  select * into v_ult from prenda_historial where pasada_id = p_id order by fecha desc limit 1;
+  if v_ult.id is null or v_ult.etapa_anterior is null
+     or v_ult.etapa_nueva is distinct from v_etapa
+     or v_ult.etapa_anterior is distinct from p_etapa_anterior then
+    raise exception 'TRANSICION: sólo se deshace el último movimiento de la prenda (de "%" a "%")',
+      coalesce(v_ult.etapa_anterior, '—'), coalesce(v_ult.etapa_nueva, '—');
+  end if;
 
   update prenda_pasada set etapa = p_etapa_anterior, fecha_actualizado = now() where id = p_id;
-  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por)
-    values (p_id, v_etapa, p_etapa_anterior, v_actor, 'Deshacer', v_sesion);
-  delete from pipeline_puntos where id = (
-    select id from pipeline_puntos
-    where pasada_id = p_id and empleado_id = v_actor and puntos > 0
-    order by fecha desc limit 1
-  );
+  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
+    values (p_id, v_etapa, p_etapa_anterior, v_actor, 'Deshacer', v_sesion, clock_timestamp());
+
+  delete from pipeline_puntos where historial_id = v_ult.id;
+  -- Puntos de antes de historial_id: el último positivo de esa prenda y esa etapa, sin mirar quién.
+  if not found and v_ult.obs is null then
+    delete from pipeline_puntos where id = (
+      select id from pipeline_puntos
+      where pasada_id = p_id and historial_id is null and etapa = v_ult.etapa_anterior and puntos > 0
+      order by fecha desc limit 1
+    );
+  end if;
 end;
 $$;
 revoke execute on function pipeline_deshacer(uuid, text, uuid) from public, anon;
@@ -516,8 +785,8 @@ begin
             v_pr.tipo_lavado, v_pr.fecha_ingreso, v_pr.lista_lavanderia_id,
             'Dividido de terno ' || v_pr.codigo, v_pr.necesita_compostura)
     returning id into v_saco;
-  insert into prenda_historial (pasada_id, etapa_nueva, empleado_id, obs, registrado_por)
-    values (v_saco, v_pr.etapa, v_actor, 'Dividido: Saco de terno ' || v_pr.codigo, v_sesion);
+  insert into prenda_historial (pasada_id, etapa_nueva, empleado_id, obs, registrado_por, fecha)
+    values (v_saco, v_pr.etapa, v_actor, 'Dividido: Saco de terno ' || v_pr.codigo, v_sesion, clock_timestamp());
 
   insert into prenda_pasada
     (codigo, tipo, color, talla, sede_origen_cod, etapa, tipo_lavado, fecha_ingreso,
@@ -526,15 +795,15 @@ begin
             v_pr.tipo_lavado, v_pr.fecha_ingreso, v_pr.lista_lavanderia_id,
             'Dividido de terno ' || v_pr.codigo, v_pr.necesita_compostura)
     returning id into v_pant;
-  insert into prenda_historial (pasada_id, etapa_nueva, empleado_id, obs, registrado_por)
-    values (v_pant, v_pr.etapa, v_actor, 'Dividido: Pantalón de terno ' || v_pr.codigo, v_sesion);
+  insert into prenda_historial (pasada_id, etapa_nueva, empleado_id, obs, registrado_por, fecha)
+    values (v_pant, v_pr.etapa, v_actor, 'Dividido: Pantalón de terno ' || v_pr.codigo, v_sesion, clock_timestamp());
 
   update prenda_pasada set
     dividida = true, etapa = 'dividido',
     dividida_en = v_saco::text || ',' || v_pant::text, fecha_actualizado = now()
   where id = p_id;
-  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por)
-    values (p_id, v_pr.etapa, 'dividido', v_actor, 'Terno dividido en Saco + Pantalón', v_sesion);
+  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
+    values (p_id, v_pr.etapa, 'dividido', v_actor, 'Terno dividido en Saco + Pantalón', v_sesion, clock_timestamp());
 end;
 $$;
 revoke execute on function pipeline_dividir(uuid, uuid) from public, anon;
@@ -609,8 +878,8 @@ begin
   update prenda_pasada set
     dividida = false, dividida_en = null, etapa = v_etapa_original, fecha_actualizado = now()
   where id = p_id;
-  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por)
-    values (p_id, 'dividido', v_etapa_original, v_actor, 'Deshacer división: vuelve a ' || v_etapa_original, v_sesion);
+  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
+    values (p_id, 'dividido', v_etapa_original, v_actor, 'Deshacer división: vuelve a ' || v_etapa_original, v_sesion, clock_timestamp());
 end;
 $$;
 revoke execute on function pipeline_deshacer_division(uuid, uuid) from public, anon;
@@ -633,14 +902,14 @@ begin
 
   if p_aceptada then
     update prenda_pasada set etapa = 'recibido', fecha_actualizado = now() where id = p_id;
-    insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por)
-      values (p_id, v_etapa, 'recibido', v_actor, 'Recibida y aceptada en tienda', v_sesion);
+    insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
+      values (p_id, v_etapa, 'recibido', v_actor, 'Recibida y aceptada en tienda', v_sesion, clock_timestamp());
   else
     update prenda_pasada set etapa = p_destino, envio_id = null, aprobada = false, fecha_actualizado = now()
       where id = p_id;
-    insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por)
+    insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
       values (p_id, v_etapa, p_destino, v_actor,
-              'Observada en tienda → ' || p_destino || coalesce(': ' || nullif(p_obs, ''), ''), v_sesion);
+              'Observada en tienda → ' || p_destino || coalesce(': ' || nullif(p_obs, ''), ''), v_sesion, clock_timestamp());
   end if;
 end;
 $$;
