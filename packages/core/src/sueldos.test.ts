@@ -1285,3 +1285,22 @@ describe('proximoPagoPendiente — dónde puede empezar un cambio de frecuencia 
     expect(proximoPagoPendiente(contrato, [], '2027-02-09')).toBeNull();
   });
 });
+
+describe('frecuencia flexible — hallazgos del verificador (core)', () => {
+  it('cambiar sólo la cuota de un contrato quincenal NO mueve los días de corte', () => {
+    const contrato = { fechaInicio: '2026-08-10', fechaFin: '2026-12-09', modalidad: 'quincenal' as const, sueldoPactado: 325 };
+    const sin = calendarioDePagos(contrato, []);
+    const con = calendarioDePagos(contrato, [{ desde: '2026-10-25', modalidad: 'quincenal', sueldoPactado: 350 }]);
+    expect(rangos(con)).toEqual(rangos(sin));
+    expect(con.find((t) => t.desde === '2026-10-25')?.cuota).toBe(350);
+    expect(frecuenciaVigente(contrato, [{ desde: '2026-10-25', modalidad: 'quincenal', sueldoPactado: 350 }], '2026-11-10').ancla).toBe('2026-08-10');
+  });
+
+  it('cuotaDeLiquidacion y calendarioDePagos coinciden cuando un cambio corta un tramo a la mitad', () => {
+    const contrato = { fechaInicio: '2026-08-07', fechaFin: '2027-02-06', modalidad: 'mensual' as const, sueldoPactado: 650 };
+    const cambios = [{ desde: '2026-09-20', modalidad: 'semanal' as const, sueldoPactado: 150 }];
+    const t = calendarioDePagos(contrato, cambios).find((x) => x.desde === '2026-09-07')!;
+    expect(t).toMatchObject({ hasta: '2026-09-19', corto: true, cuota: 281.67 });
+    expect(cuotaDeLiquidacion(contrato, cambios, t.desde, t.hasta)).toBe(t.cuota);
+  });
+});
