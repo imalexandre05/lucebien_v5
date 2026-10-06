@@ -1495,3 +1495,20 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+---
+
+## Login seguro — defaults tomados el 6-oct-2026 ([spec](superpowers/specs/permisos/2026-10-06-login-usuario-contrasena-design.md))
+
+Ninguno lo confirmó el dueño; los tres son editables en `/configuracion` → «Acceso» y están
+sembrados en `0123_login_seguro.sql` con el comentario de default provisional.
+
+- **`acceso_contrasena_min` = 8 caracteres.** Sin reglas de composición (mayúscula, símbolo): se
+  prefiere una frase larga. Si el dueño quiere composición, es un cambio de código en
+  `validarContrasenaNueva()` (core), no un parámetro.
+- **`acceso_intentos_max` = 5** fallos seguidos antes de bloquear.
+- **`acceso_bloqueo_min` = 15** minutos de bloqueo.
+- **Sistema viejo, `/api/auth/login-code`:** 5 fallos por IP en 15 min y 30 fallos globales en 24 h
+  (fijos en `routes/limitador-intentos.js`: el sistema está congelado y no tiene pantalla de
+  configuración). Riesgo residual ≈ 5 % por día de que un atacante sostenido acierte algún código.
+  **Pendiente de decisión:** retirar `/login-code` cuando el kanban viejo deje de usarse.
