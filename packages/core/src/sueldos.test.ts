@@ -10,6 +10,7 @@ import {
   cuotaDelTramo,
   calendarioDePagos,
   frecuenciaVigente,
+  cuotaDeLiquidacion,
   liquidacionesCruzadas,
   PARAMETROS_SUELDO_DEFAULT,
   type EntradaLiquidacion,
@@ -1238,5 +1239,31 @@ describe('frecuencia flexible — caso 6: contratos existentes, regresión', () 
   it('sin filas de cambios la frecuencia vigente es la del contrato', () => {
     const contrato = { fechaInicio: '2026-08-10', fechaFin: '2027-02-09', modalidad: 'semanal' as const, sueldoPactado: 200 };
     expect(frecuenciaVigente(contrato, [], '2026-09-01')).toMatchObject({ modalidad: 'semanal', sueldoPactado: 200, ancla: '2026-08-10' });
+  });
+});
+
+describe('cuotaDeLiquidacion — la cuota que recibe el motor para el tramo que se liquida', () => {
+  const contrato = { fechaInicio: '2026-08-10', fechaFin: '2027-02-14', modalidad: 'mensual' as const, sueldoPactado: 650 };
+  const cambios = [{ desde: '2026-11-10', modalidad: 'quincenal' as const, sueldoPactado: 325 }];
+
+  it('un tramo cualquiera cobra la cuota vigente entera (igual que hoy)', () => {
+    expect(cuotaDeLiquidacion(contrato, [], '2026-08-10', '2026-09-09')).toBe(650);
+    // El administrador puede elegir un rango que no coincide con la frecuencia: sin prorrateo.
+    expect(cuotaDeLiquidacion(contrato, [], '2026-08-10', '2026-08-20')).toBe(650);
+  });
+
+  it('sólo el ÚLTIMO tramo, si es más corto que la frecuencia, se prorratea', () => {
+    // 10-feb a 14-feb: 5 días de un período de 28 (10-feb a 9-mar).
+    expect(cuotaDeLiquidacion(contrato, [], '2027-02-10', '2027-02-14')).toBe(116.07);
+  });
+
+  it('usa la cuota del cambio desde su fecha, y la anterior antes', () => {
+    expect(cuotaDeLiquidacion(contrato, cambios, '2026-10-10', '2026-11-09')).toBe(650);
+    expect(cuotaDeLiquidacion(contrato, cambios, '2026-11-10', '2026-11-24')).toBe(325);
+  });
+
+  it('último tramo corto bajo una frecuencia cambiada: prorrateo sobre la quincena', () => {
+    // 10-feb a 14-feb es una quincena completa (10 al 24-feb) cortada en 5 de 15 días.
+    expect(cuotaDeLiquidacion(contrato, cambios, '2027-02-10', '2027-02-14')).toBe(108.33);
   });
 });
