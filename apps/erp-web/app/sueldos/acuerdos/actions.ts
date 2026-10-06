@@ -1,13 +1,16 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { ParametrosSueldo } from '@scilb/core';
+import { validarCadaDias, type ParametrosSueldo } from '@scilb/core';
 import { getSesion } from '../../../lib/auth';
 import {
   actualizarAcuerdo,
   cambiarEstadoAcuerdo,
+  cambiarFrecuencia,
   crearAcuerdo,
+  planDeCambio,
   type AcuerdoInput,
+  type CambioFrecuenciaInput,
   type EstadoAcuerdo,
   type ModalidadAcuerdo,
 } from '../../../lib/sueldos-repo';
@@ -39,6 +42,7 @@ export type AcuerdoForm = {
   fechaInicio: string;
   fechaFin: string;
   modalidad: ModalidadAcuerdo;
+  cadaDias: number | null;
   sueldoPactado: number;
   escala: number | null;
   almuerzoHabilitado: boolean;
@@ -57,6 +61,13 @@ function validar(f: AcuerdoForm): string | null {
   if (!f.empleadoId) return 'Elegí a la persona del contrato.';
   if (!f.fechaInicio || !f.fechaFin) return 'El contrato necesita fecha de inicio y de fin.';
   if (f.fechaFin < f.fechaInicio) return 'La fecha de fin no puede ser anterior a la de inicio.';
+  if (f.modalidad === 'dias') {
+    try {
+      validarCadaDias(f.cadaDias);
+    } catch (e) {
+      return e instanceof Error ? e.message : 'Cada cuántos días se paga tiene que estar entre 1 y 62.';
+    }
+  }
   if (!Number.isFinite(f.sueldoPactado) || f.sueldoPactado <= 0) {
     return 'El sueldo pactado tiene que ser mayor que cero.';
   }
@@ -88,6 +99,7 @@ const aInput = (f: AcuerdoForm): AcuerdoInput => ({
   fechaInicio: f.fechaInicio,
   fechaFin: f.fechaFin,
   modalidad: f.modalidad,
+  cadaDias: f.modalidad === 'dias' ? f.cadaDias : null,
   sueldoPactado: f.sueldoPactado,
   escala: f.escala,
   almuerzoHabilitado: f.almuerzoHabilitado,
@@ -159,5 +171,60 @@ export async function accionCambiarEstado(id: string, estado: EstadoAcuerdo): Pr
     return { ok: true, id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'No se pudo cambiar el estado.' };
+  }
+}
+
+// ── Cambiar cómo se paga (spec frecuencia-pago-flexible §3.2 y §6) ───────────────────────────
+
+export type PlanCambio = {
+  /** Primer día del próximo pago sin pagar: desde ahí rige el cambio. Null si ya está todo pagado. */
+  desde: string | null;
+  /** Cuántos días y qué cuota tiene hoy ese pago, para sugerir una proporcional. */
+  frecuenciaActual: { modalidad: ModalidadAcuerdo; cadaDias: number | null; sueldoPactado: number };
+  fechaFin: string;
+  /** Borradores que se cruzan con el cambio: hay que recalcularlos después. */
+  borradores: { id: string; periodoDesde: string; periodoHasta: string }[];
+};
+
+export async function accionPlanDeCambio(acuerdoId: string): Promise<{ ok: boolean; error?: string; plan?: PlanCambio }> {
+  try {
+    if (!(await admin())) return { ok: false, error: 'Sólo el administrador o el dueño pueden cambiar cómo se paga.' };
+    const { acuerdo, proximo, borradores } = await planDeCambio(acuerdoId);
+    const base = proximo
+      ? { modalidad: proximo.modalidad, cadaDias: proximo.cadaDias ?? null, sueldoPactado: proximo.cuotaCompleta }
+      : { modalidad: acuerdo.modalidad, cadaDias: acuerdo.cadaDias, sueldoPactado: acuerdo.sueldoPactado };
+    return {
+      ok: true,
+      plan: {
+        desde: proximo?.desde ?? null,
+        frecuenciaActual: base,
+        fechaFin: acuerdo.fechaFin,
+        borradores: borradores.map((b) => ({ id: b.id, periodoDesde: b.periodoDesde, periodoHasta: b.periodoHasta })),
+      },
+    };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'No se pudo preparar el cambio.' };
+  }
+}
+
+/**
+ * Confirma el cambio. La cuota la manda el administrador (el panel sólo la sugiere): nunca se
+ * aplica sola (no-negociable 5). Devuelve los borradores que quedaron desactualizados para que la
+ * pantalla pida recalcularlos.
+ */
+export async function accionCambiarFrecuencia(
+  acuerdoId: string,
+  c: CambioFrecuenciaInput,
+): Promise<{ ok: boolean; error?: string; borradores?: { id: string; periodoDesde: string; periodoHasta: string }[] }> {
+  try {
+    const admId = await admin();
+    if (!admId) return { ok: false, error: 'Sólo el administrador o el dueño pueden cambiar cómo se paga.' };
+    const { borradores } = await cambiarFrecuencia(acuerdoId, c, admId);
+    revalidatePath('/sueldos/acuerdos');
+    revalidatePath('/sueldos/liquidaciones');
+    revalidatePath('/personal', 'layout');
+    return { ok: true, borradores: borradores.map((b) => ({ id: b.id, periodoDesde: b.periodoDesde, periodoHasta: b.periodoHasta })) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'No se pudo cambiar cómo se paga.' };
   }
 }

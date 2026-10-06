@@ -1,7 +1,14 @@
 import {
   MOTOR_VERSION,
+  cuotaDeLiquidacion,
+  liquidacionesCruzadas,
   liquidarPeriodo,
+  proximoPagoPendiente,
   resolverParametros,
+  validarCadaDias,
+  frecuenciaVigente,
+  type CambioFrecuencia,
+  type ModalidadPago,
   type EntradaLiquidacion,
   type Liquidacion,
   type ParametrosSueldo,
@@ -106,7 +113,36 @@ function errorSueldo(error: { message?: string; code?: string } | null): SueldoR
 // ── Acuerdos (contratos) ────────────────────────────────────────────────────────────────────
 
 export type EstadoAcuerdo = 'borrador' | 'vigente' | 'liquidado';
-export type ModalidadAcuerdo = 'mensual' | 'semanal';
+/** Cómo se corta el contrato en pagos: mensual, quincenal, semanal o cada N días (migración 0120). */
+export type ModalidadAcuerdo = ModalidadPago;
+
+/**
+ * Una fila de `sueldo_acuerdo_cambios` (0120): desde `desde` rigen esta frecuencia y esta cuota. Lo
+ * «anterior» viaja para mostrar «Quincenal S/325 (antes mensual S/650)» sin reconstruirlo.
+ */
+export type CambioAcuerdo = {
+  id: string;
+  desde: string;
+  modalidad: ModalidadAcuerdo;
+  cadaDias: number | null;
+  sueldoPactado: number;
+  modalidadAnterior: ModalidadAcuerdo | null;
+  cadaDiasAnterior: number | null;
+  sueldoPactadoAnterior: number | null;
+  creadoEn: string;
+};
+
+type RowCambio = {
+  id: string;
+  desde: string;
+  modalidad: string;
+  cada_dias: number | null;
+  sueldo_pactado: number | string;
+  modalidad_anterior: string | null;
+  cada_dias_anterior: number | null;
+  sueldo_pactado_anterior: number | string | null;
+  creado_en: string;
+};
 
 export type TurnoAcuerdo = {
   id: string;
@@ -124,6 +160,8 @@ export type AcuerdoSueldo = {
   fechaInicio: string;
   fechaFin: string;
   modalidad: ModalidadAcuerdo;
+  /** Sólo con modalidad `'dias'`: cada cuántos días se paga (1–62). */
+  cadaDias: number | null;
   sueldoPactado: number;
   escala: number | null;
   almuerzoHabilitado: boolean;
@@ -132,6 +170,8 @@ export type AcuerdoSueldo = {
   estado: EstadoAcuerdo;
   creadoEn: string;
   turnos: TurnoAcuerdo[];
+  /** Historial de cambios de frecuencia/cuota, del más viejo al más nuevo. */
+  cambios: CambioAcuerdo[];
 };
 
 type RowAcuerdo = {
@@ -140,6 +180,7 @@ type RowAcuerdo = {
   fecha_inicio: string;
   fecha_fin: string;
   modalidad: string;
+  cada_dias: number | null;
   sueldo_pactado: number | string;
   escala: number | null;
   almuerzo_habilitado: boolean;
@@ -147,6 +188,7 @@ type RowAcuerdo = {
   estado: string;
   creado_en: string;
   sueldo_acuerdo_turnos?: RowTurno[] | null;
+  sueldo_acuerdo_cambios?: RowCambio[] | null;
 };
 
 type RowTurno = {
@@ -157,7 +199,28 @@ type RowTurno = {
   lugar: string | null;
 };
 
-const SELECT_ACUERDO = '*, sueldo_acuerdo_turnos(id, dia_semana, hora_inicio, hora_fin, lugar)';
+// Una sola línea literal: supabase-js deduce el tipo del texto del select, y concatenar dos literales
+// con `+` lo vuelve `string` y rompe esa deducción.
+const SELECT_ACUERDO =
+  '*, sueldo_acuerdo_turnos(id, dia_semana, hora_inicio, hora_fin, lugar), sueldo_acuerdo_cambios(id, desde, modalidad, cada_dias, sueldo_pactado, modalidad_anterior, cada_dias_anterior, sueldo_pactado_anterior, creado_en)';
+
+function aCambio(r: RowCambio): CambioAcuerdo {
+  return {
+    id: r.id,
+    desde: (r.desde ?? '').slice(0, 10),
+    modalidad: r.modalidad as ModalidadAcuerdo,
+    cadaDias: r.cada_dias,
+    sueldoPactado: Number(r.sueldo_pactado ?? 0),
+    modalidadAnterior: (r.modalidad_anterior as ModalidadAcuerdo | null) ?? null,
+    cadaDiasAnterior: r.cada_dias_anterior,
+    sueldoPactadoAnterior: r.sueldo_pactado_anterior == null ? null : Number(r.sueldo_pactado_anterior),
+    creadoEn: r.creado_en,
+  };
+}
+
+/** Lo que el core necesita de un cambio para resolver la frecuencia vigente. */
+export const cambiosParaCore = (cambios: CambioAcuerdo[]): CambioFrecuencia[] =>
+  cambios.map((c) => ({ desde: c.desde, modalidad: c.modalidad, cadaDias: c.cadaDias, sueldoPactado: c.sueldoPactado }));
 
 // Postgres devuelve `time` como 'HH:MM:SS'. El core valida 'H:MM' o 'HH:MM' (RE_HORA acepta los
 // segundos, pero la UI no los quiere mostrar) y `sueldo_entrada` ya recorta a 'HH24:MI'. Acá se
@@ -184,6 +247,7 @@ function aAcuerdo(r: RowAcuerdo, nombre: string | null): AcuerdoSueldo {
     fechaInicio: (r.fecha_inicio ?? '').slice(0, 10),
     fechaFin: (r.fecha_fin ?? '').slice(0, 10),
     modalidad: (r.modalidad as ModalidadAcuerdo) ?? 'mensual',
+    cadaDias: r.cada_dias ?? null,
     sueldoPactado: Number(r.sueldo_pactado ?? 0),
     escala: r.escala,
     almuerzoHabilitado: Boolean(r.almuerzo_habilitado),
@@ -191,6 +255,7 @@ function aAcuerdo(r: RowAcuerdo, nombre: string | null): AcuerdoSueldo {
     estado: (r.estado as EstadoAcuerdo) ?? 'borrador',
     creadoEn: r.creado_en,
     turnos,
+    cambios: (r.sueldo_acuerdo_cambios ?? []).map(aCambio).sort((a, b) => a.desde.localeCompare(b.desde)),
   };
 }
 
@@ -227,6 +292,7 @@ export type AcuerdoInput = {
   fechaInicio: string;
   fechaFin: string;
   modalidad: ModalidadAcuerdo;
+  cadaDias: number | null;
   sueldoPactado: number;
   escala: number | null;
   almuerzoHabilitado: boolean;
@@ -254,6 +320,8 @@ function filaAcuerdo(p: Omit<AcuerdoInput, 'turnos'>) {
     fecha_inicio: p.fechaInicio,
     fecha_fin: p.fechaFin,
     modalidad: p.modalidad,
+    // Sólo 'dias' lleva N; el check de la 0120 rechaza N en cualquier otra modalidad.
+    cada_dias: p.modalidad === 'dias' ? validarCadaDias(p.cadaDias) : null,
     sueldo_pactado: p.sueldoPactado,
     escala: p.escala,
     almuerzo_habilitado: p.almuerzoHabilitado,
@@ -316,6 +384,78 @@ export async function cambiarEstadoAcuerdo(id: string, estado: EstadoAcuerdo): P
   const sb = getServerClient();
   const { error } = await sb.from('sueldo_acuerdos').update({ estado }).eq('id', id);
   if (error) throw errorSueldo(error);
+}
+
+// ── Cambio de frecuencia (migración 0120, spec frecuencia-pago-flexible §3.2) ────────────────
+
+export type CambioFrecuenciaInput = {
+  /** Primer día de la nueva frecuencia: tiene que ser el próximo pago que todavía no se pagó. */
+  desde: string;
+  modalidad: ModalidadAcuerdo;
+  cadaDias: number | null;
+  /** Cuota de CADA pago desde `desde`. La confirma el administrador: el sistema sólo la sugiere. */
+  sueldoPactado: number;
+};
+
+/** Lo último que ya se pagó de un contrato: el `periodo_hasta` más alto entre las liquidaciones cerradas. */
+function ultimaCerradaHasta(liqs: { estado: string; periodoHasta: string }[]): string | null {
+  return liqs.filter((l) => l.estado === 'cerrada').reduce<string | null>((m, l) => (m === null || l.periodoHasta > m ? l.periodoHasta : m), null);
+}
+
+/**
+ * El próximo pago sin pagar de un acuerdo y los borradores que un cambio ahí dejaría
+ * desactualizados. Lo usa la pantalla para proponer la fecha y avisar ANTES de confirmar.
+ */
+export async function planDeCambio(acuerdoId: string) {
+  const acuerdo = await obtenerAcuerdo(acuerdoId);
+  if (!acuerdo) throw new SueldoRpcError('El contrato no existe o no tenés acceso.', 'DATO');
+  const liqs = await listarLiquidaciones({ acuerdoId });
+  const proximo = proximoPagoPendiente(acuerdo, cambiosParaCore(acuerdo.cambios), ultimaCerradaHasta(liqs));
+  const borradores = proximo ? liquidacionesCruzadas(liqs, proximo.desde) : [];
+  return { acuerdo, proximo, borradores };
+}
+
+/**
+ * Cambia la frecuencia y la cuota de un contrato vigente. Aplica desde el próximo pago que todavía
+ * no se pagó: lo ya cerrado no se toca (la fila nueva sólo rige desde `desde`, y el snapshot de
+ * cada liquidación guarda la cuota que usó). Si hay un borrador que se cruza con el cambio lo
+ * devuelve para que la pantalla pida recalcularlo; no lo borra ni lo recalcula solo.
+ */
+export async function cambiarFrecuencia(
+  acuerdoId: string,
+  p: CambioFrecuenciaInput,
+  creadoPor: string,
+): Promise<{ borradores: LiquidacionResumen[] }> {
+  const { acuerdo, proximo, borradores } = await planDeCambio(acuerdoId);
+  if (!proximo) {
+    throw new SueldoRpcError('Todos los pagos de este contrato ya están pagados: no hay nada que cambiar.', 'ESTADO');
+  }
+  if (p.desde !== proximo.desde) {
+    throw new SueldoRpcError(
+      `El cambio tiene que empezar en el próximo pago sin pagar (${proximo.desde}); lo ya pagado no se toca.`,
+      'ESTADO',
+    );
+  }
+  if (!Number.isFinite(p.sueldoPactado) || p.sueldoPactado <= 0) {
+    throw new SueldoRpcError('La cuota tiene que ser mayor que cero.', 'DATO');
+  }
+  const cadaDias = p.modalidad === 'dias' ? validarCadaDias(p.cadaDias) : null;
+  const anterior = frecuenciaVigente(acuerdo, cambiosParaCore(acuerdo.cambios), p.desde);
+
+  const sb = getServerClient();
+  const { error } = await sb.from('sueldo_acuerdo_cambios').insert({
+    acuerdo_id: acuerdoId,
+    desde: p.desde,
+    modalidad: p.modalidad,
+    cada_dias: cadaDias,
+    sueldo_pactado: p.sueldoPactado,
+    modalidad_anterior: anterior.modalidad,
+    cada_dias_anterior: anterior.cadaDias ?? null,
+    sueldo_pactado_anterior: anterior.sueldoPactado,
+    creado_por: creadoPor,
+  });
+  if (error) throw errorSueldo(error);
+  return { borradores };
 }
 
 // ── Movimientos: adelantos, descuentos, bonos, capacitaciones, almuerzos ─────────────────────
@@ -591,7 +731,18 @@ export async function entradaDeAcuerdo(
     p_hasta: hasta,
   });
   if (error) throw errorSueldo(error);
-  return data as EntradaConContexto;
+  const entrada = data as EntradaConContexto;
+
+  // La RPC manda `a.sueldo_pactado` (la cuota original del contrato). Con frecuencia flexible la
+  // cuota del tramo puede ser otra —cambio de frecuencia— o ir prorrateada —último pago corto—;
+  // se resuelve en el core y se reemplaza ACÁ, en el servidor, antes del cálculo. El snapshot
+  // `entrada` que se guarda en el borrador ya lleva la cuota usada. Sin cambios ni último tramo
+  // corto, el resultado es el mismo número que mandó la RPC.
+  const acuerdo = await obtenerAcuerdo(acuerdoId);
+  if (acuerdo) {
+    entrada.sueldoPactado = cuotaDeLiquidacion(acuerdo, cambiosParaCore(acuerdo.cambios), desde, hasta);
+  }
+  return entrada;
 }
 
 /**
