@@ -350,9 +350,23 @@ describe('armarEvaluacionAGuardar', () => {
   it('los componentes automáticos vienen de la RPC y los manuales del cliente', () => {
     const r = armarEvaluacionAGuardar(rpc, escala, manual);
     expect(r.componentes).toEqual({
-      operaciones: 12, software: 11, limpieza: 10, tardanza: 15, valores: 17,
+      operaciones: 12, software: 11, limpieza: 10, tardanza: 15, valores: 17, valoresCantidad: 3,
       competencias: 14, examenes: 9, descuentoIncidencias: 200, bonusVentas: 2,
     });
+  });
+  // Spec 2026-10-04-evaluacion-guardar-recalculada §7 (H-6): la 0119 publica el 360° de una fila
+  // guardada sólo si componentes.valoresCantidad llega al mínimo; sin la clave no se publicaba nunca.
+  it('guarda valoresCantidad tal cual lo devuelve la RPC', () => {
+    expect(armarEvaluacionAGuardar({ ...rpc, valoresCantidad: 5 }, escala, manual).componentes.valoresCantidad).toBe(5);
+  });
+  it('valoresCantidad null o ausente se guarda como 0 (la base no publica sin saber cuántos votos hubo)', () => {
+    expect(armarEvaluacionAGuardar({ ...rpc, valoresCantidad: null }, escala, manual).componentes.valoresCantidad).toBe(0);
+    const { valoresCantidad: _c, ...sinCantidad } = rpc;
+    expect(armarEvaluacionAGuardar(sinCantidad, escala, manual).componentes.valoresCantidad).toBe(0);
+  });
+  it('lo que mande el cliente no cambia valoresCantidad', () => {
+    const manualConExtra = { ...manual, valoresCantidad: 99 } as unknown as typeof manual;
+    expect(armarEvaluacionAGuardar(rpc, escala, manualConExtra).componentes.valoresCantidad).toBe(3);
   });
   it('valores null (sin evaluaciones ese mes) se guarda como 0', () => {
     expect(armarEvaluacionAGuardar({ ...rpc, valores: null }, escala, manual).componentes.valores).toBe(0);
