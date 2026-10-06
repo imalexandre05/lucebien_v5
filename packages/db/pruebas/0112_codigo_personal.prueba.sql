@@ -21,7 +21,7 @@
 --   8. p_operador null → comportamiento de hoy: el actor es auth.uid().
 --   9. Un authenticated no puede leer codigo_operadores ni codigo_intentos (nadie ve tokens ni
 --      intentos por PostgREST).
---  11. authenticated no ejecuta private.empleado_por_codigo.
+--  11. authenticated no ejecuta private.codigo_pin_valido (el helper que compara el PIN).
 --  12. Las otras seis RPC (rechazar, enviar, deshacer, dividir, deshacer_division, calificar) con
 --      token (actor = dueño del código, registrado_por = sesión) y enviar sin token (= sesión).
 --  13. Cada acción con token renueva expira_en.
@@ -30,6 +30,17 @@
 --  16. El bloqueo de una sesión deja UNA notificación para el rol admin (motor existente).
 --  17. pipeline_cerrar_operador revoca el token (sólo los de la propia sesión).
 --  18. Vida máxima del token desde su emisión (codigo_operador_max_h, default 8).
+--  ENMIENDA 06-oct (spec §0): el código es usuario (`cod`) + PIN propio con hash.
+--  19. El `cod` solo ya no da token; el PIN malo responde intentos_restantes.
+--  20. pipeline_definir_pin: corto, trivial (repetido, secuencia, igual al cod) → rechazado; se guarda
+--      sólo el hash; cambiarlo exige el PIN actual; cambiarlo revoca los tokens de la persona.
+--  21. Sólo el admin borra un PIN; el PIN borrado deja de valer.
+--  22. Límite por persona: 5 fallos contra una persona desde DOS sesiones → el PIN correcto desde
+--      una TERCERA sesión responde bloqueado, y queda una notificación codigo_persona_bloqueada.
+--  23. Cuenta compartida (empleados.cuenta_compartida): sin token → CODIGO: en las RPC y no se
+--      mueve nada; con token funciona; no define PIN; sólo el admin la marca.
+--  24. H-1: A avanza, B avanza y A deshace lo de B → B pierde ESE punto y A conserva el suyo.
+--  25. H-2: deshacer a una etapa que no es la del último movimiento → TRANSICION: sin escribir.
 --  10. dispositivo_compartido(device): true sólo para un equipo APROBADO y marcado compartido;
 --      falso para uno no compartido, uno no aprobado y uno desconocido. La validación devuelve
 --      además ventana_min (la UI la usa para su cuenta de inactividad).
@@ -45,8 +56,8 @@
 -- (o pegar el archivo entero, de una sola vez, en el SQL editor de Supabase —proyecto scilb— y
 -- leer el mensaje de error P0001 que empieza con "RESULTADO 0112")
 --
--- NO SE HA EJECUTADO contra ninguna base al escribir este archivo: la migración no está aplicada
--- en ningún lado (la aplica el dueño después de revisar).
+-- Se corre en un Postgres local con `bash tools/postgres-local.sh probar 0112` (rama del PR #44).
+-- La migración no está aplicada en producción (la aplica el dueño después de revisar).
 
 create or replace function pg_temp.como(p_uid uuid) returns void language plpgsql as $f$
 begin
@@ -72,6 +83,8 @@ declare
   v_exp timestamptz; v_n2 int;
   j jsonb; v_token uuid; v_token_op2 uuid;
   v_n int; v_err text; v_emp uuid; v_reg uuid; v_etapa text;
+  v_err2 text; v_err3 text;
+  s_e uuid; s_f uuid; s_g uuid; s_h uuid; op3 uuid; op4 uuid; adm uuid; p9 uuid; p10 uuid;
   r text := '';
 begin
   -- ── Montaje (como dueño de las tablas) ─────────────────────────────────────────────────────
@@ -84,6 +97,15 @@ begin
   insert into empleados (cod, nombre, iniciales, rol) values ('P0112-SD', 'Prueba 0112 Sesion D', 'SD', 'encargado_almacen') returning id into s_d;
   insert into empleados (cod, nombre, iniciales, rol) values ('P0112-O1', 'Prueba 0112 Operador 1', 'O1', 'confeccionista') returning id into op1;
   insert into empleados (cod, nombre, iniciales, rol) values ('P0112-O2', 'Prueba 0112 Operador 2', 'O2', 'confeccionista') returning id into op2;
+
+  -- Enmienda 06-oct: cada operador define su PIN desde su propia sesión.
+  perform pg_temp.como(op1);
+  j := pipeline_definir_pin('482913', null);
+  if not (j->>'ok')::boolean then raise exception 'montaje: no se pudo definir el PIN de op1: %', j; end if;
+  perform pg_temp.como(op2);
+  j := pipeline_definir_pin('730561', null);
+  if not (j->>'ok')::boolean then raise exception 'montaje: no se pudo definir el PIN de op2: %', j; end if;
+  perform pg_temp.dueno();
 
   insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-1', 'Chaqueta', v_sede, 'recepcion') returning id into p1;
   insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-2', 'Chaqueta', v_sede, 'recepcion') returning id into p2;
@@ -106,7 +128,7 @@ begin
 
   -- ── 1) Código válido → token; con el token los puntos van al dueño del código ──────────────
   perform pg_temp.como(s_a);
-  j := pipeline_validar_codigo('P0112-O1', 'equipo-prueba');
+  j := pipeline_validar_codigo('P0112-O1', '482913', 'equipo-prueba');
   if (j->>'ok')::boolean and (j->>'token') is not null and j->>'nombre' = 'Prueba 0112 Operador 1' then
     r := r || '[ok] caso 1a: código válido devuelve ok, token y nombre;';
     v_token := (j->>'token')::uuid;
@@ -139,7 +161,7 @@ begin
   -- ── 2) Código inválido → ok:false sin excepción, y el intento queda escrito ────────────────
   perform pg_temp.como(s_b);
   begin
-    j := pipeline_validar_codigo('NO-EXISTE-0112', 'equipo-prueba');
+    j := pipeline_validar_codigo('NO-EXISTE-0112', '135790', 'equipo-prueba');
     v_err := null;
   exception when others then
     v_err := sqlerrm;
@@ -154,7 +176,7 @@ begin
 
   -- ── 3) Suspendido: su código no da token; un token ya emitido deja de valer ────────────────
   perform pg_temp.como(s_a);
-  j := pipeline_validar_codigo('P0112-O2', 'equipo-prueba');
+  j := pipeline_validar_codigo('P0112-O2', '730561', 'equipo-prueba');
   v_token_op2 := (j->>'token')::uuid;
   perform pg_temp.dueno();
   update empleados set activo = false where id = op2;
@@ -171,7 +193,7 @@ begin
   else
     r := r || format('[FALLA] caso 3a: err=%s etapa=%s;', v_err, v_etapa);
   end if;
-  j := pipeline_validar_codigo('P0112-O2', 'equipo-prueba');
+  j := pipeline_validar_codigo('P0112-O2', '730561', 'equipo-prueba');
   if not (j->>'ok')::boolean and (j->>'token') is null then
     r := r || '[ok] caso 3b: el código de un suspendido no emite token;';
   else
@@ -236,9 +258,9 @@ begin
   -- ── 4) Límite: 5 fallos en 15 min → el 6.º intento bloqueado aun con código correcto ────────
   perform pg_temp.como(s_d);
   for i in 1..5 loop
-    perform pipeline_validar_codigo('MALO-' || i, 'equipo-prueba');
+    perform pipeline_validar_codigo('MALO-' || i, '135790', 'equipo-prueba');
   end loop;
-  j := pipeline_validar_codigo('P0112-O1', 'equipo-prueba');   -- correcto, pero ya bloqueado
+  j := pipeline_validar_codigo('P0112-O1', '482913', 'equipo-prueba');   -- correcto, pero ya bloqueado
   if not (j->>'ok')::boolean and (j->>'token') is null and coalesce((j->>'bloqueado_min')::int, 0) > 0 then
     r := r || '[ok] caso 4: tras 5 fallos el código correcto responde bloqueado y no emite token;';
   else
@@ -268,18 +290,18 @@ begin
   -- ── 11) Permisos: el helper del código NO es invocable por authenticated ────────────────────
   perform pg_temp.como(s_a);
   begin
-    perform private.empleado_por_codigo('P0112-O1');
+    perform private.codigo_pin_valido(op1, '482913');
     v_err := 'EJECUTO';
   exception when insufficient_privilege then v_err := 'denegado'; end;
   if v_err = 'denegado' then
-    r := r || '[ok] caso 11: authenticated no puede ejecutar private.empleado_por_codigo;';
+    r := r || '[ok] caso 11: authenticated no puede ejecutar private.codigo_pin_valido;';
   else
     r := r || '[FALLA] caso 11: authenticated pudo ejecutar el helper del código;';
   end if;
 
   -- ── 12) Las otras seis RPC con token: actor = dueño del código, registrado_por = sesión ─────
   perform pg_temp.como(s_a);
-  j := pipeline_validar_codigo('P0112-O1', 'equipo-prueba');
+  j := pipeline_validar_codigo('P0112-O1', '482913', 'equipo-prueba');
   v_token := (j->>'token')::uuid;
   perform pipeline_avanzar(p8, 'lavado', v_token);
   perform pipeline_deshacer(p8, 'recepcion', v_token);
@@ -355,7 +377,7 @@ begin
   update config set valor = '5.5' where clave = 'codigo_max_intentos';
   perform pg_temp.como(s_c);
   begin
-    j := pipeline_validar_codigo('NO-EXISTE-0112', 'equipo-prueba');
+    j := pipeline_validar_codigo('NO-EXISTE-0112', '135790', 'equipo-prueba');
     v_err := null;
   exception when others then v_err := sqlerrm; end;
   if v_err is null and (j->>'ok') = 'false' then
@@ -370,11 +392,11 @@ begin
   perform pg_temp.dueno();
   insert into dispositivos_autorizados (device_id, estado, compartido) values ('equipo-personal-0112', 'aprobado', false);
   perform pg_temp.como(s_b);
-  j := pipeline_validar_codigo('P0112-O1', 'equipo-personal-0112');
+  j := pipeline_validar_codigo('P0112-O1', '482913', 'equipo-personal-0112');
   v_err := j->>'motivo';
-  j := pipeline_validar_codigo('P0112-O1', 'equipo-que-no-existe');
+  j := pipeline_validar_codigo('P0112-O1', '482913', 'equipo-que-no-existe');
   v_n2 := case when j->>'motivo' = 'equipo_no_compartido' then 1 else 0 end;
-  j := pipeline_validar_codigo('P0112-O1', null);
+  j := pipeline_validar_codigo('P0112-O1', '482913', null);
   perform pg_temp.dueno();
   select count(*) into v_n from codigo_intentos where sesion_uid = s_b;
   if v_err = 'equipo_no_compartido' and v_n2 = 1 and j->>'motivo' = 'equipo_no_compartido'
@@ -396,7 +418,7 @@ begin
 
   -- ── 17) «cambiar» revoca el token en la base, y sólo los de la propia sesión ───────────────
   perform pg_temp.como(s_a);
-  j := pipeline_validar_codigo('P0112-O1', 'equipo-prueba');
+  j := pipeline_validar_codigo('P0112-O1', '482913', 'equipo-prueba');
   v_token := (j->>'token')::uuid;
   perform pg_temp.como(s_c);
   perform pipeline_cerrar_operador(v_token);          -- otra sesión: no debe borrar nada
@@ -418,7 +440,7 @@ begin
 
   -- ── 18) Vida máxima: un token emitido hace más de codigo_operador_max_h horas ya no vale ────
   perform pg_temp.como(s_a);
-  j := pipeline_validar_codigo('P0112-O1', 'equipo-prueba');
+  j := pipeline_validar_codigo('P0112-O1', '482913', 'equipo-prueba');
   v_token := (j->>'token')::uuid;
   perform pg_temp.dueno();
   update codigo_operadores
@@ -447,10 +469,153 @@ begin
   else
     r := r || '[FALLA] caso 10a: dispositivo_compartido devolvió algo inesperado;';
   end if;
-  if (select (pipeline_validar_codigo('P0112-O1', 'equipo-prueba') ->> 'ventana_min')::int) = 10 then
+  if (select (pipeline_validar_codigo('P0112-O1', '482913', 'equipo-prueba') ->> 'ventana_min')::int) = 10 then
     r := r || '[ok] caso 10b: la validación devuelve ventana_min (default 10);';
   else
     r := r || '[FALLA] caso 10b: ventana_min ausente o distinta de 10;';
+  end if;
+
+  -- ════════════════════ ENMIENDA 06-oct: PIN propio, límite por persona, cuenta compartida ════
+  perform pg_temp.dueno();
+  update config set valor = '5' where clave = 'codigo_max_intentos';
+  insert into config (clave, valor) values ('pts_lavado_normal', '1') on conflict (clave) do update set valor = '1';
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-SE', 'Prueba 0112 Sesion E', 'SE', 'encargado_almacen') returning id into s_e;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-SF', 'Prueba 0112 Sesion F', 'SF', 'encargado_almacen') returning id into s_f;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-SG', 'Prueba 0112 Sesion G', 'SG', 'encargado_almacen') returning id into s_g;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-SH', 'Prueba 0112 Cuenta PC', 'SH', 'encargado_almacen') returning id into s_h;
+  insert into empleados (cod, nombre, iniciales, rol) values ('908172', 'Prueba 0112 Operador 3', 'O3', 'confeccionista') returning id into op3;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-O4', 'Prueba 0112 Operador 4', 'O4', 'confeccionista') returning id into op4;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0112-AD', 'Prueba 0112 Admin', 'AD', 'admin') returning id into adm;
+  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-9', 'Chaqueta', v_sede, 'recepcion') returning id into p9;
+  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-10', 'Chaqueta', v_sede, 'listo') returning id into p10;
+
+  -- ── 19) El cod solo ya no sirve; el PIN malo informa los intentos que quedan ────────────────
+  perform pg_temp.como(s_e);
+  j := pipeline_validar_codigo('P0112-O1', 'P0112-O1', 'equipo-prueba');
+  v_err := j::text;
+  j := pipeline_validar_codigo('P0112-O1', '000001', 'equipo-prueba');
+  if not (v_err::jsonb->>'ok')::boolean and (v_err::jsonb->>'token') is null
+     and not (j->>'ok')::boolean and (j->>'intentos_restantes')::int between 1 and 4 then
+    r := r || '[ok] caso 19: el cod solo no da token y el PIN malo devuelve intentos_restantes;';
+  else
+    r := r || format('[FALLA] caso 19: cod_solo=%s pin_malo=%s;', v_err, j);
+  end if;
+
+  -- ── 20) Definir PIN: largo, triviales, hash, cambio con el actual, revoca tokens ────────────
+  perform pg_temp.como(op3);
+  v_err := '';
+  v_err := v_err || coalesce(pipeline_definir_pin('12345', null)->>'motivo', 'ok') || ',';     -- corto
+  v_err := v_err || coalesce(pipeline_definir_pin('777777', null)->>'motivo', 'ok') || ',';    -- repetido
+  v_err := v_err || coalesce(pipeline_definir_pin('345678', null)->>'motivo', 'ok') || ',';    -- secuencia
+  v_err := v_err || coalesce(pipeline_definir_pin('876543', null)->>'motivo', 'ok') || ',';    -- secuencia inversa
+  v_err := v_err || coalesce(pipeline_definir_pin('908172', null)->>'motivo', 'ok') || ',';    -- igual al cod
+  v_err := v_err || coalesce(pipeline_definir_pin('12a456', null)->>'motivo', 'ok') || ',';    -- no numérico
+  v_err := v_err || coalesce(pipeline_definir_pin('594038', null)->>'motivo', 'ok');           -- válido
+  perform pg_temp.dueno();
+  select count(*) into v_n from codigo_pines where empleado_id = op3 and pin_hash <> '594038' and pin_hash like '$2%';
+  if v_err = 'pin_corto,pin_trivial,pin_trivial,pin_trivial,pin_trivial,pin_corto,ok' and v_n = 1 then
+    r := r || '[ok] caso 20a: PIN corto, trivial o igual al cod se rechaza y sólo se guarda el hash;';
+  else
+    r := r || format('[FALLA] caso 20a: motivos=%s hash_ok=%s;', v_err, v_n);
+  end if;
+  perform pg_temp.como(s_e);
+  j := pipeline_validar_codigo('908172', '594038', 'equipo-prueba');
+  v_token := (j->>'token')::uuid;
+  perform pg_temp.como(op3);
+  v_err := coalesce(pipeline_definir_pin('402817', null)->>'motivo', 'ok') || ','
+        || coalesce(pipeline_definir_pin('402817', '111999')->>'motivo', 'ok') || ','
+        || coalesce(pipeline_definir_pin('402817', '594038')->>'motivo', 'ok');
+  perform pg_temp.dueno();
+  select count(*) into v_n from codigo_operadores where token = v_token;
+  perform pg_temp.como(s_e);
+  j := pipeline_validar_codigo('908172', '402817', 'equipo-prueba');
+  if v_err = 'pin_actual_incorrecto,pin_actual_incorrecto,ok' and v_n = 0 and (j->>'ok')::boolean then
+    r := r || '[ok] caso 20b: cambiar el PIN exige el actual, revoca los tokens y el nuevo vale;';
+  else
+    r := r || format('[FALLA] caso 20b: motivos=%s tokens_vivos=%s nuevo=%s;', v_err, v_n, j);
+  end if;
+
+  -- ── 21) Sólo el admin borra un PIN ─────────────────────────────────────────────────────────
+  perform pg_temp.como(s_e);
+  begin perform pipeline_borrar_pin(op3); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+  perform pg_temp.como(adm);
+  perform pipeline_borrar_pin(op3);
+  perform pg_temp.como(s_f);
+  j := pipeline_validar_codigo('908172', '402817', 'equipo-prueba');
+  if v_err like 'PERMISO:%' and not (j->>'ok')::boolean and j->>'motivo' = 'sin_pin' then
+    r := r || '[ok] caso 21: sólo el admin borra un PIN y el borrado deja de valer (motivo sin_pin);';
+  else
+    r := r || format('[FALLA] caso 21: no_admin=%s tras_borrar=%s;', v_err, j);
+  end if;
+
+  -- ── 22) Límite por persona desde varias sesiones ───────────────────────────────────────────
+  perform pg_temp.como(op4);
+  perform pipeline_definir_pin('629104', null);
+  perform pg_temp.como(s_f);
+  for i in 1..3 loop perform pipeline_validar_codigo('P0112-O4', '00000' || i, 'equipo-prueba'); end loop;
+  perform pg_temp.como(s_g);
+  for i in 1..2 loop perform pipeline_validar_codigo('P0112-O4', '00001' || i, 'equipo-prueba'); end loop;
+  perform pg_temp.como(s_c);
+  j := pipeline_validar_codigo('P0112-O4', '629104', 'equipo-prueba');   -- correcto, otra sesión
+  perform pg_temp.dueno();
+  select count(*) into v_n from notificaciones
+    where tipo = 'codigo_persona_bloqueada' and destinatario_rol = 'admin' and ref_id = op4::text;
+  if not (j->>'ok')::boolean and coalesce((j->>'bloqueado_min')::int, 0) > 0 and v_n = 1 then
+    r := r || '[ok] caso 22: 5 fallos contra una persona desde dos sesiones la bloquean para todas y avisan al admin;';
+  else
+    r := r || format('[FALLA] caso 22: respuesta=%s notificaciones=%s;', j, v_n);
+  end if;
+
+  -- ── 23) Cuenta de equipo compartido ────────────────────────────────────────────────────────
+  perform pg_temp.como(s_e);
+  begin perform empleado_marcar_cuenta_compartida(s_h, true); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+  perform pg_temp.como(adm);
+  perform empleado_marcar_cuenta_compartida(s_h, true);
+  perform pg_temp.como(s_h);
+  begin perform pipeline_avanzar(p9, 'lavado'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+  begin perform pipeline_avanzar_tanda(array[p9], 'lavado'); v_err3 := 'EJECUTO'; exception when others then v_err3 := sqlerrm; end;
+  j := pipeline_definir_pin('583920', null);
+  perform pg_temp.dueno();
+  select etapa into v_etapa from prenda_pasada where id = p9;
+  if v_err like 'PERMISO:%' and v_err2 like 'CODIGO:%' and v_err3 like 'CODIGO:%' and v_etapa = 'recepcion'
+     and j->>'motivo' = 'cuenta_compartida' then
+    r := r || '[ok] caso 23a: la cuenta compartida sin token no mueve nada, no define PIN y sólo el admin la marca;';
+  else
+    r := r || format('[FALLA] caso 23a: marcar_no_admin=%s avanzar=%s tanda=%s etapa=%s pin=%s;', v_err, v_err2, v_err3, v_etapa, j);
+  end if;
+
+  -- ── 24) H-1: deshacer quita el punto del movimiento deshecho ───────────────────────────────
+  perform pg_temp.como(s_h);
+  j := pipeline_validar_codigo('P0112-O1', '482913', 'equipo-prueba');
+  v_token := (j->>'token')::uuid;
+  perform pipeline_avanzar(p9, 'lavado', v_token);            -- A (op1) +1
+  perform pg_temp.dueno();
+  update empleados set activo = true where id = op2;           -- reactivado tras el caso 3
+  perform pg_temp.como(s_h);
+  j := pipeline_validar_codigo('P0112-O2', '730561', 'equipo-prueba');
+  v_token_op2 := (j->>'token')::uuid;
+  perform pipeline_avanzar(p9, 'empatado', v_token_op2);      -- B (op2) +1
+  perform pipeline_deshacer(p9, 'lavado', v_token);           -- A deshace lo de B
+  perform pg_temp.dueno();
+  select count(*) into v_n  from pipeline_puntos where pasada_id = p9 and empleado_id = op1;
+  select count(*) into v_n2 from pipeline_puntos where pasada_id = p9 and empleado_id = op2;
+  if v_n = 1 and v_n2 = 0 and (select etapa from prenda_pasada where id = p9) = 'lavado' then
+    r := r || '[ok] caso 24: A deshace lo de B → B pierde ese punto y A conserva el suyo;';
+  else
+    r := r || format('[FALLA] caso 24: puntos A=%s B=%s (esperaba 1/0);', v_n, v_n2);
+  end if;
+
+  -- ── 25) H-2: deshacer a una etapa arbitraria → TRANSICION: ─────────────────────────────────
+  perform pg_temp.como(s_h);
+  begin perform pipeline_deshacer(p9, 'recepcion', v_token); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+  begin perform pipeline_deshacer(p10, 'recepcion', v_token); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+  perform pg_temp.dueno();
+  if v_err like 'TRANSICION:%' and v_err2 like 'TRANSICION:%'
+     and (select etapa from prenda_pasada where id = p9) = 'lavado'
+     and (select etapa from prenda_pasada where id = p10) = 'listo' then
+    r := r || '[ok] caso 25: deshacer a una etapa que no es la del último movimiento lanza TRANSICION;';
+  else
+    r := r || format('[FALLA] caso 25: err=%s / %s;', v_err, v_err2);
   end if;
 
   raise exception 'RESULTADO 0112 --> %', r;
