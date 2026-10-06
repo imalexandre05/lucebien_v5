@@ -1304,3 +1304,47 @@ describe('frecuencia flexible — hallazgos del verificador (core)', () => {
     expect(cuotaDeLiquidacion(contrato, cambios, t.desde, t.hasta)).toBe(t.cuota);
   });
 });
+
+describe('frecuencia flexible — enmienda 9.1: el aniversario no es un pago corto (auditoría D-2)', () => {
+  it('mensual del 31-ene al 30-jul, S/1500: 6 pagos completos, S/9000', () => {
+    const contrato = { fechaInicio: '2026-01-31', fechaFin: '2026-07-30', modalidad: 'mensual' as const, sueldoPactado: 1500 };
+    const c = calendarioDePagos(contrato, []);
+    expect(c).toHaveLength(6);
+    expect(c[5]).toMatchObject({ desde: '2026-07-01', hasta: '2026-07-30', corto: false, cuota: 1500 });
+    expect(c.reduce((s, t) => s + t.cuota, 0)).toBe(9000);
+    expect(cuotaDeLiquidacion(contrato, [], '2026-07-01', '2026-07-30')).toBe(1500);
+  });
+
+  it('del 30-ene al 29-abr de S/600: el último tramo cobra 600, no 580', () => {
+    const contrato = { fechaInicio: '2026-01-30', fechaFin: '2026-04-29', modalidad: 'mensual' as const, sueldoPactado: 600 };
+    const c = calendarioDePagos(contrato, []);
+    expect(c[c.length - 1]).toMatchObject({ hasta: '2026-04-29', corto: false, cuota: 600 });
+  });
+
+  it('un último tramo que no llega al aniversario se sigue prorrateando', () => {
+    const contrato = { fechaInicio: '2026-01-31', fechaFin: '2026-07-15', modalidad: 'mensual' as const, sueldoPactado: 1500 };
+    const c = calendarioDePagos(contrato, []);
+    expect(c[c.length - 1]).toMatchObject({ desde: '2026-07-01', hasta: '2026-07-15', corto: true, cuota: 725.81 });
+  });
+});
+
+describe('frecuencia flexible — enmienda 9.2: un rango que cubre varios pagos (auditoría D-4)', () => {
+  const contrato = { fechaInicio: '2026-08-10', fechaFin: '2027-02-09', modalidad: 'mensual' as const, sueldoPactado: 1300 };
+  const cambios = [{ desde: '2026-09-10', modalidad: 'quincenal' as const, sueldoPactado: 700 }];
+
+  it('«Recalcular» del 10-sep al 09-oct tras pasar a quincenal cobra 700 + 700', () => {
+    expect(cuotaDeLiquidacion(contrato, cambios, '2026-09-10', '2026-10-09')).toBe(1400);
+  });
+
+  it('un rango alineado sin cambios cobra una cuota por pago', () => {
+    expect(cuotaDeLiquidacion(contrato, [], '2026-08-10', '2026-10-09')).toBe(2600);
+  });
+
+  it('un rango desalineado que cruza un cambio se rechaza nombrando los pagos', () => {
+    expect(() => cuotaDeLiquidacion(contrato, cambios, '2026-09-01', '2026-09-24')).toThrow(/2026-08-10.*2026-09-09/);
+  });
+
+  it('un rango desalineado sin cambio de por medio sigue como hoy (§7.6)', () => {
+    expect(cuotaDeLiquidacion(contrato, [], '2026-08-20', '2026-09-19')).toBe(1300);
+  });
+});
