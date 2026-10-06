@@ -3,7 +3,7 @@
 import { Fragment, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Ban, Calculator, Eye, Lock, RefreshCw, Save, Trash2 } from 'lucide-react';
-import { finDePeriodo, type LineaLiquidacion } from '@scilb/core';
+import { finDePeriodo, frecuenciaVigente, type LineaLiquidacion } from '@scilb/core';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -99,8 +99,8 @@ const diaSiguiente = (dia: string): string =>
  * - Si el acuerdo ya tiene liquidaciones no anuladas, sugiere desde el día siguiente al
  *   `periodoHasta` más reciente de ellas.
  * - Si no tiene ninguna, sugiere desde `fechaInicio` del acuerdo.
- * - El «hasta» sale de `finDePeriodo(desde, acuerdo.modalidad, acuerdo.fechaFin)` — UN tramo de la
- *   modalidad del contrato (mensual o semanal) que arranca en `desde`, recortado a `fechaFin` si se
+ * - El «hasta» sale de `finDePeriodo(desde, frecuencia vigente en desde, acuerdo.fechaFin)` — UN tramo de la
+ *   frecuencia vigente del contrato (mensual, quincenal, semanal o cada N días) que arranca en `desde`, recortado a `fechaFin` si se
  *   pasara del final. Addendum F-1/F-1b (revisión adversarial, 24-ago-2026): acá ANTES se usaba
  *   `calcularCiclo(desde, hoyPeru())`, que contesta "¿qué ciclo contiene HOY?" y no "qué período
  *   arranca en `desde`" — con un acuerdo vencido sugería el acuerdo ENTERO como un solo tramo, y
@@ -119,7 +119,9 @@ function sugerirRango(
   );
   const desde = ultimaHasta ? diaSiguiente(ultimaHasta) : acuerdo.fechaInicio;
 
-  const hastaRecortado = finDePeriodo(desde, acuerdo.modalidad, acuerdo.fechaFin);
+  // La frecuencia vigente en `desde` (0120): puede haber cambiado a mitad del contrato.
+  const vigente = frecuenciaVigente(acuerdo, acuerdo.cambios, desde);
+  const hastaRecortado = finDePeriodo(desde, vigente, acuerdo.fechaFin, vigente.ancla);
   // Si el acuerdo ya está cubierto de punta a punta, el recorte puede dejar `hasta` antes que
   // `desde`: es un contrato ya liquidado por completo, no hay un tramo sano que sugerir. Se evita
   // mostrar un rango invertido por defecto; el administrador de todas formas puede editarlo.

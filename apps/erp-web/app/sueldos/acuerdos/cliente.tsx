@@ -24,6 +24,8 @@ import { PersonaPicker } from '../../../components/ui/persona-picker';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import type { AcuerdoSueldo, EstadoAcuerdo, ModalidadAcuerdo } from '../../../lib/sueldos-repo';
 import { accionActualizarAcuerdo, accionCambiarEstado, accionCrearAcuerdo, type AcuerdoForm } from './actions';
+import { CambiarFrecuencia } from './cambiar-frecuencia';
+import { ComoSePaga, fechaCorta, nombreFrecuencia } from './como-se-paga';
 
 // C-2: dni/telefono/recomendaciones sólo llegan poblados cuando este tipo se usa como
 // `personaFija` (app/personal/[id]/contrato/page.tsx) — el arreglo `empleados` del picker no los
@@ -46,11 +48,6 @@ const TONO_ESTADO: Record<EstadoAcuerdo, 'gray' | 'green' | 'navy'> = {
   vigente: 'green',
   liquidado: 'navy',
 };
-
-const OPC_MODALIDAD: Opcion[] = [
-  { value: 'mensual', label: 'Mensual' },
-  { value: 'semanal', label: 'Semanal' },
-];
 
 const OPC_ALMUERZO: Opcion[] = [
   { value: 'no', label: 'Sólo en días de tiempo completo' },
@@ -112,6 +109,8 @@ type Borrador = {
   fechaInicio: string;
   fechaFin: string;
   modalidad: ModalidadAcuerdo;
+  /** Texto del campo «Cada __ días»; vacío salvo con modalidad 'dias'. */
+  cadaDias: string;
   sueldoPactado: string;
   escala: string;
   almuerzoHabilitado: boolean;
@@ -124,6 +123,7 @@ const VACIO: Borrador = {
   fechaInicio: '',
   fechaFin: '',
   modalidad: 'mensual',
+  cadaDias: '',
   sueldoPactado: '',
   escala: '',
   almuerzoHabilitado: false,
@@ -136,6 +136,7 @@ const deAcuerdo = (a: AcuerdoSueldo): Borrador => ({
   fechaInicio: a.fechaInicio,
   fechaFin: a.fechaFin,
   modalidad: a.modalidad,
+  cadaDias: a.cadaDias == null ? '' : String(a.cadaDias),
   sueldoPactado: String(a.sueldoPactado),
   escala: a.escala == null ? '' : String(a.escala),
   almuerzoHabilitado: a.almuerzoHabilitado,
@@ -223,7 +224,11 @@ function analizar(b: Borrador): {
     // veces la cuota real — si el administrador copiaba esa sugerencia al campo, pagaba de más cada
     // mes. `dias`, `horasMensuales`, `almuerzoPeriodo`/`almuerzoMensual` siguen del contrato
     // completo: son informativos sobre el contrato y siguen siendo correctos así.
-    const hastaTramo = finDePeriodo(b.fechaInicio, b.modalidad, b.fechaFin);
+    const hastaTramo = finDePeriodo(
+      b.fechaInicio,
+      { modalidad: b.modalidad, cadaDias: b.modalidad === 'dias' ? Number(b.cadaDias) : null },
+      b.fechaFin,
+    );
     const fechasTramo = diasDelPeriodo(b.fechaInicio, hastaTramo);
     const horasTramo = fechasTramo.reduce((s, f) => s + (porDia.get(diaSemanaISO(f))?.horas ?? 0), 0);
 
@@ -320,7 +325,8 @@ const claveBorrador = (personaFija: Emp | undefined) => `sueldos-acuerdo-borrado
 function leerBorrador(personaFija: Emp | undefined): Borrador | null {
   try {
     const crudo = localStorage.getItem(claveBorrador(personaFija));
-    return crudo ? (JSON.parse(crudo) as Borrador) : null;
+    // `{ ...VACIO, ...}`: un borrador guardado antes de la 0120 no trae `cadaDias`.
+    return crudo ? ({ ...VACIO, ...JSON.parse(crudo) } as Borrador) : null;
   } catch {
     return null;
   }
@@ -372,6 +378,8 @@ export function AcuerdosCliente({
   // contrato" que exige un clic más para llegar a donde ya se sabe que hay que ir.
   const arrancaEnEditor = (Boolean(abrirNuevoAlMontar) || Boolean(personaFija)) && acuerdos.length === 0;
   const [editando, setEditando] = useState<string | null>(null);
+  // «Cambiar cómo se paga» (0120): el contrato cuya frecuencia se está cambiando, o null.
+  const [cambiando, setCambiando] = useState<AcuerdoSueldo | null>(null);
   const [enEditor, setEnEditor] = useState(arrancaEnEditor);
   const [parametrosAbierto, setParametrosAbierto] = useState(false);
   // F-1: si al arrancar directo en el editor (alta encadenada) hay un borrador guardado, se
@@ -383,6 +391,17 @@ export function AcuerdosCliente({
     arrancaEnEditor ? borradorNuevo(personaFija, fechaIngresoPersona, true) : VACIO,
   );
   const [borradorRestaurado, setBorradorRestaurado] = useState(false);
+  // Al editar un contrato con cambios de frecuencia, la vista previa de pagos los respeta.
+  const cambiosEnEdicion = useMemo(
+    () =>
+      (acuerdos.find((a) => a.id === editando)?.cambios ?? []).map((c) => ({
+        desde: c.desde,
+        modalidad: c.modalidad,
+        cadaDias: c.cadaDias,
+        sueldoPactado: c.sueldoPactado,
+      })),
+    [acuerdos, editando],
+  );
 
   useEffect(() => {
     if (!arrancaEnEditor || editando) return;
@@ -466,6 +485,7 @@ export function AcuerdosCliente({
       fechaInicio: b.fechaInicio,
       fechaFin: b.fechaFin,
       modalidad: b.modalidad,
+      cadaDias: b.modalidad === 'dias' ? Number(b.cadaDias) : null,
       sueldoPactado: Number(b.sueldoPactado),
       escala: b.escala ? Number(b.escala) : null,
       almuerzoHabilitado: b.almuerzoHabilitado,
@@ -623,12 +643,15 @@ export function AcuerdosCliente({
             </div>
 
             <div>
-              <LabelGrupo>Modalidad de pago</LabelGrupo>
-              <OpcionBotones
-                opciones={OPC_MODALIDAD}
-                value={b.modalidad}
-                onChange={(x) => setB((v) => ({ ...v, modalidad: x as ModalidadAcuerdo }))}
-                ariaLabel="Modalidad"
+              <LabelGrupo>Cómo se paga</LabelGrupo>
+              <ComoSePaga
+                modalidad={b.modalidad}
+                cadaDias={b.cadaDias}
+                onChange={(modalidad, cadaDias) => setB((v) => ({ ...v, modalidad, cadaDias }))}
+                fechaInicio={b.fechaInicio}
+                fechaFin={b.fechaFin}
+                cuota={Number(b.sueldoPactado)}
+                cambios={cambiosEnEdicion}
               />
             </div>
 
@@ -721,7 +744,7 @@ export function AcuerdosCliente({
             {/* ── Sueldo ────────────────────────────────────────────────────────────────── */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label htmlFor="sueldo" required>Sueldo pactado del periodo</Label>
+                <Label htmlFor="sueldo" required>Cuota de cada pago</Label>
                 <Input
                   id="sueldo"
                   type="number"
@@ -971,7 +994,18 @@ export function AcuerdosCliente({
                     <TD>
                       {a.fechaInicio} → {a.fechaFin}
                     </TD>
-                    <TD className="capitalize">{a.modalidad}</TD>
+                    <TD>
+                      {nombreFrecuencia(a.modalidad, a.cadaDias)}
+                      {a.cambios.map((c) => (
+                        <p key={c.id} className="text-apoyo text-muted tabular-nums">
+                          Desde el {fechaCorta(c.desde)}: {nombreFrecuencia(c.modalidad, c.cadaDias).toLowerCase()}{' '}
+                          {soles(c.sueldoPactado)}
+                          {c.modalidadAnterior && c.sueldoPactadoAnterior != null
+                            ? ` (antes ${nombreFrecuencia(c.modalidadAnterior, c.cadaDiasAnterior).toLowerCase()} ${soles(c.sueldoPactadoAnterior)})`
+                            : ''}
+                        </p>
+                      ))}
+                    </TD>
                     <TD className="text-right tabular-nums">{soles(a.sueldoPactado)}</TD>
                     <TD className="text-right tabular-nums">
                       {a.turnos.length === 0 ? (
@@ -990,6 +1024,11 @@ export function AcuerdosCliente({
                             Poner vigente
                           </Button>
                         )}
+                        {a.estado === 'vigente' && (
+                          <Button variant="ghost" onClick={() => setCambiando(a)}>
+                            Cambiar cómo se paga
+                          </Button>
+                        )}
                         {a.estado !== 'liquidado' && (
                           <Button variant="ghost" onClick={() => abrirEdicion(a)} aria-label="Editar contrato">
                             <Pencil className="h-4 w-4" />
@@ -1004,6 +1043,7 @@ export function AcuerdosCliente({
           )}
         </CardContent>
       </Card>
+      {cambiando && <CambiarFrecuencia acuerdo={cambiando} onClose={() => setCambiando(null)} />}
     </>
   );
 }
