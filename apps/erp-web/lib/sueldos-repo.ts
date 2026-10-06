@@ -8,6 +8,7 @@ import {
   validarCadaDias,
   frecuenciaVigente,
   type CambioFrecuencia,
+  type ContratoPago,
   type ModalidadPago,
   type EntradaLiquidacion,
   type Liquidacion,
@@ -471,13 +472,11 @@ export async function cambiarFrecuencia(
   }
 
   // Corregir un cambio mal cargado: si ya hay uno que arranca ese día, se reemplaza (el anterior,
-  // mientras no se haya pagado nada de ahí en adelante, no tiene por qué quedar).
+  // mientras no se haya pagado nada de ahí en adelante, no tiene por qué quedar). Un solo `upsert`
+  // sobre (acuerdo_id, desde): antes era borrar y después insertar, y si el insert fallaba el cambio
+  // anterior se perdía (auditoría D-10, H8). El trigger de la 0121 rechaza tocar uno ya pagado.
   const previo = acuerdo.cambios.find((c) => c.desde === p.desde);
-  if (previo) {
-    const { error: eDel } = await sb.from('sueldo_acuerdo_cambios').delete().eq('id', previo.id);
-    if (eDel) throw errorSueldo(eDel);
-  }
-  const { error } = await sb.from('sueldo_acuerdo_cambios').insert({
+  const { error } = await sb.from('sueldo_acuerdo_cambios').upsert({
     acuerdo_id: acuerdoId,
     desde: p.desde,
     modalidad: p.modalidad,
@@ -488,7 +487,7 @@ export async function cambiarFrecuencia(
     cada_dias_anterior: previo ? previo.cadaDiasAnterior : (anterior.cadaDias ?? null),
     sueldo_pactado_anterior: previo?.sueldoPactadoAnterior ?? anterior.sueldoPactado,
     creado_por: creadoPor,
-  });
+  }, { onConflict: 'acuerdo_id,desde' });
   if (error) throw errorSueldo(error);
   return { borradores };
 }
@@ -739,7 +738,54 @@ export type EntradaConContexto = EntradaLiquidacion & {
   acuerdoId: string;
   empleadoId: string;
   modalidad: string;
+  /**
+   * Migración 0121: los datos que DECIDEN la cuota del tramo, tal como los devuelve
+   * `sueldo_entrada_pago`. Se guardan en el borrador y el cierre los compara dentro de su
+   * transacción: si cambiaron (un cambio de frecuencia, una cuota editada), responde DESACTUALIZADA.
+   * Ausentes en borradores anteriores a la 0121.
+   */
+  contratoPago?: ContratoPagoGuardado;
+  cambiosFrecuencia?: CambioFrecuenciaGuardado[];
+  /** La cuota es la de una liquidación que se corrigió, no la que da el calendario (spec §9.3). */
+  cuotaFijada?: true;
 };
+
+/** `contratoPago` tal como sale de `sueldo_entrada_pago` (0121). */
+export type ContratoPagoGuardado = {
+  fechaInicio: string;
+  fechaFin: string;
+  modalidad: ModalidadAcuerdo;
+  cadaDias: number | null;
+  sueldoPactado: number;
+};
+
+/** Cada elemento de `cambiosFrecuencia` tal como sale de `sueldo_entrada_pago` (0121). */
+export type CambioFrecuenciaGuardado = {
+  desde: string;
+  modalidad: ModalidadAcuerdo;
+  cadaDias: number | null;
+  sueldoPactado: number;
+};
+
+/**
+ * La cuota del tramo con los datos guardados en la entrada: la MISMA función del core y los MISMOS
+ * datos que el cierre compara (spec §9.3). Un rango que no tiene cuota posible (desalineado y
+ * cruzando un cambio, enmienda 9.2) se informa como ESTADO.
+ */
+function cuotaConDatosDePago(
+  contrato: ContratoPagoGuardado,
+  cambios: CambioFrecuenciaGuardado[],
+  desde: string,
+  hasta: string,
+): number {
+  const c: ContratoPago = { ...contrato, sueldoPactado: Number(contrato.sueldoPactado) };
+  const cs: CambioFrecuencia[] = cambios.map((x) => ({ ...x, sueldoPactado: Number(x.sueldoPactado) }));
+  try {
+    return cuotaDeLiquidacion(c, cs, desde, hasta);
+  } catch (e) {
+    throw new SueldoRpcError(e instanceof Error ? e.message : 'No pude calcular la cuota del tramo.', 'ESTADO');
+  }
+}
 
 /**
  * Arma la entrada de UN TRAMO del acuerdo desde la base (spec liquidación-por-tramos, C-3).
@@ -770,18 +816,28 @@ export async function entradaDeAcuerdo(
   if (error) throw errorSueldo(error);
   const entrada = data as EntradaConContexto;
 
+  // Migración 0121: los datos del calendario de pago (contrato + cambios de frecuencia) se leen con
+  // la MISMA función que usa el cierre y viajan en la entrada. El cierre los compara; la cuota se
+  // calcula acá con ellos y con nada más (una sola fuente de verdad, spec §9.3).
+  const { data: pago, error: ePago } = await sb.rpc('sueldo_entrada_pago', { p_acuerdo: acuerdoId });
+  if (ePago) throw errorSueldo(ePago);
+  const datosPago = pago as { contratoPago: ContratoPagoGuardado; cambiosFrecuencia: CambioFrecuenciaGuardado[] } | null;
+  if (!datosPago?.contratoPago) {
+    throw new SueldoRpcError('No pude leer el contrato para calcular la cuota del tramo.', 'DATO');
+  }
+  entrada.contratoPago = datosPago.contratoPago;
+  entrada.cambiosFrecuencia = datosPago.cambiosFrecuencia ?? [];
+
   // La RPC manda `a.sueldo_pactado` (la cuota original del contrato). Con frecuencia flexible la
-  // cuota del tramo puede ser otra —cambio de frecuencia— o ir prorrateada —último pago corto—;
-  // se resuelve en el core y se reemplaza ACÁ, en el servidor, antes del cálculo. El snapshot
-  // `entrada` que se guarda en el borrador ya lleva la cuota usada. Sin cambios ni último tramo
-  // corto, el resultado es el mismo número que mandó la RPC.
+  // cuota del tramo puede ser otra —cambio de frecuencia—, ir prorrateada —último pago corto— o
+  // sumar varios pagos —un rango que cubre más de uno—; se resuelve en el core y se reemplaza ACÁ,
+  // en el servidor, antes del cálculo.
   if (cuotaFija !== undefined) {
     entrada.sueldoPactado = cuotaFija;
+    entrada.cuotaFijada = true;
     return entrada;
   }
-  const acuerdo = await obtenerAcuerdo(acuerdoId);
-  if (!acuerdo) throw new SueldoRpcError('No pude leer el contrato para calcular la cuota del tramo.', 'DATO');
-  entrada.sueldoPactado = cuotaDeLiquidacion(acuerdo, cambiosParaCore(acuerdo.cambios), desde, hasta);
+  entrada.sueldoPactado = cuotaConDatosDePago(entrada.contratoPago, entrada.cambiosFrecuencia, desde, hasta);
   return entrada;
 }
 
@@ -879,19 +935,19 @@ export async function crearBorrador(
  * corregida. No es un error del administrador: hay que recalcular el borrador y cerrar de nuevo. Sin esa comprobación, esa fila quedaría sellada sin haber entrado en el pago.
  */
 export async function cerrarLiquidacion(id: string): Promise<void> {
-  // Un borrador calculado con una cuota que después cambió (cambio de frecuencia, spec §3.2) no se
-  // cierra: habría que pagar la vieja. Mismo código que la carrera de movimientos.
+  // Que la cuota guardada sea la que da el core con los datos de pago GUARDADOS (una fórmula que
+  // cambió entre el cálculo y el cierre). Que esos datos sigan siendo los de la base —un cambio de
+  // frecuencia o una cuota editada después de calcular— lo comprueba la RPC (0121) dentro de su
+  // transacción y con el contrato bloqueado: acá no se lee la base, para no abrir una carrera.
   const liq = await obtenerLiquidacion(id);
-  if (liq && liq.estado === 'borrador') {
-    const acuerdo = await obtenerAcuerdo(liq.acuerdoId);
-    if (acuerdo) {
-      const cuota = cuotaDeLiquidacion(acuerdo, cambiosParaCore(acuerdo.cambios), liq.periodoDesde, liq.periodoHasta);
-      if (cuota !== liq.entrada.sueldoPactado) {
-        throw new SueldoRpcError(
-          'La cuota de este tramo cambió después de calcular el borrador. Elimínalo y vuelve a calcularlo.',
-          'DESACTUALIZADA',
-        );
-      }
+  const e = liq?.entrada as EntradaConContexto | undefined;
+  if (liq && liq.estado === 'borrador' && e?.contratoPago && !e.cuotaFijada) {
+    const cuota = cuotaConDatosDePago(e.contratoPago, e.cambiosFrecuencia ?? [], liq.periodoDesde, liq.periodoHasta);
+    if (cuota !== e.sueldoPactado) {
+      throw new SueldoRpcError(
+        'La cuota de este tramo se calculó con otra regla. Recalcula el borrador antes de cerrarlo.',
+        'DESACTUALIZADA',
+      );
     }
   }
   const sb = getServerClient();
