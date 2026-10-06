@@ -98,3 +98,66 @@ como otra opción sin tocar las demás.
 
 El rediseño visual completo de pagos (#44) usa esta regla; se implementa en su propio PR encima de
 éste. Pago por puntos (#10) y valores pactados (#20) son PRs aparte.
+
+## 9. Enmienda del 06-oct-2026 (auditoría de dinero D-1, D-2, D-4, D-10)
+
+> Origen: `docs/auditorias/2026-10-06-sueldos.md` (rama `audit/2026-10-06-sueldos`) y la decisión
+> del dueño del 06-oct: «mensual y quincenal se cuentan desde el día en que empezó el contrato (como
+> está); el admin define el período de cada contrato y puede cambiarlo». **Pendiente de
+> confirmación de Alexander** antes de mergear: cambia cuánto se paga en los casos 9.1 y 9.2.
+
+### 9.1 El aniversario no es un pago corto (D-2)
+
+- Con frecuencia mensual, un tramo que termina el **día anterior a un aniversario** del día de
+  inicio de la frecuencia (el día de inicio recortado al último día del mes, como siempre) es un
+  pago **completo**: cobra la cuota entera, aunque el calendario encadenado lo vea más corto.
+- Por qué: el calendario mensual se corre en los meses cortos (31-ene → 28-feb, 1-mar → 31-mar…), y
+  un contrato de 6 meses exactos (31-ene al 30-jul) terminaba con un tramo «del 1 al 30 de julio»
+  prorrateado a 1500 × 30/31 = S/1451,61. Con esta regla: 6 × 1500 = **S/9000**.
+- Los cortes del calendario **no cambian** (los tramos ya pagados siguen siendo los mismos); sólo
+  cambia la decisión de si el último tramo es corto.
+- Un último tramo que no llega al aniversario se sigue prorrateando por días (§3.3).
+
+### 9.2 Un rango que cubre varios pagos cobra la suma de sus cuotas (D-4)
+
+- Si el rango que se liquida empieza donde empieza un pago del calendario y termina donde termina
+  otro, cobra la **suma de las cuotas** de los pagos que cubre (`sueldo_pactado` es la cuota de
+  **cada** pago, 0093). Ejemplo: borrador mensual del 10-sep al 09-oct (S/1300); se cambia a
+  quincenal S/700 desde el 10-sep; «Recalcular borrador» del mismo rango cobra 700 + 700 =
+  **S/1400**, no 700.
+- Si el rango **no** coincide con los bordes del calendario y además cruza un cambio de frecuencia,
+  se **rechaza** nombrando los pagos del calendario, para que se liquide cada uno por separado.
+- Si no coincide con los bordes pero no cruza ningún cambio, se mantiene lo de §7.6: la cuota
+  vigente entera, sin prorrateo.
+
+### 9.3 El cierre compara lo que decide la cuota (D-1, D-10)
+
+- La cuota de un tramo se calcula en **un solo lugar**: el core (`cuotaDeLiquidacion`), con los
+  datos del contrato (inicio, fin, frecuencia, N, cuota) y sus cambios de frecuencia.
+- Esos datos viajan en la entrada guardada en el borrador (`contratoPago`, `cambiosFrecuencia`),
+  leídos de la base con la misma función que usa el cierre. El cierre (0111) los vuelve a leer
+  **dentro de su transacción, con el contrato bloqueado**, y si no son idénticos responde
+  `DESACTUALIZADA`. La cuota derivada (`sueldoPactado` de la entrada) no se compara contra el
+  `sueldo_pactado` del contrato: se compara lo que la determina.
+- Un cambio de frecuencia y un cierre del mismo contrato se **serializan** (los dos bloquean la fila
+  del contrato): o el cambio llega antes y el cierre pide recalcular, o el cierre llega antes y el
+  cambio se rechaza por caer en lo ya pagado. Borrar un cambio que cae en lo ya pagado también se
+  rechaza.
+- Corregir una liquidación cerrada conserva la cuota con la que se pagó (`cuotaFijada` en la
+  entrada): el cierre del reemplazo no la recalcula con la regla de hoy.
+- Un borrador calculado antes de esta enmienda (sin `contratoPago`) pide recalcular una vez.
+
+### 9.4 Sigue pendiente
+
+- La pantalla para ajustar a mano la cuota del último pago corto (§3.3) **no existe todavía**
+  (auditoría D-11).
+
+### 9.5 Tests (antes del código)
+
+7. Mensual del 31-ene al 30-jul, S/1500: 6 pagos completos, total S/9000 (y el del 30-ene al 29-abr
+   de S/600 cobra 600 en el último tramo).
+8. Mensual S/1300 → quincenal S/700 desde el 10-sep: el rango 10-sep–09-oct cobra S/1400; un rango
+   desalineado que cruza el cambio se rechaza.
+9. Prueba SQL de la 0121: E1 (último tramo prorrateado) y E2 (tramo posterior a un cambio) se
+   cierran; un cambio de frecuencia confirmado después del cálculo hace que el cierre responda
+   `DESACTUALIZADA`; una corrección con cuota fijada se cierra.
