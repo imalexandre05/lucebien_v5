@@ -1557,3 +1557,6 @@ decisión del dueño todavía; ninguno es un parámetro nuevo:**
   compartido»): para esa cuenta la base rechaza toda acción del pipeline sin código. **Pregunta
   para el dueño:** ¿qué cuentas se usan hoy en las PC compartidas?
 - Deshacer quita los puntos del movimiento deshecho (a quien lo hizo), no los de quien deshace.
+- (0115, H-4) Sólo reciben puntos del pipeline los roles `admin`, `dueno`, `encargado_almacen` y
+  `confeccionista`; una tienda que avanza sus prendas las mueve pero no cobra. Regla dada por la
+  sesión maestra del dueño el 06-oct-2026; **a confirmar por Alexander** qué roles cuentan.
