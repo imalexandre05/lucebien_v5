@@ -79,3 +79,27 @@ Reabrir notas ya cerradas; proponer por defecto el último ciclo cerrado. Son de
 ## 6. Defaults inventados
 
 Ninguno.
+
+## 7. Enmienda del 06-oct-2026 — se guarda `valoresCantidad` (auditoría de pipeline H-6)
+
+> Fuente: `docs/auditorias/2026-10-06-pipeline.md` H-6 (rama `audit/2026-10-06-pipeline`). Pedido
+> por la sesión maestra del dueño el 06-oct-2026. Se escribe antes del código (Zone Guard).
+
+La 0119 (PR #56) publica el resultado de Valores 360° de una fila guardada sólo si
+`componentes.valoresCantidad >= valores_min_evaluaciones`. Nada guardaba esa clave (verificado con
+`git log -S` y grep: ni el cliente de main, ni esta rama, ni #56), así que **ninguna** evaluación
+guardada publicaba nunca su 360°.
+
+Regla: `armarEvaluacionAGuardar` guarda en `componentes` también **`valoresCantidad`** = la cantidad
+de evaluaciones 360° con que la RPC `evaluacion_componentes` calculó `valores` para ese ciclo (la
+clave `valoresCantidad` que la RPC ya devuelve desde la 0057). Igual que `valores`, sale de la RPC y
+nunca del cliente. Si la RPC no la trae (null o ausente), se guarda **0**: así la base no publica un
+360° sin saber con cuántos votos se calculó (mismo criterio que `valores` null → 0, §2). No cambia
+ninguna fórmula ni la nota.
+
+**Pruebas nuevas:** `valoresCantidad` de la RPC llega tal cual a `componentes`; si viene null o
+ausente se guarda 0; lo que mande el cliente no la cambia (el cliente sólo aporta competencias y
+exámenes).
+
+Fuera de alcance de esta enmienda: las filas **ya guardadas** sin `valoresCantidad` (las
+históricas). Qué hacer con ellas es una decisión del dueño (anotada en el PR #56).
