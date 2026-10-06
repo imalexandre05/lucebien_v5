@@ -78,3 +78,25 @@ describe('actualizarAcuerdo — vaciar un campo no lo devuelve a seguir a Config
     expect(Object.keys(p)).toHaveLength(15);
   });
 });
+
+// #39 encima de #55 (auditoría 2026-10-06, D-5/H2): el contrato guarda SU copia de la comisión, y
+// una vez guardada ya no sigue a Configuración. Si el formulario mandara lo escrito («1,5») en vez
+// de la fracción, quedaría pactado un 150 % para siempre.
+describe('comisión en % sobre los valores pactados (#39 × #55)', () => {
+  it('«1,5» en el formulario → el contrato guarda la fracción 0.015 y se vuelve a mostrar «1.5»', async () => {
+    const { porcentajeAFraccion, fraccionAPorcentaje } = await import('../porcentaje');
+    const lectura = porcentajeAFraccion('1,5');
+    expect(lectura).toEqual({ ok: true, valor: 0.015 });
+    vigentesDeConfig = { pctComision: 0.05 };
+    await crearAcuerdo({ ...base, parametros: { pctComision: (lectura as { valor: number }).valor } }, 'adm');
+    const p = insertado.fila!.parametros as Record<string, unknown>;
+    expect(p.pctComision).toBe(0.015);
+    expect(fraccionAPorcentaje(p.pctComision as number)).toBe('1.5');
+  });
+
+  it('sin tocar la comisión, el contrato nuevo copia la fracción de Configuración, no un porcentaje', async () => {
+    vigentesDeConfig = { pctComision: 0.02 };
+    await crearAcuerdo(base, 'adm');
+    expect((insertado.fila!.parametros as Record<string, unknown>).pctComision).toBe(0.02);
+  });
+});
