@@ -1520,10 +1520,18 @@ prorratea. Los demás tramos de contratos existentes liquidan exactamente igual 
 no hay dónde: `crearBorrador` no recibe cuota. Alternativa disponible hoy: un bono o ajuste manual en
 la liquidación. Pendiente de decidir si se implementa en este PR o en el de #44.
 
-**Borde conocido de la modalidad mensual (existía antes):** un contrato que arranca el 29, 30 o 31
-y cruza febrero «se corre» (30-ene → 28-feb, luego 1-mar → 31-mar…). Con el prorrateo, el último
-tramo de un contrato «30-ene al 29-abr» queda corto y cobra S/580 de S/600. No se ancló la mensual
-al día de inicio porque cambiaría los cortes de contratos que ya liquidan; decisión del dueño.
+**Borde de la modalidad mensual — resuelto el 06-oct (spec §9.1, auditoría D-2):** un contrato que
+arranca el 29, 30 o 31 y cruza febrero «se corre» (30-ene → 28-feb, luego 1-mar → 31-mar…). Los
+cortes NO se tocaron (cambiaría los de contratos que ya liquidan), pero un tramo que termina el día
+anterior a un aniversario del inicio ya no cuenta como corto: «30-ene al 29-abr» de S/600 cobra 600
+en el último tramo (antes 580) y «31-ene al 30-jul» de S/1500 cobra 6 × 1500 = S/9000 (antes
+S/48,39 menos). Sigue la decisión del dueño del 06-oct: la mensual se cuenta desde el día en que
+empezó el contrato. **Pendiente de confirmación de Alexander** (cambia lo que se paga).
+
+**Rango que cubre varios pagos (spec §9.2, auditoría D-4):** cobra la suma de las cuotas de los
+pagos del calendario que cubre, si empieza y termina en sus bordes; si no coincide con los bordes y
+cruza un cambio de frecuencia, se rechaza. No es un parámetro nuevo: es la definición de la 0093
+(`sueldo_pactado` es la cuota de cada pago) aplicada a un rango largo.
 
 Sin decidir: al crear un contrato la pantalla **avisa** cuando el último pago queda corto y
 sugiere la fecha de fin que lo completa, pero no propone una fecha de fin por defecto con el
