@@ -66,6 +66,7 @@ export async function listarConfig(): Promise<ConfigItem[]> {
       max: c.max,
       step: c.step,
       permiteVacio: c.permiteVacio,
+      unidad: c.unidad,
       guardado: fila != null,
       esPersonalizado: false,
     });
