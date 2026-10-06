@@ -76,6 +76,15 @@ begin
     (evaluada, mes_hoy,   12.00, '{"valores":20,"valoresCantidad":3,"reportes":10}', '{"valores":0.25}', 'ponderado', null),
     (ev3,      mes_hoy,   18.00, '{"valores":20,"valoresCantidad":1,"reportes":10}', '{"valores":0.25}', 'puntos',    6900);
 
+  -- Spec §8.2 (H-6): filas guardadas SIN valoresCantidad (todas las anteriores al arreglo de #46), de
+  -- meses cerrados y con 3 votos hoy. Son de ev2, para no mover los conteos de `evaluada`.
+  insert into evaluaciones_valores(evaluador_id, evaluado_id, mes, integridad, respeto, honestidad, amabilidad, relacion, actitud) values
+    (ev1, ev2, '2000-06', 4, 4, 4, 4, 4, 4), (ev3, ev2, '2000-06', 4, 4, 4, 4, 4, 4), (evaluada, ev2, '2000-06', 4, 4, 4, 4, 4, 4),
+    (ev1, ev2, '2000-07', 4, 4, 4, 4, 4, 4), (ev3, ev2, '2000-07', 4, 4, 4, 4, 4, 4), (evaluada, ev2, '2000-07', 4, 4, 4, 4, 4, 4);
+  insert into evaluaciones_mensuales(empleado_id, mes, nota_final, componentes, pesos_usados, metodo, puntos_total) values
+    (ev2, '2000-06', 13.00, '{"valores":18,"reportes":10}', '{"valores":0.25}', 'ponderado', null),
+    (ev2, '2000-07', 15.00, '{"valores":18,"reportes":10}', '{"valores":0.25}', 'puntos',    5000);
+
   insert into config(clave, valor) values
     ('valores_min_evaluaciones', '3'), ('valores_habilitado', 'true'), ('valores_modo', 'siempre'),
     ('valores_dia_inicio', '1'), ('valores_dia_fin', '31')
@@ -175,8 +184,9 @@ begin
   perform set_config('request.jwt.claims', json_build_object('sub', enc_id, 'role','authenticated')::text, true);
   begin
     execute $q$ select count(*) from evaluaciones_mensuales_visibles() $q$ into n;
-    if n = 7 then r := r || ' [ok] el encargado con datos_personas ve las 7 de otras personas;';
-    else          r := r || format(' [FALLA] el encargado con datos_personas ve %s fila(s) en vez de 7;', n); end if;
+    -- Spec §8.1 (decisión del dueño, 06-oct): cada persona sólo ve lo suyo, salvo el administrador.
+    if n = 0 then r := r || ' [ok] el encargado con datos_personas ya no ve evaluaciones de otras personas (0);';
+    else          r := r || format(' [FALLA] el encargado con datos_personas ve %s fila(s) ajenas (esperaba 0);', n); end if;
     execute format($q$ select count(*) from evaluaciones_mensuales_visibles() v
                       where (v.componentes ? 'valores' or v.componentes ? 'valoresCantidad')
                         and not (v.valores_publicos) $q$) into n;
@@ -187,6 +197,23 @@ begin
     if n = 0 then r := r || ' [ok] ni la nota de una ponderada no pública;';
     else          r := r || format(' [FALLA] %s nota(s) ponderadas no públicas visibles;', n); end if;
   exception when others then r := r || format(' [FALLA] visibles (encargado): %s;', sqlerrm); end;
+
+  -- ── 3b) H-6: fila sin valoresCantidad nunca publica el 360° (spec §8.2) ───────────────────
+  perform set_config('request.jwt.claims', json_build_object('sub', ev2, 'role','authenticated')::text, true);
+  begin
+    execute $q$ select nota_final, componentes, valores_publicos from mi_evaluacion_mensual('2000-06') $q$ into fila;
+    if fila.nota_final is null and not (fila.componentes ? 'valores') and fila.valores_publicos = false then
+      r := r || ' [ok] ponderada de mes cerrado SIN valoresCantidad: nota en null y sin valores (no se publica);';
+    else
+      r := r || format(' [FALLA] ponderada sin valoresCantidad: nota=%s componentes=%s publicos=%s;', fila.nota_final, fila.componentes, fila.valores_publicos);
+    end if;
+    execute $q$ select nota_final, componentes, valores_publicos from mi_evaluacion_mensual('2000-07') $q$ into fila;
+    if fila.nota_final = 15.00 and not (fila.componentes ? 'valores') and fila.valores_publicos = false then
+      r := r || ' [ok] puntos de mes cerrado SIN valoresCantidad: se ve la nota pero no el 360°;';
+    else
+      r := r || format(' [FALLA] puntos sin valoresCantidad: nota=%s componentes=%s publicos=%s;', fila.nota_final, fila.componentes, fila.valores_publicos);
+    end if;
+  exception when others then r := r || format(' [FALLA] H-6: %s;', sqlerrm); end;
 
   -- ── 4) anon ──────────────────────────────────────────────────────────────────────────────
   begin
