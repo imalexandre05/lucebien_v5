@@ -513,8 +513,8 @@ const diasEntre = (desde: string, hasta: string): number =>
 /**
  * La cuota de un tramo que va de `desde` a `hasta`. Un tramo completo cobra la cuota entera; uno
  * MÁS CORTO que la frecuencia (el último del contrato, spec §3.3) se prorratea por días contra el
- * período completo que arrancaba en `desde`. DEFAULT anotado en docs/pendientes-negocio.md: el
- * administrador puede ajustar la cuota antes de confirmar.
+ * período completo que arrancaba en `desde`. DEFAULT anotado en docs/pendientes-negocio.md. OJO: hoy
+ * NO hay pantalla para ajustar esa cuota antes de confirmar (la spec §3.3 lo pide; ver el PR).
  */
 export function cuotaDelTramo(
   cuota: number,
@@ -562,7 +562,15 @@ export function frecuenciaVigente(
   const orden = [...cambios].sort((a, b) => a.desde.localeCompare(b.desde));
   for (const c of orden) {
     if (c.desde <= fecha) {
-      vigente = { modalidad: c.modalidad, cadaDias: c.cadaDias ?? null, sueldoPactado: c.sueldoPactado, ancla: c.desde };
+      // Si la frecuencia sigue siendo quincenal, el ancla sigue siendo la de antes: cambiar sólo la
+      // cuota no puede correr los días de corte (10/25 pasarían a 25/9).
+      const mismaQuincena = c.modalidad === 'quincenal' && vigente.modalidad === 'quincenal';
+      vigente = {
+        modalidad: c.modalidad,
+        cadaDias: c.cadaDias ?? null,
+        sueldoPactado: c.sueldoPactado,
+        ancla: mismaQuincena ? vigente.ancla : c.desde,
+      };
     }
   }
   return vigente;
@@ -621,8 +629,9 @@ export function calendarioDePagos(contrato: ContratoPago, cambios: CambioFrecuen
  *
  * - Un tramo cobra la cuota VIGENTE en `desde` entera, como siempre: el administrador puede elegir
  *   un rango que no coincide con la frecuencia y eso no prorratea nada (regresión, spec §7.6).
- * - Sólo el ÚLTIMO tramo del contrato (termina en `fechaFin`), si es más corto que la frecuencia,
- *   se prorratea por días (spec §3.3, default anotado en docs/pendientes-negocio.md).
+ * - Sólo el ÚLTIMO tramo (termina en `fechaFin` o justo antes de un cambio de frecuencia), si es más
+ *   corto que la frecuencia, se prorratea por días (spec §3.3, default anotado en
+ *   docs/pendientes-negocio.md).
  */
 export function cuotaDeLiquidacion(
   contrato: ContratoPago,
@@ -632,7 +641,15 @@ export function cuotaDeLiquidacion(
 ): number {
   const v = frecuenciaVigente(contrato, cambios, desde);
   const natural = finDePeriodo(desde, v, undefined, v.ancla);
-  if (hasta === contrato.fechaFin && hasta < natural) {
+  // Mismo criterio de corte que calendarioDePagos(): el fin del contrato o el día antes del próximo
+  // cambio, lo que llegue primero. Un tramo cortado ahí se prorratea igual que en la vista previa.
+  let corte = contrato.fechaFin;
+  const proximoCambio = cambios.map((c) => c.desde).filter((d) => d > desde).sort()[0];
+  if (proximoCambio !== undefined) {
+    const antes = fmtFecha(msDeFecha(proximoCambio) - MS_DIA);
+    if (antes < corte) corte = antes;
+  }
+  if (hasta === corte && hasta < natural) {
     return cuotaDelTramo(v.sueldoPactado, desde, hasta, v, v.ancla);
   }
   return v.sueldoPactado;
