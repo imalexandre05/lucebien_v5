@@ -639,6 +639,20 @@ export function cuotaDeLiquidacion(
 }
 
 /**
+ * El primer pago del calendario que arranca DESPUÉS de lo último pagado (`ultimaCerradaHasta`,
+ * null si nada se pagó): ahí y sólo ahí puede empezar un cambio de frecuencia (spec §3.2, «desde el
+ * próximo pago que todavía no se pagó»). Null si ya está todo pagado.
+ */
+export function proximoPagoPendiente(
+  contrato: ContratoPago,
+  cambios: CambioFrecuencia[],
+  ultimaCerradaHasta: string | null,
+): PagoCalendario | null {
+  const pagos = calendarioDePagos(contrato, cambios);
+  return pagos.find((p) => ultimaCerradaHasta === null || p.desde > ultimaCerradaHasta) ?? null;
+}
+
+/**
  * Los borradores que un cambio de frecuencia a partir de `desde` deja desactualizados (spec §3.2):
  * los que todavía cubren días desde esa fecha. Las cerradas no se tocan nunca y las anuladas ya
  * no cuentan.
