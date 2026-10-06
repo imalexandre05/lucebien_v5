@@ -1566,3 +1566,18 @@ quedaba abierto, **sin aplicar a ninguna base** (la aplica Alexander, antes de d
 - **Decisión mía, no del dueño:** los encargados con `datos_personas` siguen viendo evaluaciones ajenas (con
   la misma regla) por `evaluaciones_mensuales_visibles()`. Si el dueño quiere que dejen de verlas, se quita
   una rama de la función.
+
+---
+
+## Valores 360° — evaluaciones históricas sin `valoresCantidad` (06-oct-2026)
+
+Hallado por la auditoría de pipeline (H-6). Hasta el arreglo del PR #46 ninguna evaluación guardada
+llevaba `componentes.valoresCantidad`; con la 0119 (PR #56) una fila `ponderado` sin esa clave queda
+para siempre con la nota «en cálculo» para la persona, y ninguna fila publica su 360°.
+**Pregunta para el dueño (sin decidir):** (a) completar `valoresCantidad` de las filas de meses ya
+cerrados con el conteo de votos de ese mes, o (b) aceptar que no se publiquen y cambiar el texto de
+la pantalla. Hasta que decida, se deja el comportamiento de la 0119. Spec
+`superpowers/specs/evaluaciones/2026-10-06-valores360-base-design.md` §8.3.
+
+Decidido por el dueño el 06-oct-2026: cada persona sólo ve su propia evaluación, salvo los
+administradores (los encargados ya no ven notas ajenas). Spec §8.1.

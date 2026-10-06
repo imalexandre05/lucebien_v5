@@ -123,3 +123,33 @@ error normal: **no hay respaldo que lea la tabla**, porque ese respaldo sería j
 contra el estado actual. 4. `migration` — `0119` (prueba verde en Postgres local). 5. `erp` — repos + pantallas +
 docs de cierre. `bash tools/verificar-local.sh` verde antes de cada commit. Nada se aplica a ninguna base: la
 aplica Alexander, y **antes** de desplegar la app (la app nueva exige las RPC).
+
+## 8. Enmienda del 06-oct-2026 — decisión del dueño y H-6
+
+> Fuentes: decisión del dueño transmitida por la sesión maestra el 06-oct-2026 («cada persona sólo
+> ve lo suyo, excepto los admins») y `docs/auditorias/2026-10-06-pipeline.md` H-6. Se escribe antes
+> del código (Zone Guard). **Manda sobre §3.3 y la fila correspondiente de §5.**
+
+**8.1 Los encargados ya no ven notas ajenas.** `evaluaciones_mensuales_visibles()` devuelve **sólo
+las evaluaciones de quien llama**, tenga o no `datos_personas`; el administrador sigue leyendo la
+tabla directo (§3.1). Se quita la rama `app_ve_datos_personas()` de
+`private.evaluaciones_mensuales_publicas` (el parámetro `p_solo_propias` queda sin efecto). La
+función pública se conserva para no romper la app; un encargado que abra la evaluación de otra
+persona ve «sin evaluación». Esto además cierra, para estas notas, el hueco de la auditoría de
+seguridad H4 (`datos_personas` ignoraba la sede).
+
+**8.2 Fila sin `valoresCantidad` (H-6).** Nada guardaba `componentes.valoresCantidad` hasta el
+arreglo del PR #46 (spec 2026-10-04-evaluacion-guardar-recalculada §7). La regla de §3 ya decía que
+una foto sin cantidad nunca es pública; la prueba lo cubre ahora explícitamente: una fila
+`ponderado` de un mes cerrado, con votos suficientes hoy pero **sin** `valoresCantidad`, sale con
+`nota_final` null y sin `valores`; una fila `puntos` en el mismo caso muestra la nota pero no el 360°.
+
+**8.3 Filas históricas — NO se decide aquí.** Toda evaluación `ponderado` guardada antes del arreglo
+de #46 no tiene `valoresCantidad` y, con esta migración, queda para siempre en «en cálculo» para la
+persona. Opciones para el dueño (anotadas en el PR #56 y en `docs/pendientes-negocio.md`):
+(a) completar `valoresCantidad` con el conteo de votos del mes (válido sólo para meses cerrados), o
+(b) aceptar que no se publiquen y decirlo en la pantalla en vez de «se publica al cerrar el mes».
+Mientras tanto se deja el comportamiento actual.
+
+**Pruebas que cambian:** «el encargado con `datos_personas` ve las 7 de otras personas» pasa a
+«el encargado con `datos_personas` ve sólo las propias (0 ajenas)»; se agrega el caso de §8.2.
