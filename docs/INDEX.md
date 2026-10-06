@@ -77,6 +77,7 @@
 | [auditoria-2026-07-02.md](auditoria-2026-07-02.md) | Segunda auditoría |
 | [auditoria-2026-08-23.md](auditoria-2026-08-23.md) | **La de antes de entregarlo a la gente.** 125 hallazgos, 58 pasados por refutación adversarial, 22 lotes de corrección. Qué estaba roto, qué atrapó el proceso, y qué queda abierto |
 | [auditoria-2026-09-12-ux-visual.md](auditoria-2026-09-12-ux-visual.md) | **Auditoría visual con sesión real (Playwright).** El desplegable del mapa de piso corregido, la queja de "rústico" no se sostuvo salvo ese caso, y un susto de Server Error que resultó ser dos suites de prueba pisándose el mismo `erp-dev` — no un bug real |
+| [auditorias/2026-10-06-seguridad.md](auditorias/2026-10-06-seguridad.md) | **Seguridad de los 22 PRs en borrador (#36–#57) y de main**, con ataques ejecutados en Postgres local. Veredicto por PR; H1 (puntos fabricables vía `prenda_pasada`) y H2 (código personal adivinable) bloquean #42/#51/#54 |
 | [auditoria-pipeline-prendas.md](auditoria-pipeline-prendas.md) | Auditoría específica del pipeline |
 | [informe-avances-2026-07-01.md](informe-avances-2026-07-01.md) | Informe de avance |
 | [fixes/](fixes/) | 15 fichas de corrección, una por hallazgo |
