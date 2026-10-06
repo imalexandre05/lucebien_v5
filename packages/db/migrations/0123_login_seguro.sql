@@ -1,0 +1,5 @@
+-- 0123_login_seguro.sql — <qué hace, en una línea>
+--
+-- Reserva hecha a mano, autorizada por la sesión maestra el 6-oct-2026: tools/reservar-migracion.sh
+-- proponía 0121, pero 0121 (feat/frecuencia-pago-flexible) y 0122 (fix/seguridad-produccion) ya
+-- están asignadas a otras sesiones que todavía no las publicaron.
