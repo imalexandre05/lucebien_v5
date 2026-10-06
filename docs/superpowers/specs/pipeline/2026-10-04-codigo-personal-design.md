@@ -29,14 +29,20 @@ cuenta era ≈ 56 % (auditoría de seguridad H2). Además `cod` es el usuario de
 - Quien no definió PIN no puede operar en el equipo compartido: la base responde
   `motivo:'sin_pin'` (el intento cuenta como fallo, para que no sirva para enumerar usuarios).
 
-**E-2. El límite de intentos vale por persona, por equipo y por sesión.** `pipeline_validar_codigo`
-registra en `codigo_intentos` también el `empleado_id` al que se apuntó. Responde bloqueado si en la
-ventana hay `codigo_max_intentos` fallos o más contra **esa persona**, o desde **ese equipo**, o
-desde **esa sesión** — aunque el PIN sea correcto. Así cambiar de cuenta o de equipo no da intentos
-nuevos contra la misma persona. Cuando una persona queda bloqueada se avisa al administrador
-(misma tabla `notificaciones`, tipo `codigo_persona_bloqueada`). Costo aceptado: alguien puede
-bloquear a otra persona por 15 minutos tecleando mal a propósito; el aviso al admin lo deja a la
-vista. La respuesta de fallo trae `intentos_restantes` y la pantalla los muestra (H-10).
+**E-2. El límite de intentos vale por persona además de por sesión.** `pipeline_validar_codigo`
+registra en `codigo_intentos` también el `empleado_id` al que se apuntó (el del usuario tecleado,
+exista o no PIN). Responde bloqueado si en la ventana hay `codigo_max_intentos` fallos o más contra
+**esa persona** (desde cualquier sesión o equipo) o desde **esa sesión** — aunque el PIN sea
+correcto. Cambiar de cuenta o de equipo ya no da intentos nuevos contra la misma persona. Con PIN de
+6 dígitos, 5 intentos cada 15 min por persona y 18 personas, acertar el PIN de **alguien** en un día
+ronda el 0,9 % (antes ≈ 56 %). No se agrega un límite por equipo: en la PC compartida los errores de
+tipeo de todos bloquearían a todos, y el límite por persona ya cubre al que prueba desde otro equipo.
+Cuando una persona o una sesión quedan bloqueadas se avisa al administrador con **una** notificación
+(tabla `notificaciones`; tipo `codigo_persona_bloqueada` si se bloqueó la persona, si no
+`codigo_sesion_bloqueada`). Costo aceptado: alguien puede bloquear 15 minutos a otra persona
+tecleando mal a propósito; el aviso al admin lo deja a la vista. Cambiar el PIN con un PIN actual
+equivocado cuenta como fallo contra la propia persona (si no, sería un atajo para probar PIN sin
+límite). La respuesta de fallo trae `intentos_restantes` y la pantalla los muestra (H-10).
 
 **E-3. La exigencia del token vive en la base, no sólo en la app** (seguridad H5). Columna nueva
 `empleados.cuenta_compartida boolean not null default false`: la marca el administrador desde
@@ -65,8 +71,8 @@ reemplazado por esto.
 - El historial del «Deshacer» se atribuye a quien deshace (actor), como hoy.
 
 **E-5. Defaults nuevos (no-negociable 5):** `codigo_pin_min_largo = 6`. Los demás no cambian
-(5 intentos / 15 min / 10 min de operador / 8 h de vida máxima), pero ahora cuentan por persona,
-equipo y sesión.
+(5 intentos / 15 min / 10 min de operador / 8 h de vida máxima), pero ahora cuentan por persona
+y por sesión.
 
 **Tests nuevos exigidos (antes del código):** PIN ≠ cod (el `cod` solo ya no da token); PIN corto o
 trivial rechazado; el hash no es el PIN; cambiar PIN exige el actual; admin borra PIN y un no-admin

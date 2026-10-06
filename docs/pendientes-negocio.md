@@ -1534,7 +1534,7 @@ Otras decisiones del implementador, sin regla de negocio detrás:
   administrador lo borra y la persona define otro. **Pregunta para el dueño:** ¿6 dígitos les
   parece bien, o prefieren 4 con el límite por persona? (con 4 dígitos y 5 intentos cada 15 min
   por persona, adivinar el PIN de una persona concreta en un día ronda el 5 %).
-- Los 5 intentos / 15 min cuentan ahora por persona, por equipo y por sesión. Efecto secundario
+- Los 5 intentos / 15 min cuentan ahora por persona y por sesión. Efecto secundario
   aceptado: alguien puede bloquear 15 min a otra persona tecleando mal; el admin recibe el aviso
   (`codigo_persona_bloqueada`).
 - La cuenta con la que se abre el equipo compartido se marca en `/dispositivos` («cuenta de equipo
