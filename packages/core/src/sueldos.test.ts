@@ -1126,11 +1126,11 @@ describe('frecuencia flexible — caso 3: último pago corto y borde #33', () =>
   const mensual = { modalidad: 'mensual' as const };
 
   it('prorratea por días: 5 de 30 días de S/650 = S/108,33', () => {
-    expect(cuotaDelTramo(650, '2026-10-10', '2026-10-14', mensual)).toBe(108.33);
+    expect(cuotaDelTramo(650, '2026-09-10', '2026-09-14', mensual)).toBe(108.33);
   });
 
   it('un tramo completo cobra la cuota entera', () => {
-    expect(cuotaDelTramo(650, '2026-10-10', '2026-11-09', mensual)).toBe(650);
+    expect(cuotaDelTramo(650, '2026-09-10', '2026-10-09', mensual)).toBe(650);
   });
 
   it('contrato «del 10 al 9»: 6 pagos completos, ninguno de 1 día', () => {
