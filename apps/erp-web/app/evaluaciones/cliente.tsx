@@ -193,7 +193,7 @@ export function EvaluacionesCliente({
     const needle = q.trim().toLowerCase();
     return evaluaciones.filter((e) => {
       if (fMes && e.mes !== fMes) return false;
-      if (fTramo && tramoEval(e.notaFinal) !== fTramo) return false;
+      if (fTramo && (e.notaFinal == null || tramoEval(e.notaFinal) !== fTramo)) return false;
       if (needle && !(e.empleadoNombre ?? '').toLowerCase().includes(needle)) return false;
       return true;
     });
@@ -201,12 +201,14 @@ export function EvaluacionesCliente({
 
   const resumen = useMemo(() => {
     const total = filtradas.length;
-    const prom = total ? filtradas.reduce((s, e) => s + e.notaFinal, 0) / total : 0;
+    // Las notas «en cálculo» (null) no entran al promedio: no valen 0, todavía no se publican.
+    const conNota = filtradas.filter((e): e is Evaluacion & { notaFinal: number } => e.notaFinal != null);
+    const prom = conNota.length ? conNota.reduce((s, e) => s + e.notaFinal, 0) / conNota.length : 0;
     return {
       total,
       promedio: prom.toFixed(2),
-      excelente: filtradas.filter((e) => tramoEval(e.notaFinal) === 'excelente').length,
-      bajo: filtradas.filter((e) => tramoEval(e.notaFinal) === 'bajo').length,
+      excelente: conNota.filter((e) => tramoEval(e.notaFinal) === 'excelente').length,
+      bajo: conNota.filter((e) => tramoEval(e.notaFinal) === 'bajo').length,
     };
   }, [filtradas]);
 
@@ -646,8 +648,9 @@ export function EvaluacionesCliente({
                 // ese default) se sigue leyendo con tramoEval; una nueva (metodo='puntos') se lee
                 // con la banda, contra los cortes ACTUALES de config (ver bandaDesdeNota).
                 const esPuntos = e.metodo === 'puntos';
-                const banda = esPuntos ? bandaDesdeNota(e.notaFinal, escala.bandaRiesgo, escala.bandaIdeal) : null;
-                const t = esPuntos ? null : tramoEval(e.notaFinal);
+                const enCalculo = e.notaFinal == null;
+                const banda = esPuntos && e.notaFinal != null ? bandaDesdeNota(e.notaFinal, escala.bandaRiesgo, escala.bandaIdeal) : null;
+                const t = esPuntos || e.notaFinal == null ? null : tramoEval(e.notaFinal);
                 const abierta = expandida === e.id;
                 return (
                   <Fragment key={e.id}>
@@ -674,9 +677,13 @@ export function EvaluacionesCliente({
                       </TD>
                       <TD className="tabular-nums text-dato text-muted">{e.mes}</TD>
                       <TD className="font-medium text-navy">{e.empleadoNombre ?? '—'}</TD>
-                      <TD className="text-right tabular-nums text-base font-bold text-navy">{e.notaFinal.toFixed(2)}</TD>
+                      <TD className="text-right tabular-nums text-base font-bold text-navy">
+                        {e.notaFinal == null ? <span className="text-sm font-normal text-muted">En cálculo</span> : e.notaFinal.toFixed(2)}
+                      </TD>
                       <TD className="pr-5">
-                        {banda ? (
+                        {enCalculo ? (
+                          <span className="text-dato text-muted">Se publica al cerrar el mes</span>
+                        ) : banda ? (
                           <Badge tone={BANDA_TONE[banda]}>{BANDA_LABEL[banda]}</Badge>
                         ) : t ? (
                           <Badge tone={TRAMO_TONE[t]}>{TRAMO_LABEL[t]}</Badge>

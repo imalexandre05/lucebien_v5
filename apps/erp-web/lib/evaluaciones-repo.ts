@@ -15,7 +15,9 @@ export type Evaluacion = {
   empleadoId: string;
   empleadoNombre: string | null;
   mes: string;
-  notaFinal: number;
+  // null = «en cálculo»: evaluación del método `ponderado` cuyo Valores 360° aún no es público (0119); con
+  // la fórmula, la nota permitiría despejar un voto. Sólo la recibe quien no es administrador.
+  notaFinal: number | null;
   // Snapshot guardado al evaluar (jsonb): desglose /20 por componente y pesos usados.
   componentes: Record<string, number> | null;
   pesosUsados: Record<string, number> | null;
@@ -25,8 +27,8 @@ export type Evaluacion = {
   metodo: MetodoEvaluacion;
   puntosTotal: number | null;
   // true cuando quien mira NO es administrador: `componentes` viene sin `valores` ni
-  // `valoresCantidad` (Valores 360° sólo se publica de un mes cerrado y con mínimo, y eso lo decide
-  // `valores_mis_puntajes`, no este listado — spec valores360-anonimato §6).
+  // `valoresCantidad` (Valores 360° sólo se publica de un mes cerrado y con mínimo; lo decide la base en
+  // `evaluaciones_mensuales_visibles`, que devuelve `valores_publicos` — spec valores360-base).
   valoresOculto?: boolean;
 };
 
@@ -79,37 +81,32 @@ export async function leerEscalaPuntos(): Promise<EscalaPuntos> {
 
 export async function listarEvaluaciones(): Promise<Evaluacion[]> {
   const sb = getServerClient();
-  const { data, error } = await sb
-    .from('evaluaciones_mensuales')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(200);
+
+  // Sólo el administrador lee la tabla directo (0119: `eval_select` quedó en `app_es_admin()`). Cualquier
+  // otro lee por `evaluaciones_mensuales_visibles` SÓLO lo propio (un encargado ya no ve notas ajenas,
+  // ni con `datos_personas`: decisión del dueño, 06-oct-2026), sin `valores`/`valoresCantidad` y con `nota_final` en null
+  // (nota «en cálculo») mientras el Valores 360° del mes no sea público: mes cerrado y con el mínimo de
+  // evaluaciones. No hay respaldo que lea la tabla si la función falta: sería justo la fuga que se cierra.
+  const sesion = await getSesion();
+  const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
+
+  const { data, error } = esAdmin
+    ? await sb.from('evaluaciones_mensuales').select('*').order('created_at', { ascending: false }).limit(200)
+    : await sb.rpc('evaluaciones_mensuales_visibles').limit(200);
   if (error) throw new Error(error.message);
   const rows = (data as Record<string, unknown>[]) ?? [];
 
   const nombre = await mapaNombres();
-
-  // El administrador ve todo. Cualquier otro (un encargado con `evaluaciones:ver` ve su propia fila,
-  // y con `datos_personas` también las ajenas) no recibe la nota de Valores 360° guardada: con pocas
-  // evaluaciones es el voto de una persona.
-  const sesion = await getSesion();
-  const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
-  const sinValores = (c: Record<string, number> | null): Record<string, number> | null => {
-    if (!c) return c;
-    const { valores: _v, valoresCantidad: _c, ...resto } = c;
-    return resto;
-  };
 
   return rows.map((r) => ({
     id: String(r.id),
     empleadoId: String(r.empleado_id),
     empleadoNombre: nombre.get(String(r.empleado_id)) ?? null,
     mes: String(r.mes ?? ''),
-    notaFinal: Number(r.nota_final ?? 0),
-    componentes: esAdmin
-      ? (r.componentes as Record<string, number> | null) ?? null
-      : sinValores((r.componentes as Record<string, number> | null) ?? null),
-    valoresOculto: !esAdmin,
+    // null = «en cálculo» (sólo para quien no es administrador). El administrador nunca lo recibe.
+    notaFinal: r.nota_final == null ? (esAdmin ? 0 : null) : Number(r.nota_final),
+    componentes: (r.componentes as Record<string, number> | null) ?? null,
+    valoresOculto: !esAdmin && r.valores_publicos !== true,
     pesosUsados: (r.pesos_usados as Record<string, number> | null) ?? null,
     cicloDesde: (r.ciclo_desde as string | null) ?? null,
     cicloHasta: (r.ciclo_hasta as string | null) ?? null,

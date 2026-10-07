@@ -1680,7 +1680,7 @@ tiene ≥ `valores_min_evaluaciones` evaluaciones; nunca en vivo* (spec §6).
 tocó), `/mi-desempeno` (muestra la nota del mes cerrado que devuelve la función, no la guardada) y
 `/evaluaciones` (un no-admin recibe `componentes` sin `valores`).
 
-**ABIERTO — requiere spec propia (RLS sobre la cadena del sueldo):** la persona sigue leyendo su propia
+**ABIERTO hasta el 06-oct-2026 → cerrado por la migración 0119 (ver «Valores 360° base» al final de este archivo):** la persona sigue leyendo su propia
 fila de `evaluaciones_mensuales` por PostgREST directo (`GET /rest/v1/evaluaciones_mensuales?select=componentes`,
 policy `eval_select` de la 0082) y ahí `componentes.valores` es el promedio guardado, sin mes cerrado
 ni mínimo; el verificador lo reprodujo (con 1 voto devuelve `{"valores": 6.0}`). Ocultarlo en las
@@ -1780,3 +1780,39 @@ Si el cliente pide otro umbral, se cambia esa constante y su test.
 Verificado contra `scilb` el 3-oct-2026, con una consulta de solo lectura: hoy no hay valores mal
 interpretados. Un solo contrato pisa la comisión (`0.01` = 1 %) y el global
 `sueldo_pct_comision` está en `0.03` (3 %).
+
+### Valores 360° base — migración 0119 (06-oct-2026, ticket #45)
+
+Spec: `docs/superpowers/specs/evaluaciones/2026-10-06-valores360-base-design.md`. Cierra lo que arriba
+quedaba abierto, **sin aplicar a ninguna base** (la aplica Alexander, antes de desplegar la app):
+
+- ✅ **Lectura directa de `evaluaciones_mensuales`:** `eval_select` queda sólo para el administrador. La
+  propia persona usa `mi_evaluacion_mensual(p_mes)`; un encargado con `datos_personas`, `evaluaciones_
+  mensuales_visibles()`. Ambas quitan `valores`/`valoresCantidad` salvo mes cerrado con el mínimo.
+- ✅ **Despeje por `nota_final`:** en una fila `ponderado`, mientras el Valores 360° del mes no sea público,
+  la nota sale `null` y la pantalla dice «en cálculo». Las filas `puntos` (todas las nuevas) no dependen de
+  `valores` y se ven siempre. Forma elegida por mí (la mínima); **el dueño puede cambiarla**.
+- ✅ **Votos fuera de mes:** `eval_valores_insert/update` sólo aceptan el mes en curso (hora Perú) con la
+  ventana abierta (`valores_habilitado/_modo/_dia_*`, mismos respaldos que la app). El administrador conserva
+  lo que tenía.
+- 🔴 **Sigue abierto:** `pagos.monto` y las liquidaciones de una evaluación `ponderado` se derivan de
+  `nota_final` y la propia persona los ve; para esas filas históricas el despeje sigue posible por ahí.
+  Toca la cadena del sueldo: spec propia.
+- **Decisión mía, no del dueño:** los encargados con `datos_personas` siguen viendo evaluaciones ajenas (con
+  la misma regla) por `evaluaciones_mensuales_visibles()`. Si el dueño quiere que dejen de verlas, se quita
+  una rama de la función.
+
+---
+
+## Valores 360° — evaluaciones históricas sin `valoresCantidad` (06-oct-2026)
+
+Hallado por la auditoría de pipeline (H-6). Hasta el arreglo del PR #46 ninguna evaluación guardada
+llevaba `componentes.valoresCantidad`; con la 0119 (PR #56) una fila `ponderado` sin esa clave queda
+para siempre con la nota «en cálculo» para la persona, y ninguna fila publica su 360°.
+**Pregunta para el dueño (sin decidir):** (a) completar `valoresCantidad` de las filas de meses ya
+cerrados con el conteo de votos de ese mes, o (b) aceptar que no se publiquen y cambiar el texto de
+la pantalla. Hasta que decida, se deja el comportamiento de la 0119. Spec
+`superpowers/specs/evaluaciones/2026-10-06-valores360-base-design.md` §8.3.
+
+Decidido por el dueño el 06-oct-2026: cada persona sólo ve su propia evaluación, salvo los
+administradores (los encargados ya no ven notas ajenas). Spec §8.1.
