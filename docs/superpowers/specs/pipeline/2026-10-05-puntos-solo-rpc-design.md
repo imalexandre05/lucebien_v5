@@ -277,3 +277,23 @@ La 0122 (`fix/seguridad-produccion`) se aplica **antes** que la 0112 y la 0115. 
 - Resultado de seguridad: el mismo. Quien no tiene derecho sobre la prenda no escribe nada; sólo
   cambia el mensaje con que se le rechaza en las RPC (`Prenda no encontrada`, que además no revela
   si la prenda existe, en lugar de `PERMISO:` desde el helper).
+
+## 13. Alineación con la 0122 (H-7) y hallazgos del verificador (07-oct-2026)
+
+La 0115 reescribe `pipeline_rechazar`, `pipeline_calificar` y `pipeline_deshacer` de la 0112, así que
+repite los mismos arreglos que la 0112 (spec del código personal §0 E-7); si no, los reabriría. Con
+los helpers `private.*` de esta migración y la misma lógica:
+
+- **`pipeline_rechazar`:** `for update` y sólo rechaza desde `control_calidad` hacia `recepcion`,
+  `lavado`, `empatado`, `refaccion`, `compostura` o `planchado` (`TRANSICION: sólo se rechaza desde
+  control de calidad hacia una etapa anterior`). Cierra el doble rechazo, que restaba dos veces al
+  culpable.
+- **`pipeline_calificar`:** portero de la 0122 (admin, almacén, sede de origen o sede destino del
+  envío de la prenda en `app_sedes()`; si no, `Prenda no encontrada`), `for update`, sólo califica
+  una prenda `enviado` y una observada vuelve a una etapa del proceso o a `control_calidad`.
+- **`pipeline_deshacer`:** último movimiento por `fecha desc, id desc` con `obs` nulo (sólo un
+  avance real: no un «Deshacer», rechazo, envío ni división), rechaza prendas divididas y desde
+  `listo` deja `aprobada = false`. Mensaje: `TRANSICION: sólo se puede deshacer el último avance de
+  la prenda`. El deshacer de un deshacer reaplicaba el movimiento sin puntos.
+- `private.pipeline_exigir_acceso` llega con la copia exacta de la 0122 por la 0112 (esta rama la
+  hereda); la 0115 no la redefine.
