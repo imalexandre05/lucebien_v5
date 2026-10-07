@@ -1495,3 +1495,20 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+## Seguridad 06-oct-2026 — retrabajo tras observación de tienda (residual del PR #59)
+
+**Sin decidir.** Hoy (y también después de la 0122) una prenda enviada que la tienda califica como
+*observada* vuelve a una etapa del proceso **sin penalizar a nadie**, y al volver a avanzarla se
+pagan otra vez los puntos de cada etapa. El verificador lo ejecutó el 07-oct: avanzar a listo →
+enviar → calificar observada a recepción → avanzar de nuevo = +7 por ciclo, repetible. Lo puede
+hacer una sola persona del almacén, porque `pipeline_calificar` admite a admin/almacén además de la
+sede destino y no exige que quien califica sea distinto de quien trabajó la prenda.
+
+Hay que decidir con Alexander:
+1. ¿El retrabajo después de una observación vuelve a pagar puntos? Si sí, ¿se penaliza a quien hizo
+   la etapa observada, como ya hace `pipeline_rechazar`?
+2. ¿Quién califica? Propuesta: sólo la sede destino del envío (o admin), nunca el almacén ni quien
+   trabajó la prenda.
+
+Hasta decidirlo, **no activar el pago por puntos (#54)**: esta vía se convierte en plata.
