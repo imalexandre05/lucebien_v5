@@ -89,8 +89,11 @@ sólo en la RPC).
 ### (b) El guard del último admin pasa a un trigger
 El guard vive sólo en la RPC `empleado_actualizar` (0114); un `update empleados set rol=...` o
 `activo=false` directo por PostgREST (policy `emp_admin_write`, FOR ALL, 0002) deja 0 admins.
-- Migración `0125_ultimo_admin_trigger.sql`: trigger `before update or delete` en `empleados`
-  (por fila). Rechaza la operación si, tras ella, no quedaría ningún empleado con
+- Migración `0125_ultimo_admin_trigger.sql`: trigger `update or delete` en `empleados` (por fila,
+  **`after`**: un `before` no ve las demás filas de la misma sentencia, y un único `update` que
+  degrade a los dos últimos admins a la vez pasaría fila por fila y dejaría 0; en `after` la
+  comprobación ya ve el resultado completo de la sentencia y, al fallar, se revierte entera).
+  Rechaza la operación si, tras ella, no quedaría ningún empleado con
   `activo = true` y `rol in ('admin','dueno')`. Cubre cambio de rol, desactivar (`activo=false`),
   cambio de `estado` (que se mantiene sincronizado con `activo`) y `delete`.
 - Sólo actúa cuando la fila afectada era admin activo y deja de serlo; el resto de ediciones no
