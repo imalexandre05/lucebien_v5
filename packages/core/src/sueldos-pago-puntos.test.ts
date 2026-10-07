@@ -150,11 +150,12 @@ describe('pago por puntos (spec §6)', () => {
     expect(liquidarPeriodo(con(MENSUAL, 6200, { ...PAGO, puntosMetaMensual: 6000 })).total).toBeLessThan(a.total);
   });
 
-  it('el redondeo es sobre el producto (§8.2, D-12): 2.000 puntos, meta 1.129,03…, S/3 → S/2.612,90', () => {
+  it('el excedente se redondea antes de multiplicar (§8.2, D-12): el detalle cuadra con el monto', () => {
     // Un mes del contrato cortado a 7 de 31 días: meta = 5.000 × 7 / 31 = 1.129,0322…
     const mes = { desde: '2026-10-01', hasta: '2026-10-07', hastaMes: '2026-10-31', puntos: 2000 };
     const l = linea(liquidarPeriodo(conMeses(tramo('2026-10-01', '2026-10-07'), [mes], { puntosMetaMensual: 5000, solesPorPunto: 3 })))!;
-    expect(l.monto).toBe(2612.9);
+    expect(l.detalle).toContain('= 870,97 × S/3');
+    expect(l.monto).toBe(2612.91);
   });
   it('un 0 es un valor, no «vacío»: meta 0 paga todos los puntos', () => {
     expect(linea(liquidarPeriodo(con(MENSUAL, 100, { puntosMetaMensual: 0, solesPorPunto: 0.05 })))?.monto).toBe(5);
