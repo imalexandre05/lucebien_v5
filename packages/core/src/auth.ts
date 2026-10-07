@@ -1,22 +1,13 @@
 import { z } from 'zod';
 import type { Rol, Usuario } from './permisos';
 
-// Login híbrido (E2): UX cod+sede de 4 dígitos por encima de Supabase Auth.
-export const loginSchema = z.object({
-  sede: z.string().min(1, 'Sede requerida'),
-  cod: z.string().regex(/^\d{4}$/, 'Código de 4 dígitos'),
-  // El código ES la credencial (login híbrido cod+sede); no se pide contraseña aparte.
-  password: z.string().optional(),
-});
-export type LoginInput = z.infer<typeof loginSchema>;
-
-// Login usuario+contraseña (LOGIN_V2): reemplaza cod+sede. `usuario` es empleados.nombre
-// (case-insensitive); la contraseña real se migra desde el hash bcrypt que ya vive en
-// empleados.password_hash (ver migración 0049) — no se inventa ni se pide texto plano nuevo
-// salvo que el admin la reasigne desde /empleados.
+// Login usuario + contraseña. `usuario` es empleados.nombre (case-insensitive). El código de 4
+// dígitos dejó de ser credencial el 6-oct-2026 (spec permisos/2026-10-06-login-usuario-contrasena):
+// el schema cod+sede que lo aceptaba como contraseña se eliminó. Las reglas de una contraseña
+// NUEVA viven en ./acceso.ts; aquí sólo se exige que no venga vacía.
 export const loginUsuarioSchema = z.object({
-  usuario: z.string().min(1, 'Usuario requerido'),
-  password: z.string().min(1, 'Contraseña requerida'),
+  usuario: z.string().trim().min(1, 'Escribe tu usuario (tu nombre).'),
+  password: z.string().min(1, 'Escribe tu contraseña.'),
 });
 export type LoginUsuarioInput = z.infer<typeof loginUsuarioSchema>;
 

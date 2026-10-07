@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../lib/auth';
 import {
   actualizarEstadoEmpleado,
-  establecerContrasenaEmpleado,
+  generarContrasenaTemporalEmpleado,
   actualizarEmpleado,
   crearEmpleado,
   empleadoBorrarAltaPrevio,
@@ -97,12 +97,12 @@ export async function accionBorrarAlta(id: string): Promise<{ ok: boolean; error
   }
 }
 
-export async function accionEstablecerContrasena(id: string, password: string): Promise<{ ok: boolean; error?: string }> {
+// Contraseña temporal (spec permisos/2026-10-06-login-usuario-contrasena §6): la devuelve UNA vez
+// para que el admin la entregue en persona. También desbloquea la cuenta.
+export async function accionContrasenaTemporal(id: string): Promise<{ ok: true; temporal: string } | { ok: false; error: string }> {
   try {
     await exigirAdmin();
-    if (password.length < 4) throw new Error('La contraseña debe tener al menos 4 caracteres');
-    await establecerContrasenaEmpleado(id, password);
-    return { ok: true };
+    return { ok: true, temporal: await generarContrasenaTemporalEmpleado(id) };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error' };
   }

@@ -85,6 +85,20 @@ export async function middleware(req: NextRequest) {
   if (features.AUTH_V2 && !user && !enLogin) return redir('/login');
   if (features.AUTH_V2 && user && enLogin) return redir('/');
 
+  // Cambio obligatorio de contraseña (spec permisos/2026-10-06-login-usuario-contrasena §7). La
+  // marca vive en app_metadata —sólo la escribe la clave de servicio, nadie se la quita por la API—
+  // y getUser() de arriba ya la trae: no cuesta una consulta más. Mientras esté puesta, la única
+  // pantalla disponible es /cambiar-contrasena (también para las server actions de otras páginas,
+  // que pasan por aquí).
+  const enCambio = path === '/cambiar-contrasena';
+  const debeCambiar = (user?.app_metadata as { debe_cambiar_contrasena?: unknown } | undefined)?.debe_cambiar_contrasena === true;
+  // Sólo se exceptúan archivos de la RAÍZ (/favicon.ico, /robots.txt…). Antes valía cualquier ruta
+  // terminada en «.algo», y una página con segmento dinámico (/colaboradores/<id>/x.y) pasaba.
+  const archivoRaiz = /^\/[^/]+\.(ico|png|svg|txt|webmanifest|xml)$/i.test(path);
+  if (features.AUTH_V2 && user && debeCambiar && !enCambio && !archivoRaiz) {
+    return redir('/cambiar-contrasena');
+  }
+
   // Device-gate: solo para usuarios autenticados, fuera de /login y /dispositivo, y no en assets.
   const enDispositivo = path === '/dispositivo';
   const esAsset = /\.[a-z0-9]+$/i.test(path);

@@ -1816,3 +1816,22 @@ la pantalla. Hasta que decida, se deja el comportamiento de la 0119. Spec
 
 Decidido por el dueño el 06-oct-2026: cada persona sólo ve su propia evaluación, salvo los
 administradores (los encargados ya no ven notas ajenas). Spec §8.1.
+---
+
+## Login seguro — defaults tomados el 6-oct-2026 ([spec](superpowers/specs/permisos/2026-10-06-login-usuario-contrasena-design.md))
+
+Ninguno lo confirmó el dueño; los tres son editables en `/configuracion` → «Acceso» y están
+sembrados en `0123_login_seguro.sql` con el comentario de default provisional.
+
+- **`acceso_contrasena_min` = 8 caracteres.** Sin reglas de composición (mayúscula, símbolo): se
+  prefiere una frase larga. Si el dueño quiere composición, es un cambio de código en
+  `validarContrasenaNueva()` (core), no un parámetro.
+- **`acceso_intentos_max` = 5** fallos seguidos antes de bloquear.
+- **`acceso_bloqueo_min` = 15** minutos de bloqueo.
+- **Sistema viejo, `/api/auth/login-code`:** 5 fallos por IP en 15 min y 20 fallos globales en 1 h
+  (fijos en `routes/limitador-intentos.js`: el sistema está congelado y no tiene pantalla de
+  configuración). 1 h y no 24 h porque `/login-code` se usa a diario (kanban, cambio de sede).
+- **🔴 Pendiente de decisión del dueño — `/api/auth/login` del sistema viejo acepta el código como
+  contraseña y no tiene límite** (`routes/auth.js:45-50`, comparación con `cod_hash`). Es la puerta
+  grande de H3 y no estaba dentro de la autorización. Opciones: el mismo limitador, o quitar esa
+  comparación. A largo plazo: retirar `/login-code` cuando el kanban viejo deje de usarse.

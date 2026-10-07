@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { getServerClient } from './supabase/server';
 import { getAdminClient } from './supabase/admin';
-import { EMAIL_DOMAIN } from './auth';
+import { verificarContrasenaConLimite } from './auth';
 
 // Reautenticación por contraseña (Fase 1): /pagos, /evaluaciones y /mi-desempeno muestran datos
 // confidenciales (salarios, evaluaciones, desempeño) en una PC que varios empleados comparten.
@@ -67,7 +67,7 @@ async function marcarReauth(userId: string): Promise<void> {
 }
 
 // Valida la contraseña contra el usuario YA EN SESIÓN (nunca cambia de identidad ni abre sesión
-// para otro empleado). Reusa el mismo email interno {cod}@lucebien.local que login()/loginConUsuario.
+// para otro empleado). Reusa el mismo email interno {cod}@lucebien.local que loginConUsuario.
 export async function verificarPasswordSesion(password: string): Promise<{ ok: boolean; error?: string }> {
   const sb = getServerClient();
   const {
@@ -78,11 +78,19 @@ export async function verificarPasswordSesion(password: string): Promise<{ ok: b
   const { data: emp } = await getAdminClient().from('empleados').select('cod').eq('id', user.id).maybeSingle();
   if (!emp) return { ok: false, error: 'No se pudo verificar tu usuario' };
 
-  const { error } = await sb.auth.signInWithPassword({
-    email: `${(emp as { cod: string }).cod}@${EMAIL_DOMAIN}`,
-    password,
-  });
-  if (error) return { ok: false, error: 'Contraseña incorrecta' };
+  // Mismo contador que el login (spec permisos/2026-10-06-login-usuario-contrasena §5): sin él, en
+  // la PC compartida se podía adivinar la contraseña de quien dejó la sesión abierta probando aquí
+  // sin límite, incluso con la cuenta ya bloqueada.
+  const res = await verificarContrasenaConLimite({ id: user.id, cod: (emp as { cod: string }).cod }, password);
+  if (!res.ok) {
+    return {
+      ok: false,
+      error:
+        res.motivo === 'bloqueado'
+          ? `Demasiados intentos fallidos. Espera ${res.minutos} min o pide al administrador una contraseña temporal.`
+          : 'Contraseña incorrecta. Escribe la misma con la que entraste.',
+    };
+  }
 
   await marcarReauth(user.id);
   return { ok: true };

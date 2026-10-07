@@ -104,9 +104,22 @@ else
   echo "  . no hay tests de repos todavia - nada que correr"
 fi
 
+# ---- 5) Los tests del sistema viejo ------------------------------------------------------
+# El limitador de /api/auth/login-code (H3, 6-oct-2026) es JS sin dependencias: corre con el
+# runner de Node. Se nombra cada archivo porque `node --test tools/pruebas/` falla en Node 22
+# (lo toma como módulo) y la carpeta también tiene tests de TypeScript que no son para Node.
+titulo "5/5 - Tests del sistema viejo (node --test)"
+if node --test tools/pruebas/limitador-intentos.test.js >/dev/null 2>&1; then
+  echo "  OK tests en verde"
+else
+  node --test tools/pruebas/limitador-intentos.test.js 2>&1 | tail -20
+  echo "  X hay tests rojos"
+  fallos=$((fallos + 1))
+fi
+
 echo
 if [ "$fallos" -gt 0 ]; then
-  echo "✗ $fallos de 4 fallaron. No commitees todavía."
+  echo "✗ $fallos de 5 fallaron. No commitees todavía."
   exit 1
 fi
-echo "✓ Los cuatro pasaron. Esto es lo mismo que va a correr CI."
+echo "✓ Los cinco pasaron. Esto es lo mismo que va a correr CI."

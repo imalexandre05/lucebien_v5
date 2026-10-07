@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LogOut, Search } from 'lucide-react';
+import { KeyRound, LogOut, Search } from 'lucide-react';
 import { ROL_LABEL, sedesPermitidas, type MatrizPermisos } from '@scilb/core';
 import { cerrarSesion } from '../../app/login/actions';
 import { getSesion } from '../../lib/auth';
@@ -106,6 +106,16 @@ export async function Topbar() {
             )}
           >
             {iniciales(nombre)}
+          </Link>
+        )}
+        {sesion && (
+          <Link
+            href="/cambiar-contrasena"
+            title="Cambiar mi contraseña"
+            aria-label="Cambiar mi contraseña"
+            className="anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
+          >
+            <KeyRound className="h-4 w-4" strokeWidth={1.75} />
           </Link>
         )}
         {sesion && (
