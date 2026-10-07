@@ -599,7 +599,7 @@ begin
       perform pg_temp.dueno();
       insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X1', 'Chaqueta', 'normal', v_a, 'lavado') returning id into x1;
       insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X2', 'Chaqueta', 'normal', v_a, 'control_calidad') returning id into x2;
-      insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id) values (x2, 'lavado', 'empatado', e_emp);
+      insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id) values (x2, 'lavado', 'empatado', e_alm);
       insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X3', 'Chaqueta', 'normal', v_a, 'listo') returning id into x3;
       insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X4', 'Chaqueta', 'normal', v_a, 'listo') returning id into x4;
       insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X5', 'Chaqueta', 'normal', v_a, 'listo') returning id into x5;
@@ -614,7 +614,7 @@ begin
       begin perform pipeline_rechazar(x2, 'lavado'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
       perform pg_temp.dueno();
       select count(*) into v_n from prenda_historial where pasada_id = x1;
-      select count(*) into v_neg from pipeline_puntos where pasada_id = x2 and empleado_id = e_emp and puntos < 0;
+      select count(*) into v_neg from pipeline_puntos where pasada_id = x2 and empleado_id = e_alm and puntos < 0;
       if v_err like 'TRANSICION:%' and v_n = 0 and (select etapa from prenda_pasada where id = x1) = 'lavado' then
         r := r || '[ok] caso 12a: rechazar desde una etapa que no es control de calidad lanza TRANSICION sin escribir;';
       else
