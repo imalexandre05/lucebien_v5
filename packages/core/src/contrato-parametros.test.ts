@@ -7,10 +7,10 @@ import { PARAMETROS_SUELDO_DEFAULT } from './sueldos';
 // Spec: docs/superpowers/specs/sueldos/2026-10-05-contrato-valores-pactados-design.md
 
 describe('parametrosDeContratoNuevo — un contrato nace con TODOS sus valores pactados', () => {
-  it('sin nada en config, copia los 15 defaults del código (metaSemanal queda fuera)', () => {
+  it('sin nada en config, copia los 17 valores pactados (metaSemanal queda fuera)', () => {
     const p = parametrosDeContratoNuevo({}, {});
     expect(Object.keys(p).sort()).toEqual([...CLAVES_PARAMETROS_CONTRATO].sort());
-    expect(Object.keys(p)).toHaveLength(15);
+    expect(Object.keys(p)).toHaveLength(17);
     expect('metaSemanal' in p).toBe(false);
     expect(p.toleranciaMinutos).toBe(PARAMETROS_SUELDO_DEFAULT.toleranciaMinutos);
     expect(p.metaSemanalFija).toBe(false);
@@ -45,9 +45,27 @@ describe('parametrosDeContratoNuevo — un contrato nace con TODOS sus valores p
     expect(contrato.toleranciaMinutos).toBe(10);
   });
 
-  it('no copia claves del core que la base todavía no admite (p. ej. las de #54)', () => {
-    const p = parametrosDeContratoNuevo({}, {});
-    expect(Object.keys(p).every((k) => (CLAVES_PARAMETROS_CONTRATO as readonly string[]).includes(k))).toBe(true);
+  it('copia las claves del pago por puntos (#54) con su valor, incluido null', () => {
+    const apagado = parametrosDeContratoNuevo({}, {});
+    expect('puntosMetaMensual' in apagado).toBe(true);
+    expect('solesPorPunto' in apagado).toBe(true);
+    expect(apagado.puntosMetaMensual).toBeNull();
+    expect(apagado.solesPorPunto).toBeNull();
+    const encendido = parametrosDeContratoNuevo({ puntosMetaMensual: 5000, solesPorPunto: 0.05 }, {});
+    expect(encendido.puntosMetaMensual).toBe(5000);
+    expect(encendido.solesPorPunto).toBe(0.05);
+    expect(Object.keys(encendido).every((k) => (CLAVES_PARAMETROS_CONTRATO as readonly string[]).includes(k))).toBe(true);
+  });
+
+  it('un null explícito del contrato en las claves de puntos gana al global (este contrato no cobra por puntos)', () => {
+    const globales = { puntosMetaMensual: 5000, solesPorPunto: 0.05 };
+    const p = parametrosDeContratoNuevo(globales, { puntosMetaMensual: null, solesPorPunto: null });
+    expect(p.puntosMetaMensual).toBeNull();
+    expect(p.solesPorPunto).toBeNull();
+    // Un undefined no pisa al global.
+    const q = parametrosDeContratoNuevo(globales, { puntosMetaMensual: undefined, solesPorPunto: undefined });
+    expect(q.puntosMetaMensual).toBe(5000);
+    expect(q.solesPorPunto).toBe(0.05);
   });
 
   it('rechaza lo que el motor rechazaría: clave desconocida, negativo', () => {
@@ -56,18 +74,18 @@ describe('parametrosDeContratoNuevo — un contrato nace con TODOS sus valores p
   });
 });
 
-describe('0118 — los defaults de la migración no se alejan del core', () => {
+describe('0126 — los defaults de la migración no se alejan del core', () => {
   const sql = readFileSync(
-    resolve(__dirname, '../../db/migrations/0118_contrato_valores_pactados.sql'),
+    resolve(__dirname, '../../db/migrations/0126_pago_puntos_por_contrato.sql'),
     'utf8',
   );
   const bloque = sql.split('-- DEFAULTS:begin')[1]?.split('-- DEFAULTS:end')[0] ?? '';
-  const literal: Record<string, number | boolean> = {};
-  for (const m of bloque.matchAll(/'([A-Za-z]+)'\s*,\s*(true|false|-?[0-9]+(?:\.[0-9]+)?)/g)) {
-    literal[m[1]] = m[2] === 'true' ? true : m[2] === 'false' ? false : Number(m[2]);
+  const literal: Record<string, number | boolean | null> = {};
+  for (const m of bloque.matchAll(/'([A-Za-z]+)'\s*,\s*(true|false|null|-?[0-9]+(?:\.[0-9]+)?)/g)) {
+    literal[m[1]] = m[2] === 'true' ? true : m[2] === 'false' ? false : m[2] === 'null' ? null : Number(m[2]);
   }
 
-  it('la migración congela exactamente las 15 claves', () => {
+  it('la migración congela exactamente las 17 claves', () => {
     expect(Object.keys(literal).sort()).toEqual([...CLAVES_PARAMETROS_CONTRATO].sort());
   });
 

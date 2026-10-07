@@ -16,10 +16,20 @@ import {
 // ampliado (intersección inocua hoy) para que el archivo compilara antes de que
 // `ParametrosSueldo`/`EntradaLiquidacion` las tuvieran.
 
-type Entrada = EntradaLiquidacion & { puntosPeriodo?: number };
+type MesContrato = { desde: string; hasta: string; hastaMes: string; puntos: number };
+type Entrada = EntradaLiquidacion & { puntosMeses?: MesContrato[] };
 type Params = Partial<ParametrosSueldo> & { puntosMetaMensual?: number | null; solesPorPunto?: number | null };
-const con = (base: Entrada, puntosPeriodo: number | undefined, parametros: Params = {}): EntradaLiquidacion =>
-  ({ ...base, puntosPeriodo, parametros: { ...base.parametros, ...parametros } }) as EntradaLiquidacion;
+// `puntos` = los de UN mes del contrato que coincide con el tramo (el caso mensual de siempre).
+const con = (base: Entrada, puntos: number | undefined, parametros: Params = {}): EntradaLiquidacion =>
+  ({
+    ...base,
+    puntosMeses:
+      puntos === undefined ? undefined : [{ desde: base.fechaInicio, hasta: base.fechaFin, hastaMes: base.fechaFin, puntos }],
+    parametros: { ...base.parametros, ...parametros },
+  }) as EntradaLiquidacion;
+// Entrada con meses del contrato explícitos (§8.2 de la spec).
+const conMeses = (base: Entrada, puntosMeses: MesContrato[] | undefined, parametros: Params = PAGO): EntradaLiquidacion =>
+  ({ ...base, puntosMeses, parametros: { ...base.parametros, ...parametros } }) as EntradaLiquidacion;
 
 // Todos los días, un turno de 8 h, asistencia exacta: sin tardanzas, faltas ni diferencia de horas.
 const HORARIO: TurnoContratado[] = [1, 2, 3, 4, 5, 6, 7].map((diaSemana) => ({
@@ -77,24 +87,51 @@ describe('pago por puntos (spec §6)', () => {
     }
   });
 
-  it('4. tramo semanal → la meta se prorratea por días del mes en que empieza (default)', () => {
-    // 7 de 31 días: meta del tramo = 5.000 × 7 / 31 = 1.129,03
-    const l = liquidarPeriodo(con(SEMANAL, 2000, PAGO));
-    // (2.000 − 1.129,0322…) × 0,05 = 43,548… → 43,55. El prorrateo no se redondea antes de restar.
-    expect(linea(l)?.monto).toBe(43.55);
-    expect(linea(l)?.detalle).toContain('meta 1.129,03');
-    // Justo en la meta prorrateada no se paga nada.
-    expect(linea(liquidarPeriodo(con(SEMANAL, 1129.03, PAGO)))).toBeUndefined();
-    // Un tramo que cruza de mes toma los días del mes EN QUE EMPIEZA (octubre, 31): 7 días.
-    const cruza = tramo('2026-10-26', '2026-11-01');
-    expect(linea(liquidarPeriodo(con(cruza, 2000, PAGO)))?.monto).toBe(43.55);
-    // Un mes completo de febrero (28 de 28) da la meta entera, sin rama especial.
-    const febrero = tramo('2027-02-01', '2027-02-28');
-    expect(linea(liquidarPeriodo(con(febrero, 6200, PAGO)))?.monto).toBe(60);
+  it('4. semanas 0, 0, 2500 y 2500 con meta 5.000: sólo el tramo que cierra el mes lo paga, y paga S/0 (§8.2, E7)', () => {
+    const mes = { desde: '2027-02-01', hasta: '2027-02-28', hastaMes: '2027-02-28', puntos: 5000 };
+    for (const [d, h] of [['01', '07'], ['08', '14'], ['15', '21']]) {
+      expect(linea(liquidarPeriodo(conMeses(tramo(`2027-02-${d}`, `2027-02-${h}`), [])))).toBeUndefined();
+    }
+    // El tramo que cierra el mes ve los 5.000 puntos del mes entero contra la meta entera: S/0.
+    expect(linea(liquidarPeriodo(conMeses(tramo('2027-02-22', '2027-02-28'), [mes])))).toBeUndefined();
   });
 
+  it('4b. el mes que cierra con 6.200 puntos → S/60 en el tramo que lo cierra', () => {
+    const mes = { desde: '2027-02-01', hasta: '2027-02-28', hastaMes: '2027-02-28', puntos: 6200 };
+    expect(linea(liquidarPeriodo(conMeses(tramo('2027-02-22', '2027-02-28'), [mes])))?.monto).toBe(60);
+  });
+
+  it('4c. D-8: tramo mensual del 30-ene al 28-feb con 5.000 puntos y meta 5.000 → sin línea', () => {
+    const mes = { desde: '2026-01-30', hasta: '2026-02-28', hastaMes: '2026-02-28', puntos: 5000 };
+    expect(linea(liquidarPeriodo(conMeses(tramo('2026-01-30', '2026-02-28'), [mes])))).toBeUndefined();
+  });
+
+  it('4d. el último mes, cortado por el fin del contrato, prorratea la meta por días contra el mes completo', () => {
+    // 15 de 31 días: meta del mes = 5.000 × 15 / 31 = 2.419,35…
+    const mes = { desde: '2026-10-01', hasta: '2026-10-15', hastaMes: '2026-10-31', puntos: 3000 };
+    const l = linea(liquidarPeriodo(conMeses(tramo('2026-10-01', '2026-10-15'), [mes])))!;
+    // (3.000 − 2.419,354…) × 0,05 = 29,032… → 29,03
+    expect(l.monto).toBe(29.03);
+    expect(l.detalle).toContain('meta 2.419,35');
+  });
+
+  it('4e. dos meses cerrados en un mismo tramo: la línea suma los dos y el detalle los separa con «; »', () => {
+    const meses = [
+      { desde: '2026-10-01', hasta: '2026-10-31', hastaMes: '2026-10-31', puntos: 6200 },
+      { desde: '2026-11-01', hasta: '2026-11-30', hastaMes: '2026-11-30', puntos: 5400 },
+    ];
+    const l = linea(liquidarPeriodo(conMeses(tramo('2026-10-31', '2026-11-30'), meses)))!;
+    expect(l.monto).toBe(80); // 60 + 20
+    expect(l.detalle).toBe('6.200 puntos − meta 5.000 = 1.200 × S/0,05; 5.400 puntos − meta 5.000 = 400 × S/0,05');
+  });
+
+  it('4f. pago activo pero la entrada no trae puntosMeses → sin línea y una advertencia', () => {
+    const l = liquidarPeriodo(conMeses(MENSUAL, undefined));
+    expect(linea(l)).toBeUndefined();
+    expect(l.advertencias.some((a) => /puntos/i.test(a))).toBe(true);
+  });
   it('5. con incidencias que bajan los puntos por debajo de la meta → S/0, nunca negativo', () => {
-    // puntosPeriodo ya viene neto de incidencias (puede ser negativo): jamás resta del sueldo.
+    // los puntos del mes ya vienen neto de incidencias (puede ser negativo): jamás resta del sueldo.
     const base = liquidarPeriodo(MENSUAL);
     for (const puntos of [-300, 100]) {
       const l = liquidarPeriodo(con(MENSUAL, puntos, PAGO));
@@ -113,14 +150,12 @@ describe('pago por puntos (spec §6)', () => {
     expect(liquidarPeriodo(con(MENSUAL, 6200, { ...PAGO, puntosMetaMensual: 6000 })).total).toBeLessThan(a.total);
   });
 
-  it('el detalle cuadra con el monto: el excedente mostrado es el que se multiplica', () => {
-    // 2.000 puntos, meta prorrateada 1.129,03…, S/3: con el excedente SIN redondear daba 2.612,90 y
-    // el detalle decía «870,97 × S/3» (= 2.612,91). Un centavo que no cuadra en un comprobante.
-    const l = linea(liquidarPeriodo(con(SEMANAL, 2000, { puntosMetaMensual: 5000, solesPorPunto: 3 })))!;
-    expect(l.detalle).toContain('= 870,97 × S/3');
-    expect(l.monto).toBe(2612.91);
+  it('el redondeo es sobre el producto (§8.2, D-12): 2.000 puntos, meta 1.129,03…, S/3 → S/2.612,90', () => {
+    // Un mes del contrato cortado a 7 de 31 días: meta = 5.000 × 7 / 31 = 1.129,0322…
+    const mes = { desde: '2026-10-01', hasta: '2026-10-07', hastaMes: '2026-10-31', puntos: 2000 };
+    const l = linea(liquidarPeriodo(conMeses(tramo('2026-10-01', '2026-10-07'), [mes], { puntosMetaMensual: 5000, solesPorPunto: 3 })))!;
+    expect(l.monto).toBe(2612.9);
   });
-
   it('un 0 es un valor, no «vacío»: meta 0 paga todos los puntos', () => {
     expect(linea(liquidarPeriodo(con(MENSUAL, 100, { puntosMetaMensual: 0, solesPorPunto: 0.05 })))?.monto).toBe(5);
   });
