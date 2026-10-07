@@ -30,3 +30,17 @@ que ya trae `private.pipeline_exigir_acceso` y los arreglos H-7 de la 0122 (la 0
 4. Reaplicar 0110–0127 no falla (idempotente: `drop function if exists`).
 
 Default inventado: ninguno.
+
+## Segunda colisión: `lavanderia_enviar` (0115 contra 0122)
+
+Ambas reescriben `lavanderia_enviar(text, text, text, text, jsonb, jsonb)`. Por número gana la 0122
+(`security definer` con el portero `private.app_es_admin() / app_es_almacen() / app_sedes()`), pero esa
+versión conserva la búsqueda por (lista, código) de la 0066: con el mismo código dos veces en la lista
+una prenda queda sin historial. La 0115 lo había cerrado (casos 4h-2 y 4h-3 de su prueba).
+
+Decisión: la versión final es la de la 0122 (definer + portero, como manda la regla de mayor número)
+más una sola mejora de la 0115: el id de la prenda sale del propio `insert ... returning` y el historial se
+escribe con `private.prenda_historial_registrar`. La 0127 recrea la función así. Sin reglas nuevas.
+
+Criterio 5: tras 0001→0127, `lavanderia_enviar` es `security definer`, conserva el portero de la 0122 y
+deja un historial por prenda aunque el código se repita (casos 4h-2 y 4h-3 de la prueba 0115).
