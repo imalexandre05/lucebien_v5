@@ -25,6 +25,9 @@
 --     avanzar sumando puntos) y borraba el punto de quien deshace, no el del avance deshecho. Ahora
 --     sólo revierte el último avance real y borra el punto de ese avance.
 --
+-- H-7 pipeline_rechazar y pipeline_calificar aceptaban cualquier origen y destino (rechazar una
+--     prenda en listo a recepción y volver a avanzarla). Ahora sólo lo que ofrece la pantalla.
+--
 -- datos_personas  Decisión del dueño (06-oct-2026): «cada persona sólo ve lo suyo, excepto los
 --     admins». private.app_ve_datos_personas() deja de leer permisos_modulos: sólo admin/dueno activo.
 --
@@ -169,8 +172,18 @@ begin
   ) then
     raise exception 'Prenda no encontrada';
   end if;
-  select etapa, envio_id into v_etapa, v_envio from prenda_pasada where id = p_id;
+  select etapa, envio_id into v_etapa, v_envio from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
+  -- H-7: se califica lo que llegó a la tienda; si se observa, vuelve a una etapa del proceso.
+  if v_etapa <> 'enviado' then
+    raise exception 'TRANSICION: sólo se califica una prenda enviada';
+  end if;
+  if not coalesce(p_aceptada, false)
+     and (p_destino is null
+          or not (p_destino = any(array['recepcion','lavado','empatado','refaccion','compostura',
+                                        'planchado','control_calidad']))) then
+    raise exception 'TRANSICION: una prenda observada vuelve a una etapa del proceso';
+  end if;
 
   insert into prenda_calificacion (pasada_id, envio_id, aceptada, obs, calificador_id)
     values (p_id, v_envio, p_aceptada, nullif(p_obs, ''), v_actor);
@@ -416,8 +429,15 @@ begin
   if v_actor is null then raise exception 'No autenticado'; end if;
   perform private.pipeline_exigir_acceso(p_id);
   select etapa, tipo, tipo_lavado, codigo into v_etapa, v_tipo, v_tlav, v_codigo
-    from prenda_pasada where id = p_id;
+    from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
+  -- H-7: sólo lo que ofrece la pantalla (control de calidad devuelve a una etapa anterior).
+  -- Sin esto, rechazar una prenda en listo a recepción y volver a avanzarla suma puntos.
+  if v_etapa <> 'control_calidad'
+     or p_destino is null
+     or not (p_destino = any(array['recepcion','lavado','empatado','refaccion','compostura','planchado'])) then
+    raise exception 'TRANSICION: sólo se rechaza desde control de calidad hacia una etapa anterior';
+  end if;
 
   select empleado_id into v_culpable from prenda_historial
     where pasada_id = p_id and etapa_anterior = p_destino and empleado_id is not null
