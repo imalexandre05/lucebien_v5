@@ -88,6 +88,32 @@ revela si existe). La 0112 la define con `create or replace` y la MISMA semánti
 que no importa cuál de las dos se aplique primero. `pipeline_avanzar_tanda` sigue `security invoker`
 y llama a la RPC definer. No cambia ninguna regla de puntos, deshacer ni PIN.
 
+**E-7. Alineación con la 0122 (H-7) y hallazgos del verificador (07-oct).** La 0122 llega a
+producción antes que la 0112 y redefine las mismas RPC; si la 0112 no copia sus arreglos, los
+reabre. Además el verificador halló dos fallos propios de esta rama. La 0112 pasa a exigir:
+
+- **A.** `private.pipeline_exigir_acceso`: copia exacta de la 0122 (`search_path ''`, tablas
+  calificadas `public.`, `auth.uid()` nulo → `No autenticado`).
+- **B.** `pipeline_rechazar`: bloquea la fila (`for update`) y sólo rechaza desde `control_calidad`
+  hacia `recepcion`, `lavado`, `empatado`, `refaccion`, `compostura` o `planchado`; si no,
+  `TRANSICION: sólo se rechaza desde control de calidad hacia una etapa anterior`. Esto cierra el
+  doble rechazo (el segundo restaba otra vez al culpable): tras el primero la prenda ya no está en
+  control de calidad.
+- **C.** `pipeline_calificar`: portero propio (admin, almacén, sede de origen en `app_sedes()` o
+  `envios_prendas.sede_destino_cod` del envío de la prenda en `app_sedes()`; si no, `Prenda no
+  encontrada`), `for update`, sólo califica una prenda en `enviado` (`TRANSICION: sólo se califica
+  una prenda enviada`) y una observada vuelve a una de las seis etapas del proceso o a
+  `control_calidad` (`TRANSICION: una prenda observada vuelve a una etapa del proceso`).
+- **D.** `pipeline_deshacer`: el último movimiento se busca con `order by fecha desc, id desc` y
+  debe tener `obs` nulo (sólo un avance real de `pipeline_avanzar` se deshace; rechazos, envíos,
+  divisiones y un «Deshacer» previo no: el deshacer de un deshacer reaplicaba el movimiento sin
+  puntos). Mensaje: `TRANSICION: sólo se puede deshacer el último avance de la prenda`. Una prenda
+  dividida tampoco se deshace. Al deshacer desde `listo`, `aprobada` vuelve a `false`.
+- **E.** Las funciones `security definer` nuevas fijan `search_path = public, pg_temp`
+  (`pipeline_definir_pin`: `public, extensions, pg_temp`, por `crypt`).
+
+No cambia ninguna regla de puntos ni de PIN.
+
 **Tests nuevos exigidos (antes del código):** PIN ≠ cod (el `cod` solo ya no da token); PIN corto o
 trivial rechazado; el hash no es el PIN; cambiar PIN exige el actual; admin borra PIN y un no-admin
 no; 5 fallos contra una persona desde dos sesiones distintas → la persona queda bloqueada y el PIN
