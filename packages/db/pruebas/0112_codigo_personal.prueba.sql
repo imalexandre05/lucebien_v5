@@ -41,6 +41,9 @@
 --      mueve nada; con token funciona; no define PIN; sólo el admin la marca.
 --  24. H-1: A avanza, B avanza y A deshace lo de B → B pierde ESE punto y A conserva el suyo.
 --  25. H-2: deshacer a una etapa que no es la del último movimiento → TRANSICION: sin escribir.
+--  28. E-7 (alineación con la 0122, H-7): rechazar sólo desde control_calidad (y no dos veces),
+--      calificar sólo lo enviado (la tienda destino sí califica), deshacer sólo un avance real
+--      (no un 'Deshacer') y desde listo deja aprobada = false.
 --  10. dispositivo_compartido(device): true sólo para un equipo APROBADO y marcado compartido;
 --      falso para uno no compartido, uno no aprobado y uno desconocido. La validación devuelve
 --      además ventana_min (la UI la usa para su cuenta de inactividad).
@@ -317,7 +320,12 @@ begin
   end if;
 
   perform pg_temp.como(s_a);
+  -- H-7: sólo se rechaza desde control de calidad; la prenda llega ahí por avances legítimos.
   perform pipeline_avanzar(p8, 'lavado', v_token);
+  perform pipeline_avanzar(p8, 'empatado', v_token);
+  perform pipeline_avanzar(p8, 'refaccion', v_token);
+  perform pipeline_avanzar(p8, 'planchado', v_token);
+  perform pipeline_avanzar(p8, 'control_calidad', v_token);
   perform pipeline_rechazar(p8, 'recepcion', v_token);
   perform pg_temp.dueno();
   select count(*) into v_n from prenda_historial
@@ -681,7 +689,12 @@ begin
       end if;
 
       perform pg_temp.como(s_a);
+      -- H-7: se rechaza desde control de calidad.
       perform pipeline_avanzar(q1, 'lavado', v_tok);
+      perform pipeline_avanzar(q1, 'empatado', v_tok);
+      perform pipeline_avanzar(q1, 'refaccion', v_tok);
+      perform pipeline_avanzar(q1, 'planchado', v_tok);
+      perform pipeline_avanzar(q1, 'control_calidad', v_tok);
       perform pipeline_rechazar(q1, 'recepcion', v_tok);
       perform pg_temp.dueno();
       select count(*) into v_n from prenda_historial
@@ -755,6 +768,101 @@ begin
     else
       r := r || format('[FALLA] caso 27b: err=%s etapa=%s;', v_err, v_etapa);
     end if;
+
+    -- ── 28) Alineación con la 0122 (H-7) y hallazgos del verificador (spec §0 E-7) ─────────────
+    declare
+      w1 uuid; w2 uuid; w3 uuid; w4 uuid; w5 uuid; w6 uuid; w7 uuid; s_dest uuid;
+      v_env uuid; v_neg int;
+    begin
+      perform pg_temp.dueno();
+      insert into empleados (cod, nombre, iniciales, rol, sede_cod)
+        values ('P0112-T3', 'Prueba 0112 Tienda destino', 'T3', 'encargado_tienda', v_otra) returning id into s_dest;
+      insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-W1', 'Chaqueta', v_sede, 'lavado') returning id into w1;
+      insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-W2', 'Chaqueta', v_sede, 'control_calidad') returning id into w2;
+      insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id) values (w2, 'lavado', 'empatado', op2);
+      insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-W3', 'Chaqueta', v_sede, 'listo') returning id into w3;
+      insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-W4', 'Chaqueta', v_sede, 'listo') returning id into w4;
+      insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-W5', 'Chaqueta', v_sede, 'listo') returning id into w5;
+      insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-W6', 'Chaqueta', v_sede, 'lavado') returning id into w6;
+      insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-W7', 'Chaqueta', v_sede, 'control_calidad') returning id into w7;
+
+      perform pg_temp.como(s_a);
+      -- 28a) rechazar desde una etapa que no es control de calidad
+      begin perform pipeline_rechazar(w1, 'recepcion'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      -- 28b) rechazo doble: el segundo ya no está en control de calidad
+      perform pipeline_rechazar(w2, 'lavado');
+      begin perform pipeline_rechazar(w2, 'lavado'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+      perform pg_temp.dueno();
+      select count(*) into v_n from prenda_historial where pasada_id = w1;
+      select count(*) into v_neg from pipeline_puntos where pasada_id = w2 and empleado_id = op2 and puntos < 0;
+      if v_err like 'TRANSICION:%' and v_n = 0 and (select etapa from prenda_pasada where id = w1) = 'lavado' then
+        r := r || '[ok] caso 28a: rechazar desde una etapa que no es control de calidad lanza TRANSICION sin escribir;';
+      else
+        r := r || format('[FALLA] caso 28a: err=%s historial=%s;', v_err, v_n);
+      end if;
+      if v_err2 like 'TRANSICION:%' and v_neg = 1 then
+        r := r || '[ok] caso 28b: el rechazo doble lanza TRANSICION y el culpable sólo tiene un negativo;';
+      else
+        r := r || format('[FALLA] caso 28b: err=%s negativos=%s (esperaba 1);', v_err2, v_neg);
+      end if;
+
+      -- 28c) calificar una prenda que no fue enviada
+      perform pg_temp.como(s_a);
+      begin perform pipeline_calificar(w3, true, '', ''); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      -- 28d) calificar observada hacia 'listo'
+      perform pipeline_enviar(w4, v_otra);
+      begin perform pipeline_calificar(w4, false, 'listo', 'x'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+      perform pg_temp.dueno();
+      if v_err like 'TRANSICION:%' and (select etapa from prenda_pasada where id = w3) = 'listo'
+         and not exists (select 1 from prenda_calificacion where pasada_id = w3) then
+        r := r || '[ok] caso 28c: calificar una prenda no enviada lanza TRANSICION sin escribir;';
+      else
+        r := r || format('[FALLA] caso 28c: err=%s;', v_err);
+      end if;
+      if v_err2 like 'TRANSICION:%' and (select etapa from prenda_pasada where id = w4) = 'enviado'
+         and not exists (select 1 from prenda_calificacion where pasada_id = w4) then
+        r := r || '[ok] caso 28d: calificar observada hacia listo lanza TRANSICION sin escribir;';
+      else
+        r := r || format('[FALLA] caso 28d: err=%s;', v_err2);
+      end if;
+
+      -- 28e) la tienda DESTINO del envío (sede distinta de la de origen) califica
+      perform pg_temp.como(s_a);
+      perform pipeline_enviar(w5, v_otra);
+      perform pg_temp.como(s_dest);
+      begin perform pipeline_calificar(w5, true, '', ''); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      perform pg_temp.dueno();
+      if v_err = 'EJECUTO' and (select etapa from prenda_pasada where id = w5) = 'recibido'
+         and exists (select 1 from prenda_calificacion where pasada_id = w5 and calificador_id = s_dest) then
+        r := r || '[ok] caso 28e: la tienda destino del envío califica con éxito;';
+      else
+        r := r || format('[FALLA] caso 28e: err=%s;', v_err);
+      end if;
+
+      -- 28f) deshacer de un deshacer: reaplicaría el movimiento sin puntos
+      perform pg_temp.como(s_a);
+      perform pipeline_avanzar(w6, 'empatado');
+      perform pipeline_deshacer(w6, 'lavado');
+      begin perform pipeline_deshacer(w6, 'empatado'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      perform pg_temp.dueno();
+      if v_err like 'TRANSICION:%' and (select etapa from prenda_pasada where id = w6) = 'lavado' then
+        r := r || '[ok] caso 28f: deshacer de un deshacer lanza TRANSICION y la prenda no se mueve;';
+      else
+        r := r || format('[FALLA] caso 28f: err=%s;', v_err);
+      end if;
+
+      -- 28g) deshacer desde listo deja aprobada = false
+      perform pg_temp.como(s_a);
+      perform pipeline_avanzar(w7, 'listo');
+      perform pipeline_deshacer(w7, 'control_calidad');
+      perform pg_temp.dueno();
+      if (select aprobada from prenda_pasada where id = w7) = false
+         and (select etapa from prenda_pasada where id = w7) = 'control_calidad' then
+        r := r || '[ok] caso 28g: deshacer desde listo deja aprobada = false;';
+      else
+        r := r || '[FALLA] caso 28g: la prenda quedó aprobada tras deshacer desde listo;';
+      end if;
+    end;
   end;
 
   raise exception 'RESULTADO 0112 --> %', r;
