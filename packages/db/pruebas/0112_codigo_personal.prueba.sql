@@ -86,6 +86,7 @@ declare
   v_err2 text; v_err3 text;
   s_e uuid; s_f uuid; s_g uuid; s_h uuid; op3 uuid; op4 uuid; adm uuid; p9 uuid; p10 uuid;
   r text := '';
+  v_total numeric;
 begin
   -- ── Montaje (como dueño de las tablas) ─────────────────────────────────────────────────────
   select cod into v_sede from sedes order by cod limit 1;
@@ -617,6 +618,144 @@ begin
   else
     r := r || format('[FALLA] caso 25: err=%s / %s;', v_err, v_err2);
   end if;
+
+  -- ════════════════════ COMPATIBILIDAD CON LA 0122 (spec §0 E-6) ═══════════════════════════════
+  -- La 0122 (migración de seguridad, se aplica ANTES que ésta) revoca insert/update/delete de las
+  -- tres tablas del pipeline a authenticated. Se simula acá como dueño; el rollback final lo deshace.
+  declare
+    v_otra text; q1 uuid; q2 uuid; q3 uuid; q4 uuid; q5 uuid; q6 uuid;
+    s_t uuid; s_t2 uuid; v_tok uuid;
+  begin
+    perform pg_temp.dueno();
+    select cod into v_otra from sedes where cod <> v_sede order by cod limit 1;
+    if v_otra is null then raise exception 'La prueba 26-27 necesita al menos dos sedes'; end if;
+    insert into empleados (cod, nombre, iniciales, rol, sede_cod)
+      values ('P0112-T1', 'Prueba 0112 Tienda otra sede', 'T1', 'encargado_tienda', v_otra) returning id into s_t;
+    insert into empleados (cod, nombre, iniciales, rol, sede_cod)
+      values ('P0112-T2', 'Prueba 0112 Tienda misma sede', 'T2', 'encargado_tienda', v_sede) returning id into s_t2;
+    insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-Q1', 'Chaqueta', v_sede, 'recepcion') returning id into q1;
+    insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-Q2', 'Terno completo', v_sede, 'recepcion') returning id into q2;
+    insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-Q3', 'Chaqueta', v_sede, 'listo') returning id into q3;
+    insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-Q4', 'Chaqueta', v_sede, 'recepcion') returning id into q4;
+    insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-Q5', 'Chaqueta', v_sede, 'recepcion') returning id into q5;
+    insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-Q6', 'Chaqueta', v_sede, 'recepcion') returning id into q6;
+
+    revoke insert, update, delete on prenda_pasada, prenda_historial, pipeline_puntos from authenticated;
+
+    -- ── 26) Con la tabla cerrada, las RPC siguen funcionando y atribuyen bien ───────────────────
+    perform pg_temp.como(s_a);
+    begin update prenda_pasada set etapa = 'listo' where id = q6; v_err := 'EJECUTO';
+    exception when insufficient_privilege then v_err := 'denegado'; end;
+    if v_err = 'denegado' then
+      r := r || '[ok] caso 26a: simulada la 0122, authenticated ya no hace update directo;';
+    else
+      r := r || '[FALLA] caso 26a: el revoke simulado no cerró la tabla (la prueba no es válida);';
+    end if;
+
+    j := pipeline_validar_codigo('P0112-O1', '482913', 'equipo-prueba');
+    v_tok := (j->>'token')::uuid;
+    if v_tok is null then r := r || format('[FALLA] caso 26: sin token (%s);', j); end if;
+
+    begin
+      perform pipeline_avanzar(q1, 'lavado', v_tok);
+      perform pg_temp.dueno();
+      select count(*) into v_n from pipeline_puntos where pasada_id = q1 and empleado_id = op1;
+      select count(*) into v_n2 from prenda_historial
+        where pasada_id = q1 and etapa_nueva = 'lavado' and empleado_id = op1 and registrado_por = s_a;
+      select etapa into v_etapa from prenda_pasada where id = q1;
+      if v_n = 1 and v_n2 = 1 and v_etapa = 'lavado' and (select lavador_id from prenda_pasada where id = q1) = op1 then
+        r := r || '[ok] caso 26b: pipeline_avanzar con token funciona con la tabla cerrada y atribuye al dueño del código;';
+      else
+        r := r || format('[FALLA] caso 26b: puntos=%s historial=%s etapa=%s;', v_n, v_n2, v_etapa);
+      end if;
+
+      perform pg_temp.como(s_a);
+      perform pipeline_deshacer(q1, 'recepcion', v_tok);
+      perform pg_temp.dueno();
+      select count(*) into v_n from pipeline_puntos where pasada_id = q1;
+      select etapa into v_etapa from prenda_pasada where id = q1;
+      if v_n = 0 and v_etapa = 'recepcion' then
+        r := r || '[ok] caso 26c: pipeline_deshacer funciona con la tabla cerrada y quita el punto;';
+      else
+        r := r || format('[FALLA] caso 26c: puntos=%s etapa=%s;', v_n, v_etapa);
+      end if;
+
+      perform pg_temp.como(s_a);
+      perform pipeline_avanzar(q1, 'lavado', v_tok);
+      perform pipeline_rechazar(q1, 'recepcion', v_tok);
+      perform pg_temp.dueno();
+      select count(*) into v_n from prenda_historial
+        where pasada_id = q1 and obs like 'Rechazado%' and empleado_id = op1 and registrado_por = s_a;
+      select etapa into v_etapa from prenda_pasada where id = q1;
+      if v_n = 1 and v_etapa = 'recepcion' then
+        r := r || '[ok] caso 26d: pipeline_rechazar funciona con la tabla cerrada y atribuye bien;';
+      else
+        r := r || format('[FALLA] caso 26d: rechazos=%s etapa=%s;', v_n, v_etapa);
+      end if;
+
+      perform pg_temp.como(s_a);
+      perform pipeline_dividir(q2, v_tok);
+      perform pipeline_deshacer_division(q2, v_tok);
+      perform pg_temp.dueno();
+      select count(*) into v_n from prenda_historial
+        where pasada_id = q2 and empleado_id = op1 and registrado_por = s_a
+          and (obs like 'Terno dividido%' or obs like 'Deshacer división%');
+      if v_n = 2 then
+        r := r || '[ok] caso 26e: dividir y deshacer_division funcionan con la tabla cerrada;';
+      else
+        r := r || format('[FALLA] caso 26e: filas=%s (esperaba 2);', v_n);
+      end if;
+
+      perform pg_temp.como(s_a);
+      perform pipeline_enviar(q3, v_sede, v_tok);
+      perform pipeline_calificar(q3, true, '', '', v_tok);
+      perform pg_temp.dueno();
+      select count(*) into v_n from envios_prendas e join prenda_pasada p on p.envio_id = e.id
+        where p.id = q3 and e.responsable_id = op1;
+      select count(*) into v_n2 from prenda_calificacion where pasada_id = q3 and calificador_id = op1;
+      if v_n = 1 and v_n2 = 1 then
+        r := r || '[ok] caso 26f: enviar y calificar funcionan con la tabla cerrada y atribuyen al dueño del código;';
+      else
+        r := r || format('[FALLA] caso 26f: envio=%s calificacion=%s;', v_n, v_n2);
+      end if;
+
+      perform pg_temp.como(s_a);
+      v_total := pipeline_avanzar_tanda(array[q4, q5], 'lavado', v_tok);
+      perform pg_temp.dueno();
+      select count(*) into v_n from prenda_pasada where id in (q4, q5) and etapa = 'lavado';
+      if v_n = 2 and v_total = 2 then
+        r := r || '[ok] caso 26g: pipeline_avanzar_tanda (invoker) mueve las prendas llamando a la RPC definer;';
+      else
+        r := r || format('[FALLA] caso 26g: movidas=%s total=%s;', v_n, v_total);
+      end if;
+    exception when others then
+      r := r || format('[FALLA] caso 26: una RPC lanzó %s;', sqlerrm);
+    end;
+
+    -- ── 27) Tienda de OTRA sede: 'Prenda no encontrada' y la prenda no se mueve ────────────────
+    perform pg_temp.como(s_t);
+    begin perform pipeline_avanzar(q6, 'lavado'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+    begin perform pipeline_avanzar(gen_random_uuid(), 'lavado'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+    perform pg_temp.dueno();
+    select etapa into v_etapa from prenda_pasada where id = q6;
+    select count(*) into v_n from prenda_historial where pasada_id = q6;
+    if v_err like '%Prenda no encontrada%' and v_err2 like '%Prenda no encontrada%'
+       and v_etapa = 'recepcion' and v_n = 0 and not exists (select 1 from pipeline_puntos where pasada_id = q6) then
+      r := r || '[ok] caso 27a: tienda de otra sede (o prenda inexistente) recibe Prenda no encontrada y nada se mueve;';
+    else
+      r := r || format('[FALLA] caso 27a: err=%s inexistente=%s etapa=%s historial=%s;', v_err, v_err2, v_etapa, v_n);
+    end if;
+
+    perform pg_temp.como(s_t2);
+    begin perform pipeline_avanzar(q6, 'lavado'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+    perform pg_temp.dueno();
+    select etapa into v_etapa from prenda_pasada where id = q6;
+    if v_err = 'EJECUTO' and v_etapa = 'lavado' then
+      r := r || '[ok] caso 27b: la tienda de la misma sede sí avanza su prenda;';
+    else
+      r := r || format('[FALLA] caso 27b: err=%s etapa=%s;', v_err, v_etapa);
+    end if;
+  end;
 
   raise exception 'RESULTADO 0112 --> %', r;
 end $$;
