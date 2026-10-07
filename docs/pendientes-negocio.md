@@ -1641,3 +1641,12 @@ decisión del dueño todavía; ninguno es un parámetro nuevo:**
 - (0115, H-4) Sólo reciben puntos del pipeline los roles `admin`, `dueno`, `encargado_almacen` y
   `confeccionista`; una tienda que avanza sus prendas las mueve pero no cobra. Regla dada por la
   sesión maestra del dueño el 06-oct-2026; **a confirmar por Alexander** qué roles cuentan.
+## Tope de 4 MB por documento del personal (06-oct-2026)
+
+Default **inventado por restricción de plataforma**, no por negocio: Vercel corta el cuerpo de una
+función en ~4,5 MB, así que `TAMANO_MAXIMO_BYTES` (`apps/erp-web/lib/documentos-repo.ts`) pasa de
+10 MB a 4 MB. Una foto de celular de DNI puede pesar más: hoy el mensaje pide reducirla o subirla
+como PDF. Pregunta para el administrador: ¿se acepta ese tope, o se prioriza la subida directa a
+Storage con URL firmada para volver a 10 MB? No es editable desde `/configuracion` (es límite
+técnico, no parámetro de negocio). Ver la enmienda del 06-oct de
+[la spec](superpowers/specs/2026-10-04-personal-ultimo-admin-alta-design.md).

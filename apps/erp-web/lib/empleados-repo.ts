@@ -1,5 +1,5 @@
 import type { Rol } from '@scilb/core';
-import { generarIniciales, elegirCodigoLibre } from '@scilb/core';
+import { generarIniciales, elegirCodigoLibre, codigosDeEmails } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import { getAdminClient } from './supabase/admin';
 import { EMAIL_DOMAIN } from './auth';
@@ -256,10 +256,40 @@ export async function empleadoBorrarAltaPrevio(id: string): Promise<BorrarAltaPr
 // confía en que la pantalla haya llamado a empleadoBorrarAltaPrevio() antes. El registro en
 // audit_log lo escribe el trigger existente (trg_audit_empleados, 0058) al hacer el delete, no hay
 // nada que escribir a mano acá.
-export async function empleadoBorrarAlta(id: string): Promise<void> {
+//
+// Después de la RPC se borra también el usuario de Supabase Auth: si no, queda un usuario vivo sin
+// ficha (y su código de login seguiría ocupado). Auth y Postgres no comparten transacción, así que
+// si ese borrado falla el alta YA está deshecha y no se puede revertir: no se lanza error, se
+// devuelve `avisoAuth` para que la pantalla se lo diga al administrador.
+export async function empleadoBorrarAlta(id: string): Promise<{ avisoAuth?: string }> {
   const sb = getServerClient();
   const { error } = await sb.rpc('empleado_borrar_alta', { p_empleado: id });
   if (error) throw new Error(error.message);
+
+  const { error: eAuth } = await getAdminClient().auth.admin.deleteUser(id);
+  // 404 / "not found": el usuario ya no existía, que es el estado buscado.
+  if (eAuth && eAuth.status !== 404 && !/not.?found/i.test(eAuth.message)) {
+    return {
+      avisoAuth: `El alta se deshizo, pero no se pudo borrar el usuario de acceso (${eAuth.message}). Bórralo a mano en Supabase Auth: mientras exista, su código de login sigue ocupado.`,
+    };
+  }
+  return {};
+}
+
+// Códigos de login que ya usa algún usuario de Auth (email `{cod}@EMAIL_DOMAIN`), exista o no su
+// ficha en `empleados`. Recorre todas las páginas de listUsers.
+async function codigosEnAuth(): Promise<string[]> {
+  const admin = getAdminClient();
+  const emails: string[] = [];
+  const porPagina = 1000;
+  for (let pagina = 1; ; pagina++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page: pagina, perPage: porPagina });
+    if (error) throw new Error(error.message);
+    const usuarios = data?.users ?? [];
+    for (const u of usuarios) emails.push(u.email ?? '');
+    if (usuarios.length < porPagina) break;
+  }
+  return codigosDeEmails(emails, EMAIL_DOMAIN);
 }
 
 export async function crearEmpleado(p: NuevoEmpleadoInput): Promise<{ id: string; cod: string }> {
@@ -279,7 +309,10 @@ export async function crearEmpleado(p: NuevoEmpleadoInput): Promise<{ id: string
 
   const { data: existentes, error: eCods } = await admin.from('empleados').select('cod');
   if (eCods) throw new Error(eCods.message);
-  const cod = elegirCodigoLibre((existentes ?? []).map((e) => String((e as { cod: string }).cod)));
+  const cod = elegirCodigoLibre([
+    ...(existentes ?? []).map((e) => String((e as { cod: string }).cod)),
+    ...(await codigosEnAuth()),
+  ]);
 
   const { data: authData, error: eAuth } = await admin.auth.admin.createUser({
     email: `${cod}@${EMAIL_DOMAIN}`,
