@@ -231,7 +231,11 @@ begin
 
   -- 4b) avanzar con la etapa de lavado (peso 2) y rechazar → punto negativo al culpable.
   perform pg_temp.como(e_alm);
+  -- H-7: sólo se rechaza desde control de calidad; la prenda llega ahí por avances legítimos.
   perform pipeline_avanzar(pa1, 'empatado');
+  perform pipeline_avanzar(pa1, 'refaccion');
+  perform pipeline_avanzar(pa1, 'planchado');
+  perform pipeline_avanzar(pa1, 'control_calidad');
   perform pipeline_rechazar(pa1, 'lavado');
   perform pg_temp.dueno();
   select count(*), coalesce(sum(puntos), 0) into v_n, v_pts from pipeline_puntos
@@ -528,7 +532,12 @@ begin
       end if;
 
       perform pg_temp.como(e_alm);
+      -- H-7: se rechaza desde control de calidad.
       perform pipeline_avanzar(w1, 'lavado');
+      perform pipeline_avanzar(w1, 'empatado');
+      perform pipeline_avanzar(w1, 'refaccion');
+      perform pipeline_avanzar(w1, 'planchado');
+      perform pipeline_avanzar(w1, 'control_calidad');
       perform pipeline_rechazar(w1, 'recepcion');
       perform pg_temp.dueno();
       select etapa into v_etapa from prenda_pasada where id = w1;
@@ -582,6 +591,97 @@ begin
     else
       r := r || format('[FALLA] caso 11f: avanzar=%s deshacer=%s historial=%s etapa=%s;', v_err, v_err2, v_n, v_etapa);
     end if;
+
+    -- ── 12) Alineación con la 0122 (H-7) y hallazgos del verificador (spec §13) ────────────────
+    declare
+      x1 uuid; x2 uuid; x3 uuid; x4 uuid; x5 uuid; x6 uuid; x7 uuid; v_neg int;
+    begin
+      perform pg_temp.dueno();
+      insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X1', 'Chaqueta', 'normal', v_a, 'lavado') returning id into x1;
+      insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X2', 'Chaqueta', 'normal', v_a, 'control_calidad') returning id into x2;
+      insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id) values (x2, 'lavado', 'empatado', e_emp);
+      insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X3', 'Chaqueta', 'normal', v_a, 'listo') returning id into x3;
+      insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X4', 'Chaqueta', 'normal', v_a, 'listo') returning id into x4;
+      insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X5', 'Chaqueta', 'normal', v_a, 'listo') returning id into x5;
+      insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X6', 'Chaqueta', 'normal', v_a, 'lavado') returning id into x6;
+      insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-X7', 'Chaqueta', 'normal', v_a, 'control_calidad') returning id into x7;
+
+      perform pg_temp.como(e_alm);
+      -- 12a) rechazar desde una etapa que no es control de calidad
+      begin perform pipeline_rechazar(x1, 'recepcion'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      -- 12b) rechazo doble
+      perform pipeline_rechazar(x2, 'lavado');
+      begin perform pipeline_rechazar(x2, 'lavado'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+      perform pg_temp.dueno();
+      select count(*) into v_n from prenda_historial where pasada_id = x1;
+      select count(*) into v_neg from pipeline_puntos where pasada_id = x2 and empleado_id = e_emp and puntos < 0;
+      if v_err like 'TRANSICION:%' and v_n = 0 and (select etapa from prenda_pasada where id = x1) = 'lavado' then
+        r := r || '[ok] caso 12a: rechazar desde una etapa que no es control de calidad lanza TRANSICION sin escribir;';
+      else
+        r := r || format('[FALLA] caso 12a: err=%s historial=%s;', v_err, v_n);
+      end if;
+      if v_err2 like 'TRANSICION:%' and v_neg = 1 then
+        r := r || '[ok] caso 12b: el rechazo doble lanza TRANSICION y el culpable sólo tiene un negativo;';
+      else
+        r := r || format('[FALLA] caso 12b: err=%s negativos=%s (esperaba 1);', v_err2, v_neg);
+      end if;
+
+      -- 12c) calificar una prenda no enviada · 12d) observada hacia listo
+      perform pg_temp.como(e_alm);
+      begin perform pipeline_calificar(x3, true, '', ''); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      perform pipeline_enviar(x4, v_a);
+      begin perform pipeline_calificar(x4, false, 'listo', 'x'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+      perform pg_temp.dueno();
+      if v_err like 'TRANSICION:%' and (select etapa from prenda_pasada where id = x3) = 'listo'
+         and not exists (select 1 from prenda_calificacion where pasada_id = x3) then
+        r := r || '[ok] caso 12c: calificar una prenda no enviada lanza TRANSICION sin escribir;';
+      else
+        r := r || format('[FALLA] caso 12c: err=%s;', v_err);
+      end if;
+      if v_err2 like 'TRANSICION:%' and (select etapa from prenda_pasada where id = x4) = 'enviado'
+         and not exists (select 1 from prenda_calificacion where pasada_id = x4) then
+        r := r || '[ok] caso 12d: calificar observada hacia listo lanza TRANSICION sin escribir;';
+      else
+        r := r || format('[FALLA] caso 12d: err=%s;', v_err2);
+      end if;
+
+      -- 12e) la tienda DESTINO (sede B) del envío de una prenda de la sede A califica
+      perform pg_temp.como(e_alm);
+      perform pipeline_enviar(x5, v_b);
+      perform pg_temp.como(e_tb);
+      begin perform pipeline_calificar(x5, true, '', ''); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      perform pg_temp.dueno();
+      if v_err = 'EJECUTO' and (select etapa from prenda_pasada where id = x5) = 'recibido'
+         and exists (select 1 from prenda_calificacion where pasada_id = x5 and calificador_id = e_tb) then
+        r := r || '[ok] caso 12e: la tienda destino del envío califica con éxito;';
+      else
+        r := r || format('[FALLA] caso 12e: err=%s;', v_err);
+      end if;
+
+      -- 12f) deshacer de un deshacer
+      perform pg_temp.como(e_alm);
+      perform pipeline_avanzar(x6, 'empatado');
+      perform pipeline_deshacer(x6, 'lavado');
+      begin perform pipeline_deshacer(x6, 'empatado'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      perform pg_temp.dueno();
+      if v_err like 'TRANSICION:%' and (select etapa from prenda_pasada where id = x6) = 'lavado' then
+        r := r || '[ok] caso 12f: deshacer de un deshacer lanza TRANSICION y la prenda no se mueve;';
+      else
+        r := r || format('[FALLA] caso 12f: err=%s;', v_err);
+      end if;
+
+      -- 12g) deshacer desde listo deja aprobada = false
+      perform pg_temp.como(e_alm);
+      perform pipeline_avanzar(x7, 'listo');
+      perform pipeline_deshacer(x7, 'control_calidad');
+      perform pg_temp.dueno();
+      if (select aprobada from prenda_pasada where id = x7) = false
+         and (select etapa from prenda_pasada where id = x7) = 'control_calidad' then
+        r := r || '[ok] caso 12g: deshacer desde listo deja aprobada = false;';
+      else
+        r := r || '[FALLA] caso 12g: la prenda quedó aprobada tras deshacer desde listo;';
+      end if;
+    end;
   end;
 
   raise exception 'RESULTADO 0115 --> %', r;
