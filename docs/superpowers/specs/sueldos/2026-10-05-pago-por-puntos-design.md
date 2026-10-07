@@ -119,8 +119,10 @@ pagados; ventas en puntos (`pts_por_sol_vendido` sigue en 0).
   30-ene a 28-feb con 5000 puntos y meta 5000 paga S/0, no S/8,06.
 - El último mes, cortado por el fin del contrato, prorratea la meta por días contra el mes completo.
   Es un default anotado en `docs/pendientes-negocio.md`.
-- El redondeo sigue §3, sobre el producto: `round2(max(0, puntos − meta) × soles)`. Se corrige la
-  diferencia de a70df2d (D-12).
+- Redondeo (D-12, decisión de la sesión maestra del 06-oct tras el verificador): el excedente se
+  redondea a 2 decimales **antes** de multiplicar, `round2(round2(max(0, puntos − meta)) × soles)`,
+  para que el monto sea exactamente el producto que la persona lee en su comprobante («870,97 × S/3 =
+  S/2612,91»). Se mantiene a70df2d y §3 se lee así.
 - Los puntos de cada mes viajan en la entrada guardada (`puntosMeses`), así el cierre de #44 detecta
   si cambiaron.
 
@@ -130,4 +132,4 @@ pagados; ventas en puntos (`pts_por_sol_vendido` sigue en 0).
    `solesPorPunto` del contrato (prueba SQL E3).
 8. Semanas 0, 0, 2500 y 2500 con meta 5000 → S/0 en todo el mes.
 9. Tramo mensual del 30-ene al 28-feb con 5000 puntos y meta 5000 → S/0.
-10. Redondeo sobre el producto: 2000 puntos, meta 1129,03, S/3 → S/2612,90.
+10. Redondeo del excedente antes de multiplicar: 2000 puntos, meta 1129,03, S/3 → 870,97 × 3 = S/2612,91.
