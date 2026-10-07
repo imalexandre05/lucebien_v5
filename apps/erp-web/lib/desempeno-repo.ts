@@ -27,7 +27,8 @@ const diaSiguiente = (dia: string): string =>
   new Date(Date.parse(`${dia}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
 
 export type MiReporte = { id: string; fecha: string; turno: string; evaluado: boolean; puntajeEval: number | null };
-export type MiExtra = { id: string; fecha: string; nombre: string; montoTotal: number };
+// Los extras no se pagan en soles (decisión del dueño, 05-oct-2026): lo que cuenta son sus puntos.
+export type MiExtra = { id: string; fecha: string; nombre: string; puntosTotal: number };
 export type MiIncidencia = { id: string; fecha: string; tipo: string; nivel: string };
 // metodo/componentes/pesosUsados (0095, spec puntos-como-moneda §2 C-4/C-5): la pantalla necesita
 // saber CON QUÉ sistema se leyó esta evaluación (banda si 'puntos', tramo si 'ponderado' — igual
@@ -57,7 +58,7 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
 
   const [repRes, extRes, incRes, pipeRes, evalRes] = await Promise.all([
     sb.from('reportes').select('id, fecha, turno, evaluado, puntaje_eval').eq('encargado_id', empleadoId).gte('fecha', desde).lte('fecha', hasta).order('fecha', { ascending: false }),
-    sb.from('reporte_extras').select('id, nombre, monto_total, reportes!inner(fecha)').eq('registrado_por_id', empleadoId).gte('reportes.fecha', desde).lte('reportes.fecha', hasta),
+    sb.from('reporte_extras').select('id, nombre, puntos_total, reportes!inner(fecha)').eq('registrado_por_id', empleadoId).gte('reportes.fecha', desde).lte('reportes.fecha', hasta),
     sb.from('incidencias').select('id, fecha, tipo, nivel').eq('responsable_id', empleadoId).gte('fecha', desde).lte('fecha', hasta).order('fecha', { ascending: false }),
     // `pipeline_puntos.fecha` es la ÚNICA columna timestamptz de estas cinco consultas: va por día
     // natural de Perú (ver `inicioDiaPeru`). El resto filtra columnas `date` y no necesita nada.
@@ -88,7 +89,7 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
     id: String(e.id),
     fecha: String((e.reportes as { fecha: string } | null)?.fecha ?? '').slice(0, 10),
     nombre: String(e.nombre ?? ''),
-    montoTotal: Number(e.monto_total ?? 0),
+    puntosTotal: Number(e.puntos_total ?? 0),
   }));
 
   const incidencias: MiIncidencia[] = ((incRes.data as Record<string, unknown>[]) ?? []).map((i) => ({

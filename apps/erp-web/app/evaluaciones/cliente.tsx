@@ -116,7 +116,6 @@ export function EvaluacionesCliente({
   // no hay forma manual de cargarlo (sale de pipeline/extras/actividades/ventas/incidencias reales).
   const [infoExtra, setInfoExtra] = useState<{
     puntosPipeline: number;
-    extrasMonto: number;
     extrasCantidad: number;
     extrasPuntos: number;
     puntosActividades: number;
@@ -262,7 +261,6 @@ export function EvaluacionesCliente({
       if (c.puntosTotal != null) {
         setInfoExtra({
           puntosPipeline: c.puntosPipeline ?? 0,
-          extrasMonto: c.extrasMonto ?? 0,
           extrasCantidad: c.extrasCantidad ?? 0,
           extrasPuntos: c.extrasPuntos ?? 0,
           puntosActividades: c.puntosActividades ?? 0,
@@ -471,8 +469,6 @@ export function EvaluacionesCliente({
                 </span>
                 <span>
                   Extras <span className="tabular-nums font-semibold text-navy">{infoExtra.extrasCantidad}</span>
-                  {' · '}
-                  <span className="tabular-nums font-semibold text-navy">S/ {infoExtra.extrasMonto.toFixed(2)}</span>
                   {' · '}
                   <span className="tabular-nums font-semibold text-navy">{infoExtra.extrasPuntos} pts</span>
                 </span>

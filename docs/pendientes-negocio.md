@@ -1699,3 +1699,84 @@ Residuales sin decidir (también en la spec §6):
   mínimo?
 - El administrador mirando **su propio** resultado pasa por la misma regla (usa la misma función que
   todos); sigue viendo todo en el seguimiento y mirando a otra persona.
+---
+
+## Pago por puntos sobre la meta mensual (05-oct-2026) — defaults y lo que falta decidir
+
+Spec: [`sueldos/2026-10-05-pago-por-puntos-design.md`](superpowers/specs/sueldos/2026-10-05-pago-por-puntos-design.md).
+Migración `0117` (escrita, **no aplicada**). Decisión del dueño: los puntos pagan, los extras en soles no.
+
+### Los dos parámetros nuevos — sin valor a propósito
+
+| Clave (`/configuracion` › Pago por puntos) | Default | Quién lo decide |
+|---|---|---|
+| `sueldo_puntos_meta_mensual` | **vacío = desactivado** | El dueño, después de un mes de uso, con el promedio de la tarjeta |
+| `sueldo_soles_por_punto` | **vacío = desactivado** | El dueño, junto con la meta |
+
+Con cualquiera de las dos vacía no se paga nada y la liquidación no muestra la línea: se puede
+desplegar hoy sin inventar ninguna cifra.
+
+### 🟡 Default elegido, no confirmado — el último mes, cortado por el fin del contrato
+
+Enmienda del 06-oct-2026 (spec §8.2, migración `0126`). La meta es mensual y se mide por **mes del
+contrato** (del día de inicio al día anterior del mismo día del mes siguiente, recortado a fin de
+mes). Cada mes se cobra una sola vez, en la liquidación que incluye su último día, con todos sus
+puntos: `max(0, puntos del mes − meta) × soles por punto`, con el excedente redondeado a 2 decimales antes de multiplicar (870,97 × S/3 = S/2612,91). Un mes
+completo usa la meta **entera**.
+
+**Default:** el último mes, si el fin del contrato lo corta, **prorratea la meta por días contra el
+mes completo** (`meta × días efectivos ÷ días del mes`; 15 de 31 días → 48,4 % de la meta). Lo eligió
+quien implementó la enmienda; el dueño puede preferir otra regla para ese mes final (p. ej. meta
+entera). Editarlo no requiere tocar la base: es una fórmula del motor (`bonoPorPuntos`,
+`packages/core/src/sueldos.ts`).
+
+**Los dos valores se congelan por contrato.** `puntosMetaMensual` y `solesPorPunto` se copian de
+`/configuracion` al crear el contrato y desde entonces el contrato usa los suyos. `null` en el
+contrato = **apagado en ese contrato**, aunque `/configuracion` se encienda después. El pago por
+puntos sigue **APAGADO por defecto**: los contratos existentes quedan en `null` (la configuración
+está vacía) y el administrador enciende cada uno en sus valores pactados.
+
+### 🔴 Sin decidir
+
+- ~~Pactar los dos valores por contrato~~ — resuelto en la enmienda del 06-oct (migración `0126`): la
+  lista blanca `sueldo_acuerdos_parametros_chk` ya admite las dos claves.
+- ~~Mi desempeño y la ficha mostraban soles por extras~~ — resuelto el 05-oct a pedido de la sesión
+  maestra («los extras no se pagan»): ambas pantallas muestran puntos. Ojo: la Fase 5 decidió que el
+  operativo no ve los puntos de extras (`puedeVerPuntosExtras`); Mi desempeño ahora le muestra los
+  **suyos**. Confirmar con Alexander que eso es lo que quiere.
+- El aviso de la ficha habla del período mostrado («En este período lleva X puntos. Desde Y puntos al
+  mes cobra extra»); la meta que cita es la mensual, sin prorratear.
+
+### Consecuencia del pago por mes del contrato
+
+Como el mes se cobra una sola vez y completo, el bono **ya no depende** de cómo se parta el mes en
+tramos (antes: semanas de 0, 0, 2.500 y 2.500 puntos con meta 5.000 pagaban S/125 y el mes suma
+justo la meta; ahora paga S/0). Con pagos semanales o quincenales sólo el tramo que cierra el mes
+lleva el bono.
+
+### Orden de despliegue
+
+Aplicar la `0110` (hora Perú de los puntos, PR #45) **antes de encender** el pago; con la `0117` sola
+los puntos se cuentan por día UTC. Apagado no importa. Mientras esté apagado `puntosMeses` viaja
+`null`, así el cierre del PR #44 no se ve afectado.
+
+## Comisión escrita en la unidad vieja (tablero#1): umbral de aviso, confirmar con el cliente
+
+Desde la [spec de la comisión en porcentaje](superpowers/specs/sueldos/2026-10-03-comision-en-porcentaje-design.md)
+el contrato y `/configuracion` piden la comisión en **porcentaje** (`1.5` = 1,5 %). Antes pedían la
+**fracción** (`0.02` = 2 %). Quien por costumbre escriba `0.02` ahora pacta **0,02 %**, cien veces
+menos. El verificador encontró el caso el 3-oct-2026.
+
+**Decidido el 4-oct-2026** (usuario, vía sesión maestra):
+- No hay mínimo de comisión.
+- Entre 0 y 0,5 % (sin incluir los extremos) la pantalla avisa y pide confirmación antes de
+  guardar. 0 es válido sin aviso.
+
+**Default a confirmar con el cliente: el umbral de aviso, 0,5 %.** Vive en
+`UMBRAL_AVISO_COMISION`, en `apps/erp-web/lib/porcentaje.ts`. Es un default de interfaz y no es
+editable desde `/configuracion`, porque no es un parámetro de negocio: sólo avisa, nunca rechaza.
+Si el cliente pide otro umbral, se cambia esa constante y su test.
+
+Verificado contra `scilb` el 3-oct-2026, con una consulta de solo lectura: hoy no hay valores mal
+interpretados. Un solo contrato pisa la comisión (`0.01` = 1 %) y el global
+`sueldo_pct_comision` está en `0.03` (3 %).

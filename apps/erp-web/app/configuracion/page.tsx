@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ClipboardList, Map, Building2, Shield, Shirt, AlertOctagon, Bell } from 'lucide-react';
 import { listarConfig } from '../../lib/config-repo';
+import { promedioPuntosUltimosDias } from '../../lib/evaluaciones-repo';
+import { hoyPeru } from '../../lib/fechas';
 import { getSesion } from '../../lib/auth';
 import { PageHeader } from '../../components/shell/page-header';
 import { buttonVariants } from '../../components/ui/button';
@@ -13,7 +15,7 @@ export default async function ConfiguracionPage() {
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
   if (!esAdmin) redirect('/');
 
-  const items = await listarConfig();
+  const [items, promedio] = await Promise.all([listarConfig(), promedioPuntosUltimosDias(hoyPeru())]);
   return (
     <div>
       <PageHeader
@@ -45,7 +47,7 @@ export default async function ConfiguracionPage() {
           </div>
         }
       />
-      <ConfigCliente items={items} />
+      <ConfigCliente items={items} promedioPuntos={promedio} />
     </div>
   );
 }

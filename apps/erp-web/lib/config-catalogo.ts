@@ -23,6 +23,14 @@ export type ConfigCatalogoItem = {
   min?: number;
   max?: number;
   step?: number; // solo si tipo === 'numero'
+  /** Un número que puede quedar en blanco: en blanco significa «desactivado», no «falta el dato». */
+  permiteVacio?: boolean;
+  /**
+   * Sólo si tipo === 'numero'. `porcentaje`: se guarda la fracción (`0.015`) pero /configuracion la
+   * muestra y la pide en porcentaje (`1.5`). `min`/`max` siguen hablando de la fracción guardada.
+   * Spec: docs/superpowers/specs/sueldos/2026-10-03-comision-en-porcentaje-design.md
+   */
+  unidad?: 'porcentaje';
 };
 
 const SECCION_PUNTOS = 'Puntos del pipeline';
@@ -33,6 +41,10 @@ const SECCION_VALORES = 'Valores 360°';
 const SECCION_POS = 'Caja y POS';
 const SECCION_SUELDOS = 'Sueldos';
 const SECCION_CODIGO = 'Código personal';
+/** Sección con tarjeta propia en /configuracion (app/configuracion/cliente.tsx). */
+export const SECCION_PAGO_PUNTOS = 'Pago por puntos';
+export const CLAVE_PUNTOS_META = 'sueldo_puntos_meta_mensual';
+export const CLAVE_SOLES_POR_PUNTO = 'sueldo_soles_por_punto';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
 // simplemente no se muestran; "Personalizados" — parámetros creados por el admin — va siempre al
@@ -41,6 +53,7 @@ export const ORDEN_SECCIONES = [
   SECCION_PUNTOS,
   SECCION_EVALUACION,
   SECCION_SUELDOS,
+  SECCION_PAGO_PUNTOS,
   SECCION_REPORTES,
   SECCION_INVENTARIO,
   SECCION_POS,
@@ -218,6 +231,8 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '',
     min: 0,
     step: 0.5,
+    // Vacío a propósito (0095). Sin esto, guardar /configuracion exigía inventar la tasa.
+    permiteVacio: true,
   },
 
   // ── Reportes de turno (Fase 4, migración 0052 — pendiente de aplicar) ──────────────────────
@@ -471,14 +486,16 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_pct_comision',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Comisión sobre ventas (fracción)',
+    etiqueta: 'Comisión sobre ventas (%)',
     descripcion:
-      'Fracción de la base de comisión que se paga. 0,02 = 2%. Sólo comisionan las semanas en las que la persona llegó a su meta.',
+      'Porcentaje de la base de comisión que se paga: 1,5 = 1,5 %. Sólo comisionan las semanas en las que la persona llegó a su meta.',
     tipo: 'numero',
+    // Se guarda como fracción (0.02 = 2 %), que es lo que multiplica el motor (RN-13); la pantalla
+    // la muestra en porcentaje. min/max son de la fracción: 0 % a 100 %.
     default: '0.02',
     min: 0,
     max: 1,
-    step: 0.005,
+    unidad: 'porcentaje',
   },
   {
     clave: 'sueldo_monto_minimo_comision',
@@ -682,6 +699,32 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 4,
     step: 1,
   },
+  // Pago por puntos (migración 0117, spec sueldos/2026-10-05-pago-por-puntos-design.md). SIN default
+  // a propósito: la meta la fija el dueño después de un mes de uso, mirando el promedio real. En
+  // blanco = desactivado; con cualquiera de las dos en blanco no se paga nada por puntos.
+  {
+    clave: CLAVE_PUNTOS_META,
+    seccion: SECCION_PAGO_PUNTOS,
+    etiqueta: 'Meta de puntos del mes',
+    descripcion:
+      'A partir de cuántos puntos en el mes se empieza a pagar extra. Se paga por los puntos que pasen de esta meta. En un tramo que no es un mes completo (una semana, por ejemplo) la meta se reparte por días.',
+    tipo: 'numero',
+    default: '',
+    min: 0,
+    step: 50,
+    permiteVacio: true,
+  },
+  {
+    clave: CLAVE_SOLES_POR_PUNTO,
+    seccion: SECCION_PAGO_PUNTOS,
+    etiqueta: 'Soles por cada punto sobre la meta',
+    descripcion: 'Cuánto se le suma a la liquidación por cada punto que supere la meta. Con 0,05, mil puntos sobre la meta son S/50.',
+    tipo: 'numero',
+    default: '',
+    min: 0,
+    step: 0.01,
+    permiteVacio: true,
+  },
 ];
 
 export const CONFIG_CATALOGO_MAP: Map<string, ConfigCatalogoItem> = new Map(CONFIG_CATALOGO.map((i) => [i.clave, i]));
@@ -719,6 +762,8 @@ export type ConfigItem = {
   min?: number;
   max?: number;
   step?: number;
+  permiteVacio?: boolean;
+  unidad?: 'porcentaje';
   guardado: boolean; // false = todavía no hay fila en `config` (se está mostrando el default)
   esPersonalizado: boolean;
 };

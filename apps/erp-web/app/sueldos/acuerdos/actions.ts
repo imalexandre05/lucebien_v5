@@ -79,11 +79,13 @@ function validar(f: AcuerdoForm): string | null {
   // `sueldo_pct_comision`, que ya declara min 0 y max 1. `resolverParametros()` sólo rechaza
   // negativos, y el `check` de la 0072 mira los nombres de las claves, no sus valores: sin este
   // guard un 0,5 tipeado de más pactaba un 50% de comisión y se pagaba sin que nada chillara.
-  // La pantalla ya acota el campo; esto lo vuelve a comprobar porque una Server Action es un
-  // endpoint público.
+  // La pantalla la pide en porcentaje y la convierte a fracción antes de enviarla
+  // (`lib/porcentaje.ts`, spec 2026-10-03-comision-en-porcentaje); esto lo vuelve a comprobar
+  // porque una Server Action es un endpoint público. El mensaje habla en porcentaje porque es la
+  // unidad que la persona ve.
   const pctComision = f.parametros?.pctComision;
   if (pctComision != null && (!Number.isFinite(pctComision) || pctComision < 0 || pctComision > 1)) {
-    return 'La comisión es una fracción sobre la base: 0,02 = 2%. Tiene que estar entre 0 y 1.';
+    return 'La comisión tiene que estar entre 0 % y 100 %.';
   }
   for (const t of f.turnos) {
     if (!t.horaInicio || !t.horaFin) return 'Hay un turno sin hora de inicio o de fin.';
