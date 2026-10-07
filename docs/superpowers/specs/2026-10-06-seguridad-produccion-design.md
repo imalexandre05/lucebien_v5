@@ -41,7 +41,8 @@ dependen de esa misma policy para escribir.
   - `pipeline_rechazar` sólo desde `control_calidad`, y sólo hacia `recepcion`, `lavado`,
     `empatado`, `refaccion`, `compostura` o `planchado`. Si no → `TRANSICION:`.
   - `pipeline_calificar` sólo sobre una prenda en `enviado`; si se observa, el destino debe ser
-    una de esas mismas seis etapas. Si no → `TRANSICION:`.
+    una de esas seis etapas o `control_calidad` (la pantalla de envíos ofrece recepción,
+    planchado y control de calidad). Si no → `TRANSICION:`.
 
 **No cambia:** quién ve qué en el tablero, los puntos por etapa, las transiciones de avance.
 
