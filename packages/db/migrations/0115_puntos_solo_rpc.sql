@@ -29,8 +29,12 @@
 --   6) (enmienda 06-oct, H-1) Cada punto guarda el movimiento que lo originó (historial_id, 0112);
 --      deshacer borra los puntos DE ESE movimiento, sean de quien sean, y sólo deshace el último
 --      movimiento de la prenda (H-2 dentro de la RPC).
---   4) Las RPC siguen `security invoker` (la RLS de `prenda_pasada` sigue mandando). Mismos
---      cuerpos y firmas que en la 0112; sólo cambian las líneas que escribían directo.
+--   4) Las siete RPC por prenda son `security definer` (search_path public, pg_temp), como en la 0112:
+--      la 0122 (que se aplica antes) cierra la escritura directa de `prenda_pasada`, así que ya no
+--      pueden escribir como el llamador. Validan el acceso con `private.pipeline_exigir_acceso(p_id)`
+--      (definida en la 0112 y en la 0122: admin, almacén o sede propia; si no, 'Prenda no
+--      encontrada'). `pipeline_avanzar_tanda` sigue `security invoker`. Mismos cuerpos y firmas que
+--      en la 0112; sólo cambian las líneas que escribían directo.
 --   `lavanderia_enviar` (0066) también escribía en `prenda_historial`: pasa por la función.
 --
 -- NO TOCA: `empleado_borrar_alta` (0099) y los `security definer` del dueño de las tablas (no pasan
@@ -197,10 +201,13 @@ grant  execute on function private.prenda_historial_registrar(uuid, text, text, 
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 -- 3) Las RPC del pipeline. Mismo cuerpo que en la 0112 (firmas idénticas: no hay sobrecarga que
 --    borrar); sólo cambian las líneas que escribían en las dos tablas.
+--    Y, igual que en la 0112 (spec §12): las siete pasan a `security definer` con
+--    `perform private.pipeline_exigir_acceso(p_id)` tras 'No autenticado'. Hay que repetirlo acá porque
+--    esta migración las reescribe: sin eso volverían a invoker y la 0122 las rompería.
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 
 create or replace function pipeline_avanzar(p_id uuid, p_destino text, p_operador uuid default null)
-  returns numeric language plpgsql security invoker set search_path = public
+  returns numeric language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare
   v_sesion uuid := auth.uid();
@@ -210,6 +217,7 @@ declare
   v_permitidos text[]; v_hist uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
+  perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
   select etapa, tipo, tipo_lavado, codigo, dividida
     into v_etapa, v_tipo, v_tlav, v_codigo, v_dividida
@@ -287,11 +295,12 @@ revoke execute on function pipeline_avanzar_tanda(uuid[], text, uuid) from publi
 grant execute on function pipeline_avanzar_tanda(uuid[], text, uuid) to authenticated;
 
 create or replace function pipeline_enviar(p_id uuid, p_sede text, p_operador uuid default null)
-  returns void language plpgsql security invoker set search_path = public
+  returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_envio uuid; v_activo_id uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
+  perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
   select etapa, activo_id into v_etapa, v_activo_id from prenda_pasada where id = p_id;
   if not found then raise exception 'Prenda no encontrada'; end if;
@@ -315,7 +324,7 @@ revoke execute on function pipeline_enviar(uuid, text, uuid) from public, anon;
 grant execute on function pipeline_enviar(uuid, text, uuid) to authenticated;
 
 create or replace function pipeline_rechazar(p_id uuid, p_destino text, p_operador uuid default null)
-  returns void language plpgsql security invoker set search_path = public
+  returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare
   v_sesion uuid := auth.uid();
@@ -324,6 +333,7 @@ declare
   v_culpable uuid; v_clave text; v_peso numeric; v_pts numeric; v_media boolean; v_hist uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
+  perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
   select etapa, tipo, tipo_lavado, codigo into v_etapa, v_tipo, v_tlav, v_codigo
     from prenda_pasada where id = p_id;
@@ -357,11 +367,12 @@ grant execute on function pipeline_rechazar(uuid, text, uuid) to authenticated;
 -- Deshacer (enmienda 06-oct, H-1/H-2): sólo el ÚLTIMO movimiento de la prenda, y borra los puntos
 -- de ESE movimiento (de quien lo hizo), no los del actor. Misma validación que la 0112.
 create or replace function pipeline_deshacer(p_id uuid, p_etapa_anterior text, p_operador uuid default null)
-  returns void language plpgsql security invoker set search_path = public
+  returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_ult prenda_historial;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
+  perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
   select etapa into v_etapa from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
@@ -386,7 +397,7 @@ revoke execute on function pipeline_deshacer(uuid, text, uuid) from public, anon
 grant execute on function pipeline_deshacer(uuid, text, uuid) to authenticated;
 
 create or replace function pipeline_dividir(p_id uuid, p_operador uuid default null)
-  returns void language plpgsql security invoker set search_path = public
+  returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare
   v_sesion uuid := auth.uid();
@@ -395,6 +406,7 @@ declare
   v_saco uuid; v_pant uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
+  perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
   select * into v_pr from prenda_pasada where id = p_id;
   if not found then raise exception 'Prenda no encontrada'; end if;
@@ -429,7 +441,7 @@ revoke execute on function pipeline_dividir(uuid, uuid) from public, anon;
 grant execute on function pipeline_dividir(uuid, uuid) to authenticated;
 
 create or replace function pipeline_deshacer_division(p_id uuid, p_operador uuid default null)
-  returns void language plpgsql security invoker set search_path = public
+  returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare
   v_sesion         uuid := auth.uid();
@@ -442,6 +454,7 @@ declare
   v_etapa_original text;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
+  perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
 
   select * into v_pr from prenda_pasada where id = p_id;
@@ -507,11 +520,12 @@ grant execute on function pipeline_deshacer_division(uuid, uuid) to authenticate
 
 create or replace function pipeline_calificar(p_id uuid, p_aceptada boolean, p_destino text, p_obs text,
                                               p_operador uuid default null)
-  returns void language plpgsql security invoker set search_path = public
+  returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_envio uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
+  perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
   select etapa, envio_id into v_etapa, v_envio from prenda_pasada where id = p_id;
   if not found then raise exception 'Prenda no encontrada'; end if;
