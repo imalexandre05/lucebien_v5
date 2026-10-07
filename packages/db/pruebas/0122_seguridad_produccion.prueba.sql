@@ -17,6 +17,7 @@
 --   (5) una encargada de la sede S1 no toca una prenda de la sede S2 → 'Prenda no encontrada'
 --   (6) deshacer: `listo → recepcion` → TRANSICION; A/B (deshace el avance de otro) y doble deshacer
 --   (7) reportes_crear no fabrica reportes a nombre de otro ni en sedes ajenas → PERMISO
+--   (9) rechazar/calificar con origen o destino fuera de lo que ofrece la pantalla → TRANSICION
 --   (8) con datos_personas = {ver} la encargada no lee pagos/asistencias/notas de otra persona
 --
 -- Cada ataque se verifica por el CÓDIGO del error (SQLSTATE 42501, o el mensaje 'PERMISO:',
@@ -55,6 +56,7 @@ declare
   e1         uuid;   -- encargada de tienda de QS1
   f2         uuid;   -- vendedora de QS2
   -- prendas
+  p9 uuid;   -- caso (9): rechazos y calificación con origen/destino inválidos
   p1 uuid; p_ins uuid; p_pun uuid; p_fel uuid; p_rec uuid; p_s2 uuid; p_lis uuid; p_ab uuid;
   v_hist     uuid;   -- fila de historial sembrada
   v_pun      uuid;   -- fila de puntos sembrada
@@ -510,6 +512,39 @@ begin
   else
     r := r || format(' [FALLA] (8) evaluaciones_mensuales: ve %s de f2 (esperado 0) y %s propias (esperado >=1);', v_n, v_n2);
   end if;
+
+  -- ══ (9) rechazar / calificar sólo con origen y destino válidos (H-7) ══════════════════════
+  -- Ataque: rechazar una prenda en listo a recepcion y volver a avanzarla suma puntos sin trabajo
+  -- nuevo; calificar una prenda que no está enviada es la misma vía desde la tienda.
+  for rec in select * from (values
+      ('listo',           'rechazar',  'recepcion', '9a rechazar desde listo'),
+      ('control_calidad', 'rechazar',  'listo',     '9b rechazar hacia listo'),
+      ('listo',           'calificar', 'recepcion', '9c calificar sin estar enviada')
+    ) as t(etapa, accion, destino, nombre)
+  loop
+    insert into prenda_pasada (codigo, tipo, etapa, sede_origen_cod, tipo_lavado)
+      values ('QA22-' || rec.nombre, 'Terno completo', rec.etapa, 'QS1', 'normal') returning id into p9;
+    v_state := null; v_msg := null;
+    begin
+      perform set_config('request.jwt.claims', json_build_object('sub', c1, 'role','authenticated')::text, true);
+      execute 'set local role authenticated';
+      if rec.accion = 'rechazar' then
+        perform pipeline_rechazar(p9, rec.destino);
+      else
+        perform pipeline_calificar(p9, false, rec.destino, 'QA22');
+      end if;
+      v_state := 'sin error';
+    exception when others then
+      v_state := sqlstate; v_msg := sqlerrm;
+    end;
+    execute 'reset role';
+    select etapa into v_etapa from prenda_pasada where id = p9;
+    if v_msg like 'TRANSICION:%' and v_etapa = rec.etapa then
+      r := r || format(' [ok] (%s) rechazado con TRANSICION y la prenda sigue en %s;', rec.nombre, rec.etapa);
+    else
+      r := r || format(' [FALLA] (%s): %s %s, etapa=%s;', rec.nombre, v_state, coalesce(v_msg, ''), v_etapa);
+    end if;
+  end loop;
 
   raise exception 'RESULTADO 0122 -->%', r;
 end $$;
