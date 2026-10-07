@@ -1,0 +1,2 @@
+-- 0122_seguridad_produccion.sql — RESERVA (número asignado por la sesión maestra el 06-oct-2026;
+-- 0121 y 0123–0125 son de otras sesiones). Contenido en el commit siguiente.
