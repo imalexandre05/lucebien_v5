@@ -55,6 +55,7 @@
 | [superpowers/specs/reportes/2026-09-12-mis-reportes-design.md](superpowers/specs/reportes/2026-09-12-mis-reportes-design.md) | **El operativo ve el estado de sus propios reportes** (evaluado/pendiente, puntaje general) desde «Interno», sin tocar RLS ni exponer los puntos de extras que el dueño decidió ocultarle en la Fase 5. Anota aparte un hallazgo de RLS sin cerrar en `pendientes-negocio.md` |
 | [superpowers/specs/sueldos/2026-10-05-pago-por-puntos-design.md](superpowers/specs/sueldos/2026-10-05-pago-por-puntos-design.md) | **Pago por puntos sobre la meta mensual** (ticket #10): dos parámetros vacíos en `/configuracion`, línea «Bono por puntos» en la liquidación. Los extras dejan de mostrar soles en `/evaluaciones` |
 | [superpowers/plans/2026-10-05-pago-por-puntos.md](superpowers/plans/2026-10-05-pago-por-puntos.md) | Plan del pago por puntos verificado contra el código: qué funciones cambian, por qué hace falta un wrapper de puntos y cómo se agrega una línea de ingreso al motor |
+| [superpowers/specs/almacen/2026-10-03-incidencias-acceso-rapido-design.md](superpowers/specs/almacen/2026-10-03-incidencias-acceso-rapido-design.md) | **Botón «Nueva incidencia» en la barra superior**: enlaza a `/incidencias?nueva=1`, que abre el formulario de alta existente. Mismo gate que la página (`incidencias`/`ver`) |
 
 ## Arquitectura
 

@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { KeyRound, LogOut, Search } from 'lucide-react';
-import { ROL_LABEL, sedesPermitidas, type MatrizPermisos } from '@scilb/core';
+import { AlertTriangle, KeyRound, LogOut, Search } from 'lucide-react';
+import { puede, ROL_LABEL, sedesPermitidas, type MatrizPermisos } from '@scilb/core';
 import { cerrarSesion } from '../../app/login/actions';
 import { getSesion } from '../../lib/auth';
 import { listarNotificaciones, type Notificacion } from '../../lib/notificaciones-repo';
@@ -64,6 +64,10 @@ export async function Topbar() {
     }
   }
 
+  // Acceso rápido a «Nueva incidencia» (tablero#6): mismo gate que la página /incidencias
+  // (puede … 'incidencias' 'ver'); sin él, el botón llevaría a un redirect a /reportes/nuevo.
+  const puedeIncidencias = rol ? puede(matriz, rol, 'incidencias', 'ver', rolCod) : false;
+
   // z-30 y no z-10: `backdrop-blur` hace del header un CONTEXTO DE APILAMIENTO propio, así que el
   // z-40 del panel de SedePopover no sale hacia afuera — hacia el resto de la página el header
   // entero vale lo que diga ESTE z-index. Con z-10 empataba con la fila de tiles del dashboard
@@ -86,6 +90,16 @@ export async function Topbar() {
             className="anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
           >
             <Search className="h-4 w-4" strokeWidth={1.75} />
+          </Link>
+        )}
+        {sesion && puedeIncidencias && (
+          <Link
+            href="/incidencias?nueva=1"
+            title="Registrar una incidencia nueva"
+            aria-label="Nueva incidencia"
+            className="anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
+          >
+            <AlertTriangle className="h-4 w-4" strokeWidth={1.75} />
           </Link>
         )}
         {sesion && <NotificacionesBell notificaciones={notificaciones} />}
