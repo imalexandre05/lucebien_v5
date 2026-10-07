@@ -1,0 +1,8 @@
+# Qué NO escanea Semgrep. Todo con motivo; nada se silencia en silencio.
+node_modules/
+.next/
+# Sistema viejo Express + SQLite, congelado (CLAUDE.md): no se toca, así que no se le reportan hallazgos.
+server.js
+routes/
+public/
+database/

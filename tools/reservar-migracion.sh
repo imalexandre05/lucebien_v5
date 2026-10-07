@@ -9,8 +9,9 @@
 # Ya pasó una versión chica de esto el 14-ago-2026: la spec de sueldos decía 0067 y ese número se
 # lo había llevado la migración de aislamiento.
 #
-# CÓMO LO RESUELVE. No mira sólo el directorio de trabajo: mira TODAS las ramas, locales y
-# remotas. Si otra rama ya reservó la 0070, esta reserva la 0071 aunque en tu copia no exista.
+# CÓMO LO RESUELVE. No mira sólo el directorio de trabajo ni las ramas que el clon conoce: consulta
+# el remoto (`git ls-remote` + fetch superficial de cada rama, ver tools/lib-migraciones-remotas.sh).
+# Sin red aborta en vez de elegir a ciegas. Si otra rama ya reservó la 0070, esta reserva la 0071 aunque en tu copia no exista.
 #
 # Uso:
 #   bash tools/reservar-migracion.sh sueldos_pantallas
@@ -32,12 +33,25 @@ if [ "$SLUG" = "--ver" ]; then SOLO_VER=1; SLUG=""; fi
 # 1) El directorio de trabajo (incluye lo que todavía no commiteaste).
 numeros=$(ls "$DIR" 2>/dev/null | grep -oE '^[0-9]{4}' || true)
 
-# 2) Cada rama local y remota. `git ls-tree` no necesita hacer checkout de nada.
+# 2) Cada rama LOCAL. `git ls-tree` no necesita hacer checkout de nada.
 for ref in $(git for-each-ref --format='%(refname)' refs/heads refs/remotes 2>/dev/null); do
   otros=$(git ls-tree --name-only "$ref" "$DIR/" 2>/dev/null \
           | sed "s|^$DIR/||" | grep -oE '^[0-9]{4}' || true)
   numeros=$(printf '%s\n%s' "$numeros" "$otros")
 done
+
+# 3) Cada rama del REMOTO, consultada de verdad: las sesiones en la nube clonan sólo su rama y no
+#    ven las demás. Sin red NO se elige un número a ciegas: se aborta.
+# shellcheck source=tools/lib-migraciones-remotas.sh
+source tools/lib-migraciones-remotas.sh
+remotas=$(migraciones_remotas); rc=$?
+if [ "$rc" -eq 2 ]; then
+  echo
+  echo "ABORTADO: sin acceso al remoto no se puede saber qué números tomaron las otras ramas."
+  echo "Elegir uno a ciegas es justo lo que provoca los choques. Reintentá con red."
+  exit 2
+fi
+numeros=$(printf '%s\n%s' "$numeros" "$(printf '%s\n' "$remotas" | cut -f1)")
 
 ultimo=$(printf '%s\n' "$numeros" | grep -E '^[0-9]{4}$' | sort -n | tail -1)
 ultimo=${ultimo:-0000}

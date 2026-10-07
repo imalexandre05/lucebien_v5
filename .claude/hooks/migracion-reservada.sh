@@ -69,6 +69,18 @@ for ref in $(git for-each-ref --format='%(refname:short)' refs/heads refs/remote
   fi
 done
 
+# ── 1b) Lo mismo contra el REMOTO, consultado de verdad ─────────────────────────────────────
+# Las sesiones en la nube clonan sólo su rama: el bucle de arriba no ve las demás. Sin red no se
+# adivina: se deniega con un mensaje claro.
+remotas=$(bash -c '. tools/lib-migraciones-remotas.sh; migraciones_remotas'); rc=$?
+if [ "$rc" -eq 2 ]; then
+  denegar "No se pudo consultar el remoto para saber si el número ${numero} está libre en las otras ramas (sin red?). No se elige un número a ciegas. Reintentá con red."
+fi
+ajeno=$(printf '%s\n' "$remotas" | awk -F'\t' -v n="$numero" -v a="$archivo" -v r="origin/$rama_actual" '$1==n && $2!=a && $3!=r {print $2 " en la rama " $3; exit}')
+if [ -n "$ajeno" ]; then
+  denegar "El número ${numero} ya es de ${ajeno}. Dos migraciones con el mismo número chocan en el merge, cuando una ya está aplicada en produccion. Pedí uno libre con: bash tools/reservar-migracion.sh <slug>"
+fi
+
 # ── 2) ¿Está commiteada la reserva? ─────────────────────────────────────────────────────────
 # Sin commit, la reserva no existe para nadie más: la siguiente sección va a elegir el mismo
 # número porque no lo ve en ninguna rama.

@@ -1,0 +1,53 @@
+# Reglas propias de SCI-LB: espejan no-negociables de CLAUDE.md donde Semgrep (AST) es más
+# preciso que el grep de tools/guard-reglas.sh. No lo reemplazan: son una red más.
+rules:
+  # No-negociable 4: el core nunca llama new Date() sin argumentos; recibe hoyPeru() del caller.
+  - id: sci-lb-core-new-date-sin-argumentos
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      El core no puede llamar `new Date()`: depende de la zona horaria del proceso (Perú es
+      UTC-5). Recibe la fecha del caller (hoyPeru()). Ver evaluaciones.ts.
+    pattern: new Date()
+    paths:
+      include:
+        - packages/core/src/
+      exclude:
+        - "*.test.ts"
+
+  # No-negociable 3: getAdminClient() bypassa RLS. Lista permitida = `permitidos` de
+  # tools/guard-reglas.sh (regla 3). Si cambia allá, cambia acá.
+  - id: sci-lb-get-admin-client-fuera-de-lista
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      getAdminClient() bypassa RLS y sólo puede usarse en los archivos permitidos (lib/auth.ts,
+      lib/reauth.ts, lib/sedes-repo.ts, lib/empleados-repo.ts, lib/dispositivos-repo.ts,
+      lib/supabase/admin.ts). Un séptimo exige justificación escrita en la spec.
+    pattern: getAdminClient(...)
+    paths:
+      include:
+        - apps/erp-web/
+      exclude:
+        - apps/erp-web/lib/auth.ts
+        - apps/erp-web/lib/reauth.ts
+        - apps/erp-web/lib/sedes-repo.ts
+        - apps/erp-web/lib/empleados-repo.ts
+        - apps/erp-web/lib/dispositivos-repo.ts
+        - apps/erp-web/lib/supabase/admin.ts
+
+  # No-negociable 2: el avance de una prenda pasa por una RPC, nunca un update/delete plano.
+  - id: sci-lb-prenda-pasada-update-delete-directo
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      update/delete directo sobre prenda_pasada: mueve una prenda de etapa sin las validaciones
+      ni los puntos de la RPC. Usá una RPC de pipeline-repo.ts o agregá una nueva.
+    pattern-either:
+      - pattern: $C.from('prenda_pasada').update(...)
+      - pattern: $C.from('prenda_pasada').delete(...)
+      - pattern: $C.from("prenda_pasada").update(...)
+      - pattern: $C.from("prenda_pasada").delete(...)
+    paths:
+      include:
+        - apps/erp-web/
