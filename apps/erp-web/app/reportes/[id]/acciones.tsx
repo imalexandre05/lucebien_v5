@@ -30,7 +30,7 @@ function Estado3({
   onChange,
   nombre,
 }: {
-  value: number;
+  value: number | undefined;
   onChange: (v: number) => void;
   nombre?: string;
 }) {
@@ -68,10 +68,22 @@ function Estado3({
   );
 }
 
+// `layout_zonas` no tiene único por (sede, código): un reporte puede traer dos filas con el mismo
+// código. La RPC exige un `cal` por código y actualiza todas las filas que lo comparten.
+function sinRepetidos<T>(items: T[], clave: (x: T) => string): T[] {
+  const vistos = new Set<string>();
+  return items.filter((x) => {
+    const k = clave(x);
+    if (vistos.has(k)) return false;
+    vistos.add(k);
+    return true;
+  });
+}
+
 export function EvaluarPanel({
   id,
-  actividades,
-  limpieza = [],
+  actividades: actividadesProp,
+  limpieza: limpiezaProp = [],
   zonas = [],
   turno,
   trabajadores = [],
@@ -84,12 +96,13 @@ export function EvaluarPanel({
   trabajadores?: string[];
 }) {
   const router = useRouter();
-  const [cal, setCal] = useState<Record<string, number>>(() =>
-    Object.fromEntries(actividades.map((a) => [a.cod, a.calificacion ?? 1])),
-  );
-  const [estLimp, setEstLimp] = useState<Record<string, number>>(() =>
-    Object.fromEntries(limpieza.map((z) => [z.zoneCod, z.calificacion ?? 1])),
-  );
+  const actividades = useMemo(() => sinRepetidos(actividadesProp, (a) => a.cod), [actividadesProp]);
+  const limpieza = useMemo(() => sinRepetidos(limpiezaProp, (z) => z.zoneCod), [limpiezaProp]);
+  // Arrancan vacías a propósito. `reporte_actividades.calificacion` vale 1 por defecto en la base,
+  // así que lo que llega en `a.calificacion` de un reporte sin evaluar no es una decisión de nadie:
+  // el evaluador marca cada actividad y cada zona (reportes_evaluar exige todas, migración 0113).
+  const [cal, setCal] = useState<Record<string, number>>({});
+  const [estLimp, setEstLimp] = useState<Record<string, number>>({});
   const [obs, setObs] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
@@ -97,11 +110,17 @@ export function EvaluarPanel({
   const puntaje = useMemo(
     () =>
       calcularPuntajeEval([
-        ...actividades.map((a) => ({ peso: a.peso, calificacion: cal[a.cod] ?? 1 })),
-        ...limpieza.map((z) => ({ peso: z.peso, calificacion: estLimp[z.zoneCod] ?? 1 })),
+        // Lo pendiente suma 0 y su peso sí cuenta: el puntaje sólo sube con lo que se aprueba.
+        ...actividades.map((a) => ({ peso: a.peso, calificacion: cal[a.cod] ?? 0 })),
+        ...limpieza.map((z) => ({ peso: z.peso, calificacion: estLimp[z.zoneCod] ?? 0 })),
       ]),
     [actividades, limpieza, cal, estLimp],
   );
+  // El mapa sólo dibuja zonas del turno que existen hoy en el layout; el reporte puede traer otras
+  // (código borrado, otro turno, tipo `area`). Toda zona sin marcar se lista aparte para que nunca
+  // quede una pendiente sin forma de marcarla.
+  const zonasPendientes = limpieza.filter((z) => estLimp[z.zoneCod] === undefined);
+  const pendientes = actividades.filter((a) => cal[a.cod] === undefined).length + zonasPendientes.length;
 
   function masivoActs(v: number) {
     setCal(Object.fromEntries(actividades.map((a) => [a.cod, v])));
@@ -111,18 +130,22 @@ export function EvaluarPanel({
   }
   function ciclarZona(zoneCod: string) {
     setEstLimp((p) => {
-      const cur = p[zoneCod] ?? 1;
-      const next = cur >= 1 ? 0.5 : cur >= 0.5 ? 0 : 1;
+      const cur = p[zoneCod];
+      const next = cur === undefined ? 1 : cur >= 1 ? 0.5 : cur >= 0.5 ? 0 : 1;
       return { ...p, [zoneCod]: next };
     });
   }
 
   function enviar() {
     setError('');
+    if (pendientes > 0) {
+      setError(`Faltan ${pendientes} por marcar: aprueba, observa o rechaza cada una antes de enviar.`);
+      return;
+    }
     startTransition(async () => {
       const r = await accionEvaluar(id, [
-        ...actividades.map((a) => ({ cod: a.cod, cal: cal[a.cod] ?? 1, obs: obs[a.cod] ?? '' })),
-        ...limpieza.map((z) => ({ cod: `OL_${z.zoneCod}`, cal: estLimp[z.zoneCod] ?? 1, obs: '' })),
+        ...actividades.map((a) => ({ cod: a.cod, cal: cal[a.cod], obs: obs[a.cod] ?? '' })),
+        ...limpieza.map((z) => ({ cod: `OL_${z.zoneCod}`, cal: estLimp[z.zoneCod], obs: '' })),
       ]);
       if (!r.ok) {
         setError(r.error ?? 'Error al evaluar');
@@ -183,6 +206,27 @@ export function EvaluarPanel({
         </Card>
       )}
 
+      {zonasPendientes.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Zonas de limpieza sin marcar</CardTitle>
+            <span className="text-apoyo text-muted">{zonasPendientes.length} pendientes</span>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {zonasPendientes.map((z) => {
+              const nombre = zonas.find((x) => x.cod === z.zoneCod)?.nombre || z.zoneCod;
+              return (
+                <div key={z.zoneCod} className="flex flex-wrap items-center gap-3 rounded-r-chico border border-line bg-white px-3 py-2.5">
+                  <span className="w-16 shrink-0 tabular-nums text-dato text-muted">{z.zoneCod}</span>
+                  <span className="min-w-0 flex-1 text-cuerpo font-medium text-navy">{nombre}</span>
+                  <Estado3 value={undefined} onChange={(v) => setEstLimp((p) => ({ ...p, [z.zoneCod]: v }))} nombre={nombre} />
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Calificación por actividad</CardTitle>
@@ -216,7 +260,7 @@ export function EvaluarPanel({
                 aria-label={`Observación de ${a.nombre}`}
                 className="w-40 rounded-r-chico border border-line bg-white px-2.5 py-2 text-apoyo text-navy outline-none transition-colors focus:border-gold"
               />
-              <Estado3 value={cal[a.cod] ?? 1} onChange={(v) => setCal((p) => ({ ...p, [a.cod]: v }))} nombre={a.nombre} />
+              <Estado3 value={cal[a.cod]} onChange={(v) => setCal((p) => ({ ...p, [a.cod]: v }))} nombre={a.nombre} />
             </div>
           ))}
           {actividades.length === 0 && (
@@ -236,11 +280,15 @@ export function EvaluarPanel({
         variant="gold"
         data-testid="enviar-evaluacion"
         onClick={enviar}
-        disabled={actividades.length === 0 && limpieza.length === 0}
+        disabled={(actividades.length === 0 && limpieza.length === 0) || pendientes > 0}
         pending={pending}
         className="w-full justify-center py-3 text-sub font-semibold shadow-elev-1"
       >
-        {pending ? 'Enviando…' : `Enviar evaluación · ${puntaje}%`}
+        {pending
+          ? 'Enviando…'
+          : pendientes > 0
+            ? `Faltan ${pendientes} por marcar`
+            : `Enviar evaluación · ${puntaje}%`}
       </Button>
     </div>
   );

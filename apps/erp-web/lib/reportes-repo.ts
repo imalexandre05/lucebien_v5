@@ -462,6 +462,9 @@ export async function evaluarReporte(
   const { data, error } = await sb.rpc('reportes_evaluar', { p_id: id, p_calificaciones: calificaciones });
   // Mismo motivo que en crearReporte: el control de sede de la 0081 corta con `PERMISO:` y sin
   // esto la persona veía el texto crudo de Postgres en vez de una explicación.
+  // La 0113 corta con `DATO:` (rango, actividades que no coinciden) o `ESTADO:` (ya evaluado).
+  const validacion = error?.message.match(/^(?:DATO|ESTADO):\s*(.+)$/);
+  if (validacion) throw new Error(mayuscula(validacion[1]));
   if (error) throw parsearErrorCrear(error.message);
   return Number(data) || 0;
 }

@@ -169,6 +169,12 @@ begin
   end;
 
   -- J) Evaluar un turno ajeno de la propia sede: el camino legítimo de la nota.
+  -- Desde la 0113 reportes_evaluar rechaza lo ya evaluado, y el montaje lo deja evaluado=true (ver
+  -- arriba, por REPORTE_PENDIENTE): se lo pone pendiente justo antes del caso.
+  -- (Con el rol del dueño: como `authenticated` la política de update lo dejaría en 0 filas.)
+  execute 'reset role';
+  update reportes set evaluado = false where id = id_otro;
+  execute 'set local role authenticated';
   begin
     v_pun := reportes_evaluar(id_otro,
       jsonb_build_array(jsonb_build_object('cod', 'A1', 'cal', 1)));
