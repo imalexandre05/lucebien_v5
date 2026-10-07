@@ -44,7 +44,7 @@ export function ActivoPicker({
   onSeleccionar: (activo: ActivoInventario, precioSugerido: number) => void;
   placeholder?: string;
   excluidos?: Set<string>;
-  inputRef?: React.RefObject<HTMLInputElement>;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
   testId?: string;
 }) {
   const localRef = useRef<HTMLInputElement>(null);

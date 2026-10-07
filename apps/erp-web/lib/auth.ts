@@ -13,9 +13,9 @@ export const EMAIL_DOMAIN = 'lucebien.local';
 
 // "El dispositivo manda" (Fase 2): fija la sede activa en una cookie httpOnly de sesión. La usan
 // el login (ambos modos) y el switcher del topbar — un único punto que decide cómo se persiste.
-export function fijarSedeActiva(sede: string): void {
+export async function fijarSedeActiva(sede: string): Promise<void> {
   if (!sede) return;
-  cookies().set(SEDE_COOKIE, sede, { httpOnly: true, sameSite: 'lax', path: '/' });
+  (await cookies()).set(SEDE_COOKIE, sede, { httpOnly: true, sameSite: 'lax', path: '/' });
 }
 
 /**
@@ -62,7 +62,7 @@ export async function login(cod: string, sede: string): Promise<{ ok: boolean; e
     password: cod,
   });
   if (error) return { ok: false, error: error.message };
-  if (data.user) fijarSedeActiva(await sedeValidaParaEntrar(data.user.id, sede));
+  if (data.user) await fijarSedeActiva(await sedeValidaParaEntrar(data.user.id, sede));
   return { ok: true };
 }
 
@@ -90,14 +90,14 @@ export async function loginConUsuario(
     password,
   });
   if (error) return { ok: false, error: 'Usuario o contraseña incorrectos' };
-  if (sede && data.user) fijarSedeActiva(await sedeValidaParaEntrar(data.user.id, sede));
+  if (sede && data.user) await fijarSedeActiva(await sedeValidaParaEntrar(data.user.id, sede));
   return { ok: true };
 }
 
 export async function logout(): Promise<void> {
   const sb = getServerClient();
   await sb.auth.signOut();
-  cookies().delete(SEDE_COOKIE);
+  (await cookies()).delete(SEDE_COOKIE);
 }
 
 // Sesión actual: lee el usuario de Supabase Auth + su fila de empleados (con la RLS del
@@ -138,7 +138,7 @@ export const getSesion = cache(async (): Promise<Sesion | null> => {
   // arriba), no se echa a nadie por una columna ausente.
   if (emp.activo === false) return null;
 
-  const sedeActiva = cookies().get(SEDE_COOKIE)?.value || (emp.sede_cod as string) || '';
+  const sedeActiva = (await cookies()).get(SEDE_COOKIE)?.value || (emp.sede_cod as string) || '';
   const lista = (tiendas ?? []).map((t) => t.sede_cod as string);
   return {
     nombre: emp.nombre as string,

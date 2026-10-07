@@ -53,11 +53,12 @@ const HERRAMIENTAS: Herramienta[] = [
   { href: '/personal/dashboard', icono: BarChart3, label: 'Dashboard de personal', gate: 'admin' },
 ];
 
-export default async function ColaboradoresPage({
-  searchParams,
-}: {
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
+export default async function ColaboradoresPage(
+  props: {
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   if (!sesion) redirect('/login');
 

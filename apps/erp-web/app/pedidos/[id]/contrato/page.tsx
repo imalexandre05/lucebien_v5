@@ -9,7 +9,8 @@ const SEDE_NOMBRE: Record<string, string> = {
   AL: 'Almacén Central',
 };
 
-export default async function ContratoPage({ params }: { params: { id: string } }) {
+export default async function ContratoPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const p = await pedidosRepo.obtener(params.id);
   if (!p) notFound();
 

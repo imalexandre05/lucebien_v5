@@ -36,7 +36,7 @@ export function LineasPanel({
   onAdd: (l: LineaLocal) => void;
   onRemove: (key: string) => void;
   onUpdate: (key: string, patch: Partial<LineaLocal>) => void;
-  activoInputRef: React.RefObject<HTMLInputElement>;
+  activoInputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const [manualDesc, setManualDesc] = useState('');
   const [manualPrecio, setManualPrecio] = useState(0);

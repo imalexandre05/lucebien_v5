@@ -30,7 +30,8 @@ import { DatosCliente } from './cliente';
 // pide la spec cuando hay más de uno).
 export const dynamic = 'force-dynamic';
 
-export default async function DatosColaboradorPage({ params }: { params: { id: string } }) {
+export default async function DatosColaboradorPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
   if (!acceso.secciones.includes('datos')) redirect(`/personal/${params.id}`);

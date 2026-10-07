@@ -19,13 +19,14 @@ import { HiloPago } from '../../../components/colaboradores/hilo-pago';
 
 const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 
-export default async function ResumenColaboradorPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
+export default async function ResumenColaboradorPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
 

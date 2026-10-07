@@ -8,10 +8,8 @@ const nextConfig = {
   // construir en otro lado — NEXT_DIST_DIR=.next-build — sin tener que apagar el dev server para
   // comprobar que una pantalla nueva compila.
   distDir: process.env.NEXT_DIST_DIR || '.next',
-  // Habilita instrumentation.ts (polyfill de WebSocket para supabase-js en Node < 22).
-  experimental: {
-    instrumentationHook: true,
-  },
+  // instrumentation.ts (polyfill de WebSocket para supabase-js en Node < 22) ya no necesita
+  // `experimental.instrumentationHook`: en Next 15 está habilitado por defecto.
 };
 
 export default nextConfig;

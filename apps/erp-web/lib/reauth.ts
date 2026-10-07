@@ -47,7 +47,7 @@ function tokenValido(token: string, userId: string): boolean {
 // ¿La cookie de reauth es válida para ESTE usuario y no venció? httpOnly → nunca la toca JS del
 // navegador; firmada con HMAC → editarla a mano (devtools) no produce un token válido.
 export async function tieneReauth(userId: string): Promise<boolean> {
-  const token = cookies().get(REAUTH_COOKIE)?.value;
+  const token = (await cookies()).get(REAUTH_COOKIE)?.value;
   if (!token) return false;
   try {
     return tokenValido(token, userId);
@@ -57,7 +57,7 @@ export async function tieneReauth(userId: string): Promise<boolean> {
 }
 
 async function marcarReauth(userId: string): Promise<void> {
-  cookies().set(REAUTH_COOKIE, generarToken(userId), {
+  (await cookies()).set(REAUTH_COOKIE, generarToken(userId), {
     httpOnly: true,
     sameSite: 'lax',
     path: '/',

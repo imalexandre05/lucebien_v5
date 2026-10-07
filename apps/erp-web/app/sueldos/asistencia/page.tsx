@@ -21,11 +21,12 @@ import { AsistenciaCliente } from './cliente';
  */
 export const dynamic = 'force-dynamic';
 
-export default async function AsistenciaSueldosPage({
-  searchParams,
-}: {
-  searchParams: { acuerdo?: string };
-}) {
+export default async function AsistenciaSueldosPage(
+  props: {
+    searchParams: Promise<{ acuerdo?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
 

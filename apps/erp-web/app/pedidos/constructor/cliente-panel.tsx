@@ -23,7 +23,7 @@ export function ClientePanel({
   clientes: ClienteOpcion[];
   value: ClienteSel | null;
   onChange: (v: ClienteSel | null) => void;
-  inputRef?: React.RefObject<HTMLInputElement>;
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }) {
   const localRef = useRef<HTMLInputElement>(null);
   const inputRef = inputRefProp ?? localRef;

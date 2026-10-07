@@ -45,7 +45,7 @@ export function Ticket({
   onAbrirCaja: (montoApertura: number) => void;
   abriendoCaja: boolean;
   sede: string;
-  montoInputRef: React.RefObject<HTMLInputElement>;
+  montoInputRef: React.RefObject<HTMLInputElement | null>;
 }) {
   const [montoApertura, setMontoApertura] = useState(0);
   const total = totalPedido(items.map((i) => ({ cantidad: i.cantidad, precioUnitario: i.precioUnitario, esCortesia: i.esCortesia })));

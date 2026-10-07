@@ -7,7 +7,8 @@ import { ActividadesCliente } from './cliente';
 
 // Gestionar Actividades (espejo del panel del viejo): qué actividades aparecen en cada
 // sede, con qué peso, turno y periodicidad. Solo admin.
-export default async function ActividadesPage({ searchParams }: { searchParams: { sede?: string } }) {
+export default async function ActividadesPage(props: { searchParams: Promise<{ sede?: string }> }) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
   if (!esAdmin) redirect('/');

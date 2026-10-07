@@ -14,14 +14,17 @@ const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 // Reemplaza al viejo lib/supabase.ts (singleton con service_role, que bypaseaba
 // la RLS — hallazgo H1 del plan de migración).
 export function getServerClient() {
-  const cookieStore = cookies();
+  // Next 15: cookies() es async. Se resuelve de forma perezosa dentro de los callbacks (que
+  // @supabase/ssr admite async) para que getServerClient() siga siendo síncrono y no cambie
+  // sus ~220 llamadores.
   return createServerClient(url, anonKey, {
     cookies: {
-      getAll() {
-        return cookieStore.getAll();
+      async getAll() {
+        return (await cookies()).getAll();
       },
-      setAll(cookiesToSet) {
+      async setAll(cookiesToSet) {
         try {
+          const cookieStore = await cookies();
           cookiesToSet.forEach(({ name, value, options }) => {
             cookieStore.set(name, value, options);
           });

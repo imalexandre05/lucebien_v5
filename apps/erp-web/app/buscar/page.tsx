@@ -45,7 +45,8 @@ function EstadoBadge({ estado }: { estado: EstadoTrazabilidad }) {
 
 // Buscador de trazabilidad (Fase 10, última del plan): un solo lugar para responder "¿dónde está
 // este terno?" reuniendo inventario (Fase 8) + pipeline de lavandería (Fase 5) + pedidos (Fase 9).
-export default async function BuscarPage({ searchParams }: { searchParams: { q?: string } }) {
+export default async function BuscarPage(props: { searchParams: Promise<{ q?: string }> }) {
+  const searchParams = await props.searchParams;
   const q = searchParams.q ?? '';
   const resultados = q ? await buscarTrazabilidad(q) : [];
 

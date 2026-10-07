@@ -7,7 +7,8 @@ import { LayoutEditor } from './editor';
 
 // Editor de layout (el del jefe en el viejo): mover/crear zonas de limpieza con su peso,
 // turno y forma, por sede. Guardado atómico (RPC). Solo admin.
-export default async function LayoutEditorPage({ searchParams }: { searchParams: { sede?: string } }) {
+export default async function LayoutEditorPage(props: { searchParams: Promise<{ sede?: string }> }) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
   if (!esAdmin) redirect('/');
