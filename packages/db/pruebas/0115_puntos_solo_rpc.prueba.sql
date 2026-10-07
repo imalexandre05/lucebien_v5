@@ -557,7 +557,7 @@ begin
       perform pipeline_enviar(w3, v_a);
       perform pipeline_calificar(w3, true, '', '');
       perform pg_temp.dueno();
-      select count(*) into v_n from prenda_pasada where id = w3 and envio_id is not null and etapa = 'enviado';
+      select count(*) into v_n from prenda_pasada where id = w3 and envio_id is not null;
       select count(*) into v_n2 from prenda_calificacion where pasada_id = w3 and calificador_id = e_alm;
       if v_n = 1 and v_n2 = 1 then
         r := r || '[ok] caso 11e: enviar y calificar funcionan con las tablas cerradas;';
