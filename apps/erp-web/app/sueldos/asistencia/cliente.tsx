@@ -3,13 +3,14 @@
 import { useMemo, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, Check } from 'lucide-react';
-import { diaSemanaISO, diasDelPeriodo, resumirHorario } from '@scilb/core';
+import { diaSemanaISO, diasDelPeriodo, resumirHorario, soloHastaHoy } from '@scilb/core';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input, Label, Select } from '../../../components/ui/form';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
+import { hoyPeru } from '../../../lib/fechas';
 import type { AsistenciaDia, CondicionDia } from '../../../lib/asistencias-repo';
 import type { AcuerdoSueldo } from '../../../lib/sueldos-repo';
 import { accionDeclararDia, accionDeclararVarios, type DiaForm } from './actions';
@@ -145,6 +146,9 @@ export function AsistenciaCliente({
 
   const contratados = calendario.filter((d) => d.horasContratadas > 0);
   const sinDeclarar = contratados.filter((d) => (borradores[d.fecha]?.condicion ?? 'sin_dato') === 'sin_dato');
+  // La acción masiva sólo cubre hasta hoy (hora Perú): una falta futura declarada de antemano como
+  // trabajada se pagaría, y el huellero ya no pisa lo declarado. Los futuros se declaran uno a uno.
+  const sinDeclararHastaHoy = soloHastaHoy(sinDeclarar, hoyPeru());
 
   const set = (fecha: string, cambio: Partial<Borrador>) =>
     setBorradores((v) => ({ ...v, [fecha]: { ...v[fecha], ...cambio, sucio: true } }));
@@ -180,7 +184,7 @@ export function AsistenciaCliente({
    * contrato. Lo confirma una persona y queda en la auditoría: el sistema no infiere nada solo.
    */
   const declararTodosTrabajados = () => {
-    const cuantos = sinDeclarar.length;
+    const cuantos = sinDeclararHastaHoy.length;
     // La confirmación más consecuente del sistema: declara N días como trabajados y eso se paga.
     // El confirm nativo la escribía con saltos de línea y en el tono del navegador; acá el título
     // dice cuántos días son y el detalle dice qué hay que hacer después, que es lo que de verdad
@@ -198,7 +202,7 @@ export function AsistenciaCliente({
   const hacerDeclararTodos = () => {
     setError(null);
     empezar(async () => {
-      const dias: DiaForm[] = sinDeclarar.map((d) => {
+      const dias: DiaForm[] = sinDeclararHastaHoy.map((d) => {
         const b = borradores[d.fecha];
         const salida = hhmm(
           // Última salida del día = entrada del contrato + horas contratadas. Con el horario
@@ -266,9 +270,9 @@ export function AsistenciaCliente({
               )}
             </p>
           </div>
-          {sinDeclarar.length > 0 && acuerdo.turnos.length > 0 && (
+          {sinDeclararHastaHoy.length > 0 && acuerdo.turnos.length > 0 && (
             <Button variant="outline" onClick={declararTodosTrabajados} pending={pendiente}>
-              Declarar los {sinDeclarar.length} como trabajados
+              Declarar los {sinDeclararHastaHoy.length} días hasta hoy
             </Button>
           )}
         </CardContent>
