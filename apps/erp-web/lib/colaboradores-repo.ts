@@ -104,7 +104,7 @@ type Fila = Record<string, unknown>;
  * tiene que entrar ENTERO, hasta las 23:59:59 de Perú.
  *
  * Duplicado a propósito en lib/desempeno-repo.ts: son las dos únicas consultas de la aplicación
- * que filtran esta columna. La RPC de la 0057 tiene su propio filtro y otro criterio: no se toca.
+ * que filtran esta columna. Desde la 0110 la RPC de evaluación (`private.evaluacion_componentes_datos`) usa el mismo criterio (día de Perú).
  */
 export const inicioDiaPeru = (dia: string): string => `${dia}T00:00:00-05:00`;
 
