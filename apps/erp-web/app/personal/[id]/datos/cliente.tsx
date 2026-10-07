@@ -29,6 +29,7 @@ import { Button } from '../../../../components/ui/button';
 import { Aviso } from '../../../../components/ui/form';
 import { DialogoConfirmar, useConfirmacion } from '../../../../components/ui/confirmar';
 import { cn } from '../../../../lib/cn';
+import { errorDeTamano } from '../../../../lib/documentos-tamano';
 
 // La misma ficha de /empleados —CamposPerfil, OperaCajaToggle, ContactoCampos, ContrasenaForm,
 // las cuatro exportadas desde app/empleados/cliente.tsx—, montada para UNA persona en vez de para
@@ -288,7 +289,7 @@ export function DatosCliente({
 }
 
 // C-3 (migración 0105): DNI, CV, imágenes — solo admin/dueño (esta pantalla entera ya lo es, sin
-// gate propio acá). 10 MB, jpg/png/webp/pdf (mismos límites que el bucket, comprobados también acá
+// gate propio acá). 4 MB (límite de Vercel), jpg/png/webp/pdf (mismos límites que el bucket, comprobados también acá
 // para un mensaje legible antes de intentar subir). Sin previsualización ni categorías (spec §6):
 // nombre, tamaño, fecha, un enlace de descarga con URL firmada de corta duración, y borrar.
 function DocumentosCard({
@@ -310,10 +311,25 @@ function DocumentosCard({
     e.target.value = ''; // permite volver a elegir el mismo archivo si hubo error
     if (!archivo) return;
     setError('');
+    // Antes de enviar: no se llama al servidor con un archivo que Vercel cortaría (~4,5 MB).
+    const errorTamano = errorDeTamano(archivo.size);
+    if (errorTamano) {
+      setError(errorTamano);
+      return;
+    }
     const formData = new FormData();
     formData.set('archivo', archivo);
     startSubida(async () => {
-      const r = await accionSubirDocumento(empleadoId, formData);
+      let r: Awaited<ReturnType<typeof accionSubirDocumento>>;
+      try {
+        r = await accionSubirDocumento(empleadoId, formData);
+      } catch {
+        // La red o la plataforma cortaron el envío antes de llegar a la action.
+        setError(
+          'No se pudo subir el documento. Revisa tu conexión e inténtalo de nuevo; si el archivo pesa más de 4 MB, redúcelo o súbelo como PDF.',
+        );
+        return;
+      }
       if (!r.ok || !r.documento) {
         setError(r.error ?? 'No se pudo subir el documento');
         return;
@@ -412,7 +428,7 @@ function DocumentosCard({
             ))}
           </ul>
         )}
-        <p className="text-micro text-muted">Máximo 10 MB por archivo — imágenes o PDF.</p>
+        <p className="text-micro text-muted">Máximo 4 MB por archivo — imágenes o PDF.</p>
       </CardContent>
     </Card>
   );

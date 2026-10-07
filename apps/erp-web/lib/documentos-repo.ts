@@ -10,10 +10,12 @@
 // borra el archivo primero y la fila después, por el mismo principio en la otra dirección.
 
 import { getServerClient } from './supabase/server';
+import { TAMANO_MAXIMO_BYTES, errorDeTamano } from './documentos-tamano';
 
 const BUCKET = 'empleado-documentos';
 export const TIPOS_PERMITIDOS = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
-export const TAMANO_MAXIMO_BYTES = 10 * 1024 * 1024; // 10 MB — spec §1/§3.
+// Tope de 4 MB (límite de Vercel, ver documentos-tamano.ts); se reexporta para quien ya lo importaba.
+export { TAMANO_MAXIMO_BYTES };
 
 export type DocumentoEmpleado = {
   id: string;
@@ -60,9 +62,8 @@ export async function subirDocumento(
   if (!(TIPOS_PERMITIDOS as readonly string[]).includes(archivo.type)) {
     throw new Error(`Tipo de archivo no permitido: ${archivo.type || 'desconocido'}. Sólo imágenes (jpg, png, webp) o PDF.`);
   }
-  if (archivo.size > TAMANO_MAXIMO_BYTES) {
-    throw new Error(`El archivo pesa ${(archivo.size / 1024 / 1024).toFixed(1)} MB — el máximo es 10 MB.`);
-  }
+  const errorTamano = errorDeTamano(archivo.size);
+  if (errorTamano) throw new Error(errorTamano);
 
   const sb = getServerClient();
   const ext = archivo.name.includes('.') ? archivo.name.slice(archivo.name.lastIndexOf('.')) : '';

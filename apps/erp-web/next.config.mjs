@@ -13,12 +13,13 @@ const nextConfig = {
     instrumentationHook: true,
     // Subida de documentos del personal (accionSubirDocumento recibe el archivo como FormData).
     // Next corta en 1 MB por defecto, antes de llegar a la validación propia. El máximo real es
-    // 10 MB (TAMANO_MAXIMO_BYTES en lib/documentos-repo.ts y file_size_limit del bucket
-    // empleado-documentos, 0105); se suma 1 MB de margen para el sobre multipart.
-    // OJO: en Vercel el cuerpo de una función tiene tope de ~4,5 MB, así que entre 4,5 y 10 MB la
-    // subida puede fallar en producción hasta pasar a subida directa con URL firmada (ver spec).
+    // 4 MB (TAMANO_MAXIMO_BYTES en lib/documentos-tamano.ts), porque Vercel corta el cuerpo de una
+    // función en ~4,5 MB; se pone 5 MB para que Next deje pasar el archivo más el sobre multipart
+    // y la validación propia dé un mensaje legible. Provisional hasta tener subida directa a
+    // Storage con URL firmada (spec 2026-10-04-personal-ultimo-admin-alta-design.md, enmienda
+    // del 06-oct-2026). El bucket (0105) sigue en 10 MB: es el techo de esa futura vía directa.
     serverActions: {
-      bodySizeLimit: '11mb',
+      bodySizeLimit: '5mb',
     },
   },
 };
