@@ -167,7 +167,7 @@ on conflict (clave) do nothing;
 -- Lee un parámetro entero de config tolerando basura: si el administrador guarda «5.5» o texto, se
 -- usa la parte entera o el default en vez de romper la validación para todos.
 create or replace function private.codigo_param(p_clave text, p_defecto int)
-  returns int language sql stable security definer set search_path = public
+  returns int language sql stable security definer set search_path = public, pg_temp
 as $$
   select coalesce(
     (select case when c.valor ~ '^\s*[0-9]+(\.[0-9]+)?\s*$' then greatest(floor(c.valor::numeric)::int, 1) end
@@ -183,7 +183,7 @@ drop function if exists private.empleado_por_codigo(text);
 -- pipeline_validar_codigo y pipeline_definir_pin, que son definer. pgcrypto vive en `extensions`
 -- en Supabase: por eso el search_path.
 create or replace function private.codigo_pin_valido(p_empleado uuid, p_pin text)
-  returns boolean language sql stable security definer set search_path = public, extensions
+  returns boolean language sql stable security definer set search_path = public, extensions, pg_temp
 as $$
   select coalesce(
     (select p.pin_hash = crypt(coalesce(p_pin, ''), p.pin_hash)
@@ -213,7 +213,7 @@ revoke execute on function private.codigo_pin_trivial(text, text) from public, a
 -- (p_empleado); 0 si no está bloqueada. El bloqueo se levanta cuando el fallo que lo completó sale
 -- de la ventana. Sin grant.
 create or replace function private.codigo_min_bloqueo(p_sesion uuid, p_empleado uuid, p_max int, p_ventana int)
-  returns int language plpgsql stable security definer set search_path = public
+  returns int language plpgsql stable security definer set search_path = public, pg_temp
 as $$
 declare v_fallos int; v_levanta timestamptz;
 begin
@@ -238,7 +238,7 @@ revoke execute on function private.codigo_min_bloqueo(uuid, uuid, int, int) from
 -- del bloqueo (el menor entre sesión y persona). Sin grant.
 create or replace function private.codigo_registrar_fallo(p_sesion uuid, p_device text, p_empleado uuid,
                                                            p_max int, p_ventana int)
-  returns int language plpgsql volatile security definer set search_path = public
+  returns int language plpgsql volatile security definer set search_path = public, pg_temp
 as $$
 declare v_ses int; v_emp int := 0; v_tipo text; v_msg text; v_ref uuid;
 begin
@@ -279,7 +279,7 @@ revoke execute on function private.codigo_registrar_fallo(uuid, text, uuid, int,
 
 -- ¿La sesión es la cuenta de un equipo compartido? Sin grant a anon.
 create or replace function private.sesion_es_cuenta_compartida()
-  returns boolean language sql stable security definer set search_path = public
+  returns boolean language sql stable security definer set search_path = public, pg_temp
 as $$
   select coalesce((select e.cuenta_compartida from public.empleados e where e.id = auth.uid()), false);
 $$;
@@ -289,7 +289,7 @@ grant execute on function private.sesion_es_cuenta_compartida() to authenticated
 -- Token → empleado (o null). Sólo vale si es de la sesión que llama, no venció y el empleado
 -- sigue activo. `stable`: no escribe; la renovación la hace tocar_operador.
 create or replace function private.operador_de_token(p_token uuid)
-  returns uuid language sql stable security definer set search_path = public
+  returns uuid language sql stable security definer set search_path = public, pg_temp
 as $$
   select o.empleado_id
   from public.codigo_operadores o
@@ -306,7 +306,7 @@ grant execute on function private.operador_de_token(uuid) to authenticated;
 
 -- Renueva la ventana de inactividad de un token vigente de la sesión que llama.
 create or replace function private.tocar_operador(p_token uuid)
-  returns void language plpgsql volatile security definer set search_path = public
+  returns void language plpgsql volatile security definer set search_path = public, pg_temp
 as $$
 declare v_min int;
 begin
@@ -324,7 +324,7 @@ grant execute on function private.tocar_operador(uuid) to authenticated;
 -- «cambiar» en la pantalla: revoca el token en la base (no basta olvidarlo en el navegador). Sólo
 -- borra tokens de la propia sesión, así que no sirve para tumbar el de otra persona.
 create or replace function pipeline_cerrar_operador(p_token uuid)
-  returns void language sql volatile security definer set search_path = public
+  returns void language sql volatile security definer set search_path = public, pg_temp
 as $$
   delete from public.codigo_operadores where token = p_token and sesion_uid = auth.uid();
 $$;
@@ -361,7 +361,7 @@ grant execute on function private.actor_pipeline(uuid) to authenticated;
 -- dispositivos_autorizados sólo la lee el admin por RLS, 0036). Devuelve sólo un booleano y sólo
 -- para un equipo aprobado cuyo device_id (cookie httpOnly) ya conoce quien pregunta.
 create or replace function dispositivo_compartido(p_device_id text)
-  returns boolean language sql stable security definer set search_path = public
+  returns boolean language sql stable security definer set search_path = public, pg_temp
 as $$
   select coalesce(
     (select d.compartido from public.dispositivos_autorizados d
@@ -378,7 +378,7 @@ grant execute on function dispositivo_compartido(text) to authenticated;
 -- ═══════════════════════════════════════════════════════════════════════════════════════════
 drop function if exists pipeline_validar_codigo(text, text);
 create or replace function pipeline_validar_codigo(p_usuario text, p_pin text, p_device text)
-  returns jsonb language plpgsql security definer set search_path = public
+  returns jsonb language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare
   v_sesion uuid := auth.uid();
@@ -458,7 +458,7 @@ grant execute on function pipeline_validar_codigo(text, text, text) to authentic
 -- Devuelve {ok:true} | {ok:false, motivo: 'pin_corto'|'pin_trivial'|'pin_actual_incorrecto'|
 --          'cuenta_compartida'|'sin_permiso', largo_min?, intentos_restantes?, bloqueado_min?}
 create or replace function pipeline_definir_pin(p_pin_nuevo text, p_pin_actual text default null)
-  returns jsonb language plpgsql security definer set search_path = public, extensions
+  returns jsonb language plpgsql security definer set search_path = public, extensions, pg_temp
 as $$
 declare
   v_emp uuid := auth.uid();
@@ -509,7 +509,7 @@ grant execute on function pipeline_definir_pin(text, text) to authenticated;
 
 -- ¿La sesión ya definió su PIN? (La pantalla decide si pide el actual.)
 create or replace function pipeline_tengo_pin()
-  returns boolean language sql stable security definer set search_path = public
+  returns boolean language sql stable security definer set search_path = public, pg_temp
 as $$
   select exists (select 1 from public.codigo_pines where empleado_id = auth.uid());
 $$;
@@ -518,7 +518,7 @@ grant execute on function pipeline_tengo_pin() to authenticated;
 
 -- Admin: borra el PIN de una persona que lo olvidó (no lo ve ni lo define) y revoca sus tokens.
 create or replace function pipeline_borrar_pin(p_empleado uuid)
-  returns void language plpgsql security definer set search_path = public
+  returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 begin
   if not private.app_es_admin() then
@@ -534,7 +534,7 @@ grant execute on function pipeline_borrar_pin(uuid) to authenticated;
 -- Admin: marca o desmarca la cuenta con la que se abre un equipo compartido. Marcarla borra su PIN
 -- y sus tokens (esa cuenta no opera por sí misma).
 create or replace function empleado_marcar_cuenta_compartida(p_empleado uuid, p_valor boolean)
-  returns void language plpgsql security definer set search_path = public
+  returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 begin
   if not private.app_es_admin() then
@@ -571,15 +571,18 @@ grant execute on function empleado_marcar_cuenta_compartida(uuid, boolean) to au
 -- no importa cuál de las dos migraciones se aplique primero. Si la prenda no existe o no hay acceso
 -- lanza el MISMO mensaje ('Prenda no encontrada') para no revelar si existe.
 create or replace function private.pipeline_exigir_acceso(p_id uuid)
-  returns void language plpgsql stable security definer set search_path = public
+  returns void
+  language plpgsql
+  security definer
+  set search_path = ''
 as $$
 begin
+  if auth.uid() is null then raise exception 'No autenticado'; end if;
   if not exists (
-    select 1 from prenda_pasada p
-     where p.id = p_id
-       and (private.app_es_admin()
-            or private.app_es_almacen()
-            or p.sede_origen_cod in (select private.app_sedes()))
+    select 1 from public.prenda_pasada p
+    where p.id = p_id
+      and (private.app_es_admin() or private.app_es_almacen()
+           or p.sede_origen_cod in (select private.app_sedes()))
   ) then
     raise exception 'Prenda no encontrada';
   end if;
@@ -722,8 +725,15 @@ begin
   perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
   select etapa, tipo, tipo_lavado, codigo into v_etapa, v_tipo, v_tlav, v_codigo
-    from prenda_pasada where id = p_id;
+    from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
+  -- H-7 (igual que la 0122): sólo lo que ofrece la pantalla. Cierra también el doble rechazo:
+  -- tras el primero la prenda ya no está en control_calidad.
+  if v_etapa <> 'control_calidad'
+     or p_destino is null
+     or not (p_destino = any(array['recepcion','lavado','empatado','refaccion','compostura','planchado'])) then
+    raise exception 'TRANSICION: sólo se rechaza desde control de calidad hacia una etapa anterior';
+  end if;
 
   select empleado_id into v_culpable from prenda_historial
     where pasada_id = p_id and etapa_anterior = p_destino and empleado_id is not null
@@ -761,32 +771,39 @@ drop function if exists pipeline_deshacer(uuid, text);
 create or replace function pipeline_deshacer(p_id uuid, p_etapa_anterior text, p_operador uuid default null)
   returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
-declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_ult prenda_historial;
+declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_dividida boolean; v_ult prenda_historial;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
   perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
-  select etapa into v_etapa from prenda_pasada where id = p_id for update;
+  select etapa, dividida into v_etapa, v_dividida from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
-  if v_etapa = 'dividido' then
+  if v_etapa = 'dividido' or coalesce(v_dividida, false) then
     raise exception 'TRANSICION: una prenda dividida se deshace con «deshacer división»';
   end if;
 
-  select * into v_ult from prenda_historial where pasada_id = p_id order by fecha desc limit 1;
-  if v_ult.id is null or v_ult.etapa_anterior is null
+  select * into v_ult from prenda_historial where pasada_id = p_id order by fecha desc, id desc limit 1;
+  -- obs null es la marca de un avance real de pipeline_avanzar; el resto (rechazos, envíos,
+  -- divisiones, un «Deshacer» previo) no se deshace por esta vía: el deshacer de un deshacer
+  -- reaplicaría el movimiento sin puntos.
+  if v_ult.id is null or v_ult.obs is not null
+     or v_ult.etapa_anterior is null
      or v_ult.etapa_nueva is distinct from v_etapa
      or v_ult.etapa_anterior is distinct from p_etapa_anterior then
-    raise exception 'TRANSICION: sólo se deshace el último movimiento de la prenda (de "%" a "%")',
-      coalesce(v_ult.etapa_anterior, '—'), coalesce(v_ult.etapa_nueva, '—');
+    raise exception 'TRANSICION: sólo se puede deshacer el último avance de la prenda';
   end if;
 
-  update prenda_pasada set etapa = p_etapa_anterior, fecha_actualizado = now() where id = p_id;
+  update prenda_pasada set
+    etapa = p_etapa_anterior,
+    fecha_actualizado = now(),
+    aprobada = case when v_etapa = 'listo' then false else aprobada end
+  where id = p_id;
   insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
     values (p_id, v_etapa, p_etapa_anterior, v_actor, 'Deshacer', v_sesion, clock_timestamp());
 
   delete from pipeline_puntos where historial_id = v_ult.id;
   -- Puntos de antes de historial_id: el último positivo de esa prenda y esa etapa, sin mirar quién.
-  if not found and v_ult.obs is null then
+  if not found then
     delete from pipeline_puntos where id = (
       select id from pipeline_puntos
       where pasada_id = p_id and historial_id is null and etapa = v_ult.etapa_anterior and puntos > 0
@@ -931,10 +948,33 @@ as $$
 declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_envio uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
-  perform private.pipeline_exigir_acceso(p_id);
+  -- Portero de la 0122: la tienda DESTINO del envío también califica, así que no usa
+  -- private.pipeline_exigir_acceso (sólo conoce la sede de origen).
+  if not exists (
+    select 1 from prenda_pasada p
+    where p.id = p_id
+      and (private.app_es_admin() or private.app_es_almacen()
+           or p.sede_origen_cod in (select private.app_sedes())
+           or exists (select 1 from envios_prendas e
+                      where e.id = p.envio_id
+                        and e.sede_destino_cod in (select private.app_sedes())))
+  ) then
+    raise exception 'Prenda no encontrada';
+  end if;
   v_actor := private.actor_pipeline(p_operador);
-  select etapa, envio_id into v_etapa, v_envio from prenda_pasada where id = p_id;
+  select etapa, envio_id into v_etapa, v_envio from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
+  -- H-7 (igual que la 0122): se califica lo que llegó a la tienda; si se observa, vuelve a una
+  -- etapa del proceso.
+  if v_etapa <> 'enviado' then
+    raise exception 'TRANSICION: sólo se califica una prenda enviada';
+  end if;
+  if not coalesce(p_aceptada, false)
+     and (p_destino is null
+          or not (p_destino = any(array['recepcion','lavado','empatado','refaccion','compostura',
+                                        'planchado','control_calidad']))) then
+    raise exception 'TRANSICION: una prenda observada vuelve a una etapa del proceso';
+  end if;
 
   insert into prenda_calificacion (pasada_id, envio_id, aceptada, obs, calificador_id)
     values (p_id, v_envio, p_aceptada, nullif(p_obs, ''), v_actor);
