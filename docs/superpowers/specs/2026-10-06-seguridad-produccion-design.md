@@ -34,7 +34,16 @@ dependen de esa misma policy para escribir.
 - Alta manual (pestaña Registrar): RPC nueva `pipeline_registrar_prenda` (definer, mismas reglas
   que el insert directo). `registrarPasada` deja de hacer `insert` plano.
 
-**No cambia:** quién ve qué en el tablero, los puntos por etapa, las transiciones permitidas.
+- **Rechazos (H-7 de la auditoría del pipeline, misma vía de fraude que H1).** Hoy `pipeline_rechazar`
+  y `pipeline_calificar` aceptan cualquier origen y cualquier destino: rechazar una prenda en
+  `listo` a `recepcion` y volver a avanzarla da +6 al que avanza y −1 a otra persona. Regla nueva,
+  igual a lo que ya ofrece la pantalla:
+  - `pipeline_rechazar` sólo desde `control_calidad`, y sólo hacia `recepcion`, `lavado`,
+    `empatado`, `refaccion`, `compostura` o `planchado`. Si no → `TRANSICION:`.
+  - `pipeline_calificar` sólo sobre una prenda en `enviado`; si se observa, el destino debe ser
+    una de esas mismas seis etapas. Si no → `TRANSICION:`.
+
+**No cambia:** quién ve qué en el tablero, los puntos por etapa, las transiciones de avance.
 
 ## 2. H14 — `reportes_crear` no fabrica reportes a nombre de otro
 
@@ -105,3 +114,5 @@ confeccionista c1, encargada de tienda de S1, vendedora f2 de S2):
    admin con otro encargado → ok.
 8. Con `datos_personas = {ver}` para `encargado_tienda`, la encargada no lee pagos, asistencias ni
    notas de f2; sí las suyas.
+9. Rechazar una prenda en `listo` → `TRANSICION`; rechazar desde `control_calidad` a `listo` →
+   `TRANSICION`; calificar una prenda que no está `enviado` → `TRANSICION`.
