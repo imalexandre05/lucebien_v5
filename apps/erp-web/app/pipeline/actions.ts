@@ -30,7 +30,7 @@ export async function validarCodigo(usuario: string, pin: string): Promise<Valid
   const u = (usuario ?? '').trim();
   const p = (pin ?? '').trim();
   if (!u || !p) return { ok: false };
-  return validarCodigoOperador(u, p, deviceIdActual() || null);
+  return validarCodigoOperador(u, p, (await deviceIdActual()) || null);
 }
 
 // Los errores `CODIGO:` (token vencido, ajeno o ausente) se devuelven COMO VALOR (string), no como

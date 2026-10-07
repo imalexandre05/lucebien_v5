@@ -7,12 +7,12 @@ import { dispositivoCompartido } from './pipeline-repo';
 // httpOnly): el navegador no puede declararse «no compartido».
 const DEVICE_COOKIE = 'sci_device';
 
-export function deviceIdActual(): string {
-  return cookies().get(DEVICE_COOKIE)?.value ?? '';
+export async function deviceIdActual(): Promise<string> {
+  return (await cookies()).get(DEVICE_COOKIE)?.value ?? '';
 }
 
 export async function equipoCompartido(): Promise<boolean> {
-  return dispositivoCompartido(deviceIdActual());
+  return dispositivoCompartido(await deviceIdActual());
 }
 
 // Devuelve el token a pasar a la RPC (o null = actor es la sesión). Lanza CODIGO: si el equipo es
