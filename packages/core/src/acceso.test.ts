@@ -24,8 +24,15 @@ describe('validarContrasenaNueva (§4)', () => {
     expect(validarContrasenaNueva('abcdefghij', { ...base, minimo: 12 })).toContain('Usa al menos 12 caracteres.');
   });
 
-  it('rechaza más de 72 caracteres (bcrypt trunca en silencio)', () => {
-    expect(validarContrasenaNueva('x'.repeat(40) + 'y'.repeat(33), base)).toContain('Usa como máximo 72 caracteres.');
+  const MSG_MAX = 'Usa como máximo 72 caracteres (la ñ y las letras con tilde cuentan doble).';
+
+  it('rechaza más de 72 bytes (bcrypt trunca en silencio)', () => {
+    expect(validarContrasenaNueva('x'.repeat(40) + 'y'.repeat(33), base)).toContain(MSG_MAX);
+    expect(validarContrasenaNueva('x'.repeat(40) + 'y'.repeat(32), base)).not.toContain(MSG_MAX);
+  });
+
+  it('cuenta bytes, no caracteres: 37 «ñ» son 37 caracteres pero 74 bytes', () => {
+    expect(validarContrasenaNueva('ñ'.repeat(37), base)).toContain(MSG_MAX);
   });
 
   it('rechaza contener el código de 4 dígitos', () => {

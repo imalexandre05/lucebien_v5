@@ -92,7 +92,10 @@ export async function middleware(req: NextRequest) {
   // que pasan por aquí).
   const enCambio = path === '/cambiar-contrasena';
   const debeCambiar = (user?.app_metadata as { debe_cambiar_contrasena?: unknown } | undefined)?.debe_cambiar_contrasena === true;
-  if (features.AUTH_V2 && user && debeCambiar && !enCambio && !/\.[a-z0-9]+$/i.test(path)) {
+  // Sólo se exceptúan archivos de la RAÍZ (/favicon.ico, /robots.txt…). Antes valía cualquier ruta
+  // terminada en «.algo», y una página con segmento dinámico (/colaboradores/<id>/x.y) pasaba.
+  const archivoRaiz = /^\/[^/]+\.(ico|png|svg|txt|webmanifest|xml)$/i.test(path);
+  if (features.AUTH_V2 && user && debeCambiar && !enCambio && !archivoRaiz) {
     return redir('/cambiar-contrasena');
   }
 

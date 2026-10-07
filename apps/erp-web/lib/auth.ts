@@ -110,11 +110,48 @@ async function leerIntentos(empleadoId: string): Promise<EstadoIntentos> {
   return { fallidos: f?.fallidos ?? 0, bloqueadoHasta: f?.bloqueado_hasta ?? null };
 }
 
-async function guardarIntentos(empleadoId: string, e: EstadoIntentos): Promise<void> {
-  const { error } = await getAdminClient()
-    .from('login_intentos')
-    .upsert({ empleado_id: empleadoId, fallidos: e.fallidos, bloqueado_hasta: e.bloqueadoHasta, actualizado: new Date().toISOString() });
-  if (error) console.error('[auth] no se pudo registrar el intento fallido', error.message);
+/**
+ * Registra un fallo sin carreras: la escritura está condicionada al valor que se leyó y se reintenta
+ * si otro pedido ganó. Con un upsert del valor absoluto, 50 intentos en paralelo leían todos k y
+ * escribían todos k+1 (verificador, 6-oct). Devuelve el estado que quedó guardado.
+ */
+async function registrarFalloAtomico(empleadoId: string, ahora: Date, inicial: EstadoIntentos): Promise<EstadoIntentos> {
+  const admin = getAdminClient();
+  const reglas = await reglasAccesoVigentes();
+  let leido = inicial;
+  for (let intento = 0; intento < 5; intento++) {
+    const nuevo = registrarFallo(leido, ahora, reglas);
+    const fila = { fallidos: nuevo.fallidos, bloqueado_hasta: nuevo.bloqueadoHasta, actualizado: ahora.toISOString() };
+
+    // Sin fila previa: insert. Si otro pedido la creó en el medio, choca con la PK y se relee.
+    const sinFila = leido.fallidos === 0 && leido.bloqueadoHasta === null;
+    if (sinFila) {
+      const { error } = await admin.from('login_intentos').insert({ empleado_id: empleadoId, ...fila });
+      if (!error) return nuevo;
+    }
+
+    let q = admin.from('login_intentos').update(fila).eq('empleado_id', empleadoId).eq('fallidos', leido.fallidos);
+    q = leido.bloqueadoHasta === null ? q.is('bloqueado_hasta', null) : q.eq('bloqueado_hasta', leido.bloqueadoHasta);
+    const { data, error } = await q.select('empleado_id');
+    if (error) {
+      console.error('[auth] no se pudo registrar el intento fallido', error.message);
+      return nuevo;
+    }
+    if ((data ?? []).length > 0) return nuevo;
+    leido = await leerIntentos(empleadoId); // otro pedido ganó: releer y volver a sumar
+  }
+  console.error('[auth] el contador de intentos no se pudo escribir tras 5 reintentos');
+  return registrarFallo(leido, ahora, reglas);
+}
+
+/**
+ * Cierra TODAS las sesiones de una cuenta (función definer de 0123, sólo service_role). No se da por
+ * hecho que GoTrue lo haga al cambiar la contraseña por la Admin API (no está verificado). Si la
+ * función no existe todavía, se loguea y se sigue: el cambio de contraseña no se frena por esto.
+ */
+export async function revocarSesiones(empleadoId: string): Promise<void> {
+  const { error } = await getAdminClient().rpc('auth_revocar_sesiones', { p_usuario: empleadoId });
+  if (error) console.error('[auth] no se pudieron cerrar las sesiones de la cuenta', error.message);
 }
 
 /** Borra el contador de una persona (login correcto o contraseña temporal del admin). */
@@ -124,11 +161,15 @@ export async function limpiarIntentos(empleadoId: string): Promise<void> {
 }
 
 /**
- * Verifica una contraseña aplicando el límite de intentos. Mientras la cuenta está bloqueada NO se
- * consulta la contraseña (ni la correcta entra). Si acierta, deja abierta la sesión de Supabase en
+ * Verifica una contraseña aplicando el límite de intentos. La usan el login, el cambio de contraseña
+ * y la reautenticación (lib/reauth.ts): las tres puertas comparten el mismo contador. Mientras la
+ * cuenta está bloqueada NO se consulta la contraseña (ni la correcta entra). Si acierta, deja abierta la sesión de Supabase en
  * las cookies de esta respuesta.
  */
-async function intentarContrasena(empleado: { id: string; cod: string }, password: string): Promise<ResultadoLogin> {
+export async function verificarContrasenaConLimite(
+  empleado: { id: string; cod: string },
+  password: string,
+): Promise<ResultadoLogin> {
   const ahora = new Date();
   const estado = await leerIntentos(empleado.id);
   const bloqueo = estadoBloqueo(estado, ahora);
@@ -143,8 +184,7 @@ async function intentarContrasena(empleado: { id: string; cod: string }, passwor
     return { ok: true };
   }
 
-  const nuevo = registrarFallo(estado, ahora, await reglasAccesoVigentes());
-  await guardarIntentos(empleado.id, nuevo);
+  const nuevo = await registrarFalloAtomico(empleado.id, ahora, estado);
   const ahoraBloqueado = estadoBloqueo(nuevo, ahora);
   if (ahoraBloqueado.bloqueado) return { ok: false, motivo: 'bloqueado', minutos: ahoraBloqueado.minutosRestantes };
   return { ok: false, motivo: 'credenciales' };
@@ -161,7 +201,7 @@ export async function loginConUsuario(usuario: string, password: string, sede?: 
     .maybeSingle();
   if (!emp) return { ok: false, motivo: 'credenciales' };
 
-  const res = await intentarContrasena(emp as { id: string; cod: string }, password);
+  const res = await verificarContrasenaConLimite(emp as { id: string; cod: string }, password);
   if (res.ok && sede) fijarSedeActiva(await sedeValidaParaEntrar((emp as { id: string }).id, sede));
   return res;
 }
@@ -196,7 +236,7 @@ export async function cambiarMiContrasena(
   });
   if (errores.length) return { ok: false, errores };
 
-  const verificada = await intentarContrasena(persona, actual);
+  const verificada = await verificarContrasenaConLimite(persona, actual);
   if (!verificada.ok) {
     return {
       ok: false,
@@ -214,8 +254,9 @@ export async function cambiarMiContrasena(
   });
   if (error) return { ok: false, errores: ['No se pudo guardar la contraseña. Inténtalo de nuevo en un momento.'] };
 
-  // Cambiar la contraseña invalida los refresh tokens viejos: se abre sesión con la nueva para que
-  // la persona siga adentro sin volver a escribirla.
+  // Se cierran TODAS las sesiones de la cuenta (otro navegador que la tuviera abierta queda afuera)
+  // y se abre una nueva para éste, así la persona sigue adentro sin volver a escribirla.
+  await revocarSesiones(persona.id);
   await getServerClient().auth.signInWithPassword({ email: `${persona.cod}@${EMAIL_DOMAIN}`, password: nueva });
   return { ok: true };
 }

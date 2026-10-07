@@ -2,7 +2,7 @@ import type { Rol } from '@scilb/core';
 import { generarIniciales, elegirCodigoLibre, generarContrasenaTemporal, validarContrasenaNueva } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import { getAdminClient } from './supabase/admin';
-import { EMAIL_DOMAIN, limpiarIntentos, reglasAccesoVigentes } from './auth';
+import { EMAIL_DOMAIN, limpiarIntentos, reglasAccesoVigentes, revocarSesiones } from './auth';
 
 // Gestión de colaboradores (solo admin). La RLS ya lo garantiza:
 //  · emp_select     → app_es_admin() OR id = auth.uid()  (admin ve todos)
@@ -143,7 +143,7 @@ export async function actualizarEstadoEmpleado(id: string, activo: boolean): Pro
 // servidor —el admin no elige «1234»—, se devuelve UNA vez para que la entregue en persona y no se
 // guarda ni se loguea. En una sola llamada a la Admin API (service_role: cambiar la contraseña de
 // OTRA cuenta no pasa por PostgREST/RLS) fija la contraseña y la marca de cambio obligatorio; después
-// borra el contador de intentos, así que esto también desbloquea la cuenta.
+// cierra todas sus sesiones y borra el contador de intentos (también desbloquea la cuenta).
 export async function generarContrasenaTemporalEmpleado(id: string): Promise<string> {
   const temporal = generarContrasenaTemporal((n) => crypto.getRandomValues(new Uint8Array(n)));
   const { error } = await getAdminClient().auth.admin.updateUserById(id, {
@@ -151,6 +151,8 @@ export async function generarContrasenaTemporalEmpleado(id: string): Promise<str
     app_metadata: { debe_cambiar_contrasena: true },
   });
   if (error) throw new Error('No se pudo cambiar la contraseña. Inténtalo de nuevo en un momento.');
+  // Si la cuenta estaba comprometida, quien la tenía abierta queda afuera ahora, no cuando venza su token.
+  await revocarSesiones(id);
   await limpiarIntentos(id);
   return temporal;
 }

@@ -19,7 +19,7 @@ export type ReglasAcceso = {
 // anotados en docs/pendientes-negocio.md.
 export const REGLAS_ACCESO_DEFAULT: ReglasAcceso = { contrasenaMin: 8, intentosMax: 5, bloqueoMin: 15 };
 
-// bcrypt (el hash de Supabase Auth) ignora todo lo que pase de 72 bytes: dos contraseñas que sólo
+// bcrypt (el hash de Supabase Auth) ignora todo lo que pase de 72 BYTES: dos contraseñas que sólo
 // difieren después de ese punto serían la misma. Se corta antes para que nadie se lleve la sorpresa.
 export const CONTRASENA_MAX = 72;
 
@@ -61,7 +61,10 @@ const compactar = (s: string) => s.toLowerCase().replace(/\s+/g, '');
 export function validarContrasenaNueva(nueva: string, ctx: ContextoContrasena): string[] {
   const errores: string[] = [];
   if (nueva.length < ctx.minimo) errores.push(`Usa al menos ${ctx.minimo} caracteres.`);
-  if (nueva.length > CONTRASENA_MAX) errores.push(`Usa como máximo ${CONTRASENA_MAX} caracteres.`);
+  // bcrypt cuenta BYTES, no caracteres: la ñ y las vocales con tilde ocupan 2 en UTF-8.
+  if (new TextEncoder().encode(nueva).length > CONTRASENA_MAX) {
+    errores.push(`Usa como máximo ${CONTRASENA_MAX} caracteres (la ñ y las letras con tilde cuentan doble).`);
+  }
   if (ctx.cod && nueva.includes(ctx.cod)) errores.push('No uses tu código de 4 dígitos dentro de la contraseña.');
   if (ctx.nombre && compactar(ctx.nombre) !== '' && compactar(nueva) === compactar(ctx.nombre)) {
     errores.push('No uses tu nombre como contraseña.');
