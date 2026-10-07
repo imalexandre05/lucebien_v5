@@ -492,5 +492,97 @@ begin
     r := r || format('[FALLA] caso 10: listo→%s / lavado→%s;', v_err, v_err2);
   end if;
 
+  -- ── 11) Compatibilidad con la 0122 (spec §12) ─────────────────────────────────────────────
+  -- La 0122 se aplica ANTES que la 0112 y la 0115 y revoca insert/update/delete de prenda_pasada,
+  -- prenda_historial y pipeline_puntos a authenticated. Se simula como dueño (el rollback final lo
+  -- deshace): las RPC, ahora security definer, tienen que seguir funcionando.
+  declare
+    w1 uuid; w2 uuid; w3 uuid; w4 uuid;
+  begin
+    perform pg_temp.dueno();
+    insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-W1', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into w1;
+    insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-W2', 'Terno completo', 'normal', v_a, 'recepcion') returning id into w2;
+    insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-W3', 'Chaqueta', 'normal', v_a, 'listo') returning id into w3;
+    insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa) values ('P0115-W4', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into w4;
+    revoke insert, update, delete on prenda_pasada, prenda_historial, pipeline_puntos from authenticated;
+
+    perform pg_temp.como(e_alm);
+    v_err := pg_temp.mensaje(format('update prenda_pasada set etapa = %L where id = %L', 'listo', w4));
+    if v_err like '%permission denied%' then
+      r := r || '[ok] caso 11a: simulada la 0122, authenticated ya no hace update directo;';
+    else
+      r := r || format('[FALLA] caso 11a: el revoke simulado no cerró la tabla (%s);', v_err);
+    end if;
+
+    begin
+      perform pipeline_avanzar(w1, 'lavado');
+      perform pipeline_deshacer(w1, 'recepcion');
+      perform pg_temp.dueno();
+      select count(*) into v_n from pipeline_puntos where pasada_id = w1;
+      select count(*) into v_n2 from prenda_historial where pasada_id = w1 and registrado_por = e_alm;
+      select etapa into v_etapa from prenda_pasada where id = w1;
+      if v_n = 0 and v_n2 = 2 and v_etapa = 'recepcion' then
+        r := r || '[ok] caso 11b: avanzar y deshacer (almacén) funcionan con las tablas cerradas;';
+      else
+        r := r || format('[FALLA] caso 11b: puntos=%s historial=%s etapa=%s;', v_n, v_n2, v_etapa);
+      end if;
+
+      perform pg_temp.como(e_alm);
+      perform pipeline_avanzar(w1, 'lavado');
+      perform pipeline_rechazar(w1, 'recepcion');
+      perform pg_temp.dueno();
+      select etapa into v_etapa from prenda_pasada where id = w1;
+      select count(*) into v_n from prenda_historial
+        where pasada_id = w1 and obs like 'Rechazado%' and registrado_por = e_alm;
+      if v_n = 1 and v_etapa = 'recepcion' then
+        r := r || '[ok] caso 11c: pipeline_rechazar funciona con las tablas cerradas;';
+      else
+        r := r || format('[FALLA] caso 11c: rechazos=%s etapa=%s;', v_n, v_etapa);
+      end if;
+
+      perform pg_temp.como(e_alm);
+      perform pipeline_dividir(w2);
+      perform pipeline_deshacer_division(w2);
+      perform pg_temp.dueno();
+      select count(*) into v_n from prenda_historial
+        where pasada_id = w2 and registrado_por = e_alm
+          and (obs like 'Terno dividido%' or obs like 'Deshacer división%');
+      if v_n = 2 then
+        r := r || '[ok] caso 11d: dividir y deshacer_division funcionan con las tablas cerradas;';
+      else
+        r := r || format('[FALLA] caso 11d: filas=%s (esperaba 2);', v_n);
+      end if;
+
+      perform pg_temp.como(e_alm);
+      perform pipeline_enviar(w3, v_a);
+      perform pipeline_calificar(w3, true, '', '');
+      perform pg_temp.dueno();
+      select count(*) into v_n from prenda_pasada where id = w3 and envio_id is not null and etapa = 'enviado';
+      select count(*) into v_n2 from prenda_calificacion where pasada_id = w3 and calificador_id = e_alm;
+      if v_n = 1 and v_n2 = 1 then
+        r := r || '[ok] caso 11e: enviar y calificar funcionan con las tablas cerradas;';
+      else
+        r := r || format('[FALLA] caso 11e: enviada=%s calificacion=%s;', v_n, v_n2);
+      end if;
+    exception when others then
+      r := r || format('[FALLA] caso 11: una RPC lanzó %s;', sqlerrm);
+    end;
+
+    -- Tienda de OTRA sede: 'Prenda no encontrada' y no se escribe nada.
+    perform pg_temp.como(e_tb);
+    v_err := pg_temp.mensaje(format('select pipeline_avanzar(%L, %L)', w4, 'lavado'));
+    v_err2 := pg_temp.mensaje(format('select pipeline_deshacer(%L, %L)', w4, 'recepcion'));
+    perform pg_temp.dueno();
+    select count(*) into v_n from prenda_historial where pasada_id = w4;
+    select etapa into v_etapa from prenda_pasada where id = w4;
+    if v_err like '%Prenda no encontrada%' and v_err2 like '%Prenda no encontrada%'
+       and v_n = 0 and v_etapa = 'recepcion'
+       and not exists (select 1 from pipeline_puntos where pasada_id = w4) then
+      r := r || '[ok] caso 11f: una tienda de otra sede recibe Prenda no encontrada y no se escribe nada;';
+    else
+      r := r || format('[FALLA] caso 11f: avanzar=%s deshacer=%s historial=%s etapa=%s;', v_err, v_err2, v_n, v_etapa);
+    end if;
+  end;
+
   raise exception 'RESULTADO 0115 --> %', r;
 end $$;
