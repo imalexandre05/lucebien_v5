@@ -253,3 +253,27 @@ siguen siendo `security invoker`; quien mergee la segunda debe reconciliar las d
 **Tests nuevos:** un `encargado_tienda` avanza su prenda y no recibe puntos (la prenda sí avanza);
 A avanza, B avanza y A deshace lo de B → B pierde ese punto y A conserva el suyo; deshacer a una
 etapa que no es la del último movimiento → `TRANSICION:`.
+
+## 12. Compatibilidad con la 0122 (07-oct-2026)
+
+La 0122 (`fix/seguridad-produccion`) se aplica **antes** que la 0112 y la 0115. Revoca
+`insert`/`update`/`delete` de `prenda_pasada`, `prenda_historial` y `pipeline_puntos` a
+`anon`/`authenticated` (`prenda_pasada` conserva un `insert` limitado a la etapa `recepcion`) y deja
+`pasada_rw` en sólo lectura. Con eso, una RPC `security invoker` que haga `update` directo sobre
+`prenda_pasada` falla con `permission denied`. Lo que cambia en esta rama:
+
+- **Las siete RPC por prenda** (`pipeline_avanzar`, `_enviar`, `_rechazar`, `_deshacer`, `_dividir`,
+  `_deshacer_division`, `_calificar`) pasan a `security definer` con
+  `set search_path = public, pg_temp` y llaman a `private.pipeline_exigir_acceso(p_id)` justo
+  después del chequeo «No autenticado» y antes de resolver el actor. La función (definida en la 0112
+  y en la 0122 con la misma semántica) deja pasar a admin, a `private.app_es_almacen()` o a quien
+  tenga la sede de origen de la prenda en `private.app_sedes()`; si no, `Prenda no encontrada`. La
+  0115 reescribe las RPC de la 0112, así que **repite** este cambio: si no, volvería a invoker.
+- `pipeline_avanzar_tanda` sigue `security invoker` (sólo llama a `pipeline_avanzar`).
+- Los helpers `private.pipeline_registrar_punto`, `pipeline_borrar_punto`, `prenda_historial_registrar`
+  y `pipeline_exigir_derecho` ya eran `security definer`: no cambian.
+- `lavanderia_enviar` sigue `security invoker`: la 0122 deja el `insert` limitado a `recepcion` sobre
+  `prenda_pasada` justamente para no romperla (su historial ya pasa por la función definer).
+- Resultado de seguridad: el mismo. Quien no tiene derecho sobre la prenda no escribe nada; sólo
+  cambia el mensaje con que se le rechaza en las RPC (`Prenda no encontrada`, que además no revela
+  si la prenda existe, en lugar de `PERMISO:` desde el helper).
