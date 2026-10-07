@@ -17,7 +17,11 @@ import { LiquidacionesCliente } from './cliente';
  */
 export const dynamic = 'force-dynamic';
 
-export default async function LiquidacionesPage() {
+export default async function LiquidacionesPage({
+  searchParams,
+}: {
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
 
@@ -50,6 +54,7 @@ export default async function LiquidacionesPage() {
     );
   }
 
+  const acuerdoInicial = Array.isArray(searchParams?.acuerdo) ? searchParams?.acuerdo[0] : searchParams?.acuerdo;
   const cerradas = liquidaciones.filter((l) => l.estado === 'cerrada').length;
   const borradores = liquidaciones.filter((l) => l.estado === 'borrador').length;
 
@@ -59,7 +64,17 @@ export default async function LiquidacionesPage() {
         title="Liquidaciones"
         subtitle={`${borradores} borrador(es) · ${cerradas} cerrada(s). Una cerrada no se modifica: sólo se anula, con motivo.`}
       />
-      <LiquidacionesCliente acuerdos={acuerdos} liquidaciones={liquidaciones} />
+      <LiquidacionesCliente
+        // `?acuerdo=` preselecciona el contrato: lo usa la alerta «Contrato vencido sin
+        // liquidación» para llevar directo al contrato que hay que liquidar (tablero#5). Sólo
+        // siembra el useState del cliente, así que la key lo remonta si la URL cambia estando ya
+        // en la pantalla (p.ej. otro aviso desde la campana): si no, el selector y el rango
+        // seguirían en el contrato anterior y se podría liquidar el equivocado.
+        key={acuerdoInicial ?? ''}
+        acuerdos={acuerdos}
+        liquidaciones={liquidaciones}
+        acuerdoInicial={acuerdoInicial}
+      />
     </div>
   );
 }

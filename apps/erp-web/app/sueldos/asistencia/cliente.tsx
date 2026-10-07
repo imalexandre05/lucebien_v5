@@ -265,9 +265,26 @@ export function AsistenciaCliente({
                 // /personal/[id]/asistencias sacaba a la persona de su propia ficha. Con
                 // usePathname() se queda donde está montado, y se preservan los demás parámetros
                 // de la URL (el período de la barra) en vez de perderlos.
-                const params = new URLSearchParams(searchParams.toString());
-                params.set('acuerdo', e.target.value);
-                router.push(`${pathname}?${params.toString()}`);
+                const destino = e.target.value;
+                const irA = () => {
+                  const params = new URLSearchParams(searchParams.toString());
+                  params.set('acuerdo', destino);
+                  router.push(`${pathname}?${params.toString()}`);
+                };
+                // Al cambiar de contrato el cliente se remonta (key en la page) y los días
+                // editados sin guardar se pierden: se avisa antes, no después.
+                const sinGuardar = Object.values(borradores).filter((b) => b.sucio).length;
+                if (sinGuardar === 0) return irA();
+                conf.pedir({
+                  titulo: `Tienes ${sinGuardar} día(s) sin guardar`,
+                  detalle: 'Si cambias de contrato se pierden.',
+                  confirmarLabel: 'Cambiar de contrato',
+                  tono: 'aviso',
+                  alConfirmar: () => {
+                    conf.cerrar();
+                    irA();
+                  },
+                });
               }}
             >
               {acuerdos.map((a) => (

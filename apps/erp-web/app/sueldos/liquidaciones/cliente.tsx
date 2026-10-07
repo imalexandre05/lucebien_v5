@@ -142,15 +142,19 @@ function Dato({ etiqueta, valor }: { etiqueta: string; valor: string | number })
 export function LiquidacionesCliente({
   acuerdos,
   liquidaciones,
+  acuerdoInicial,
 }: {
   acuerdos: AcuerdoSueldo[];
   liquidaciones: LiquidacionResumen[];
+  /** Contrato pedido por la URL (`?acuerdo=`, p.ej. desde una notificación). Si no existe, el primero. */
+  acuerdoInicial?: string;
 }) {
   const router = useRouter();
-  const [acuerdoId, setAcuerdoId] = useState(acuerdos[0]?.id ?? '');
+  const inicial = acuerdos.find((a) => a.id === acuerdoInicial) ?? acuerdos[0];
+  const [acuerdoId, setAcuerdoId] = useState(inicial?.id ?? '');
   // C-4 (liquidación por tramos): el rango que se va a liquidar, con una sugerencia calculada al
   // elegir el contrato. Editable sin más restricción que la que ya impone la RPC/el trigger.
-  const [rango, setRango] = useState(() => sugerirRango(acuerdos[0], liquidaciones));
+  const [rango, setRango] = useState(() => sugerirRango(inicial, liquidaciones));
   const [preview, setPreview] = useState<Preview | null>(null);
   const [detalle, setDetalle] = useState<LiquidacionDetalle | null>(null);
   const [anulando, setAnulando] = useState<LiquidacionResumen | null>(null);
