@@ -630,7 +630,7 @@ function fmtEs(n: number, decimales = 2): string {
  * La meta es mensual y se mide por mes del contrato. Un mes completo usa la meta ENTERA; sólo el
  * último mes, cortado por el fin del contrato, la prorratea por días contra el mes completo
  * (`meta × días efectivos ÷ días del mes`). Ese prorrateo es un DEFAULT no confirmado por el dueño
- * (docs/pendientes-negocio.md). El redondeo es sobre el producto (D-12).
+ * (docs/pendientes-negocio.md). El excedente se redondea antes de multiplicar (D-12).
  *
  * Nunca resta: los puntos ya vienen netos de incidencias y si quedan bajo la meta el bono es 0.
  */
@@ -654,7 +654,9 @@ function bonoPorPuntos(
     const diasEfectivos = diasDelPeriodo(mes.desde, mes.hasta).length;
     const diasMes = diasDelPeriodo(mes.desde, mes.hastaMes).length;
     const metaMes = (p.puntosMetaMensual * diasEfectivos) / diasMes;
-    const excedente = Math.max(0, mes.puntos - metaMes);
+    // El excedente se redondea ANTES de multiplicar: es el que se muestra en el detalle, y el monto
+    // tiene que salir de lo que la persona lee en su comprobante (spec §8.2, D-12).
+    const excedente = r2(Math.max(0, mes.puntos - metaMes));
     const montoMes = r2(excedente * p.solesPorPunto);
     total += montoMes;
     detalles.push(
