@@ -1,4 +1,5 @@
-// Prueba del limitador de /api/auth/login-code (sistema viejo). Corre con: node --test tools/pruebas/
+// Prueba del limitador de /api/auth/login-code (sistema viejo). La corre tools/verificar-local.sh:
+//   node --test tools/pruebas/limitador-intentos.test.js
 const test = require('node:test');
 const assert = require('node:assert');
 const { crearLimitador } = require('../../routes/limitador-intentos');
@@ -16,15 +17,15 @@ test('por IP: el sexto intento tras 5 fallos espera 15 min', () => {
   assert.deepStrictEqual(l.verificar('1.1.1.1', 15 * MIN), { ok: true }, 'vence a los 15 min');
 });
 
-test('global: 30 fallos repartidos entre IP pausan a todos', () => {
+test('global: 20 fallos repartidos entre IP pausan a todos, como mucho 1 h', () => {
   const l = crearLimitador();
-  for (let i = 0; i < 30; i++) l.registrarFallo('10.0.0.' + i, i * MIN);
-  const r = l.verificar('9.9.9.9', 30 * MIN);
+  for (let i = 0; i < 20; i++) l.registrarFallo('10.0.0.' + i, i * MIN);
+  const r = l.verificar('9.9.9.9', 20 * MIN);
   assert.strictEqual(r.ok, false);
   assert.strictEqual(r.alcance, 'global');
-  // El primer fallo (t=0) vence a las 24 h; faltan 24h − 30 min.
-  assert.strictEqual(r.minutos, 24 * 60 - 30);
-  assert.deepStrictEqual(l.verificar('9.9.9.9', 24 * 60 * MIN), { ok: true });
+  // El primer fallo (t=0) vence a los 60 min; faltan 40.
+  assert.strictEqual(r.minutos, 40);
+  assert.deepStrictEqual(l.verificar('9.9.9.9', 60 * MIN), { ok: true });
 });
 
 test('un acierto no borra fallos (no hay método para hacerlo)', () => {

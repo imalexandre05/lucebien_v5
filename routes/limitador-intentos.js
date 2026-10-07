@@ -8,8 +8,10 @@
 // sesión de cualquiera. Dos frenos, en memoria (sin dependencias ni tablas nuevas en un sistema
 // congelado; reiniciar el servidor borra los contadores):
 //   · por IP:  5 fallos en 15 min → esa IP espera 15 min.
-//   · global: 30 fallos en 24 h  → /login-code se pausa para todos hasta que la ventana baje.
-//     Es lo que frena a quien reparte intentos entre muchas IP.
+//   · global: 20 fallos en 1 h   → /login-code se pausa para todos hasta que la ventana baje
+//     (como mucho 1 h). Frena a quien reparte intentos entre muchas IP. 1 h y no 24 h porque
+//     /login-code se usa a diario (kanban, cambiarSede en public/js/app.js): una pausa de un día
+//     por 30 pedidos de cualquiera sería peor que el riesgo que mitiga.
 // Un acierto NO borra fallos: si lo hiciera, un empleado que entra bien "resetearía" el contador
 // de un atacante. Los fallos simplemente vencen.
 //
@@ -18,8 +20,8 @@
 
 const POR_IP_MAX = 5;
 const POR_IP_VENTANA_MS = 15 * 60 * 1000;
-const GLOBAL_MAX = 30;
-const GLOBAL_VENTANA_MS = 24 * 60 * 60 * 1000;
+const GLOBAL_MAX = 20;
+const GLOBAL_VENTANA_MS = 60 * 60 * 1000;
 
 function crearLimitador(opts) {
   const o = Object.assign(
