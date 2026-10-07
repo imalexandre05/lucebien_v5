@@ -188,7 +188,15 @@ create or replace function private.prenda_historial_registrar(
 as $$
 declare v_id uuid;
 begin
-  perform private.pipeline_exigir_derecho(p_pasada);
+  -- Única excepción al derecho de escritura: la tienda DESTINO del envío registra su calificación
+  -- (pipeline_calificar la admite; la 0122 también). Sólo mientras la prenda sigue enviada.
+  if not (p_etapa_anterior = 'enviado' and exists (
+            select 1 from public.prenda_pasada p
+              join public.envios_prendas e on e.id = p.envio_id
+             where p.id = p_pasada and p.etapa = 'enviado'
+               and e.sede_destino_cod in (select private.app_sedes()))) then
+    perform private.pipeline_exigir_derecho(p_pasada);
+  end if;
   insert into public.prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs, registrado_por, fecha)
     values (p_pasada, p_etapa_anterior, p_etapa_nueva, p_empleado, p_obs, auth.uid(), clock_timestamp())
     returning id into v_id;
@@ -336,8 +344,15 @@ begin
   perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
   select etapa, tipo, tipo_lavado, codigo into v_etapa, v_tipo, v_tlav, v_codigo
-    from prenda_pasada where id = p_id;
+    from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
+  -- H-7 (igual que la 0122 y la 0112): sólo lo que ofrece la pantalla. Cierra también el doble
+  -- rechazo: tras el primero la prenda ya no está en control_calidad.
+  if v_etapa <> 'control_calidad'
+     or p_destino is null
+     or not (p_destino = any(array['recepcion','lavado','empatado','refaccion','compostura','planchado'])) then
+    raise exception 'TRANSICION: sólo se rechaza desde control de calidad hacia una etapa anterior';
+  end if;
 
   select empleado_id into v_culpable from prenda_historial
     where pasada_id = p_id and etapa_anterior = p_destino and empleado_id is not null
@@ -369,26 +384,33 @@ grant execute on function pipeline_rechazar(uuid, text, uuid) to authenticated;
 create or replace function pipeline_deshacer(p_id uuid, p_etapa_anterior text, p_operador uuid default null)
   returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
-declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_ult prenda_historial;
+declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_dividida boolean; v_ult prenda_historial;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
   perform private.pipeline_exigir_acceso(p_id);
   v_actor := private.actor_pipeline(p_operador);
-  select etapa into v_etapa from prenda_pasada where id = p_id for update;
+  select etapa, dividida into v_etapa, v_dividida from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
-  if v_etapa = 'dividido' then
+  if v_etapa = 'dividido' or coalesce(v_dividida, false) then
     raise exception 'TRANSICION: una prenda dividida se deshace con «deshacer división»';
   end if;
 
-  select * into v_ult from prenda_historial where pasada_id = p_id order by fecha desc limit 1;
-  if v_ult.id is null or v_ult.etapa_anterior is null
+  select * into v_ult from prenda_historial where pasada_id = p_id order by fecha desc, id desc limit 1;
+  -- obs null es la marca de un avance real de pipeline_avanzar; el resto (rechazos, envíos,
+  -- divisiones, un «Deshacer» previo) no se deshace por esta vía: el deshacer de un deshacer
+  -- reaplicaría el movimiento sin puntos.
+  if v_ult.id is null or v_ult.obs is not null
+     or v_ult.etapa_anterior is null
      or v_ult.etapa_nueva is distinct from v_etapa
      or v_ult.etapa_anterior is distinct from p_etapa_anterior then
-    raise exception 'TRANSICION: sólo se deshace el último movimiento de la prenda (de "%" a "%")',
-      coalesce(v_ult.etapa_anterior, '—'), coalesce(v_ult.etapa_nueva, '—');
+    raise exception 'TRANSICION: sólo se puede deshacer el último avance de la prenda';
   end if;
 
-  update prenda_pasada set etapa = p_etapa_anterior, fecha_actualizado = now() where id = p_id;
+  update prenda_pasada set
+    etapa = p_etapa_anterior,
+    fecha_actualizado = now(),
+    aprobada = case when v_etapa = 'listo' then false else aprobada end
+  where id = p_id;
   perform private.prenda_historial_registrar(p_id, v_etapa, p_etapa_anterior, v_actor, 'Deshacer');
   perform private.pipeline_borrar_punto(p_id, v_ult.id);   -- los puntos del movimiento deshecho
 end;
@@ -525,22 +547,47 @@ as $$
 declare v_sesion uuid := auth.uid(); v_actor uuid; v_etapa text; v_envio uuid;
 begin
   if v_sesion is null then raise exception 'No autenticado'; end if;
-  perform private.pipeline_exigir_acceso(p_id);
+  -- Portero de la 0122: la tienda DESTINO del envío también califica, así que no usa
+  -- private.pipeline_exigir_acceso (sólo conoce la sede de origen).
+  if not exists (
+    select 1 from prenda_pasada p
+    where p.id = p_id
+      and (private.app_es_admin() or private.app_es_almacen()
+           or p.sede_origen_cod in (select private.app_sedes())
+           or exists (select 1 from envios_prendas e
+                      where e.id = p.envio_id
+                        and e.sede_destino_cod in (select private.app_sedes())))
+  ) then
+    raise exception 'Prenda no encontrada';
+  end if;
   v_actor := private.actor_pipeline(p_operador);
-  select etapa, envio_id into v_etapa, v_envio from prenda_pasada where id = p_id;
+  select etapa, envio_id into v_etapa, v_envio from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
+  -- H-7 (igual que la 0122 y la 0112): se califica lo que llegó a la tienda; si se observa,
+  -- vuelve a una etapa del proceso.
+  if v_etapa <> 'enviado' then
+    raise exception 'TRANSICION: sólo se califica una prenda enviada';
+  end if;
+  if not coalesce(p_aceptada, false)
+     and (p_destino is null
+          or not (p_destino = any(array['recepcion','lavado','empatado','refaccion','compostura',
+                                        'planchado','control_calidad']))) then
+    raise exception 'TRANSICION: una prenda observada vuelve a una etapa del proceso';
+  end if;
 
   insert into prenda_calificacion (pasada_id, envio_id, aceptada, obs, calificador_id)
     values (p_id, v_envio, p_aceptada, nullif(p_obs, ''), v_actor);
 
+  -- El historial se registra ANTES de mover la prenda: la excepción de la tienda destino necesita
+  -- que siga enviada y con su envío.
   if p_aceptada then
-    update prenda_pasada set etapa = 'recibido', fecha_actualizado = now() where id = p_id;
     perform private.prenda_historial_registrar(p_id, v_etapa, 'recibido', v_actor, 'Recibida y aceptada en tienda');
+    update prenda_pasada set etapa = 'recibido', fecha_actualizado = now() where id = p_id;
   else
-    update prenda_pasada set etapa = p_destino, envio_id = null, aprobada = false, fecha_actualizado = now()
-      where id = p_id;
     perform private.prenda_historial_registrar(p_id, v_etapa, p_destino, v_actor,
       'Observada en tienda → ' || p_destino || coalesce(': ' || nullif(p_obs, ''), ''));
+    update prenda_pasada set etapa = p_destino, envio_id = null, aprobada = false, fecha_actualizado = now()
+      where id = p_id;
   end if;
 end;
 $$;
