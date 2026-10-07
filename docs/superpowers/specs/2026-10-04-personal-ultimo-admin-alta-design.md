@@ -64,3 +64,45 @@ negocio: confirmar con Alexander). Queda anotado en el PR; no se verificó contr
 ## Fuera de esta spec / pendientes
 Ningún default de negocio inventado. Nada se aplica a ninguna base desde esta rama: la migración
 se aplica a `scilb` después de la revisión.
+
+## Enmienda del 06-oct-2026
+
+Nace de las auditorías del 06-oct (H-12 / seguridad H11 y seguridad H7). Corrige dos puntos de
+arriba: el §3 («`11mb`», con el riesgo de Vercel «abierto») y el §1 (el guard del último admin
+sólo en la RPC).
+
+### (a) Tope de subida de 4 MB por archivo
+- `TAMANO_MAXIMO_BYTES = 4 * 1024 * 1024` (antes 10 MB). Queda por debajo de los 4,5 MB que Vercel
+  admite en el cuerpo de una función, **incluido** el sobre multipart del `FormData`.
+- Se valida en dos sitios, con el mismo mensaje: en el navegador antes de enviar (sin llamar al
+  servidor) y en el servidor (`subirDocumento`, que es lo que ejecuta la server action). Mensaje:
+  «El archivo pesa X MB; el máximo es 4 MB. Reduce la foto o súbelo como PDF.» (X con un decimal).
+- La llamada a la action del cliente va dentro de `try/catch`: si Vercel o Next cortan el cuerpo
+  antes de llegar a la validación, la pantalla muestra un error legible y no una excepción cruda.
+- `serverActions.bodySizeLimit` baja de `'11mb'` a `'5mb'` (los 4 MB más margen para el sobre).
+- La pantalla muestra «Máximo 4 MB» junto al selector de archivo.
+- Es un tope provisional hasta tener subida directa a Storage con URL firmada. El `file_size_limit`
+  del bucket (0105, 10 MB) no se toca: sigue siendo el techo de esa futura vía directa.
+- El 4 MB es un default inventado por restricción de plataforma, no una regla de negocio: se anota
+  en `docs/pendientes-negocio.md`.
+
+### (b) El guard del último admin pasa a un trigger
+El guard vive sólo en la RPC `empleado_actualizar` (0114); un `update empleados set rol=...` o
+`activo=false` directo por PostgREST (policy `emp_admin_write`, FOR ALL, 0002) deja 0 admins.
+- Migración `0125_ultimo_admin_trigger.sql`: trigger `before update or delete` en `empleados`
+  (por fila). Rechaza la operación si, tras ella, no quedaría ningún empleado con
+  `activo = true` y `rol in ('admin','dueno')`. Cubre cambio de rol, desactivar (`activo=false`),
+  cambio de `estado` (que se mantiene sincronizado con `activo`) y `delete`.
+- Sólo actúa cuando la fila afectada era admin activo y deja de serlo; el resto de ediciones no
+  pasan por la comprobación.
+- Mensaje: `ULTIMO_ADMIN: …`.
+- Concurrencia: toma `pg_advisory_xact_lock` antes de contar, para que dos degradaciones
+  simultáneas de dos admins no dejen 0 (cada una vería al otro todavía activo).
+- La función vive en el schema `private`, `security definer`, `search_path = public`, sin
+  `execute` para public/anon/authenticated: la comprobación cuenta todos los admins aunque la RLS
+  del que ejecuta no los deje ver.
+- Los guards de `empleado_actualizar` (0114), `empleado_borrar_alta` (0099) y
+  `actualizarEstadoEmpleado` se conservan: dan el mensaje amistoso; el trigger es la red de
+  seguridad.
+- Prueba: `packages/db/pruebas/0125_ultimo_admin_trigger.prueba.sql`, escrita antes de la
+  migración.

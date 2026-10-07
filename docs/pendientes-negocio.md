@@ -1495,3 +1495,13 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+## Tope de 4 MB por documento del personal (06-oct-2026)
+
+Default **inventado por restricción de plataforma**, no por negocio: Vercel corta el cuerpo de una
+función en ~4,5 MB, así que `TAMANO_MAXIMO_BYTES` (`apps/erp-web/lib/documentos-repo.ts`) pasa de
+10 MB a 4 MB. Una foto de celular de DNI puede pesar más: hoy el mensaje pide reducirla o subirla
+como PDF. Pregunta para el administrador: ¿se acepta ese tope, o se prioriza la subida directa a
+Storage con URL firmada para volver a 10 MB? No es editable desde `/configuracion` (es límite
+técnico, no parámetro de negocio). Ver la enmienda del 06-oct de
+[la spec](superpowers/specs/2026-10-04-personal-ultimo-admin-alta-design.md).
