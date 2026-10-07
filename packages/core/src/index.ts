@@ -24,3 +24,4 @@ export * from './pagos';
 export * from './sueldos';
 export * from './contrato-parametros';
 export * from './semanas-meta';
+export * from './rangos-fecha';

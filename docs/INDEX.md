@@ -56,6 +56,7 @@
 | [superpowers/specs/sueldos/2026-10-05-pago-por-puntos-design.md](superpowers/specs/sueldos/2026-10-05-pago-por-puntos-design.md) | **Pago por puntos sobre la meta mensual** (ticket #10): dos parámetros vacíos en `/configuracion`, línea «Bono por puntos» en la liquidación. Los extras dejan de mostrar soles en `/evaluaciones` |
 | [superpowers/plans/2026-10-05-pago-por-puntos.md](superpowers/plans/2026-10-05-pago-por-puntos.md) | Plan del pago por puntos verificado contra el código: qué funciones cambian, por qué hace falta un wrapper de puntos y cómo se agrega una línea de ingreso al motor |
 | [superpowers/specs/almacen/2026-10-03-incidencias-acceso-rapido-design.md](superpowers/specs/almacen/2026-10-03-incidencias-acceso-rapido-design.md) | **Botón «Nueva incidencia» en la barra superior**: enlaza a `/incidencias?nueva=1`, que abre el formulario de alta existente. Mismo gate que la página (`incidencias`/`ver`) |
+| [superpowers/specs/asistencias/2026-10-03-filtros-rango-design.md](superpowers/specs/asistencias/2026-10-03-filtros-rango-design.md) | **Asistencia por día, semana y mes**: selector de rango con anterior/siguiente en `/asistencias` y `/sueldos/asistencia`, en la URL. Semana de lunes a domingo (no son los tramos de RN-12). Helpers en `packages/core/src/rangos-fecha.ts` con test; sólo lectura, sin tocar RLS |
 
 ## Arquitectura
 
