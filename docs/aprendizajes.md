@@ -68,6 +68,7 @@ Cada línea de este archivo la puso un error real. **Ninguna es teoría.**
 | Dejar un número viejo en otros documentos después de cambiar una regla | El caso de prueba pasó de S/705,30 a S/751,70 y quedaron cuatro documentos con el número viejo — en la misma sesión en la que se estaban corrigiendo copias de otra afirmación falsa | Al cambiar una cifra, se busca esa cifra en todo `docs/` antes de cerrar |
 | Escribir "aplicada" antes de aplicarla | Es la misma trampa del no-negociable 7, con la migración en el lugar del documento | Aplicar es un acto: primero se aplica, después se anota **con qué se comprobó** |
 | Explicar un mecanismo por la razón equivocada | Un comentario decía que los triggers bloquean al administrador *porque* son `security definer`. Es falso: un trigger `before` dispara para cualquier rol. Quien lo lea puede creer que el congelado depende de esa palabra | Si un comentario explica **por qué** funciona algo, hay que poder demostrarlo |
+| Decir que `verificar-local.sh` "es lo que corre CI" sin comparar los dos | El paso 4 (tests de `apps/erp-web/lib/__tests__`) existía en local pero no en `ci.yml`: los tests de esos repos nunca corrían en un PR. Lo encontró el verificador revisando PR #38 (03-oct-2026) | Paso «Tests de los repos de erp-web» en `ci.yml`. Al sumar un paso a `verificar-local.sh`, se suma el mismo paso a `ci.yml` en el mismo commit |
 
 ## Entorno de esta PC
 
