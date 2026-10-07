@@ -142,6 +142,11 @@ El protocolo completo para trabajar en varias secciones a la vez está en
   (21-ago-2026): los números se alinean con `tabular-nums` y lo hace cumplir el guard. JetBrains
   Mono sigue vigente sólo en las etiquetas físicas (ver manual de marca).
 - **Estética:** seria y sobria. Sin confeti, sin elementos infantiles, emojis mínimos y funcionales.
+- **Principio de producto (dueño, 05-oct-2026):** todo lo que se construya debe ser **sencillo,
+  intuitivo y visualmente atractivo** para quien lo usa en el trabajo diario. Antes de dar una
+  pantalla por terminada: ¿se entiende sin explicación? ¿cada error dice qué hacer? ¿se ve cuidada
+  en celular y en PC? Si una regla de negocio obliga a algo complejo, la complejidad va en el
+  sistema, no en la pantalla. Guía visual: [docs/sistema-de-diseno.md](docs/sistema-de-diseno.md).
 - **Migraciones:** idempotentes. `create ... if not exists`, y `alter` envuelto para que reaplicar
   no falle.
 - **JSX en el sistema viejo:** `{Boolean(cond) && <X/>}`, nunca `{cond && <X/>}` — un `0` de SQLite
