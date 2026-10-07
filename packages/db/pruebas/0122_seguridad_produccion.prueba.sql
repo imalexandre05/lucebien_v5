@@ -507,8 +507,10 @@ begin
   select count(*) into v_n  from evaluaciones_mensuales where empleado_id = f2;
   select count(*) into v_n2 from evaluaciones_mensuales where empleado_id = e1;
   execute 'reset role';
-  if v_n = 0 and v_n2 >= 1 then
-    r := r || ' [ok] (8) evaluaciones_mensuales: no ve las de f2, sí las suyas;';
+  -- Desde la 0119 (valores360-base) nadie lee la tabla directo: lo propio llega por RPC. Aquí sólo
+  -- importa el aislamiento: no ve nada de f2.
+  if v_n = 0 then
+    r := r || ' [ok] (8) evaluaciones_mensuales: no ve las de f2 (lo propio llega por RPC desde la 0119);';
   else
     r := r || format(' [FALLA] (8) evaluaciones_mensuales: ve %s de f2 (esperado 0) y %s propias (esperado >=1);', v_n, v_n2);
   end if;
