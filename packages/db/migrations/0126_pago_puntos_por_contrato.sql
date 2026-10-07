@@ -1,0 +1,2 @@
+-- 0126_pago_puntos_por_contrato (reservada)
+-- Se completa en el commit de la migración. Número asignado por la sesión maestra.
