@@ -297,3 +297,11 @@ los helpers `private.*` de esta migración y la misma lógica:
   la prenda`. El deshacer de un deshacer reaplicaba el movimiento sin puntos.
 - `private.pipeline_exigir_acceso` llega con la copia exacta de la 0122 por la 0112 (esta rama la
   hereda); la 0115 no la redefine.
+- **La tienda destino y el historial.** `pipeline_calificar` la deja calificar, pero en esta rama el
+  historial se escribe con `private.prenda_historial_registrar`, que exige `pipeline_exigir_derecho`
+  (admin, almacén o sede de origen) y rechazaba a la tienda destino con `PERMISO:`. Se agrega a esa
+  función una única excepción: si `p_etapa_anterior = 'enviado'`, la prenda sigue en `enviado` y la
+  sede destino de su envío está en `app_sedes()`, se acepta. Para que la condición se cumpla,
+  `pipeline_calificar` registra el historial **antes** de actualizar la prenda (que al calificar
+  cambia de etapa y pierde el envío). Los helpers de puntos (`registrar_punto`, `borrar_punto`) no
+  se amplían: la tienda destino no escribe ni borra puntos. Caso 12e de la prueba.
