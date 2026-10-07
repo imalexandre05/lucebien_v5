@@ -11,7 +11,9 @@
 --   6) admin -> dueno del único admin SÍ pasa (sigue habiendo administrador);
 --   7) con DOS admins activos, degradar a uno SÍ pasa;
 --   8) editar a un colaborador (datos, rol no admin) por update directo SÍ pasa;
---   9) la RPC empleado_actualizar sigue funcionando para un colaborador común.
+--   9) la RPC empleado_actualizar sigue funcionando para un colaborador común;
+--  10) un único update que degrada a los DOS últimos admins a la vez se rechaza (por eso el
+--      trigger es AFTER: ve el resultado completo de la sentencia).
 --
 -- Escenario controlado: la base local puede traer otros admins sembrados. Se crea primero el admin
 -- de prueba y DESPUÉS se desactivan los demás (así nunca se queda en 0 y el trigger, si ya existe,
@@ -122,6 +124,21 @@ begin
     else v_res := v_res || format(E'\n  [FALLA] 7) el rol quedó en %s', v_rol); v_fallas := v_fallas + 1; end if;
   exception when others then
     v_res := v_res || format(E'\n  [FALLA] 7) con otro admin activo se rechazó: %s', sqlerrm); v_fallas := v_fallas + 1;
+  end;
+  reset role;
+
+  -- 10) update masivo sobre los dos últimos admins (adm es dueno, adm2 es confeccionista: se
+  -- vuelve a dar rol de admin a adm2 y se intenta degradar a ambos en una sola sentencia)
+  update empleados set rol = 'admin' where id = adm2;
+  update empleados set rol = 'admin' where id = adm;
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', adm::text, 'role', 'authenticated')::text, true);
+  begin
+    update empleados set rol = 'confeccionista' where id in (adm, adm2);
+    v_res := v_res || E'\n  [FALLA] 10) un update masivo dejó 0 admins'; v_fallas := v_fallas + 1;
+  exception when others then
+    if sqlerrm like 'ULTIMO_ADMIN%' then v_res := v_res || E'\n  [ok]    10) update masivo sobre los dos últimos admins rechazado';
+    else v_res := v_res || format(E'\n  [FALLA] 10) falló por otro motivo: %s', sqlerrm); v_fallas := v_fallas + 1; end if;
   end;
   reset role;
 
