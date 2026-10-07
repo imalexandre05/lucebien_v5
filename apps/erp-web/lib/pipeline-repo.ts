@@ -66,24 +66,6 @@ export async function listarPasadas(): Promise<PrendaPasada[]> {
   return (data as Row[]).map(fromRow);
 }
 
-// Llamado al crear un pedido de servicio: la prenda entra al pipeline interno (E5).
-export async function crearPasadaDesdePedido(p: {
-  codigo: string;
-  tipo: string;
-  sedeOrigenCod: string;
-  pedidoId: string;
-}): Promise<void> {
-  const sb = getServerClient();
-  const { error } = await sb.from('prenda_pasada').insert({
-    codigo: p.codigo,
-    tipo: p.tipo,
-    sede_origen_cod: p.sedeOrigenCod,
-    pedido_id: p.pedidoId,
-    etapa: 'recepcion',
-  });
-  if (error) throw new Error(error.message);
-}
-
 // Alta manual desde la pestaña Registrar: prendas que llegan al almacén sin pedido asociado.
 // Trazabilidad (Fase 8): el vínculo prenda_pasada.activo_id → inventario_activo.id ya existía
 // en el esquema (E5, migración 0001) pero nunca se usaba. Al registrar una prenda: si su código
@@ -91,8 +73,8 @@ export async function crearPasadaDesdePedido(p: {
 // alquiler), se reusa ese activo y se linkea la nueva pasada; si es completamente nueva
 // (llega recién de proveedor/confección), se crea el activo de una vez — "pasa por el pipeline
 // para codificarse" antes de mostrarse, tal como describe el flujo del negocio. Dos escrituras
-// secuenciales (sin RPC): mismo patrón que el resto de este archivo (registrarPasada ya era un
-// insert simple, no transaccional).
+// secuenciales (activo e inserción de la pasada, esta última por RPC desde la 0122): no es
+// transaccional.
 export async function registrarPasada(p: {
   codigo: string;
   tipo: string;
@@ -144,17 +126,16 @@ export async function registrarPasada(p: {
     }
   }
 
-  const { error } = await sb.from('prenda_pasada').insert({
-    activo_id: activoId,
-    codigo: p.codigo,
-    tipo: p.tipo,
-    color: p.color,
-    talla: p.talla,
-    sede_origen_cod: p.sedeOrigenCod,
-    tipo_lavado: p.tipoLavado,
-    necesita_compostura: p.necesitaCompostura,
-    obs_general: p.obsGeneral,
-    etapa: 'recepcion',
+  const { error } = await sb.rpc('pipeline_registrar_prenda', {
+    p_codigo: p.codigo,
+    p_tipo: p.tipo,
+    p_color: p.color,
+    p_talla: p.talla,
+    p_sede: p.sedeOrigenCod,
+    p_tipo_lavado: p.tipoLavado,
+    p_necesita_compostura: p.necesitaCompostura,
+    p_obs: p.obsGeneral,
+    p_activo_id: activoId,
   });
   if (error) throw new Error(error.message);
 }
@@ -176,14 +157,16 @@ export async function reingresarActivoAPipeline(activoId: string): Promise<void>
   if (e1) throw new Error(e1.message);
   if (!activo) return;
   const a = activo as { codigo: string; tipo: string; color: string | null; talla: string | null; sede_cod: string | null };
-  const { error } = await sb.from('prenda_pasada').insert({
-    activo_id: activoId,
-    codigo: a.codigo,
-    tipo: a.tipo,
-    color: a.color,
-    talla: a.talla,
-    sede_origen_cod: a.sede_cod,
-    etapa: 'recepcion',
+  const { error } = await sb.rpc('pipeline_registrar_prenda', {
+    p_codigo: a.codigo,
+    p_tipo: a.tipo,
+    p_color: a.color,
+    p_talla: a.talla,
+    p_sede: a.sede_cod,
+    p_tipo_lavado: null,
+    p_necesita_compostura: false,
+    p_obs: null,
+    p_activo_id: activoId,
   });
   if (error) throw new Error(error.message);
 

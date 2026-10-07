@@ -87,6 +87,7 @@ export function NuevoReporteForm({
   sede,
   fecha,
   encargadoId,
+  esAdmin,
   empleados,
   tiposIncidencia,
   cierres,
@@ -94,6 +95,7 @@ export function NuevoReporteForm({
   sede: string;
   fecha: string;
   encargadoId: string | null;
+  esAdmin: boolean;
   empleados: Emp[];
   tiposIncidencia: TipoIncidencia[];
   cierres: Record<TurnoReporte, string>;
@@ -187,7 +189,8 @@ export function NuevoReporteForm({
         setDone(initDone);
         setObs(initObs);
         setTrabajadores(d.trabajadores ?? []);
-        setEncargadoSel(d.encargado ?? (encargadoId ? [encargadoId] : []));
+        // Un no admin siempre es el encargado: se ignora el que traiga el borrador (0122, H14).
+        setEncargadoSel(!esAdmin ? (encargadoId ? [encargadoId] : []) : d.encargado ?? (encargadoId ? [encargadoId] : []));
         setExtras((d.extras ?? []).map(normalizarExtraDraft).filter((x): x is Extra => x !== null));
         setLimpieza(d.limpieza ?? []);
         setCargando(false);
@@ -200,7 +203,7 @@ export function NuevoReporteForm({
     return () => {
       vivo = false;
     };
-  }, [turno, sede, fecha, encargadoId]);
+  }, [turno, sede, fecha, encargadoId, esAdmin]);
 
   const actDone = useMemo(() => cat.filter((a) => done[a.cod]).length, [cat, done]);
   const actPts = useMemo(() => cat.filter((a) => done[a.cod]).reduce((s, a) => s + a.peso, 0), [cat, done]);
@@ -480,6 +483,7 @@ export function NuevoReporteForm({
                   <PenLine className="h-3.5 w-3.5" strokeWidth={2} /> Encargado del turno
                   <span className="font-normal normal-case text-muted/80">· quien firma</span>
                 </div>
+                {esAdmin ? (
                 <PersonaPicker
                   empleados={empleadosOrden}
                   selected={encargadoSel}
@@ -488,6 +492,12 @@ export function NuevoReporteForm({
                   single
                   testId="picker-encargado"
                 />
+                ) : (
+                  <div className="rounded-md border border-line px-3 py-2 text-cuerpo" data-testid="encargado-fijo">
+                    {empleados.find((e) => e.id === encargadoId)?.nombre ?? 'Tú'}
+                    <span className="ml-2 text-apoyo text-muted">· quien registra el turno es quien lo firma</span>
+                  </div>
+                )}
               </div>
             </div>
           )}

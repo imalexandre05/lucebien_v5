@@ -14,7 +14,7 @@ import {
 } from '../../lib/pipeline-repo';
 
 // Acciones del tablero. Reciben argumentos simples (no FormData) para poder llamarlas desde
-// el componente cliente con actualización optimista. La RLS decide qué puede tocar el usuario.
+// el componente cliente con actualización optimista. Qué puede tocar el usuario lo deciden las RPC del pipeline (desde la 0122 la tabla no se escribe directo).
 
 export async function avanzarPrenda(id: string, destino: string): Promise<number> {
   if (!id || !destino) return 0;

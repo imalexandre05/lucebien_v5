@@ -23,7 +23,8 @@ function Campo({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export default async function PedidoDetalle({ params }: { params: { id: string } }) {
+export default async function PedidoDetalle(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const p = await pedidosRepo.obtener(params.id);
   if (!p) notFound();
 

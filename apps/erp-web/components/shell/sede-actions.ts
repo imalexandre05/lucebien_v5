@@ -21,6 +21,6 @@ export async function cambiarSedeAction(sede: string): Promise<{ ok: boolean }> 
     if (!todas.some((s) => s.cod === sede)) return { ok: false };
   }
 
-  fijarSedeActiva(sede);
+  await fijarSedeActiva(sede);
   return { ok: true };
 }

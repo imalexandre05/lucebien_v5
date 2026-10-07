@@ -16,13 +16,14 @@ import { MovimientosCliente } from '../../../sueldos/movimientos/cliente';
 // que mirarlos por rango es mirarlos como los mira el motor.
 export const dynamic = 'force-dynamic';
 
-export default async function MovimientosColaboradorPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
+export default async function MovimientosColaboradorPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
   if (!acceso.secciones.includes('movimientos')) redirect(`/personal/${params.id}`);

@@ -21,9 +21,10 @@ const DEVICE_COOKIE = 'sci_device';
 // (dispositivos_autorizados.sede_cod). Este equipo se identifica por la cookie `sci_device` (la
 // pone el middleware, siempre, incluso sin sesión) y login la resuelve ANTES de pintar para
 // pre-marcar el botón correspondiente — en los dos modos de login, no solo en cod+sede.
-export default async function LoginPage({ searchParams }: { searchParams: { error?: string } }) {
+export default async function LoginPage(props: { searchParams: Promise<{ error?: string }> }) {
+  const searchParams = await props.searchParams;
   const loginV2 = isOn('LOGIN_V2');
-  const deviceId = cookies().get(DEVICE_COOKIE)?.value ?? '';
+  const deviceId = (await cookies()).get(DEVICE_COOKIE)?.value ?? '';
   const [SEDES, sedeDispositivo] = await Promise.all([listarSedesPublico(), sedeDispositivoPublico(deviceId)]);
   const defaultSede = SEDES.some((s) => s.cod === sedeDispositivo) ? (sedeDispositivo as string) : (SEDES[0]?.cod ?? '');
 

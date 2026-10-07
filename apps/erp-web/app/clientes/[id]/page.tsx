@@ -18,7 +18,8 @@ const SEG_CLS: Record<SegmentoCliente, string> = {
   nuevo: 'bg-ink/10 text-muted',
 };
 
-export default async function ClienteDetalle({ params }: { params: { id: string } }) {
+export default async function ClienteDetalle(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const [clientes, pedidos] = await Promise.all([
     clientesRepo.listar(),
     pedidosRepo.porCliente(params.id),

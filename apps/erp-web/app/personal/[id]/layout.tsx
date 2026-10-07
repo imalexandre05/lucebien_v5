@@ -17,13 +17,18 @@ import { NavSecciones } from './nav';
 // del servidor, que es donde se necesita para consultar. Esa división evita el error de tener el
 // período en dos lugares que se desincronizan.
 
-export default async function ColaboradorLayout({
-  children,
-  params,
-}: {
-  children: ReactNode;
-  params: { id: string };
-}) {
+export default async function ColaboradorLayout(
+  props: {
+    children: ReactNode;
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
+
+  const {
+    children
+  } = props;
+
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
   if (!acceso.secciones.length) redirect('/reportes/nuevo');

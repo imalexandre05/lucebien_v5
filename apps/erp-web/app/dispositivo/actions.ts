@@ -10,7 +10,7 @@ const DEVICE_COOKIE = 'sci_device';
 // Autoaprobación de un admin: aprueba el equipo ACTUAL (bootstrap sin lock-out). La RPC valida
 // app_es_admin() adentro, así que un no-admin no puede aprobarse.
 export async function autorizarEsteEquipo() {
-  const deviceId = cookies().get(DEVICE_COOKIE)?.value;
+  const deviceId = (await cookies()).get(DEVICE_COOKIE)?.value;
   if (!deviceId) redirect('/dispositivo?error=token');
   const sb = getServerClient();
   const { error } = await sb.rpc('dispositivo_autoaprobar', { p_device_id: deviceId });
@@ -20,7 +20,7 @@ export async function autorizarEsteEquipo() {
 
 // Un no-admin solicita acceso: registra/actualiza el equipo como 'pendiente' con un nombre.
 export async function solicitarAcceso(formData: FormData) {
-  const deviceId = cookies().get(DEVICE_COOKIE)?.value;
+  const deviceId = (await cookies()).get(DEVICE_COOKIE)?.value;
   if (!deviceId) redirect('/dispositivo?error=token');
   const nombre = String(formData.get('nombre') ?? '').slice(0, 80);
   const sb = getServerClient();

@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation';
 import { obtenerPago } from '../../../../lib/pagos-repo';
 import { AccionesComprobante } from './imprimir';
 
-export default async function ComprobantePago({ params }: { params: { id: string } }) {
+export default async function ComprobantePago(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const p = await obtenerPago(params.id);
   if (!p) notFound();
 

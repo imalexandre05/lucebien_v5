@@ -21,13 +21,14 @@ import { SeccionHeader } from '../../../../components/colaboradores/seccion-head
 // /valores y es otra pregunta.
 export const dynamic = 'force-dynamic';
 
-export default async function ValoresColaboradorPage({
-  params,
-  searchParams,
-}: {
-  params: { id: string };
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
+export default async function ValoresColaboradorPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
   if (!acceso.secciones.includes('valores')) redirect(`/personal/${params.id}`);

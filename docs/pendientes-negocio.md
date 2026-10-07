@@ -1547,3 +1547,19 @@ cruza un cambio de frecuencia, se rechaza. No es un parámetro nuevo: es la defi
 Sin decidir: al crear un contrato la pantalla **avisa** cuando el último pago queda corto y
 sugiere la fecha de fin que lo completa, pero no propone una fecha de fin por defecto con el
 contrato vacío (la spec §3.3 dice «sugiere el día anterior al aniversario» sin fijar cuántos meses).
+## Seguridad 06-oct-2026 — retrabajo tras observación de tienda (residual del PR #59)
+
+**Sin decidir.** Hoy (y también después de la 0122) una prenda enviada que la tienda califica como
+*observada* vuelve a una etapa del proceso **sin penalizar a nadie**, y al volver a avanzarla se
+pagan otra vez los puntos de cada etapa. El verificador lo ejecutó el 07-oct: avanzar a listo →
+enviar → calificar observada a recepción → avanzar de nuevo = +7 por ciclo, repetible. Lo puede
+hacer una sola persona del almacén, porque `pipeline_calificar` admite a admin/almacén además de la
+sede destino y no exige que quien califica sea distinto de quien trabajó la prenda.
+
+Hay que decidir con Alexander:
+1. ¿El retrabajo después de una observación vuelve a pagar puntos? Si sí, ¿se penaliza a quien hizo
+   la etapa observada, como ya hace `pipeline_rechazar`?
+2. ¿Quién califica? Propuesta: sólo la sede destino del envío (o admin), nunca el almacén ni quien
+   trabajó la prenda.
+
+Hasta decidirlo, **no activar el pago por puntos (#54)**: esta vía se convierte en plata.

@@ -20,7 +20,8 @@ import { LiquidacionPagoCliente } from './cliente';
 // herramienta activa.
 export const dynamic = 'force-dynamic';
 
-export default async function PagoColaboradorPage({ params }: { params: { id: string } }) {
+export default async function PagoColaboradorPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
   if (!acceso.secciones.includes('pago')) redirect(`/personal/${params.id}`);

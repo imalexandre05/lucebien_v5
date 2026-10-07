@@ -8,7 +8,8 @@ import { ImprimirAcciones } from './imprimir-acciones';
 // actual — antes de la entrega muestra "Pedido a almacén" (qué se pide/envía), desde 'entregada'
 // muestra también la columna Recibido y pasa a "Confirmación de entrega". Menos superficie que
 // mantener sin perder ninguna de las dos lecturas.
-export default async function ImprimirSolicitudPage({ params }: { params: { id: string } }) {
+export default async function ImprimirSolicitudPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // En la práctica esta ruta solo se llega desde el botón "Imprimir" del detalle (que no se monta
   // si la migración 0056 no está aplicada — /solicitudes ya avisa antes), pero una URL escrita a
   // mano sí podría llegar aquí directo. Mismo criterio de degradación que el resto del módulo: sin
