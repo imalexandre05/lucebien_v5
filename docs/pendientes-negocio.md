@@ -1518,7 +1518,7 @@ desplegar hoy sin inventar ninguna cifra.
 Enmienda del 06-oct-2026 (spec §8.2, migración `0126`). La meta es mensual y se mide por **mes del
 contrato** (del día de inicio al día anterior del mismo día del mes siguiente, recortado a fin de
 mes). Cada mes se cobra una sola vez, en la liquidación que incluye su último día, con todos sus
-puntos: `max(0, puntos del mes − meta) × soles por punto`, redondeado sobre el producto. Un mes
+puntos: `max(0, puntos del mes − meta) × soles por punto`, con el excedente redondeado a 2 decimales antes de multiplicar (870,97 × S/3 = S/2612,91). Un mes
 completo usa la meta **entera**.
 
 **Default:** el último mes, si el fin del contrato lo corta, **prorratea la meta por días contra el
