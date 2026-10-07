@@ -4,6 +4,9 @@
 -- Qué comprueba (los dos pedidos de la spec para el lado SQL):
 --   1. Parámetros VACÍOS no cambian nada: la entrada de `sueldo_entrada` conserva las 17 claves de
 --      siempre, `parametros` no trae ninguna clave nueva, y `puntosPeriodo` viaja (es sólo un dato).
+--   (Desde la 0126 la clave `puntosPeriodo` se llama `puntosMeses` y trae los meses del contrato que
+--   cierran en el tramo: esta prueba lee la que exista. Con la 0126 el acuerdo termina el 3-feb para
+--   que el mes del contrato cierre dentro del tramo; los puntos siguen siendo los mismos 40,5.)
 --   2. Con parámetros definidos: `parametros` trae `puntosMetaMensual` y `solesPorPunto` como número
 --      y `puntosPeriodo` es EXACTAMENTE lo que devuelve `private.evaluacion_componentes_datos` para
 --      el mismo empleado y el mismo rango (no se recalcula de otra forma). Se siembran 40,5 puntos
@@ -32,6 +35,9 @@ declare
   v_pts    numeric;
   v_ref    numeric;
   v_ref2   numeric;
+  v_ref3   numeric;
+  v_nuevo  boolean;
+  v_clave  text;
   v_msg    text;
   r        text := '';
 begin
@@ -45,7 +51,7 @@ begin
 
   -- ── Montaje: acuerdo de 10 días con horario todos los días; tres días declarados ────────────
   insert into sueldo_acuerdos(empleado_id, fecha_inicio, fecha_fin, modalidad, sueldo_pactado, estado, creado_por)
-    values (adm, '2099-02-01', '2099-02-10', 'semanal', 100, 'vigente', adm)
+    values (adm, '2099-02-01', '2099-02-03', 'semanal', 100, 'vigente', adm)
     returning id into ac;
   insert into sueldo_acuerdo_turnos(acuerdo_id, dia_semana, hora_inicio, hora_fin)
   select ac, d, h.desde, h.hasta
@@ -63,6 +69,10 @@ begin
   -- de esta función, y justamente por eso `sueldo_entrada` la llama a través de un wrapper.
   v_ref  := (private.evaluacion_componentes_datos(adm, '2099-02-02', '2099-02-03')->>'puntosTotal')::numeric;
   v_ref2 := (private.evaluacion_componentes_datos(adm, '2099-02-02', '2099-02-02')->>'puntosTotal')::numeric;
+  v_ref3 := (private.evaluacion_componentes_datos(adm, '2099-02-01', '2099-02-03')->>'puntosTotal')::numeric;
+  -- ¿Ya está la 0126? Entonces la entrada trae `puntosMeses` en vez de `puntosPeriodo`.
+  v_nuevo := position('puntosMeses' in pg_get_functiondef('public.sueldo_entrada(uuid,date,date)'::regprocedure)) > 0;
+  v_clave := case when v_nuevo then 'puntosMeses' else 'puntosPeriodo' end;
   r := r || 'montaje=ok; ';
 
   -- Desde acá la prueba corre COMO `authenticated` (el rol real de la app), no como superusuario:
@@ -76,16 +86,16 @@ begin
     -- Las filas existen vacías tras la migración; aquí se simula tanto «vacía» como «ausente».
     insert into config(clave, valor) values ('sueldo_puntos_meta_mensual', ''), ('sueldo_soles_por_punto', '');
     v_vacio := sueldo_entrada(ac, '2099-02-02', '2099-02-03');
-    if (v_vacio - 'puntosPeriodo') ?| array['puntosMetaMensual', 'solesPorPunto']
+    if (v_vacio - 'puntosPeriodo' - 'puntosMeses') ?| array['puntosMetaMensual', 'solesPorPunto']
        or (v_vacio->'parametros') ?| array['puntosMetaMensual', 'solesPorPunto'] then
       r := r || '[FALLA] caso1: con los parámetros vacíos aparecieron claves nuevas en parametros; ';
-    elsif (select count(*) from jsonb_object_keys(v_vacio - 'puntosPeriodo')) <> 17 then
+    elsif (select count(*) from jsonb_object_keys(v_vacio - 'puntosPeriodo' - 'puntosMeses')) <> 17 then
       r := r || format('[FALLA] caso1: la entrada de siempre tenía 17 claves y ahora tiene %s; ',
-                       (select count(*) from jsonb_object_keys(v_vacio - 'puntosPeriodo')));
-    elsif not (v_vacio ? 'puntosPeriodo') or jsonb_typeof(v_vacio->'puntosPeriodo') <> 'null' then
-      r := r || format('[FALLA] caso1: apagado, puntosPeriodo debe viajar como null y vino %s; ', v_vacio->'puntosPeriodo');
+                       (select count(*) from jsonb_object_keys(v_vacio - 'puntosPeriodo' - 'puntosMeses')));
+    elsif not (v_vacio ? v_clave) or jsonb_typeof(v_vacio->v_clave) <> 'null' then
+      r := r || format('[FALLA] caso1: apagado, %s debe viajar como null y vino %s; ', v_clave, v_vacio->v_clave);
     else
-      r := r || '[ok] caso1: parámetros vacíos → mismas 17 claves, ninguna clave nueva en parametros, puntosPeriodo=null (estable); ';
+      r := r || format('[ok] caso1: parámetros vacíos → mismas 17 claves, ninguna clave nueva en parametros, %s=null (estable); ', v_clave);
     end if;
   exception when others then
     r := r || format('[FALLA] caso1: sueldo_entrada cortó con "%s"; ', sqlerrm);
@@ -109,7 +119,8 @@ begin
     update config set valor = '5000' where clave = 'sueldo_puntos_meta_mensual';
     update config set valor = '0.05' where clave = 'sueldo_soles_por_punto';
     v_def := sueldo_entrada(ac, '2099-02-02', '2099-02-03');
-    v_pts := (v_def->>'puntosPeriodo')::numeric;
+    v_pts := case when v_nuevo then (v_def->'puntosMeses'->0->>'puntos')::numeric else (v_def->>'puntosPeriodo')::numeric end;
+    if v_nuevo then v_ref := v_ref3; end if;
 
     if (v_def->'parametros'->>'puntosMetaMensual')::numeric = 5000
        and (v_def->'parametros'->>'solesPorPunto')::numeric = 0.05
@@ -126,7 +137,14 @@ begin
     end if;
 
     -- El rango que NO incluye el día de los puntos no los arrastra.
-    if coalesce((sueldo_entrada(ac, '2099-02-02', '2099-02-02')->>'puntosPeriodo')::numeric, -1) = v_ref2 and v_ref2 = 0 then
+    if v_nuevo then
+      -- Con la 0126 el tramo 02-02..02-02 no cierra el mes del contrato (cierra el 3-feb): `[]`.
+      if jsonb_array_length(sueldo_entrada(ac, '2099-02-02', '2099-02-02')->'puntosMeses') = 0 then
+        r := r || '[ok] caso2c: un tramo que no cierra el mes del contrato no trae puntos (puntosMeses=[]); ';
+      else
+        r := r || '[FALLA] caso2c: el tramo 02-02..02-02 no cierra el mes y debía traer []; ';
+      end if;
+    elsif coalesce((sueldo_entrada(ac, '2099-02-02', '2099-02-02')->>'puntosPeriodo')::numeric, -1) = v_ref2 and v_ref2 = 0 then
       r := r || '[ok] caso2c: un rango sin el día de los puntos devuelve 0 (se cuenta por el rango de la liquidación); ';
     else
       r := r || format('[FALLA] caso2c: el rango 02-02..02-02 debía dar 0 y dio %s; ', v_ref2);
