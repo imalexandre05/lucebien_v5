@@ -17,6 +17,7 @@ import { EmptyState } from '../../components/ui/empty-state';
 import { Modal, ModalBody, ModalFooter } from '../../components/ui/modal';
 import { ReauthGate } from '../../components/ui/reauth-gate';
 import { Aviso } from '../../components/ui/form';
+import { ResultadoValores } from '../../components/valores/resultado-valores';
 import { cn } from '../../lib/cn';
 
 // SIN RESPUESTA POR DEFECTO, Y ES EL CAMBIO QUE MÁS IMPORTA DE ESTA PANTALLA.
@@ -125,10 +126,10 @@ export function ValoresCliente({
           valor={pendientes}
           tone={pendientes > 0 ? 'border-aviso-line bg-aviso-soft text-aviso-deep' : 'border-exito-line bg-exito-soft text-exito-deep'}
         />
-        <StatBox index={2} label="Recibidas (yo)" valor={miResumen.recibidas} tone="neutro" />
+        <StatBox index={2} label="Recibidas · último mes" valor={miResumen.recibidas ?? '—'} tone="neutro" />
         <StatBox
           index={3}
-          label="Mi nota /20"
+          label="Mi nota /20 · último mes"
           valor={miResumen.nota20 != null ? miResumen.nota20.toFixed(1) : '—'}
           tone="gold"
         />
@@ -158,6 +159,8 @@ export function ValoresCliente({
           </button>
         </div>
       )}
+
+      {vista === 'evaluar' && <ResultadoValores resumen={miResumen} mes={mes} />}
 
       {vista === 'evaluar' && (
         <Card>

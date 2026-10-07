@@ -1,5 +1,6 @@
 import type { PesosEval, EscalaPuntos } from '@scilb/core';
 import { getServerClient } from './supabase/server';
+import { getSesion } from './auth';
 import { leerConfigMap } from './config-repo';
 import { mapaNombres } from './directorio';
 
@@ -23,6 +24,10 @@ export type Evaluacion = {
   createdAt: string;
   metodo: MetodoEvaluacion;
   puntosTotal: number | null;
+  // true cuando quien mira NO es administrador: `componentes` viene sin `valores` ni
+  // `valoresCantidad` (Valores 360° sólo se publica de un mes cerrado y con mínimo, y eso lo decide
+  // `valores_mis_puntajes`, no este listado — spec valores360-anonimato §6).
+  valoresOculto?: boolean;
 };
 
 // Pesos de evaluación desde config (editables). Defaults si falta alguna clave.
@@ -84,13 +89,27 @@ export async function listarEvaluaciones(): Promise<Evaluacion[]> {
 
   const nombre = await mapaNombres();
 
+  // El administrador ve todo. Cualquier otro (un encargado con `evaluaciones:ver` ve su propia fila,
+  // y con `datos_personas` también las ajenas) no recibe la nota de Valores 360° guardada: con pocas
+  // evaluaciones es el voto de una persona.
+  const sesion = await getSesion();
+  const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
+  const sinValores = (c: Record<string, number> | null): Record<string, number> | null => {
+    if (!c) return c;
+    const { valores: _v, valoresCantidad: _c, ...resto } = c;
+    return resto;
+  };
+
   return rows.map((r) => ({
     id: String(r.id),
     empleadoId: String(r.empleado_id),
     empleadoNombre: nombre.get(String(r.empleado_id)) ?? null,
     mes: String(r.mes ?? ''),
     notaFinal: Number(r.nota_final ?? 0),
-    componentes: (r.componentes as Record<string, number> | null) ?? null,
+    componentes: esAdmin
+      ? (r.componentes as Record<string, number> | null) ?? null
+      : sinValores((r.componentes as Record<string, number> | null) ?? null),
+    valoresOculto: !esAdmin,
     pesosUsados: (r.pesos_usados as Record<string, number> | null) ?? null,
     cicloDesde: (r.ciclo_desde as string | null) ?? null,
     cicloHasta: (r.ciclo_hasta as string | null) ?? null,

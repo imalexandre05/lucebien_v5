@@ -1,20 +1,19 @@
 import { notFound, redirect } from 'next/navigation';
 import { HeartHandshake, Lock } from 'lucide-react';
-import { VALORES } from '@scilb/core';
 import { accesoColaboradores } from '../../../../lib/colaboradores-acceso';
 import { obtenerColaborador } from '../../../../lib/colaboradores-repo';
 import { miResumenValores, ValoresNoMigradoError } from '../../../../lib/valores-repo';
 import { leerPeriodo } from '../../../../lib/periodo';
-import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
-import { Badge } from '../../../../components/ui/badge';
+import { Card } from '../../../../components/ui/card';
 import { EmptyState } from '../../../../components/ui/empty-state';
+import { ResultadoValores } from '../../../../components/valores/resultado-valores';
 import { SeccionHeader } from '../../../../components/colaboradores/seccion-header';
 
 // Lo que el equipo puntuó de esta persona, en promedio.
 //
 // AISLAMIENTO 3, Y ACÁ SE VE POR QUÉ IMPORTA. Esta pantalla muestra el promedio y la nota /20, y
-// NUNCA quién puso qué. La consulta de valores-repo trae el evaluador para poder promediar y no lo
-// devuelve; acá tampoco se pide. Si alguien supiera quién lo puntuó bajo, el peer review dejaría de
+// NUNCA quién puso qué: sólo el administrador puede leer esas filas (0116), y aun él las ve
+// promediadas acá. Si alguien supiera quién lo puntuó bajo, el peer review dejaría de
 // decir la verdad en una semana.
 //
 // No se muestra quién todavía no evaluó: eso es seguimiento del cumplimiento del equipo, vive en
@@ -91,54 +90,7 @@ export default async function ValoresColaboradorPage(
         }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Promedio recibido · {mes}</CardTitle>
-          <Badge tone={resumen.recibidas ? 'navy' : 'gray'}>
-            {resumen.recibidas} {resumen.recibidas === 1 ? 'evaluación' : 'evaluaciones'}
-          </Badge>
-        </CardHeader>
-        {resumen.recibidas === 0 || !resumen.promedios ? (
-          <EmptyState icon={HeartHandshake} titulo="Todavía nadie la puntuó este mes" compacto>
-            El equipo se evalúa entre sí desde Valores 360°. Hasta que haya al menos una evaluación,
-            este componente de la nota queda sin dato.
-          </EmptyState>
-        ) : (
-          <CardContent>
-            <div className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
-              {VALORES.map(({ key, label }) => {
-                const v = resumen.promedios?.[key];
-                const pct = v == null ? 0 : Math.max(0, Math.min(100, (v / 5) * 100));
-                return (
-                  <div key={key}>
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-apoyo text-ink">{label}</span>
-                      <span className="tabular-nums text-dato font-semibold text-navy">
-                        {v == null ? '—' : `${v.toFixed(2)} / 5`}
-                      </span>
-                    </div>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-r-pastilla bg-line/60">
-                      <div
-                        className="h-full origin-left animate-draw-x rounded-r-pastilla bg-navy motion-reduce:animate-none"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="mt-4 flex items-baseline justify-between border-t border-line/60 pt-3">
-              <span className="text-apoyo text-muted">
-                Nota de Valores 360°, la que entra a la evaluación mensual
-              </span>
-              <span className="tabular-nums text-xl font-bold text-navy">
-                {resumen.nota20 == null ? '—' : resumen.nota20.toFixed(2)}
-                <span className="ml-0.5 text-apoyo font-normal text-muted">/20</span>
-              </span>
-            </p>
-          </CardContent>
-        )}
-      </Card>
+      <ResultadoValores resumen={resumen} mes={mes} titulo="Promedio recibido" />
     </div>
   );
 }

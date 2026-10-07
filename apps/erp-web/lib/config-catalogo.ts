@@ -351,6 +351,19 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     step: 1,
   },
 
+  {
+    clave: 'valores_min_evaluaciones',
+    seccion: SECCION_VALORES,
+    etiqueta: 'Mínimo de evaluaciones para ver el resultado',
+    descripcion:
+      'Cuántas evaluaciones tiene que haber recibido una persona en el mes antes de que vea su resultado. Con menos, la pantalla no muestra nada (ni cuántas hay), para que nadie pueda deducir quién puntuó qué. Valor provisional de 3, NO confirmado por el dueño — ver docs/pendientes-negocio.md. Un valor vacío o menor que 1 se toma como 3.',
+    tipo: 'numero',
+    default: '3',
+    min: 1,
+    max: 100,
+    step: 1,
+  },
+
   // ── Sueldos (packages/core/src/sueldos.ts::PARAMETROS_SUELDO_DEFAULT, migración 0068) ───────
   // Son 15 de los 16 parámetros del motor. `metaSemanal` NO está acá a propósito: es
   // `number | null` y el null significa "no hay meta pactada, sugerila", cosa que una fila de

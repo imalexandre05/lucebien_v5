@@ -1650,3 +1650,52 @@ como PDF. Pregunta para el administrador: ¿se acepta ese tope, o se prioriza la
 Storage con URL firmada para volver a 10 MB? No es editable desde `/configuracion` (es límite
 técnico, no parámetro de negocio). Ver la enmienda del 06-oct de
 [la spec](superpowers/specs/2026-10-04-personal-ultimo-admin-alta-design.md).
+## Valores 360° — anonimato (05-oct-2026) — parámetro provisional
+
+Decisión del dueño: **sólo el administrador puede ver quién puntuó a quién** (ticket
+imalexandre05/lucebien-tablero#40). Spec: `docs/superpowers/specs/evaluaciones/2026-10-05-valores360-anonimato-design.md`.
+Migración `0116` (escrita, **no aplicada** a ninguna base: la aplica Alexander).
+
+- **`valores_min_evaluaciones` = 3 — default inventado, no confirmado por el dueño.** Es el mínimo de
+  evaluaciones recibidas en el mes para que una persona vea su resultado; con menos, la pantalla dice
+  «Aún no hay suficientes evaluaciones para mostrar tu resultado (mínimo 3)» y la función SQL devuelve
+  vacío (ni siquiera la cantidad). Se eligió 3 por ser el menor número con el que no se deduce por
+  descarte el voto de una persona; con exactamente 3, quien conozca su propio voto sigue acotando los
+  otros dos. Editable en `/configuracion` → Valores 360°. Un valor vacío, `0` o no numérico cae a 3
+  (nunca a 0: apagaría el anonimato en silencio).
+  **Pregunta para el dueño:** ¿3 está bien para un equipo de ~11 evaluadores, o prefiere 4 o 5?
+- Efecto colateral aceptado: un encargado con permiso `datos_personas` **deja de ver** `evaluador_id`
+  (antes lo leía por la policy). Es lo que pidió el dueño.
+- Un administrador mirando **su propio** resultado también pasa por el mínimo (usa la misma función
+  que todos); mirando a **otra** persona, ve todo sin mínimo.
+
+### Hallazgos del verificador sobre el anonimato de Valores 360° (05-oct-2026) — **cerrados en parte; uno sigue abierto**
+
+Decisión del dueño (05-oct, tarde): cerrar las tres fugas con una regla única — *el resultado que ve un
+no-administrador es siempre el de un mes ya cerrado (mes < mes actual, hora Perú) y sólo si ese mes
+tiene ≥ `valores_min_evaluaciones` evaluaciones; nunca en vivo* (spec §6).
+
+**Cerrado en este PR (0116 + código):** `valores_mis_puntajes` (último mes cerrado con mínimo),
+`evaluacion_componentes(self, …)` (el envoltorio; el cuerpo que alimenta la evaluación y el pago no se
+tocó), `/mi-desempeno` (muestra la nota del mes cerrado que devuelve la función, no la guardada) y
+`/evaluaciones` (un no-admin recibe `componentes` sin `valores`).
+
+**ABIERTO — requiere spec propia (RLS sobre la cadena del sueldo):** la persona sigue leyendo su propia
+fila de `evaluaciones_mensuales` por PostgREST directo (`GET /rest/v1/evaluaciones_mensuales?select=componentes`,
+policy `eval_select` de la 0082) y ahí `componentes.valores` es el promedio guardado, sin mes cerrado
+ni mínimo; el verificador lo reprodujo (con 1 voto devuelve `{"valores": 6.0}`). Ocultarlo en las
+pantallas es sólo de pantalla. Un permiso por columna no sirve (el administrador es el mismo rol), así
+que las opciones son una vista o RPC `security definer` que quite `valores` con la misma regla y mover
+las lecturas de no-admin a ella, o dejar de guardar `valores` en esa tabla para no-admin. **Hasta
+resolverlo, no se puede decir que la fuga de la nota guardada esté cerrada.**
+
+Residuales sin decidir (también en la spec §6):
+- Un evaluador puede insertar —y también **actualizar** (`eval_valores_update` deja cambiar `mes` y
+  `evaluado_id`)— un voto en un mes ya cerrado; movería un mes publicado. Es el ítem «mes evaluado» del
+  ticket.
+- `evaluaciones_mensuales.nota_final` y los otros componentes se muestran a la propia persona. En
+  evaluaciones de método `ponderado` (anteriores a la 0095) la nota de valores se despeja con aritmética
+  a partir de ellos. **Pregunta para el dueño:** ¿también se oculta hasta que el mes cierre y haya
+  mínimo?
+- El administrador mirando **su propio** resultado pasa por la misma regla (usa la misma función que
+  todos); sigue viendo todo en el seguimiento y mirando a otra persona.
