@@ -122,7 +122,15 @@ const PARAMETROS: ParametroEditable[] = [
   { clave: 'montoMinimoComision', label: 'Boleta mínima', ayuda: 'sólo boletas por encima entran a la comisión', min: 0 },
   { clave: 'factorHoraFueraContrato', label: 'Hora fuera de contrato', ayuda: 'cuántas veces vale la hora trabajada fuera del horario pactado', min: 0 },
   { clave: 'pausaMinimaMinutos', label: 'Pausa mínima', ayuda: 'minutos de hueco a partir de los cuales no se paga', min: 0 },
+  // Pago por puntos (spec 2026-10-05-pago-por-puntos-design.md §8.1): se pactan por contrato. Vacío
+  // = este contrato no cobra por puntos; las dos tienen que estar definidas para que se pague algo.
+  { clave: 'puntosMetaMensual', label: 'Meta de puntos del mes', ayuda: 'vacío = este contrato no cobra por puntos', min: 0 },
+  { clave: 'solesPorPunto', label: 'Soles por punto', ayuda: 'vacío = este contrato no cobra por puntos', min: 0 },
 ];
+
+// Claves donde vaciar el campo guarda `null` EXPLÍCITO (= apagado en este contrato) en vez de
+// borrar la clave: borrarla haría que el servidor la complete con lo de Configuración.
+const APAGABLES: ReadonlySet<keyof ParametrosSueldo> = new Set(['puntosMetaMensual', 'solesPorPunto']);
 
 const ETIQUETA_PARAMETRO = new Map(PARAMETROS.map((p) => [p.clave, p.label]));
 const PARAMETRO_POR_CLAVE = new Map(PARAMETROS.map((p) => [p.clave, p]));
@@ -656,8 +664,11 @@ export function AcuerdosCliente({
       const p = { ...v.parametros };
       // `metaSemanal` es el único cuyo null significa algo ("no hay meta pactada, sugerila"), así
       // que borrar el campo NO es lo mismo que ponerlo en cero.
-      if (lectura.valor === null) delete p[clave];
-      else (p as Record<string, number>)[clave] = lectura.valor;
+      if (lectura.valor === null) {
+        // Pago por puntos: vacío = «este contrato no cobra por puntos», un null que se conserva.
+        if (APAGABLES.has(clave)) (p as Record<string, number | null>)[clave] = null;
+        else delete p[clave];
+      } else (p as Record<string, number>)[clave] = lectura.valor;
       return { ...v, parametros: p };
     });
   };
@@ -1061,7 +1072,9 @@ export function AcuerdosCliente({
                       // comisión en %). Sólo si le falta (un contrato raro) dice qué valor de
                       // Configuración se usaría: nunca un texto de ejemplo.
                       placeholder={
-                        typeof respaldo === 'number'
+                        APAGABLES.has(p.clave)
+                          ? 'apagado'
+                          : typeof respaldo === 'number'
                           ? `usa ${aTextoParametro(p, respaldo)} de Configuración`
                           : 'sin meta pactada'
                       }

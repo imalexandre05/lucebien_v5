@@ -329,6 +329,10 @@ function TarjetaPagoPorPuntos({
           Además del sueldo, se paga un extra por los puntos que pasen de una meta mensual. Déjalos vacíos hasta decidir la meta: mientras
           estén vacíos no se paga por puntos y la liquidación no muestra la línea.
         </p>
+        <p className="pb-3 text-apoyo leading-relaxed text-muted">
+          Se copian a los contratos nuevos. Los contratos ya creados conservan los suyos: para que uno cobre por puntos, enciéndelo en sus
+          valores pactados.
+        </p>
         <div className="divide-y divide-line/60 border-t border-line/60">
           {items.map((i) => (
             <ParametroFila

@@ -68,6 +68,16 @@ describe('crearAcuerdo — el contrato nuevo nace con todos sus valores pactados
   });
 });
 
+describe('crearAcuerdo — pago por puntos pactado por contrato', () => {
+  it('un null explícito apaga este contrato aunque Configuración esté encendida; la otra clave se copia', async () => {
+    vigentesDeConfig = { puntosMetaMensual: 5000, solesPorPunto: 0.05 };
+    await crearAcuerdo({ ...base, parametros: { puntosMetaMensual: null } }, 'adm');
+    const p = insertado.fila!.parametros as Record<string, unknown>;
+    expect(p.puntosMetaMensual).toBeNull();
+    expect(p.solesPorPunto).toBe(0.05);
+  });
+});
+
 describe('actualizarAcuerdo — vaciar un campo no lo devuelve a seguir a Configuración', () => {
   it('completa la clave que falta con el valor vigente', async () => {
     vigentesDeConfig = { valorAlmuerzo: 10 };
