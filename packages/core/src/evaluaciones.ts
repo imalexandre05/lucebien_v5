@@ -25,6 +25,10 @@ export type PesosEval = Record<ComponenteKey, number>;
 export type ComponentesEval = Record<ComponenteKey, number> & {
   descuentoIncidencias: number;
   bonusVentas: number;
+  // Cuántas evaluaciones 360° dieron `valores` en ese ciclo. Sólo se guarda (no entra en la nota):
+  // la base publica el 360° de una fila guardada si llega al mínimo (0119; spec
+  // 2026-10-04-evaluacion-guardar-recalculada §7).
+  valoresCantidad?: number;
 };
 
 // Pesos por defecto (se sobreescriben con los de config). Suman 1.0.
@@ -45,7 +49,7 @@ export const PESOS_DEFAULT: PesosEval = {
 // Number.isFinite(0) es true — la diferencia entre "no hizo nada" y "no sabemos" es justo lo que
 // esto restaura. Ver docs/superpowers/specs/evaluaciones/2026-08-24-nota-sin-ceros-silenciosos-
 // design.md (§1-A, §2 C-1).
-function esNumeroValido(valor: number): boolean {
+function esNumeroValido(valor: unknown): valor is number {
   return typeof valor === 'number' && Number.isFinite(valor);
 }
 
@@ -223,6 +227,78 @@ export function notaDesdePuntos(puntos: number, escala: EscalaPuntos): { nota: n
 
   const notaFinal = Math.round(Math.max(0, nota) * 100) / 100;
   return { nota: notaFinal, banda: bandaDesdeNota(notaFinal, bandaRiesgo, bandaIdeal) };
+}
+
+/** Salida de la RPC `evaluacion_componentes` para un empleado y un ciclo (sólo lo que se usa acá). */
+export type ComponentesDeData = {
+  operaciones: number;
+  software: number;
+  limpieza: number;
+  tardanza: number;
+  valores: number | null;
+  valoresCantidad?: number | null;
+  descuento: number;
+  bonusVentas: number;
+  puntosTotal?: number;
+  ventasSinTasa?: boolean;
+};
+
+/** Lo único que el cliente aporta al guardar: juicio humano y entradas manuales de la pantalla. */
+export type EntradaManualEval = {
+  competencias: number;
+  examenes: number;
+};
+
+/**
+ * Arma lo que se guarda en `evaluaciones_mensuales` a partir de la salida de la RPC del ciclo EXACTO
+ * que se guarda (spec 2026-10-04-evaluacion-guardar-recalculada §2). La nota y los puntos NUNCA
+ * vienen del cliente; los componentes automáticos tampoco. No cambia ninguna fórmula: la nota es
+ * notaDesdePuntos() tal cual. Lanza si falta puntosTotal, si hay ventas sin tasa, si la escala está
+ * rota o si una entrada manual no es válida — mismos bloqueos que ya aplica la pantalla.
+ */
+export function armarEvaluacionAGuardar(
+  data: ComponentesDeData,
+  escala: EscalaPuntos,
+  manual: EntradaManualEval,
+): { notaFinal: number; banda: BandaEval; puntosTotal: number; componentes: ComponentesEval } {
+  if (!esNumeroValido(data.puntosTotal)) {
+    throw new Error('No se pudieron calcular los puntos del período (¿falta aplicar la migración 0095?). No se guarda.');
+  }
+  if (data.ventasSinTasa === true) {
+    throw new Error('Hay ventas en el período y no está definido cuántos puntos vale un sol vendido. No se guarda.');
+  }
+  for (const k of ['competencias', 'examenes'] as const) {
+    const v = manual[k];
+    if (!esNumeroValido(v) || v < 0 || v > 20) {
+      throw new Error(`"${k}" debe ser un número entre 0 y 20 (${String(v)}).`);
+    }
+  }
+  const automaticos = {
+    operaciones: data.operaciones,
+    software: data.software,
+    limpieza: data.limpieza,
+    tardanza: data.tardanza,
+    descuentoIncidencias: data.descuento,
+    bonusVentas: data.bonusVentas,
+  };
+  for (const [k, v] of Object.entries(automaticos)) {
+    if (!esNumeroValido(v)) throw new Error(`"${k}" del cálculo no es un número (${String(v)}).`);
+  }
+  const { nota, banda } = notaDesdePuntos(data.puntosTotal, escala);
+  return {
+    notaFinal: nota,
+    banda,
+    puntosTotal: data.puntosTotal,
+    componentes: {
+      ...automaticos,
+      valores: data.valores ?? 0,
+      // Sale de la RPC, nunca del cliente. Sin dato → 0: la base no publica un 360° sin saber con
+      // cuántos votos se calculó (spec §7, H-6).
+      valoresCantidad: esNumeroValido(data.valoresCantidad) ? data.valoresCantidad : 0,
+      competencias: manual.competencias,
+      examenes: manual.examenes,
+    },
+  };
 }
 
 // ── Ciclo por aniversario (Fase 12 tarea 3) ──────────────────────────────────────────────────

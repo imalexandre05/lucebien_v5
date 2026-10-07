@@ -223,13 +223,23 @@ export function EvaluacionesCliente({
     setCiclo(emp ? calcularCiclo(emp.fechaIngreso, hoyPeru()) : null);
   }
 
+  // Cambiar el rango invalida lo calculado: los puntos y componentes mostrados son de OTRO ciclo.
+  // Se anulan y hay que pulsar «Calcular desde la data» de nuevo antes de guardar. Las
+  // competencias (juicio humano) no dependen del ciclo y se conservan.
+  function anularCalculo() {
+    setInfoExtra(null);
+    // Sólo lo automático; exámenes (entrada manual) se conserva.
+    setComp((p) => ({ ...p, operaciones: 0, software: 0, limpieza: 0, tardanza: 0, valores: 0, descuentoIncidencias: 0, bonusVentas: 0 }));
+  }
   function setCicloDesde(v: string) {
     setCiclo((c) => (c ? { ...c, desde: v } : c));
     setCicloEditado(true);
+    anularCalculo();
   }
   function setCicloHasta(v: string) {
     setCiclo((c) => (c ? { ...c, hasta: v } : c));
     setCicloEditado(true);
+    anularCalculo();
   }
 
   function calcularDesdeData() {
@@ -267,8 +277,7 @@ export function EvaluacionesCliente({
           puntosVentas: c.puntosVentas ?? 0,
           ventasSinTasa: c.ventasSinTasa === true,
           // El valor QUE DE VERDAD entra en puntosTotal, congelado tal como lo devolvió el RPC —
-          // no comp.descuentoIncidencias, que sigue siendo editable a mano después de este cálculo
-          // y ya no tiene ningún efecto sobre la nota (sólo sobre el perfil que se guarda).
+          // no comp.descuentoIncidencias, que es sólo lo que se muestra en el perfil.
           descuento: c.descuento ?? 0,
           puntosTotal: c.puntosTotal,
         });
@@ -285,20 +294,17 @@ export function EvaluacionesCliente({
     if (!ciclo || nota === null || banda === null || ventasSinTasa || infoExtra === null) return;
     setError('');
     startTransition(async () => {
+      // La nota y los puntos los recalcula el servidor para este ciclo; acá sólo va el juicio humano.
       const r = await accionCrearEvaluacion({
         empleadoId,
-        mes: ciclo.desde.slice(0, 7),
-        notaFinal: nota,
-        componentes: compParaCalculo as unknown as Record<string, number>,
-        pesos,
         cicloDesde: ciclo.desde,
         cicloHasta: ciclo.hasta,
-        // Spec puntos-como-moneda §2 C-5: toda evaluación nueva se guarda con metodo='puntos' — el
-        // valor 'ponderado' de MetodoEvaluacion queda para leer lo que ya existía antes de la 0095.
-        metodo: 'puntos',
-        puntosTotal: infoExtra.puntosTotal,
+        manual: {
+          competencias: competenciaNota,
+          examenes: comp.examenes,
+        },
       });
-      if (!r.ok || !r.id) {
+      if (!r.ok || !r.id || r.notaFinal == null || !r.banda) {
         setError(r.error ?? 'Error al guardar');
         return;
       }
@@ -307,8 +313,8 @@ export function EvaluacionesCliente({
         id: r.id,
         empleadoId,
         nombre: emp?.nombre ?? '',
-        notaFinal: nota,
-        banda,
+        notaFinal: r.notaFinal,
+        banda: r.banda,
         cicloDesde: ciclo.desde,
         cicloHasta: ciclo.hasta,
       });
@@ -418,7 +424,7 @@ export function EvaluacionesCliente({
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-rotulo uppercase text-muted">Empleado</label>
-                <select value={empleadoId} onChange={(e) => elegirEmpleado(e.target.value)} className={cn(fieldCls, 'w-full')} aria-label="Empleado">
+                <select value={empleadoId} onChange={(e) => elegirEmpleado(e.target.value)} disabled={pending} className={cn(fieldCls, 'w-full')} aria-label="Empleado">
                   <option value="">Elige…</option>
                   {empleados.map((e) => (
                     <option key={e.id} value={e.id}>
@@ -438,9 +444,9 @@ export function EvaluacionesCliente({
                   )}
                 </label>
                 <div className="flex items-center gap-2">
-                  <input type="date" value={ciclo?.desde ?? ''} disabled={!ciclo} onChange={(e) => setCicloDesde(e.target.value)} className={cn(fieldCls, 'w-full')} />
+                  <input type="date" value={ciclo?.desde ?? ''} disabled={!ciclo || pending} onChange={(e) => setCicloDesde(e.target.value)} className={cn(fieldCls, 'w-full')} />
                   <span className="text-apoyo text-muted">a</span>
-                  <input type="date" value={ciclo?.hasta ?? ''} disabled={!ciclo} onChange={(e) => setCicloHasta(e.target.value)} className={cn(fieldCls, 'w-full')} />
+                  <input type="date" value={ciclo?.hasta ?? ''} disabled={!ciclo || pending} onChange={(e) => setCicloHasta(e.target.value)} className={cn(fieldCls, 'w-full')} />
                 </div>
               </div>
             </div>
@@ -496,7 +502,7 @@ export function EvaluacionesCliente({
             </div>
 
             {/* Ya no pesan sobre la nota (por eso sin "×peso" al lado, a diferencia del perfil de
-                arriba): son la carga a mano de los mismos siete componentes que arma el perfil. */}
+                arriba): son los mismos siete componentes que arma el perfil; sólo exámenes se carga a mano. */}
             <div className="text-rotulo uppercase text-muted">Componentes (escala /20) — perfil, no fórmula</div>
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {COMPONENTES.filter(({ key }) => key !== 'competencias').map(({ key, label }) => (
@@ -508,8 +514,10 @@ export function EvaluacionesCliente({
                     min={0}
                     max={20}
                     value={comp[key]}
+                    // Todo menos «examenes» lo fija el servidor al guardar (viene del cálculo).
+                    readOnly={key !== 'examenes'}
                     onChange={(e) => set(key, Number(e.target.value))}
-                    className={cn(fieldCls, 'w-20 text-right')}
+                    className={cn(fieldCls, 'w-20 text-right', key !== 'examenes' && 'bg-paper/60 text-muted')}
                   />
                 </div>
               ))}
@@ -549,11 +557,11 @@ export function EvaluacionesCliente({
             <div className="grid grid-cols-1 gap-2 border-t border-line/60 pt-3 sm:grid-cols-2">
               <div className="flex items-center gap-2">
                 <label className="flex-1 text-cuerpo text-navy">Descuento por incidencias</label>
-                <input type="number" step="0.5" value={comp.descuentoIncidencias} onChange={(e) => set('descuentoIncidencias', Number(e.target.value))} className={cn(fieldCls, 'w-20 text-right')} />
+                <input type="number" step="0.5" readOnly value={comp.descuentoIncidencias} onChange={(e) => set('descuentoIncidencias', Number(e.target.value))} className={cn(fieldCls, 'w-20 bg-paper/60 text-right text-muted')} />
               </div>
               <div className="flex items-center gap-2">
                 <label className="flex-1 text-cuerpo text-navy">Bonus por ventas</label>
-                <input type="number" step="0.5" value={comp.bonusVentas} onChange={(e) => set('bonusVentas', Number(e.target.value))} className={cn(fieldCls, 'w-20 text-right')} />
+                <input type="number" step="0.5" readOnly value={comp.bonusVentas} onChange={(e) => set('bonusVentas', Number(e.target.value))} className={cn(fieldCls, 'w-20 bg-paper/60 text-right text-muted')} />
               </div>
             </div>
 

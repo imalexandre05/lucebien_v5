@@ -1,9 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { PesosEval } from '@scilb/core';
+import { armarEvaluacionAGuardar, type BandaEval, type EntradaManualEval } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
-import { crearEvaluacion, componentesEvaluacion, type ComponentesRPC, type MetodoEvaluacion } from '../../lib/evaluaciones-repo';
+import { crearEvaluacion, componentesEvaluacion, leerEscalaPuntos, leerPesosEval, type ComponentesRPC } from '../../lib/evaluaciones-repo';
 
 async function esAdmin() {
   const s = await getSesion();
@@ -47,35 +47,47 @@ export async function accionComponentesEval(
 
 // Devuelve el id de la evaluación creada. Ya no enlaza ningún pago desde acá (ver el cierre del
 // archivo): el id queda como referencia de lo recién guardado para la pantalla.
+//
+// La nota, los puntos y los componentes automáticos NO vienen del cliente: se recalculan acá con la
+// misma RPC y la misma escala que usa la pantalla, para el empleado y el ciclo exactos que se
+// guardan (spec 2026-10-04-evaluacion-guardar-recalculada). Del cliente sólo entra el juicio humano.
 export async function accionCrearEvaluacion(input: {
   empleadoId: string;
-  mes: string;
-  notaFinal: number;
-  componentes: Record<string, number>;
-  pesos: PesosEval;
-  cicloDesde: string | null;
-  cicloHasta: string | null;
-  metodo: MetodoEvaluacion;
-  puntosTotal: number | null;
-}): Promise<{ ok: boolean; id?: string; error?: string }> {
+  cicloDesde: string;
+  cicloHasta: string;
+  manual: EntradaManualEval;
+}): Promise<{ ok: boolean; id?: string; notaFinal?: number; banda?: BandaEval; error?: string }> {
   try {
-    const sesion = await getSesion();
-    const puedeAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
-    if (!puedeAdmin) return { ok: false, error: 'Solo admin/dueño' };
+    if (!(await esAdmin())) return { ok: false, error: 'Solo admin/dueño' };
     if (!input.empleadoId) return { ok: false, error: 'Elige un empleado' };
+    const { cicloDesde, cicloHasta } = input;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(cicloDesde) || !/^\d{4}-\d{2}-\d{2}$/.test(cicloHasta)) {
+      return { ok: false, error: 'Rango de fechas del ciclo inválido' };
+    }
+    if (cicloDesde > cicloHasta) return { ok: false, error: 'El ciclo empieza después de terminar' };
+    const [data, escala, pesos] = await Promise.all([
+      componentesEvaluacion(input.empleadoId, cicloDesde, cicloHasta),
+      leerEscalaPuntos(),
+      leerPesosEval(),
+    ]);
+    const m = input.manual ?? ({} as EntradaManualEval);
+    const r = armarEvaluacionAGuardar(data, escala, {
+      competencias: m.competencias,
+      examenes: m.examenes,
+    });
     const id = await crearEvaluacion({
       empleadoId: input.empleadoId,
-      mes: input.mes,
-      notaFinal: input.notaFinal,
-      componentes: input.componentes,
-      pesos: input.pesos,
-      cicloDesde: input.cicloDesde,
-      cicloHasta: input.cicloHasta,
-      metodo: input.metodo,
-      puntosTotal: input.puntosTotal,
+      mes: cicloDesde.slice(0, 7),
+      notaFinal: r.notaFinal,
+      componentes: r.componentes as unknown as Record<string, number>,
+      pesos,
+      cicloDesde,
+      cicloHasta,
+      metodo: 'puntos',
+      puntosTotal: r.puntosTotal,
     });
     revalidatePath('/evaluaciones');
-    return { ok: true, id };
+    return { ok: true, id, notaFinal: r.notaFinal, banda: r.banda };
   } catch (e) {
     return { ok: false, error: mensajeDeError(e, 'Error al guardar') };
   }
