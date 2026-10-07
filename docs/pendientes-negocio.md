@@ -1513,19 +1513,30 @@ Migración `0117` (escrita, **no aplicada**). Decisión del dueño: los puntos p
 Con cualquiera de las dos vacía no se paga nada y la liquidación no muestra la línea: se puede
 desplegar hoy sin inventar ninguna cifra.
 
-### 🟡 Default elegido, no confirmado — meta de un tramo que no es un mes
+### 🟡 Default elegido, no confirmado — el último mes, cortado por el fin del contrato
 
-La meta es mensual. En un tramo semanal (u otro) se **prorratea por días**:
-`meta × días del tramo ÷ días del mes en que el tramo empieza` (7 de 31 días → 22,6 % de la meta).
-Un mes completo da exactamente la meta. Lo eligió quien implementó; el dueño puede preferir otra
-regla para los semanales (p. ej. una meta semanal propia). Editarlo no requiere tocar la base: es
-una fórmula del motor (`bonoPorPuntos`, `packages/core/src/sueldos.ts`).
+Enmienda del 06-oct-2026 (spec §8.2, migración `0126`). La meta es mensual y se mide por **mes del
+contrato** (del día de inicio al día anterior del mismo día del mes siguiente, recortado a fin de
+mes). Cada mes se cobra una sola vez, en la liquidación que incluye su último día, con todos sus
+puntos: `max(0, puntos del mes − meta) × soles por punto`, redondeado sobre el producto. Un mes
+completo usa la meta **entera**.
+
+**Default:** el último mes, si el fin del contrato lo corta, **prorratea la meta por días contra el
+mes completo** (`meta × días efectivos ÷ días del mes`; 15 de 31 días → 48,4 % de la meta). Lo eligió
+quien implementó la enmienda; el dueño puede preferir otra regla para ese mes final (p. ej. meta
+entera). Editarlo no requiere tocar la base: es una fórmula del motor (`bonoPorPuntos`,
+`packages/core/src/sueldos.ts`).
+
+**Los dos valores se congelan por contrato.** `puntosMetaMensual` y `solesPorPunto` se copian de
+`/configuracion` al crear el contrato y desde entonces el contrato usa los suyos. `null` en el
+contrato = **apagado en ese contrato**, aunque `/configuracion` se encienda después. El pago por
+puntos sigue **APAGADO por defecto**: los contratos existentes quedan en `null` (la configuración
+está vacía) y el administrador enciende cada uno en sus valores pactados.
 
 ### 🔴 Sin decidir
 
-- **Pactar los dos valores por contrato.** Hoy se leen de `/configuracion`, como los demás
-  parámetros; un cambio ahí afecta a toda liquidación nueva. El ticket #20 los congelará al crear
-  el contrato igual que al resto. La lista blanca `sueldo_acuerdos_parametros_chk` **no** se amplió.
+- ~~Pactar los dos valores por contrato~~ — resuelto en la enmienda del 06-oct (migración `0126`): la
+  lista blanca `sueldo_acuerdos_parametros_chk` ya admite las dos claves.
 - ~~Mi desempeño y la ficha mostraban soles por extras~~ — resuelto el 05-oct a pedido de la sesión
   maestra («los extras no se pagan»): ambas pantallas muestran puntos. Ojo: la Fase 5 decidió que el
   operativo no ve los puntos de extras (`puedeVerPuntosExtras`); Mi desempeño ahora le muestra los
@@ -1533,19 +1544,17 @@ una fórmula del motor (`bonoPorPuntos`, `packages/core/src/sueldos.ts`).
 - El aviso de la ficha habla del período mostrado («En este período lleva X puntos. Desde Y puntos al
   mes cobra extra»); la meta que cita es la mensual, sin prorratear.
 
-### 🟡 Consecuencia del prorrateo que el dueño debe conocer
+### Consecuencia del pago por mes del contrato
 
-El `max(0, …)` se aplica en **cada tramo**, así que el bono no es aditivo: los mismos puntos del mes
-pagan distinto si se liquida por semanas o por mes completo. Con meta 5.000 y S/0,05: semanas de
-2.000, 0, 0 y 0 puntos → el semanal cobra S/43,55 y el mensual S/0; 1.550 puntos parejos por semana
-→ el semanal cobra unos S/84 y el mensual S/60. Si se quiere que no dependa de cómo se parta el mes,
-hay que decidir otra regla (p. ej. pagar el bono sólo en el tramo que cierra el mes, sobre los
-puntos acumulados del mes).
+Como el mes se cobra una sola vez y completo, el bono **ya no depende** de cómo se parta el mes en
+tramos (antes: semanas de 0, 0, 2.500 y 2.500 puntos con meta 5.000 pagaban S/125 y el mes suma
+justo la meta; ahora paga S/0). Con pagos semanales o quincenales sólo el tramo que cierra el mes
+lleva el bono.
 
 ### Orden de despliegue
 
 Aplicar la `0110` (hora Perú de los puntos, PR #45) **antes de encender** el pago; con la `0117` sola
-los puntos se cuentan por día UTC. Apagado no importa. Mientras esté apagado `puntosPeriodo` viaja
+los puntos se cuentan por día UTC. Apagado no importa. Mientras esté apagado `puntosMeses` viaja
 `null`, así el cierre del PR #44 no se ve afectado.
 
 ## Comisión escrita en la unidad vieja (tablero#1): umbral de aviso, confirmar con el cliente
