@@ -17,11 +17,10 @@ import { LiquidacionesCliente } from './cliente';
  */
 export const dynamic = 'force-dynamic';
 
-export default async function LiquidacionesPage({
-  searchParams,
-}: {
-  searchParams?: Record<string, string | string[] | undefined>;
+export default async function LiquidacionesPage(props: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
 

@@ -27,11 +27,10 @@ import { MovimientosCliente } from './cliente';
  */
 export const dynamic = 'force-dynamic';
 
-export default async function MovimientosPage({
-  searchParams,
-}: {
-  searchParams?: { desde?: string; hasta?: string };
+export default async function MovimientosPage(props: {
+  searchParams?: Promise<{ desde?: string; hasta?: string }>;
 }) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
 

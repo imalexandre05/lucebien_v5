@@ -24,11 +24,10 @@ export const dynamic = 'force-dynamic';
  *
  * El aislamiento sigue viviendo en la base; esto es la puerta, que también tiene que existir.
  */
-export default async function AsistenciasPage({
-  searchParams,
-}: {
-  searchParams?: Record<string, string | string[] | undefined>;
+export default async function AsistenciasPage(props: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
 
