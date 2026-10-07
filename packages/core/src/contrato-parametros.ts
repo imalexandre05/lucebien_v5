@@ -1,10 +1,11 @@
 import { resolverParametros, type ParametrosSueldo } from './sueldos';
 
 /**
- * Los parámetros que un contrato guarda como suyos: los 15 de `ParametrosSueldo` salvo
+ * Los parámetros que un contrato guarda como suyos: 17 de `ParametrosSueldo`, salvo
  * `metaSemanal`, cuyo default es `null` («sin meta pactada, se sugiere con las horas») y que no
- * tiene clave global. Misma lista que `private.sueldo_parametros_defaults()` (migración 0118); un
- * test compara las dos.
+ * tiene clave global. Incluye `puntosMetaMensual` y `solesPorPunto` (pago por puntos, spec §8.1):
+ * `null` = este contrato no cobra por puntos. Misma lista que `private.sueldo_parametros_defaults()`
+ * (migración 0126); un test compara las dos.
  */
 export const CLAVES_PARAMETROS_CONTRATO = [
   'toleranciaMinutos',
@@ -22,6 +23,8 @@ export const CLAVES_PARAMETROS_CONTRATO = [
   'metaPorHora',
   'factorHoraFueraContrato',
   'pausaMinimaMinutos',
+  'puntosMetaMensual',
+  'solesPorPunto',
 ] as const satisfies readonly (keyof ParametrosSueldo)[];
 
 /**
@@ -47,10 +50,13 @@ export function parametrosDeContratoNuevo(
   return salida as Partial<ParametrosSueldo>;
 }
 
-// Un campo en blanco del formulario (`undefined`, o `null` salvo en `metaSemanal`) no tiene que
-// borrar el valor global al hacer el spread.
+const CLAVES_NULL_EXPLICITO: ReadonlySet<string> = new Set(['metaSemanal', 'puntosMetaMensual', 'solesPorPunto']);
+
+// Un campo en blanco del formulario (`undefined`, o `null` salvo en las claves que admiten null)
+// no tiene que borrar el valor global al hacer el spread. En `puntosMetaMensual` y `solesPorPunto`
+// un `null` explícito SÍ se conserva: significa «este contrato no cobra por puntos».
 function definidos(p: Partial<ParametrosSueldo>): Partial<ParametrosSueldo> {
   return Object.fromEntries(
-    Object.entries(p).filter(([k, v]) => v !== undefined && (v !== null || k === 'metaSemanal')),
+    Object.entries(p).filter(([k, v]) => v !== undefined && (v !== null || CLAVES_NULL_EXPLICITO.has(k))),
   ) as Partial<ParametrosSueldo>;
 }

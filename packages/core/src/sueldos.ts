@@ -32,7 +32,7 @@
  * **Se sube la fecha cada vez que cambia una regla de cálculo.** No cuando cambia un comentario
  * ni un tipo: cuando cambia un número que le llega a alguien.
  */
-export const MOTOR_VERSION = '2026-10-05';
+export const MOTOR_VERSION = '2026-10-07';
 
 // ── Parámetros configurables (spec §3.3) ────────────────────────────────────────────────────
 // Ninguno va quemado en el código: son los defaults, editables desde /configuracion.
@@ -298,11 +298,20 @@ export interface EntradaLiquidacion {
   almuerzoHabilitadoPorAdmin?: boolean;
   personasCapacitadas?: number;
   /**
-   * Puntos del colaborador en el MISMO rango que se liquida (`puntosTotal` de la evaluación:
-   * pipeline + extras + actividades + ventas − incidencias, ya netos y posiblemente negativos).
-   * Sólo se usa si el pago por puntos está activo. La RPC `sueldo_entrada` lo manda desde la 0117.
+   * Obsoleto: lo mandaba la 0117 y ya no se usa (spec de pago por puntos §8.2). Lo reemplaza
+   * `puntosMeses`. Se deja en el tipo sólo para leer entradas guardadas antes de la 0126.
    */
   puntosPeriodo?: number | null;
+  /**
+   * Meses del contrato cuyo ÚLTIMO día efectivo cae en este tramo, con sus puntos (spec de pago por
+   * puntos §8.2). `puntos` es el `puntosTotal` de la evaluación del mes (pipeline + extras +
+   * actividades + ventas − incidencias, neto y posiblemente negativo). Cada elemento:
+   * `desde` = inicio del mes del contrato; `hasta` = último día efectivo = min(fin del mes, fin del
+   * contrato); `hastaMes` = fin del mes completo. `[]` = ningún mes cierra en este tramo.
+   * Ausente (`undefined`/`null`) con el pago por puntos activo = la entrada está incompleta.
+   * La RPC `sueldo_entrada` lo manda desde la 0126.
+   */
+  puntosMeses?: Array<{ desde: string; hasta: string; hastaMes: string; puntos: number }> | null;
   parametros?: Partial<ParametrosSueldo>;
 }
 
@@ -614,42 +623,47 @@ function fmtEs(n: number, decimales = 2): string {
 }
 
 /**
- * Bono por puntos (pago por puntos, spec 2026-10-05-pago-por-puntos-design.md §3):
- * `max(0, puntos − meta del período) × soles por punto`, o `null` si no corresponde mostrar línea.
+ * Bono por puntos (pago por puntos, spec 2026-10-05-pago-por-puntos-design.md §3 y §8.2):
+ * suma, sobre cada mes del contrato que cierra en este tramo, de
+ * `round2(max(0, puntos del mes − meta del mes) × soles por punto)`; `null` si no hay línea.
  *
- * La meta es mensual. Para un tramo que no es un mes se **prorratea por días**:
- * `meta × días del tramo ÷ días del mes en que el tramo empieza`. Es un DEFAULT elegido, no
- * confirmado por el dueño (docs/pendientes-negocio.md). Un mes completo da exactamente la meta.
+ * La meta es mensual y se mide por mes del contrato. Un mes completo usa la meta ENTERA; sólo el
+ * último mes, cortado por el fin del contrato, la prorratea por días contra el mes completo
+ * (`meta × días efectivos ÷ días del mes`). Ese prorrateo es un DEFAULT no confirmado por el dueño
+ * (docs/pendientes-negocio.md). El redondeo es sobre el producto (D-12).
  *
  * Nunca resta: los puntos ya vienen netos de incidencias y si quedan bajo la meta el bono es 0.
  */
 function bonoPorPuntos(
   entrada: EntradaLiquidacion,
   p: ParametrosSueldo,
-  diasTramo: number,
   advertencias: string[],
 ): { monto: number; detalle: string } | null {
   if (p.puntosMetaMensual === null || p.solesPorPunto === null) return null;
-  const puntos = entrada.puntosPeriodo;
-  if (puntos === undefined || puntos === null) {
-    advertencias.push('El pago por puntos está activo pero esta entrada no trae los puntos del periodo: no se pagó nada por puntos.');
+  const meses = entrada.puntosMeses;
+  if (meses === undefined || meses === null) {
+    advertencias.push('El pago por puntos está activo pero esta entrada no trae los puntos de los meses del contrato: no se pagó nada por puntos.');
     return null;
   }
-  if (typeof puntos !== 'number' || !Number.isFinite(puntos)) {
-    throw new Error(`Los puntos del periodo tienen que ser un número, llegó: ${String(puntos)}.`);
+  let total = 0;
+  const detalles: string[] = [];
+  for (const mes of meses) {
+    if (typeof mes.puntos !== 'number' || !Number.isFinite(mes.puntos)) {
+      throw new Error(`Los puntos del mes tienen que ser un número, llegó: ${String(mes.puntos)}.`);
+    }
+    const diasEfectivos = diasDelPeriodo(mes.desde, mes.hasta).length;
+    const diasMes = diasDelPeriodo(mes.desde, mes.hastaMes).length;
+    const metaMes = (p.puntosMetaMensual * diasEfectivos) / diasMes;
+    const excedente = Math.max(0, mes.puntos - metaMes);
+    const montoMes = r2(excedente * p.solesPorPunto);
+    total += montoMes;
+    detalles.push(
+      `${fmtEs(mes.puntos)} puntos − meta ${fmtEs(metaMes)} = ${fmtEs(excedente)} × S/${fmtEs(p.solesPorPunto, 4)}`,
+    );
   }
-  const [anio, mes] = entrada.fechaInicio.split('-').map(Number);
-  const diasDelMes = new Date(Date.UTC(anio, mes, 0)).getUTCDate();
-  const meta = (p.puntosMetaMensual * diasTramo) / diasDelMes;
-  // El excedente se redondea ANTES de multiplicar: es el que se muestra en el detalle, y el monto
-  // tiene que salir de lo que la persona lee en su comprobante (si no, un centavo no cuadra).
-  const excedente = r2(Math.max(0, puntos - meta));
-  const monto = r2(excedente * p.solesPorPunto);
+  const monto = r2(total);
   if (monto <= 0) return null;
-  return {
-    monto,
-    detalle: `${fmtEs(puntos)} puntos − meta ${fmtEs(meta)} = ${fmtEs(excedente)} × S/${fmtEs(p.solesPorPunto, 4)}`,
-  };
+  return { monto, detalle: detalles.join('; ') };
 }
 
 export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
@@ -1052,7 +1066,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   const descuentoFaltas = horasFaltadas * valorPorHora * diasCastigoPorFalta;
   const descuentoTardanzas = tardanzasInjustificadas * p.penalidadTardanza; // RN-08
 
-  const bonoPuntos = bonoPorPuntos(entrada, p, dias.length, advertencias);
+  const bonoPuntos = bonoPorPuntos(entrada, p, advertencias);
 
   const lineas: LineaLiquidacion[] = [
     { grupo: 'ingreso', concepto: 'Sueldo', detalle: 'Pactado para el periodo', monto: r2(entrada.sueldoPactado), regla: 'RN-19' },

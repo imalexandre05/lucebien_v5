@@ -52,7 +52,7 @@ describe('crearAcuerdo — el contrato nuevo nace con todos sus valores pactados
     vigentesDeConfig = { toleranciaMinutos: 12, pctComision: 0.05 };
     await crearAcuerdo(base, 'adm');
     const p = insertado.fila!.parametros as Record<string, unknown>;
-    expect(Object.keys(p)).toHaveLength(15);
+    expect(Object.keys(p)).toHaveLength(17);
     expect(p.toleranciaMinutos).toBe(12);
     expect(p.pctComision).toBe(0.05);
     expect(p.tardanzasLibres).toBe(3); // default del código
@@ -75,7 +75,7 @@ describe('actualizarAcuerdo — vaciar un campo no lo devuelve a seguir a Config
     const p = insertado.fila!.parametros as Record<string, unknown>;
     expect(p.toleranciaMinutos).toBe(15);
     expect(p.valorAlmuerzo).toBe(10);
-    expect(Object.keys(p)).toHaveLength(15);
+    expect(Object.keys(p)).toHaveLength(17);
   });
 });
 
