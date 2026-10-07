@@ -1563,3 +1563,48 @@ Hay que decidir con Alexander:
    trabajó la prenda.
 
 Hasta decidirlo, **no activar el pago por puntos (#54)**: esta vía se convierte en plata.
+---
+
+## Código personal en equipos compartidos — defaults del 04-oct-2026
+
+Migración `0112` ([spec](superpowers/specs/pipeline/2026-10-04-codigo-personal-design.md) §4/§5).
+Los valores los eligió el implementador siguiendo la spec; **ninguno está confirmado por el
+dueño**. Todos se editan desde `/configuracion` → «Código personal» sin migrar de nuevo.
+
+| Parámetro (`config.clave`) | Default | Qué controla |
+|---|---|---|
+| `codigo_max_intentos` | 5 | Fallos permitidos antes de bloquear una sesión |
+| `codigo_ventana_intentos_min` | 15 | Minutos que cuenta cada fallo |
+| `codigo_operador_min` | 10 | Minutos de operador activo sin actividad (el token se renueva con cada acción) |
+| `codigo_operador_max_h` | 8 | Horas máximas de vida de un token desde su emisión (un turno), aunque se renueve; «cambiar» además lo revoca en la base |
+
+Preguntas abiertas para el dueño (spec §7): si la fase 2 (firma del FR-01, evaluar reporte,
+solicitudes) debe pedir código en los mismos cuatro lugares que el sistema viejo; si en un equipo
+**no** compartido también quieren el código; y si estos tres números les parecen bien.
+
+Otras decisiones del implementador, sin regla de negocio detrás:
+- Cada acción exitosa con token renueva la ventana de inactividad (`private.tocar_operador`), en
+  vez de una expiración fija a 10 minutos del ingreso: la spec §5 promete «10 minutos sin actividad».
+- Un intento mientras la sesión está bloqueada **no** se registra (el bloqueo no se alarga por
+  insistir): se levanta cuando el fallo que lo completó sale de la ventana.
+- `pipeline_validar_codigo` sólo acepta el código desde un equipo aprobado y compartido, y cuando
+  una sesión se bloquea inserta una notificación para el rol `admin` (tipo
+  `codigo_sesion_bloqueada`) en la tabla del motor existente, sin tocar `generar_alertas()`.
+  Decidido por la sesión maestra el 04-oct-2026; a confirmar por Alexander.
+- El token no limita por sede de la prenda: el pipeline es un flujo central (0006) y el operador
+  puede ser de cualquier sede.
+
+**Enmienda del 06-oct-2026** (auditorías de pipeline H-1/H-3 y de seguridad H2/H5; spec §0):
+- | `codigo_pin_min_largo` | 6 | Dígitos mínimos del PIN personal. Default provisional, sin confirmar |
+- El código deja de ser `empleados.cod`: cada persona define un PIN propio (sólo el hash queda en
+  la base) desde «Mi desempeño»; en el equipo compartido se teclea usuario + PIN. Si lo olvida, el
+  administrador lo borra y la persona define otro. **Pregunta para el dueño:** ¿6 dígitos les
+  parece bien, o prefieren 4 con el límite por persona? (con 4 dígitos y 5 intentos cada 15 min
+  por persona, adivinar el PIN de una persona concreta en un día ronda el 5 %).
+- Los 5 intentos / 15 min cuentan ahora por persona y por sesión. Efecto secundario
+  aceptado: alguien puede bloquear 15 min a otra persona tecleando mal; el admin recibe el aviso
+  (`codigo_persona_bloqueada`).
+- La cuenta con la que se abre el equipo compartido se marca en `/dispositivos` («cuenta de equipo
+  compartido»): para esa cuenta la base rechaza toda acción del pipeline sin código. **Pregunta
+  para el dueño:** ¿qué cuentas se usan hoy en las PC compartidas?
+- Deshacer quita los puntos del movimiento deshecho (a quien lo hizo), no los de quien deshace.

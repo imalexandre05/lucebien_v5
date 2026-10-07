@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Check, Eye, Truck, ArrowLeft } from 'lucide-react';
 import type { PrendaEnviada } from '../../../lib/envios-repo';
 import { calificarPrenda } from '../actions';
+import { useOperador } from '../operador';
+import { Aviso } from '../../../components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
@@ -14,10 +16,20 @@ import { cn } from '../../../lib/cn';
 
 const fecha = (iso: string | null) => (iso ? iso.slice(0, 10) : '—');
 
-export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; miSede: string }) {
+export function EnviosCliente({
+  prendas,
+  miSede,
+  compartido = false,
+}: {
+  prendas: PrendaEnviada[];
+  miSede: string;
+  compartido?: boolean;
+}) {
+  const { conOperador, operadorRechazado, renovar, chip, dialogo } = useOperador(compartido);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [destinoObs, setDestinoObs] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
 
   const enCamino = prendas.filter((p) => p.etapa === 'enviado');
   const recibidas = prendas.filter((p) => p.etapa === 'recibido').slice(0, 20);
@@ -36,14 +48,30 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
   }, [enCamino, miSede]);
 
   function calificar(p: PrendaEnviada, aceptada: boolean) {
-    startTransition(async () => {
-      await calificarPrenda(p.id, aceptada, aceptada ? '' : destinoObs[p.id] || 'recepcion');
-      router.refresh();
-    });
+    conOperador((token) =>
+      startTransition(async () => {
+        setError(null);
+        try {
+          const r = await calificarPrenda(p.id, aceptada, aceptada ? '' : destinoObs[p.id] || 'recepcion', token);
+          if (r) {
+            operadorRechazado();
+            setError('Operador vencido. Ingresa tu código de nuevo.');
+          } else {
+            renovar();
+          }
+        } catch {
+          setError('No se pudo calificar la prenda. Actualiza la lista e inténtalo de nuevo.');
+        }
+        router.refresh();
+      }),
+    );
   }
 
   return (
     <div className="space-y-5">
+      {chip}
+      {dialogo}
+      {error && <Aviso tono="error">{error}</Aviso>}
       <div className="flex items-center gap-2">
         <Link
           href="/pipeline"

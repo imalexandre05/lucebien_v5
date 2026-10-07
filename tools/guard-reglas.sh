@@ -96,6 +96,15 @@ revisar "regla3-rls" "Regla 3 — sin políticas RLS abiertas sin justificar" \
   "Si es intencional, anotá '-- guard-ok' con el motivo en la misma línea." \
   "$(grep -rn "using *( *true *)" packages/db/migrations --include="*.sql" 2>/dev/null | grep -vi "service_role\|guard-ok" || true)"
 
+# ── Regla 3 (código personal): ninguna lectura NUEVA de `empleados.cod` desde apps/erp-web ───
+# El código personal (spec codigo-personal §4) se compara sólo en la base, dentro de
+# pipeline_validar_codigo. Si el ERP lo leyera, volvería a viajar a un servidor/navegador donde el
+# viejo sistema lo tenía mal (H-05 de la auditoría: los códigos de todos viajaban al cliente). Las
+# lecturas que ya existían (login, reautenticación, alta de empleado) están en el baseline.
+revisar "cod-personal" "Regla 3 — sin lecturas nuevas de empleados.cod en el ERP" \
+  "El código se valida en la base (pipeline_validar_codigo); no lo leas desde la app." \
+  "$(grep -rnE "from\('empleados'\).*select\([^)]*\bcod\b" apps/erp-web --include="*.ts" --include="*.tsx" 2>/dev/null | sin_comentarios || true)"
+
 # ── Regla 3: toda tabla con RLS necesita policy de LECTURA y de ESCRITURA ──────────────────
 # Con RLS activa y sólo `select`, las escrituras fallan con 42501 y los borrados quitan cero
 # filas — EN SILENCIO: la pantalla dice que guardó y no guardó nada. Le pasó a `empleado_tiendas`

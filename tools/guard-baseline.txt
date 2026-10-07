@@ -160,3 +160,6 @@ foco|apps/erp-web/components/ui/form.tsx
 # -- carga: page.tsx asíncrona sin loading.tsx hermano --------------------------------------
 
 # -- movimiento: duración de animación literal en vez del token --dur-* --------------------
+cod-personal|apps/erp-web/lib/auth.ts
+cod-personal|apps/erp-web/lib/reauth.ts
+cod-personal|apps/erp-web/lib/empleados-repo.ts

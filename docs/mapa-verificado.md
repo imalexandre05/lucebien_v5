@@ -405,3 +405,15 @@ el más parecido. Anotado en `pendientes-negocio.md`.
 ---
 
 _Verificado contra código y base de datos. Última actualización: 19 de agosto de 2026 (§9; el resto, 13 de agosto)._
+
+
+## Código personal en el pipeline (04-oct-2026, rama `feat/codigo-personal`, migración 0112)
+
+**Estado: escrito y verificado por lectura; la migración NO está aplicada en ninguna base.** La
+prueba `packages/db/pruebas/0112_codigo_personal.prueba.sql` no se ha ejecutado contra una base
+(ver el PR). Qué hace: en un equipo marcado como compartido (`dispositivos_autorizados.compartido`,
+toggle en `/dispositivos`), las 8 RPC de atribución del pipeline reciben `p_operador` (token que
+emite `pipeline_validar_codigo` tras validar el código en la base, con límite de intentos) y
+atribuyen puntos e historial al dueño del código; `prenda_historial.registrado_por` guarda quién
+tenía la sesión. En un equipo no compartido nada cambia. Fase 2 (FR-01, evaluar reporte,
+solicitudes) sin hacer. Defaults pendientes de confirmar: `docs/pendientes-negocio.md`.
