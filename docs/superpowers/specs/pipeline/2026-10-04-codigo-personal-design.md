@@ -74,6 +74,20 @@ reemplazado por esto.
 (5 intentos / 15 min / 10 min de operador / 8 h de vida máxima), pero ahora cuentan por persona
 y por sesión.
 
+**E-6. Compatibilidad con la 0122** (migración de seguridad de producción, que se aplica ANTES que
+esta). La 0122 revoca `insert`/`update`/`delete` de `prenda_pasada`, `prenda_historial` y
+`pipeline_puntos` a `anon`/`authenticated`; tras ella, una RPC `security invoker` con `update`
+directo falla con `permission denied`. Por eso las RPC del pipeline de la 0112 (`pipeline_avanzar`,
+`pipeline_enviar`, `pipeline_rechazar`, `pipeline_deshacer`, `pipeline_dividir`,
+`pipeline_deshacer_division`, `pipeline_calificar`) pasan a `security definer` con
+`set search_path = public, pg_temp` y validan el acceso con `private.pipeline_exigir_acceso(p_id)`,
+como primera acción tras el chequeo «No autenticado» y antes de resolver el actor. La función deja
+pasar al administrador, a `private.app_es_almacen()` y a quien tenga la sede de origen de la prenda
+en `private.app_sedes()`; si la prenda no existe o no hay acceso lanza `Prenda no encontrada` (no
+revela si existe). La 0112 la define con `create or replace` y la MISMA semántica que la 0122, así
+que no importa cuál de las dos se aplique primero. `pipeline_avanzar_tanda` sigue `security invoker`
+y llama a la RPC definer. No cambia ninguna regla de puntos, deshacer ni PIN.
+
 **Tests nuevos exigidos (antes del código):** PIN ≠ cod (el `cod` solo ya no da token); PIN corto o
 trivial rechazado; el hash no es el PIN; cambiar PIN exige el actual; admin borra PIN y un no-admin
 no; 5 fallos contra una persona desde dos sesiones distintas → la persona queda bloqueada y el PIN
