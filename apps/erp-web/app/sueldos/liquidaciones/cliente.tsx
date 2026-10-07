@@ -3,7 +3,7 @@
 import { Fragment, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Ban, Calculator, Eye, Lock, RefreshCw, Save, Trash2 } from 'lucide-react';
-import { finDePeriodo, type LineaLiquidacion } from '@scilb/core';
+import { finDePeriodo, frecuenciaVigente, type LineaLiquidacion } from '@scilb/core';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -99,8 +99,8 @@ const diaSiguiente = (dia: string): string =>
  * - Si el acuerdo ya tiene liquidaciones no anuladas, sugiere desde el día siguiente al
  *   `periodoHasta` más reciente de ellas.
  * - Si no tiene ninguna, sugiere desde `fechaInicio` del acuerdo.
- * - El «hasta» sale de `finDePeriodo(desde, acuerdo.modalidad, acuerdo.fechaFin)` — UN tramo de la
- *   modalidad del contrato (mensual o semanal) que arranca en `desde`, recortado a `fechaFin` si se
+ * - El «hasta» sale de `finDePeriodo(desde, frecuencia vigente en desde, acuerdo.fechaFin)` — UN tramo de la
+ *   frecuencia vigente del contrato (mensual, quincenal, semanal o cada N días) que arranca en `desde`, recortado a `fechaFin` si se
  *   pasara del final. Addendum F-1/F-1b (revisión adversarial, 24-ago-2026): acá ANTES se usaba
  *   `calcularCiclo(desde, hoyPeru())`, que contesta "¿qué ciclo contiene HOY?" y no "qué período
  *   arranca en `desde`" — con un acuerdo vencido sugería el acuerdo ENTERO como un solo tramo, y
@@ -119,7 +119,9 @@ function sugerirRango(
   );
   const desde = ultimaHasta ? diaSiguiente(ultimaHasta) : acuerdo.fechaInicio;
 
-  const hastaRecortado = finDePeriodo(desde, acuerdo.modalidad, acuerdo.fechaFin);
+  // La frecuencia vigente en `desde` (0120): puede haber cambiado a mitad del contrato.
+  const vigente = frecuenciaVigente(acuerdo, acuerdo.cambios, desde);
+  const hastaRecortado = finDePeriodo(desde, vigente, acuerdo.fechaFin, vigente.ancla);
   // Si el acuerdo ya está cubierto de punta a punta, el recorte puede dejar `hasta` antes que
   // `desde`: es un contrato ya liquidado por completo, no hay un tramo sano que sugerir. Se evita
   // mostrar un rango invertido por defecto; el administrador de todas formas puede editarlo.
@@ -166,6 +168,8 @@ export function LiquidacionesCliente({
   const [errorCorregir, setErrorCorregir] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [codigo, setCodigo] = useState<string | null>(null);
+  // El borrador cuyo cierre se rechazó por DESACTUALIZADA: es el que «Recalcular borrador» reemplaza.
+  const [desactualizada, setDesactualizada] = useState<LiquidacionResumen | null>(null);
   const [pendiente, empezar] = useTransition();
   const conf = useConfirmacion();
 
@@ -176,6 +180,7 @@ export function LiquidacionesCliente({
   const limpiar = () => {
     setError(null);
     setCodigo(null);
+    setDesactualizada(null);
   };
 
   const elegirAcuerdo = (id: string) => {
@@ -222,9 +227,35 @@ export function LiquidacionesCliente({
           if (r.ok) {
             conf.cerrar();
             router.refresh();
-          } else fallo(r);
+          } else {
+            // El diálogo de confirmación tapa el banner: se cierra para que se vea el motivo y,
+            // si los datos cambiaron, el botón para recalcular.
+            if (r.codigo === 'DESACTUALIZADA') conf.cerrar();
+            fallo(r);
+            if (r.codigo === 'DESACTUALIZADA') setDesactualizada(l);
+          }
         });
       },
+    });
+  };
+
+  // «Recalcular borrador»: descarta el borrador desactualizado y guarda uno nuevo del mismo contrato
+  // y rango. Reutiliza las dos acciones que ya existen; el total lo vuelve a calcular el servidor.
+  const recalcular = (l: LiquidacionResumen) => {
+    limpiar();
+    empezar(async () => {
+      const d = await accionEliminarBorrador(l.id);
+      if (!d.ok) return fallo(d);
+      const r = await accionCrearBorrador(l.acuerdoId, l.periodoDesde, l.periodoHasta);
+      if (r.ok) router.refresh();
+      else {
+        // El borrador viejo ya se descartó: se dice, para que no se busque en la lista.
+        fallo({
+          ...r,
+          error: `${r.error ?? 'No se pudo recalcular.'} El borrador anterior ya se descartó; corrige lo indicado y vuelve a calcular el período.`,
+        });
+        router.refresh();
+      }
     });
   };
 
@@ -389,9 +420,20 @@ export function LiquidacionesCliente({
           )}
           {codigo === 'DESACTUALIZADA' && (
             <p className="mt-1 text-apoyo">
-              Se cargó algo después de calcular. Descartá el borrador, volvé a calcular y cerrá de
-              nuevo: si no, esa fila quedaría sellada sin estar en el pago.
+              Se cargó o se corrigió algo después de calcular. Recalcula el borrador y ciérralo de
+              nuevo: si no, ese dato quedaría fuera del pago o sellado sin estar en él.
             </p>
+          )}
+          {codigo === 'DESACTUALIZADA' && desactualizada && (
+            <div className="mt-3">
+              <Button
+                variant="outline"
+                onClick={() => recalcular(desactualizada)}
+                pending={pendiente}
+              >
+                Recalcular borrador
+              </Button>
+            </div>
           )}
           {codigo === 'PARCIAL' && (
             <p className="mt-1 text-apoyo font-medium">

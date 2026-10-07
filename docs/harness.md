@@ -115,6 +115,25 @@ bash tools/probar-migracion.sh           # todas
 Con `psql` y `SUPABASE_DB_URL` las corre solo. Sin eso, imprime qué archivos pasarle al MCP de
 Supabase.
 
+#### Sin base a mano: `tools/postgres-local.sh`
+
+Si no hay `SUPABASE_DB_URL` (por ejemplo, en una sesión en la nube), el script levanta un
+PostgreSQL 16 local que **imita lo mínimo de Supabase** —roles `anon`/`authenticated`/`service_role`,
+`auth.uid()` leído de `request.jwt.claims`, stubs de `storage`, `realtime` y `cron`—, aplica las
+migraciones en orden y corre las pruebas:
+
+```bash
+bash tools/postgres-local.sh aplicar 0111    # levanta el clúster y aplica 0001..0111
+bash tools/postgres-local.sh probar 0093 0111
+bash tools/postgres-local.sh parar           # lo borra
+```
+
+Limitaciones, verificadas el 04-oct-2026 con la 0111: las migraciones que necesitan `pg_cron`
+(0022, 0042), el `auth.users` real (0049), funciones que se crean fuera de las migraciones (0045)
+o filas reales de producción (0102) fallan y se informan; las demás se aplican. Las pruebas de
+sueldos (0093, 0111) corren completas. **No reemplaza una base de verdad** para RLS de storage ni
+cron: sirve para probar lógica de funciones y triggers.
+
 ### E2E: qué es y qué cubre hoy
 
 **Todo lo demás mira el código.** Los tests unitarios prueban funciones sueltas, el typecheck

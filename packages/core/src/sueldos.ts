@@ -190,7 +190,17 @@ export function resolverParametros(overrides?: Partial<ParametrosSueldo>): Param
 
 // ── Modelo de datos (spec §3) ───────────────────────────────────────────────────────────────
 
-export type ModalidadPago = 'mensual' | 'semanal';
+/**
+ * Cómo se corta el contrato en pagos (spec frecuencia-pago-flexible §3.1). `'dias'` es «cada N
+ * días» y necesita `cadaDias`.
+ */
+export type ModalidadPago = 'mensual' | 'quincenal' | 'semanal' | 'dias';
+
+export interface FrecuenciaPago {
+  modalidad: ModalidadPago;
+  /** Obligatorio (entero, 1 a 62) sólo cuando `modalidad = 'dias'`. */
+  cadaDias?: number | null;
+}
 
 /** Un turno de la plantilla semanal. `diaSemana`: 1 = lunes … 7 = domingo (spec §3.2). */
 export interface TurnoContratado {
@@ -418,6 +428,7 @@ function ultimoDiaDelMes(y: number, m0: number): number {
  * el período se pasaría de ahí (spec liquidación-por-tramos, addendum F-1/F-1b).
  *
  * - `'semanal'`: 7 días inclusive (`desde` .. `desde` + 6), mismo criterio que `tramosSemanales()`.
+ * - `'quincenal'` y `'dias'`: ver finDeQuincena() y validarCadaDias() más abajo (spec frecuencia-pago-flexible).
  * - `'mensual'`: "un mes menos un día", con el MISMO recorte de mes corto que ya usa
  *   `calcularCiclo()` de `evaluaciones.ts` (`min(díaDeseado − 1, últimoDíaDelMes)`) — pero ANCLADO
  *   en `desde`, nunca en "hoy". `calcularCiclo` contesta "¿qué ciclo contiene HOY?", una pregunta
@@ -425,19 +436,33 @@ function ultimoDiaDelMes(y: number, m0: number): number {
  *   arranca en una fecha cualquiera. Verificado corriendo la función real contra un acuerdo vencido:
  *   `calcularCiclo` sugería un "hasta" en el mes de HOY, lejísimos del contrato (ver addendum).
  */
-export function finDePeriodo(desde: string, modalidad: 'mensual' | 'semanal', limite?: string): string {
+export function finDePeriodo(
+  desde: string,
+  frecuencia: ModalidadPago | FrecuenciaPago,
+  limite?: string,
+  ancla?: string,
+): string {
   const desdeMs = msDeFecha(validarFecha(desde, 'finDePeriodo: desde'));
+  const { modalidad, cadaDias } =
+    typeof frecuencia === 'string' ? { modalidad: frecuencia, cadaDias: undefined } : frecuencia;
   let hasta: string;
 
   if (modalidad === 'semanal') {
     hasta = fmtFecha(desdeMs + 6 * MS_DIA);
+  } else if (modalidad === 'dias') {
+    const n = validarCadaDias(cadaDias);
+    hasta = fmtFecha(desdeMs + (n - 1) * MS_DIA);
   } else if (modalidad === 'mensual') {
     const [y, m, d] = desde.split('-').map(Number);
     const m0 = m - 1; // 0-indexado: el mes en el que arranca `desde`, igual que evaluaciones.ts
     const diaHasta = Math.min(d - 1, ultimoDiaDelMes(y, m0 + 1));
     hasta = fmtFecha(Date.UTC(y, m0 + 1, diaHasta));
+  } else if (modalidad === 'quincenal') {
+    hasta = finDeQuincena(desde, ancla ?? desde);
   } else {
-    throw new Error(`finDePeriodo: modalidad desconocida "${String(modalidad)}". Se espera "mensual" o "semanal".`);
+    throw new Error(
+      `finDePeriodo: modalidad desconocida "${String(modalidad)}". Se espera "mensual", "quincenal", "semanal" o "dias".`,
+    );
   }
 
   if (limite !== undefined) {
@@ -446,6 +471,253 @@ export function finDePeriodo(desde: string, modalidad: 'mensual' | 'semanal', li
   }
 
   return hasta;
+}
+
+/** «Cada N días»: entero de 1 a 62 (spec §3.1). Sin N válido no hay forma de cortar el pago. */
+export function validarCadaDias(n: unknown): number {
+  if (typeof n !== 'number' || !Number.isInteger(n) || n < 1 || n > 62) {
+    throw new Error(`«Cada N días»: N tiene que ser un entero entre 1 y 62, llegó: ${String(n)}.`);
+  }
+  return n;
+}
+
+/**
+ * DEFAULT (spec §3.1, anotado en docs/pendientes-negocio.md): la quincena está ANCLADA al día de
+ * inicio de la frecuencia, no a 1–15 / 16–fin de mes. Con ancla el día `d`, cada mes tiene dos
+ * pagos: del día `d` al `d + 14`, y del `d + 15` al día anterior a `d` del mes siguiente. Si el mes
+ * es corto el día de ancla se recorta al último día (31 → 28), igual que la modalidad mensual.
+ * Devuelve el fin de la quincena que CONTIENE `desde`.
+ */
+function finDeQuincena(desde: string, ancla: string): string {
+  const desdeMs = msDeFecha(validarFecha(desde, 'finDePeriodo: desde'));
+  const [ay, am, ad] = validarFecha(ancla, 'finDePeriodo: ancla').split('-').map(Number);
+  const inicioDeMes = (k: number): number => {
+    const dia = Math.min(ad, ultimoDiaDelMes(ay, am - 1 + k));
+    return Date.UTC(ay, am - 1 + k, dia);
+  };
+  if (desdeMs < inicioDeMes(0)) {
+    throw new Error(`finDePeriodo: ${desde} es anterior al ancla de la quincena (${ancla}).`);
+  }
+  for (let k = 0; ; k++) {
+    const ini = inicioDeMes(k);
+    const finPrimera = ini + 14 * MS_DIA;
+    if (desdeMs <= finPrimera) return fmtFecha(finPrimera);
+    const finSegunda = inicioDeMes(k + 1) - MS_DIA;
+    if (desdeMs <= finSegunda) return fmtFecha(finSegunda);
+  }
+}
+
+const diasEntre = (desde: string, hasta: string): number =>
+  Math.round((msDeFecha(hasta) - msDeFecha(desde)) / MS_DIA) + 1;
+
+/**
+ * La cuota de un tramo que va de `desde` a `hasta`. Un tramo completo cobra la cuota entera; uno
+ * MÁS CORTO que la frecuencia (el último del contrato, spec §3.3) se prorratea por días contra el
+ * período completo que arrancaba en `desde`. DEFAULT anotado en docs/pendientes-negocio.md. OJO: hoy
+ * NO hay pantalla para ajustar esa cuota antes de confirmar (la spec §3.3 lo pide; ver el PR).
+ */
+export function cuotaDelTramo(
+  cuota: number,
+  desde: string,
+  hasta: string,
+  frecuencia: ModalidadPago | FrecuenciaPago,
+  ancla?: string,
+): number {
+  const completo = finDePeriodo(desde, frecuencia, undefined, ancla);
+  if (hasta >= completo || cierraEnAniversario(hasta, frecuencia, ancla)) return cuota;
+  return r2((cuota * diasEntre(desde, hasta)) / diasEntre(desde, completo));
+}
+
+/**
+ * Enmienda 9.1 de la spec (auditoría D-2). El calendario mensual se corre en los meses cortos
+ * (31-ene → 28-feb, 1-mar → 31-mar…), así que un tramo que termina el día anterior a un ANIVERSARIO
+ * del día de inicio de la frecuencia parece corto sin serlo. Decisión del dueño (06-oct): la mensual
+ * se cuenta desde el día en que empezó el contrato. Sólo decide si el tramo es corto: los cortes del
+ * calendario no cambian. Sin ancla (llamadas viejas) no hay aniversario que mirar.
+ */
+function cierraEnAniversario(
+  hasta: string,
+  frecuencia: ModalidadPago | FrecuenciaPago,
+  ancla: string | undefined,
+): boolean {
+  const modalidad = typeof frecuencia === 'string' ? frecuencia : frecuencia.modalidad;
+  if (modalidad !== 'mensual' || ancla === undefined) return false;
+  const diaAncla = Number(validarFecha(ancla, 'cuotaDelTramo: ancla').slice(8, 10));
+  const [y, m, d] = fmtFecha(msDeFecha(hasta) + MS_DIA).split('-').map(Number);
+  return d === Math.min(diaAncla, ultimoDiaDelMes(y, m - 1));
+}
+
+/** Los datos de pago de un contrato: lo que vive en `sueldo_acuerdos`. */
+export interface ContratoPago extends FrecuenciaPago {
+  fechaInicio: string;
+  fechaFin: string;
+  sueldoPactado: number;
+}
+
+/** Una fila de `sueldo_acuerdo_cambios`: frecuencia y cuota válidas DESDE esa fecha. */
+export interface CambioFrecuencia extends FrecuenciaPago {
+  desde: string;
+  sueldoPactado: number;
+}
+
+export interface FrecuenciaVigente extends FrecuenciaPago {
+  sueldoPactado: number;
+  /** Fecha en que arrancó esta frecuencia: de ahí se cortan las quincenas. */
+  ancla: string;
+}
+
+/** La última fila con `desde <= fecha`; sin filas, la del contrato (spec §4). */
+export function frecuenciaVigente(
+  contrato: ContratoPago,
+  cambios: CambioFrecuencia[],
+  fecha: string,
+): FrecuenciaVigente {
+  let vigente: FrecuenciaVigente = {
+    modalidad: contrato.modalidad,
+    cadaDias: contrato.cadaDias ?? null,
+    sueldoPactado: contrato.sueldoPactado,
+    ancla: contrato.fechaInicio,
+  };
+  const orden = [...cambios].sort((a, b) => a.desde.localeCompare(b.desde));
+  for (const c of orden) {
+    if (c.desde <= fecha) {
+      // Si la frecuencia sigue siendo quincenal, el ancla sigue siendo la de antes: cambiar sólo la
+      // cuota no puede correr los días de corte (10/25 pasarían a 25/9).
+      const mismaQuincena = c.modalidad === 'quincenal' && vigente.modalidad === 'quincenal';
+      vigente = {
+        modalidad: c.modalidad,
+        cadaDias: c.cadaDias ?? null,
+        sueldoPactado: c.sueldoPactado,
+        ancla: mismaQuincena ? vigente.ancla : c.desde,
+      };
+    }
+  }
+  return vigente;
+}
+
+export interface PagoCalendario extends FrecuenciaPago {
+  desde: string;
+  hasta: string;
+  dias: number;
+  /** Cuota de este tramo (prorrateada si es corto). */
+  cuota: number;
+  /** Cuota de un pago completo de la frecuencia vigente. */
+  cuotaCompleta: number;
+  /** true si el tramo es más corto que la frecuencia (último pago o cortado por un cambio). */
+  corto: boolean;
+}
+
+/**
+ * La línea de tiempo de pagos del contrato: la que alimenta la vista previa, `sugerirRango` y la
+ * cuota que recibe el motor. Los tramos son consecutivos, sin huecos, y el último termina en
+ * `fechaFin`. Un cambio nunca parte un tramo ya empezado salvo defensivamente (si `desde` no cae en
+ * el límite de un pago): en ese caso el tramo se corta y se prorratea.
+ */
+export function calendarioDePagos(contrato: ContratoPago, cambios: CambioFrecuencia[]): PagoCalendario[] {
+  validarFecha(contrato.fechaInicio, 'calendarioDePagos: fechaInicio');
+  validarFecha(contrato.fechaFin, 'calendarioDePagos: fechaFin');
+  const pagos: PagoCalendario[] = [];
+  let cursor = contrato.fechaInicio;
+  while (cursor <= contrato.fechaFin) {
+    const v = frecuenciaVigente(contrato, cambios, cursor);
+    const natural = finDePeriodo(cursor, v, undefined, v.ancla);
+    const proximoCambio = cambios.map((c) => c.desde).filter((d) => d > cursor).sort()[0];
+    let hasta = natural < contrato.fechaFin ? natural : contrato.fechaFin;
+    if (proximoCambio !== undefined) {
+      const antes = fmtFecha(msDeFecha(proximoCambio) - MS_DIA);
+      if (antes < hasta) hasta = antes;
+    }
+    pagos.push({
+      desde: cursor,
+      hasta,
+      dias: diasEntre(cursor, hasta),
+      cuota: cuotaDelTramo(v.sueldoPactado, cursor, hasta, v, v.ancla),
+      cuotaCompleta: v.sueldoPactado,
+      corto: hasta < natural && !cierraEnAniversario(hasta, v, v.ancla),
+      modalidad: v.modalidad,
+      cadaDias: v.cadaDias ?? null,
+    });
+    cursor = fmtFecha(msDeFecha(hasta) + MS_DIA);
+  }
+  return pagos;
+}
+
+/**
+ * La cuota que recibe `liquidarPeriodo` (`entrada.sueldoPactado`) para liquidar `desde`–`hasta`.
+ * El motor no cambia de fórmula: sólo recibe la cuota correcta.
+ *
+ * - Un tramo cobra la cuota VIGENTE en `desde` entera, como siempre: el administrador puede elegir
+ *   un rango que no coincide con la frecuencia y eso no prorratea nada (regresión, spec §7.6).
+ * - Sólo el ÚLTIMO tramo (termina en `fechaFin` o justo antes de un cambio de frecuencia), si es más
+ *   corto que la frecuencia, se prorratea por días (spec §3.3, default anotado en
+ *   docs/pendientes-negocio.md). Un tramo mensual que termina antes de un aniversario del inicio
+ *   no es corto (enmienda 9.1).
+ * - Un rango alineado con varios pagos del calendario cobra la suma de sus cuotas; uno desalineado
+ *   que cruza un cambio de frecuencia se rechaza (enmienda 9.2).
+ */
+export function cuotaDeLiquidacion(
+  contrato: ContratoPago,
+  cambios: CambioFrecuencia[],
+  desde: string,
+  hasta: string,
+): number {
+  // Enmienda 9.2 (auditoría D-4): un rango que cubre VARIOS pagos del calendario.
+  const cubiertos = calendarioDePagos(contrato, cambios).filter((p) => p.desde <= hasta && p.hasta >= desde);
+  if (cubiertos.length > 1) {
+    const ultimo = cubiertos[cubiertos.length - 1];
+    // Alineado con los bordes: una cuota por pago (`sueldo_pactado` es la cuota de CADA pago).
+    if (cubiertos[0].desde === desde && ultimo.hasta === hasta) {
+      return r2(cubiertos.reduce((s, p) => s + p.cuota, 0));
+    }
+    // Desalineado y cruzando un cambio de frecuencia: no hay una cuota que tenga sentido.
+    if (cambios.some((c) => c.desde > desde && c.desde <= hasta)) {
+      throw new Error(
+        `El rango ${desde} a ${hasta} cruza un cambio de frecuencia y no coincide con los pagos del calendario ` +
+          `(${cubiertos.map((p) => `${p.desde} a ${p.hasta}`).join(', ')}). Liquida cada pago por separado.`,
+      );
+    }
+    // Desalineado sin cambio de por medio: como antes (§7.6), la cuota vigente entera.
+  }
+  const v = frecuenciaVigente(contrato, cambios, desde);
+  const natural = finDePeriodo(desde, v, undefined, v.ancla);
+  // Mismo criterio de corte que calendarioDePagos(): el fin del contrato o el día antes del próximo
+  // cambio, lo que llegue primero. Un tramo cortado ahí se prorratea igual que en la vista previa.
+  let corte = contrato.fechaFin;
+  const proximoCambio = cambios.map((c) => c.desde).filter((d) => d > desde).sort()[0];
+  if (proximoCambio !== undefined) {
+    const antes = fmtFecha(msDeFecha(proximoCambio) - MS_DIA);
+    if (antes < corte) corte = antes;
+  }
+  if (hasta === corte && hasta < natural) {
+    return cuotaDelTramo(v.sueldoPactado, desde, hasta, v, v.ancla);
+  }
+  return v.sueldoPactado;
+}
+
+/**
+ * El primer pago del calendario que arranca DESPUÉS de lo último pagado (`ultimaCerradaHasta`,
+ * null si nada se pagó): ahí y sólo ahí puede empezar un cambio de frecuencia (spec §3.2, «desde el
+ * próximo pago que todavía no se pagó»). Null si ya está todo pagado.
+ */
+export function proximoPagoPendiente(
+  contrato: ContratoPago,
+  cambios: CambioFrecuencia[],
+  ultimaCerradaHasta: string | null,
+): PagoCalendario | null {
+  const pagos = calendarioDePagos(contrato, cambios);
+  return pagos.find((p) => ultimaCerradaHasta === null || p.desde > ultimaCerradaHasta) ?? null;
+}
+
+/**
+ * Los borradores que un cambio de frecuencia a partir de `desde` deja desactualizados (spec §3.2):
+ * los que todavía cubren días desde esa fecha. Las cerradas no se tocan nunca y las anuladas ya
+ * no cuentan.
+ */
+export function liquidacionesCruzadas<T extends { estado: string; periodoHasta: string }>(
+  liquidaciones: T[],
+  desde: string,
+): T[] {
+  return liquidaciones.filter((l) => l.estado === 'borrador' && l.periodoHasta >= desde);
 }
 
 function minutosDeHora(hora: unknown, donde: string): number {

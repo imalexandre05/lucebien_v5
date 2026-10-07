@@ -1507,3 +1507,43 @@ calendario). Además, los puntos de la noche del último día de un período cer
 ya se habían ido al período siguiente: el primer período que se cierre con la 0110 no los cuenta, y
 ninguno de los dos los cuenta. Decidir con Alexander si alguno se corrige a mano, y cuáles. Sin default
 inventado: no hay ninguno.
+---
+
+## Defaults inventados el 6-oct-2026 — frecuencia de pago flexible
+
+Implementación de la [spec](superpowers/specs/sueldos/2026-10-06-frecuencia-pago-flexible-design.md)
+(migración `0120`, `packages/core/src/sueldos.ts`). Tres defaults que la spec ya marcaba como
+provisionales; ninguno está hardcodeado en silencio: viven en el core y el administrador los
+decide contrato por contrato.
+
+| Default | Dónde vive | Pendiente de confirmar con el dueño |
+|---|---|---|
+| **Quincenal anclado al día de inicio** de la frecuencia (del día *d* al *d+14* y del *d+15* al día anterior a *d* del mes siguiente) | `finDeQuincena()` en `sueldos.ts` | Si prefiere quincenas fijas 1–15 / 16–fin de mes: se agrega como otra opción, sin tocar las demás |
+| **El último pago más corto que la frecuencia se prorratea por días** (S/650 mensual, 5 de 30 días = S/108,33) | `cuotaDelTramo()` / `cuotaDeLiquidacion()` | Si el último pago corto debe cobrar entero o redondear distinto. |
+| **«Cada N días»: N entre 1 y 62** | `validarCadaDias()` y los `check` de la `0120` | El tope de 62 días (dos meses) |
+| **Cuota sugerida al cambiar de frecuencia**: la misma plata por mes en más pagos (quincenal ×1/2, semanal ×12/52, cada N días ×12·N/365). Sólo se sugiere; el administrador la confirma | `cuotaProporcional()` en `cambiar-frecuencia.tsx` | Si prefiere otra proporción (p. ej. semanal = mensual/4) |
+
+Efecto a tener presente: un contrato **existente** cuyo último tramo ya era más corto que su
+frecuencia cobraba la cuota entera (el borde #33); desde esta versión ese último tramo se
+prorratea. Los demás tramos de contratos existentes liquidan exactamente igual que antes.
+
+**Falta, y la spec §3.3 lo pide:** ajustar la cuota del último pago corto antes de confirmar. Hoy
+no hay dónde: `crearBorrador` no recibe cuota. Alternativa disponible hoy: un bono o ajuste manual en
+la liquidación. Pendiente de decidir si se implementa en este PR o en el de #44.
+
+**Borde de la modalidad mensual — resuelto el 06-oct (spec §9.1, auditoría D-2):** un contrato que
+arranca el 29, 30 o 31 y cruza febrero «se corre» (30-ene → 28-feb, luego 1-mar → 31-mar…). Los
+cortes NO se tocaron (cambiaría los de contratos que ya liquidan), pero un tramo que termina el día
+anterior a un aniversario del inicio ya no cuenta como corto: «30-ene al 29-abr» de S/600 cobra 600
+en el último tramo (antes 580) y «31-ene al 30-jul» de S/1500 cobra 6 × 1500 = S/9000 (antes
+S/48,39 menos). Sigue la decisión del dueño del 06-oct: la mensual se cuenta desde el día en que
+empezó el contrato. **Pendiente de confirmación de Alexander** (cambia lo que se paga).
+
+**Rango que cubre varios pagos (spec §9.2, auditoría D-4):** cobra la suma de las cuotas de los
+pagos del calendario que cubre, si empieza y termina en sus bordes; si no coincide con los bordes y
+cruza un cambio de frecuencia, se rechaza. No es un parámetro nuevo: es la definición de la 0093
+(`sueldo_pactado` es la cuota de cada pago) aplicada a un rango largo.
+
+Sin decidir: al crear un contrato la pantalla **avisa** cuando el último pago queda corto y
+sugiere la fecha de fin que lo completa, pero no propone una fecha de fin por defecto con el
+contrato vacío (la spec §3.3 dice «sugiere el día anterior al aniversario» sin fijar cuántos meses).

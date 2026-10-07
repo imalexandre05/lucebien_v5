@@ -59,6 +59,8 @@ function liquidacionCerrada(extra: Partial<LiquidacionDetalle> = {}): Liquidacio
     periodoDesde: '2026-07-01',
     periodoHasta: '2026-07-31',
     estado: 'cerrada',
+    // La cuota con la que se pagó: corregir NO la recalcula con las reglas de hoy (0120).
+    entrada: { sueldoPactado: 650 },
     ...extra,
   } as LiquidacionDetalle;
 }
@@ -88,7 +90,9 @@ describe('corregirLiquidacion — anula y vuelve a emitir en un solo paso (D-1)'
     expect(anular).toHaveBeenCalledWith('liq-1', '  se cargó un adelanto de más  ');
     // El acuerdo y el período van EXACTOS a los de la liquidación que se corrige — nunca un rango
     // que el cliente pudiera tener cargado en el selector de "Calcular" de la pantalla.
-    expect(crear).toHaveBeenCalledWith('acuerdo-1', '2026-07-01', '2026-07-31');
+    // …y con la MISMA cuota que tenía la liquidación: una corrección cambia datos, no la cuota
+    // (si no, un cambio de frecuencia posterior reescribiría un mes ya pagado).
+    expect(crear).toHaveBeenCalledWith('acuerdo-1', '2026-07-01', '2026-07-31', 650);
     expect(r).toEqual({ nuevoBorradorId: 'borrador-nuevo-1' });
   });
 
