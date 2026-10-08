@@ -1,0 +1,47 @@
+name: Tablero
+
+# Mueve la tarjeta del tablero SCI-LB cuando cambia el estado de un PR:
+#   borrador -> En Progreso · listo para revisión -> En revisión · mergeado -> Hecho.
+# La tarea correspondiente se lee de la descripción del PR (ver tools/tablero-sync.sh).
+#
+# Necesita el secreto PROJECT_TOKEN: un token clásico con los permisos `project` y `repo`
+# (el proyecto es de una cuenta personal, y los tokens de grano fino no llegan a esos proyectos).
+# Mientras el secreto no exista el workflow termina en verde sin tocar nada.
+on:
+  pull_request:
+    types: [opened, reopened, edited, ready_for_review, converted_to_draft, closed]
+
+# No usa GITHUB_TOKEN para nada más que bajar el repositorio.
+permissions:
+  contents: read
+
+# Un PR a la vez, en orden: dos eventos seguidos no deben pisarse.
+concurrency:
+  group: tablero-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  mover:
+    name: Mover tarjeta
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Mover la tarjeta
+        env:
+          GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+          # La descripción del PR es texto de terceros: va por variable de entorno, nunca
+          # interpolada dentro del script.
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          PR_STATE: ${{ github.event.pull_request.state }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          if [ "$PR_MERGED" = "true" ]; then PR_ESTADO=mergeado
+          elif [ "$PR_STATE" = "closed" ]; then PR_ESTADO=cerrado
+          elif [ "$PR_DRAFT" = "true" ]; then PR_ESTADO=borrador
+          else PR_ESTADO=listo
+          fi
+          export PR_ESTADO
+          bash tools/tablero-sync.sh
