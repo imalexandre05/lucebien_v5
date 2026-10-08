@@ -263,6 +263,49 @@ Y verificar no es mirar que las tablas existan. Es **intentar romper lo que la m
 si prometía que un pago cerrado no se puede modificar, hay que intentar modificarlo y ver que
 falle.
 
+### Regla 7 — Máximo tres borradores abiertos, y ninguna sesión termina dejando uno abandonado
+
+> Agregada el 8-oct-2026. Entre el 3 y el 7 de octubre se abrieron 26 PR en borrador (#36–#61) desde
+> sesiones paralelas y ninguno llegó a `main`: `main` no se movió desde el 14-sep. Juntarlos costó
+> el PR #60 (307 commits, unos 15 conflictos resueltos a mano) y las migraciones 0110–0127
+> siguieron sin aplicarse. El trabajo existía, pero no estaba aterrizado.
+
+- **Tres borradores como máximo.** Antes de abrir un cuarto se integra o se cierra uno.
+- **Cada sesión termina con su rama integrada o cerrada con una nota** que diga por qué. Una sesión
+  que acaba y deja el borrador solo, sin dueño, es la que produce el montón.
+- **Cuando se junta más de lo que cabe en tres, se integra en una rama `release/<fecha>`** con el
+  patrón del #60: `merge --no-ff` (sin squash), un commit aparte por cada arreglo propio de la
+  integración, y una sola validación al final.
+- **El avance se cuenta en PR mergeados a `main`, no en commits ni en ramas.**
+
+### Regla 8 — Los archivos calientes se tocan de a una sesión
+
+Un archivo caliente es el que tocan cuatro o más ramas abiertas a la vez; ahí está la mayoría de los
+conflictos. El 8-oct-2026 (calculado con `git diff` sobre las ramas abiertas, no copiado de otro
+documento) eran:
+
+| Archivo | Ramas abiertas que lo tocaban |
+|---|---|
+| `apps/erp-web/lib/config-catalogo.ts` | 7 |
+| `packages/core/src/index.ts` | 6 |
+| `apps/erp-web/lib/sueldos-repo.ts` | 6 |
+| `apps/erp-web/app/mi-desempeno/page.tsx` | 5 |
+| `apps/erp-web/lib/{pipeline,evaluaciones,desempeno}-repo.ts` | 4 cada uno |
+| `apps/erp-web/app/sueldos/acuerdos/cliente.tsx`, `app/personal/[id]/contrato/page.tsx`, `app/evaluaciones/cliente.tsx` | 4 cada uno |
+
+Antes de editar uno de estos (o cualquier archivo que se sospeche compartido), se mira quién más lo
+tiene tocado:
+
+```bash
+git fetch -q origin
+for b in $(git branch -r --no-merged origin/main | grep -v HEAD); do
+  git diff --name-only origin/main...$b -- <ruta> 2>/dev/null | grep -q . && echo $b
+done
+```
+
+Si sale otra rama, **no se edita en paralelo**: se espera a que esa rama se integre, o se coordina
+con quien la lleva. Tardar un día en esperar cuesta menos que resolver el conflicto después.
+
 ---
 
 ## 4. El ciclo, completo
@@ -328,6 +371,15 @@ Escrito acá para que nadie lo descubra tarde:
   `node_modules/` del disco** y PM2 se queda sin dependencias. Se arregla corriendo `npm install`
   ahí, pero hay que hacerlo **antes** de que nadie lo note. Es una decisión de Alexander con un
   paso obligatorio, no un cambio que se hace de paso.
+- **El `verificador` no es una compuerta de CI.** Hoy se puede llegar a un PR con una migración o la
+  cadena del sueldo sin que se haya corrido (el PR #60 llegó con la 0127 sin verificar). Falta una
+  regla que exija en el PR una línea con el resultado del verificador cuando se tocan
+  `packages/db/migrations/` o los archivos de la cadena del sueldo. Pendiente a propósito hasta que
+  el #60 entre a `main`: varios PR abiertos editan `.github/workflows/ci.yml` y tocarlo antes
+  multiplica los conflictos.
+- **El tablero de GitHub Projects no se llena solo.** Se configura una vez en la interfaz del
+  Project (menú ⋯ → Workflows): agregar automáticamente los PR del repositorio, y pasar a «Hecho»
+  los PR al hacer merge. No se puede hacer desde el repositorio.
 - **Los agentes no comparten estado.** Dos `implementador` en paralelo no saben uno del otro; lo
   único que los coordina es este protocolo, el hook y el guard. El detalle de qué tapa cada cosa
   está en §2.
@@ -352,6 +404,7 @@ No alcanza con escribirlo. Cada afirmación de acá se verificó corriéndola:
 | El hook bloquea una migración sin reservar | Cinco casos probados: archivo que no es migración pasa · migración nueva sin reserva deniega · número de otra rama deniega **nombrando la rama** · reserva sin commitear deniega pidiendo el commit · migración commiteada pasa. Y la salida se validó con `JSON.parse`, porque la primera versión emitía JSON roto |
 | Las pruebas de migración guardadas siguen pasando | `0072` con sus 18 pasos y `0073` con sus 12, corridas contra `scilb`. Ninguna dejó filas |
 | El E2E compila y entra en el typecheck | `tsc --noEmit` sobre `apps/erp-web` incluye `e2e/**` y `playwright.config.ts` |
+| Los archivos calientes de la Regla 8 y el comando que lista las ramas que tocan un archivo (8-oct-2026) | Se contó con `git diff --name-only origin/main...<rama>` sobre las ramas abiertas, y el comando se corrió sobre `config-catalogo.ts`: devolvió 8 ramas en 0,3 s |
 
 ---
 
