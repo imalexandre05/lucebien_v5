@@ -71,6 +71,18 @@ if [ "$DRY_RUN" = "1" ]; then
   exit 0
 fi
 
+# Un secreto pegado a mano suele traer un salto de línea o un espacio al final, y GitHub rechaza
+# esos caracteres en la cabecera Authorization («invalid header field value»). Un token sólo lleva
+# letras, números y guion bajo: lo demás se descarta, y se avisa sin mostrar el valor.
+if [ -n "${GH_TOKEN:-}" ]; then
+  limpio=$(printf '%s' "$GH_TOKEN" | tr -cd 'A-Za-z0-9_')
+  if [ "${#limpio}" -ne "${#GH_TOKEN}" ]; then
+    aviso "PROJECT_TOKEN traía $(( ${#GH_TOKEN} - ${#limpio} )) carácter(es) sobrante(s) (espacios o saltos de línea); los ignoré. Conviene volver a guardarlo sin ellos."
+  fi
+  GH_TOKEN="$limpio"
+  export GH_TOKEN
+fi
+
 if [ -z "${GH_TOKEN:-}" ]; then
   aviso "No hay GH_TOKEN (falta el secreto PROJECT_TOKEN del repositorio). No se mueve nada."
   exit 0
