@@ -377,9 +377,18 @@ Escrito acá para que nadie lo descubra tarde:
   `packages/db/migrations/` o los archivos de la cadena del sueldo. Pendiente a propósito hasta que
   el #60 entre a `main`: varios PR abiertos editan `.github/workflows/ci.yml` y tocarlo antes
   multiplica los conflictos.
-- **El tablero de GitHub Projects no se llena solo.** Se configura una vez en la interfaz del
-  Project (menú ⋯ → Workflows): agregar automáticamente los PR del repositorio, y pasar a «Hecho»
-  los PR al hacer merge. No se puede hacer desde el repositorio.
+- **El tablero de GitHub Projects (SCI-LB) lleva issues de `lucebien-tablero`, uno por tarea, y los
+  PR de este repositorio se ven como enlaces dentro de cada tarjeta.** El estado de la tarjeta
+  (Bandeja → Por definir → En progreso → En revisión → Hecho) no se mueve solo del todo:
+  - *Opción A, a configurar en la interfaz del Project (menú ⋯ → Workflows):* «Pull request linked
+    to issue» pone el estado **En revisión** y «Pull request merged» pone **Hecho**. Para que el
+    enlace exista, cada PR lleva `Closes imalexandre05/lucebien-tablero#N` en su descripción.
+  - *Opción B, **pendiente**:* un workflow de GitHub Actions propio que mueva la tarjeta según el
+    estado del PR (borrador → En progreso, listo → En revisión, mergeado → Hecho). Necesita un token
+    personal con permiso `project` guardado como secreto del repositorio (`PROJECT_TOKEN`) y que
+    `lucebien-tablero` esté al alcance. Sólo vale la pena si la A resulta corta.
+  - Desde una sesión de Claude no se puede mover una tarjeta: el token de `gh` es inválido y las
+    herramientas de GitHub de la sesión no cubren Projects.
 - **Los agentes no comparten estado.** Dos `implementador` en paralelo no saben uno del otro; lo
   único que los coordina es este protocolo, el hook y el guard. El detalle de qué tapa cada cosa
   está en §2.
