@@ -277,6 +277,8 @@ falle.
   patrón del #60: `merge --no-ff` (sin squash), un commit aparte por cada arreglo propio de la
   integración, y una sola validación al final.
 - **El avance se cuenta en PR mergeados a `main`, no en commits ni en ramas.**
+- **Toda descripción de PR lleva la línea `Tablero: imalexandre05/lucebien-tablero#N`**, una por
+  tarea que cubre. De ahí sale la tarjeta que mueve `.github/workflows/tablero.yml` (ver §5).
 
 ### Regla 8 — Los archivos calientes se tocan de a una sesión
 
@@ -383,10 +385,14 @@ Escrito acá para que nadie lo descubra tarde:
   - *Opción A, a configurar en la interfaz del Project (menú ⋯ → Workflows):* «Pull request linked
     to issue» pone el estado **En revisión** y «Pull request merged» pone **Hecho**. Para que el
     enlace exista, cada PR lleva `Closes imalexandre05/lucebien-tablero#N` en su descripción.
-  - *Opción B, **pendiente**:* un workflow de GitHub Actions propio que mueva la tarjeta según el
-    estado del PR (borrador → En progreso, listo → En revisión, mergeado → Hecho). Necesita un token
-    personal con permiso `project` guardado como secreto del repositorio (`PROJECT_TOKEN`) y que
-    `lucebien-tablero` esté al alcance. Sólo vale la pena si la A resulta corta.
+  - *Opción B, **elegida el 8-oct-2026**:* `.github/workflows/tablero.yml` llama a
+    `tools/tablero-sync.sh` y mueve la tarjeta según el estado del PR: borrador → En Progreso,
+    listo para revisión → En revisión, mergeado → Hecho. Un PR cerrado sin merge no mueve nada, y una
+    tarjeta que ya está en Hecho no se saca de ahí. Necesita el secreto `PROJECT_TOKEN` del
+    repositorio (token clásico con permisos `project` y `repo`); sin él, el workflow termina en
+    verde sin tocar nada. **La tarea sale de la descripción del PR**: toda descripción lleva una
+    línea `Tablero: imalexandre05/lucebien-tablero#N` (sirve también `Closes ...#N`), una por tarea.
+    Sin esa línea, el PR no mueve ninguna tarjeta.
   - Desde una sesión de Claude no se puede mover una tarjeta: el token de `gh` es inválido y las
     herramientas de GitHub de la sesión no cubren Projects.
 - **Los agentes no comparten estado.** Dos `implementador` en paralelo no saben uno del otro; lo
