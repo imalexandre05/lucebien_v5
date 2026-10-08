@@ -263,6 +263,21 @@ Y verificar no es mirar que las tablas existan. Es **intentar romper lo que la m
 si prometía que un pago cerrado no se puede modificar, hay que intentar modificarlo y ver que
 falle.
 
+**Cómo se aplica: `tools/aplicar-migraciones.sh`.** No se pega el SQL en la conversación
+(`apply_migration` del MCP cuesta el contexto entero de cada archivo y ya falló por tiempo, ver
+`docs/aprendizajes.md`). El script lee los archivos del disco y los manda por la API de gestión de
+Supabase; cada migración corre en una transacción junto con su registro en `schema_migrations`, se
+detiene en el primer error y salta lo ya registrado.
+
+```bash
+bash tools/aplicar-migraciones.sh --desde 0111 --excluir 0123            # simulacro (por defecto)
+bash tools/aplicar-migraciones.sh --desde 0111 --excluir 0123 --ejecutar # aplica
+```
+
+Necesita `curl`, `jq` y `SUPABASE_ACCESS_TOKEN`. El backup previo sigue siendo obligatorio: el script
+no lo hace ni lo comprueba. Este entorno no resuelve el host directo de la base, así que `psql` no
+sirve acá; la API sí.
+
 ---
 
 ## 4. El ciclo, completo
