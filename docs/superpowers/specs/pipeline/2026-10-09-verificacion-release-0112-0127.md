@@ -1,5 +1,16 @@
 # Verificación adversarial de la release 0110–0127 (PR #60) — 9-oct-2026
 
+> **Corrección del 9-oct-2026 (verificada contra `supabase_migrations.schema_migrations` de producción,
+> proyecto `scilb`).** Este registro y la conversación que lo produjo partieron de que las migraciones
+> 0110–0127 estaban **sin aplicar**, porque así lo decía el checklist del PR #60. **Era falso:** en
+> producción ya están registradas la 0110 (7-oct, 22:12 UTC) y de la 0111 a la 0127 (8-oct, ~00:55 UTC),
+> salvo la 0123, que sigue sin aplicar a propósito (login seguro, se aplica el día del cambio de
+> contraseñas). No existe 0124. Es el error que el no-negociable 7 describe: escribir «falta migrar»
+> sin mirar la base. La verificación siguió siendo válida, pero se hizo **sobre código ya en producción**, y
+> comprobado en vivo: `pipeline_avanzar`, `pipeline_dividir` y `pipeline_enviar` de producción
+> tienen la firma con `p_operador`, son `security definer` y **no** tienen `for update`, así que la carrera
+> del hallazgo 1 **existe hoy en producción**. Lo único pendiente de aplicar es la **0128**.
+
 Qué se verificó, qué se encontró y qué decide cada hallazgo. **No es una spec de cambio**: es el
 registro que pide la regla de cierre de `CLAUDE.md`, para que el resultado no viva sólo en una
 conversación. Los arreglos que salgan de acá necesitan su propia spec (Zone Guard) y su número de
@@ -72,7 +83,7 @@ verificaciones y **no está aplicada en ningún lado**.
 | 3 deshacer el avance de otra persona | **Sin decidir** (pregunta 1 de `pendientes-negocio.md`) |
 | 4 `registrado_por_id` de los extras | **Aplazado**: la pantalla ofrece a todo el directorio; es decisión de negocio (sección «Pregunta de la 0128» de `pendientes-negocio.md` en el PR #63) |
 | 5 validación de sede destino | **Arreglado en la 0128** |
-| 6 reaplicar una migración sola | **Cuidado de despliegue**, no cambia: aplicar siempre 0110→0128 completas |
+| 6 reaplicar una migración sola | **Cuidado de despliegue**, no cambia: no reaplicar una sola migración vieja; la 0128 sí se aplica sola (sólo recrea cuatro funciones) |
 | 7 políticas duplicadas y lectura de puntos | **Sin decidir** (pregunta 2 de `pendientes-negocio.md`) |
 | 8 grants de las funciones internas | **Aplazado**: quitarlos rompe tres casos de la prueba 0115; no empeora nada dejarlos |
 
@@ -83,5 +94,5 @@ anotados en la spec de la 0128 como «para una spec futura».
 ## Qué sigue
 
 1. Alexander contesta las dos preguntas de `pendientes-negocio.md` (hallazgos 3 y 7).
-2. Decidir si los hallazgos 1, 2, 4, 5 y 8 se arreglan **antes** de aplicar la release (en una migración nueva, spec primero) o después.
-3. Aplicar siempre 0110→0128 completas y en orden (hallazgo 6), con backup previo y `tools/aplicar-migraciones.sh` (PR #61). La 0123 sólo el día del cambio de contraseñas.
+2. Los hallazgos 1, 2 y 5 los arregla la 0128 (PR #63); el 4 y el 8 quedaron aplazados. Como la release ya está en producción, el hallazgo 1 (carrera que da puntos de más) **sigue activo hasta que se aplique la 0128**.
+3. Aplicar **sólo la 0128** (la 0110–0127 ya están en producción, salvo la 0123), con backup previo y confirmación explícita. La 0123 sólo el día del cambio de contraseñas. Antes, comprobar qué versión del ERP está desplegada: la base ya tiene las RPC con `p_operador` y un ERP anterior las llamaría sin operador.
