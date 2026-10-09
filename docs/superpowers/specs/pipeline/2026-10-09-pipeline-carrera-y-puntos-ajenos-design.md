@@ -136,5 +136,9 @@ la 0128 y ninguno bloquea este merge):
   un punto en `avanzar`, 2 hijas en `dividir` y 1 envío en `enviar`.
 
 Hallazgos 3, 6 y 7 del registro; la 0123; cualquier cambio en `packages/core`; el cron de auto-cierre.
-Aplicar en producción es un acto aparte (backup, `tools/aplicar-migraciones.sh`, secuencia completa
-0110→0128 en orden) y se hace con confirmación explícita.
+Aplicar en producción es un acto aparte, con backup previo y confirmación explícita. **Estado de la
+base verificado el 9-oct-2026** (`supabase_migrations.schema_migrations` del proyecto `scilb`): las
+migraciones 0110–0127 **ya están aplicadas**, salvo la 0123 (login seguro), que se aplica el día del
+cambio de contraseñas; la 0128 es lo único pendiente y se aplica **sola** (sólo recrea cuatro
+funciones). En producción `pipeline_avanzar`, `pipeline_dividir` y `pipeline_enviar` no tienen
+`for update`: la carrera es real hasta aplicarla.
