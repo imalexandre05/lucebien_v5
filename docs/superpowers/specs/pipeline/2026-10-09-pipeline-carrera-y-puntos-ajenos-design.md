@@ -51,7 +51,15 @@ toca**. El comportamiento para movimientos con puntos ligados (`historial_id`) n
 que un movimiento sin puntos propios seguiría siendo candidato; con esos tres datos iguales se
 considera el mismo hecho.
 
-## F4 — Un extra no se acredita a cualquiera (hallazgo 4, MEDIA)
+## F4 — Un extra no se acredita a cualquiera (hallazgo 4, MEDIA) — **APLAZADO el 9-oct-2026**
+
+> **Estado:** no se implementa en la 0128. Al implementar se comprobó (la propia spec lo mandaba)
+> que la pantalla `/reportes/nuevo` (`form.tsx:907-919`) ofrece en «¿Quién lo hizo?» a **todo el
+> directorio** (`app_directorio()`: todas las sedes, incluidos inactivos), también a quien no es
+> administrador. La regla de abajo rechazaría ids que el ERP manda hoy y rompería ese flujo. Es una
+> **decisión de negocio** —¿una encargada puede atribuir un extra a alguien que no es del equipo del
+> reporte?— anotada en `pendientes-negocio.md`. Si la respuesta es no, hace falta además limitar el
+> selector al equipo. El texto de abajo se conserva como propuesta.
 
 `reportes_crear` (`0122:756`) toma `registrado_por_id` del JSON de `p_extras` sin límite para quien no
 es administrador, y `evaluacion_componentes_datos` acredita ese extra a ese id: entra en la nota /20
@@ -71,7 +79,15 @@ La 0122 (`:399-401`) validaba en `pipeline_enviar` que la sede destino exista; l
 de la 0115, que no. **Regla:** `pipeline_enviar` vuelve a rechazar una sede vacía o inexistente con
 `La sede de destino % no existe` (el mismo texto de la 0122), antes de insertar nada.
 
-## F8 — Las funciones internas no se ejecutan desde fuera (hallazgo 8, BAJA)
+## F8 — Las funciones internas no se ejecutan desde fuera (hallazgo 8, BAJA) — **APLAZADO el 9-oct-2026**
+
+> **Estado:** no se implementa en la 0128. Con el `revoke` aplicado, las pruebas 0115 (casos 5a, 5c
+> y 6) dan FALLA porque llaman a esas tres funciones directamente como `authenticated`, y esta misma
+> spec exige que la 0115 siga pasando (prueba 9): las dos cosas no caben juntas. Las RPC públicas
+> funcionan sin ese permiso (lo comprobó el implementador). Dejar el grant como está **no empeora
+> nada**: es el estado de la 0115 y el esquema `private` no se expone por la API. Para retomarlo hay
+> que decidir primero, en una spec, cómo adaptar esos tres casos de la 0115 (por ejemplo llamarlas
+> como dueño con claims). El texto de abajo se conserva como propuesta.
 
 `private.pipeline_registrar_punto`, `private.pipeline_borrar_punto` y
 `private.prenda_historial_registrar` tienen `grant execute ... to authenticated`, pero sólo las
@@ -80,6 +96,8 @@ mantiene a `public` y `anon` revocado). Las RPC públicas del pipeline siguen fu
 corren con los derechos de su dueño. Se comprueba con la prueba, no se supone.
 
 ## Pruebas (`packages/db/pruebas/0128_pipeline_carrera_y_puntos_ajenos.prueba.sql`)
+
+*Alcance real de la 0128 tras el aplazamiento: F1, F2 y F5. Los casos 5 y 7 no se escriben.*
 
 Se escriben **antes** que la migración y deben fallar sin ella:
 
@@ -91,10 +109,10 @@ Se escriben **antes** que la migración y deben fallar sin ella:
    antiguo sin ligar de 40 días en esa prenda y etapa → el punto antiguo **sigue ahí**.
 4. F2: un movimiento antiguo con punto sin ligar del mismo día **sí** se deshace (el respaldo
    legítimo se conserva).
-5. F4: no admin con `registrado_por_id` ajeno al reporte → rechazo; con el propio, el encargado o un
+5. *(aplazada con F4)* F4: no admin con `registrado_por_id` ajeno al reporte → rechazo; con el propio, el encargado o un
    trabajador del reporte → pasa; admin → pasa.
 6. F5: `pipeline_enviar(..., 'NOEXISTE')` falla con el mensaje de la 0122 y no deja ningún envío.
-7. F8: `authenticated` no puede ejecutar las tres funciones internas; las RPC públicas siguen
+7. *(aplazada con F8)* F8: `authenticated` no puede ejecutar las tres funciones internas; las RPC públicas siguen
    funcionando para un rol de pipeline.
 8. Una sola firma por RPC del pipeline (la de la 0127) y reaplicar la 0128 sola es inocuo.
 9. Siguen pasando las pruebas 0112, 0115, 0122 y 0127 sobre 0001→0128.
