@@ -60,8 +60,28 @@ verificador y no los repetí.
 - De `docs/aprendizajes.md` sólo se buscaron palabras clave; no se leyó entero. De `app/**/pipeline` sólo se revisaron `actions.ts` y `pipeline-operador.ts`.
 - La 0123 (login seguro) no tiene prueba SQL y **no estaba en este alcance**.
 
+## Estado de los hallazgos tras la 0128 (actualizado el 9-oct-2026)
+
+La migración **0128** (PR #63, rama `fix/pipeline-0128`, hacia `release/2026-10-07`) pasó dos
+verificaciones y **no está aplicada en ningún lado**.
+
+| # | Estado |
+|---|---|
+| 1 carrera sin `for update` | **Arreglado en la 0128** (avanzar, dividir, enviar). Carrera reproducida con dos sesiones: antes 2 movimientos y 2 puntos, ahora 1 y 1 |
+| 2 respaldo de deshacer | **Arreglado en la 0128**: sólo toca puntos del mismo día de Perú. Límite aceptado y escrito en la spec |
+| 3 deshacer el avance de otra persona | **Sin decidir** (pregunta 1 de `pendientes-negocio.md`) |
+| 4 `registrado_por_id` de los extras | **Aplazado**: la pantalla ofrece a todo el directorio; es decisión de negocio (sección «Pregunta de la 0128» de `pendientes-negocio.md` en el PR #63) |
+| 5 validación de sede destino | **Arreglado en la 0128** |
+| 6 reaplicar una migración sola | **Cuidado de despliegue**, no cambia: aplicar siempre 0110→0128 completas |
+| 7 políticas duplicadas y lectura de puntos | **Sin decidir** (pregunta 2 de `pendientes-negocio.md`) |
+| 8 grants de las funciones internas | **Aplazado**: quitarlos rompe tres casos de la prueba 0115; no empeora nada dejarlos |
+
+La segunda verificación encontró además dos defectos que ya existían y no bloquean (interbloqueo de
+`pipeline_avanzar_tanda` con ids en distinto orden; `pipeline_deshacer_division` sin `for update`),
+anotados en la spec de la 0128 como «para una spec futura».
+
 ## Qué sigue
 
 1. Alexander contesta las dos preguntas de `pendientes-negocio.md` (hallazgos 3 y 7).
 2. Decidir si los hallazgos 1, 2, 4, 5 y 8 se arreglan **antes** de aplicar la release (en una migración nueva, spec primero) o después.
-3. Aplicar siempre 0110→0127 completas y en orden (hallazgo 6), con backup previo y `tools/aplicar-migraciones.sh` (PR #61). La 0123 sólo el día del cambio de contraseñas.
+3. Aplicar siempre 0110→0128 completas y en orden (hallazgo 6), con backup previo y `tools/aplicar-migraciones.sh` (PR #61). La 0123 sólo el día del cambio de contraseñas.
