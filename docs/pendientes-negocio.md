@@ -1495,3 +1495,23 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+---
+
+## Preguntas del verificador sobre la release 0110–0127 (9-oct-2026)
+
+Salen de la verificación de la release (ver
+[el registro](superpowers/specs/pipeline/2026-10-09-verificacion-release-0112-0127.md), hallazgos 3
+y 7). No son defaults inventados: son decisiones de negocio y de aislamiento que el código ya tomó
+sin que nadie las confirmara. **Sin contestar.**
+
+1. **¿Quién puede deshacer o rechazar un avance de otra persona?** La spec de la 0115 (H-1) dice que
+   deshacer borra los puntos del movimiento «sean de quien sean», y el acceso es por sede. Con eso un
+   compañero puede deshacer el último avance de otro y volver a avanzar la prenda, quedándose el
+   punto; y una encargada de tienda puede quitar o descontar puntos a quien procesó la prenda
+   dentro del almacén. ¿Se acepta, o deshacer queda limitado a quien hizo el movimiento y al
+   administrador?
+2. **¿Quién puede leer los puntos de los demás?** Hoy cualquier persona de almacén lee
+   `pipeline_puntos` y el historial de todos (viene de la `0006`). Con el pago por puntos (`0117`)
+   esos puntos se convierten en soles, y el no-negociable 3 dice que nadie ve el sueldo de otro.
+   ¿Los puntos de cada quien se ven sólo a sí mismo, a su encargado de sede y al administrador?
