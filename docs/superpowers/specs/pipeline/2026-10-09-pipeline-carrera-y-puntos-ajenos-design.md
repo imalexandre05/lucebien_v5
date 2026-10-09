@@ -119,6 +119,22 @@ Se escriben **antes** que la migración y deben fallar sin ella:
 
 ## Fuera de alcance
 
+**Para una spec futura** (los encontró la segunda verificación, 9-oct-2026; los dos existían antes de
+la 0128 y ninguno bloquea este merge):
+
+- `pipeline_avanzar_tanda` recibe los ids en el orden en que se hizo clic
+  (`apps/erp-web/app/pipeline/tablero.tsx:486`) y bloquea cada prenda hasta el fin de la
+  transacción. Dos tandas con los mismos ids en orden distinto dan interbloqueos que el
+  `exception when others` traga: el resultado queda correcto (en la prueba, 40 movimientos y 40
+  puntos), pero tarda (≈31 s con 40 ids) y, con un `statement_timeout` corto, se cancelan las dos.
+  Con la versión de la 0115 el mismo caso daba un cobro doble (41 puntos); la 0128 lo mejora.
+  Arreglo: ordenar y deduplicar `p_ids` dentro de la tanda.
+- `pipeline_deshacer_division` lee la madre y las hijas sin `for update` (`0115:482`, `:510`): dos
+  llamadas concurrentes dejan dos filas «Deshacer división». No afecta puntos.
+- La prueba 0128 comprueba el `for update` por texto (caso 1) y la carrera con dos sesiones se corre a
+  mano (caso 2): el resultado de esa corrida **después** del arreglo es una sola fila de historial y
+  un punto en `avanzar`, 2 hijas en `dividir` y 1 envío en `enviar`.
+
 Hallazgos 3, 6 y 7 del registro; la 0123; cualquier cambio en `packages/core`; el cron de auto-cierre.
 Aplicar en producción es un acto aparte (backup, `tools/aplicar-migraciones.sh`, secuencia completa
 0110→0128 en orden) y se hace con confirmación explícita.
