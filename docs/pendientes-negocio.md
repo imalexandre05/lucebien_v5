@@ -1495,3 +1495,21 @@ No es nuevo ni lo agranda nada de lo hecho hoy. Cerrarlo bien (columna con `revo
 separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propios. Sin decidir si
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
+
+---
+
+## Defaults propuestos el 11-oct-2026 — entrevistados y prueba de 3 días
+
+Salen de la [spec](superpowers/specs/empleados/2026-10-11-candidatos-entrevista-prueba-design.md)
+(§7). **Ninguno lo decidió el cliente**: son los valores que se usarán si no hay respuesta, y ninguno
+está implementado todavía. Los apuntes del 9-sep sólo fijan «prueba de 3 días» y el resultado
+bueno/regular/malo.
+
+| Qué | Default | Dónde se edita |
+|---|---|---|
+| Días de prueba | 3 (dato del cliente) | `config('personal_prueba_dias')`, desde `/configuracion` |
+| ¿Se paga la prueba? | No se calcula nada en SCI-LB | Pregunta abierta para Alexander |
+| ¿Se puede repetir la prueba? | Sí, vuelve a «entrevistado» | Pregunta abierta |
+| ¿Se reactiva un descartado? | Sí, con rastro en la auditoría | Pregunta abierta |
+| Retención de datos de descartados | Sin borrado automático | Pregunta abierta |
+| Quién ve y evalúa candidatos | Sólo administrador y dueño | Pregunta abierta (son datos personales de quien aún no es colaborador) |
