@@ -1857,3 +1857,17 @@ hallazgo no tiene efecto práctico.
 **Defaults de pantalla del mismo trabajo** (no son reglas de negocio, comentados en
 `apps/erp-web/lib/envios-repo.ts`): hasta 1000 prendas en camino visibles a la vez, con aviso si hay
 más, y el historial de recibidas de a 50 por página.
+
+---
+
+## Pregunta de la 0128 sobre los extras de un reporte (9-oct-2026)
+
+Al implementar la [spec 0128](superpowers/specs/pipeline/2026-10-09-pipeline-carrera-y-puntos-ajenos-design.md)
+(F4) se comprobó que `/reportes/nuevo` (`apps/erp-web/app/reportes/nuevo/form.tsx:907-919`) deja elegir
+en «¿Quién lo hizo?» a **cualquier empleado del directorio** —todas las sedes, incluidos los
+inactivos—, también a quien no es administrador, y `reportes_crear` acredita ese extra a ese id en
+la nota /20 (`evaluacion_componentes_datos`). **Sin contestar:** ¿una encargada que no es admin puede
+atribuir un extra a alguien que no es el encargado ni un trabajador de ese reporte (otra sede, o
+alguien que olvidó marcar)? Si la respuesta es **no**, hay que limitar el selector al equipo y
+rechazar en la base ese id (ojo: obligar a sumar a la persona al equipo la marca presente, porque
+`marcarAsistenciaReporte` marca al encargado y a los trabajadores). Mientras tanto no cambia nada.
