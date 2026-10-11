@@ -123,6 +123,18 @@ bash tools/reservar-migracion.sh <slug>   # mira TODAS las ramas y te da un núm
 Nunca elijas el número a mano. Dos ramas paralelas ven la misma "última" y las dos escriben la
 siguiente; el choque aparece en el merge, con una ya aplicada en producción. Ya pasó.
 
+**Cuidar la ventana de contexto.** Cada petición reenvía toda la conversación, así que una sesión
+larga cuesta más con cada turno.
+
+- Una sesión por tarea; `/clear` al cambiar de tarea. Una sesión terminada se cierra.
+- `docs/pendientes-negocio.md` (116 KB) y `docs/aprendizajes.md` (47 KB) **no se leen enteros**:
+  `grep -n '^## ' <archivo>` para ver las secciones y se lee sólo la que toca (`Read` con
+  `offset` y `limit`).
+- Al compactar (`/compact` o automático), conservar: la spec vigente, los no-negociables que tocan
+  la tarea, las decisiones ya confirmadas con Alexander, la lista de archivos modificados y la
+  salida de `tools/verificar-local.sh`.
+- Sin workflows ni equipos de agentes salvo pedido explícito: multiplican el consumo.
+
 Hay tres subagentes: **`explorador`** para ubicar sin gastar la ventana, **`implementador`** para
 ejecutar un cambio ya especificado, y **`verificador`** antes de mergear zona crítica — su objetivo
 es encontrar el fallo, no aprobar el cambio.
