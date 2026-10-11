@@ -274,6 +274,9 @@ bash tools/aplicar-migraciones.sh --desde 0111 --excluir 0123            # simul
 bash tools/aplicar-migraciones.sh --desde 0111 --excluir 0123 --ejecutar # aplica
 ```
 
+`--ejecutar` exige `--desde`: varias migraciones viejas están registradas con otro nombre (`reportes_rls`,
+`helpers_revoke_anon`…) y sin ese límite se reaplicarían 48, entre ellas las de `pg_cron` (0022, 0042).
+
 Necesita `curl`, `jq` y `SUPABASE_ACCESS_TOKEN`. El backup previo sigue siendo obligatorio: el script
 no lo hace ni lo comprueba. Este entorno no resuelve el host directo de la base, así que `psql` no
 sirve acá; la API sí.

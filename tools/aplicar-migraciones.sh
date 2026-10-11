@@ -19,7 +19,9 @@
 #   bash tools/aplicar-migraciones.sh --desde 0111 --excluir 0123 --ejecutar # aplica
 #
 # Opciones:
-#   --desde NNNN       primera migración a considerar (por defecto, todas las no registradas)
+#   --desde NNNN       primera migración a considerar. OBLIGATORIO con --ejecutar: varias migraciones
+#                      viejas están registradas con otro nombre (p. ej. `reportes_rls`) y sin --desde
+#                      se reaplicarían, incluidas las de pg_cron (0022, 0042)
 #   --hasta NNNN       última a considerar
 #   --excluir A,B      números que no se aplican (p. ej. 0123, que es del día del cambio de claves)
 #   --dir RUTA         carpeta con los .sql (por defecto packages/db/migrations)
@@ -80,6 +82,12 @@ for f in $(ls "$DIR"/[0-9][0-9][0-9][0-9]_*.sql 2>/dev/null | sort); do
   printf '%s\n' "$REGISTRADAS" | grep -qx "$base" && { echo "  ya aplicada $base"; continue; }
   pendientes+=("$f")
 done
+
+if [ "$EJECUTAR" = 1 ] && [ -z "$DESDE" ]; then
+  echo "Con --ejecutar hay que indicar --desde NNNN. Sin él, el registro no reconoce las migraciones" >&2
+  echo "viejas que se aplicaron con otro nombre y se reaplicarían (incluidas 0022 y 0042, de pg_cron)." >&2
+  exit 2
+fi
 
 echo "A aplicar: ${#pendientes[@]}"
 for f in "${pendientes[@]}"; do echo "  -> $(basename "$f")"; done
