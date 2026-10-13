@@ -1,3 +1,4 @@
+import { use } from 'react';
 import { redirect } from 'next/navigation';
 
 // Ruta vieja de la lista (fusión de menú, 23-ago-2026): el módulo se mudó a /personal, pero un
@@ -15,10 +16,11 @@ function query(searchParams?: Record<string, string | string[] | undefined>): st
   return qs ? `?${qs}` : '';
 }
 
-export default function ColaboradoresRedirect({
-  searchParams,
-}: {
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
+export default function ColaboradoresRedirect(
+  props: {
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = props.searchParams ? use(props.searchParams) : undefined;
   redirect(`/personal${query(searchParams)}`);
 }

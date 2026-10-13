@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
@@ -11,6 +11,7 @@ import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import { hoyPeru } from '../../../lib/fechas';
 import { esConteo, type TipoMovimiento } from '../../../lib/sueldos-tipos';
 import type { MovimientoSueldo, VentaSueldo } from '../../../lib/sueldos-repo';
+import { correrAccion, mensajeIncierto, planTrasFallo, restaurarSiVacio, sinId } from '../../../lib/movimientos-optimista';
 import { accionCrearMovimiento, accionEliminarMovimiento } from './actions';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
@@ -53,9 +54,27 @@ export function MovimientosCliente({
    */
   ventas?: VentaSueldo[];
 }) {
+  // Sólo para resincronizar tras un fallo incierto (ver planTrasFallo). En el camino normal
+  // NO se usa: el árbol nuevo llega en la respuesta de la acción.
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
+
+  // ── Actualización optimista (spec 2026-10-03-adelantos-rendimiento-design.md) ────────────
+  // Una fila recién registrada se muestra al instante como «guardando…». Cuando la acción
+  // responde trae el id real; la fila provisoria se quita cuando ese id ya llegó en `movimientos`
+  // (el árbol nuevo viaja en la misma respuesta de la acción, no hace falta `router.refresh()`).
+  // Es sólo presentación: lo que se escribe en la base es exactamente lo de siempre.
+  type Provisoria = MovimientoSueldo & { idReal?: string };
+  const [provisorias, setProvisorias] = useState<Provisoria[]>([]);
+  const [borrando, setBorrando] = useState<Set<string>>(() => new Set());
+  const ultimos = useRef(movimientos);
+  ultimos.current = movimientos;
+
+  useEffect(() => {
+    // Llegó un árbol nuevo del servidor: lo que ya tiene id real dejó de ser provisorio.
+    setProvisorias((ps) => (ps.some((p) => p.idReal) ? ps.filter((p) => !p.idReal) : ps));
+  }, [movimientos]);
 
   const [mov, setMov] = useState({
     empleadoId: '',
@@ -69,30 +88,88 @@ export function MovimientosCliente({
   const conteo = esConteo(mov.tipo);
   const ayudaTipo = TIPOS.find((t) => t.valor === mov.tipo)?.ayuda ?? '';
 
-  const correr = (fn: () => Promise<{ ok: boolean; error?: string }>, alTerminar?: () => void) => {
+  const guardarMovimiento = () => {
     setError(null);
+    const tipeado = mov;
+    const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    setProvisorias((ps) => [
+      {
+        id: tmpId,
+        empleadoId: tipeado.empleadoId,
+        empleadoNombre: empleados.find((e) => e.id === tipeado.empleadoId)?.nombre ?? null,
+        fecha: tipeado.fecha,
+        tipo: tipeado.tipo,
+        monto: conteo ? null : Number(tipeado.monto),
+        cantidad: conteo ? Number(tipeado.cantidad) : 1,
+        motivo: tipeado.motivo.trim(),
+        liquidacionId: null,
+        creadoEn: '',
+      },
+      ...ps,
+    ]);
+    // El formulario se limpia ya, para poder seguir cargando. Si la base rechaza, vuelve lo tipeado.
+    setMov((v) => ({ ...v, monto: '', cantidad: '1', motivo: '' }));
+
     empezar(async () => {
-      const r = await fn();
+      // correrAccion: un fallo de transporte también tiene que deshacer lo optimista.
+      const r = await correrAccion(
+        () =>
+          accionCrearMovimiento({
+            empleadoId: tipeado.empleadoId,
+            fecha: tipeado.fecha,
+            tipo: tipeado.tipo,
+            monto: conteo ? undefined : Number(tipeado.monto),
+            cantidad: conteo ? Number(tipeado.cantidad) : undefined,
+            motivo: tipeado.motivo,
+          }),
+        'No se pudo confirmar el registro.',
+      );
       if (r.ok) {
-        alTerminar?.();
-        router.refresh();
-      } else setError(r.error ?? 'No se pudo guardar.');
+        // Guardado. Sin id (no debería pasar) se marca igual como resuelta: nunca se deshace ni se
+        // devuelve al formulario algo que la base sí guardó, porque volver a registrarlo lo duplica.
+        const idReal = r.id ?? tmpId;
+        // Si el árbol nuevo ya llegó antes que esta continuación, se quita ahora; si no, la quita
+        // el efecto de arriba cuando llegue.
+        setProvisorias((ps) =>
+          ultimos.current.some((m) => m.id === idReal)
+            ? ps.filter((p) => p.id !== tmpId)
+            : ps.map((p) => (p.id === tmpId ? { ...p, idReal } : p)),
+        );
+      } else {
+        const plan = planTrasFallo(r);
+        setProvisorias((ps) => ps.filter((p) => p.id !== tmpId));
+        if (plan.restaurarFormulario) setMov((actual) => restaurarSiVacio(actual, tipeado));
+        setError(mensajeIncierto(r, 'No se pudo confirmar el registro.'));
+        if (plan.refrescar) router.refresh();
+      }
     });
   };
 
-  const guardarMovimiento = () =>
-    correr(
-      () =>
-        accionCrearMovimiento({
-          empleadoId: mov.empleadoId,
-          fecha: mov.fecha,
-          tipo: mov.tipo,
-          monto: conteo ? undefined : Number(mov.monto),
-          cantidad: conteo ? Number(mov.cantidad) : undefined,
-          motivo: mov.motivo,
-        }),
-      () => setMov((v) => ({ ...v, monto: '', cantidad: '1', motivo: '' })),
-    );
+  // Borrar oculta la fila al instante. Si la base corta (p. ej. `CONGELADA`), vuelve a verse. Si
+  // sale bien, el id queda en el conjunto sin hacer daño: ya no viene en `movimientos`.
+  const borrarMovimiento = (id: string) => {
+    setError(null);
+    setBorrando((b) => new Set(b).add(id));
+    empezar(async () => {
+      const r = await correrAccion(() => accionEliminarMovimiento(id), 'No se pudo confirmar el borrado.');
+      if (!r.ok) {
+        setBorrando((b) => sinId(b, id));
+        setError(
+          mensajeIncierto(r, 'No se pudo confirmar el borrado.', 'Revise la lista: si la fila sigue ahí, no se borró.'),
+        );
+        // Si no se sabe si se borró (corte, o error de la base), la lista real lo dice.
+        if (planTrasFallo(r).refrescar) router.refresh();
+      }
+    });
+  };
+
+  // Lo provisorio arriba (es lo más nuevo), lo real sin lo que se está borrando. Una provisoria con
+  // id real ya no se muestra: la fila de verdad llega en el mismo árbol de la respuesta (o, en la
+  // ficha, puede no llegar nunca si su fecha cae fuera del período — y no debe quedar colgada).
+  const visibles: Provisoria[] = [
+    ...provisorias.filter((p) => !p.idReal),
+    ...movimientos.filter((m) => !borrando.has(m.id)),
+  ];
 
   return (
     <div className="space-y-6">
@@ -182,7 +259,7 @@ export function MovimientosCliente({
         </CardContent>
 
         <div className="border-t border-line">
-          {movimientos.length === 0 ? (
+          {visibles.length === 0 ? (
             <p className="px-5 py-6 text-center text-cuerpo text-muted">Todavía no hay ninguno.</p>
           ) : (
             <Table>
@@ -197,8 +274,8 @@ export function MovimientosCliente({
                 </TR>
               </THead>
               <TBody>
-                {movimientos.map((m) => (
-                  <TR key={m.id}>
+                {visibles.map((m) => (
+                  <TR key={m.id} className={m.id.startsWith('tmp-') ? 'opacity-60' : undefined}>
                     <TD className="whitespace-nowrap">{m.fecha}</TD>
                     <TD className="text-navy">{m.empleadoNombre ?? '—'}</TD>
                     <TD>{LABEL_TIPO[m.tipo] ?? m.tipo}</TD>
@@ -207,7 +284,9 @@ export function MovimientosCliente({
                     </TD>
                     <TD className="text-cuerpo text-muted">{m.motivo}</TD>
                     <TD className="text-right">
-                      {m.liquidacionId ? (
+                      {m.id.startsWith('tmp-') ? (
+                        <span className="text-apoyo text-muted">guardando…</span>
+                      ) : m.liquidacionId ? (
                         <Badge tone="green">
                           <Lock className="mr-1 inline h-3 w-3" />
                           liquidado
@@ -215,7 +294,7 @@ export function MovimientosCliente({
                       ) : (
                         <Button
                           variant="ghost"
-                          onClick={() => correr(() => accionEliminarMovimiento(m.id))}
+                          onClick={() => borrarMovimiento(m.id)}
                           aria-label="Borrar"
                         >
                           <Trash2 className="h-4 w-4" />

@@ -1,5 +1,7 @@
 import { getServerClient } from './supabase/server';
 import {
+  CLAVE_PUNTOS_META,
+  CLAVE_SOLES_POR_PUNTO,
   CONFIG_CATALOGO,
   CONFIG_CATALOGO_MAP,
   etiquetaDesdeClave,
@@ -63,6 +65,8 @@ export async function listarConfig(): Promise<ConfigItem[]> {
       min: c.min,
       max: c.max,
       step: c.step,
+      permiteVacio: c.permiteVacio,
+      unidad: c.unidad,
       guardado: fila != null,
       esPersonalizado: false,
     });
@@ -144,3 +148,20 @@ export async function leerConfigMap(): Promise<Record<string, string>> {
   if (error) throw new Error(error.message);
   return Object.fromEntries(((data as { clave: string; valor: string | null }[]) ?? []).map((c) => [c.clave, c.valor ?? '']));
 }
+
+/**
+ * Meta mensual de puntos del pago por puntos, o `null` si está desactivado (alguna de las dos
+ * claves vacía) o no se pudo leer. Para los avisos de «Mi desempeño» y de la ficha: nunca tumba la
+ * pantalla, y con el pago apagado no se menciona nada porque no se paga.
+ */
+export async function metaPagoPorPuntos(): Promise<number | null> {
+  try {
+    const cfg = await leerConfigMap();
+    const num = (v: string | undefined) => (v !== undefined && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
+    const meta = num(cfg[CLAVE_PUNTOS_META]);
+    return meta !== null && num(cfg[CLAVE_SOLES_POR_PUNTO]) !== null ? meta : null;
+  } catch {
+    return null;
+  }
+}
+

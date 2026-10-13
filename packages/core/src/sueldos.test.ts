@@ -7,6 +7,13 @@ import {
   diaSemanaISO,
   sueldoSugerido,
   finDePeriodo,
+  soloHastaHoy,
+  cuotaDelTramo,
+  calendarioDePagos,
+  frecuenciaVigente,
+  cuotaDeLiquidacion,
+  proximoPagoPendiente,
+  liquidacionesCruzadas,
   PARAMETROS_SUELDO_DEFAULT,
   type EntradaLiquidacion,
   type RegistroVenta,
@@ -1065,5 +1072,301 @@ describe('aviso de horas estimadas por el sistema (RPC sueldo_entrada, migració
     const aviso = l.advertencias.find((a) => a.includes('hora puesta por el sistema'));
     expect(aviso).toMatch(/^1 día\(s\) tienen una hora puesta por el sistema.*2025-07-10/);
     expect(l.total).toBe(base.total);
+  });
+});
+
+describe('soloHastaHoy', () => {
+  const dias = ['2026-10-03', '2026-10-04', '2026-10-05'].map((fecha) => ({ fecha }));
+
+  it('incluye hoy y excluye mañana', () => {
+    expect(soloHastaHoy(dias, '2026-10-04').map((d) => d.fecha)).toEqual(['2026-10-03', '2026-10-04']);
+  });
+  it('si hoy es anterior a todo, no queda nada; si es posterior, queda todo', () => {
+    expect(soloHastaHoy(dias, '2026-10-02')).toEqual([]);
+    expect(soloHastaHoy(dias, '2026-10-05')).toHaveLength(3);
+  });
+  it('lista vacía y sin mutar la entrada', () => {
+    expect(soloHastaHoy([], '2026-10-04')).toEqual([]);
+    soloHastaHoy(dias, '2026-10-04');
+    expect(dias).toHaveLength(3);
+  });
+  it('rechaza fechas inválidas', () => {
+    expect(() => soloHastaHoy(dias, '04/10/2026')).toThrow();
+    expect(() => soloHastaHoy([{ fecha: '2026-10-31x' }], '2026-10-04')).toThrow();
+  });
+});
+
+// ── Frecuencia de pago flexible (spec 2026-10-06-frecuencia-pago-flexible-design.md §7) ──────
+
+/** Los tramos [desde, hasta] de un calendario, para comparar a simple vista. */
+const rangos = (c: { desde: string; hasta: string }[]) => c.map((t) => `${t.desde}..${t.hasta}`);
+
+describe('frecuencia flexible — caso 1: quincenal anclado al día de inicio', () => {
+  const q = { modalidad: 'quincenal' as const };
+  const ancla = '2026-08-10';
+
+  it('inicio 10-ago: 10–24 ago, 25-ago–9-sep, 10–24 sep, 25-sep–9-oct', () => {
+    expect(finDePeriodo('2026-08-10', q, undefined, ancla)).toBe('2026-08-24');
+    expect(finDePeriodo('2026-08-25', q, undefined, ancla)).toBe('2026-09-09');
+    expect(finDePeriodo('2026-09-10', q, undefined, ancla)).toBe('2026-09-24');
+    expect(finDePeriodo('2026-09-25', q, undefined, ancla)).toBe('2026-10-09');
+  });
+
+  it('con ancla en 31 los cortes siguen sin huecos ni solapes (mes corto)', () => {
+    const a = '2026-01-31';
+    expect(finDePeriodo('2026-01-31', q, undefined, a)).toBe('2026-02-14');
+    expect(finDePeriodo('2026-02-15', q, undefined, a)).toBe('2026-02-27');
+    expect(finDePeriodo('2026-02-28', q, undefined, a)).toBe('2026-03-14');
+    expect(finDePeriodo('2026-03-15', q, undefined, a)).toBe('2026-03-30');
+    expect(finDePeriodo('2026-03-31', q, undefined, a)).toBe('2026-04-14');
+  });
+
+  it('se recorta a `limite`', () => {
+    expect(finDePeriodo('2026-08-10', q, '2026-08-20', ancla)).toBe('2026-08-20');
+  });
+});
+
+describe('frecuencia flexible — caso 2: cada N días y semanal, incluido el cruce de año', () => {
+  it('cada 10 días cruza el año', () => {
+    expect(finDePeriodo('2026-12-25', { modalidad: 'dias', cadaDias: 10 })).toBe('2027-01-03');
+    expect(finDePeriodo('2027-01-04', { modalidad: 'dias', cadaDias: 10 })).toBe('2027-01-13');
+  });
+
+  it('semanal cruza el año y es lo mismo que cada 7 días', () => {
+    expect(finDePeriodo('2026-12-28', { modalidad: 'semanal' })).toBe('2027-01-03');
+    expect(finDePeriodo('2026-12-28', { modalidad: 'dias', cadaDias: 7 })).toBe('2027-01-03');
+  });
+
+  it('N va de 1 a 62 y es obligatorio y entero', () => {
+    expect(finDePeriodo('2026-08-01', { modalidad: 'dias', cadaDias: 1 })).toBe('2026-08-01');
+    expect(finDePeriodo('2026-08-01', { modalidad: 'dias', cadaDias: 62 })).toBe('2026-10-01');
+    for (const n of [0, 63, 2.5, -3, null, undefined]) {
+      expect(() => finDePeriodo('2026-08-01', { modalidad: 'dias', cadaDias: n as never })).toThrow(/cada/i);
+    }
+  });
+});
+
+describe('frecuencia flexible — caso 3: último pago corto y borde #33', () => {
+  const mensual = { modalidad: 'mensual' as const };
+
+  it('prorratea por días: 5 de 30 días de S/650 = S/108,33', () => {
+    expect(cuotaDelTramo(650, '2026-09-10', '2026-09-14', mensual)).toBe(108.33);
+  });
+
+  it('un tramo completo cobra la cuota entera', () => {
+    expect(cuotaDelTramo(650, '2026-09-10', '2026-10-09', mensual)).toBe(650);
+  });
+
+  it('contrato «del 10 al 9»: 6 pagos completos, ninguno de 1 día', () => {
+    const c = calendarioDePagos(
+      { fechaInicio: '2026-08-10', fechaFin: '2027-02-09', modalidad: 'mensual', sueldoPactado: 650 },
+      [],
+    );
+    expect(c).toHaveLength(6);
+    expect(c.every((t) => !t.corto && t.cuota === 650)).toBe(true);
+    expect(c[5].hasta).toBe('2027-02-09');
+  });
+
+  it('contrato «del 7 al 7» deja un último tramo de 1 día prorrateado, no el sueldo entero', () => {
+    const c = calendarioDePagos(
+      { fechaInicio: '2026-08-07', fechaFin: '2027-02-07', modalidad: 'mensual', sueldoPactado: 650 },
+      [],
+    );
+    const ultimo = c[c.length - 1];
+    expect(ultimo).toMatchObject({ desde: '2027-02-07', hasta: '2027-02-07', dias: 1, corto: true });
+    expect(ultimo.cuota).toBe(23.21); // 650 / 28 días de «7-feb a 6-mar»
+  });
+});
+
+describe('frecuencia flexible — caso 4: cambio de mensual a quincenal el 10-nov', () => {
+  const contrato = { fechaInicio: '2026-08-10', fechaFin: '2027-02-09', modalidad: 'mensual' as const, sueldoPactado: 650 };
+  const cambios = [{ desde: '2026-11-10', modalidad: 'quincenal' as const, sueldoPactado: 325 }];
+
+  it('lo ya pagado (ago–oct) queda idéntico al calendario sin cambio', () => {
+    const sin = calendarioDePagos(contrato, []);
+    const con = calendarioDePagos(contrato, cambios);
+    expect(con.slice(0, 3)).toEqual(sin.slice(0, 3));
+  });
+
+  it('desde el 10-nov los tramos son quincenales con la cuota confirmada', () => {
+    const con = calendarioDePagos(contrato, cambios);
+    expect(rangos(con.slice(3, 6))).toEqual([
+      '2026-11-10..2026-11-24',
+      '2026-11-25..2026-12-09',
+      '2026-12-10..2026-12-24',
+    ]);
+    expect(con.slice(3).every((t) => t.cuota === 325 && t.modalidad === 'quincenal')).toBe(true);
+    expect(con).toHaveLength(9); // 3 mensuales + 6 quincenales
+    expect(con[8].hasta).toBe('2027-02-09');
+  });
+
+  it('la frecuencia vigente de una fecha es la última fila con desde <= fecha', () => {
+    expect(frecuenciaVigente(contrato, cambios, '2026-11-09')).toMatchObject({ modalidad: 'mensual', sueldoPactado: 650 });
+    expect(frecuenciaVigente(contrato, cambios, '2026-11-10')).toMatchObject({
+      modalidad: 'quincenal',
+      sueldoPactado: 325,
+      ancla: '2026-11-10',
+    });
+  });
+});
+
+describe('frecuencia flexible — caso 5: borrador cruzado por el cambio', () => {
+  const liqs = [
+    { estado: 'cerrada', periodoDesde: '2026-10-10', periodoHasta: '2026-11-09' },
+    { estado: 'borrador', periodoDesde: '2026-11-10', periodoHasta: '2026-12-09' },
+    { estado: 'anulada', periodoDesde: '2026-11-10', periodoHasta: '2026-12-09' },
+  ];
+
+  it('avisa del borrador que cubre días desde el cambio; ignora cerradas y anuladas', () => {
+    expect(liquidacionesCruzadas(liqs, '2026-11-10')).toEqual([liqs[1]]);
+  });
+
+  it('un borrador que termina antes del cambio no se cruza', () => {
+    expect(liquidacionesCruzadas(liqs, '2026-12-10')).toEqual([]);
+  });
+});
+
+describe('frecuencia flexible — caso 6: contratos existentes, regresión', () => {
+  // Réplica literal de la fórmula anterior a esta spec, como referencia.
+  const viejo = (desde: string, mod: 'mensual' | 'semanal'): string => {
+    const [y, m, d] = desde.split('-').map(Number);
+    if (mod === 'semanal') return new Date(Date.UTC(y, m - 1, d + 6)).toISOString().slice(0, 10);
+    const ult = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    return new Date(Date.UTC(y, m, Math.min(d - 1, ult))).toISOString().slice(0, 10);
+  };
+
+  it('finDePeriodo(string) da lo mismo que antes para todos los días de dos años', () => {
+    for (let t = Date.UTC(2025, 0, 1); t < Date.UTC(2027, 0, 1); t += 86_400_000) {
+      const f = new Date(t).toISOString().slice(0, 10);
+      expect(finDePeriodo(f, 'mensual')).toBe(viejo(f, 'mensual'));
+      expect(finDePeriodo(f, 'semanal')).toBe(viejo(f, 'semanal'));
+    }
+  });
+
+  it('sin cambios, el calendario es el encadenado de siempre y la cuota es el sueldo pactado', () => {
+    for (const mod of ['mensual', 'semanal'] as const) {
+      const contrato = { fechaInicio: '2026-01-31', fechaFin: '2026-07-30', modalidad: mod, sueldoPactado: 900 };
+      const c = calendarioDePagos(contrato, []);
+      let cursor = contrato.fechaInicio;
+      for (const t of c) {
+        const hasta = finDePeriodo(cursor, mod, contrato.fechaFin);
+        expect(t.desde).toBe(cursor);
+        expect(t.hasta).toBe(hasta);
+        cursor = new Date(Date.parse(`${hasta}T00:00:00Z`) + 86_400_000).toISOString().slice(0, 10);
+      }
+      expect(c[c.length - 1].hasta).toBe(contrato.fechaFin);
+      expect(c.filter((t) => !t.corto).every((t) => t.cuota === 900)).toBe(true);
+    }
+  });
+
+  it('sin filas de cambios la frecuencia vigente es la del contrato', () => {
+    const contrato = { fechaInicio: '2026-08-10', fechaFin: '2027-02-09', modalidad: 'semanal' as const, sueldoPactado: 200 };
+    expect(frecuenciaVigente(contrato, [], '2026-09-01')).toMatchObject({ modalidad: 'semanal', sueldoPactado: 200, ancla: '2026-08-10' });
+  });
+});
+
+describe('cuotaDeLiquidacion — la cuota que recibe el motor para el tramo que se liquida', () => {
+  const contrato = { fechaInicio: '2026-08-10', fechaFin: '2027-02-14', modalidad: 'mensual' as const, sueldoPactado: 650 };
+  const cambios = [{ desde: '2026-11-10', modalidad: 'quincenal' as const, sueldoPactado: 325 }];
+
+  it('un tramo cualquiera cobra la cuota vigente entera (igual que hoy)', () => {
+    expect(cuotaDeLiquidacion(contrato, [], '2026-08-10', '2026-09-09')).toBe(650);
+    // El administrador puede elegir un rango que no coincide con la frecuencia: sin prorrateo.
+    expect(cuotaDeLiquidacion(contrato, [], '2026-08-10', '2026-08-20')).toBe(650);
+  });
+
+  it('sólo el ÚLTIMO tramo, si es más corto que la frecuencia, se prorratea', () => {
+    // 10-feb a 14-feb: 5 días de un período de 28 (10-feb a 9-mar).
+    expect(cuotaDeLiquidacion(contrato, [], '2027-02-10', '2027-02-14')).toBe(116.07);
+  });
+
+  it('usa la cuota del cambio desde su fecha, y la anterior antes', () => {
+    expect(cuotaDeLiquidacion(contrato, cambios, '2026-10-10', '2026-11-09')).toBe(650);
+    expect(cuotaDeLiquidacion(contrato, cambios, '2026-11-10', '2026-11-24')).toBe(325);
+  });
+
+  it('último tramo corto bajo una frecuencia cambiada: prorrateo sobre la quincena', () => {
+    // 10-feb a 14-feb es una quincena completa (10 al 24-feb) cortada en 5 de 15 días.
+    expect(cuotaDeLiquidacion(contrato, cambios, '2027-02-10', '2027-02-14')).toBe(108.33);
+  });
+});
+
+describe('proximoPagoPendiente — dónde puede empezar un cambio de frecuencia (spec §3.2)', () => {
+  const contrato = { fechaInicio: '2026-08-10', fechaFin: '2027-02-09', modalidad: 'mensual' as const, sueldoPactado: 650 };
+
+  it('es el primer pago que arranca después de lo último pagado', () => {
+    expect(proximoPagoPendiente(contrato, [], '2026-11-09')?.desde).toBe('2026-11-10');
+    expect(proximoPagoPendiente(contrato, [], '2026-10-09')?.desde).toBe('2026-10-10');
+  });
+
+  it('sin nada pagado es el primero del contrato', () => {
+    expect(proximoPagoPendiente(contrato, [], null)?.desde).toBe('2026-08-10');
+  });
+
+  it('con todo pagado no queda ninguno', () => {
+    expect(proximoPagoPendiente(contrato, [], '2027-02-09')).toBeNull();
+  });
+});
+
+describe('frecuencia flexible — hallazgos del verificador (core)', () => {
+  it('cambiar sólo la cuota de un contrato quincenal NO mueve los días de corte', () => {
+    const contrato = { fechaInicio: '2026-08-10', fechaFin: '2026-12-09', modalidad: 'quincenal' as const, sueldoPactado: 325 };
+    const sin = calendarioDePagos(contrato, []);
+    const con = calendarioDePagos(contrato, [{ desde: '2026-10-25', modalidad: 'quincenal', sueldoPactado: 350 }]);
+    expect(rangos(con)).toEqual(rangos(sin));
+    expect(con.find((t) => t.desde === '2026-10-25')?.cuota).toBe(350);
+    expect(frecuenciaVigente(contrato, [{ desde: '2026-10-25', modalidad: 'quincenal', sueldoPactado: 350 }], '2026-11-10').ancla).toBe('2026-08-10');
+  });
+
+  it('cuotaDeLiquidacion y calendarioDePagos coinciden cuando un cambio corta un tramo a la mitad', () => {
+    const contrato = { fechaInicio: '2026-08-07', fechaFin: '2027-02-06', modalidad: 'mensual' as const, sueldoPactado: 650 };
+    const cambios = [{ desde: '2026-09-20', modalidad: 'semanal' as const, sueldoPactado: 150 }];
+    const t = calendarioDePagos(contrato, cambios).find((x) => x.desde === '2026-09-07')!;
+    expect(t).toMatchObject({ hasta: '2026-09-19', corto: true, cuota: 281.67 });
+    expect(cuotaDeLiquidacion(contrato, cambios, t.desde, t.hasta)).toBe(t.cuota);
+  });
+});
+
+describe('frecuencia flexible — enmienda 9.1: el aniversario no es un pago corto (auditoría D-2)', () => {
+  it('mensual del 31-ene al 30-jul, S/1500: 6 pagos completos, S/9000', () => {
+    const contrato = { fechaInicio: '2026-01-31', fechaFin: '2026-07-30', modalidad: 'mensual' as const, sueldoPactado: 1500 };
+    const c = calendarioDePagos(contrato, []);
+    expect(c).toHaveLength(6);
+    expect(c[5]).toMatchObject({ desde: '2026-07-01', hasta: '2026-07-30', corto: false, cuota: 1500 });
+    expect(c.reduce((s, t) => s + t.cuota, 0)).toBe(9000);
+    expect(cuotaDeLiquidacion(contrato, [], '2026-07-01', '2026-07-30')).toBe(1500);
+  });
+
+  it('del 30-ene al 29-abr de S/600: el último tramo cobra 600, no 580', () => {
+    const contrato = { fechaInicio: '2026-01-30', fechaFin: '2026-04-29', modalidad: 'mensual' as const, sueldoPactado: 600 };
+    const c = calendarioDePagos(contrato, []);
+    expect(c[c.length - 1]).toMatchObject({ hasta: '2026-04-29', corto: false, cuota: 600 });
+  });
+
+  it('un último tramo que no llega al aniversario se sigue prorrateando', () => {
+    const contrato = { fechaInicio: '2026-01-31', fechaFin: '2026-07-15', modalidad: 'mensual' as const, sueldoPactado: 1500 };
+    const c = calendarioDePagos(contrato, []);
+    expect(c[c.length - 1]).toMatchObject({ desde: '2026-07-01', hasta: '2026-07-15', corto: true, cuota: 725.81 });
+  });
+});
+
+describe('frecuencia flexible — enmienda 9.2: un rango que cubre varios pagos (auditoría D-4)', () => {
+  const contrato = { fechaInicio: '2026-08-10', fechaFin: '2027-02-09', modalidad: 'mensual' as const, sueldoPactado: 1300 };
+  const cambios = [{ desde: '2026-09-10', modalidad: 'quincenal' as const, sueldoPactado: 700 }];
+
+  it('«Recalcular» del 10-sep al 09-oct tras pasar a quincenal cobra 700 + 700', () => {
+    expect(cuotaDeLiquidacion(contrato, cambios, '2026-09-10', '2026-10-09')).toBe(1400);
+  });
+
+  it('un rango alineado sin cambios cobra una cuota por pago', () => {
+    expect(cuotaDeLiquidacion(contrato, [], '2026-08-10', '2026-10-09')).toBe(2600);
+  });
+
+  it('un rango desalineado que cruza un cambio se rechaza nombrando los pagos', () => {
+    expect(() => cuotaDeLiquidacion(contrato, cambios, '2026-09-01', '2026-09-24')).toThrow(/2026-08-10.*2026-09-09/);
+  });
+
+  it('un rango desalineado sin cambio de por medio sigue como hoy (§7.6)', () => {
+    expect(cuotaDeLiquidacion(contrato, [], '2026-08-20', '2026-09-19')).toBe(1300);
   });
 });

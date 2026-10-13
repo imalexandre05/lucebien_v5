@@ -3,9 +3,11 @@ import { getSesion } from '../../../lib/auth';
 import { listarAcuerdos } from '../../../lib/sueldos-repo';
 import { listarAsistenciasPeriodo } from '../../../lib/asistencias-repo';
 import { leerConfigMap } from '../../../lib/config-repo';
+import { leerVistaRango } from '../../../lib/periodo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card } from '../../../components/ui/card';
 import { EmptyState } from '../../../components/ui/empty-state';
+import { SelectorRango } from '../../../components/ui/selector-rango';
 import { AsistenciaCliente } from './cliente';
 
 /**
@@ -21,11 +23,12 @@ import { AsistenciaCliente } from './cliente';
  */
 export const dynamic = 'force-dynamic';
 
-export default async function AsistenciaSueldosPage({
-  searchParams,
-}: {
-  searchParams: { acuerdo?: string };
-}) {
+export default async function AsistenciaSueldosPage(
+  props: {
+    searchParams: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
 
@@ -59,7 +62,12 @@ export default async function AsistenciaSueldosPage({
     );
   }
 
-  const elegido = acuerdos.find((a) => a.id === searchParams.acuerdo) ?? acuerdos[0];
+  const pedido = Array.isArray(searchParams.acuerdo) ? searchParams.acuerdo[0] : searchParams.acuerdo;
+  const elegido = acuerdos.find((a) => a.id === pedido) ?? acuerdos[0];
+  // Sin vista en la URL se ve el contrato entero, como siempre: es el grano en el que se declara.
+  // Con día, semana o mes, la tabla se acota a los días del contrato que caen en ese rango
+  // (spec asistencias/2026-10-03-filtros-rango-design.md).
+  const vista = leerVistaRango(searchParams, null);
   const [filas, config] = await Promise.all([
     listarAsistenciasPeriodo(elegido.empleadoId, elegido.fechaInicio, elegido.fechaFin),
     leerConfigMap(),
@@ -78,11 +86,17 @@ export default async function AsistenciaSueldosPage({
         title="Declarar asistencia"
         subtitle="Qué pasó cada día del periodo. Un día sin declarar no es una falta: es un dato que falta, y frena la liquidación."
       />
+      <SelectorRango porDefecto={null} sinRango="Contrato" className="mb-5" />
       <AsistenciaCliente
+        // key: los borradores de cada día salen de un useState sembrado con el calendario del
+        // contrato. Cambiar sólo `?acuerdo=` (el selector, o un enlace de una notificación) no
+        // remonta el cliente, y quedarían los días del contrato anterior. Con la key, se remonta.
+        key={elegido.id}
         acuerdos={acuerdos}
         acuerdo={elegido}
         filas={filas}
         margenMinutos={Number.isFinite(margen) ? margen : 120}
+        rango={vista?.rango ?? null}
       />
     </div>
   );

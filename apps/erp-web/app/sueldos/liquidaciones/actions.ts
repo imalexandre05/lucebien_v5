@@ -88,9 +88,9 @@ export async function accionCrearBorrador(
  * Cierra. A partir de acá el pago está congelado: se escriben las líneas, se sellan los
  * movimientos y las ventas consumidos, y el estado pasa a `'cerrada'`.
  *
- * Si devuelve `DESACTUALIZADA`, alguien cargó un adelanto, una venta, un almuerzo o una
- * capacitación entre el cálculo y el cierre. No es un fallo: hay que descartar el borrador y
- * volver a calcular, porque si no esa fila quedaría sellada sin haber entrado en el pago.
+ * Si devuelve `DESACTUALIZADA`, los datos cambiaron entre el cálculo y el cierre (un movimiento,
+ * una venta, una asistencia). No es un fallo: hay que recalcular el borrador —la pantalla ofrece
+ * «Recalcular borrador»—, porque si no ese dato quedaría fuera del pago o sellado sin haber entrado.
  */
 export async function accionCerrar(id: string): Promise<Resultado> {
   try {

@@ -2,9 +2,12 @@ import { redirect } from 'next/navigation';
 import { TURNO_LABEL, tramoEval, TRAMO_LABEL, bandaDesdeNota, BANDA_LABEL, type TramoEval, type BandaEval } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
 import { miDesempeno } from '../../lib/desempeno-repo';
-import { leerPesosEval, leerEscalaPuntos } from '../../lib/evaluaciones-repo';
+import { leerPesosEval, leerEscalaPuntos, componentesEvaluacion } from '../../lib/evaluaciones-repo';
+import { metaPagoPorPuntos } from '../../lib/config-repo';
 import { mesPeru } from '../../lib/fechas';
 import { tieneReauth } from '../../lib/reauth';
+import { tengoPin } from '../../lib/pipeline-repo';
+import { PinPersonal } from './pin';
 import { PageHeader } from '../../components/shell/page-header';
 import { ReauthGate } from '../../components/ui/reauth-gate';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -12,6 +15,7 @@ import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
 import { Badge, type Tone } from '../../components/ui/badge';
 import { StatBox } from '../../components/ui/stat-box';
 import { EmptyState } from '../../components/ui/empty-state';
+import { Aviso } from '../../components/ui/form';
 import { PerfilComponentes } from '../../components/ui/perfil-componentes';
 import { ClipboardList, Award, AlertTriangle } from 'lucide-react';
 
@@ -57,18 +61,32 @@ export default async function MiDesempenoPage() {
   const desde = `${mes}-01`;
   const hasta = `${mes}-${String(ultimoDia).padStart(2, '0')}`;
 
-  const [d, pesos, escala] = await Promise.all([
+  const [d, pesos, escala, tienePin] = await Promise.all([
     miDesempeno(sesion.usuario.id, desde, hasta),
     leerPesosEval(),
     leerEscalaPuntos(),
+    tengoPin().catch(() => false),
   ]);
-  const extrasTotal = d.extras.reduce((s, e) => s + e.montoTotal, 0);
+  // Los extras no se pagan en soles (decisión del dueño, 05-oct-2026): se muestran en puntos.
+  const extrasPuntos = Math.round(d.extras.reduce((s, e) => s + e.puntosTotal, 0) * 100) / 100;
+
+  // Pago por puntos (spec sueldos/2026-10-05-pago-por-puntos-design.md §5): el aviso sólo aparece
+  // si el dueño ya encendió las dos claves. La lectura nunca tumba la pantalla.
+  const metaPuntos = await metaPagoPorPuntos();
+  const pagoPorPuntos = metaPuntos !== null;
+  const puntosMes = pagoPorPuntos
+    ? ((await componentesEvaluacion(sesion.usuario.id, desde, hasta).catch(() => null))?.puntosTotal ?? null)
+    : null;
+  const fmtPuntos = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 });
   // Spec puntos-como-moneda §2 C-5: la última evaluación se lee con el sistema con el que se
   // guardó — banda si 'puntos' (desde el 25-ago-2026), tramo si 'ponderado' (todo lo de antes).
   // La nota (notaFinal) NUNCA se recalcula acá: sale tal cual quedó congelada al guardarse.
   const esPuntos = d.ultimaEvaluacion?.metodo === 'puntos';
-  const banda = d.ultimaEvaluacion && esPuntos ? bandaDesdeNota(d.ultimaEvaluacion.notaFinal, escala.bandaRiesgo, escala.bandaIdeal) : null;
-  const tramo = d.ultimaEvaluacion && !esPuntos ? tramoEval(d.ultimaEvaluacion.notaFinal) : null;
+  // `notaFinal` null = «en cálculo» (0119): evaluación `ponderado` cuyo Valores 360° aún no es público.
+  const notaFinal = d.ultimaEvaluacion?.notaFinal ?? null;
+  const banda = notaFinal != null && esPuntos ? bandaDesdeNota(notaFinal, escala.bandaRiesgo, escala.bandaIdeal) : null;
+  const tramo = notaFinal != null && !esPuntos ? tramoEval(notaFinal) : null;
+  const enCalculo = Boolean(d.ultimaEvaluacion) && notaFinal == null;
 
   return (
     <div>
@@ -77,22 +95,31 @@ export default async function MiDesempenoPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatBox index={0} label="Reportes del mes" valor={d.reportes.length} tone="navy" />
         <StatBox index={1} label="Puntos pipeline" valor={d.puntosPipeline} tone="gold" />
-        <StatBox index={2} label="Extras" valor={`S/ ${extrasTotal.toFixed(2)}`} tone="exito" />
+        <StatBox index={2} label="Puntos de extras" valor={extrasPuntos} tone="exito" />
         <StatBox index={3} label="Incidencias" valor={d.incidencias.length} tone="neutro" />
       </div>
 
-      {d.ultimaEvaluacion && (banda || tramo) && (
+      {pagoPorPuntos && metaPuntos !== null && puntosMes !== null && (
+        <Aviso tono="info" className="mt-4">
+          Este mes llevas <span className="tabular-nums font-semibold">{fmtPuntos(puntosMes)} puntos</span>. Desde{' '}
+          <span className="tabular-nums font-semibold">{fmtPuntos(metaPuntos)} puntos</span> cobras extra.
+        </Aviso>
+      )}
+
+      {d.ultimaEvaluacion && (banda || tramo || enCalculo) && (
         <Card className="mt-4">
           <CardHeader>
             <CardTitle>Última evaluación</CardTitle>
-            {banda ? (
+            {enCalculo ? (
+              <Badge tone="gray">Nota en cálculo</Badge>
+            ) : banda ? (
               <Badge tone={BANDA_TONE[banda]}>
-                {d.ultimaEvaluacion.notaFinal.toFixed(2)} · {BANDA_LABEL[banda]}
+                {notaFinal?.toFixed(2)} · {BANDA_LABEL[banda]}
               </Badge>
             ) : (
               tramo && (
                 <Badge tone={TRAMO_TONE[tramo]}>
-                  {d.ultimaEvaluacion.notaFinal.toFixed(2)} · {TRAMO_LABEL[tramo]}
+                  {notaFinal?.toFixed(2)} · {TRAMO_LABEL[tramo]}
                 </Badge>
               )
             )}
@@ -105,7 +132,7 @@ export default async function MiDesempenoPage() {
                 0027) no hay nada que mostrar acá, y se omite en vez de dibujar barras en cero. */}
             {d.ultimaEvaluacion.componentes && (
               <div className="border-t border-line/60 pt-3">
-                <PerfilComponentes componentes={d.ultimaEvaluacion.componentes} pesos={d.ultimaEvaluacion.pesosUsados ?? (pesos as unknown as Record<string, number>)} />
+                <PerfilComponentes valoresOculto={d.ultimaEvaluacion.valoresOculto} componentes={d.ultimaEvaluacion.componentes} pesos={d.ultimaEvaluacion.pesosUsados ?? (pesos as unknown as Record<string, number>)} />
               </div>
             )}
           </CardContent>
@@ -161,7 +188,7 @@ export default async function MiDesempenoPage() {
                 <TR>
                   <TH className="pl-5">Fecha</TH>
                   <TH>Descripción</TH>
-                  <TH className="pr-5 text-right">Monto</TH>
+                  <TH className="pr-5 text-right">Puntos</TH>
                 </TR>
               </THead>
               <TBody>
@@ -169,7 +196,7 @@ export default async function MiDesempenoPage() {
                   <TR key={e.id}>
                     <TD className="pl-5 tabular-nums text-dato text-muted">{e.fecha}</TD>
                     <TD>{e.nombre}</TD>
-                    <TD className="pr-5 text-right tabular-nums">S/ {e.montoTotal.toFixed(2)}</TD>
+                    <TD className="pr-5 text-right tabular-nums">{e.puntosTotal}</TD>
                   </TR>
                 ))}
               </TBody>
@@ -223,6 +250,8 @@ export default async function MiDesempenoPage() {
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" strokeWidth={2} /> Aún no tienes una evaluación mensual registrada.
         </p>
       )}
+
+      <PinPersonal tienePin={tienePin} />
     </div>
   );
 }

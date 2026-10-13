@@ -5,7 +5,7 @@ import { KeyRound, Wallet } from 'lucide-react';
 import { ROL_LABEL, ROLES_BASE, puede, type Rol, type MatrizPermisos } from '@scilb/core';
 import type { RolDerivado } from '../../lib/roles-repo';
 import type { Sede } from '../../lib/sedes-repo';
-import { accionEstablecerContrasena, accionTogglePosCobro } from './actions';
+import { accionContrasenaTemporal, accionTogglePosCobro } from './actions';
 import { Button } from '../../components/ui/button';
 import { Aviso, campoCls } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
@@ -318,53 +318,50 @@ export function OperaCajaToggle({
   );
 }
 
-// Cambiar la contraseña es una acción propia, separada del guardado de perfil (distinto endpoint,
-// distinto feedback — no tiene sentido bloquear una por la otra). Compartido (ver nota arriba).
+// Contraseña temporal (spec permisos/2026-10-06-login-usuario-contrasena §6). La genera el
+// servidor; se muestra UNA vez para entregarla en persona. Al entrar, la persona está obligada a
+// cambiarla. También desbloquea una cuenta bloqueada por intentos fallidos. Acción propia, separada
+// del guardado de perfil. Compartido (ver nota arriba).
 export function ContrasenaForm({ empleadoId }: { empleadoId: string }) {
-  const [password, setPassword] = useState('');
+  const [temporal, setTemporal] = useState('');
   const [passError, setPassError] = useState('');
-  const [passOk, setPassOk] = useState(false);
   const [passPending, startPassTransition] = useTransition();
 
-  function guardarContrasena() {
+  function generar() {
     setPassError('');
-    setPassOk(false);
+    setTemporal('');
     startPassTransition(async () => {
-      const r = await accionEstablecerContrasena(empleadoId, password);
+      const r = await accionContrasenaTemporal(empleadoId);
       if (!r.ok) {
-        setPassError(r.error ?? 'Error');
+        setPassError(r.error);
         return;
       }
-      setPassword('');
-      setPassOk(true);
+      setTemporal(r.temporal);
     });
   }
 
   return (
     <div className="border-t border-line/60 pt-3">
       <label className="mb-1 flex items-center gap-1.5 text-rotulo uppercase text-muted">
-        <KeyRound className="h-3.5 w-3.5" strokeWidth={2} /> Asignar / reiniciar contraseña
+        <KeyRound className="h-3.5 w-3.5" strokeWidth={2} /> Contraseña
       </label>
-      <div className="flex gap-2">
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Nueva contraseña"
-          className={cn(fieldCls, 'flex-1')}
-        />
-        <Button
-          type="button"
-          variant="outline"
-          onClick={guardarContrasena}
-          disabled={password.length < 4}
-          pending={passPending}
-        >
-          {passPending ? 'Guardando…' : 'Asignar'}
-        </Button>
-      </div>
-      {passOk && <p className="mt-1.5 text-apoyo font-medium text-exito-deep">Contraseña actualizada ✓</p>}
-      {passError && <p className="mt-1.5 rounded-r-chico bg-error-soft px-3 py-2 text-cuerpo text-error-deep">{passError}</p>}
+      <p className="mb-2 text-apoyo text-muted">
+        Si la persona olvidó su contraseña o quedó bloqueada, genera una temporal. La anterior deja de funcionar.
+      </p>
+      <Button type="button" variant="outline" onClick={generar} pending={passPending}>
+        {passPending ? 'Generando…' : 'Generar contraseña temporal'}
+      </Button>
+      {temporal && (
+        <Aviso tono="exito" className="mt-2" titulo="Contraseña temporal">
+          <p className="my-1 select-all text-sub font-semibold tabular-nums tracking-wide">{temporal}</p>
+          <p>Anótala y entrégala en persona; no se volverá a mostrar. Al entrar, el sistema le pedirá cambiarla.</p>
+        </Aviso>
+      )}
+      {passError && (
+        <Aviso tono="error" className="mt-2">
+          {passError}
+        </Aviso>
+      )}
     </div>
   );
 }

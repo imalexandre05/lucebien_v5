@@ -31,7 +31,8 @@ function Campo({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export default async function ReporteDetalle({ params }: { params: { id: string } }) {
+export default async function ReporteDetalle(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   // Gate server-side (Fase 1): mismo criterio que /reportes (lista) — antes solo se ocultaba del
   // sidebar, cualquiera con la URL directa (o el id) entraba igual al detalle de cualquier sede.
   const sesion = await getSesion();

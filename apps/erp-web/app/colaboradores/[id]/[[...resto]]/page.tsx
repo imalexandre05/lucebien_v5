@@ -1,3 +1,4 @@
+import { use } from 'react';
 import { redirect } from 'next/navigation';
 
 // Rutas viejas de una persona (fusión de menú, 23-ago-2026): /colaboradores/[id] y todas sus
@@ -16,13 +17,14 @@ function query(searchParams?: Record<string, string | string[] | undefined>): st
   return qs ? `?${qs}` : '';
 }
 
-export default function ColaboradorIdRedirect({
-  params,
-  searchParams,
-}: {
-  params: { id: string; resto?: string[] };
-  searchParams?: Record<string, string | string[] | undefined>;
-}) {
+export default function ColaboradorIdRedirect(
+  props: {
+    params: Promise<{ id: string; resto?: string[] }>;
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = props.searchParams ? use(props.searchParams) : undefined;
+  const params = use(props.params);
   const resto = params.resto?.length ? `/${params.resto.join('/')}` : '';
   redirect(`/personal/${params.id}${resto}${query(searchParams)}`);
 }

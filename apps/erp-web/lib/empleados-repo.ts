@@ -1,8 +1,8 @@
 import type { Rol } from '@scilb/core';
-import { generarIniciales, elegirCodigoLibre } from '@scilb/core';
+import { generarIniciales, elegirCodigoLibre, codigosDeEmails, generarContrasenaTemporal, validarContrasenaNueva } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import { getAdminClient } from './supabase/admin';
-import { EMAIL_DOMAIN } from './auth';
+import { EMAIL_DOMAIN, limpiarIntentos, reglasAccesoVigentes, revocarSesiones } from './auth';
 
 // Gestión de colaboradores (solo admin). La RLS ya lo garantiza:
 //  · emp_select     → app_es_admin() OR id = auth.uid()  (admin ve todos)
@@ -139,13 +139,22 @@ export async function actualizarEstadoEmpleado(id: string, activo: boolean): Pro
   }
 }
 
-// Asignar/reiniciar la contraseña de login (LOGIN_V2). Usa el cliente admin — cambiar la
-// contraseña de OTRO usuario en Supabase Auth requiere la Admin API (service_role), no está
-// expuesto por PostgREST/RLS normal. updateUserById hashea server-side; nunca pasa por una
-// tabla propia ni se loguea en texto plano.
-export async function establecerContrasenaEmpleado(id: string, password: string): Promise<void> {
-  const { error } = await getAdminClient().auth.admin.updateUserById(id, { password });
-  if (error) throw new Error(error.message);
+// Contraseña temporal (spec permisos/2026-10-06-login-usuario-contrasena §6). La genera el
+// servidor —el admin no elige «1234»—, se devuelve UNA vez para que la entregue en persona y no se
+// guarda ni se loguea. En una sola llamada a la Admin API (service_role: cambiar la contraseña de
+// OTRA cuenta no pasa por PostgREST/RLS) fija la contraseña y la marca de cambio obligatorio; después
+// cierra todas sus sesiones y borra el contador de intentos (también desbloquea la cuenta).
+export async function generarContrasenaTemporalEmpleado(id: string): Promise<string> {
+  const temporal = generarContrasenaTemporal((n) => crypto.getRandomValues(new Uint8Array(n)));
+  const { error } = await getAdminClient().auth.admin.updateUserById(id, {
+    password: temporal,
+    app_metadata: { debe_cambiar_contrasena: true },
+  });
+  if (error) throw new Error('No se pudo cambiar la contraseña. Inténtalo de nuevo en un momento.');
+  // Si la cuenta estaba comprometida, quien la tenía abierta queda afuera ahora, no cuando venza su token.
+  await revocarSesiones(id);
+  await limpiarIntentos(id);
+  return temporal;
 }
 
 // Editar TODO el empleado (Fase 1): nombre, rol (base o derivado), sede primaria, tiendas, fecha
@@ -256,17 +265,51 @@ export async function empleadoBorrarAltaPrevio(id: string): Promise<BorrarAltaPr
 // confía en que la pantalla haya llamado a empleadoBorrarAltaPrevio() antes. El registro en
 // audit_log lo escribe el trigger existente (trg_audit_empleados, 0058) al hacer el delete, no hay
 // nada que escribir a mano acá.
-export async function empleadoBorrarAlta(id: string): Promise<void> {
+//
+// Después de la RPC se borra también el usuario de Supabase Auth: si no, queda un usuario vivo sin
+// ficha (y su código de login seguiría ocupado). Auth y Postgres no comparten transacción, así que
+// si ese borrado falla el alta YA está deshecha y no se puede revertir: no se lanza error, se
+// devuelve `avisoAuth` para que la pantalla se lo diga al administrador.
+export async function empleadoBorrarAlta(id: string): Promise<{ avisoAuth?: string }> {
   const sb = getServerClient();
   const { error } = await sb.rpc('empleado_borrar_alta', { p_empleado: id });
   if (error) throw new Error(error.message);
+
+  const { error: eAuth } = await getAdminClient().auth.admin.deleteUser(id);
+  // 404 / "not found": el usuario ya no existía, que es el estado buscado.
+  if (eAuth && eAuth.status !== 404 && !/not.?found/i.test(eAuth.message)) {
+    return {
+      avisoAuth: `El alta se deshizo, pero no se pudo borrar el usuario de acceso (${eAuth.message}). Bórralo a mano en Supabase Auth: mientras exista, su código de login sigue ocupado.`,
+    };
+  }
+  return {};
+}
+
+// Códigos de login que ya usa algún usuario de Auth (email `{cod}@EMAIL_DOMAIN`), exista o no su
+// ficha en `empleados`. Recorre todas las páginas de listUsers.
+async function codigosEnAuth(): Promise<string[]> {
+  const admin = getAdminClient();
+  const emails: string[] = [];
+  const porPagina = 1000;
+  for (let pagina = 1; ; pagina++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page: pagina, perPage: porPagina });
+    if (error) throw new Error(error.message);
+    const usuarios = data?.users ?? [];
+    for (const u of usuarios) emails.push(u.email ?? '');
+    if (usuarios.length < porPagina) break;
+  }
+  return codigosDeEmails(emails, EMAIL_DOMAIN);
 }
 
 export async function crearEmpleado(p: NuevoEmpleadoInput): Promise<{ id: string; cod: string }> {
   const admin = getAdminClient();
   const nombre = p.nombre.trim();
   if (!nombre) throw new Error('El nombre es obligatorio');
-  if (p.password.length < 4) throw new Error('La contraseña debe tener al menos 4 caracteres');
+  // La contraseña inicial es temporal (nace con la marca de cambio obligatorio), pero igual cumple
+  // las reglas: se entrega en papel y es la puerta de la cuenta hasta el primer ingreso.
+  const { contrasenaMin } = await reglasAccesoVigentes();
+  const problemas = validarContrasenaNueva(p.password, { minimo: contrasenaMin, nombre });
+  if (problemas.length) throw new Error(`Contraseña inicial: ${problemas.join(' ')}`);
 
   // Unicidad case-insensitive (el login por usuario depende de esto — ver nota arriba).
   const { data: dup, error: eDup } = await admin
@@ -279,12 +322,19 @@ export async function crearEmpleado(p: NuevoEmpleadoInput): Promise<{ id: string
 
   const { data: existentes, error: eCods } = await admin.from('empleados').select('cod');
   if (eCods) throw new Error(eCods.message);
-  const cod = elegirCodigoLibre((existentes ?? []).map((e) => String((e as { cod: string }).cod)));
+  const cod = elegirCodigoLibre([
+    ...(existentes ?? []).map((e) => String((e as { cod: string }).cod)),
+    ...(await codigosEnAuth()),
+  ]);
+  // El código recién elegido tampoco puede ir dentro de la contraseña (§4). Rarísimo, pero el admin
+  // no lo ve y no podría saber por qué la persona queda con una contraseña débil.
+  if (p.password.includes(cod)) throw new Error('Contraseña inicial: elige otra; esa coincide con el código interno de la persona.');
 
   const { data: authData, error: eAuth } = await admin.auth.admin.createUser({
     email: `${cod}@${EMAIL_DOMAIN}`,
     password: p.password,
     email_confirm: true,
+    app_metadata: { debe_cambiar_contrasena: true },
   });
   if (eAuth || !authData?.user) throw new Error(eAuth?.message ?? 'No se pudo crear el usuario de acceso');
 

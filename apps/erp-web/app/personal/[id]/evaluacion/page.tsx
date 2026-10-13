@@ -16,7 +16,8 @@ import { EvaluacionesCliente } from '../../../evaluaciones/cliente';
 // probada ahí, y tenerla dos veces es cómo se llega a dos notas distintas para la misma persona.
 export const dynamic = 'force-dynamic';
 
-export default async function EvaluacionColaboradorPage({ params }: { params: { id: string } }) {
+export default async function EvaluacionColaboradorPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
   if (!acceso.secciones.includes('evaluacion')) redirect(`/personal/${params.id}`);

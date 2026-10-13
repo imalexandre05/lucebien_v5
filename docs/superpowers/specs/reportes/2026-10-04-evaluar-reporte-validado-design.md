@@ -1,0 +1,64 @@
+# `reportes_evaluar` valida lo que recibe — spec corta
+
+**Ticket:** imalexandre05/lucebien-tablero#38, sólo el ítem `reportes_evaluar`.
+**Zona:** cadena del sueldo (la nota del reporte alimenta puntos → evaluación → pago). Spec completa.
+**Fecha:** 2026-10-04.
+
+## Estado verificado (regla 7)
+
+Última definición: `packages/db/migrations/0081_reportes_escritura_directa.sql:158-198`
+(ninguna migración posterior la redefine). Hoy la función:
+
+- escribe `(c->>'cal')::numeric` sin mirar el rango: se puede guardar 5, -3 o 1000;
+- no mira `evaluado` ni `no_evaluable`: una segunda llamada reescribe la nota ya puesta;
+- sólo actualiza las actividades que vienen en la llamada. `reporte_actividades.calificacion` tiene
+  `default 1` (0014/0020) y `reportes_crear` no la fija, así que **toda actividad omitida queda
+  aprobada con 1**, sin que nadie la haya mirado, y entra tal cual a `puntaje_eval` y a los puntos
+  de 0095 (`sum(calificacion)`);
+- la UI (`apps/erp-web/app/reportes/[id]/acciones.tsx`) inicia cada actividad y cada zona en
+  `?? 1` (aprobada) y envía `cal[a.cod] ?? 1`: lo que el evaluador no tocó se guarda como aprobado.
+
+## Reglas nuevas
+
+1. **Rango.** Cada `cal` debe ser un número en [0, 1]. Fuera de rango, ausente o no numérico →
+   `raise exception 'DATO: calificación fuera de rango'`. Nada se escribe (la excepción revierte).
+2. **Una sola evaluación.** Si `evaluado` o `no_evaluable` → `raise exception 'ESTADO: el reporte
+   ya fue evaluado'`. Reabrir una evaluación es otra funcionalidad, fuera de alcance. El chequeo se
+   hace con `select ... for update` para que dos evaluadores simultáneos no se pisen.
+3. **Las omitidas no cuentan como aprobadas: se exige que vengan todas.** Opción elegida frente a
+   «guardarlas como no calificadas» (`NULL`): esa dejaría la omitida en 0 dentro de `puntaje_eval`
+   (el divisor suma todos los pesos) pero fuera de los puntos de 0095 (filtra `is not null`): las dos
+   cadenas quedarían inconsistentes. Exigir todas no cambia la fórmula de 0095 ni el
+   `puntaje_eval` de ningún reporte bien evaluado, porque la UI ya envía todas las actividades y
+   zonas. Concretamente: el conjunto de `cod` de la llamada debe ser exactamente el de
+   `reporte_actividades` del reporte; faltante, sobrante o repetido →
+   `raise exception 'DATO: las calificaciones no coinciden con las actividades del reporte'`.
+   Un reporte sin actividades se acepta con arreglo vacío (comportamiento actual).
+4. **UI.** El valor inicial deja de ser `?? 1`: sin marcar, la actividad/zona queda «sin calificar»,
+   el botón Enviar permanece deshabilitado con un contador de pendientes, y el puntaje en pantalla
+   cuenta las pendientes como 0 (su peso sí entra al divisor), así que sólo sube con lo que se aprueba.
+   Como `calificacion` vale 1 por defecto en la base, la UI ignora el valor que trae un reporte sin evaluar. Los botones «Todo» siguen marcando masivamente, pero es una acción
+   explícita. Cada estado (aprobar/observar/rechazar) sigue siendo 1 / 0.5 / 0.
+
+   Nunca debe quedar una pendiente sin forma de marcarla: el mapa sólo dibuja zonas del turno que
+   hoy existen en el layout, pero el reporte puede traer zonas `OL_` cuyo código ya no existe, que
+   pasaron a otro turno o a tipo `area`. Por eso la pantalla lista aparte, con su control de tres
+   estados, **toda zona de limpieza que siga sin marcar**; al marcarla sale de esa lista. Si el
+   reporte trae dos filas con el mismo código (`layout_zonas` no tiene único por sede+código), la UI
+   las trata como una sola y la RPC actualiza ambas.
+
+## Sin cambios
+
+Pesos, fórmula de `puntaje_eval`, fórmula de puntos de 0095, guard de sede, regla del evaluador
+externo, grants. Fuera de alcance: `reportes_crear`, extras, atomicidad del envío.
+
+## Pruebas (antes del código)
+
+Se ajusta la prueba 0081 (su caso J evaluaba un reporte que el montaje deja `evaluado=true`) y el e2e de
+evaluación (debe marcar todo y exigir el botón habilitado, no saltarse el tramo). Prueba SQL en `packages/db/pruebas/` corrida en Postgres local: rango (>1, <0, null, texto),
+doble evaluación, no_evaluable, omitida, sobrante, repetida, y caso feliz con el mismo puntaje que
+da la 0081 para el mismo juego de calificaciones.
+
+## Parámetros inventados
+
+Ninguno: las tres reglas son de integridad de datos, no de negocio.

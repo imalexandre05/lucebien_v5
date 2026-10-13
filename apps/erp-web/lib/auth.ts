@@ -1,6 +1,15 @@
 import { cache } from 'react';
 import { cookies } from 'next/headers';
-import type { Sesion } from '@scilb/core';
+import {
+  REGLAS_ACCESO_DEFAULT,
+  estadoBloqueo,
+  leerReglasAcceso,
+  registrarFallo,
+  validarContrasenaNueva,
+  type EstadoIntentos,
+  type ReglasAcceso,
+  type Sesion,
+} from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import { getAdminClient } from './supabase/admin';
 
@@ -13,9 +22,9 @@ export const EMAIL_DOMAIN = 'lucebien.local';
 
 // "El dispositivo manda" (Fase 2): fija la sede activa en una cookie httpOnly de sesión. La usan
 // el login (ambos modos) y el switcher del topbar — un único punto que decide cómo se persiste.
-export function fijarSedeActiva(sede: string): void {
+export async function fijarSedeActiva(sede: string): Promise<void> {
   if (!sede) return;
-  cookies().set(SEDE_COOKIE, sede, { httpOnly: true, sameSite: 'lax', path: '/' });
+  (await cookies()).set(SEDE_COOKIE, sede, { httpOnly: true, sameSite: 'lax', path: '/' });
 }
 
 /**
@@ -51,53 +60,211 @@ async function sedeValidaParaEntrar(userId: string, sede: string): Promise<strin
   return propias.has(sede) ? sede : (sedePrimaria ?? '');
 }
 
-// Login híbrido: el empleado entra con su código de 4 dígitos + sede.
-// El código ES la credencial (Supabase Auth tiene el bcrypt del código importado del
-// sistema viejo). La sede elegida se guarda como "sede activa" (filtros / sucursal por
-// defecto), no como identidad — un empleado puede tener varias sedes.
-export async function login(cod: string, sede: string): Promise<{ ok: boolean; error?: string }> {
-  const sb = getServerClient();
-  const { data, error } = await sb.auth.signInWithPassword({
-    email: `${cod}@${EMAIL_DOMAIN}`,
-    password: cod,
-  });
-  if (error) return { ok: false, error: error.message };
-  if (data.user) fijarSedeActiva(await sedeValidaParaEntrar(data.user.id, sede));
-  return { ok: true };
+// ── Login usuario + contraseña ──────────────────────────────────────────────────────────────
+// Spec: docs/superpowers/specs/permisos/2026-10-06-login-usuario-contrasena-design.md
+//
+// El usuario es empleados.nombre; la contraseña es la propia de Supabase Auth. Se conserva el email
+// interno {cod}@lucebien.local, pero el código de 4 dígitos YA NO es contraseña: la función login()
+// que lo usaba como tal (flag LOGIN_V2 apagado) se eliminó, junto con el flag, el 6-oct-2026 (H0 de la auditoría).
+//
+// El cliente admin (bypassa RLS) se usa aquí por dos razones, ambas dentro de un archivo que ya
+// estaba en la lista permitida del no-negociable 3: (1) la búsqueda del empleado y su contador de
+// intentos corren ANTES de que exista sesión; (2) `login_intentos` no tiene policies a propósito —
+// si alguien pudiera leer o borrar su contador por la API, el límite no existiría.
+
+export type ResultadoLogin =
+  | { ok: true }
+  | { ok: false; motivo: 'credenciales' }
+  | { ok: false; motivo: 'bloqueado'; minutos: number };
+
+type FilaIntentos = { fallidos: number; bloqueado_hasta: string | null };
+
+/** Reglas de acceso vigentes (config → core). Un fallo de lectura cae a los defaults del core. */
+export async function reglasAccesoVigentes(): Promise<ReglasAcceso> {
+  const { data, error } = await getAdminClient()
+    .from('config')
+    .select('clave, valor')
+    .in('clave', ['acceso_contrasena_min', 'acceso_intentos_max', 'acceso_bloqueo_min']);
+  if (error) {
+    console.error('[auth] no se pudieron leer las reglas de acceso; se usan los defaults', error.message);
+    return REGLAS_ACCESO_DEFAULT;
+  }
+  const filas = (data ?? []) as { clave: string; valor: string | null }[];
+  return leerReglasAcceso(Object.fromEntries(filas.map((f) => [f.clave, f.valor])));
 }
 
-// LOGIN_V2: usuario (empleados.nombre) + contraseña real. Se conserva el mismo email interno
-// {cod}@lucebien.local — cod nunca se pide ni se muestra, queda como PIN de atribución interno
-// (ya usado desde Fase 2). La búsqueda del empleado usa el cliente admin (bypassa RLS) porque
-// corre ANTES de que exista sesión — mismo patrón que listarSedesPublico() en sedes-repo.ts.
-// Mensaje de error genérico en ambos casos (usuario inexistente o contraseña incorrecta) para no
-// filtrar qué usuarios existen.
-// `sede` (Fase 2, "el dispositivo manda"): opcional — el login la pre-marca con la sede del
-// equipo y la manda tal cual la eligió el usuario. Si no llega (o llega vacía), getSesion() sigue
-// cayendo a empleados.sede_cod como antes; no es un campo de seguridad, solo la sede activa.
-export async function loginConUsuario(
-  usuario: string,
-  password: string,
-  sede?: string,
-): Promise<{ ok: boolean; error?: string }> {
-  const admin = getAdminClient();
-  const { data: emp } = await admin.from('empleados').select('cod').ilike('nombre', usuario.trim()).maybeSingle();
-  if (!emp) return { ok: false, error: 'Usuario o contraseña incorrectos' };
+// Fail-open a propósito: si la tabla todavía no existe (ERP desplegado antes que la migración) o
+// la lectura falla, el login sigue funcionando como antes — un contador roto nunca deja a todos
+// afuera. Se loguea para que se note.
+async function leerIntentos(empleadoId: string): Promise<EstadoIntentos> {
+  const { data, error } = await getAdminClient()
+    .from('login_intentos')
+    .select('fallidos, bloqueado_hasta')
+    .eq('empleado_id', empleadoId)
+    .maybeSingle();
+  if (error) {
+    console.error('[auth] login_intentos ilegible; el límite de intentos no se aplica', error.message);
+    return { fallidos: 0, bloqueadoHasta: null };
+  }
+  const f = data as FilaIntentos | null;
+  return { fallidos: f?.fallidos ?? 0, bloqueadoHasta: f?.bloqueado_hasta ?? null };
+}
 
-  const sb = getServerClient();
-  const { data, error } = await sb.auth.signInWithPassword({
-    email: `${(emp as { cod: string }).cod}@${EMAIL_DOMAIN}`,
+/**
+ * Registra un fallo sin carreras: la escritura está condicionada al valor que se leyó y se reintenta
+ * si otro pedido ganó. Con un upsert del valor absoluto, 50 intentos en paralelo leían todos k y
+ * escribían todos k+1 (verificador, 6-oct). Devuelve el estado que quedó guardado.
+ */
+async function registrarFalloAtomico(empleadoId: string, ahora: Date, inicial: EstadoIntentos): Promise<EstadoIntentos> {
+  const admin = getAdminClient();
+  const reglas = await reglasAccesoVigentes();
+  let leido = inicial;
+  for (let intento = 0; intento < 5; intento++) {
+    const nuevo = registrarFallo(leido, ahora, reglas);
+    const fila = { fallidos: nuevo.fallidos, bloqueado_hasta: nuevo.bloqueadoHasta, actualizado: ahora.toISOString() };
+
+    // Sin fila previa: insert. Si otro pedido la creó en el medio, choca con la PK y se relee.
+    const sinFila = leido.fallidos === 0 && leido.bloqueadoHasta === null;
+    if (sinFila) {
+      const { error } = await admin.from('login_intentos').insert({ empleado_id: empleadoId, ...fila });
+      if (!error) return nuevo;
+    }
+
+    let q = admin.from('login_intentos').update(fila).eq('empleado_id', empleadoId).eq('fallidos', leido.fallidos);
+    q = leido.bloqueadoHasta === null ? q.is('bloqueado_hasta', null) : q.eq('bloqueado_hasta', leido.bloqueadoHasta);
+    const { data, error } = await q.select('empleado_id');
+    if (error) {
+      console.error('[auth] no se pudo registrar el intento fallido', error.message);
+      return nuevo;
+    }
+    if ((data ?? []).length > 0) return nuevo;
+    leido = await leerIntentos(empleadoId); // otro pedido ganó: releer y volver a sumar
+  }
+  console.error('[auth] el contador de intentos no se pudo escribir tras 5 reintentos');
+  return registrarFallo(leido, ahora, reglas);
+}
+
+/**
+ * Cierra TODAS las sesiones de una cuenta (función definer de 0123, sólo service_role). No se da por
+ * hecho que GoTrue lo haga al cambiar la contraseña por la Admin API (no está verificado). Si la
+ * función no existe todavía, se loguea y se sigue: el cambio de contraseña no se frena por esto.
+ */
+export async function revocarSesiones(empleadoId: string): Promise<void> {
+  const { error } = await getAdminClient().rpc('auth_revocar_sesiones', { p_usuario: empleadoId });
+  if (error) console.error('[auth] no se pudieron cerrar las sesiones de la cuenta', error.message);
+}
+
+/** Borra el contador de una persona (login correcto o contraseña temporal del admin). */
+export async function limpiarIntentos(empleadoId: string): Promise<void> {
+  const { error } = await getAdminClient().from('login_intentos').delete().eq('empleado_id', empleadoId);
+  if (error) console.error('[auth] no se pudo limpiar el contador de intentos', error.message);
+}
+
+/**
+ * Verifica una contraseña aplicando el límite de intentos. La usan el login, el cambio de contraseña
+ * y la reautenticación (lib/reauth.ts): las tres puertas comparten el mismo contador. Mientras la
+ * cuenta está bloqueada NO se consulta la contraseña (ni la correcta entra). Si acierta, deja abierta la sesión de Supabase en
+ * las cookies de esta respuesta.
+ */
+export async function verificarContrasenaConLimite(
+  empleado: { id: string; cod: string },
+  password: string,
+): Promise<ResultadoLogin> {
+  const ahora = new Date();
+  const estado = await leerIntentos(empleado.id);
+  const bloqueo = estadoBloqueo(estado, ahora);
+  if (bloqueo.bloqueado) return { ok: false, motivo: 'bloqueado', minutos: bloqueo.minutosRestantes };
+
+  const { error } = await getServerClient().auth.signInWithPassword({
+    email: `${empleado.cod}@${EMAIL_DOMAIN}`,
     password,
   });
-  if (error) return { ok: false, error: 'Usuario o contraseña incorrectos' };
-  if (sede && data.user) fijarSedeActiva(await sedeValidaParaEntrar(data.user.id, sede));
+  if (!error) {
+    if (estado.fallidos > 0 || estado.bloqueadoHasta) await limpiarIntentos(empleado.id);
+    return { ok: true };
+  }
+
+  const nuevo = await registrarFalloAtomico(empleado.id, ahora, estado);
+  const ahoraBloqueado = estadoBloqueo(nuevo, ahora);
+  if (ahoraBloqueado.bloqueado) return { ok: false, motivo: 'bloqueado', minutos: ahoraBloqueado.minutosRestantes };
+  return { ok: false, motivo: 'credenciales' };
+}
+
+// `sede` (Fase 2, "el dispositivo manda"): opcional — el login la pre-marca con la sede del
+// equipo. No es un campo de seguridad, sólo la sede activa. Un usuario inexistente responde igual
+// que una contraseña incorrecta y no cuenta intentos (no hay cuenta que proteger).
+export async function loginConUsuario(usuario: string, password: string, sede?: string): Promise<ResultadoLogin> {
+  const { data: emp } = await getAdminClient()
+    .from('empleados')
+    .select('id, cod')
+    .ilike('nombre', usuario.trim())
+    .maybeSingle();
+  if (!emp) return { ok: false, motivo: 'credenciales' };
+
+  const res = await verificarContrasenaConLimite(emp as { id: string; cod: string }, password);
+  if (res.ok && sede) await fijarSedeActiva(await sedeValidaParaEntrar((emp as { id: string }).id, sede));
+  return res;
+}
+
+/**
+ * Cambio de contraseña de la persona en sesión (obligatorio en el primer ingreso, o cuando quiera).
+ * El id sale de la sesión, nunca del formulario. Verificar la actual cuenta como intento de login.
+ * La nueva contraseña y la baja de la marca `debe_cambiar_contrasena` van en UNA llamada a la Admin
+ * API: no puede quedar cambiada la contraseña con la marca puesta, ni al revés.
+ */
+export async function cambiarMiContrasena(
+  actual: string,
+  nueva: string,
+  repetir: string,
+): Promise<{ ok: true } | { ok: false; errores: string[] }> {
+  const {
+    data: { user },
+  } = await getServerClient().auth.getUser();
+  if (!user) return { ok: false, errores: ['Tu sesión terminó. Vuelve a entrar con tu usuario y contraseña.'] };
+
+  const { data: emp } = await getAdminClient().from('empleados').select('id, cod, nombre').eq('id', user.id).maybeSingle();
+  if (!emp) return { ok: false, errores: ['No encontramos tu ficha de personal. Avisa al administrador.'] };
+  const persona = emp as { id: string; cod: string; nombre: string };
+
+  if (nueva !== repetir) return { ok: false, errores: ['Las dos contraseñas nuevas no coinciden. Escríbelas otra vez.'] };
+  const reglas = await reglasAccesoVigentes();
+  const errores = validarContrasenaNueva(nueva, {
+    minimo: reglas.contrasenaMin,
+    cod: persona.cod,
+    nombre: persona.nombre,
+    actual,
+  });
+  if (errores.length) return { ok: false, errores };
+
+  const verificada = await verificarContrasenaConLimite(persona, actual);
+  if (!verificada.ok) {
+    return {
+      ok: false,
+      errores: [
+        verificada.motivo === 'bloqueado'
+          ? `Demasiados intentos fallidos. Espera ${verificada.minutos} min o pide al administrador una contraseña temporal.`
+          : 'La contraseña actual no es correcta. Escribe la que usaste para entrar.',
+      ],
+    };
+  }
+
+  const { error } = await getAdminClient().auth.admin.updateUserById(persona.id, {
+    password: nueva,
+    app_metadata: { debe_cambiar_contrasena: false },
+  });
+  if (error) return { ok: false, errores: ['No se pudo guardar la contraseña. Inténtalo de nuevo en un momento.'] };
+
+  // Se cierran TODAS las sesiones de la cuenta (otro navegador que la tuviera abierta queda afuera)
+  // y se abre una nueva para éste, así la persona sigue adentro sin volver a escribirla.
+  await revocarSesiones(persona.id);
+  await getServerClient().auth.signInWithPassword({ email: `${persona.cod}@${EMAIL_DOMAIN}`, password: nueva });
   return { ok: true };
 }
 
 export async function logout(): Promise<void> {
   const sb = getServerClient();
   await sb.auth.signOut();
-  cookies().delete(SEDE_COOKIE);
+  (await cookies()).delete(SEDE_COOKIE);
 }
 
 // Sesión actual: lee el usuario de Supabase Auth + su fila de empleados (con la RLS del
@@ -138,7 +305,7 @@ export const getSesion = cache(async (): Promise<Sesion | null> => {
   // arriba), no se echa a nadie por una columna ausente.
   if (emp.activo === false) return null;
 
-  const sedeActiva = cookies().get(SEDE_COOKIE)?.value || (emp.sede_cod as string) || '';
+  const sedeActiva = (await cookies()).get(SEDE_COOKIE)?.value || (emp.sede_cod as string) || '';
   const lista = (tiendas ?? []).map((t) => t.sede_cod as string);
   return {
     nombre: emp.nombre as string,

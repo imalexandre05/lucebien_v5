@@ -25,6 +25,7 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { campoCls } from '../../../components/ui/form';
 import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
 import { cn } from '../../../lib/cn';
+import { diaPeruDe } from '../../../lib/fechas';
 
 type Emp = { id: string; nombre: string };
 
@@ -271,7 +272,7 @@ function ColaSinAsignar({
                     )}
                   </TD>
                   <TD className="text-right">{s.marcas}</TD>
-                  <TD className="text-apoyo text-muted">{s.primeraMarca.slice(0, 10)}</TD>
+                  <TD className="text-apoyo text-muted">{diaPeruDe(s.primeraMarca)}</TD>
                   <TD>
                     <select
                       value={sel[clave] ?? ''}
@@ -288,7 +289,7 @@ function ColaSinAsignar({
                     </select>
                     <input
                       type="date"
-                      value={desde[clave] ?? s.primeraMarca.slice(0, 10)}
+                      value={desde[clave] ?? diaPeruDe(s.primeraMarca)}
                       onChange={(e) => setDesde((p) => ({ ...p, [clave]: e.target.value }))}
                       className={cn(fieldCls, 'mt-1 w-44')}
                       title="Desde qué fecha vale esta asignación"
@@ -304,7 +305,7 @@ function ColaSinAsignar({
                             employeeNo: s.employeeNo,
                             empleadoId: sel[clave] === '__ignorar__' ? '' : (sel[clave] ?? ''),
                             ignorado: sel[clave] === '__ignorar__',
-                            vigenteDesde: desde[clave] ?? s.primeraMarca.slice(0, 10),
+                            vigenteDesde: desde[clave] ?? diaPeruDe(s.primeraMarca),
                             vigenteHasta: '',
                             nota: '',
                           }),

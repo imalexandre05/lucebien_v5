@@ -1,5 +1,6 @@
 import type { PrendaPasada } from '@scilb/core';
 import { getServerClient } from './supabase/server';
+import { diaPeruDe } from './fechas';
 
 type Row = {
   id: string;
@@ -28,6 +29,11 @@ type Row = {
   fecha_actualizado: string | null;
 };
 
+// Sólo se manda `p_operador` cuando hay token. PostgREST resuelve la función por los NOMBRES de los
+// argumentos: mandar la clave siempre (aunque valga null) rompe todo el pipeline (PGRST202) si la
+// app se despliega antes de aplicar la migración 0112. Sin la clave, la llamada es la de siempre.
+const conOperador = (operador: string | null) => (operador ? { p_operador: operador } : {});
+
 const fromRow = (r: Row): PrendaPasada => ({
   id: r.id,
   activoId: r.activo_id,
@@ -51,7 +57,7 @@ const fromRow = (r: Row): PrendaPasada => ({
   listaLavanderiaId: r.lista_lavanderia_id,
   dividida: Boolean(r.dividida),
   divididaEn: r.dividida_en,
-  fechaIngreso: (r.fecha_ingreso ?? '').slice(0, 10),
+  fechaIngreso: r.fecha_ingreso ? diaPeruDe(r.fecha_ingreso) : '',
   fechaActualizado: r.fecha_actualizado,
 });
 
@@ -65,24 +71,6 @@ export async function listarPasadas(): Promise<PrendaPasada[]> {
   return (data as Row[]).map(fromRow);
 }
 
-// Llamado al crear un pedido de servicio: la prenda entra al pipeline interno (E5).
-export async function crearPasadaDesdePedido(p: {
-  codigo: string;
-  tipo: string;
-  sedeOrigenCod: string;
-  pedidoId: string;
-}): Promise<void> {
-  const sb = getServerClient();
-  const { error } = await sb.from('prenda_pasada').insert({
-    codigo: p.codigo,
-    tipo: p.tipo,
-    sede_origen_cod: p.sedeOrigenCod,
-    pedido_id: p.pedidoId,
-    etapa: 'recepcion',
-  });
-  if (error) throw new Error(error.message);
-}
-
 // Alta manual desde la pestaña Registrar: prendas que llegan al almacén sin pedido asociado.
 // Trazabilidad (Fase 8): el vínculo prenda_pasada.activo_id → inventario_activo.id ya existía
 // en el esquema (E5, migración 0001) pero nunca se usaba. Al registrar una prenda: si su código
@@ -90,8 +78,8 @@ export async function crearPasadaDesdePedido(p: {
 // alquiler), se reusa ese activo y se linkea la nueva pasada; si es completamente nueva
 // (llega recién de proveedor/confección), se crea el activo de una vez — "pasa por el pipeline
 // para codificarse" antes de mostrarse, tal como describe el flujo del negocio. Dos escrituras
-// secuenciales (sin RPC): mismo patrón que el resto de este archivo (registrarPasada ya era un
-// insert simple, no transaccional).
+// secuenciales (activo e inserción de la pasada, esta última por RPC desde la 0122): no es
+// transaccional.
 export async function registrarPasada(p: {
   codigo: string;
   tipo: string;
@@ -143,17 +131,16 @@ export async function registrarPasada(p: {
     }
   }
 
-  const { error } = await sb.from('prenda_pasada').insert({
-    activo_id: activoId,
-    codigo: p.codigo,
-    tipo: p.tipo,
-    color: p.color,
-    talla: p.talla,
-    sede_origen_cod: p.sedeOrigenCod,
-    tipo_lavado: p.tipoLavado,
-    necesita_compostura: p.necesitaCompostura,
-    obs_general: p.obsGeneral,
-    etapa: 'recepcion',
+  const { error } = await sb.rpc('pipeline_registrar_prenda', {
+    p_codigo: p.codigo,
+    p_tipo: p.tipo,
+    p_color: p.color,
+    p_talla: p.talla,
+    p_sede: p.sedeOrigenCod,
+    p_tipo_lavado: p.tipoLavado,
+    p_necesita_compostura: p.necesitaCompostura,
+    p_obs: p.obsGeneral,
+    p_activo_id: activoId,
   });
   if (error) throw new Error(error.message);
 }
@@ -175,14 +162,16 @@ export async function reingresarActivoAPipeline(activoId: string): Promise<void>
   if (e1) throw new Error(e1.message);
   if (!activo) return;
   const a = activo as { codigo: string; tipo: string; color: string | null; talla: string | null; sede_cod: string | null };
-  const { error } = await sb.from('prenda_pasada').insert({
-    activo_id: activoId,
-    codigo: a.codigo,
-    tipo: a.tipo,
-    color: a.color,
-    talla: a.talla,
-    sede_origen_cod: a.sede_cod,
-    etapa: 'recepcion',
+  const { error } = await sb.rpc('pipeline_registrar_prenda', {
+    p_codigo: a.codigo,
+    p_tipo: a.tipo,
+    p_color: a.color,
+    p_talla: a.talla,
+    p_sede: a.sede_cod,
+    p_tipo_lavado: null,
+    p_necesita_compostura: false,
+    p_obs: null,
+    p_activo_id: activoId,
   });
   if (error) throw new Error(error.message);
 
@@ -192,36 +181,44 @@ export async function reingresarActivoAPipeline(activoId: string): Promise<void>
 // ── Mutaciones del tablero vía RPC (una sola llamada atómica, ~200ms; ver 0009). ──
 
 // Avanza la prenda y devuelve los puntos ganados por el actor (para feedback en la UI).
-export async function avanzarPasada(id: string, destino: string): Promise<number> {
+export async function avanzarPasada(id: string, destino: string, operador: string | null = null): Promise<number> {
   const sb = getServerClient();
-  const { data, error } = await sb.rpc('pipeline_avanzar', { p_id: id, p_destino: destino });
+  const { data, error } = await sb.rpc('pipeline_avanzar', { p_id: id, p_destino: destino, ...conOperador(operador) });
   if (error) throw new Error(error.message);
   return Number(data) || 0;
 }
 
-export async function enviarPasada(id: string, sedeDestino: string): Promise<void> {
+export async function enviarPasada(id: string, sedeDestino: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_enviar', { p_id: id, p_sede: sedeDestino });
+  const { error } = await sb.rpc('pipeline_enviar', { p_id: id, p_sede: sedeDestino, ...conOperador(operador) });
   if (error) throw new Error(error.message);
 }
 
-export async function rechazarPasada(id: string, destino: string): Promise<void> {
+export async function rechazarPasada(id: string, destino: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_rechazar', { p_id: id, p_destino: destino });
+  const { error } = await sb.rpc('pipeline_rechazar', { p_id: id, p_destino: destino, ...conOperador(operador) });
   if (error) throw new Error(error.message);
 }
 
 // Deshacer: revierte la prenda a la etapa anterior y quita los puntos recién ganados.
-export async function deshacerPasada(id: string, etapaAnterior: string): Promise<void> {
+export async function deshacerPasada(id: string, etapaAnterior: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_deshacer', { p_id: id, p_etapa_anterior: etapaAnterior });
+  const { error } = await sb.rpc('pipeline_deshacer', {
+    p_id: id,
+    p_etapa_anterior: etapaAnterior,
+    ...conOperador(operador),
+  });
   if (error) throw new Error(error.message);
 }
 
 // Tanda: avanza varias prendas de una etapa de un solo golpe. Devuelve los puntos totales.
-export async function avanzarTanda(ids: string[], destino: string): Promise<number> {
+export async function avanzarTanda(ids: string[], destino: string, operador: string | null = null): Promise<number> {
   const sb = getServerClient();
-  const { data, error } = await sb.rpc('pipeline_avanzar_tanda', { p_ids: ids, p_destino: destino });
+  const { data, error } = await sb.rpc('pipeline_avanzar_tanda', {
+    p_ids: ids,
+    p_destino: destino,
+    ...conOperador(operador),
+  });
   if (error) throw new Error(error.message);
   return Number(data) || 0;
 }
@@ -244,7 +241,8 @@ export async function rankingHoy(): Promise<RankingItem[]> {
 export type Movimiento = { fecha: string; etapaNueva: string };
 export async function movimientosRecientes(dias = 7): Promise<Movimiento[]> {
   const sb = getServerClient();
-  const desde = new Date(Date.now() - dias * 86400000).toISOString();
+  // Desde el inicio del día de Perú de hace (dias-1) días: el día más viejo entra entero.
+  const desde = `${diaPeruDe(new Date(Date.now() - (dias - 1) * 86400000).toISOString())}T00:00:00-05:00`;
   const { data, error } = await sb
     .from('prenda_historial')
     .select('fecha, etapa_nueva')
@@ -253,15 +251,15 @@ export async function movimientosRecientes(dias = 7): Promise<Movimiento[]> {
     .limit(2000);
   if (error) throw new Error(error.message);
   return ((data as { fecha: string; etapa_nueva: string }[]) ?? []).map((r) => ({
-    fecha: (r.fecha ?? '').slice(0, 10),
+    fecha: r.fecha ? diaPeruDe(r.fecha) : '',
     etapaNueva: r.etapa_nueva,
   }));
 }
 
 // Divide un terno en piezas hijas (saco + pantalón); el original sale del tablero.
-export async function dividirPasada(id: string): Promise<void> {
+export async function dividirPasada(id: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_dividir', { p_id: id });
+  const { error } = await sb.rpc('pipeline_dividir', { p_id: id, ...conOperador(operador) });
   if (error) throw new Error(error.message);
 }
 
@@ -269,20 +267,157 @@ export async function dividirPasada(id: string): Promise<void> {
 // madre a su etapa original — SOLO si ninguna hija avanzó de etapa (el RPC lo valida server-side
 // y rechaza con un mensaje claro si no se puede). `id` es el id de la MADRE (mismo parámetro que
 // dividirPasada, no el de una hija — ver deshacerDivisionPrenda en actions.ts).
-export async function deshacerDivisionPasada(id: string): Promise<void> {
+export async function deshacerDivisionPasada(id: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_deshacer_division', { p_id: id });
+  const { error } = await sb.rpc('pipeline_deshacer_division', { p_id: id, ...conOperador(operador) });
   if (error) throw new Error(error.message);
 }
 
 // Calificar en tienda: aceptar (→ recibido) u observar (→ etapa destino, vuelve al trabajo).
-export async function calificarPasada(id: string, aceptada: boolean, destino = '', obs = ''): Promise<void> {
+export async function calificarPasada(
+  id: string,
+  aceptada: boolean,
+  destino = '',
+  obs = '',
+  operador: string | null = null,
+): Promise<void> {
   const sb = getServerClient();
   const { error } = await sb.rpc('pipeline_calificar', {
     p_id: id,
     p_aceptada: aceptada,
     p_destino: destino,
     p_obs: obs,
+    ...conOperador(operador),
   });
   if (error) throw new Error(error.message);
+}
+
+// ── Código personal (migración 0112, spec codigo-personal) ────────────────────────────────────
+// Usuario + PIN se teclean UNA vez y sólo viajan a pipeline_validar_codigo, que cuenta los intentos
+// (por sesión y por persona) y devuelve un token de operador. Las demás RPC reciben ese token
+// (`p_operador`), nunca el PIN. El PIN lo define cada persona (`definirPin`); la base guarda sólo el
+// hash.
+export type ValidacionCodigo =
+  | { ok: true; token: string; nombre: string; expiraEn: string; ventanaMin: number }
+  | {
+      ok: false;
+      bloqueadoMin?: number;
+      intentosRestantes?: number;
+      motivo?: 'equipo_no_compartido' | 'sin_pin';
+    };
+
+export async function validarCodigoOperador(
+  usuario: string,
+  pin: string,
+  deviceId: string | null,
+): Promise<ValidacionCodigo> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_validar_codigo', {
+    p_usuario: usuario,
+    p_pin: pin,
+    p_device: deviceId,
+  });
+  if (error) throw new Error(error.message);
+  const r = data as {
+    ok: boolean;
+    token?: string;
+    nombre?: string;
+    expira_en?: string;
+    ventana_min?: number;
+    bloqueado_min?: number;
+    intentos_restantes?: number;
+    motivo?: string;
+  };
+  if (r.ok && r.token) {
+    return {
+      ok: true,
+      token: r.token,
+      nombre: r.nombre ?? '',
+      expiraEn: r.expira_en ?? '',
+      ventanaMin: Number(r.ventana_min) || 0,
+    };
+  }
+  return {
+    ok: false,
+    bloqueadoMin: r.bloqueado_min,
+    intentosRestantes: r.intentos_restantes,
+    motivo: r.motivo === 'equipo_no_compartido' || r.motivo === 'sin_pin' ? r.motivo : undefined,
+  };
+}
+
+export type ResultadoPin =
+  | { ok: true }
+  | {
+      ok: false;
+      motivo?: 'pin_corto' | 'pin_trivial' | 'pin_actual_incorrecto' | 'cuenta_compartida' | 'sin_permiso';
+      largoMin?: number;
+      intentosRestantes?: number;
+      bloqueadoMin?: number;
+    };
+
+// La propia persona define o cambia su PIN (para cambiarlo, da el actual).
+export async function definirPin(nuevo: string, actual: string | null): Promise<ResultadoPin> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_definir_pin', { p_pin_nuevo: nuevo, p_pin_actual: actual });
+  if (error) throw new Error(error.message);
+  const r = data as {
+    ok: boolean;
+    motivo?: string;
+    largo_min?: number;
+    intentos_restantes?: number;
+    bloqueado_min?: number;
+  };
+  if (r.ok) return { ok: true };
+  return {
+    ok: false,
+    motivo: r.motivo as Extract<ResultadoPin, { ok: false }>['motivo'],
+    largoMin: r.largo_min,
+    intentosRestantes: r.intentos_restantes,
+    bloqueadoMin: r.bloqueado_min,
+  };
+}
+
+// ¿La sesión ya tiene PIN? PGRST202 = migración sin aplicar → se trata como «sin PIN».
+export async function tengoPin(): Promise<boolean> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_tengo_pin');
+  if (error?.code === 'PGRST202') return false;
+  if (error) throw new Error(error.message);
+  return data === true;
+}
+
+// Admin: borra el PIN de quien lo olvidó (la base exige admin).
+export async function borrarPin(empleadoId: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_borrar_pin', { p_empleado: empleadoId });
+  if (error) throw new Error(error.message);
+}
+
+// Admin: marca la cuenta con la que se abre un equipo compartido. Para esa cuenta la base rechaza
+// toda acción del pipeline sin código (spec §0 E-3).
+export async function marcarCuentaCompartida(empleadoId: string, valor: boolean): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('empleado_marcar_cuenta_compartida', { p_empleado: empleadoId, p_valor: valor });
+  if (error) throw new Error(error.message);
+}
+
+// «cambiar» en el chip: revoca el token de operador en la base (sólo los de la propia sesión).
+export async function cerrarOperadorCodigo(token: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_cerrar_operador', { p_token: token });
+  if (error) throw new Error(error.message);
+}
+
+// ¿El equipo de esta cookie `sci_device` está marcado como compartido? (RPC definer: la tabla
+// sólo la lee el admin por RLS.)
+export async function dispositivoCompartido(deviceId: string): Promise<boolean> {
+  if (!deviceId) return false;
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('dispositivo_compartido', { p_device_id: deviceId });
+  // PGRST202: la función no existe todavía (migración 0112 sin aplicar) → ningún equipo es
+  // compartido y el pipeline funciona como siempre. Cualquier otro error sí se propaga: fallar en
+  // silencio en un equipo compartido le atribuiría todo a la dueña de la sesión.
+  if (error?.code === 'PGRST202') return false;
+  if (error) throw new Error(error.message);
+  return data === true;
 }

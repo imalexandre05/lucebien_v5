@@ -3,7 +3,7 @@ import { expect, type Page } from '@playwright/test';
 /**
  * Quién entra a la aplicación durante las pruebas.
  *
- * Con LOGIN_V2 encendido el login pide usuario (el nombre del empleado) y contraseña real; el
+ * El login pide usuario (el nombre del empleado) y contraseña real; el
  * código de 4 dígitos quedó como PIN interno de atribución y ya no sirve para entrar.
  *
  * Las pruebas NO usan las cuentas de las personas reales: usan dos cuentas dedicadas —una con rol

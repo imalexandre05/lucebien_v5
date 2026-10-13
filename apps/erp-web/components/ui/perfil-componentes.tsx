@@ -19,9 +19,13 @@ const fmtPeso = (p: number | undefined | null) => (p == null ? '—' : p > 1 ? `
 export function PerfilComponentes({
   componentes,
   pesos,
+  valoresOculto = false,
 }: {
   componentes: Record<string, number>;
   pesos: Record<string, number>;
+  // Valores 360° no se muestra a quien mira lo suyo hasta que el mes cierre y haya el mínimo de
+  // evaluaciones: la fila queda con «—» y un texto, en vez de una barra en cero que mentiría.
+  valoresOculto?: boolean;
 }) {
   const descuento = Number(componentes.descuentoIncidencias ?? 0);
   const bonus = Number(componentes.bonusVentas ?? 0);
@@ -29,6 +33,22 @@ export function PerfilComponentes({
     <div className="animate-fade">
       <div className="grid grid-cols-1 gap-x-8 gap-y-2.5 sm:grid-cols-2">
         {COMPONENTES.map(({ key, label }) => {
+          if (key === 'valores' && valoresOculto) {
+            return (
+              <div key={key}>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="text-apoyo text-ink">
+                    {label}
+                    <span className="ml-1.5 tabular-nums text-micro text-muted">{fmtPeso(pesos[key])}</span>
+                  </span>
+                  <span className="tabular-nums text-dato font-semibold text-muted">—</span>
+                </div>
+                <p className="mt-1 text-micro text-muted">
+                  Aún no hay suficientes evaluaciones para mostrar este resultado.
+                </p>
+              </div>
+            );
+          }
           const v = Number(componentes[key] ?? 0);
           const pct = Math.max(0, Math.min(100, (v / 20) * 100));
           return (

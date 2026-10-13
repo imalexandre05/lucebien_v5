@@ -8,6 +8,7 @@
 //
 // Las fechas son hora Perú (no-negociable 4): el default sale de hoyPeru(), nunca de new Date().
 
+import { resolverRango, type VistaRango } from '@scilb/core';
 import { hoyPeru } from './fechas';
 
 export type Periodo = { desde: string; hasta: string };
@@ -66,4 +67,29 @@ export function etiquetaPeriodo(p: Periodo): string {
 /** El período como query string, para que un enlace entre secciones no lo pierda. */
 export function queryPeriodo(p: Periodo): string {
   return `desde=${p.desde}&hasta=${p.hasta}`;
+}
+
+/**
+ * Tope del rango personalizado, en días. DEFAULT DE PANTALLA, no regla de negocio: un año más el
+ * día bisiesto. Existe para que una URL como `desde=1900-01-01&hasta=9999-12-31` no recorra la
+ * tabla entera (spec asistencias/2026-10-03-filtros-rango-design.md).
+ */
+export const MAX_DIAS_RANGO = 366;
+
+/**
+ * Vista y rango de una pantalla que se mira por día, semana, mes o rango
+ * (spec asistencias/2026-10-03-filtros-rango-design.md). Viajan en la URL como
+ * `?vista=…&desde=…&hasta=…`; la lógica vive en el core (`resolverRango`) y acá sólo se le pasa
+ * el hoy de Perú. `porDefecto: null` deja que la pantalla decida qué mostrar sin rango.
+ */
+export function leerVistaRango(
+  sp: Record<string, string | string[] | undefined> | URLSearchParams | undefined,
+  porDefecto: VistaRango | null,
+): { vista: VistaRango; rango: Periodo } | null {
+  const uno = (k: string) => {
+    if (sp instanceof URLSearchParams) return sp.get(k);
+    const v = sp?.[k];
+    return Array.isArray(v) ? v[0] : v;
+  };
+  return resolverRango({ vista: uno('vista'), desde: uno('desde'), hasta: uno('hasta') }, hoyPeru(), porDefecto);
 }

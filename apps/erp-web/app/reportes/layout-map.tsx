@@ -83,10 +83,16 @@ const EVAL_VISUAL: Record<string, { bg: string; borde: string; chip: string }> =
   '1': { bg: '#86efac', borde: '#16a34a', chip: '#16a34a' },
   '0.5': { bg: '#fde68a', borde: '#ca8a04', chip: '#ca8a04' },
   '0': { bg: '#fca5a5', borde: '#dc2626', chip: '#dc2626' },
+  // Sin marcar: el evaluador todavía no decidió. Neutro a propósito: no debe leerse como aprobada.
+  '-1': { bg: '#e5e7eb', borde: '#9ca3af', chip: '#9ca3af' },
 };
 const evalVisual = (v: number) => EVAL_VISUAL[String(v)] ?? EVAL_VISUAL['1'];
 
+/** Valor de una zona/actividad que el evaluador aún no marcó (reportes_evaluar exige todas). */
+export const SIN_CALIFICAR = -1;
+
 function IconoEstado({ v, className }: { v: number; className?: string }) {
+  if (v < 0) return null;
   if (v >= 1) return <Check className={className} strokeWidth={3} />;
   if (v >= 0.5) return <Eye className={className} strokeWidth={3} />;
   return <X className={className} strokeWidth={3} />;
@@ -183,7 +189,7 @@ export function LayoutMap({
 }) {
   const sel = useMemo(() => new Set(selected), [selected]);
   const esEval = modo === 'eval';
-  const estadoDe = (cod: string) => estados?.[cod] ?? 1;
+  const estadoDe = (cod: string) => estados?.[cod] ?? (esEval ? SIN_CALIFICAR : 1);
   // Fase 5 tarea 2: zona cuyo desplegable de "zonas ocultas en este punto" está abierto.
   const [dropdownCod, setDropdownCod] = useState<string | null>(null);
 
@@ -225,7 +231,7 @@ export function LayoutMap({
 
   const totalPts = useMemo(() => mostradas.filter(puntuable).reduce((s, z) => s + z.peso, 0), [mostradas]);
   const ganados = useMemo(() => {
-    if (esEval) return mostradas.filter(puntuable).reduce((s, z) => s + z.peso * estadoDe(z.cod), 0);
+    if (esEval) return mostradas.filter(puntuable).reduce((s, z) => s + z.peso * Math.max(estadoDe(z.cod), 0), 0);
     return mostradas.filter((z) => puntuable(z) && sel.has(z.cod)).reduce((s, z) => s + z.peso, 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mostradas, sel, esEval, estados]);
@@ -652,7 +658,7 @@ export function LayoutMap({
                   </span>
                   <span className="min-w-0 flex-1 truncate tabular-nums text-micro text-ink">{z.cod}</span>
                   <span className="shrink-0 tabular-nums text-micro font-semibold" style={{ color: ev.borde }}>
-                    {r1(z.peso * v)}/{r1(z.peso)}
+                    {v < 0 ? '–' : r1(z.peso * v)}/{r1(z.peso)}
                   </span>
                 </button>
               </li>

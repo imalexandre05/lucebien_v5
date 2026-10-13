@@ -1,5 +1,6 @@
 import type { PesosEval, EscalaPuntos } from '@scilb/core';
 import { getServerClient } from './supabase/server';
+import { getSesion } from './auth';
 import { leerConfigMap } from './config-repo';
 import { mapaNombres } from './directorio';
 
@@ -14,7 +15,9 @@ export type Evaluacion = {
   empleadoId: string;
   empleadoNombre: string | null;
   mes: string;
-  notaFinal: number;
+  // null = «en cálculo»: evaluación del método `ponderado` cuyo Valores 360° aún no es público (0119); con
+  // la fórmula, la nota permitiría despejar un voto. Sólo la recibe quien no es administrador.
+  notaFinal: number | null;
   // Snapshot guardado al evaluar (jsonb): desglose /20 por componente y pesos usados.
   componentes: Record<string, number> | null;
   pesosUsados: Record<string, number> | null;
@@ -23,6 +26,10 @@ export type Evaluacion = {
   createdAt: string;
   metodo: MetodoEvaluacion;
   puntosTotal: number | null;
+  // true cuando quien mira NO es administrador: `componentes` viene sin `valores` ni
+  // `valoresCantidad` (Valores 360° sólo se publica de un mes cerrado y con mínimo; lo decide la base en
+  // `evaluaciones_mensuales_visibles`, que devuelve `valores_publicos` — spec valores360-base).
+  valoresOculto?: boolean;
 };
 
 // Pesos de evaluación desde config (editables). Defaults si falta alguna clave.
@@ -74,11 +81,18 @@ export async function leerEscalaPuntos(): Promise<EscalaPuntos> {
 
 export async function listarEvaluaciones(): Promise<Evaluacion[]> {
   const sb = getServerClient();
-  const { data, error } = await sb
-    .from('evaluaciones_mensuales')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(200);
+
+  // Sólo el administrador lee la tabla directo (0119: `eval_select` quedó en `app_es_admin()`). Cualquier
+  // otro lee por `evaluaciones_mensuales_visibles` SÓLO lo propio (un encargado ya no ve notas ajenas,
+  // ni con `datos_personas`: decisión del dueño, 06-oct-2026), sin `valores`/`valoresCantidad` y con `nota_final` en null
+  // (nota «en cálculo») mientras el Valores 360° del mes no sea público: mes cerrado y con el mínimo de
+  // evaluaciones. No hay respaldo que lea la tabla si la función falta: sería justo la fuga que se cierra.
+  const sesion = await getSesion();
+  const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
+
+  const { data, error } = esAdmin
+    ? await sb.from('evaluaciones_mensuales').select('*').order('created_at', { ascending: false }).limit(200)
+    : await sb.rpc('evaluaciones_mensuales_visibles').limit(200);
   if (error) throw new Error(error.message);
   const rows = (data as Record<string, unknown>[]) ?? [];
 
@@ -89,8 +103,10 @@ export async function listarEvaluaciones(): Promise<Evaluacion[]> {
     empleadoId: String(r.empleado_id),
     empleadoNombre: nombre.get(String(r.empleado_id)) ?? null,
     mes: String(r.mes ?? ''),
-    notaFinal: Number(r.nota_final ?? 0),
+    // null = «en cálculo» (sólo para quien no es administrador). El administrador nunca lo recibe.
+    notaFinal: r.nota_final == null ? (esAdmin ? 0 : null) : Number(r.nota_final),
     componentes: (r.componentes as Record<string, number> | null) ?? null,
+    valoresOculto: !esAdmin && r.valores_publicos !== true,
     pesosUsados: (r.pesos_usados as Record<string, number> | null) ?? null,
     cicloDesde: (r.ciclo_desde as string | null) ?? null,
     cicloHasta: (r.ciclo_hasta as string | null) ?? null,
@@ -106,7 +122,7 @@ export async function listarEvaluaciones(): Promise<Evaluacion[]> {
 // Componentes auto-calculados desde la data (reportes evaluados/del equipo, asistencias,
 // incidencias, pipeline, extras, ventas) para un rango. Devuelve el jsonb tal cual lo arma
 // private.evaluacion_componentes_datos — ver esa función (packages/db/migrations/
-// 0095_puntos_como_moneda.sql) para el significado exacto de cada clave. `ventasSinTasa` es el
+// 0095_puntos_como_moneda.sql; el filtro de fecha de pipeline, en 0110_puntos_hora_peru.sql) para el significado exacto de cada clave. `ventasSinTasa` es el
 // único campo booleano; el resto son numéricos (o null para 'valores' sin datos ese mes).
 export type ComponentesRPC = {
   operaciones: number;
@@ -162,6 +178,42 @@ export async function empleadosParaEvaluacion(): Promise<EmpleadoParaEvaluacion[
     fechaIngreso: r.fecha_ingreso ? String(r.fecha_ingreso).slice(0, 10) : null,
     salarioBase: Number(r.salario_base ?? 0),
   }));
+}
+
+/**
+ * Promedio de puntos por persona en los últimos 30 días (pago por puntos, spec
+ * 2026-10-05-pago-por-puntos-design.md §5): es la cifra con la que el dueño decide la meta mensual.
+ *
+ * Se lee con la sesión del administrador, persona por persona, por la MISMA RPC que usa
+ * /evaluaciones (`evaluacion_componentes`, con su portero de la 0067): no se calcula la suma aparte.
+ * Cuenta a todas las personas activas salvo admin/dueño, también a quien tuvo 0 puntos en el período: un promedio
+ * sólo de quienes sumaron dejaría la meta más alta de lo que el equipo en realidad hace.
+ *
+ * Nunca rompe la pantalla de configuración: si algo falla (la 0095 sin aplicar, una persona sin
+ * permiso) devuelve `null` y la tarjeta simplemente no muestra la ayuda.
+ */
+export type PromedioPuntos = { promedio: number; personas: number; desde: string; hasta: string };
+
+export async function promedioPuntosUltimosDias(hoy: string, dias = 30): Promise<PromedioPuntos | null> {
+  try {
+    const fin = new Date(`${hoy}T00:00:00Z`);
+    const ini = new Date(fin.getTime() - (dias - 1) * 24 * 60 * 60 * 1000);
+    const desde = ini.toISOString().slice(0, 10);
+    // Sin admin/dueño: no hacen trabajo puntuable y sus ceros bajarían la cifra con la que se fija
+    // la meta. (Los demás roles cuentan, incluso con 0 puntos.)
+    const { data: sinGestion, error } = await getServerClient().from('empleados').select('id').eq('activo', true).not('rol', 'in', '(admin,dueno)');
+    if (error) return null;
+    const ids = new Set(((sinGestion as { id: string }[]) ?? []).map((r) => r.id));
+    const gente = (await empleadosParaEvaluacion()).filter((e) => ids.has(e.id));
+    if (gente.length === 0) return null;
+    const puntos = await Promise.all(gente.map((e) => componentesEvaluacion(e.id, desde, hoy)));
+    const valores = puntos.map((c) => c.puntosTotal);
+    if (valores.some((v) => typeof v !== 'number' || !Number.isFinite(v))) return null;
+    const suma = (valores as number[]).reduce((t, v) => t + v, 0);
+    return { promedio: Math.round((suma / gente.length) * 100) / 100, personas: gente.length, desde, hasta: hoy };
+  } catch {
+    return null;
+  }
 }
 
 // Catálogo editable de las 8 competencias con rúbrica (Fase 12 tarea 2, migración 0057,

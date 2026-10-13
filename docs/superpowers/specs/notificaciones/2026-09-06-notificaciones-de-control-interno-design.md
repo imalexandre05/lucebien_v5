@@ -267,3 +267,32 @@ inmediato — el mismo criterio que el resto de los parámetros, y la correcció
 
 Los pasos 1 y 2 valen por sí solos aunque no se haga ninguno de los demás: uno cierra dos fugas y el
 otro convierte una lista que sólo crece en una que dice la verdad.
+
+## 9. Addendum (3-oct-2026, tablero#5) — Cada aviso lleva a donde se resuelve
+
+El mapeo vive en **una sola función pura**, `apps/erp-web/lib/notificaciones-enlace.ts`
+(`enlaceNotificacion(n, esAdmin)`), con test en `apps/erp-web/lib/__tests__/notificaciones-enlace.test.ts`.
+La usan `/notificaciones` («Ir a resolverlo») y la campana de la barra superior (la fila es el
+enlace; abrirla no la marca como leída). Sólo UI: ninguna RPC ni esquema cambió.
+
+Inventario verificado contra la última definición de cada función (`generar_alertas()` en la 0109,
+`reportes_auto_evaluar_vencidos()` en la 0064):
+
+| `tipo` | `ref_tipo` / `ref_id` | Lleva a |
+|---|---|---|
+| `declaracion_incompleta` | `liquidacion` / id | `/personal/{empleado}/asistencias?acuerdo={acuerdo}` (empleado y contrato se leen de `sueldo_liquidaciones` en `listarNotificaciones()`; si no se puede, `/sueldos/asistencia`) |
+| `periodo_liquidable` | `acuerdo` / id | `/sueldos/liquidaciones?acuerdo={id}` (la pantalla ahora preselecciona ese contrato) |
+| `dia_con_hora_estimada` | `empleado` / id | `/personal/{id}/asistencias?desde=…&hasta=…` (desde del `dedup_key`, hasta del mensaje) |
+| `dia_sin_marca` | `empleado` / id | `/personal/{id}/asistencias` |
+| `extra_sin_valor` | `empleado` / quien registró (puede ser null) | `/configuracion/actividades` |
+| `falta_fecha_ingreso` | `empleado` / id | `/personal/{id}/datos` |
+| `reporte_sin_evaluar`, `reporte_auto_evaluado` | `reporte` / id | `/reportes/{id}` |
+| comerciales (apagadas, 0101) | `pedido` / `material` / `caja` | como antes: `/pedidos/{id}`, `/materiales`, `/caja` |
+
+Para quien no es administrador, los seis tipos de control interno no llevan enlace: todas sus
+pantallas destino tienen candado, y la persona que recibe su copia `:persona` de
+`dia_con_hora_estimada`/`dia_sin_marca` no tiene hoy una pantalla propia de asistencia.
+
+**Mejoras futuras (requieren tocar la RPC):** `dia_sin_marca` no guarda las fechas (en los primeros
+días del mes, parte de la última semana cae fuera del período por defecto); `extra_sin_valor` no
+guarda la sede del catálogo; `dia_con_hora_estimada` guarda `hasta` sólo en el texto del mensaje.

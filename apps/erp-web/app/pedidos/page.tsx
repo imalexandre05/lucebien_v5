@@ -22,11 +22,12 @@ const soles = (n: number) => `S/ ${n.toFixed(2)}`;
 //
 // `?nuevo=1` (Fase 10, punto 1): lo manda el botón "+ Nuevo pedido" de /caja — enfoca el buscador
 // de cliente apenas se monta, para no obligar a un clic extra al llegar desde ahí.
-export default async function PedidosPage({
-  searchParams,
-}: {
-  searchParams: { nuevo?: string };
-}) {
+export default async function PedidosPage(
+  props: {
+    searchParams: Promise<{ nuevo?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   const sede = sesion?.usuario.sede ?? '';
   const autoFocusCliente = searchParams.nuevo === '1';

@@ -7,11 +7,12 @@ import { EstadisticasCliente } from './cliente';
 
 export const dynamic = 'force-dynamic';
 
-export default async function EstadisticasPage({
-  searchParams,
-}: {
-  searchParams: { desde?: string; hasta?: string };
-}) {
+export default async function EstadisticasPage(
+  props: {
+    searchParams: Promise<{ desde?: string; hasta?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   if (!sesion) redirect('/login');
 

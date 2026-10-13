@@ -1496,6 +1496,381 @@ separado, o una vista) es permisos/RLS — nivel 3, con spec y verificador propi
 vale la pena: requiere saber si alguien fuera del equipo técnico tiene forma real de golpear la API
 directamente, cosa que hoy nadie confirmó que sea un riesgo práctico y no sólo teórico.
 
+## Pendiente del 4-oct-2026 — evaluaciones ya cerradas con puntos asignados al día UTC
+
+La migración 0110 ([spec](superpowers/specs/sueldos/2026-10-04-puntos-dia-hora-peru-design.md),
+ticket lucebien-tablero#37) hace que los puntos del pipeline cuenten en su día de Perú. Las
+evaluaciones ya guardadas **no se recalculan** (la 0095 lo prohíbe: nunca cambian de método ni de
+cifra), así que un cierre anterior pudo dejar fuera puntos trabajados después de las 19:00 del
+último día del período (el período sigue el aniversario de ingreso de cada persona, no el mes
+calendario). Además, los puntos de la noche del último día de un período cerrado con la regla vieja
+ya se habían ido al período siguiente: el primer período que se cierre con la 0110 no los cuenta, y
+ninguno de los dos los cuenta. Decidir con Alexander si alguno se corrige a mano, y cuáles. Sin default
+inventado: no hay ninguno.
+---
+
+## Defaults inventados el 6-oct-2026 — frecuencia de pago flexible
+
+Implementación de la [spec](superpowers/specs/sueldos/2026-10-06-frecuencia-pago-flexible-design.md)
+(migración `0120`, `packages/core/src/sueldos.ts`). Tres defaults que la spec ya marcaba como
+provisionales; ninguno está hardcodeado en silencio: viven en el core y el administrador los
+decide contrato por contrato.
+
+| Default | Dónde vive | Pendiente de confirmar con el dueño |
+|---|---|---|
+| **Quincenal anclado al día de inicio** de la frecuencia (del día *d* al *d+14* y del *d+15* al día anterior a *d* del mes siguiente) | `finDeQuincena()` en `sueldos.ts` | Si prefiere quincenas fijas 1–15 / 16–fin de mes: se agrega como otra opción, sin tocar las demás |
+| **El último pago más corto que la frecuencia se prorratea por días** (S/650 mensual, 5 de 30 días = S/108,33) | `cuotaDelTramo()` / `cuotaDeLiquidacion()` | Si el último pago corto debe cobrar entero o redondear distinto. |
+| **«Cada N días»: N entre 1 y 62** | `validarCadaDias()` y los `check` de la `0120` | El tope de 62 días (dos meses) |
+| **Cuota sugerida al cambiar de frecuencia**: la misma plata por mes en más pagos (quincenal ×1/2, semanal ×12/52, cada N días ×12·N/365). Sólo se sugiere; el administrador la confirma | `cuotaProporcional()` en `cambiar-frecuencia.tsx` | Si prefiere otra proporción (p. ej. semanal = mensual/4) |
+
+Efecto a tener presente: un contrato **existente** cuyo último tramo ya era más corto que su
+frecuencia cobraba la cuota entera (el borde #33); desde esta versión ese último tramo se
+prorratea. Los demás tramos de contratos existentes liquidan exactamente igual que antes.
+
+**Falta, y la spec §3.3 lo pide:** ajustar la cuota del último pago corto antes de confirmar. Hoy
+no hay dónde: `crearBorrador` no recibe cuota. Alternativa disponible hoy: un bono o ajuste manual en
+la liquidación. Pendiente de decidir si se implementa en este PR o en el de #44.
+
+**Borde de la modalidad mensual — resuelto el 06-oct (spec §9.1, auditoría D-2):** un contrato que
+arranca el 29, 30 o 31 y cruza febrero «se corre» (30-ene → 28-feb, luego 1-mar → 31-mar…). Los
+cortes NO se tocaron (cambiaría los de contratos que ya liquidan), pero un tramo que termina el día
+anterior a un aniversario del inicio ya no cuenta como corto: «30-ene al 29-abr» de S/600 cobra 600
+en el último tramo (antes 580) y «31-ene al 30-jul» de S/1500 cobra 6 × 1500 = S/9000 (antes
+S/48,39 menos). Sigue la decisión del dueño del 06-oct: la mensual se cuenta desde el día en que
+empezó el contrato. **Pendiente de confirmación de Alexander** (cambia lo que se paga).
+
+**Rango que cubre varios pagos (spec §9.2, auditoría D-4):** cobra la suma de las cuotas de los
+pagos del calendario que cubre, si empieza y termina en sus bordes; si no coincide con los bordes y
+cruza un cambio de frecuencia, se rechaza. No es un parámetro nuevo: es la definición de la 0093
+(`sueldo_pactado` es la cuota de cada pago) aplicada a un rango largo.
+
+Sin decidir: al crear un contrato la pantalla **avisa** cuando el último pago queda corto y
+sugiere la fecha de fin que lo completa, pero no propone una fecha de fin por defecto con el
+contrato vacío (la spec §3.3 dice «sugiere el día anterior al aniversario» sin fijar cuántos meses).
+## Seguridad 06-oct-2026 — retrabajo tras observación de tienda (residual del PR #59)
+
+**Sin decidir.** Hoy (y también después de la 0122) una prenda enviada que la tienda califica como
+*observada* vuelve a una etapa del proceso **sin penalizar a nadie**, y al volver a avanzarla se
+pagan otra vez los puntos de cada etapa. El verificador lo ejecutó el 07-oct: avanzar a listo →
+enviar → calificar observada a recepción → avanzar de nuevo = +7 por ciclo, repetible. Lo puede
+hacer una sola persona del almacén, porque `pipeline_calificar` admite a admin/almacén además de la
+sede destino y no exige que quien califica sea distinto de quien trabajó la prenda.
+
+Hay que decidir con Alexander:
+1. ¿El retrabajo después de una observación vuelve a pagar puntos? Si sí, ¿se penaliza a quien hizo
+   la etapa observada, como ya hace `pipeline_rechazar`?
+2. ¿Quién califica? Propuesta: sólo la sede destino del envío (o admin), nunca el almacén ni quien
+   trabajó la prenda.
+
+Hasta decidirlo, **no activar el pago por puntos (#54)**: esta vía se convierte en plata.
+---
+
+## Código personal en equipos compartidos — defaults del 04-oct-2026
+
+Migración `0112` ([spec](superpowers/specs/pipeline/2026-10-04-codigo-personal-design.md) §4/§5).
+Los valores los eligió el implementador siguiendo la spec; **ninguno está confirmado por el
+dueño**. Todos se editan desde `/configuracion` → «Código personal» sin migrar de nuevo.
+
+| Parámetro (`config.clave`) | Default | Qué controla |
+|---|---|---|
+| `codigo_max_intentos` | 5 | Fallos permitidos antes de bloquear una sesión |
+| `codigo_ventana_intentos_min` | 15 | Minutos que cuenta cada fallo |
+| `codigo_operador_min` | 10 | Minutos de operador activo sin actividad (el token se renueva con cada acción) |
+| `codigo_operador_max_h` | 8 | Horas máximas de vida de un token desde su emisión (un turno), aunque se renueve; «cambiar» además lo revoca en la base |
+
+Preguntas abiertas para el dueño (spec §7): si la fase 2 (firma del FR-01, evaluar reporte,
+solicitudes) debe pedir código en los mismos cuatro lugares que el sistema viejo; si en un equipo
+**no** compartido también quieren el código; y si estos tres números les parecen bien.
+
+Otras decisiones del implementador, sin regla de negocio detrás:
+- Cada acción exitosa con token renueva la ventana de inactividad (`private.tocar_operador`), en
+  vez de una expiración fija a 10 minutos del ingreso: la spec §5 promete «10 minutos sin actividad».
+- Un intento mientras la sesión está bloqueada **no** se registra (el bloqueo no se alarga por
+  insistir): se levanta cuando el fallo que lo completó sale de la ventana.
+- `pipeline_validar_codigo` sólo acepta el código desde un equipo aprobado y compartido, y cuando
+  una sesión se bloquea inserta una notificación para el rol `admin` (tipo
+  `codigo_sesion_bloqueada`) en la tabla del motor existente, sin tocar `generar_alertas()`.
+  Decidido por la sesión maestra el 04-oct-2026; a confirmar por Alexander.
+- El token no limita por sede de la prenda: el pipeline es un flujo central (0006) y el operador
+  puede ser de cualquier sede.
+
+**Enmienda del 06-oct-2026** (auditorías de pipeline H-1/H-3 y de seguridad H2/H5; spec §0):
+- | `codigo_pin_min_largo` | 6 | Dígitos mínimos del PIN personal. Default provisional, sin confirmar |
+- El código deja de ser `empleados.cod`: cada persona define un PIN propio (sólo el hash queda en
+  la base) desde «Mi desempeño»; en el equipo compartido se teclea usuario + PIN. Si lo olvida, el
+  administrador lo borra y la persona define otro. **Pregunta para el dueño:** ¿6 dígitos les
+  parece bien, o prefieren 4 con el límite por persona? (con 4 dígitos y 5 intentos cada 15 min
+  por persona, adivinar el PIN de una persona concreta en un día ronda el 5 %).
+- Los 5 intentos / 15 min cuentan ahora por persona y por sesión. Efecto secundario
+  aceptado: alguien puede bloquear 15 min a otra persona tecleando mal; el admin recibe el aviso
+  (`codigo_persona_bloqueada`).
+- La cuenta con la que se abre el equipo compartido se marca en `/dispositivos` («cuenta de equipo
+  compartido»): para esa cuenta la base rechaza toda acción del pipeline sin código. **Pregunta
+  para el dueño:** ¿qué cuentas se usan hoy en las PC compartidas?
+- Deshacer quita los puntos del movimiento deshecho (a quien lo hizo), no los de quien deshace.
+## Huecos abiertos alrededor de los puntos — hallados el 05-oct-2026 (migración `0115`)
+
+La `0115` cierra la escritura directa sobre `pipeline_puntos` y `prenda_historial`. El verificador
+encontró lo que queda (detalle y mediciones en
+[la spec §9](superpowers/specs/pipeline/2026-10-05-puntos-solo-rpc-design.md)). **Ninguno tiene
+decisión del dueño todavía; ninguno es un parámetro nuevo:**
+
+- 🔴 `prenda_pasada` es `FOR ALL`: se pueden fabricar prendas y retroceder etapas directo y cobrar
+  puntos por la RPC (5 vueltas = 15 puntos medidos). Necesita spec propia (nivel 3).
+- 🔴 El historial se borra por cascada con un `delete from prenda_pasada` directo. Se cierra con lo anterior.
+- 🟠 `pipeline_deshacer` (0112) no valida a qué etapa se vuelve: se pueden repetir avances y cobrar de más.
+- 🟠 Confirmar en Supabase que el schema `private` no está expuesto por PostgREST ni `pg_graphql`
+  **antes de aplicar la 0115**.
+- ⚪ `tools/auditoria-puntos.sql` no detecta: un par punto+historial falsificado juntos, una media
+  pieza inflada a pieza entera, ni puntos inflados antes de subir un `pts_*`.
+
+**Enmienda del 06-oct-2026** (auditorías de pipeline H-1/H-3 y de seguridad H2/H5; spec §0):
+- | `codigo_pin_min_largo` | 6 | Dígitos mínimos del PIN personal. Default provisional, sin confirmar |
+- El código deja de ser `empleados.cod`: cada persona define un PIN propio (sólo el hash queda en
+  la base) desde «Mi desempeño»; en el equipo compartido se teclea usuario + PIN. Si lo olvida, el
+  administrador lo borra y la persona define otro. **Pregunta para el dueño:** ¿6 dígitos les
+  parece bien, o prefieren 4 con el límite por persona? (con 4 dígitos y 5 intentos cada 15 min
+  por persona, adivinar el PIN de una persona concreta en un día ronda el 5 %).
+- Los 5 intentos / 15 min cuentan ahora por persona y por sesión. Efecto secundario
+  aceptado: alguien puede bloquear 15 min a otra persona tecleando mal; el admin recibe el aviso
+  (`codigo_persona_bloqueada`).
+- La cuenta con la que se abre el equipo compartido se marca en `/dispositivos` («cuenta de equipo
+  compartido»): para esa cuenta la base rechaza toda acción del pipeline sin código. **Pregunta
+  para el dueño:** ¿qué cuentas se usan hoy en las PC compartidas?
+- Deshacer quita los puntos del movimiento deshecho (a quien lo hizo), no los de quien deshace.
+- (0115, H-4) Sólo reciben puntos del pipeline los roles `admin`, `dueno`, `encargado_almacen` y
+  `confeccionista`; una tienda que avanza sus prendas las mueve pero no cobra. Regla dada por la
+  sesión maestra del dueño el 06-oct-2026; **a confirmar por Alexander** qué roles cuentan.
+## Tope de 4 MB por documento del personal (06-oct-2026)
+
+Default **inventado por restricción de plataforma**, no por negocio: Vercel corta el cuerpo de una
+función en ~4,5 MB, así que `TAMANO_MAXIMO_BYTES` (`apps/erp-web/lib/documentos-repo.ts`) pasa de
+10 MB a 4 MB. Una foto de celular de DNI puede pesar más: hoy el mensaje pide reducirla o subirla
+como PDF. Pregunta para el administrador: ¿se acepta ese tope, o se prioriza la subida directa a
+Storage con URL firmada para volver a 10 MB? No es editable desde `/configuracion` (es límite
+técnico, no parámetro de negocio). Ver la enmienda del 06-oct de
+[la spec](superpowers/specs/2026-10-04-personal-ultimo-admin-alta-design.md).
+## Valores 360° — anonimato (05-oct-2026) — parámetro provisional
+
+Decisión del dueño: **sólo el administrador puede ver quién puntuó a quién** (ticket
+imalexandre05/lucebien-tablero#40). Spec: `docs/superpowers/specs/evaluaciones/2026-10-05-valores360-anonimato-design.md`.
+Migración `0116` (escrita, **no aplicada** a ninguna base: la aplica Alexander).
+
+- **`valores_min_evaluaciones` = 3 — default inventado, no confirmado por el dueño.** Es el mínimo de
+  evaluaciones recibidas en el mes para que una persona vea su resultado; con menos, la pantalla dice
+  «Aún no hay suficientes evaluaciones para mostrar tu resultado (mínimo 3)» y la función SQL devuelve
+  vacío (ni siquiera la cantidad). Se eligió 3 por ser el menor número con el que no se deduce por
+  descarte el voto de una persona; con exactamente 3, quien conozca su propio voto sigue acotando los
+  otros dos. Editable en `/configuracion` → Valores 360°. Un valor vacío, `0` o no numérico cae a 3
+  (nunca a 0: apagaría el anonimato en silencio).
+  **Pregunta para el dueño:** ¿3 está bien para un equipo de ~11 evaluadores, o prefiere 4 o 5?
+- Efecto colateral aceptado: un encargado con permiso `datos_personas` **deja de ver** `evaluador_id`
+  (antes lo leía por la policy). Es lo que pidió el dueño.
+- Un administrador mirando **su propio** resultado también pasa por el mínimo (usa la misma función
+  que todos); mirando a **otra** persona, ve todo sin mínimo.
+
+### Hallazgos del verificador sobre el anonimato de Valores 360° (05-oct-2026) — **cerrados en parte; uno sigue abierto**
+
+Decisión del dueño (05-oct, tarde): cerrar las tres fugas con una regla única — *el resultado que ve un
+no-administrador es siempre el de un mes ya cerrado (mes < mes actual, hora Perú) y sólo si ese mes
+tiene ≥ `valores_min_evaluaciones` evaluaciones; nunca en vivo* (spec §6).
+
+**Cerrado en este PR (0116 + código):** `valores_mis_puntajes` (último mes cerrado con mínimo),
+`evaluacion_componentes(self, …)` (el envoltorio; el cuerpo que alimenta la evaluación y el pago no se
+tocó), `/mi-desempeno` (muestra la nota del mes cerrado que devuelve la función, no la guardada) y
+`/evaluaciones` (un no-admin recibe `componentes` sin `valores`).
+
+**ABIERTO hasta el 06-oct-2026 → cerrado por la migración 0119 (ver «Valores 360° base» al final de este archivo):** la persona sigue leyendo su propia
+fila de `evaluaciones_mensuales` por PostgREST directo (`GET /rest/v1/evaluaciones_mensuales?select=componentes`,
+policy `eval_select` de la 0082) y ahí `componentes.valores` es el promedio guardado, sin mes cerrado
+ni mínimo; el verificador lo reprodujo (con 1 voto devuelve `{"valores": 6.0}`). Ocultarlo en las
+pantallas es sólo de pantalla. Un permiso por columna no sirve (el administrador es el mismo rol), así
+que las opciones son una vista o RPC `security definer` que quite `valores` con la misma regla y mover
+las lecturas de no-admin a ella, o dejar de guardar `valores` en esa tabla para no-admin. **Hasta
+resolverlo, no se puede decir que la fuga de la nota guardada esté cerrada.**
+
+Residuales sin decidir (también en la spec §6):
+- Un evaluador puede insertar —y también **actualizar** (`eval_valores_update` deja cambiar `mes` y
+  `evaluado_id`)— un voto en un mes ya cerrado; movería un mes publicado. Es el ítem «mes evaluado» del
+  ticket.
+- `evaluaciones_mensuales.nota_final` y los otros componentes se muestran a la propia persona. En
+  evaluaciones de método `ponderado` (anteriores a la 0095) la nota de valores se despeja con aritmética
+  a partir de ellos. **Pregunta para el dueño:** ¿también se oculta hasta que el mes cierre y haya
+  mínimo?
+- El administrador mirando **su propio** resultado pasa por la misma regla (usa la misma función que
+  todos); sigue viendo todo en el seguimiento y mirando a otra persona.
+---
+
+## Pago por puntos sobre la meta mensual (05-oct-2026) — defaults y lo que falta decidir
+
+Spec: [`sueldos/2026-10-05-pago-por-puntos-design.md`](superpowers/specs/sueldos/2026-10-05-pago-por-puntos-design.md).
+Migración `0117` (escrita, **no aplicada**). Decisión del dueño: los puntos pagan, los extras en soles no.
+
+### Los dos parámetros nuevos — sin valor a propósito
+
+| Clave (`/configuracion` › Pago por puntos) | Default | Quién lo decide |
+|---|---|---|
+| `sueldo_puntos_meta_mensual` | **vacío = desactivado** | El dueño, después de un mes de uso, con el promedio de la tarjeta |
+| `sueldo_soles_por_punto` | **vacío = desactivado** | El dueño, junto con la meta |
+
+Con cualquiera de las dos vacía no se paga nada y la liquidación no muestra la línea: se puede
+desplegar hoy sin inventar ninguna cifra.
+
+### 🟡 Default elegido, no confirmado — el último mes, cortado por el fin del contrato
+
+Enmienda del 06-oct-2026 (spec §8.2, migración `0126`). La meta es mensual y se mide por **mes del
+contrato** (del día de inicio al día anterior del mismo día del mes siguiente, recortado a fin de
+mes). Cada mes se cobra una sola vez, en la liquidación que incluye su último día, con todos sus
+puntos: `max(0, puntos del mes − meta) × soles por punto`, con el excedente redondeado a 2 decimales antes de multiplicar (870,97 × S/3 = S/2612,91). Un mes
+completo usa la meta **entera**.
+
+**Default:** el último mes, si el fin del contrato lo corta, **prorratea la meta por días contra el
+mes completo** (`meta × días efectivos ÷ días del mes`; 15 de 31 días → 48,4 % de la meta). Lo eligió
+quien implementó la enmienda; el dueño puede preferir otra regla para ese mes final (p. ej. meta
+entera). Editarlo no requiere tocar la base: es una fórmula del motor (`bonoPorPuntos`,
+`packages/core/src/sueldos.ts`).
+
+**Los dos valores se congelan por contrato.** `puntosMetaMensual` y `solesPorPunto` se copian de
+`/configuracion` al crear el contrato y desde entonces el contrato usa los suyos. `null` en el
+contrato = **apagado en ese contrato**, aunque `/configuracion` se encienda después. El pago por
+puntos sigue **APAGADO por defecto**: los contratos existentes quedan en `null` (la configuración
+está vacía) y el administrador enciende cada uno en sus valores pactados.
+
+### 🔴 Sin decidir
+
+- ~~Pactar los dos valores por contrato~~ — resuelto en la enmienda del 06-oct (migración `0126`): la
+  lista blanca `sueldo_acuerdos_parametros_chk` ya admite las dos claves.
+- ~~Mi desempeño y la ficha mostraban soles por extras~~ — resuelto el 05-oct a pedido de la sesión
+  maestra («los extras no se pagan»): ambas pantallas muestran puntos. Ojo: la Fase 5 decidió que el
+  operativo no ve los puntos de extras (`puedeVerPuntosExtras`); Mi desempeño ahora le muestra los
+  **suyos**. Confirmar con Alexander que eso es lo que quiere.
+- El aviso de la ficha habla del período mostrado («En este período lleva X puntos. Desde Y puntos al
+  mes cobra extra»); la meta que cita es la mensual, sin prorratear.
+
+### Consecuencia del pago por mes del contrato
+
+Como el mes se cobra una sola vez y completo, el bono **ya no depende** de cómo se parta el mes en
+tramos (antes: semanas de 0, 0, 2.500 y 2.500 puntos con meta 5.000 pagaban S/125 y el mes suma
+justo la meta; ahora paga S/0). Con pagos semanales o quincenales sólo el tramo que cierra el mes
+lleva el bono.
+
+### Orden de despliegue
+
+Aplicar la `0110` (hora Perú de los puntos, PR #45) **antes de encender** el pago; con la `0117` sola
+los puntos se cuentan por día UTC. Apagado no importa. Mientras esté apagado `puntosMeses` viaja
+`null`, así el cierre del PR #44 no se ve afectado.
+
+## Comisión escrita en la unidad vieja (tablero#1): umbral de aviso, confirmar con el cliente
+
+Desde la [spec de la comisión en porcentaje](superpowers/specs/sueldos/2026-10-03-comision-en-porcentaje-design.md)
+el contrato y `/configuracion` piden la comisión en **porcentaje** (`1.5` = 1,5 %). Antes pedían la
+**fracción** (`0.02` = 2 %). Quien por costumbre escriba `0.02` ahora pacta **0,02 %**, cien veces
+menos. El verificador encontró el caso el 3-oct-2026.
+
+**Decidido el 4-oct-2026** (usuario, vía sesión maestra):
+- No hay mínimo de comisión.
+- Entre 0 y 0,5 % (sin incluir los extremos) la pantalla avisa y pide confirmación antes de
+  guardar. 0 es válido sin aviso.
+
+**Default a confirmar con el cliente: el umbral de aviso, 0,5 %.** Vive en
+`UMBRAL_AVISO_COMISION`, en `apps/erp-web/lib/porcentaje.ts`. Es un default de interfaz y no es
+editable desde `/configuracion`, porque no es un parámetro de negocio: sólo avisa, nunca rechaza.
+Si el cliente pide otro umbral, se cambia esa constante y su test.
+
+Verificado contra `scilb` el 3-oct-2026, con una consulta de solo lectura: hoy no hay valores mal
+interpretados. Un solo contrato pisa la comisión (`0.01` = 1 %) y el global
+`sueldo_pct_comision` está en `0.03` (3 %).
+
+### Valores 360° base — migración 0119 (06-oct-2026, ticket #45)
+
+Spec: `docs/superpowers/specs/evaluaciones/2026-10-06-valores360-base-design.md`. Cierra lo que arriba
+quedaba abierto, **sin aplicar a ninguna base** (la aplica Alexander, antes de desplegar la app):
+
+- ✅ **Lectura directa de `evaluaciones_mensuales`:** `eval_select` queda sólo para el administrador. La
+  propia persona usa `mi_evaluacion_mensual(p_mes)`; un encargado con `datos_personas`, `evaluaciones_
+  mensuales_visibles()`. Ambas quitan `valores`/`valoresCantidad` salvo mes cerrado con el mínimo.
+- ✅ **Despeje por `nota_final`:** en una fila `ponderado`, mientras el Valores 360° del mes no sea público,
+  la nota sale `null` y la pantalla dice «en cálculo». Las filas `puntos` (todas las nuevas) no dependen de
+  `valores` y se ven siempre. Forma elegida por mí (la mínima); **el dueño puede cambiarla**.
+- ✅ **Votos fuera de mes:** `eval_valores_insert/update` sólo aceptan el mes en curso (hora Perú) con la
+  ventana abierta (`valores_habilitado/_modo/_dia_*`, mismos respaldos que la app). El administrador conserva
+  lo que tenía.
+- 🔴 **Sigue abierto:** `pagos.monto` y las liquidaciones de una evaluación `ponderado` se derivan de
+  `nota_final` y la propia persona los ve; para esas filas históricas el despeje sigue posible por ahí.
+  Toca la cadena del sueldo: spec propia.
+- **Decisión mía, no del dueño:** los encargados con `datos_personas` siguen viendo evaluaciones ajenas (con
+  la misma regla) por `evaluaciones_mensuales_visibles()`. Si el dueño quiere que dejen de verlas, se quita
+  una rama de la función.
+
+---
+
+## Valores 360° — evaluaciones históricas sin `valoresCantidad` (06-oct-2026)
+
+Hallado por la auditoría de pipeline (H-6). Hasta el arreglo del PR #46 ninguna evaluación guardada
+llevaba `componentes.valoresCantidad`; con la 0119 (PR #56) una fila `ponderado` sin esa clave queda
+para siempre con la nota «en cálculo» para la persona, y ninguna fila publica su 360°.
+**Pregunta para el dueño (sin decidir):** (a) completar `valoresCantidad` de las filas de meses ya
+cerrados con el conteo de votos de ese mes, o (b) aceptar que no se publiquen y cambiar el texto de
+la pantalla. Hasta que decida, se deja el comportamiento de la 0119. Spec
+`superpowers/specs/evaluaciones/2026-10-06-valores360-base-design.md` §8.3.
+
+Decidido por el dueño el 06-oct-2026: cada persona sólo ve su propia evaluación, salvo los
+administradores (los encargados ya no ven notas ajenas). Spec §8.1.
+---
+
+## Login seguro — defaults tomados el 6-oct-2026 ([spec](superpowers/specs/permisos/2026-10-06-login-usuario-contrasena-design.md))
+
+Ninguno lo confirmó el dueño; los tres son editables en `/configuracion` → «Acceso» y están
+sembrados en `0123_login_seguro.sql` con el comentario de default provisional.
+
+- **`acceso_contrasena_min` = 8 caracteres.** Sin reglas de composición (mayúscula, símbolo): se
+  prefiere una frase larga. Si el dueño quiere composición, es un cambio de código en
+  `validarContrasenaNueva()` (core), no un parámetro.
+- **`acceso_intentos_max` = 5** fallos seguidos antes de bloquear.
+- **`acceso_bloqueo_min` = 15** minutos de bloqueo.
+- **Sistema viejo, `/api/auth/login-code`:** 5 fallos por IP en 15 min y 20 fallos globales en 1 h
+  (fijos en `routes/limitador-intentos.js`: el sistema está congelado y no tiene pantalla de
+  configuración). 1 h y no 24 h porque `/login-code` se usa a diario (kanban, cambio de sede).
+- **🔴 Pendiente de decisión del dueño — `/api/auth/login` del sistema viejo acepta el código como
+  contraseña y no tiene límite** (`routes/auth.js:45-50`, comparación con `cod_hash`). Es la puerta
+  grande de H3 y no estaba dentro de la autorización. Opciones: el mismo limitador, o quitar esa
+  comparación. A largo plazo: retirar `/login-code` cuando el kanban viejo deje de usarse.
+---
+
+## Hallazgo del 03-oct-2026 — la tienda no ve lo que le mandan desde otra sede
+
+Apareció al construir el filtro por tienda de `/pipeline/envios`
+([spec](superpowers/specs/pipeline/2026-10-03-envios-filtro-tienda-design.md) §4, ticket
+lucebien-tablero#7), y no es parte de ese trabajo. La pantalla lee desde `prenda_pasada`, cuya
+política `pasada_rw` (`packages/db/migrations/0006_pipeline_rls.sql:31-34`) filtra por **sede de
+origen**. `envios_rw` filtra por **sede de destino**. Una encargada de tienda, entonces, sólo ve una
+prenda enviada cuando el origen **y** el destino son sedes suyas. Una prenda que entró por otra
+tienda y el almacén despachó a la suya no le aparece, y no puede aceptarla ni observarla. Admin,
+dueño y almacén no lo sufren porque ven todo.
+
+No es una fuga, porque nadie ve de más. Es una restricción de más. Cerrarlo toca RLS (nivel 3, con
+spec y verificador propios): por ejemplo, que `pasada_rw` deje leer también las prendas cuyo envío
+va a una sede propia. Falta decidir **qué espera el negocio**: ¿las prendas vuelven siempre a la
+tienda de donde salieron, o el almacén reparte entre tiendas? Si vuelven siempre al origen, el
+hallazgo no tiene efecto práctico.
+
+**Defaults de pantalla del mismo trabajo** (no son reglas de negocio, comentados en
+`apps/erp-web/lib/envios-repo.ts`): hasta 1000 prendas en camino visibles a la vez, con aviso si hay
+más, y el historial de recibidas de a 50 por página.
+
+---
+
+## Pregunta de la 0128 sobre los extras de un reporte (9-oct-2026)
+
+Al implementar la [spec 0128](superpowers/specs/pipeline/2026-10-09-pipeline-carrera-y-puntos-ajenos-design.md)
+(F4) se comprobó que `/reportes/nuevo` (`apps/erp-web/app/reportes/nuevo/form.tsx:907-919`) deja elegir
+en «¿Quién lo hizo?» a **cualquier empleado del directorio** —todas las sedes, incluidos los
+inactivos—, también a quien no es administrador, y `reportes_crear` acredita ese extra a ese id en
+la nota /20 (`evaluacion_componentes_datos`). **Sin contestar:** ¿una encargada que no es admin puede
+atribuir un extra a alguien que no es el encargado ni un trabajador de ese reporte (otra sede, o
+alguien que olvidó marcar)? Si la respuesta es **no**, hay que limitar el selector al equipo y
+rechazar en la base ese id (ojo: obligar a sumar a la persona al equipo la marca presente, porque
+`marcarAsistenciaReporte` marca al encargado y a los trabajadores). Mientras tanto no cambia nada.
 ---
 
 ## Defaults propuestos el 11-oct-2026 — entrevistados y prueba de 3 días

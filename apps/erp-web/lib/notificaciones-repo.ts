@@ -17,11 +17,15 @@ export type Notificacion = {
   sede: string | null;
   refTipo: string | null;
   refId: string | null;
+  /** Identidad de la fila que escribe la RPC; lleva datos que el enlace usa (p.ej. el período). */
+  dedupKey: string | null;
   leida: boolean;
   createdAt: string;
+  /** Ver NotificacionEnlazable.contexto en notificaciones-enlace.ts. */
+  contexto?: { empleadoId: string; acuerdoId: string } | null;
 };
 
-const SEL = 'id, tipo, titulo, mensaje, severidad, destinatario_sede, ref_tipo, ref_id, leida, created_at';
+const SEL = 'id, tipo, titulo, mensaje, severidad, destinatario_sede, ref_tipo, ref_id, dedup_key, leida, created_at';
 
 function fromRow(r: Record<string, unknown>): Notificacion {
   const sev = r.severidad;
@@ -34,6 +38,7 @@ function fromRow(r: Record<string, unknown>): Notificacion {
     sede: (r.destinatario_sede as string | null) ?? null,
     refTipo: (r.ref_tipo as string | null) ?? null,
     refId: (r.ref_id as string | null) ?? null,
+    dedupKey: (r.dedup_key as string | null) ?? null,
     leida: Boolean(r.leida),
     createdAt: String(r.created_at ?? ''),
   };
@@ -45,7 +50,35 @@ export async function listarNotificaciones(soloNoLeidas = false, limit = 100): P
   if (soloNoLeidas) q = q.eq('leida', false);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
-  return ((data as Record<string, unknown>[]) ?? []).map(fromRow);
+  const lista = ((data as Record<string, unknown>[]) ?? []).map(fromRow);
+  await completarContextoLiquidaciones(lista);
+  return lista;
+}
+
+// `declaracion_incompleta` apunta a una liquidación, pero la pantalla donde se resuelve (declarar
+// asistencia) se abre por persona y contrato. Una sola lectura para todas las de la lista, con el
+// cliente del usuario: RLS decide (sueldo_liquidaciones es del administrador, y esa alerta también).
+// Si la lectura falla o no devuelve la fila, el enlace cae a la pantalla general — nunca tumba la
+// lista de notificaciones por esto.
+async function completarContextoLiquidaciones(lista: Notificacion[]): Promise<void> {
+  const ids = Array.from(new Set(lista.filter((n) => n.refTipo === 'liquidacion' && n.refId).map((n) => n.refId as string)));
+  if (ids.length === 0) return;
+  try {
+    const sb = getServerClient();
+    const { data, error } = await sb.from('sueldo_liquidaciones').select('id, empleado_id, acuerdo_id').in('id', ids);
+    if (error || !data) return;
+    const por = new Map(
+      (data as { id: string; empleado_id: string; acuerdo_id: string }[]).map((r) => [
+        String(r.id),
+        { empleadoId: String(r.empleado_id), acuerdoId: String(r.acuerdo_id) },
+      ]),
+    );
+    for (const n of lista) {
+      if (n.refTipo === 'liquidacion' && n.refId) n.contexto = por.get(n.refId) ?? null;
+    }
+  } catch {
+    // Degrada al enlace general.
+  }
 }
 
 export async function contarNoLeidas(): Promise<number> {

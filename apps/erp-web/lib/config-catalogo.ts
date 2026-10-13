@@ -23,6 +23,14 @@ export type ConfigCatalogoItem = {
   min?: number;
   max?: number;
   step?: number; // solo si tipo === 'numero'
+  /** Un número que puede quedar en blanco: en blanco significa «desactivado», no «falta el dato». */
+  permiteVacio?: boolean;
+  /**
+   * Sólo si tipo === 'numero'. `porcentaje`: se guarda la fracción (`0.015`) pero /configuracion la
+   * muestra y la pide en porcentaje (`1.5`). `min`/`max` siguen hablando de la fracción guardada.
+   * Spec: docs/superpowers/specs/sueldos/2026-10-03-comision-en-porcentaje-design.md
+   */
+  unidad?: 'porcentaje';
 };
 
 const SECCION_PUNTOS = 'Puntos del pipeline';
@@ -32,6 +40,12 @@ const SECCION_INVENTARIO = 'Inventario';
 const SECCION_VALORES = 'Valores 360°';
 const SECCION_POS = 'Caja y POS';
 const SECCION_SUELDOS = 'Sueldos';
+const SECCION_CODIGO = 'Código personal';
+/** Sección con tarjeta propia en /configuracion (app/configuracion/cliente.tsx). */
+export const SECCION_PAGO_PUNTOS = 'Pago por puntos';
+export const CLAVE_PUNTOS_META = 'sueldo_puntos_meta_mensual';
+export const CLAVE_SOLES_POR_PUNTO = 'sueldo_soles_por_punto';
+const SECCION_ACCESO = 'Acceso';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
 // simplemente no se muestran; "Personalizados" — parámetros creados por el admin — va siempre al
@@ -40,10 +54,13 @@ export const ORDEN_SECCIONES = [
   SECCION_PUNTOS,
   SECCION_EVALUACION,
   SECCION_SUELDOS,
+  SECCION_PAGO_PUNTOS,
   SECCION_REPORTES,
   SECCION_INVENTARIO,
   SECCION_POS,
   SECCION_VALORES,
+  SECCION_CODIGO,
+  SECCION_ACCESO,
 ];
 
 // Puntos de productividad — 10 claves, todas "puntos que suma el operario al completar la etapa
@@ -216,6 +233,8 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '',
     min: 0,
     step: 0.5,
+    // Vacío a propósito (0095). Sin esto, guardar /configuracion exigía inventar la tasa.
+    permiteVacio: true,
   },
 
   // ── Reportes de turno (Fase 4, migración 0052 — pendiente de aplicar) ──────────────────────
@@ -306,6 +325,45 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '',
   },
 
+  // ── Acceso (spec permisos/2026-10-06-login-usuario-contrasena, migración 0123) ─────────────
+  // Defaults provisionales, anotados en docs/pendientes-negocio.md. Los rangos son los mismos que
+  // aplica leerReglasAcceso() en el core: fuera de rango, el login usa el default.
+  {
+    clave: 'acceso_contrasena_min',
+    seccion: SECCION_ACCESO,
+    etiqueta: 'Largo mínimo de contraseña',
+    descripcion:
+      'Caracteres mínimos de una contraseña nueva (al cambiarla o al dar de alta a alguien). Se aplica a las contraseñas que se creen desde ahora, no a las que ya existen. Entre 6 y 72.',
+    tipo: 'numero',
+    default: '8',
+    min: 6,
+    max: 72,
+    step: 1,
+  },
+  {
+    clave: 'acceso_intentos_max',
+    seccion: SECCION_ACCESO,
+    etiqueta: 'Intentos fallidos antes de bloquear',
+    descripcion:
+      'Contraseñas incorrectas seguidas que bloquean la cuenta por un rato. Al generar una contraseña temporal, la cuenta se desbloquea. Entre 3 y 20.',
+    tipo: 'numero',
+    default: '5',
+    min: 3,
+    max: 20,
+    step: 1,
+  },
+  {
+    clave: 'acceso_bloqueo_min',
+    seccion: SECCION_ACCESO,
+    etiqueta: 'Minutos de bloqueo',
+    descripcion: 'Cuánto dura el bloqueo después de los intentos fallidos. Entre 1 y 1440 (un día).',
+    tipo: 'numero',
+    default: '15',
+    min: 1,
+    max: 1440,
+    step: 1,
+  },
+
   // ── Valores 360° (Fase 13 tarea 3, migración 0058) ─────────────────────────────────────────
   {
     clave: 'valores_habilitado',
@@ -346,6 +404,19 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '31',
     min: 1,
     max: 31,
+    step: 1,
+  },
+
+  {
+    clave: 'valores_min_evaluaciones',
+    seccion: SECCION_VALORES,
+    etiqueta: 'Mínimo de evaluaciones para ver el resultado',
+    descripcion:
+      'Cuántas evaluaciones tiene que haber recibido una persona en el mes antes de que vea su resultado. Con menos, la pantalla no muestra nada (ni cuántas hay), para que nadie pueda deducir quién puntuó qué. Valor provisional de 3, NO confirmado por el dueño — ver docs/pendientes-negocio.md. Un valor vacío o menor que 1 se toma como 3.',
+    tipo: 'numero',
+    default: '3',
+    min: 1,
+    max: 100,
     step: 1,
   },
 
@@ -456,14 +527,16 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_pct_comision',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Comisión sobre ventas (fracción)',
+    etiqueta: 'Comisión sobre ventas (%)',
     descripcion:
-      'Fracción de la base de comisión que se paga. 0,02 = 2%. Sólo comisionan las semanas en las que la persona llegó a su meta.',
+      'Porcentaje de la base de comisión que se paga: 1,5 = 1,5 %. Sólo comisionan las semanas en las que la persona llegó a su meta.',
     tipo: 'numero',
+    // Se guarda como fracción (0.02 = 2 %), que es lo que multiplica el motor (RN-13); la pantalla
+    // la muestra en porcentaje. min/max son de la fracción: 0 % a 100 %.
     default: '0.02',
     min: 0,
     max: 1,
-    step: 0.005,
+    unidad: 'porcentaje',
   },
   {
     clave: 'sueldo_monto_minimo_comision',
@@ -610,6 +683,89 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 0,
     step: 1,
   },
+  // Migración 0112 (spec pipeline/2026-10-04-codigo-personal-design.md §4). Los tres defaults los
+  // eligió el implementador y NO están confirmados por el dueño (docs/pendientes-negocio.md).
+  {
+    clave: 'codigo_max_intentos',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Intentos fallidos antes de bloquear',
+    descripcion:
+      'En un equipo compartido, cuántos PIN incorrectos se aceptan dentro de la ventana de abajo, contados por sesión y por persona, antes de bloquear (aunque el siguiente sea el correcto). El administrador recibe un aviso.',
+    tipo: 'numero',
+    default: '5',
+    min: 1,
+    step: 1,
+  },
+  {
+    clave: 'codigo_ventana_intentos_min',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Minutos que cuenta cada intento fallido',
+    descripcion:
+      'Ventana en la que se cuentan los intentos fallidos de una sesión. Pasado ese tiempo el fallo deja de contar y el bloqueo se levanta.',
+    tipo: 'numero',
+    default: '15',
+    min: 1,
+    step: 1,
+  },
+  {
+    clave: 'codigo_operador_min',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Minutos de operador activo sin actividad',
+    descripcion:
+      'Tras ingresar su código, quien opera el tablero de un equipo compartido sigue activo hasta que pasen estos minutos sin mover ninguna prenda; después tiene que volver a ingresar el código.',
+    tipo: 'numero',
+    default: '10',
+    min: 1,
+    step: 1,
+  },
+  {
+    clave: 'codigo_operador_max_h',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Horas máximas de un operador (desde que ingresó)',
+    descripcion:
+      'Tope de vida de un operador de equipo compartido contada desde que tecleó su código, aunque siga moviendo prendas sin parar (un turno). Pasado ese tiempo tiene que volver a ingresar el código.',
+    tipo: 'numero',
+    default: '8',
+    min: 1,
+    step: 1,
+  },
+  {
+    clave: 'codigo_pin_min_largo',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Dígitos mínimos del PIN personal',
+    descripcion:
+      'Largo mínimo del PIN que cada persona define en «Mi desempeño» para operar en un equipo compartido. Sólo afecta a los PIN que se definan o cambien después.',
+    tipo: 'numero',
+    default: '6',
+    min: 4,
+    step: 1,
+  },
+  // Pago por puntos (migración 0117, spec sueldos/2026-10-05-pago-por-puntos-design.md). SIN default
+  // a propósito: la meta la fija el dueño después de un mes de uso, mirando el promedio real. En
+  // blanco = desactivado; con cualquiera de las dos en blanco no se paga nada por puntos.
+  {
+    clave: CLAVE_PUNTOS_META,
+    seccion: SECCION_PAGO_PUNTOS,
+    etiqueta: 'Meta de puntos del mes',
+    descripcion:
+      'A partir de cuántos puntos en el mes se empieza a pagar extra. Se paga por los puntos que pasen de esta meta. En un tramo que no es un mes completo (una semana, por ejemplo) la meta se reparte por días.',
+    tipo: 'numero',
+    default: '',
+    min: 0,
+    step: 50,
+    permiteVacio: true,
+  },
+  {
+    clave: CLAVE_SOLES_POR_PUNTO,
+    seccion: SECCION_PAGO_PUNTOS,
+    etiqueta: 'Soles por cada punto sobre la meta',
+    descripcion: 'Cuánto se le suma a la liquidación por cada punto que supere la meta. Con 0,05, mil puntos sobre la meta son S/50.',
+    tipo: 'numero',
+    default: '',
+    min: 0,
+    step: 0.01,
+    permiteVacio: true,
+  },
 ];
 
 export const CONFIG_CATALOGO_MAP: Map<string, ConfigCatalogoItem> = new Map(CONFIG_CATALOGO.map((i) => [i.clave, i]));
@@ -647,6 +803,8 @@ export type ConfigItem = {
   min?: number;
   max?: number;
   step?: number;
+  permiteVacio?: boolean;
+  unidad?: 'porcentaje';
   guardado: boolean; // false = todavía no hay fila en `config` (se está mostrando el default)
   esPersonalizado: boolean;
 };

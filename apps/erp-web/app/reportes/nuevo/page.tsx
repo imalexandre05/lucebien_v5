@@ -13,6 +13,8 @@ export default async function NuevoReportePage() {
   if (!sesion) redirect('/login');
   const sede = sesion.usuario.sede;
   const fecha = hoyPeru();
+  // Mismo criterio que incidencias/sueldos. Quien no es admin queda fijo como encargado (0122, H14).
+  const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
   const [empleados, tiposIncidencia, config, misReportes] = await Promise.all([
     listarEmpleados(),
     listarTiposIncidencia(),
@@ -35,6 +37,7 @@ export default async function NuevoReportePage() {
         sede={sede}
         fecha={fecha}
         encargadoId={sesion.usuario.id}
+        esAdmin={esAdmin}
         empleados={empleados}
         tiposIncidencia={tiposIncidencia}
         cierres={cierres}

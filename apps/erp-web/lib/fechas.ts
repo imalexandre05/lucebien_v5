@@ -8,6 +8,14 @@ export function hoyPeru(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
 }
 
+/**
+ * 'YYYY-MM-DD' del día de Lima al que pertenece un instante (ISO con zona, p. ej. un `timestamptz`
+ * de Supabase). Para agrupar por día lo que la base entrega en UTC (no-negociable 4).
+ */
+export function diaPeruDe(iso: string): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date(iso));
+}
+
 /** 'YYYY-MM' del mes actual en Lima. */
 export function mesPeru(): string {
   return hoyPeru().slice(0, 7);

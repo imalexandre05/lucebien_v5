@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../../lib/auth';
+import { soloHastaHoy } from '@scilb/core';
+import { hoyPeru } from '../../../lib/fechas';
 import { declararDia, type CondicionDia } from '../../../lib/asistencias-repo';
 
 /**
@@ -62,7 +64,15 @@ export async function accionDeclararVarios(dias: DiaForm[]): Promise<Resultado &
 
   const fallos: string[] = [];
   let hechos = 0;
-  for (const d of dias) {
+  // El servidor no confía en la lista del cliente: los días futuros no entran en la acción masiva.
+  let aDeclarar: DiaForm[];
+  try {
+    aDeclarar = soloHastaHoy(dias, hoyPeru());
+  } catch (e) {
+    return { ok: false, hechos: 0, error: e instanceof Error ? e.message : 'Lista de días inválida.' };
+  }
+  const descartados = dias.length - aDeclarar.length;
+  for (const d of aDeclarar) {
     try {
       await declararDia(d);
       hechos += 1;
@@ -73,8 +83,13 @@ export async function accionDeclararVarios(dias: DiaForm[]): Promise<Resultado &
 
   revalidatePath('/sueldos/asistencia');
   return {
-    ok: fallos.length === 0,
+    ok: fallos.length === 0 && descartados === 0,
     hechos,
-    error: fallos.length > 0 ? `${hechos} día(s) declarados. No se pudo con: ${fallos.join(' · ')}` : undefined,
+    error:
+      fallos.length > 0
+        ? `${hechos} día(s) declarados. No se pudo con: ${fallos.join(' · ')}`
+        : descartados > 0
+          ? `${hechos} día(s) declarados. ${descartados} día(s) son posteriores a hoy y no se declararon.`
+          : undefined,
   };
 }

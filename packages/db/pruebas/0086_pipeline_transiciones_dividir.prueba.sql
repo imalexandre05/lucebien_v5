@@ -53,8 +53,10 @@ declare
   v_i        int;
   r          text := '';
 begin
-  select id into actor from empleados where activo order by id limit 1;
-  if actor is null then raise exception 'La prueba necesita al menos un empleado activo'; end if;
+  -- Desde la 0122 las RPC del pipeline son definer con portero (admin, almacén o sede propia):
+  -- el actor tiene que ser alguien autorizado, no «el primer empleado activo».
+  select id into actor from empleados where activo and rol = 'admin' order by id limit 1;
+  if actor is null then raise exception 'La prueba necesita al menos un admin activo'; end if;
 
   select cod into sede from sedes order by cod limit 1;
   if sede is null then raise exception 'La prueba necesita al menos una sede'; end if;

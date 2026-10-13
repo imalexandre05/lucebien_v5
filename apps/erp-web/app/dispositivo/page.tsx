@@ -10,14 +10,15 @@ import { Input } from '../../components/ui/form';
 import { cn } from '../../lib/cn';
 import { autorizarEsteEquipo, solicitarAcceso } from './actions';
 
-export default async function DispositivoPage({
-  searchParams,
-}: {
-  searchParams: { error?: string; solicitado?: string };
-}) {
+export default async function DispositivoPage(
+  props: {
+    searchParams: Promise<{ error?: string; solicitado?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
-  const deviceId = cookies().get('sci_device')?.value ?? '';
+  const deviceId = (await cookies()).get('sci_device')?.value ?? '';
 
   let estado: EstadoDispositivo = 'none';
   try {

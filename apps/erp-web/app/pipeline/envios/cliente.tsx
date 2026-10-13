@@ -1,28 +1,90 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useState, useTransition, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Check, Eye, Truck, ArrowLeft } from 'lucide-react';
+import type { FiltrosEnvios } from '@scilb/core';
 import type { PrendaEnviada } from '../../../lib/envios-repo';
 import { calificarPrenda } from '../actions';
+import { useOperador } from '../operador';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
 import { EmptyState } from '../../../components/ui/empty-state';
+import { BarraFiltros } from '../../../components/ui/barra-filtros';
+import { Button, buttonVariants } from '../../../components/ui/button';
+import { Aviso, campoCls } from '../../../components/ui/form';
+import { OpcionBotones } from '../../../components/ui/opcion-botones';
 import { cn } from '../../../lib/cn';
 
-const fecha = (iso: string | null) => (iso ? iso.slice(0, 10) : '—');
+// El día en hora Perú (no-negociable 4). Un `slice(0, 10)` del timestamptz daba el día en UTC: un
+// envío de las 20:00 del 30-sep salía como 1-oct, y contradecía el filtro de fechas de al lado.
+const diaPeru = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' });
+const fecha = (iso: string | null) => {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isNaN(t) ? '—' : diaPeru.format(t);
+};
 
-export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; miSede: string }) {
+const RUTA = '/pipeline/envios';
+
+// URL de la pantalla con los filtros actuales más `cambios` (null borra la clave).
+function urlCon(f: FiltrosEnvios, cambios: Partial<Record<'sede' | 'desde' | 'hasta' | 'pag', string | null>>) {
+  const base: Record<string, string | null> = {
+    sede: f.sede,
+    desde: f.desde,
+    hasta: f.hasta,
+    pag: f.pagina > 1 ? String(f.pagina) : null,
+  };
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries({ ...base, ...cambios })) if (v) qs.set(k, v);
+  const q = qs.toString();
+  return q ? `${RUTA}?${q}` : RUTA;
+}
+
+export function EnviosCliente({
+  enCamino,
+  enCaminoTruncado,
+  topeEnCamino,
+  recibidas,
+  hayMasRecibidas,
+  miSede,
+  opcionesSede,
+  filtros,
+  compartido = false,
+}: {
+  enCamino: PrendaEnviada[];
+  enCaminoTruncado: boolean;
+  topeEnCamino: number;
+  recibidas: PrendaEnviada[];
+  hayMasRecibidas: boolean;
+  miSede: string;
+  /** Vacío si la persona ve una sola sede: entonces no hay selector. */
+  opcionesSede: { cod: string; nombre: string }[];
+  filtros: FiltrosEnvios;
+  compartido?: boolean;
+}) {
+  const { conOperador, operadorRechazado, renovar, chip, dialogo } = useOperador(compartido);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [destinoObs, setDestinoObs] = useState<Record<string, string>>({});
+  const [error, setError] = useState<string | null>(null);
+  const hayFiltros = Boolean(filtros.sede || filtros.desde || filtros.hasta);
 
-  const enCamino = prendas.filter((p) => p.etapa === 'enviado');
-  const recibidas = prendas.filter((p) => p.etapa === 'recibido').slice(0, 20);
+  // Cambiar un filtro vuelve a la primera página del historial.
+  function elegirSede(sede: string) {
+    router.push(urlCon(filtros, { sede: sede || null, pag: null }));
+  }
 
-  // Agrupadas por sede destino; la sede activa primero (es la que debe confirmar).
+  function aplicarFechas(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const d = new FormData(e.currentTarget);
+    const val = (k: string) => String(d.get(k) ?? '') || null;
+    router.push(urlCon(filtros, { desde: val('desde'), hasta: val('hasta'), pag: null }));
+  }
+
+  // Agrupadas por sede destino; la sede activa primero (es la que debe confirmar). Dentro de cada
+  // grupo, la más antigua arriba: así llegan del repo.
   const porSede = useMemo(() => {
     const m = new Map<string, PrendaEnviada[]>();
     for (const p of enCamino) {
@@ -36,14 +98,30 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
   }, [enCamino, miSede]);
 
   function calificar(p: PrendaEnviada, aceptada: boolean) {
-    startTransition(async () => {
-      await calificarPrenda(p.id, aceptada, aceptada ? '' : destinoObs[p.id] || 'recepcion');
-      router.refresh();
-    });
+    conOperador((token) =>
+      startTransition(async () => {
+        setError(null);
+        try {
+          const r = await calificarPrenda(p.id, aceptada, aceptada ? '' : destinoObs[p.id] || 'recepcion', token);
+          if (r) {
+            operadorRechazado();
+            setError('Operador vencido. Ingresa tu código de nuevo.');
+          } else {
+            renovar();
+          }
+        } catch {
+          setError('No se pudo calificar la prenda. Actualiza la lista e inténtalo de nuevo.');
+        }
+        router.refresh();
+      }),
+    );
   }
 
   return (
     <div className="space-y-5">
+      {chip}
+      {dialogo}
+      {error && <Aviso tono="error">{error}</Aviso>}
       <div className="flex items-center gap-2">
         <Link
           href="/pipeline"
@@ -56,11 +134,53 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
         </span>
       </div>
 
+      <BarraFiltros
+        onLimpiar={hayFiltros ? () => router.push(RUTA) : undefined}
+      >
+        {/* Tienda: un toque y filtra. Sólo aparece si la persona ve más de una sede. */}
+        {opcionesSede.length > 0 && (
+          <OpcionBotones
+            ariaLabel="Tienda de destino"
+            opciones={[{ value: '', label: 'Todas' }, ...opcionesSede.map((s) => ({ value: s.cod, label: s.nombre }))]}
+            value={filtros.sede ?? ''}
+            onChange={elegirSede}
+          />
+        )}
+        {/* key: al navegar con otras fechas el formulario se rearma con los valores nuevos. */}
+        <form
+          key={urlCon(filtros, {})}
+          onSubmit={aplicarFechas}
+          className="flex flex-wrap items-center gap-2"
+          aria-label="Filtrar el historial por fecha de envío"
+        >
+          <label className="flex items-center gap-1.5 text-apoyo text-muted">
+            Enviado del
+            <input type="date" name="desde" defaultValue={filtros.desde ?? ''} className={cn(campoCls, 'tabular-nums')} />
+          </label>
+          <label className="flex items-center gap-1.5 text-apoyo text-muted">
+            al
+            <input type="date" name="hasta" defaultValue={filtros.hasta ?? ''} className={cn(campoCls, 'tabular-nums')} />
+          </label>
+          <Button type="submit" variant="outline" className="px-3 py-1.5">
+            Aplicar
+          </Button>
+        </form>
+      </BarraFiltros>
+
+      {enCaminoTruncado && (
+        <Aviso tono="aviso" titulo="Hay más prendas en camino de las que se muestran">
+          Se ven las {topeEnCamino} que llevan más tiempo esperando.
+          {opcionesSede.length > 0 && !filtros.sede && ' Elige una tienda para ver todas las suyas.'}
+        </Aviso>
+      )}
+
       {porSede.length === 0 ? (
         <Card>
           <CardContent className="pb-0">
             <EmptyState icon={Truck} titulo="Sin envíos en camino">
-              Cuando el almacén despache prendas listas, la tienda las confirma aquí.
+              {filtros.sede
+                ? `No hay prendas en camino hacia ${filtros.sede}.`
+                : 'Cuando el almacén despache prendas listas, la tienda las confirma aquí.'}
             </EmptyState>
           </CardContent>
         </Card>
@@ -136,11 +256,31 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
         ))
       )}
 
-      {recibidas.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Recibidas recientemente</CardTitle>
-          </CardHeader>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recibidas</CardTitle>
+          {(filtros.desde || filtros.hasta) && (
+            <p className="text-apoyo text-muted">
+              Enviadas {filtros.desde ? `del ${filtros.desde}` : 'hasta'} {filtros.hasta ? `${filtros.desde ? 'al ' : ''}${filtros.hasta}` : 'en adelante'}.
+              Las fechas sólo filtran este historial; lo que está en camino se muestra siempre completo.
+            </p>
+          )}
+        </CardHeader>
+        {recibidas.length === 0 ? (
+          <CardContent className="pb-0">
+            <EmptyState icon={Truck} titulo="Sin recepciones">
+              {filtros.pagina > 1 ? (
+                <Link href={urlCon(filtros, { pag: null })} className={buttonVariants({ variant: 'outline' })}>
+                  Volver a la primera página
+                </Link>
+              ) : hayFiltros ? (
+                'No hay prendas recibidas para este filtro.'
+              ) : (
+                'Aquí aparece lo que la tienda ya confirmó.'
+              )}
+            </EmptyState>
+          </CardContent>
+        ) : (
           <CardContent className="overflow-x-auto px-0 pb-0">
             <Table>
               <THead>
@@ -148,6 +288,7 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
                   <TH className="pl-5">Código</TH>
                   <TH>Prenda</TH>
                   <TH>Destino</TH>
+                  <TH>Enviada</TH>
                   <TH className="pr-5">Recibida</TH>
                 </TR>
               </THead>
@@ -159,14 +300,34 @@ export function EnviosCliente({ prendas, miSede }: { prendas: PrendaEnviada[]; m
                       {[p.tipo, p.color].filter(Boolean).join(' · ') || '—'}
                     </TD>
                     <TD className="tabular-nums text-dato text-muted">{p.sedeDestinoCod}</TD>
+                    <TD className="tabular-nums text-dato text-muted">{fecha(p.fechaEnvio)}</TD>
                     <TD className={cn('pr-5 tabular-nums text-dato text-muted')}>{fecha(p.fechaActualizado)}</TD>
                   </TR>
                 ))}
               </TBody>
             </Table>
           </CardContent>
-        </Card>
-      )}
+        )}
+        {(filtros.pagina > 1 || hayMasRecibidas) && (
+          <nav aria-label="Páginas del historial" className="flex items-center justify-between border-t border-line px-3 py-2">
+            {filtros.pagina > 1 ? (
+              <Link href={urlCon(filtros, { pag: filtros.pagina > 2 ? String(filtros.pagina - 1) : null })} className={buttonVariants({ variant: 'ghost' })}>
+                ← Más recientes
+              </Link>
+            ) : (
+              <span />
+            )}
+            <span className="tabular-nums text-apoyo text-muted">Página {filtros.pagina}</span>
+            {hayMasRecibidas ? (
+              <Link href={urlCon(filtros, { pag: String(filtros.pagina + 1) })} className={buttonVariants({ variant: 'ghost' })}>
+                Anteriores →
+              </Link>
+            ) : (
+              <span />
+            )}
+          </nav>
+        )}
+      </Card>
     </div>
   );
 }

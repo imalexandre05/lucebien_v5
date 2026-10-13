@@ -60,16 +60,21 @@ test.describe('flujos de escritura', () => {
     await page.waitForURL(/\/reportes\/[^/]+$/, { timeout: 20000 });
     const reporteUrl = page.url();
 
-    // Evaluar si el panel lo permite (necesita ≥1 actividad/limpieza; si está deshabilitado, se salta).
+    // Evaluar si el panel aparece. Desde la migración 0113 el evaluador debe marcar cada actividad y
+    // cada zona (nacen sin marcar y el botón queda deshabilitado), así que el test las marca con
+    // los botones masivos y EXIGE el botón habilitado: si no, el tramo se saltaría solo.
     const enviarEval = page.getByTestId('enviar-evaluacion');
     if (await enviarEval.isVisible().catch(() => false)) {
-      if (await enviarEval.isEnabled().catch(() => false)) {
-        await enviarEval.click();
-        // Al evaluar, redirige a /reportes/nuevo (el evaluador pasa a su propio turno).
-        await page.waitForURL(/\/reportes\/nuevo$/, { timeout: 15000 }).catch(() => {});
-        // Vuelve al reporte evaluado para poder anularlo (limpieza del test).
-        await page.goto(reporteUrl);
+      for (const nombre of ['Aprobar todo', 'Aprobar todas las zonas']) {
+        const masivo = page.getByRole('button', { name: nombre });
+        if (await masivo.isVisible().catch(() => false)) await masivo.click();
       }
+      await expect(enviarEval).toBeEnabled();
+      await enviarEval.click();
+      // Al evaluar, redirige a /reportes/nuevo (el evaluador pasa a su propio turno).
+      await page.waitForURL(/\/reportes\/nuevo$/, { timeout: 15000 }).catch(() => {});
+      // Vuelve al reporte evaluado para poder anularlo (limpieza del test).
+      await page.goto(reporteUrl);
     }
 
     // Limpieza: anular como admin → confirmar en el Modal compartido → vuelve a /reportes.

@@ -29,7 +29,8 @@ const GRUPO_LABEL: Record<string, string> = {
   final: 'Cierre y total',
 };
 
-export default async function ComprobanteLiquidacionPage({ params }: { params: { id: string } }) {
+export default async function ComprobanteLiquidacionPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const liq = await obtenerLiquidacion(params.id);
   if (!liq) notFound();
 
