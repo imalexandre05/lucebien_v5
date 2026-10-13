@@ -1871,3 +1871,46 @@ atribuir un extra a alguien que no es el encargado ni un trabajador de ese repor
 alguien que olvidó marcar)? Si la respuesta es **no**, hay que limitar el selector al equipo y
 rechazar en la base ese id (ojo: obligar a sumar a la persona al equipo la marca presente, porque
 `marcarAsistenciaReporte` marca al encargado y a los trabajadores). Mientras tanto no cambia nada.
+---
+
+## Defaults propuestos el 11-oct-2026 — entrevistados y prueba de 3 días
+
+Salen de la [spec](superpowers/specs/empleados/2026-10-11-candidatos-entrevista-prueba-design.md)
+(§7). **Ninguno lo decidió el cliente**: son los valores que se usarán si no hay respuesta, y ninguno
+está implementado todavía. Los apuntes del 9-sep sólo fijan «prueba de 3 días» y el resultado
+bueno/regular/malo.
+
+| Qué | Default | Dónde se edita |
+|---|---|---|
+| Días de prueba | 3 (dato del cliente) | `config('personal_prueba_dias')`, desde `/configuracion` |
+| ¿Se paga la prueba? | No se calcula nada en SCI-LB | Pregunta abierta para Alexander |
+| ¿Se puede repetir la prueba? | Sí, vuelve a «entrevistado» | Pregunta abierta |
+| ¿Se reactiva un descartado? | Sí, con rastro en la auditoría | Pregunta abierta |
+| Retención de datos de descartados | Sin borrado automático | Pregunta abierta |
+| Quién ve y evalúa candidatos | Sólo administrador y dueño | Pregunta abierta (son datos personales de quien aún no es colaborador) |
+## Decisiones del dueño sobre la release 0110–0127 (10-oct-2026)
+
+Salen de la verificación de la release (ver
+[el registro](superpowers/specs/pipeline/2026-10-09-verificacion-release-0112-0127.md), hallazgos 3
+y 7). Eran decisiones de negocio y de aislamiento que el código ya había tomado sin que nadie las
+confirmara. El dueño contestó el 10-oct-2026:
+
+1. **Deshacer el avance de otra persona — SE ACEPTA.** Si un compañero deshace el avance de otro y
+   vuelve a avanzar la prenda, el punto se lo queda quien lo vuelve a hacer. **La salvaguarda son los
+   códigos personales** (0112): cada acción se atribuye a la persona que escribió su código, no a la
+   cuenta del equipo, así que cobra quien de verdad hace el trabajo. *Hecho a tener presente:* hoy en
+   producción **ninguna cuenta está marcada como compartida** (`empleados.cuenta_compartida`, 0 de 29,
+   comprobado el 10-oct), así que los códigos todavía no se exigen; la salvaguarda empieza a valer
+   cuando se marquen esas cuentas, y eso requiere antes el ERP nuevo (el PR #60), que es el que pide
+   el código.
+2. **Quién ve los puntos — SÓLO CADA PERSONA Y EL ADMINISTRADOR.** No el encargado de sede ni el
+   resto del almacén. Hoy cualquier persona de almacén lee `pipeline_puntos` y el historial de todos
+   (viene de la `0006`); eso hay que cerrarlo (pendiente: spec y migración propias, nivel 3 por tocar
+   RLS). **Corrección de un error mío:** se escribió que los puntos «ya son soles». **No es así:** los
+   puntos **sólo empiezan a valer soles a partir de una meta mensual que se definirá más adelante**
+   (pago por puntos sobre la meta, `0117`/`0126`); hasta que esa meta exista, los puntos son puntos y
+   no pagan nada. La meta y los soles por punto siguen sin default a propósito (regla 5).
+
+*Pendiente de la decisión 2:* antes de escribir la spec hay que mapear qué pantallas y funciones leen
+los puntos de otras personas (ranking, tablero, evaluación del equipo), porque cerrar esa lectura puede
+quitar vistas que hoy existen; el dueño decide qué se hace con ellas.
