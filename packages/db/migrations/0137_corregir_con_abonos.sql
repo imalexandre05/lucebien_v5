@@ -31,8 +31,9 @@ grant  execute on function private.sueldo_pagado_cadena(uuid) to authenticated;
 create or replace function private.sueldo_liq_enlazar_correccion() returns trigger
   language plpgsql security definer set search_path = public, pg_temp
 as $fn$
+declare t record;
 begin
-  if new.corrige_a is null then
+  if TG_OP = 'INSERT' and new.corrige_a is null then
     select l.id into new.corrige_a
       from sueldo_liquidaciones l
      where l.acuerdo_id = new.acuerdo_id and l.empleado_id = new.empleado_id
@@ -42,12 +43,31 @@ begin
        and not exists (select 1 from sueldo_liquidaciones s where s.corrige_a = l.id)
      order by l.anulada_en desc nulls last
      limit 1;
+    -- Sin coincidencia exacta pero con una anulada que se solapa, con abonos y sin corrector: crearla
+    -- sin enlace dejaría esos abonos huérfanos y permitiría pagar dos veces lo mismo.
+    if new.corrige_a is null and new.estado <> 'anulada' and exists (
+         select 1 from sueldo_liquidaciones l
+          where l.empleado_id = new.empleado_id and l.estado = 'anulada'
+            and l.periodo_desde <= new.periodo_hasta and l.periodo_hasta >= new.periodo_desde
+            and private.sueldo_pagado_cadena(l.id) > 0
+            and not exists (select 1 from sueldo_liquidaciones s where s.corrige_a = l.id)) then
+      raise exception 'PERIODO:hay una liquidación anulada que se solapa con este período y ya tiene pagos; corrígela con el mismo contrato y período, o anula antes esos pagos con su motivo';
+    end if;
+  end if;
+
+  if new.corrige_a is not null and (TG_OP = 'INSERT' or new.corrige_a is distinct from old.corrige_a) then
+    select id, empleado_id, acuerdo_id, estado into t from sueldo_liquidaciones where id = new.corrige_a;
+    if not found or new.corrige_a = new.id or t.estado <> 'anulada'
+       or t.empleado_id <> new.empleado_id or t.acuerdo_id <> new.acuerdo_id
+       or exists (select 1 from sueldo_liquidaciones s where s.corrige_a = new.corrige_a and s.id <> new.id) then
+      raise exception 'DATO:una liquidación sólo puede corregir a una anulada del mismo empleado y contrato que nadie corrija ya';
+    end if;
   end if;
   return new;
 end;
 $fn$;
 drop trigger if exists trg_sueldo_liq_enlazar_correccion on sueldo_liquidaciones;
-create trigger trg_sueldo_liq_enlazar_correccion before insert on sueldo_liquidaciones
+create trigger trg_sueldo_liq_enlazar_correccion before insert or update of corrige_a on sueldo_liquidaciones
   for each row execute function private.sueldo_liq_enlazar_correccion();
 
 -- La anulación común sigue bloqueada con abonos; sólo la RPC de corrección (que fija la variable

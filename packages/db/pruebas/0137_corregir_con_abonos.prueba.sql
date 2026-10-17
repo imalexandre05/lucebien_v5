@@ -103,12 +103,11 @@ begin
   perform sueldo_liquidacion_pagar(f, '2099-03-20', 100, 'efectivo');
   perform sueldo_liquidacion_corregir_anular(f, 'otra');
   perform pg_temp.dueno();
-  g := pg_temp.liq(ac2, per, '2099-03-01', '2099-03-15', 500, 'borrador', adm);
-  if (select corrige_a from sueldo_liquidaciones where id = g) is null then r := r || '[ok] caso 6: otro período no se enlaza;';
-  else r := r || '[FALLA] caso 6: se enlazó un período distinto;'; end if;
+  v_err := pg_temp.mensaje(format('select pg_temp.liq(%L, %L, %L, %L, 500, %L, %L)', ac2, per, '2099-03-01'::date, '2099-03-15'::date, 'borrador', adm));
+  if v_err like 'PERIODO:%' then r := r || '[ok] caso 6: otro período que se solapa con abonos pendientes no se crea sin enlace;';
+  else r := r || format('[FALLA] caso 6: %s;', v_err); end if;
 
   -- ── 7) Sin abonos: igual que la anulación común, sin enlace ─────────────────────────────────
-  delete from sueldo_liquidaciones where id = g;
   h := pg_temp.liq(ac3, per, '2099-04-01', '2099-04-30', 1000, 'cerrada', adm);
   perform pg_temp.como(adm);
   v_err := pg_temp.mensaje(format('select sueldo_liquidacion_corregir_anular(%L, %L)', h, 'sin pagos'));
