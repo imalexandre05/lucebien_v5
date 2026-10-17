@@ -86,9 +86,14 @@ begin
      where pp.empleado_id = v_culpable
        and pp.etapa in (p_destino, p_destino || '_rechazo')
        and pp.pasada_id in (
+         -- la familia: la prenda, su madre y todas las hijas de esa madre (hermanas incluidas), para que
+         -- los rechazos de una hermana cuenten y el culpable nunca quede bajo 0
          select p_id
          union
-         select m.id from prenda_pasada m where m.dividida and m.dividida_en like '%' || p_id::text || '%');
+         select m.id from prenda_pasada m where m.dividida and m.dividida_en like '%' || p_id::text || '%'
+         union
+         select h.id from prenda_pasada m join prenda_pasada h on m.dividida_en like '%' || h.id::text || '%'
+          where m.dividida and m.dividida_en like '%' || p_id::text || '%');
     if v_pts > 0 then
       perform private.pipeline_registrar_punto(v_culpable, p_id, p_destino || '_rechazo', -v_pts,
               'Rechazo: ' || v_codigo || ' de ' || v_etapa || ' → ' || p_destino || '; pierde ' || v_pts || ' pts', v_hist);
