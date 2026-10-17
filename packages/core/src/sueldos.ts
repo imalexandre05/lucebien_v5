@@ -32,7 +32,7 @@
  * **Se sube la fecha cada vez que cambia una regla de cálculo.** No cuando cambia un comentario
  * ni un tipo: cuando cambia un número que le llega a alguien.
  */
-export const MOTOR_VERSION = '2026-10-07';
+export const MOTOR_VERSION = '2026-10-17';
 
 // ── Parámetros configurables (spec §3.3) ────────────────────────────────────────────────────
 // Ninguno va quemado en el código: son los defaults, editables desde /configuracion.
@@ -323,6 +323,11 @@ export interface EntradaLiquidacion {
    */
   puntosMeses?: Array<{ desde: string; hasta: string; hastaMes: string; puntos: number }> | null;
   parametros?: Partial<ParametrosSueldo>;
+  /**
+   * Temporadas que el administrador definió (ticket 15). Ausente o `[]` = ninguna: la meta sale
+   * como siempre. Cada semana mira la temporada de su primer día; ver `temporadaVigente`.
+   */
+  temporadas?: Temporada[];
 }
 
 // ── Salida ──────────────────────────────────────────────────────────────────────────────────
@@ -891,6 +896,39 @@ export function sueldoSugerido(
   return r2(e.tarifaHora * horasContratadas);
 }
 
+// ── Temporadas (ticket 15) — valores que el administrador cambia por fechas ────────────────
+
+export interface Temporada {
+  id?: string;
+  nombre: string;
+  /** 'YYYY-MM-DD', inclusivo. */
+  desde: string;
+  /** 'YYYY-MM-DD', inclusivo. */
+  hasta: string;
+  /** Pago por hora de referencia. `null` = el normal. No reescribe lo pactado: ver spec. */
+  pagoPorHora: number | null;
+  /** Meta semanal de la temporada. `null` = la normal. */
+  metaSemanal: number | null;
+  /** Soles de venta por hora de la temporada. `null` = el normal. */
+  metaPorHora: number | null;
+}
+
+/** La temporada que cubre `fecha`, o `null` (sin temporadas inventadas: se usa el valor normal). */
+export function temporadaVigente(temporadas: readonly Temporada[], fecha: string): Temporada | null {
+  for (const t of temporadas) {
+    if (!RE_FECHA.test(t.desde) || !RE_FECHA.test(t.hasta) || t.hasta < t.desde) {
+      throw new Error(`Temporada «${t.nombre}» con fechas inválidas: ${t.desde} → ${t.hasta}.`);
+    }
+  }
+  return temporadas.find((t) => t.desde <= fecha && fecha <= t.hasta) ?? null;
+}
+
+/** Sueldo de referencia con el pago por hora de la temporada; `null` si no hay uno que aplicar. */
+export function sueldoSugeridoPorTemporada(temporada: Temporada | null, horasContratadas: number): number | null {
+  if (!temporada || temporada.pagoPorHora === null) return null;
+  return r2(temporada.pagoPorHora * horasContratadas);
+}
+
 // ── Semanas del periodo (RN-12) ─────────────────────────────────────────────────────────────
 // Bloques de 7 días desde fechaInicio. La última semana absorbe los días sobrantes: un periodo
 // de 31 días son 4 semanas y la cuarta dura 10 días, no 7.
@@ -1297,8 +1335,14 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     // RN-10: manda lo pactado en el contrato. Sin meta pactada, se sugiere una por horas.
     // RN-10: `factorMeta` sólo descuenta la meta SUGERIDA. A una meta pactada y negociada con
     // el colaborador no se le descuenta nada (spec §3.3).
+    // Ticket 15: sin meta pactada, la temporada de la semana (si la hay) cambia la meta; la
+    // pactada en el contrato gana siempre.
     const horasDeLaMeta = p.metaSemanalFija ? horasSemanaTipo : horas;
-    const meta = p.metaSemanal ?? horasDeLaMeta * p.metaPorHora * p.factorMeta;
+    const temporada = temporadaVigente(entrada.temporadas ?? [], t.desde);
+    const meta =
+      p.metaSemanal ??
+      temporada?.metaSemanal ??
+      horasDeLaMeta * (temporada?.metaPorHora ?? p.metaPorHora) * p.factorMeta;
     metaPeriodo += meta;
     const ventasSemana = ventasValidas
       .filter((v) => v.fecha >= t.desde && v.fecha <= t.hasta)

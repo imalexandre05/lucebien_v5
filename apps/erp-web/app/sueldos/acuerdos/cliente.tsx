@@ -7,6 +7,9 @@ import {
   ESCALAS_SUELDO_DEFAULT,
   escalaSugeridaPorAntiguedad,
   type EscalaSueldo,
+  temporadaVigente,
+  sueldoSugeridoPorTemporada,
+  type Temporada,
   PARAMETROS_SUELDO_DEFAULT,
   diaSemanaISO,
   diasDelPeriodo,
@@ -430,6 +433,7 @@ export function AcuerdosCliente({
   abrirNuevoAlMontar,
   valoresVigentes,
   escalas,
+  temporadas,
 }: {
   acuerdos: AcuerdoSueldo[];
   empleados: Emp[];
@@ -451,6 +455,8 @@ export function AcuerdosCliente({
   valoresVigentes?: ParametrosSueldo;
   /** Escalas de /configuracion (ticket 35). Sin ellas, las del código. */
   escalas?: EscalaSueldo[];
+  /** Temporadas de /configuracion/temporadas (ticket 15). */
+  temporadas?: Temporada[];
 }) {
   const tablaEscalas = escalas ?? ESCALAS_SUELDO_DEFAULT;
   const router = useRouter();
@@ -513,6 +519,7 @@ export function AcuerdosCliente({
   const mesesIngreso = mesesCompletosDesde(fechaIngresoPersona ?? null, hoyPeru());
   const escalaPropuesta = mesesIngreso === null ? null : escalaSugeridaPorAntiguedad(mesesIngreso, tablaEscalas);
   const analisis = useMemo(() => analizar(b, vigentes, tablaEscalas), [b, vigentes, tablaEscalas]);
+  const temporadaDelContrato = b.fechaInicio ? temporadaVigente(temporadas ?? [], b.fechaInicio) : null;
   const pactados = PARAMETROS.filter((p) => b.parametros[p.clave] != null);
 
   // Al entrar o salir del editor cambia todo lo que hay en pantalla. Sin volver arriba, quien abre
@@ -938,6 +945,14 @@ export function AcuerdosCliente({
                   <p className="mt-1 text-apoyo text-muted">
                     Por antigüedad ({mesesIngreso} {mesesIngreso === 1 ? 'mes' : 'meses'}) corresponde la escala{' '}
                     {escalaPropuesta}. Es una sugerencia: la confirmas tú.
+                  </p>
+                )}
+                {temporadaDelContrato?.pagoPorHora != null && (
+                  <p className="mt-1 text-apoyo text-muted">
+                    Temporada «{temporadaDelContrato.nombre}»: pago por hora de referencia S/{' '}
+                    {temporadaDelContrato.pagoPorHora.toFixed(2)}
+                    {analisis.horas > 0 && ` · sugerido S/ ${sueldoSugeridoPorTemporada(temporadaDelContrato, analisis.horas)?.toFixed(2)}`}.
+                    Es una referencia; la cuota la pactas tú.
                   </p>
                 )}
               </div>

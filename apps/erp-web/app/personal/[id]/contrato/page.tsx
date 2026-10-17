@@ -3,6 +3,7 @@ import { Lock } from 'lucide-react';
 import { accesoColaboradores } from '../../../../lib/colaboradores-acceso';
 import { obtenerColaborador } from '../../../../lib/colaboradores-repo';
 import { escalasSalariales } from '../../../../lib/config-repo';
+import { listarTemporadas } from '../../../../lib/temporadas-repo';
 import { listarAcuerdos, parametrosVigentes } from '../../../../lib/sueldos-repo';
 import { Card } from '../../../../components/ui/card';
 import { EmptyState } from '../../../../components/ui/empty-state';
@@ -46,10 +47,11 @@ export default async function ContratoColaboradorPage(
     );
   }
 
-  const [acuerdos, valoresVigentes, escalas] = await Promise.all([
+  const [acuerdos, valoresVigentes, escalas, temporadas] = await Promise.all([
     listarAcuerdos(persona.id),
     parametrosVigentes(),
     escalasSalariales(),
+    listarTemporadas().catch(() => []),
   ]);
   // Alta encadenada (R2, spec §2.4): llega directo desde /personal/nuevo. Sin este aviso, aterrizar
   // acá con el editor ya abierto se leería como un salto sin explicación.
@@ -78,6 +80,7 @@ export default async function ContratoColaboradorPage(
         abrirNuevoAlMontar={continuaDeAlta}
         valoresVigentes={valoresVigentes}
         escalas={escalas}
+        temporadas={temporadas}
       />
     </div>
   );

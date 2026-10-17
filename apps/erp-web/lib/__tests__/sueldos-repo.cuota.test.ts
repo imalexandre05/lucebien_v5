@@ -18,6 +18,7 @@ const rpcs: string[] = [];
 let liquidacionGuardada: unknown = null;
 
 vi.mock('../directorio', () => ({ mapaNombres: vi.fn(async () => new Map()) }));
+vi.mock('../temporadas-repo', () => ({ listarTemporadas: vi.fn(async () => []) }));
 vi.mock('../supabase/server', () => ({
   getServerClient: vi.fn(() => ({
     rpc: async (nombre: string) => {

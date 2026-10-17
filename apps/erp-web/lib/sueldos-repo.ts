@@ -18,6 +18,7 @@ import {
   type ResumenLiquidacion,
 } from '@scilb/core';
 import { mapaNombres } from './directorio';
+import { listarTemporadas } from './temporadas-repo';
 import { getServerClient } from './supabase/server';
 import { leerConfigMap } from './config-repo';
 
@@ -869,6 +870,9 @@ export async function entradaDeAcuerdo(
   if (!datosPago?.contratoPago) {
     throw new SueldoRpcError('No pude leer el contrato para calcular la cuota del tramo.', 'DATO');
   }
+  // Ticket 15: las temporadas viajan en la entrada (y en su snapshot), así la meta de cada semana
+  // se puede reconstruir aunque después se editen. Sin temporadas: [] y todo sigue igual.
+  entrada.temporadas = await listarTemporadas();
   entrada.contratoPago = datosPago.contratoPago;
   entrada.cambiosFrecuencia = datosPago.cambiosFrecuencia ?? [];
 
