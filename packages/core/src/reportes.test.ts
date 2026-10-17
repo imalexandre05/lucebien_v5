@@ -8,6 +8,7 @@ import {
   minutosHastaCierre,
   formatoCierre,
   zonasSolapadas,
+  resumenLimpieza,
   zonasSolapadasInesperadas,
   estadoActividadReporte,
   coberturaTurno,
@@ -242,5 +243,39 @@ describe('zonasSolapadasInesperadas — descarta el solape "sobre" declarado', (
     ];
     const pares = zonasSolapadasInesperadas(zonas);
     expect(pares).toContainEqual(['MESA1', 'MANIQUI']);
+  });
+});
+
+describe('resumenLimpieza — el 100 % son las zonas del turno; las del otro turno suman encima', () => {
+  const zonas = [
+    { cod: 'Z1', peso: 20, tipo: 'zona', turno: 'ambos' },
+    { cod: 'Z2', peso: 23.1, tipo: 'zona', turno: 'mañana' },
+    { cod: 'Z3', peso: 6.9, tipo: 'zona', turno: 'tarde' },
+    { cod: 'A1', peso: 50, tipo: 'area', turno: 'ambos' },
+  ];
+  const todas = (cods: string[]) => Object.fromEntries(cods.map((c) => [c, 1]));
+  it('solo zonas del turno: 100 %', () => {
+    const r = resumenLimpieza(zonas, todas(['Z1', 'Z2']), 'M');
+    expect(r).toEqual({ propiosTot: 43.1, propiosGot: 43.1, extraGot: 0, pct: 100 });
+  });
+  it('con una zona del otro turno: pasa de 100 % (50/43,1 = 116 %)', () => {
+    const r = resumenLimpieza(zonas, todas(['Z1', 'Z2', 'Z3']), 'M');
+    expect(r).toEqual({ propiosTot: 43.1, propiosGot: 43.1, extraGot: 6.9, pct: 116 });
+  });
+  it('la zona del otro turno no agranda el total', () => {
+    expect(resumenLimpieza(zonas, todas(['Z3']), 'M').propiosTot).toBe(43.1);
+  });
+  it('turno C: todas las zonas son del turno, no hay extra', () => {
+    const r = resumenLimpieza(zonas, todas(['Z1', 'Z2', 'Z3']), 'C');
+    expect(r).toEqual({ propiosTot: 50, propiosGot: 50, extraGot: 0, pct: 100 });
+  });
+  it('las zonas tipo area no puntúan', () => {
+    expect(resumenLimpieza(zonas, todas(['A1']), 'M')).toEqual({ propiosTot: 43.1, propiosGot: 0, extraGot: 0, pct: 0 });
+  });
+  it('calificación parcial pondera el peso', () => {
+    expect(resumenLimpieza(zonas, { Z1: 0.5 }, 'M').propiosGot).toBe(10);
+  });
+  it('sin zonas del turno: pct 0, sin dividir entre cero', () => {
+    expect(resumenLimpieza([{ cod: 'Z3', peso: 5, tipo: 'zona', turno: 'tarde' }], todas(['Z3']), 'M').pct).toBe(0);
   });
 });

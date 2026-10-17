@@ -530,7 +530,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_bono_meta_semanal',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Bono por semana con la meta cumplida (S/)',
+    etiqueta: '2.ª comisión: bono por semana con la meta cumplida (S/)',
     descripcion:
       'Soles que gana la persona por cada semana del periodo en la que llegó a su meta de venta. Es un premio semanal fijo, pero la meta no: una semana más larga pide más, salvo que se encienda «Meta semanal fija».',
     tipo: 'numero',
@@ -561,9 +561,9 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_pct_comision',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Comisión sobre ventas (%)',
+    etiqueta: '1.ª comisión: porcentaje sobre ventas (%)',
     descripcion:
-      'Porcentaje de la base de comisión que se paga: 1,5 = 1,5 %. Sólo comisionan las semanas en las que la persona llegó a su meta.',
+      'Porcentaje de la base de comisión que se paga: 2 = 2 %. La comisión se desbloquea sólo cuando la persona cumple la meta de venta del mes.',
     tipo: 'numero',
     // Se guarda como fracción (0.02 = 2 %), que es lo que multiplica el motor (RN-13); la pantalla
     // la muestra en porcentaje. min/max son de la fracción: 0 % a 100 %.
@@ -575,13 +575,35 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_monto_minimo_comision',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Monto mínimo de boleta para comisionar (S/)',
+    etiqueta: '1.ª comisión: monto mínimo de boleta (S/)',
     descripcion:
       'Sólo las boletas por encima de este monto entran a la base de comisión. Se mira el total de la boleta, no cada producto.',
     tipo: 'numero',
     default: '120',
     min: 0,
     step: 10,
+  },
+  {
+    clave: 'sueldo_monto_pasaje',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Pasaje por llegar temprano (S/ por día)',
+    descripcion:
+      'Soles que se suman a la liquidación por cada día en que la persona llega con la anticipación de abajo antes del inicio de su turno. Vacío = no se paga ningún pasaje.',
+    tipo: 'numero',
+    default: '',
+    min: 0,
+    step: 0.5,
+    permiteVacio: true,
+  },
+  {
+    clave: 'sueldo_pasaje_minutos_antes',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Minutos de anticipación para ganar el pasaje',
+    descripcion: 'Con 5, quien entra a las 08:55 o antes a un turno de las 09:00 gana el pasaje de ese día.',
+    tipo: 'numero',
+    default: '5',
+    min: 0,
+    step: 1,
   },
   {
     clave: 'sueldo_dias_descuento_por_falta',

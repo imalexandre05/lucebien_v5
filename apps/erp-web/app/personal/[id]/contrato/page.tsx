@@ -3,6 +3,7 @@ import { Lock } from 'lucide-react';
 import { accesoColaboradores } from '../../../../lib/colaboradores-acceso';
 import { obtenerColaborador } from '../../../../lib/colaboradores-repo';
 import { escalasSalariales } from '../../../../lib/config-repo';
+import { listarEvaluaciones } from '../../../../lib/evaluaciones-repo';
 import { listarTemporadas } from '../../../../lib/temporadas-repo';
 import { listarAcuerdos, parametrosVigentes } from '../../../../lib/sueldos-repo';
 import { Card } from '../../../../components/ui/card';
@@ -47,12 +48,14 @@ export default async function ContratoColaboradorPage(
     );
   }
 
-  const [acuerdos, valoresVigentes, escalas, temporadas] = await Promise.all([
+  const [acuerdos, valoresVigentes, escalas, temporadas, evaluaciones] = await Promise.all([
     listarAcuerdos(persona.id),
     parametrosVigentes(),
     escalasSalariales(),
     listarTemporadas().catch(() => []),
+    listarEvaluaciones().catch(() => []), // sólo el admin llega acá: ve la nota para decidir la escala
   ]);
+  const ultimaEval = evaluaciones.find((e) => e.empleadoId === persona.id && e.notaFinal != null);
   // Alta encadenada (R2, spec §2.4): llega directo desde /personal/nuevo. Sin este aviso, aterrizar
   // acá con el editor ya abierto se leería como un salto sin explicación.
   const continuaDeAlta = searchParams?.continuar === 'alta';
@@ -77,6 +80,7 @@ export default async function ContratoColaboradorPage(
           recomendaciones: persona.recomendaciones,
         }}
         fechaIngresoPersona={persona.fechaIngreso}
+        ultimaEvaluacion={ultimaEval ? { nota: ultimaEval.notaFinal as number, mes: ultimaEval.mes } : null}
         abrirNuevoAlMontar={continuaDeAlta}
         valoresVigentes={valoresVigentes}
         escalas={escalas}

@@ -430,6 +430,7 @@ export function AcuerdosCliente({
   empleados,
   personaFija,
   fechaIngresoPersona,
+  ultimaEvaluacion,
   abrirNuevoAlMontar,
   valoresVigentes,
   escalas,
@@ -441,6 +442,8 @@ export function AcuerdosCliente({
   personaFija?: Emp;
   /** Fecha de ingreso de la persona fija: precompleta el primer contrato (C-2). */
   fechaIngresoPersona?: string | null;
+  /** Última nota de evaluación /20 de la persona: se muestra junto a la escala sugerida (decide el admin). */
+  ultimaEvaluacion?: { nota: number; mes: string } | null;
   /**
    * Alta encadenada (R2, spec §2.4): si viene marcado y todavía no hay ningún contrato, arranca
    * directo en el editor con el borrador de un contrato nuevo, en vez de mostrar primero la lista
@@ -944,7 +947,13 @@ export function AcuerdosCliente({
                 {escalaPropuesta !== null && (
                   <p className="mt-1 text-apoyo text-muted">
                     Por antigüedad ({mesesIngreso} {mesesIngreso === 1 ? 'mes' : 'meses'}) corresponde la escala{' '}
-                    {escalaPropuesta}. Es una sugerencia: la confirmas tú.
+                    {escalaPropuesta}.
+                    {ultimaEvaluacion && (
+                      <>
+                        {' '}Su última evaluación ({ultimaEvaluacion.mes}): <strong className="tabular-nums">{ultimaEvaluacion.nota.toFixed(1)}/20</strong>.
+                      </>
+                    )}{' '}
+                    Es una sugerencia: subir de escala nunca es automático, la confirmas tú.
                   </p>
                 )}
                 {temporadaDelContrato?.pagoPorHora != null && (

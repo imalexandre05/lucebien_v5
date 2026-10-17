@@ -768,30 +768,57 @@ export type VentaInput = {
   vendedorExterno?: string | null;
 };
 
-export async function crearVenta(p: VentaInput): Promise<string> {
+/**
+ * Resultado de cargar o asignar una venta. Si la fecha caía en un período ya pagado, la base la movió al
+ * siguiente período abierto (`fechaOriginal` guarda la tipeada) y `aviso` dice qué pasó.
+ */
+export type ResultadoVenta = { id: string; fecha: string; fechaOriginal: string | null; aviso: string | null };
+
+function comoResultadoVenta(d: unknown): ResultadoVenta {
+  const r = d as { id: string; fecha: string; fecha_original: string | null; aviso: string | null };
+  return { id: String(r.id), fecha: r.fecha, fechaOriginal: r.fecha_original ?? null, aviso: r.aviso ?? null };
+}
+
+export async function crearVenta(p: VentaInput): Promise<ResultadoVenta> {
   const sb = getServerClient();
-  const { data, error } = await sb
-    .from('sueldo_ventas')
-    .insert({
-      origen: 'manual',
-      fecha: p.fecha,
-      monto: p.monto,
-      tipo: p.tipo,
-      sede_cod: p.sedeCod,
-      empleado_id: p.empleadoId,
-      vendedor_externo: p.vendedorExterno ?? null,
-    })
-    .select('id')
-    .single();
+  const { data, error } = await sb.rpc('sueldo_venta_crear', {
+    p_fecha: p.fecha,
+    p_monto: p.monto,
+    p_tipo: p.tipo,
+    p_sede: p.sedeCod,
+    p_empleado: p.empleadoId,
+    p_vendedor_externo: p.vendedorExterno ?? null,
+  });
   if (error) throw errorSueldo(error);
-  return String((data as { id: string }).id);
+  return comoResultadoVenta(data);
 }
 
 /** Saca una venta de la cola de sin-asignar. Si ya se liquidó, el trigger corta con `CONGELADA`. */
-export async function asignarVendedor(ventaId: string, empleadoId: string): Promise<void> {
+export async function asignarVendedor(ventaId: string, empleadoId: string): Promise<ResultadoVenta> {
   const sb = getServerClient();
-  const { error } = await sb.from('sueldo_ventas').update({ empleado_id: empleadoId }).eq('id', ventaId);
+  const { data, error } = await sb.rpc('sueldo_venta_asignar', { p_venta: ventaId, p_empleado: empleadoId });
   if (error) throw errorSueldo(error);
+  return comoResultadoVenta(data);
+}
+
+/**
+ * Tardanza de un día de un período ya pagado, cargada tarde: se suma al siguiente período abierto. Una fecha
+ * abierta se rechaza (se carga en la asistencia del día).
+ */
+export async function crearTardanzaDiferida(
+  empleadoId: string,
+  fecha: string,
+  motivo: string,
+): Promise<{ id: string; aplicadaEn: string; aviso: string | null }> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('sueldo_tardanza_diferida_crear', {
+    p_empleado: empleadoId,
+    p_fecha: fecha,
+    p_motivo: motivo,
+  });
+  if (error) throw errorSueldo(error);
+  const r = data as { id: string; aplicada_en: string; aviso: string | null };
+  return { id: String(r.id), aplicadaEn: r.aplicada_en, aviso: r.aviso ?? null };
 }
 
 export async function eliminarVenta(id: string): Promise<void> {

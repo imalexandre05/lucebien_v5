@@ -139,6 +139,14 @@ export interface ParametrosSueldo {
   puntosMetaMensual: number | null;
   /** Soles por cada punto que supera la meta. `null` = desactivado (ver `puntosMetaMensual`). */
   solesPorPunto: number | null;
+  /**
+   * Soles de pasaje por cada día contratado en que la persona llega `minutosAntesPasaje` minutos o
+   * más antes del inicio de su turno. `null` = no se paga nada ni aparece la línea (decisión del
+   * dueño: el monto lo define el administrador). Un `0` SÍ es un valor.
+   */
+  montoPasaje: number | null;
+  /** Minutos de anticipación que ganan el pasaje. Dato del dueño: 5. */
+  minutosAntesPasaje: number;
 }
 
 export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
@@ -160,6 +168,8 @@ export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
   pausaMinimaMinutos: 15,
   puntosMetaMensual: null,
   solesPorPunto: null,
+  montoPasaje: null,
+  minutosAntesPasaje: 5,
 };
 
 /**
@@ -169,7 +179,7 @@ export const PARAMETROS_SUELDO_DEFAULT: ParametrosSueldo = {
  * existe, o una columna nula, deja el valor por defecto en vez de convertir el total en `NaN`
  * (que serializa a `null` en JSON, es decir: un pago vacío guardado sin que nadie se entere).
  */
-const CLAVES_NULABLES: ReadonlySet<string> = new Set(['metaSemanal', 'puntosMetaMensual', 'solesPorPunto']);
+const CLAVES_NULABLES: ReadonlySet<string> = new Set(['metaSemanal', 'puntosMetaMensual', 'solesPorPunto', 'montoPasaje']);
 
 export function resolverParametros(overrides?: Partial<ParametrosSueldo>): ParametrosSueldo {
   const p: ParametrosSueldo = { ...PARAMETROS_SUELDO_DEFAULT };
@@ -307,6 +317,12 @@ export interface EntradaLiquidacion {
    */
   almuerzoHabilitadoPorAdmin?: boolean;
   personasCapacitadas?: number;
+  /**
+   * Tardanzas de días de un período ya cerrado que se cargaron tarde y se trasladaron a este
+   * (decisión del dueño, 17-oct-2026). Suman al conteo de tardanzas ANTES de las libres: la penalidad
+   * y las libres son las de siempre. Ausente = 0.
+   */
+  tardanzasDiferidas?: number;
   /**
    * Obsoleto: lo mandaba la 0117 y ya no se usa (spec de pago por puntos §8.2). Lo reemplaza
    * `puntosMeses`. Se deja en el tipo sólo para leer entradas guardadas antes de la 0126.
@@ -1012,6 +1028,11 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     throw new Error(`El sueldo pactado no puede ser negativo: ${entrada.sueldoPactado}.`);
   }
 
+  const tardanzasDiferidas = entrada.tardanzasDiferidas ?? 0;
+  if (!Number.isInteger(tardanzasDiferidas) || tardanzasDiferidas < 0) {
+    throw new Error(`Las tardanzas trasladadas tienen que ser un entero mayor o igual a cero, llegó: ${String(entrada.tardanzasDiferidas)}.`);
+  }
+
   const dias = diasDelPeriodo(entrada.fechaInicio, entrada.fechaFin);
   const enPeriodo = (f: string): boolean => f >= entrada.fechaInicio && f <= entrada.fechaFin;
   const porDia = resumirHorario(entrada.horario);
@@ -1162,6 +1183,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   let faltasJustificadas = 0;
   let horasFaltadas = 0; // horas contratadas de los días que faltó SIN justificar (RN-09)
   let justificacionesHuerfanas = 0;
+  let diasPasaje = 0; // días que llegó con la anticipación que gana el pasaje
 
   for (const fecha of dias) {
     const contratado = porDia.get(diaSemanaISO(fecha));
@@ -1192,7 +1214,9 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       } else {
         // RN-08: el límite se deriva del horario del día + la tolerancia, no es un texto fijo.
         const limite = (contratado as DiaContratado).inicioMin + p.toleranciaMinutos;
-        esTardanza = minutosDeHora(ingreso, `Asistencia ${fecha}`) > limite;
+        const llegada = minutosDeHora(ingreso, `Asistencia ${fecha}`);
+        esTardanza = llegada > limite;
+        if (horas > 0 && llegada <= (contratado as DiaContratado).inicioMin - p.minutosAntesPasaje) diasPasaje += 1;
       }
     }
     // Un día sin horario contratado no genera ni tardanza ni falta (RN-08 / RN-09).
@@ -1273,6 +1297,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     );
   }
 
+  tardanzas += tardanzasDiferidas; // trasladadas de un período cerrado (cuentan antes de las libres)
   const tardanzasInjustificadas = Math.max(0, tardanzas - p.tardanzasLibres - tardanzasJustificadas);
   const faltasInjustificadas = Math.max(0, faltas - faltasJustificadas);
 
@@ -1431,6 +1456,18 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     ...(bonoPuntos
       ? [{ grupo: 'ingreso' as const, concepto: 'Bono por puntos', detalle: bonoPuntos.detalle, monto: bonoPuntos.monto, regla: 'RN-21' }]
       : []),
+    // Pasajes por puntualidad: sólo aparece si el administrador configuró un monto.
+    ...(p.montoPasaje !== null
+      ? [
+          {
+            grupo: 'ingreso' as const,
+            concepto: 'Pasajes por llegar temprano',
+            detalle: `${diasPasaje} día(s) con ingreso ${p.minutosAntesPasaje} min o más antes del turno × S/${p.montoPasaje}`,
+            monto: r2(diasPasaje * p.montoPasaje),
+            regla: 'RN-22',
+          },
+        ]
+      : []),
     {
       grupo: 'ingreso',
       concepto: 'Almuerzos',
@@ -1481,7 +1518,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     {
       grupo: 'final',
       concepto: 'Descuento por tardanzas',
-      detalle: `${tardanzas} tardanza(s) − ${p.tardanzasLibres} libre(s) − ${tardanzasJustificadas} justificada(s) = ${tardanzasInjustificadas} × S/${p.penalidadTardanza}`,
+      detalle: `${tardanzas} tardanza(s)${tardanzasDiferidas > 0 ? ` (${tardanzasDiferidas} trasladada(s) de un período ya pagado)` : ''} − ${p.tardanzasLibres} libre(s) − ${tardanzasJustificadas} justificada(s) = ${tardanzasInjustificadas} × S/${p.penalidadTardanza}`,
       monto: r2(-descuentoTardanzas),
       regla: 'RN-08',
     },

@@ -47,13 +47,14 @@ describe('resumenLiquidacion', () => {
     expect(r.penalidadReportes).toBe(10);
     expect(r.almuerzos).toBe(24);
     expect(r.adelantos).toBe(300);
-    expect(r.otrosBeneficios).toBe(40 + 24 + 7); // metas + almuerzos + bonos extras
+    expect(r.comision2).toBe(40); // bono por metas semanales = 2.ª comisión
+    expect(r.otrosBeneficios).toBe(24 + 7); // almuerzos + bonos extras
   });
 
   it('las penalidades y adelantos salen en positivo (son lo que se resta)', () => {
     const r = resumenLiquidacion(base);
     expect(r.totalDescuentos).toBe(76);
-    expect(r.totalBeneficios).toBe(80 + 15 + 71);
+    expect(r.totalBeneficios).toBe(80 + 40 + 15 + 31);
   });
 
   it('total final por pagar = total congelado + adelantos, y el invariante cuadra', () => {
@@ -68,7 +69,7 @@ describe('resumenLiquidacion', () => {
       lineas: [...LINEAS, L('ajuste', 'Concepto futuro', 25), L('descuento', 'Otro descuento', -5)],
       total: TOTAL + 20,
     });
-    expect(r.otrosBeneficios).toBe(71 + 25);
+    expect(r.otrosBeneficios).toBe(31 + 25);
     expect(r.otrosDescuentos).toBe(5);
     expect(r.sueldo + r.horasExtras + r.totalBeneficios - r.totalDescuentos).toBe(r.totalFinalPorPagar);
   });
@@ -79,7 +80,7 @@ describe('resumenLiquidacion', () => {
     expect(r.ventasLogrado).toBe(5000);
     expect(r.minimoVentas).toBeNull();
     expect(r.continua).toBeNull();
-    expect(r.comision2).toBeNull();
+    expect(r.comision2).toBe(40);
   });
 
   it('si se pasa un mínimo, continúa = logrado > mínimo', () => {
@@ -103,8 +104,15 @@ describe('resumenLiquidacion', () => {
     expect(r.restante).toBe(0);
   });
 
-  it('total invertido ADM = total + almuerzos', () => {
-    expect(resumenLiquidacion(base).totalInvertido).toBe(1024);
+  it('total invertido = total final (antes de adelantos) + almuerzos', () => {
+    const r = resumenLiquidacion(base);
+    expect(r.totalInvertido).toBe(1324);
+    expect(r.totalInvertido).toBe(r.totalFinalPorPagar + r.almuerzos);
+  });
+
+  it('restante = total final − adelantos − abonos', () => {
+    const r = resumenLiquidacion({ ...base, abonos: 100 });
+    expect(r.restante).toBe(r.totalFinalPorPagar - r.adelantos - 100);
   });
 
   it('sin líneas (borrador) devuelve ceros, no revienta', () => {

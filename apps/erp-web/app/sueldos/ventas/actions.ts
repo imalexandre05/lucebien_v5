@@ -25,7 +25,7 @@ import {
  * Borrar una venta que ya se liquidó no falla acá sino en el trigger de la base, con `CONGELADA`.
  */
 
-type Resultado = { ok: boolean; error?: string; codigo?: string };
+type Resultado = { ok: boolean; error?: string; codigo?: string; aviso?: string | null };
 
 async function admin(): Promise<string | null> {
   const sesion = await getSesion();
@@ -47,9 +47,9 @@ export async function accionCrearVenta(p: VentaInput): Promise<Resultado> {
     if (!Number.isFinite(p.monto) || p.monto < 0) {
       return { ok: false, error: 'El monto de la boleta tiene que ser un número mayor o igual a cero.' };
     }
-    await crearVenta(p);
+    const v = await crearVenta(p);
     revalidatePath('/sueldos/ventas');
-    return { ok: true };
+    return { ok: true, aviso: v.aviso };
   } catch (e) {
     return comoResultado(e);
   }
@@ -60,9 +60,9 @@ export async function accionAsignarVendedor(ventaId: string, empleadoId: string)
   try {
     if (!(await admin())) return NEGADO;
     if (!empleadoId) return { ok: false, error: 'Elegí a quién corresponde la venta.' };
-    await asignarVendedor(ventaId, empleadoId);
+    const v = await asignarVendedor(ventaId, empleadoId);
     revalidatePath('/sueldos/ventas');
-    return { ok: true };
+    return { ok: true, aviso: v.aviso };
   } catch (e) {
     return comoResultado(e);
   }
