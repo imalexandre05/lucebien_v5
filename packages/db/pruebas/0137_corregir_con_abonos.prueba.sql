@@ -170,6 +170,20 @@ begin
   if v_corr = j1 and v_err like 'SALDO:%' then r := r || '[ok] caso 11c: sigue enlazada y no se pagan 900 encima de los 400 (1300 sobre 900);';
   else r := r || format('[FALLA] caso 11c: corrige_a=%s err=%s;', v_corr, v_err); end if;
 
+  -- ── 11d) Una corrección enlazada no cambia de persona, contrato ni período ─────────────────
+  insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado, creado_por, estado)
+    values (per,'2099-05-01','2099-05-31',1000,adm,'vigente') returning id into ac3;
+  v_err := pg_temp.mensaje(format('update sueldo_liquidaciones set empleado_id = %L, acuerdo_id = %L where id = %L', per, ac3, j2));
+  if v_err like 'CONGELADA:%' then r := r || '[ok] caso 11d: una corrección enlazada no cambia de persona ni de contrato;';
+  else r := r || format('[FALLA] caso 11d: %s;', v_err); end if;
+  v_err := pg_temp.mensaje(format('update sueldo_liquidaciones set periodo_desde = %L where id = %L', '2099-05-02'::date, j2));
+  if v_err like 'CONGELADA:%' then r := r || '[ok] caso 11e: ni de período;';
+  else r := r || format('[FALLA] caso 11e: %s;', v_err); end if;
+  -- la rama de autorreferencia sobre un borrador SIN vínculo (i, del caso 7)
+  v_err := pg_temp.mensaje(format('update sueldo_liquidaciones set corrige_a = id where id = %L', i));
+  if v_err like 'DATO:%' then r := r || '[ok] caso 11f: un borrador sin vínculo tampoco se corrige a sí mismo;';
+  else r := r || format('[FALLA] caso 11f: %s;', v_err); end if;
+
   -- ── 12) anular_cierre (0136) mira los pagos de toda la cadena, no sólo los propios ──────────
   -- j2 está cerrada, no tiene pagos propios pero corrige a j1 (400 abonados).
   perform pg_temp.como(adm);
