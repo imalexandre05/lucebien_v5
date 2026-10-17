@@ -9,7 +9,7 @@
 -- positivo en esa etapa; pipeline_avanzar ya trata null como «avanza pero no cobra».
 --
 -- Deshacer borra el punto de su movimiento, así que re-avanzar tras deshacer sí paga (una vez).
--- La penalización por rechazo (etapa `<etapa>_rechazo`, negativa) no cuenta como pago.
+-- La penalización por rechazo (etapa `<etapa>_rechazo`, negativa) no cuenta como pago y reabre la etapa.
 --
 -- `create or replace` con la misma firma de la 0115. Conserva H-4, security definer, search_path y
 -- grants. Idempotente. No agrega ningún parámetro de negocio.
@@ -28,10 +28,25 @@ begin
   ) then
     return null;
   end if;
-  -- 0130: el retrabajo no paga. Una etapa ya pagada para esta prenda no se vuelve a pagar.
+  -- 0130: el retrabajo no paga. Una etapa ya pagada para esta prenda (o para su madre, si es una hija
+  -- de dividir) no se vuelve a pagar. Un `<etapa>_rechazo` posterior al pago devuelve la etapa a
+  -- «sin pagar»: el rechazo de calidad queda como antes (decisión del dueño pendiente).
   if p_puntos > 0 and exists (
-    select 1 from public.pipeline_puntos
-    where pasada_id = p_pasada and etapa = p_etapa and puntos > 0
+    select 1 from public.pipeline_puntos pp
+    where pp.etapa = p_etapa and pp.puntos > 0
+      and pp.pasada_id in (
+        select p_pasada
+        union
+        select m.id from public.prenda_pasada m
+         where m.dividida and m.dividida_en like '%' || p_pasada::text || '%')
+      and not exists (
+        select 1 from public.pipeline_puntos r
+        where r.etapa = p_etapa || '_rechazo' and r.fecha >= pp.fecha
+          and r.pasada_id in (
+            select p_pasada
+            union
+            select m.id from public.prenda_pasada m
+             where m.dividida and m.dividida_en like '%' || p_pasada::text || '%'))
   ) then
     return null;
   end if;
