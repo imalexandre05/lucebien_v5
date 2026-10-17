@@ -21,12 +21,16 @@ Una fila de `pipeline_puntos` con `pasada_id` = la prenda, `etapa` = la etapa qu
 
 - **Deshacer** borra el punto de ese movimiento (`private.pipeline_borrar_punto`), así que la etapa
   deja de estar pagada y volver a avanzarla paga una vez. Es una corrección, no un retrabajo.
-- **Rechazo de calidad** inserta una fila *negativa* con etapa `<etapa>_rechazo`; no cuenta como pago
-  y no la borra. El culpable sigue penalizado como hoy, y el re-avance de esa etapa **no** paga otra
-  vez (antes la pagaba: quien rehacía cobraba el doble).
+- **Rechazo de calidad** (enmienda tras la verificación): el dueño decidió sólo sobre la observación de
+  tienda, no sobre el rechazo de calidad, así que **el rechazo queda como hoy**: el culpable pierde su
+  punto (fila negativa `<etapa>_rechazo`) y quien rehace la etapa cobra. Un punto positivo anterior a un
+  `<etapa>_rechazo` de esa etapa **no** cuenta como «ya pagada». Extender la regla al rechazo es una
+  decisión pendiente de Alexander (`pendientes-negocio.md`).
 - **Observación de tienda** (`pipeline_calificar`) no escribe puntos y no se toca: no penaliza a nadie.
   Sólo queda cerrada la vía de cobrar el retrabajo.
-- Una prenda dividida: cada hija es otra prenda con su propio `pasada_id`; no cambia.
+- **Prenda dividida** (enmienda tras la verificación): dividir creaba dos hijas con id nuevo que volvían
+  a cobrar todo el ciclo. Una hija cuenta también los pagos positivos de su **madre** (la prenda cuyo
+  `dividida_en` contiene el id de la hija). Una madre dividida no se vuelve a avanzar.
 
 ## Qué NO cambia
 
@@ -48,7 +52,8 @@ falta tocar `pipeline_avanzar`.
 1. **Antes (0128): +7 por ciclo.** Avanzar recepción→…→listo, enviar, calificar observada a
    recepción, re-avanzar hasta listo: el segundo ciclo suma otros 7. Con la 0130: 0.
 2. Deshacer + re-avanzar la misma etapa paga una sola vez (el punto borrado se repone).
-3. Rechazo de calidad + re-avance de la etapa rechazada no paga; la fila negativa del culpable sigue.
+3. Rechazo de calidad: el culpable queda penalizado y quien rehace la etapa SÍ cobra (como antes).
+3b. Dividir tras una observación: las hijas no vuelven a cobrar las etapas que la madre ya cobró.
 4. Una etapa nunca pagada (clave `pts_*` en 0 que luego sube, o prenda sin rol de pipeline) paga la
    primera vez que corresponde.
 5. Los pagos del primer ciclo (7 filas, 7 puntos) quedan intactos; la suma total tras el ciclo de
