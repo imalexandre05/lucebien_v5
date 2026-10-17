@@ -2032,3 +2032,10 @@ Migración `0138` ([spec](superpowers/specs/capacitacion/2026-10-17-examenes-des
 7. **Nota presencial**: promedio simple de las habilidades (0–20). ¿Hay habilidades que pesen más?
 8. **Examen manual en la nota integral** (`examen_peso_manual`=1): el último examen que carga el capacitador entra en el
    promedio junto a los online y el presencial. ¿Debe pesar más que los online?
+
+## 4B-4 · Rechazo de calidad pierde todos los puntos (17-oct-2026)
+
+Decisión del dueño, implementada en la migración 0140 (spec `docs/superpowers/specs/pipeline/2026-10-17-rechazo-calidad-pierde-puntos-design.md`).
+Sin defaults inventados. Cierra la duda de la 0130 sobre el rechazo. **Confirmar con el dueño:**
+«todos los puntos» se entendió como los de esa etapa y esa prenda; y con la regla nadie cobra la
+etapa rechazada (ni el culpable ni quien la rehace).
