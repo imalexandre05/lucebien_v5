@@ -13,16 +13,25 @@ create unique index if not exists uq_sueldo_liq_corrige_a on sueldo_liquidacione
 -- Lo pagado (abonos no anulados) de una liquidación y de toda la cadena de liquidaciones que corrige.
 -- `union` (no `union all`) corta cualquier ciclo.
 create or replace function private.sueldo_pagado_cadena(p_liq uuid)
-  returns numeric language sql stable security definer set search_path = public, pg_temp
+  returns numeric language plpgsql stable security definer set search_path = public, pg_temp
 as $fn$
+declare v numeric;
+begin
+  -- SECURITY DEFINER con execute para authenticated (lo llaman RPC invoker): sin esta guarda cualquier
+  -- empleado conocería lo pagado en la liquidación de otro. auth.uid() nulo = servicio/superusuario.
+  if auth.uid() is not null and not private.app_es_admin() then
+    raise exception 'PERMISO:sólo el administrador consulta los pagos de una liquidación por esta vía';
+  end if;
   with recursive cadena(id) as (
     select p_liq
     union
     select l.corrige_a from sueldo_liquidaciones l join cadena c on l.id = c.id where l.corrige_a is not null
   )
-  select coalesce(sum(p.monto), 0)
+  select coalesce(sum(p.monto), 0) into v
     from sueldo_liquidacion_pagos p join cadena c on p.liquidacion_id = c.id
    where not p.anulado;
+  return v;
+end;
 $fn$;
 revoke execute on function private.sueldo_pagado_cadena(uuid) from public, anon;
 grant  execute on function private.sueldo_pagado_cadena(uuid) to authenticated;

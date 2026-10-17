@@ -14,6 +14,11 @@ create or replace function private.sueldo_estado_fecha(p_empleado uuid, p_fecha 
 as $fn$
 declare l record;
 begin
+  -- SECURITY DEFINER con execute para authenticated (lo llaman RPC invoker): sin esta guarda cualquier
+  -- empleado conocería el estado de cierre del sueldo de otro. auth.uid() nulo = servicio/superusuario.
+  if auth.uid() is not null and not private.app_es_admin() then
+    raise exception 'PERMISO:sólo el administrador consulta el estado de los períodos de sueldo';
+  end if;
   select id, periodo_desde, periodo_hasta into l
     from sueldo_liquidaciones
    where empleado_id = p_empleado and estado = 'cerrada'

@@ -179,5 +179,19 @@ begin
     r := r || '[ok] caso 12: anular_cierre no anula una corrección cuya cadena tiene abonos;';
   else r := r || format('[FALLA] caso 12: %s;', v_err); end if;
 
+  -- ── 13) Las funciones privadas con grant a authenticated no filtran datos a quien no es admin ─
+  perform pg_temp.como(per);
+  v_err := pg_temp.mensaje(format('select private.sueldo_pagado_cadena(%L)', j1));
+  r := r || case when v_err like 'PERMISO:%' then '[ok] caso 13a: un empleado no lee lo pagado de otro por sueldo_pagado_cadena;'
+                 else format('[FALLA] caso 13a: %s;', v_err) end;
+  v_err := pg_temp.mensaje(format('select private.sueldo_estado_fecha(%L, %L)', otro, '2099-05-15'::date));
+  r := r || case when v_err like 'PERMISO:%' then '[ok] caso 13b: un empleado no ve el estado de cierre de otro por sueldo_estado_fecha;'
+                 else format('[FALLA] caso 13b: %s;', v_err) end;
+  perform pg_temp.como(adm);
+  v_err := pg_temp.mensaje(format('select private.sueldo_pagado_cadena(%L)', j1));
+  perform pg_temp.dueno();
+  r := r || case when v_err = 'ok' then '[ok] caso 13c: el administrador sí las consulta;'
+                 else format('[FALLA] caso 13c: %s;', v_err) end;
+
   raise exception 'RESULTADO 0137 --> %', r;
 end $$;
