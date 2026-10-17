@@ -1946,3 +1946,19 @@ Sin parámetros nuevos. Decisiones tomadas por el implementador, a confirmar:
 2. **`examenes`** = promedio de la nota vigente (último examen) de las capacitaciones completadas en el ciclo; sin
    capacitaciones queda manual. ¿Debe contar también un examen suelto fuera de una capacitación? Hoy no existe ese registro.
 3. La nota final no depende de ningún componente (sólo de los puntos): `examenes` es perfil, igual que los demás.
+
+## Exámenes de software, escritos y presencial — defaults del 17-oct-2026
+
+Migración `0138` ([spec](superpowers/specs/capacitacion/2026-10-17-examenes-design.md)), ticket #12.
+**Ninguno está confirmado por el dueño.** Todos se editan desde `/configuracion` → «Capacitación», salvo donde se indica.
+
+1. **Preguntas por intento** = 10 (`examen_preguntas_por_intento`). **Intentos máximos** = 3 por examen (`examen_intentos_max`);
+   cuenta la **última** nota, igual que el resto de exámenes.
+2. **Nota integral** = promedio ponderado de lo rendido, pesos 1/1/1 (`examen_peso_software|escrito|presencial`): el examen que
+   no se rindió no entra. El presencial entra sólo cuando todas las habilidades activas tienen nota.
+3. **Habilidades iniciales** «Planchado» y «Costura»; el administrador agrega el resto en `/capacitacion/examenes`.
+4. **El banco empieza vacío**: el cliente debe aportar las preguntas (medidas, cuadernillos, confección, software).
+5. **Sin límite de tiempo** por intento ni preguntas con imagen. ¿Se necesitan?
+6. **Quién rinde**: sólo la persona nueva, dentro de su capacitación en curso. ¿Deben rendirlo también empleados antiguos
+   (re-certificación)? Hoy no existe ese registro, y la evaluación sólo cuenta capacitaciones completadas.
+7. **Nota presencial**: promedio simple de las habilidades (0–20). ¿Hay habilidades que pesen más?
