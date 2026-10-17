@@ -30,7 +30,7 @@ end $f$;
 do $$
 declare
   r text := '';
-  adm uuid; nu uuid; ca uuid; ot uuid; cap uuid; hab1 uuid; hab2 uuid;
+  adm uuid; nu uuid; nu2 uuid; ca uuid; ot uuid; cap uuid; cap2 uuid; hab1 uuid; hab2 uuid;
   v jsonb; v2 jsonb; it uuid; v_err text; v_n int; v_nota numeric; k int; v_ev jsonb;
   v_hoy date := (now() at time zone 'America/Lima')::date;
 begin
@@ -165,6 +165,28 @@ begin
     where n.nspname = 'public' and p.proname like 'examen\_%' and has_function_privilege('anon', p.oid, 'execute');
   if v_err <> 'ok' and v_n = 0 then r := r || '[ok] caso 10: sólo el administrador edita el banco; anon sin execute;';
   else r := r || format('[FALLA] caso 10: err=%s anon=%s;', v_err, v_n); end if;
+
+  -- ── 11) Un examen manual bajo no puede taparse con un online alto (revisión adversarial) ────
+  perform pg_temp.dueno();
+  insert into empleados (cod, nombre, iniciales, rol) values ('P138-N2','Prueba 138 Nuevo 2','N2','confeccionista') returning id into nu2;
+  perform pg_temp.como(adm);
+  cap2 := capacitacion_iniciar(nu2, ca);
+  perform pg_temp.como(ca);
+  perform capacitacion_examen(cap2, 'Práctico', 6);
+  perform pg_temp.como(nu2);
+  v := examen_iniciar(cap2, 'software'); it := (v->>'intento_id')::uuid;
+  perform pg_temp.dueno(); v2 := pg_temp.respuestas(it, 4); perform pg_temp.como(nu2);
+  perform examen_responder(it, v2);
+  perform pg_temp.dueno();
+  select nota into v_nota from capacitacion_examenes where capacitacion_id = cap2 order by fecha desc, created_at desc limit 1;
+  if v_nota = 13 then r := r || '[ok] caso 11a: manual 6 + software 20 = 13, el online no tapa el manual;';
+  else r := r || format('[FALLA] caso 11a: vigente=%s;', v_nota); end if;
+  perform pg_temp.como(ca);
+  perform capacitacion_examen(cap2, 'Práctico 2', 10);
+  perform pg_temp.dueno();
+  select nota into v_nota from capacitacion_examenes where capacitacion_id = cap2 order by fecha desc, created_at desc limit 1;
+  if v_nota = 15 then r := r || '[ok] caso 11b: registrar un manual nuevo vuelve a consolidar (10 y 20 = 15);';
+  else r := r || format('[FALLA] caso 11b: vigente=%s;', v_nota); end if;
 
   raise exception 'RESULTADO 0138 --> %', r;
 end $$;
