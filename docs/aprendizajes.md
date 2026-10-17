@@ -132,3 +132,4 @@ Cada línea de este archivo la puso un error real. **Ninguna es teoría.**
 
 _Empezado el 14 de agosto de 2026 con los errores de la primera semana de trabajo sobre sueldos.
 Se suma una fila cada vez que algo sale mal._
+| Exportar acciones de servidor como `export const f = (...) =>` en un archivo `'use server'` (`/capacitacion`, 17-oct-2026) | `verificar-local.sh` (typecheck + tests) quedó en verde, pero `next build` falla: «Server Actions must be async functions» y el despliegue de Vercel del PR #66 salió en rojo | Las acciones son `export async function`. Antes de subir una pantalla nueva con acciones, correr `next build` en `apps/erp-web` (con `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` de relleno) |
