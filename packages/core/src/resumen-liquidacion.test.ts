@@ -103,8 +103,15 @@ describe('resumenLiquidacion', () => {
     expect(r.restante).toBe(0);
   });
 
-  it('total invertido ADM = total + almuerzos', () => {
-    expect(resumenLiquidacion(base).totalInvertido).toBe(1024);
+  it('total invertido = total final (antes de adelantos) + almuerzos', () => {
+    const r = resumenLiquidacion(base);
+    expect(r.totalInvertido).toBe(1324);
+    expect(r.totalInvertido).toBe(r.totalFinalPorPagar + r.almuerzos);
+  });
+
+  it('restante = total final − adelantos − abonos', () => {
+    const r = resumenLiquidacion({ ...base, abonos: 100 });
+    expect(r.restante).toBe(r.totalFinalPorPagar - r.adelantos - 100);
   });
 
   it('sin líneas (borrador) devuelve ceros, no revienta', () => {
