@@ -14,6 +14,8 @@ import {
   type EntradaLiquidacion,
   type Liquidacion,
   type ParametrosSueldo,
+  resumenLiquidacion,
+  type ResumenLiquidacion,
 } from '@scilb/core';
 import { mapaNombres } from './directorio';
 import { getServerClient } from './supabase/server';
@@ -1410,6 +1412,109 @@ export async function listarPagosDeLiquidaciones(liquidacionIds: string[]): Prom
     liquidacionId: r.liquidacion_id,
     monto: Number(r.monto ?? 0),
   }));
+}
+
+// ── «Mi pago»: la liquidación propia (spec 2026-10-17-resumen-liquidacion-design.md) ───────
+//
+// Lo lee la propia persona con SU sesión: el aislamiento lo aplica la RLS de la 0072/0080
+// (`empleado_id = auth.uid()`). El `.eq('empleado_id', …)` de acá NO es el aislamiento: existe
+// porque el administrador también pasa por esta pantalla y la RLS le deja ver todo; en «Mi pago»
+// tiene que ver sólo la suya. No usa `mapaNombres()`: el nombre ya lo trae la sesión.
+
+export type LiquidacionPropia = {
+  id: string;
+  periodoDesde: string;
+  periodoHasta: string;
+  total: number;
+  cerradaEn: string | null;
+  resumen: ResumenLiquidacion;
+};
+
+type RowPropia = {
+  id: string;
+  periodo_desde: string;
+  periodo_hasta: string;
+  total: number | string;
+  cerrada_en: string | null;
+  ventas: { total?: number; metaPeriodo?: number } | null;
+  sueldo_liquidacion_lineas: RowLinea[] | null;
+};
+
+const SELECT_PROPIA =
+  'id, periodo_desde, periodo_hasta, total, cerrada_en, ventas:resultado->ventas, sueldo_liquidacion_lineas(orden, grupo, concepto, detalle, regla, monto)';
+
+/** Abonos no anulados por liquidación. Si la 0080 no está aplicada, cuenta 0 en vez de romper. */
+async function abonosPorLiquidacion(ids: string[]): Promise<Map<string, number>> {
+  const m = new Map<string, number>();
+  try {
+    for (const p of await listarPagosDeLiquidaciones(ids)) {
+      m.set(p.liquidacionId, (m.get(p.liquidacionId) ?? 0) + p.monto);
+    }
+  } catch (e) {
+    if (!(e instanceof LiquidacionPagosNoMigradoError)) throw e;
+  }
+  return m;
+}
+
+function aPropia(r: RowPropia, abonos: number): LiquidacionPropia {
+  const lineas = (r.sueldo_liquidacion_lineas ?? []).map((l) => ({
+    grupo: l.grupo as LineaGuardada['grupo'],
+    concepto: l.concepto,
+    monto: Number(l.monto ?? 0),
+  }));
+  const total = Number(r.total ?? 0);
+  return {
+    id: r.id,
+    periodoDesde: (r.periodo_desde ?? '').slice(0, 10),
+    periodoHasta: (r.periodo_hasta ?? '').slice(0, 10),
+    total,
+    cerradaEn: r.cerrada_en,
+    resumen: resumenLiquidacion({
+      lineas,
+      ventas: { total: Number(r.ventas?.total ?? 0), metaPeriodo: Number(r.ventas?.metaPeriodo ?? 0) },
+      total,
+      abonos,
+    }),
+  };
+}
+
+/** Resumen de una liquidación cerrada a partir de sus líneas guardadas (comprobante del admin). */
+export async function resumenDeLiquidacionCerrada(id: string): Promise<ResumenLiquidacion | null> {
+  const sb = getServerClient();
+  const { data, error } = await sb.from('sueldo_liquidaciones').select(SELECT_PROPIA).eq('id', id).eq('estado', 'cerrada').maybeSingle();
+  if (error) throw errorSueldo(error);
+  if (!data) return null;
+  const ab = await abonosPorLiquidacion([id]);
+  return aPropia(data as unknown as RowPropia, ab.get(id) ?? 0).resumen;
+}
+
+export async function listarMisLiquidaciones(empleadoId: string): Promise<LiquidacionPropia[]> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('sueldo_liquidaciones')
+    .select(SELECT_PROPIA)
+    .eq('empleado_id', empleadoId)
+    .eq('estado', 'cerrada')
+    .order('periodo_desde', { ascending: false });
+  if (error) throw errorSueldo(error);
+  const rows = (data as unknown as RowPropia[]) ?? [];
+  const ab = await abonosPorLiquidacion(rows.map((r) => r.id));
+  return rows.map((r) => aPropia(r, ab.get(r.id) ?? 0));
+}
+
+export async function obtenerMiLiquidacion(empleadoId: string, id: string): Promise<LiquidacionPropia | null> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('sueldo_liquidaciones')
+    .select(SELECT_PROPIA)
+    .eq('id', id)
+    .eq('empleado_id', empleadoId)
+    .eq('estado', 'cerrada')
+    .maybeSingle();
+  if (error) throw errorSueldo(error);
+  if (!data) return null;
+  const ab = await abonosPorLiquidacion([id]);
+  return aPropia(data as unknown as RowPropia, ab.get(id) ?? 0);
 }
 
 export type PagoLiquidacionInput = {

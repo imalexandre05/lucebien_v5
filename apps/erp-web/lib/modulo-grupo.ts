@@ -38,6 +38,7 @@ const RUTAS: readonly (readonly [prefijo: string, grupo: GrupoModulo])[] = [
   ['/evaluar-reportes', 'desempeno'],
   ['/evaluaciones', 'desempeno'],
   ['/mi-desempeno', 'desempeno'],
+  ['/mi-pago', 'desempeno'],
   ['/valores', 'desempeno'],
   ['/configuracion', 'sistema'],
   ['/dispositivos', 'sistema'],
