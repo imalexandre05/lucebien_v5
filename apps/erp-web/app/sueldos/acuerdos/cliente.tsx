@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, ArrowLeft, Copy, FileSignature, Pencil, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import {
   ESCALAS_SUELDO_DEFAULT,
+  temporadaVigente,
+  sueldoSugeridoPorTemporada,
+  type Temporada,
   PARAMETROS_SUELDO_DEFAULT,
   diaSemanaISO,
   diasDelPeriodo,
@@ -417,6 +420,7 @@ export function AcuerdosCliente({
   fechaIngresoPersona,
   abrirNuevoAlMontar,
   valoresVigentes,
+  temporadas,
 }: {
   acuerdos: AcuerdoSueldo[];
   empleados: Emp[];
@@ -436,6 +440,8 @@ export function AcuerdosCliente({
    * un contrato nuevo, y lo que se muestra como respaldo si a un contrato le faltara una clave.
    */
   valoresVigentes?: ParametrosSueldo;
+  /** Temporadas de /configuracion/temporadas (ticket 15). */
+  temporadas?: Temporada[];
 }) {
   const router = useRouter();
   const vigentes = valoresVigentes ?? PARAMETROS_SUELDO_DEFAULT;
@@ -494,6 +500,7 @@ export function AcuerdosCliente({
   const [errorLista, setErrorLista] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
 
+  const temporadaDelContrato = b.fechaInicio ? temporadaVigente(temporadas ?? [], b.fechaInicio) : null;
   const analisis = useMemo(() => analizar(b, vigentes), [b, vigentes]);
   const pactados = PARAMETROS.filter((p) => b.parametros[p.clave] != null);
 
@@ -916,6 +923,14 @@ export function AcuerdosCliente({
                     </option>
                   ))}
                 </Select>
+                {temporadaDelContrato?.pagoPorHora != null && (
+                  <p className="mt-1 text-apoyo text-muted">
+                    Temporada «{temporadaDelContrato.nombre}»: pago por hora de referencia S/{' '}
+                    {temporadaDelContrato.pagoPorHora.toFixed(2)}
+                    {analisis.horas > 0 && ` · sugerido S/ ${sueldoSugeridoPorTemporada(temporadaDelContrato, analisis.horas)?.toFixed(2)}`}.
+                    Es una referencia; la cuota la pactas tú.
+                  </p>
+                )}
               </div>
             </div>
 

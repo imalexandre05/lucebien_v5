@@ -12,7 +12,7 @@ export async function accionGuardarTemporada(t: Temporada): Promise<R> {
     if (!t.nombre.trim()) return { ok: false, error: 'Ponle un nombre a la temporada.' };
     if (!t.desde || !t.hasta) return { ok: false, error: 'Indica desde y hasta.' };
     await guardarTemporada(t);
-    revalidatePath('/configuracion/temporadas');
+    revalidatePath('/', 'layout'); // las metas se ven en ventas, contratos y desempeño
     return { ok: true };
   } catch (e) {
     return fallo(e);
@@ -22,7 +22,7 @@ export async function accionGuardarTemporada(t: Temporada): Promise<R> {
 export async function accionEliminarTemporada(id: string): Promise<R> {
   try {
     await eliminarTemporada(id);
-    revalidatePath('/configuracion/temporadas');
+    revalidatePath('/', 'layout'); // las metas se ven en ventas, contratos y desempeño
     return { ok: true };
   } catch (e) {
     return fallo(e);

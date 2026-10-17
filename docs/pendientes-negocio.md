@@ -1962,3 +1962,9 @@ motor usa los valores normales. Defaults/decisiones que tuve que tomar, por conf
 - Las temporadas no se solapan. Lectura abierta a todo usuario activo; `pago_por_hora` es visible
   para ellos. Confirmar si debe ser sólo administrador.
 - `MOTOR_VERSION` pasó a `2026-10-17`.
+
+**Decisiones abiertas de temporadas (hallazgos del verificador, 17-oct-2026)** — por confirmar con el dueño antes de aplicar la 0133:
+- `metaPorHora` es un valor que el contrato copia al crearse: la temporada **lo pisa** (sólo `metaSemanal` pactada gana). Si el dueño quiere que cualquier valor pactado gane, hay que distinguir «pactado» de «copiado del default».
+- `meta_semanal` de temporada es una cifra única (no se ajusta por horas ni por `factorMeta`): para medio tiempo conviene usar «meta por hora».
+- El solape de temporadas se valida en la RPC sin restricción de exclusión (necesitaría `btree_gist`); dos guardados simultáneos podrían cruzarse. Riesgo bajo: un solo administrador las edita.
+- La pantalla de ventas y metas (`semanasConMeta`) aún no usa las temporadas: la meta que muestra puede diferir de la liquidada en esas semanas.
