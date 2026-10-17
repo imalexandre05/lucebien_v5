@@ -31,7 +31,7 @@ do $$
 declare
   r text := '';
   adm uuid; per uuid; otro uuid; ac1 uuid; ac2 uuid;
-  a uuid; b uuid; c uuid; f uuid; g uuid; h uuid; i uuid; ac3 uuid;
+  a uuid; b uuid; c uuid; f uuid; g uuid; h uuid; i uuid; ac3 uuid; ac4 uuid; j1 uuid; j2 uuid;
   v_err text; v_n int; v_sum numeric; v_corr uuid;
 begin
   perform pg_temp.dueno();
@@ -127,6 +127,31 @@ begin
       and has_function_privilege('anon', p.oid, 'execute');
   if v_err like 'PERMISO:%' and v_n = 0 then r := r || '[ok] caso 8: sólo el administrador; anon sin execute;';
   else r := r || format('[FALLA] caso 8: %s anon=%s;', v_err, v_n); end if;
+
+  -- ── 9) Período distinto con abonos pendientes: no se crea sin enlace (revisión adversarial) ─
+  perform pg_temp.dueno();
+  insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado, creado_por, estado)
+    values (otro,'2099-05-01','2099-05-31',1000,adm,'vigente') returning id into ac4;
+  j1 := pg_temp.liq(ac4, otro, '2099-05-01', '2099-05-31', 1000, 'cerrada', adm);
+  perform pg_temp.como(adm);
+  perform sueldo_liquidacion_pagar(j1, '2099-05-20', 400, 'efectivo');
+  perform sueldo_liquidacion_corregir_anular(j1, 'cambia el período');
+  perform pg_temp.dueno();
+  v_err := pg_temp.mensaje(format('select pg_temp.liq(%L, %L, %L, %L, 1000, %L, %L)', ac4, otro, '2099-05-01'::date, '2099-05-30'::date, 'cerrada', adm));
+  if v_err like 'PERIODO:%' then r := r || '[ok] caso 9: una corregida con otro período y abonos pendientes no se crea sin enlace;';
+  else r := r || format('[FALLA] caso 9: %s;', v_err); end if;
+
+  -- ── 10) corrige_a explícito: solo hacia una anulada del mismo empleado y contrato ───────────
+  v_err := pg_temp.mensaje(format('update sueldo_liquidaciones set corrige_a = %L where id = %L', j1, i));   -- i es de otra persona
+  if v_err like 'DATO:%' then r := r || '[ok] caso 10a: no se le cuelgan los abonos de otra persona a una liquidación;';
+  else r := r || format('[FALLA] caso 10a: %s;', v_err); end if;
+  j2 := pg_temp.liq(ac4, otro, '2099-05-01', '2099-05-31', 900, 'borrador', adm);
+  v_err := pg_temp.mensaje(format('update sueldo_liquidaciones set corrige_a = id where id = %L', j2));
+  if v_err like 'DATO:%' then r := r || '[ok] caso 10b: una liquidación no se corrige a sí misma;';
+  else r := r || format('[FALLA] caso 10b: %s;', v_err); end if;
+  select corrige_a into v_corr from sueldo_liquidaciones where id = j2;
+  if v_corr = j1 then r := r || '[ok] caso 10c: con coincidencia exacta el enlace automático sigue funcionando;';
+  else r := r || format('[FALLA] caso 10c: corrige_a=%s;', v_corr); end if;
 
   raise exception 'RESULTADO 0137 --> %', r;
 end $$;
