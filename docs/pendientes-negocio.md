@@ -1954,13 +1954,18 @@ Spec escrita, sin código. Defaults inventados por quien escribió la spec, a co
 1. **`pipeline_meta_puntos_por_hora` = 0,5.** Salió del mejor mes-persona medido (126,45 puntos, abril 2026) en
    ~21 días de 11 horas. Es el techo de un módulo con 2 de 11 personas registrando, así que probablemente
    subestima. Cifra tomada de este documento, no de una consulta: contrastarla con la base antes de sembrarla.
-2. **La meta de pipeline se mide por hora contratada en almacén**, no por turno entero (los turnos reales
-   son de 4 y 7 horas).
+2. **`eval_cumplimiento_para_20` = 1,00:** cumplir toda la meta del período equivale a 20 (nota = 20 × cumplimiento,
+   sin techo). Corrige mi recomendación anterior de 100 % = 16. El /20 es sólo referencia; la medida principal
+   es el porcentaje de cumplimiento.
 3. **Un turno de almacén no tiene meta de reportes**: se mide sólo por pipeline.
-4. **100 % de la meta = nota 16; 150 % = 20** (la misma curva del 25-ago, con la meta del período en lugar de 5000).
-5. **Licencia = falta justificada** (campo existente). **Feriado o cierre = día sin meta pagado**, en una
-   tabla nueva que sólo escribe el administrador. Sin marca, la meta cuenta normal.
-6. **La nota sólo informa**; el pago sigue siendo el pactado (decisión de Alexander, 17-oct-2026).
+4. **Licencia = falta justificada** (campo existente). **Feriado o cierre = día libre por persona**, en una tabla
+   nueva (`dias_libres`) que sólo escribe el administrador: sale del contrato, sale de la meta y no se paga.
+   Sin marca, la meta cuenta normal.
+5. **Que el día libre no se pague necesita spec propia del motor de sueldos.** Hoy `sueldos.ts` no conoce
+   excepciones por fecha. Hasta entonces la meta lee `dias_libres` y el pago no.
 
 Decidido por Alexander el 17-oct-2026: el período de evaluación es el tramo de pago (no la duración del
-contrato); la meta de pipeline se prorratea por turnos en almacén; la cifra de esa meta se define después.
+contrato); la meta de pipeline se mide por horas en almacén según el horario fijo; pasar un día a almacén por
+poca demanda es un extra; las actividades de reporte son por sede y valen igual para todos; el /20 es una
+referencia; el feriado no lo paga el administrador y él decide persona por persona; la nota sólo informa y el
+pago sigue siendo el pactado. La cifra de la meta de pipeline se define después.
