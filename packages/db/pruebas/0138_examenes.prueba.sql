@@ -168,6 +168,7 @@ begin
 
   -- ── 11) Un examen manual bajo no puede taparse con un online alto (revisión adversarial) ────
   perform pg_temp.dueno();
+  update config set valor = '1' where clave in ('examen_peso_software','examen_peso_escrito','examen_peso_presencial','examen_peso_manual');
   insert into empleados (cod, nombre, iniciales, rol) values ('P138-N2','Prueba 138 Nuevo 2','N2','confeccionista') returning id into nu2;
   perform pg_temp.como(adm);
   cap2 := capacitacion_iniciar(nu2, ca);

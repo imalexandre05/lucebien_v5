@@ -803,6 +803,16 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 0,
     step: 0.5,
   },
+  {
+    clave: 'examen_peso_manual',
+    seccion: SECCION_CAPACITACION,
+    etiqueta: 'Peso del examen cargado a mano',
+    descripcion: 'Cuánto pesa el último examen que registra el capacitador a mano en la nota integral, junto a los exámenes online y el presencial. Valor provisional.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    step: 0.5,
+  },
   // Pago por puntos (migración 0117, spec sueldos/2026-10-05-pago-por-puntos-design.md). SIN default
   // a propósito: la meta la fija el dueño después de un mes de uso, mirando el promedio real. En
   // blanco = desactivado; con cualquiera de las dos en blanco no se paga nada por puntos.

@@ -85,7 +85,8 @@ insert into public.config (clave, valor) values
   ('examen_intentos_max',          '3'),    -- PROVISIONAL: intentos por tipo y capacitación
   ('examen_peso_software',         '1'),    -- PROVISIONAL: pesos iguales = promedio simple
   ('examen_peso_escrito',          '1'),
-  ('examen_peso_presencial',       '1')
+  ('examen_peso_presencial',       '1'),
+  ('examen_peso_manual',           '1')     -- PROVISIONAL: peso del último examen que carga el capacitador a mano
 on conflict (clave) do nothing;
 
 -- Habilidades iniciales: las dos que nombró el cliente; el administrador agrega el resto.
@@ -128,10 +129,11 @@ create or replace function private.examen_consolidar(p_cap uuid)
   returns void language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare
-  v_sw numeric; v_es numeric; v_pr numeric; v_tot int; v_hechas int;
+  v_sw numeric; v_es numeric; v_pr numeric; v_ma numeric; v_tot int; v_hechas int; v_otros int := 0;
   w_sw numeric := private.examen_param('examen_peso_software', 1);
   w_es numeric := private.examen_param('examen_peso_escrito', 1);
   w_pr numeric := private.examen_param('examen_peso_presencial', 1);
+  w_ma numeric := private.examen_param('examen_peso_manual', 1);
   v_suma numeric := 0; v_pesos numeric := 0;
 begin
   select nota into v_sw from examen_intentos where capacitacion_id = p_cap and tipo = 'software' and estado = 'calificado'
@@ -144,10 +146,18 @@ begin
    where n.capacitacion_id = p_cap;
   if v_tot = 0 or v_hechas < v_tot then v_pr := null; end if;   -- el presencial cuenta con todas las habilidades
 
+  -- Último examen cargado a mano por el capacitador: entra en el promedio para que un examen online
+  -- alto no pueda taparlo (la nota vigente es la última fila, y la integral lo sería).
+  select nota into v_ma from capacitacion_examenes where capacitacion_id = p_cap and nombre <> 'Examen integral'
+    order by fecha desc, created_at desc limit 1;
+  v_otros := (v_sw is not null)::int + (v_es is not null)::int + (v_pr is not null)::int;
+
   if v_sw is not null then v_suma := v_suma + w_sw * v_sw; v_pesos := v_pesos + w_sw; end if;
   if v_es is not null then v_suma := v_suma + w_es * v_es; v_pesos := v_pesos + w_es; end if;
   if v_pr is not null then v_suma := v_suma + w_pr * v_pr; v_pesos := v_pesos + w_pr; end if;
-  if v_pesos <= 0 then return; end if;
+  if v_ma is not null then v_suma := v_suma + w_ma * v_ma; v_pesos := v_pesos + w_ma; end if;
+  -- Solo un examen manual y nada online/presencial: ese examen ya es el vigente, no hay nada que consolidar.
+  if v_pesos <= 0 or v_otros = 0 then return; end if;
 
   -- created_at con clock_timestamp(): dos calificaciones en una misma transacción no pueden empatar,
   -- porque la nota vigente es la última por (fecha, created_at).
@@ -158,7 +168,25 @@ end;
 $$;
 revoke all on function private.examen_consolidar(uuid) from public, anon, authenticated;
 
--- ── 5) RPC ──────────────────────────────────────────────────────────────────────────────────
+-- ── 5) RPC ──
+-- capacitacion_examen (0131) ahora también consolida: el examen manual entra en la nota integral.
+create or replace function public.capacitacion_examen(p_cap uuid, p_nombre text, p_nota numeric)
+  returns uuid language plpgsql security definer set search_path = public, pg_temp
+as $$
+declare v_id uuid;
+begin
+  if auth.uid() is null then raise exception 'No autenticado'; end if;
+  perform private.capacitacion_exigir_califica(p_cap);
+  if p_nota is null or p_nota < 0 or p_nota > 20 then raise exception 'La nota debe estar entre 0 y 20'; end if;
+  insert into capacitacion_examenes (capacitacion_id, nombre, nota, fecha, registrado_por, created_at)
+    values (p_cap, coalesce(nullif(btrim(coalesce(p_nombre, '')), ''), 'Examen'), p_nota,
+            (now() at time zone 'America/Lima')::date, auth.uid(), clock_timestamp())
+    returning id into v_id;
+  perform private.examen_consolidar(p_cap);
+  return v_id;
+end;
+$$;
+-- ──────────────────────────────────────────────────────────────
 create or replace function public.examen_pregunta_guardar(
   p_id uuid, p_tipo text, p_tema text, p_enunciado text, p_opciones jsonb, p_correcta int, p_activa boolean)
   returns uuid language plpgsql security definer set search_path = public, pg_temp

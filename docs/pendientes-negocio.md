@@ -1962,3 +1962,5 @@ Migración `0138` ([spec](superpowers/specs/capacitacion/2026-10-17-examenes-des
 6. **Quién rinde**: sólo la persona nueva, dentro de su capacitación en curso. ¿Deben rendirlo también empleados antiguos
    (re-certificación)? Hoy no existe ese registro, y la evaluación sólo cuenta capacitaciones completadas.
 7. **Nota presencial**: promedio simple de las habilidades (0–20). ¿Hay habilidades que pesen más?
+8. **Examen manual en la nota integral** (`examen_peso_manual`=1): el último examen que carga el capacitador entra en el
+   promedio junto a los online y el presencial. ¿Debe pesar más que los online?
