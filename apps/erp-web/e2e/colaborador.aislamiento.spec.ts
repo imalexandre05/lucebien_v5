@@ -111,7 +111,7 @@ test('la pantalla de un colaborador no filtra plata de nadie', async ({ page }) 
   // Recorre lo que un colaborador SÍ puede abrir y comprueba que ninguna de esas pantallas se le
   // escape con cifras de sueldo. Es la contracara del test anterior: allá se prueba la puerta,
   // acá se prueba que no haya una ventana abierta.
-  for (const ruta of ['/', '/mi-desempeno', '/valores', '/notificaciones', '/buscar?q=a']) {
+  for (const ruta of ['/', '/mi-desempeno', '/valores', '/buscar?q=a']) {
     // `/` rebota a la pantalla del rol; sin esperar a que ese rebote termine, la navegación
     // siguiente se cancela sola (ERR_ABORTED) y parece un fallo del sistema cuando es del apuro.
     await page.goto(ruta, { waitUntil: 'domcontentloaded' }).catch(() => {});

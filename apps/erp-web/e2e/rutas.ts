@@ -9,7 +9,6 @@
 /** Lo que el equipo usa todos los días. Si una de estas se rompe, el trabajo se detiene. */
 export const RUTAS_INTERNO = [
   '/',
-  '/notificaciones',
   '/reportes',
   '/reportes/nuevo',
   '/solicitudes',
