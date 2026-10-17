@@ -1046,6 +1046,18 @@ export async function anularLiquidacion(id: string, motivo: string): Promise<voi
 }
 
 /**
+ * Anula para CORREGIR (migración 0137): a diferencia de `anularLiquidacion`, admite una liquidación
+ * con abonos vigentes. Los abonos no se tocan: la liquidación de reemplazo los hereda y los descuenta
+ * de su total (el vínculo `corrige_a` lo pone la base al crear el borrador del mismo período).
+ */
+export async function anularParaCorregir(id: string, motivo: string): Promise<void> {
+  if (!motivo.trim()) throw new SueldoRpcError('Falta el motivo de la corrección.', 'DATO');
+  const sb = getServerClient();
+  const { error } = await sb.rpc('sueldo_liquidacion_corregir_anular', { p_liquidacion: id, p_motivo: motivo.trim() });
+  if (error) throw errorSueldo(error);
+}
+
+/**
  * Lo que puede pasar al crear el borrador de reemplazo DESPUÉS de anular, dentro de
  * `corregirLiquidacion()`. Anular y crear son dos escrituras separadas, no una transacción: si la
  * primera corre y la segunda falla, la anulación queda firme igual — el trigger `sueldo_liq_inmutable`
@@ -1111,12 +1123,12 @@ export async function corregirLiquidacion(
   motivo: string,
   colaboradores: {
     obtener?: typeof obtenerLiquidacion;
-    anular?: typeof anularLiquidacion;
+    anular?: typeof anularParaCorregir;
     crear?: typeof crearBorrador;
   } = {},
 ): Promise<{ nuevoBorradorId: string }> {
   const obtener = colaboradores.obtener ?? obtenerLiquidacion;
-  const anular = colaboradores.anular ?? anularLiquidacion;
+  const anular = colaboradores.anular ?? anularParaCorregir;
   const crear = colaboradores.crear ?? crearBorrador;
 
   const actual = await obtener(id);
@@ -1362,9 +1374,12 @@ export type PagoLiquidacion = {
   anuladoMotivo: string | null;
   anuladoEn: string | null;
   creadoEn: string;
+  /** Pagado en una liquidación anterior que ésta corrige (0137): cuenta contra su saldo, pero no se anula desde acá. */
+  deLiquidacionAnterior: boolean;
 };
 
 type RowPagoLiquidacion = {
+  consulta_id?: string;
   id: string;
   liquidacion_id: string;
   fecha: string;
@@ -1380,6 +1395,7 @@ type RowPagoLiquidacion = {
 
 function aPagoLiquidacion(r: RowPagoLiquidacion, nombre: string | null): PagoLiquidacion {
   return {
+    deLiquidacionAnterior: Boolean(r.consulta_id && r.consulta_id !== r.liquidacion_id),
     id: r.id,
     liquidacionId: r.liquidacion_id,
     fecha: (r.fecha ?? '').slice(0, 10),
@@ -1401,12 +1417,8 @@ function aPagoLiquidacion(r: RowPagoLiquidacion, nombre: string | null): PagoLiq
  */
 export async function listarPagosLiquidacion(liquidacionId: string): Promise<PagoLiquidacion[]> {
   const sb = getServerClient();
-  const { data, error } = await sb
-    .from('sueldo_liquidacion_pagos')
-    .select('*')
-    .eq('liquidacion_id', liquidacionId)
-    .order('fecha', { ascending: false })
-    .order('creado_en', { ascending: false });
+  // Desde la 0137 los abonos de una liquidación incluyen los de las anteriores que ésta corrige.
+  const { data, error } = await sb.rpc('sueldo_pagos_de_cadena', { p_ids: [liquidacionId] });
   if (error) {
     if (esTablaOFuncionInexistente(error)) throw new LiquidacionPagosNoMigradoError();
     throw errorSueldo(error);
@@ -1430,19 +1442,14 @@ export type PagoResumen = { liquidacionId: string; monto: number };
 export async function listarPagosDeLiquidaciones(liquidacionIds: string[]): Promise<PagoResumen[]> {
   if (liquidacionIds.length === 0) return [];
   const sb = getServerClient();
-  const { data, error } = await sb
-    .from('sueldo_liquidacion_pagos')
-    .select('liquidacion_id, monto')
-    .in('liquidacion_id', liquidacionIds)
-    .eq('anulado', false);
+  const { data, error } = await sb.rpc('sueldo_pagos_de_cadena', { p_ids: liquidacionIds });
   if (error) {
     if (esTablaOFuncionInexistente(error)) throw new LiquidacionPagosNoMigradoError();
     throw errorSueldo(error);
   }
-  return ((data as { liquidacion_id: string; monto: number | string }[]) ?? []).map((r) => ({
-    liquidacionId: r.liquidacion_id,
-    monto: Number(r.monto ?? 0),
-  }));
+  return ((data as { consulta_id: string; anulado: boolean; monto: number | string }[]) ?? [])
+    .filter((r) => !r.anulado)
+    .map((r) => ({ liquidacionId: r.consulta_id, monto: Number(r.monto ?? 0) }));
 }
 
 // ── «Mi pago»: la liquidación propia (spec 2026-10-17-resumen-liquidacion-design.md) ───────

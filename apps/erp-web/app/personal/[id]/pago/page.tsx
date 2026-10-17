@@ -43,7 +43,8 @@ export default async function PagoColaboradorPage(props: { params: Promise<{ id:
   // Si listar los pagos de alguna liquidación cerrada revienta por tabla/función inexistente, la
   // pantalla no se cae: sigue mostrando las liquidaciones (total sin pagado/saldo) y avisa, en
   // vez de un 500. Sin liquidaciones cerradas no hace falta ni probar: no hay nada que mostrar.
-  const cerradas = liquidaciones.filter((l) => l.estado === 'cerrada');
+  // Los borradores también: una corregida muestra lo ya pagado en la anterior (0137).
+  const cerradas = liquidaciones.filter((l) => l.estado === 'cerrada' || l.estado === 'borrador');
   const pagosPorLiquidacion: Record<string, PagoLiquidacion[]> = {};
   let migrado = true;
   if (cerradas.length > 0) {
