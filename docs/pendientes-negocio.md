@@ -2038,3 +2038,8 @@ Migración `0138` ([spec](superpowers/specs/capacitacion/2026-10-17-examenes-des
 El dueño confirmó: Total invertido = total final + almuerzos. Los almuerzos ya están dentro del total
 final (como «otros beneficios»), así que se cuentan dos veces. Se dejó como lo pidió; **confirmar con el
 dueño si es lo que quiere** o si el Total invertido debe ser el total final solo.
+## 4B-3 · Comisiones 1.ª y 2.ª (17-oct-2026)
+
+Sin defaults nuevos. 1.ª comisión: `sueldo_pct_comision` (2 %) y `sueldo_monto_minimo_comision` (S/120),
+se desbloquea con la meta del mes. 2.ª comisión: es el «Bono por metas semanales»
+(`sueldo_bono_meta_semanal`, S/30). Los tres se editan en Configuración → Sueldos.

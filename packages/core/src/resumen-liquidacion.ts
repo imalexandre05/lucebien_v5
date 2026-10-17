@@ -3,7 +3,7 @@
 //
 // Función pura: NO recalcula el motor. Reagrupa las líneas que `liquidarPeriodo()` ya emitió (y que
 // se congelaron al cerrar) en las filas que el equipo está acostumbrado a leer. Lo que el sistema
-// no tiene (mínimo de ventas para continuar, 2ª comisión) queda en `null` y la pantalla lo muestra
+// no tiene (mínimo de ventas para continuar) queda en `null` y la pantalla lo muestra
 // como «No configurado»: no se inventa ninguna regla.
 
 import type { GrupoLinea } from './sueldos';
@@ -33,10 +33,10 @@ export interface ResumenLiquidacion {
   continua: boolean | null;
   horasExtras: number;
   comision1: number;
-  /** El sistema tiene una sola comisión. */
-  comision2: null;
+  /** 2.ª comisión = bono por metas semanales cumplidas (RN-12). */
+  comision2: number;
   capacitacion: number;
-  /** Metas semanales, puntos, bonos extras, almuerzos y toda línea positiva no reconocida. */
+  /** Puntos, bonos extras, almuerzos y toda línea positiva no reconocida. */
   otrosBeneficios: number;
   penalidadTardanzas: number;
   penalidadFaltas: number;
@@ -59,6 +59,7 @@ const r2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
   let sueldo = 0;
   let comision1 = 0;
+  let comision2 = 0;
   let capacitacion = 0;
   let horasExtras = 0;
   let tardanzas = 0;
@@ -73,6 +74,7 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
     const c = l.concepto;
     if (c === 'Sueldo') sueldo += l.monto;
     else if (c.startsWith('Comisión')) comision1 += l.monto;
+    else if (c === 'Bono por metas semanales') comision2 += l.monto;
     else if (c === 'Apoyo en capacitación') capacitacion += l.monto;
     else if (c === 'Diferencia de horas' || c === 'Horas fuera de contrato') horasExtras += l.monto;
     else if (c === 'Descuento por tardanzas') tardanzas -= l.monto;
@@ -88,6 +90,7 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
 
   sueldo = r2(sueldo);
   comision1 = r2(comision1);
+  comision2 = r2(comision2);
   capacitacion = r2(capacitacion);
   horasExtras = r2(horasExtras);
   otrosBeneficios = r2(otrosBeneficios);
@@ -112,7 +115,7 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
     continua: minimo == null ? null : ventasLogrado > minimo,
     horasExtras,
     comision1,
-    comision2: null,
+    comision2,
     capacitacion,
     otrosBeneficios,
     penalidadTardanzas,
@@ -120,7 +123,7 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
     penalidadReportes,
     otrosDescuentos,
     sueldo,
-    totalBeneficios: r2(comision1 + capacitacion + otrosBeneficios),
+    totalBeneficios: r2(comision1 + comision2 + capacitacion + otrosBeneficios),
     totalDescuentos: r2(penalidadTardanzas + penalidadFaltas + penalidadReportes + otrosDescuentos),
     totalFinalPorPagar: r2(total + adelantos),
     adelantos,
