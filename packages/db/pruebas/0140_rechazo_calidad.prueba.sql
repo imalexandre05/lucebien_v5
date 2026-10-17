@@ -131,12 +131,18 @@ begin
   perform pg_temp.como(e_cf);
   v_pts := pipeline_avanzar(p, 'control_calidad');
   v_err := pg_temp.mensaje(format('select pipeline_dividir(%L)', p));
+  -- Las hijas nacen en control_calidad: calidad las rechaza (sin culpable aún), A las rehace sin cobrar
+  -- (la madre ya cobró) y calidad las rechaza otra vez, ahora con A como culpable de cada hija.
+  perform pg_temp.como(e_alm);
+  v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_rechazar(id, %L) from prenda_pasada where codigo in (%L, %L)', 'planchado', 'P0140-6-S', 'P0140-6-P'));
+  perform pg_temp.como(e_cf);
+  v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_avanzar(id, %L) from prenda_pasada where codigo in (%L, %L)', 'control_calidad', 'P0140-6-S', 'P0140-6-P'));
   perform pg_temp.como(e_alm);
   v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_rechazar(id, %L) from prenda_pasada where codigo in (%L, %L)', 'planchado', 'P0140-6-S', 'P0140-6-P'));
   perform pg_temp.dueno();
   select coalesce(sum(puntos), 0) into v_suma from pipeline_puntos where empleado_id = e_cf and pasada_id in
     (select id from prenda_pasada where codigo like 'P0140-6%');
-  if v_pts >= 0 and v_suma >= 0 then
+  if v_pts = 1 and v_err = 'ok/ok/ok/ok' and v_suma = 0 then
     r := r || '[ok] caso 6: dividida y rechazada en las dos hijas, el culpable nunca queda bajo cero;';
   else
     r := r || format('[FALLA] caso 6: cobro=%s neto=%s err=%s;', v_pts, v_suma, v_err);
