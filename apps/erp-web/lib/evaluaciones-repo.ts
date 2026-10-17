@@ -137,6 +137,9 @@ export type ComponentesRPC = {
   valores: number | null;
   valoresCantidad: number;
   bonusVentas: number;
+  // 🆕 0132: nota de examen de las capacitaciones cerradas en el ciclo; null = sin dato (entrada manual).
+  examenes?: number | null;
+  examenesCantidad?: number;
   // 🆕 spec 2026-08-25-puntos-como-moneda-design.md — desglose de puntos (migración 0095). Quedan
   // `undefined` (no `0`) si esa migración todavía no corrió: notaDesdePuntos() los rechaza con un
   // mensaje claro en vez de calcular con un 0 que no es real (mismo principio que ya sigue
