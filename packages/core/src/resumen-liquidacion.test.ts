@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { resumenLiquidacion, type LineaParaResumen } from './resumen-liquidacion';
+import { liquidarPeriodo, diasDelPeriodo, type EntradaLiquidacion } from './sueldos';
 
 // Spec: docs/superpowers/specs/2026-10-17-resumen-liquidacion-design.md.
 // Escritos ANTES del código (Zone Guard, no-negociable 6).
@@ -120,5 +121,45 @@ describe('resumenLiquidacion', () => {
       abonos: 0,
     });
     expect(r.totalFinalPorPagar).toBe(0.3);
+  });
+});
+
+// Ata el resumen al motor real: si sueldos.ts renombra un concepto, esto se rompe en vez de dejar
+// una fila en cero en pantalla.
+describe('resumenLiquidacion contra liquidarPeriodo()', () => {
+  const dias = diasDelPeriodo('2026-10-01', '2026-10-31');
+  const entrada: EntradaLiquidacion = {
+    fechaInicio: '2026-10-01',
+    fechaFin: '2026-10-31',
+    sueldoPactado: 1500,
+    horario: [1, 2, 3, 4, 5, 6, 7].map((diaSemana) => ({ diaSemana, turno: 1, horaInicio: '09:00', horaFin: '17:00' })),
+    // Falta el 10-02 (falta injustificada) y el 10-03 llega tarde (tardanza).
+    asistencia: dias.map((fecha) =>
+      fecha === '2026-10-02'
+        ? { fecha, horaIngreso: null, horaSalida: null }
+        : { fecha, horaIngreso: fecha === '2026-10-03' ? '09:40' : '09:00', horaSalida: '17:00' },
+    ),
+    ventas: [{ fecha: '2026-10-05', monto: 900 }],
+    adelantos: [{ fecha: '2026-10-10', motivo: 'adelanto', monto: 200 }],
+    reportes: [{ fecha: '2026-10-11', motivo: 'reporte', monto: 15 }],
+    bonosExtras: [{ fecha: '2026-10-12', motivo: 'bono', monto: 30 }],
+    parametros: { tardanzasLibres: 0 },
+  };
+  const liq = liquidarPeriodo(entrada);
+  const r = resumenLiquidacion({ lineas: liq.lineas, ventas: liq.ventas, total: liq.total, abonos: 0 });
+
+  it('reconoce cada penalidad, el adelanto y los bonos que el motor emite', () => {
+    expect(r.penalidadFaltas).toBeGreaterThan(0);
+    expect(r.penalidadTardanzas).toBeGreaterThan(0);
+    expect(r.penalidadReportes).toBe(15);
+    expect(r.adelantos).toBe(200);
+    expect(r.sueldo).toBe(1500);
+    expect(r.otrosDescuentos).toBe(0); // ninguna línea con monto cayó en «Otros»
+  });
+
+  it('el invariante cuadra con el total real del motor', () => {
+    expect(r.totalFinalPorPagar).toBe(Math.round((liq.total + 200) * 100) / 100);
+    const suma = r.sueldo + r.horasExtras + r.totalBeneficios - r.totalDescuentos;
+    expect(Math.round(suma * 100) / 100).toBe(r.totalFinalPorPagar);
   });
 });
