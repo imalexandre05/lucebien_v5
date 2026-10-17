@@ -8,7 +8,8 @@
 --   1. Un ciclo completo (7 etapas) paga 7. Se envía, la tienda observa a recepción y se re-avanza
 --      todo: el segundo ciclo paga 0 y el total sigue en 7. (Con la 0128 el total da 14.)
 --   2. Deshacer + re-avanzar la misma etapa paga una sola vez (el punto borrado se repone).
---   3. Rechazo de calidad: el culpable sigue penalizado y el re-avance de la etapa rechazada no paga.
+--   3. Rechazo de calidad (sin cambio): el culpable pierde su punto y quien rehace la etapa cobra.
+--   3b. Dividir tras una observación: las hijas no recobran lo que la madre ya cobró.
 --   4. Una etapa que no pagó la primera vez (clave pts_* en 0) paga cuando la clave sube.
 --
 -- MONTAJE. Todo sintético con el prefijo 'P0130'. Se ataca COMO `authenticated` de verdad.
@@ -58,7 +59,7 @@ do $$
 declare
   r text := '';
   v_a text := 'P130A'; v_b text := 'P130B';
-  e_alm uuid; e_cf uuid; p uuid;
+  e_alm uuid; e_cf uuid; p uuid; h record;
   v_c1 numeric; v_c2 numeric; v_suma numeric; v_n int; v_err text; v_pts numeric;
 begin
   perform pg_temp.dueno();
@@ -104,7 +105,7 @@ begin
     r := r || format('[FALLA] caso 2: pts=%s deshacer=%s repago=%s suma=%s;', v_pts, v_err, v_c1, v_suma);
   end if;
 
-  -- ── 3) Rechazo de calidad: culpable penalizado, re-avance sin pago ─────────────────────────
+  -- ── 3) Rechazo de calidad (queda como antes): el culpable pierde su punto y quien rehace cobra ─
   insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
     values ('P0130-3', 'Chaqueta', 'normal', v_a, 'planchado') returning id into p;
   perform pg_temp.como(e_cf);
@@ -115,11 +116,32 @@ begin
   v_c1 := pipeline_avanzar(p, 'control_calidad');
   perform pg_temp.dueno();
   select coalesce(sum(puntos), 0) into v_suma from pipeline_puntos where pasada_id = p;
-  if v_pts = 1 and v_err = 'ok' and v_c1 = 0 and v_suma = 0
+  if v_pts = 1 and v_err = 'ok' and v_c1 = 1 and v_suma = 1
      and exists (select 1 from pipeline_puntos where pasada_id = p and puntos < 0 and empleado_id = e_cf) then
-    r := r || '[ok] caso 3: el rechazo penaliza al culpable y rehacer la etapa no vuelve a pagar;';
+    r := r || '[ok] caso 3: el rechazo penaliza al culpable y quien rehace la etapa cobra (sin cambio);';
   else
-    r := r || format('[FALLA] caso 3: pts=%s rechazar=%s repago=%s suma=%s;', v_pts, v_err, v_c1, v_suma);
+    r := r || format('[FALLA] caso 3: pts=%s rechazar=%s rehacer=%s suma=%s;', v_pts, v_err, v_c1, v_suma);
+  end if;
+
+  -- ── 3b) Dividir tras una observación: las hijas no recobran lo que la madre ya cobró ───────
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
+    values ('P0130-3B', 'Terno completo', 'normal', v_a, 'recepcion') returning id into p;
+  perform pg_temp.como(e_cf);
+  v_c1 := pg_temp.ciclo(p);
+  v_err := pg_temp.mensaje(format('select pipeline_enviar(%L, %L)', p, v_b));
+  perform pg_temp.como(e_alm);
+  v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_calificar(%L, false, %L, %L)', p, 'recepcion', 'P0130 obs'));
+  perform pg_temp.como(e_cf);
+  v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_dividir(%L)', p));
+  v_c2 := 0;
+  for h in select id from prenda_pasada where codigo in ('P0130-3B-S', 'P0130-3B-P') loop
+    v_c2 := v_c2 + pg_temp.ciclo(h.id);
+  end loop;
+  perform pg_temp.dueno();
+  if v_c1 = 7 and v_c2 = 0 and v_err = 'ok/ok/ok' then
+    r := r || '[ok] caso 3b: las hijas no vuelven a cobrar el ciclo que la madre ya cobró;';
+  else
+    r := r || format('[FALLA] caso 3b: ciclo1=%s hijas=%s err=%s;', v_c1, v_c2, v_err);
   end if;
 
   -- ── 4) Una etapa que no pagó (clave en 0) paga cuando la clave sube ────────────────────────
