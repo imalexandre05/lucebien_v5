@@ -1924,3 +1924,16 @@ Spec: `docs/superpowers/specs/2026-10-17-resumen-liquidacion-design.md`. Pendien
 - **Total final por pagar** = total congelado + adelantos (el motor ya resta los adelantos; el Excel los resta después). **Restante** = total − abonos no anulados. Confirmar que es lo que el Excel quiere decir.
 - **Total invertido ADM** = total + almuerzos, tal como se pidió. Ojo: los almuerzos ya van dentro del total; confirmar que el Excel no los cuenta dos veces a propósito.
 - **Otros beneficios** (metas semanales, bono por puntos, bonos extras, almuerzos): el Excel no los tiene; se muestran en una fila aparte para que el total cuadre.
+
+## Capacitación — defaults del 17-oct-2026 ([spec](superpowers/specs/capacitacion/2026-10-17-capacitacion-checklist-design.md))
+
+Inventados para poder construir el flujo (tablero#13); el dueño debe confirmarlos o cambiarlos:
+
+1. **Nota aprobatoria del examen:** 14/20 (`capacitacion_nota_aprobatoria`, editable en /configuracion → Capacitación).
+2. **Ítems iniciales del checklist:** 5 genéricos (taller y sedes, proceso de prendas, uso del sistema, orden y
+   limpieza, trato y puntualidad). El administrador los edita en la pantalla /capacitacion.
+3. **Quién ve qué:** admin/dueño todo; el capacitador, las que dicta; el nuevo, la suya. ¿Debe verlas también el
+   encargado de la sede del nuevo?
+4. **Pago al capacitador (`valorCapacitacion`):** sin conectar. ¿Se paga al cerrar una capacitación aprobada?
+   Requiere spec completa (cadena del sueldo).
+5. **Componente `examenes` de la evaluación:** ver spec de tablero#3.
