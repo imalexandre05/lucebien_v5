@@ -36,6 +36,8 @@ export interface ResumenLiquidacion {
   /** El sistema tiene una sola comisión. */
   comision2: null;
   capacitacion: number;
+  /** Pasajes por llegar temprano. */
+  pasajes: number;
   /** Metas semanales, puntos, bonos extras, almuerzos y toda línea positiva no reconocida. */
   otrosBeneficios: number;
   penalidadTardanzas: number;
