@@ -21,7 +21,7 @@ Tablero lucebien-tablero#9 (resumen) y #32 (el colaborador ve su liquidación). 
 | Horas extras (+/−) | líneas «Diferencia de horas» + «Horas fuera de contrato» |
 | 1ª comisión | línea «Comisión …%». La 2ª comisión **no existe** → «No configurado» |
 | Adicional por capacitación | línea «Apoyo en capacitación» |
-| Otros beneficios | bono por metas semanales, bono por puntos, bonos extras (el Excel no los separa; se muestran para que el total cuadre) |
+| Otros beneficios | almuerzos, bono por metas semanales, bono por puntos, bonos extras (el Excel no los separa; se muestran para que el total cuadre). Los almuerzos se repiten en su propia fila «Suma de almuerzos» |
 | Penalidad por tardanzas / faltas / reportes | líneas «Descuento por tardanzas», «Faltas injustificadas», «Reportes con descuento» |
 | Sueldo | línea «Sueldo» |
 | Total beneficios / descuentos | suma de las filas anteriores |
@@ -45,3 +45,11 @@ filtra además por el id de la sesión y por `estado = 'cerrada'`, y pide la rea
 ## Defaults inventados
 
 Ninguno: lo que falta se muestra «No configurado» y se anota en `docs/pendientes-negocio.md`.
+
+## Cobertura y estado de pago (corrección tras el verificador)
+
+- Un test llama a `liquidarPeriodo()` real y exige que toda línea con monto distinto de 0 se
+  reconozca, salvo los bonos de la lista de «Otros beneficios». Así renombrar un concepto en el motor
+  rompe el test y no deja una fila en cero en pantalla.
+- Si la tabla de abonos no responde, «Mi pago» dice «Estado de pago no disponible» en vez de mostrar
+  un restante calculado con abonos en 0.
