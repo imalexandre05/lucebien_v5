@@ -47,9 +47,11 @@ export function NuevaPersonaCliente({
   const [notas, setNotas] = useState(precarga?.notas ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [creadaId, setCreadaId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function crear() {
+    if (creadaId) return;
     setError('');
     if (!nombre.trim()) {
       setError('El nombre es obligatorio');
@@ -87,7 +89,15 @@ export function NuevaPersonaCliente({
       }
       // Ticket 14: si venía de un candidato, queda vinculado (contratado). Si falla, el alta ya
       // está hecha: no se bloquea la cadena, el candidato se puede vincular a mano luego.
-      if (precarga) await accionVincularCandidato(precarga.id, r.id);
+      if (precarga) {
+        const v = await accionVincularCandidato(precarga.id, r.id);
+        if (!v.ok) {
+          // La persona ya existe: no se vuelve a crear (duplicaría el alta). Se avisa y se ofrece su ficha.
+          setCreadaId(r.id);
+          setError(`La persona se creó, pero no se pudo marcar al candidato como contratado: ${v.error ?? 'error'}.`);
+          return;
+        }
+      }
       // Paso 2 de la cadena: el contrato, con el editor ya abierto (AcuerdosCliente +
       // abrirNuevoAlMontar) y la fecha de ingreso precompletada (F1.5).
       router.push(`/personal/${r.id}/contrato?continuar=alta`);
@@ -136,9 +146,15 @@ export function NuevaPersonaCliente({
           <Link href="/personal" className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </Link>
-          <Button type="button" onClick={crear} pending={pending}>
-            {pending ? 'Creando…' : 'Guardar y seguir al contrato'}
-          </Button>
+          {creadaId ? (
+            <Link href={`/personal/${creadaId}/contrato?continuar=alta`} className={buttonVariants({ variant: 'primary' })}>
+              Seguir al contrato
+            </Link>
+          ) : (
+            <Button type="button" onClick={crear} pending={pending}>
+              {pending ? 'Creando…' : 'Guardar y seguir al contrato'}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

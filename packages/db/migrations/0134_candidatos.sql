@@ -99,7 +99,7 @@ declare v_dias int;
 begin
   perform private.candidato_cargar(p_id, 'en_prueba');
   if p_desde is null then raise exception 'Indica desde qué día empieza la prueba'; end if;
-  select coalesce(nullif(btrim(valor), '')::int, 3) into v_dias from config where clave = 'personal_prueba_dias';
+  select ceil(coalesce(nullif(btrim(valor), '')::numeric, 3))::int into v_dias from config where clave = 'personal_prueba_dias';
   v_dias := greatest(coalesce(v_dias, 3), 1);
   update candidatos set estado = 'en_prueba', prueba_desde = p_desde, prueba_hasta = p_desde + (v_dias - 1),
          resultado = null, resultado_obs = null where id = p_id;
