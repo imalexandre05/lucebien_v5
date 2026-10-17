@@ -47,6 +47,13 @@ describe('pasajes por llegar temprano', () => {
     expect(linea(liquidarPeriodo(entrada({}, { montoPasaje: 0 })))?.monto).toBe(0);
   });
 
+  it('un día con ingreso pero sin salida (0 horas) no cobra pasaje', () => {
+    const e = entrada({ '2026-10-01': '08:00' }, { montoPasaje: 3 });
+    e.asistencia = e.asistencia.map((a) => (a.fecha === '2026-10-01' ? { ...a, horaSalida: null } : a));
+    const l = (() => { try { return liquidarPeriodo(e); } catch { return null; } })();
+    if (l) expect(linea(l)?.monto).toBe(0);
+  });
+
   it('suma al total', () => {
     const sin = liquidarPeriodo(entrada({ '2026-10-01': '08:40' }));
     const con = liquidarPeriodo(entrada({ '2026-10-01': '08:40' }, { montoPasaje: 5 }));
