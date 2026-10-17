@@ -2039,3 +2039,5 @@ Regla del dueño: beneficio por llegar 5 min antes del turno. Sin defaults inven
 `sueldo_monto_pasaje` queda **vacío = no se paga** (Jordan lo define en Configuración → Sueldos);
 `sueldo_pasaje_minutos_antes` = 5. **Supuesto a confirmar:** el monto es por día puntual (no por
 semana ni por mes). Migración 0139.
+
+**4B-2 (verificador):** confirmar desde qué fecha rige el pasaje; hoy aplica a todo periodo abierto o recalculado, no a los cerrados.
