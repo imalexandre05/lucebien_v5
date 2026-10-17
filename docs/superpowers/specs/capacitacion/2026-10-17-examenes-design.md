@@ -31,8 +31,10 @@ examen manual. Los exámenes manuales siguen funcionando.
    habilidad de 0 a 20 con `examen_presencial_calificar(cap, notas)`. Cuenta cuando **todas** las
    habilidades activas tienen nota; la nota presencial es su promedio.
 5. **Consolidación** (`private.examen_consolidar`): promedio ponderado de lo que haya entre
-   software, escrito y presencial (último valor de cada tipo), con pesos `examen_peso_software`,
-   `examen_peso_escrito`, `examen_peso_presencial`. Lo que no se rindió no entra; si no hay nada, no
+   software, escrito, presencial **y el último examen manual** (el que carga el capacitador con
+   `capacitacion_examen`; así un examen online no puede tapar una nota manual más baja), con pesos
+   `examen_peso_software`, `examen_peso_escrito`, `examen_peso_presencial`, `examen_peso_manual`.
+   `capacitacion_examen` también consolida al registrar. Lo que no se rindió no entra; si no hay nada, no
    inserta. Redondea a 2 decimales.
 6. **Solo con la capacitación en curso**: cerrada o cancelada no admite intentos ni notas.
 7. **Aislamiento**: intentos y notas presenciales los lee el administrador, el capacitador de esa
@@ -42,7 +44,7 @@ examen manual. Los exámenes manuales siguen funcionando.
    las notas.
 
 ## Defaults inventados (anotados en `docs/pendientes-negocio.md`, editables en /configuracion)
-`examen_preguntas_por_intento`=10 · `examen_intentos_max`=3 · pesos 1/1/1 (promedio simple) · habilidades
+`examen_preguntas_por_intento`=10 · `examen_intentos_max`=3 · pesos 1/1/1/1 (promedio simple) · habilidades
 iniciales «Planchado» y «Costura» · sin límite de tiempo por intento · el banco empieza vacío.
 
 ## Pruebas (packages/db/pruebas/0138_examenes.prueba.sql)
@@ -56,3 +58,7 @@ iniciales «Planchado» y «Costura» · sin límite de tiempo por intento · el
 8. Terceros: otra persona (ni nueva, ni capacitador, ni admin) no inicia, responde ni lee intentos.
 9. La evaluación (0132) toma la nota consolidada cuando la capacitación se completa.
 10. Permisos: anon sin execute; solo admin edita banco y habilidades. Reaplicar es inocuo.
+
+## Corrección tras la revisión adversarial
+11. Un examen manual de 6 y un software online de 20 dan un integral de 13 (no 20); y registrar un
+    manual después de los online vuelve a consolidar con todo.
