@@ -2051,3 +2051,9 @@ Regla del dueño: beneficio por llegar 5 min antes del turno. Sin defaults inven
 semana ni por mes). Migración 0139.
 
 **4B-2 (verificador):** confirmar desde qué fecha rige el pasaje; hoy aplica a todo periodo abierto o recalculado, no a los cerrados.
+## 4B-4 · Rechazo de calidad pierde todos los puntos (17-oct-2026)
+
+Decisión del dueño, implementada en la migración 0140 (spec `docs/superpowers/specs/pipeline/2026-10-17-rechazo-calidad-pierde-puntos-design.md`).
+Sin defaults inventados. Cierra la duda de la 0130 sobre el rechazo. **Confirmar con el dueño:**
+«todos los puntos» se entendió como los de esa etapa y esa prenda; y con la regla nadie cobra la
+etapa rechazada (ni el culpable ni quien la rehace).
