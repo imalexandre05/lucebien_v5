@@ -2032,3 +2032,9 @@ Migración `0138` ([spec](superpowers/specs/capacitacion/2026-10-17-examenes-des
 7. **Nota presencial**: promedio simple de las habilidades (0–20). ¿Hay habilidades que pesen más?
 8. **Examen manual en la nota integral** (`examen_peso_manual`=1): el último examen que carga el capacitador entra en el
    promedio junto a los online y el presencial. ¿Debe pesar más que los online?
+
+## 4B-3 · Comisiones 1.ª y 2.ª (17-oct-2026)
+
+Sin defaults nuevos. 1.ª comisión: `sueldo_pct_comision` (2 %) y `sueldo_monto_minimo_comision` (S/120),
+se desbloquea con la meta del mes. 2.ª comisión: es el «Bono por metas semanales»
+(`sueldo_bono_meta_semanal`, S/30). Los tres se editan en Configuración → Sueldos.

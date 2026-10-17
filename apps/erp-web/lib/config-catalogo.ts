@@ -530,7 +530,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_bono_meta_semanal',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Bono por semana con la meta cumplida (S/)',
+    etiqueta: '2.ª comisión: bono por semana con la meta cumplida (S/)',
     descripcion:
       'Soles que gana la persona por cada semana del periodo en la que llegó a su meta de venta. Es un premio semanal fijo, pero la meta no: una semana más larga pide más, salvo que se encienda «Meta semanal fija».',
     tipo: 'numero',
@@ -561,9 +561,9 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_pct_comision',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Comisión sobre ventas (%)',
+    etiqueta: '1.ª comisión: porcentaje sobre ventas (%)',
     descripcion:
-      'Porcentaje de la base de comisión que se paga: 1,5 = 1,5 %. Sólo comisionan las semanas en las que la persona llegó a su meta.',
+      'Porcentaje de la base de comisión que se paga: 2 = 2 %. La comisión se desbloquea sólo cuando la persona cumple la meta de venta del mes.',
     tipo: 'numero',
     // Se guarda como fracción (0.02 = 2 %), que es lo que multiplica el motor (RN-13); la pantalla
     // la muestra en porcentaje. min/max son de la fracción: 0 % a 100 %.
@@ -575,7 +575,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_monto_minimo_comision',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Monto mínimo de boleta para comisionar (S/)',
+    etiqueta: '1.ª comisión: monto mínimo de boleta (S/)',
     descripcion:
       'Sólo las boletas por encima de este monto entran a la base de comisión. Se mira el total de la boleta, no cada producto.',
     tipo: 'numero',

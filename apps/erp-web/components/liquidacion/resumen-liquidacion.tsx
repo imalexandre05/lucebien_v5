@@ -68,11 +68,9 @@ export function ResumenLiquidacionVista({ r, pagoDisponible = true }: { r: Resum
 
         <Bloque titulo="Beneficios">
           <Fila etiqueta="1.ª comisión">{soles(r.comision1)}</Fila>
-          <Fila etiqueta="2.ª comisión">
-            <NoConfigurado />
-          </Fila>
+          <Fila etiqueta="2.ª comisión (metas semanales)">{soles(r.comision2)}</Fila>
           <Fila etiqueta="Adicional por capacitación">{soles(r.capacitacion)}</Fila>
-          <Fila etiqueta="Otros (metas, bonos, almuerzos)">{soles(r.otrosBeneficios)}</Fila>
+          <Fila etiqueta="Otros (bonos, almuerzos)">{soles(r.otrosBeneficios)}</Fila>
           <Fila etiqueta="Total beneficios" fuerte>
             {soles(r.totalBeneficios)}
           </Fila>
