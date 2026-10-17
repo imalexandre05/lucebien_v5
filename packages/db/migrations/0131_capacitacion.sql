@@ -62,7 +62,10 @@ create policy cap_items_select on public.capacitacion_items for select to authen
 
 drop policy if exists cap_select on public.capacitaciones;
 create policy cap_select on public.capacitaciones for select to authenticated
-  using (private.app_es_admin() or nuevo_id = auth.uid() or capacitador_id = auth.uid());
+  using (
+    exists (select 1 from public.empleados e where e.id = auth.uid() and e.activo)   -- suspendido: no lee
+    and (private.app_es_admin() or nuevo_id = auth.uid() or capacitador_id = auth.uid())
+  );
 
 -- Las subtablas heredan la visibilidad de la capacitación (el subselect ya pasa por cap_select).
 drop policy if exists cap_avances_select on public.capacitacion_avances;
@@ -103,7 +106,11 @@ as $$
 declare c public.capacitaciones;
 begin
   select * into c from public.capacitaciones where id = p_cap;
-  if not found or not (private.app_es_admin() or c.capacitador_id = auth.uid()) then
+  -- Activa, y nunca sobre su propia capacitación como «nuevo» (ni siquiera el administrador).
+  if not found
+     or not exists (select 1 from public.empleados e where e.id = auth.uid() and e.activo)
+     or c.nuevo_id = auth.uid()
+     or not (private.app_es_admin() or c.capacitador_id = auth.uid()) then
     raise exception 'Capacitación no encontrada';
   end if;
   if c.estado <> 'en_curso' then

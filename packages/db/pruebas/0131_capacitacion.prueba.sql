@@ -27,7 +27,7 @@ begin execute p_sql; return 'ok'; exception when others then return sqlerrm; end
 do $$
 declare
   r text := '';
-  e_adm uuid; e_nuevo uuid; e_cap uuid; e_otro uuid; cap uuid; cap2 uuid;
+  e_adm uuid; e_adm2 uuid; e_cap2 uuid; cap3 uuid; cap4 uuid; e_nuevo uuid; e_cap uuid; e_otro uuid; cap uuid; cap2 uuid;
   it record; v_err text; v_n int; v_res text; v_ok boolean;
 begin
   perform pg_temp.dueno();
@@ -114,6 +114,27 @@ begin
   v_ok := v_ok and v_err like 'permission denied%';
   if v_ok then r := r || '[ok] caso 5: ni el admin escribe directo en las tablas;';
   else r := r || format('[FALLA] caso 5: %s;', v_err); end if;
+
+  -- 6) hallazgos del verificador: una persona suspendida no lee ni califica, y un admin no se califica
+  --    a sí mismo como «nuevo»
+  perform pg_temp.dueno();
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0131-A2', 'P0131 Admin2', 'A2', 'admin') returning id into e_adm2;
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0131-CB', 'P0131 Cap B', 'CB', 'confeccionista') returning id into e_cap2;
+  perform pg_temp.como(e_adm);
+  select capacitacion_iniciar(e_adm2, e_cap) into cap3;
+  select capacitacion_iniciar(e_otro, e_cap2) into cap4;
+  perform pg_temp.dueno();
+  update empleados set activo = false where id = e_cap2;
+  select id into it from capacitacion_items where activo order by orden limit 1;
+  perform pg_temp.como(e_cap2);
+  select count(*) into v_n from capacitaciones;
+  v_err := pg_temp.mensaje(format('select capacitacion_marcar(%L, %L, %L)', cap4, it.id, 'bueno'));
+  v_ok := v_n = 0 and v_err = 'Capacitación no encontrada';
+  perform pg_temp.como(e_adm2);
+  v_err := pg_temp.mensaje(format('select capacitacion_examen(%L, %L, 20)', cap3, 'autoexamen'));
+  v_ok := v_ok and v_err = 'Capacitación no encontrada';
+  if v_ok then r := r || '[ok] caso 6: suspendido no lee ni califica; el admin «nuevo» no se califica;';
+  else r := r || format('[FALLA] caso 6: lecturas=%s err=%s;', v_n, v_err); end if;
 
   raise exception 'RESULTADO 0131 --> %', r;
 end $$;
