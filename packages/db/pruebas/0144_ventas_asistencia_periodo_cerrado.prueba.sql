@@ -97,5 +97,35 @@ begin
   else r := r || format('[FALLA] caso 6b: %s n=%s;', v_err, v_n); end if;
   perform pg_temp.dueno();
 
+  -- ── 7) Una tardanza por día: duplicada o con asistencia ya cargada se rechaza ──────────────
+  perform pg_temp.como(adm);
+  v_err := pg_temp.mensaje(format('select sueldo_tardanza_diferida_crear(%L, %L, %L)', per, date '2099-09-28', 'doble clic'));
+  select count(*) into v_n from sueldo_tardanzas_diferidas where empleado_id = per and fecha_original = '2099-09-28';
+  if v_err not like 'ok' and v_n = 1 then r := r || '[ok] caso 7: la misma tardanza no se carga dos veces;';
+  else r := r || format('[FALLA] caso 7: %s n=%s;', v_err, v_n); end if;
+  perform pg_temp.dueno();
+  insert into asistencias(empleado_id, fecha, turno, condicion, hora_entrada, hora_salida, fuente)
+    values (per, '2099-09-14', 'M', 'trabajado', time '09:30', time '13:00', 'manual');
+  perform pg_temp.como(adm);
+  v_err := pg_temp.mensaje(format('select sueldo_tardanza_diferida_crear(%L, %L, %L)', per, date '2099-09-14', 'ya en asistencia'));
+  if v_err like 'DATO:%' then r := r || '[ok] caso 7b: si el día ya tiene asistencia cargada no se traslada (se corrige allí);';
+  else r := r || format('[FALLA] caso 7b: %s;', v_err); end if;
+
+  -- ── 8) Reasignar una venta ya trasladada parte de su fecha original ─────────────────────────
+  select id into v_id from sueldo_ventas where fecha_original = '2099-09-28' and empleado_id = per limit 1;
+  perform pg_temp.dueno();
+  insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado, creado_por, estado)
+    values (ven,'2099-09-01','2099-09-30',1000,adm,'vigente');
+  perform pg_temp.como(adm);
+  j := sueldo_venta_asignar(v_id, ven);
+  select count(*) into v_n from sueldo_ventas where id = v_id and empleado_id = ven and fecha = '2099-09-28';
+  if v_n = 1 then r := r || '[ok] caso 8: al reasignar parte de la fecha original (septiembre abierto de otra persona);';
+  else r := r || format('[FALLA] caso 8: n=%s j=%s;', v_n, j); end if;
+
+  -- ── 9) Tardanza trasladada no puede insertarse a mano en un período cerrado ────────────────
+  v_err := pg_temp.mensaje(format('insert into sueldo_tardanzas_diferidas(empleado_id, fecha_original, aplicada_en, motivo) values (%L, %L, %L, %L)', per, date '2099-08-01', date '2099-09-10', 'a mano'));
+  if v_err like 'PERIODO_CERRADO:%' then r := r || '[ok] caso 9: el insert directo con aplicada_en cerrada lo corta el trigger;';
+  else r := r || format('[FALLA] caso 9: %s;', v_err); end if;
+
   raise exception 'RESULTADO 0144 --> %', r;
 end $$;
