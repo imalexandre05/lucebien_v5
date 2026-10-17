@@ -45,3 +45,12 @@ el cierre: nadie devuelve plata automáticamente. Falta que el dueño decida có
 7. Sin abonos: `corregir_anular` se comporta como la anulación común y no enlaza nada.
 8. No administrador → PERMISO; anon sin execute.
 9. Reaplicar es inocuo.
+
+## Corrección tras la revisión adversarial
+10. **Sin abonos huérfanos.** Si se crea una liquidación nueva que se solapa con una anulada (mismo
+    empleado) cuya cadena tiene abonos vigentes y que nadie corrige todavía, y no hay coincidencia
+    exacta de contrato y período, la creación falla con `PERIODO:` («corrige con el mismo contrato y
+    período, o anula antes los pagos»). Nunca queda una liquidación sin enlace pagando de nuevo lo ya pagado.
+11. **`corrige_a` validado** en insert y update: debe apuntar a una liquidación anulada del mismo
+    empleado y contrato, distinta de sí misma y que ninguna otra corrija ya. Nadie puede colgarle los
+    abonos de otra persona a una liquidación.
