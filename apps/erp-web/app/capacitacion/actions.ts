@@ -22,15 +22,21 @@ async function conSesion<T extends object>(f: () => Promise<T>): Promise<R<T>> {
   }
 }
 
-export const accionIniciar = (nuevo: string, capacitador: string) =>
-  conSesion(async () => { await iniciarCapacitacion(nuevo, capacitador); return {}; });
-export const accionMarcar = (cap: string, item: string, estado: EstadoItem, obs: string | null) =>
-  conSesion(async () => { await marcarItem(cap, item, estado, obs); return {}; });
-export const accionExamen = (cap: string, nombre: string, nota: number) =>
-  conSesion(async () => { await registrarExamen(cap, nombre, nota); return {}; });
-export const accionCerrar = (cap: string) =>
-  conSesion(async () => ({ resultado: await cerrarCapacitacion(cap) }));
-export const accionCancelar = (cap: string) =>
-  conSesion(async () => { await cancelarCapacitacion(cap); return {}; });
-export const accionGuardarItem = (id: string | null, nombre: string, orden: number, activo: boolean) =>
-  conSesion(async () => { await guardarItem(id, nombre, orden, activo); return {}; });
+export async function accionIniciar(nuevo: string, capacitador: string) {
+  return conSesion(async () => { await iniciarCapacitacion(nuevo, capacitador); return {}; });
+}
+export async function accionMarcar(cap: string, item: string, estado: EstadoItem, obs: string | null) {
+  return conSesion(async () => { await marcarItem(cap, item, estado, obs); return {}; });
+}
+export async function accionExamen(cap: string, nombre: string, nota: number) {
+  return conSesion(async () => { await registrarExamen(cap, nombre, nota); return {}; });
+}
+export async function accionCerrar(cap: string) {
+  return conSesion(async () => ({ resultado: await cerrarCapacitacion(cap) }));
+}
+export async function accionCancelar(cap: string) {
+  return conSesion(async () => { await cancelarCapacitacion(cap); return {}; });
+}
+export async function accionGuardarItem(id: string | null, nombre: string, orden: number, activo: boolean) {
+  return conSesion(async () => { await guardarItem(id, nombre, orden, activo); return {}; });
+}
