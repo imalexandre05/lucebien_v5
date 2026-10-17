@@ -1986,3 +1986,13 @@ candidatos-entrevista-prueba-design.md` §7) sin respuesta del dueño — por co
 - La prueba puede repetirse; un descartado se reactiva; sin borrado automático de descartados.
 - Sólo administrador y dueño evalúan y ven candidatos (datos personales).
 - Un resultado «malo» no bloquea el alta: avisa, y decide el administrador.
+## Código en todos los movimientos del pipeline — defaults del 17-oct-2026
+
+Migración `0135` ([spec](superpowers/specs/pipeline/2026-10-17-codigo-en-todos-los-movimientos-design.md)), ticket #16.
+Defaults inventados, sin confirmar con el dueño; editables en `/configuracion` → «Código personal».
+
+1. **Formato del código de movimiento** `MOV-AAMMDD-NNNNN` (fecha hora Perú + correlativo global). El prefijo `MOV` es
+   `pipeline_mov_prefijo`. ¿El dueño quiere otro formato (por sede, por tipo de movimiento)?
+2. **Movimientos anteriores a la 0135 quedan sin código** (no se retrocodifica).
+3. **«Codificar»** se interpretó como dar de alta la prenda (Registrar) y se cubre con el mismo token que el resto.
+   ¿Hay además un etiquetado físico que deba registrarse como paso aparte?

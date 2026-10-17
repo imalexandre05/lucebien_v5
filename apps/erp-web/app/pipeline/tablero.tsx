@@ -96,6 +96,7 @@ const NOMBRE: Record<string, string> = Object.fromEntries(COLUMNAS.map((c) => [c
 const TABS: { k: string; label: string; href?: string; pronto?: boolean }[] = [
   { k: 'kanban', label: 'Kanban', href: '/pipeline' },
   { k: 'registrar', label: 'Registrar', href: '/pipeline/registrar' },
+  { k: 'codificacion', label: 'Codificación', href: '/pipeline/codificacion' },
   { k: 'envios', label: 'Envíos a tienda', href: '/pipeline/envios' },
   { k: 'accesorios', label: 'Accesorios', href: '/pipeline/accesorios' },
   { k: 'metricas', label: 'Métricas', href: '/pipeline/metricas' },

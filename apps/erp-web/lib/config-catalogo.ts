@@ -796,6 +796,15 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 4,
     step: 1,
   },
+  {
+    clave: 'pipeline_mov_prefijo',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Prefijo del código de movimiento',
+    descripcion:
+      'Letras con que empieza el código de cada movimiento de una prenda (MOV-AAMMDD-00001). Sólo cambia los códigos que se generen después. Valor provisional: el dueño no definió el formato.',
+    tipo: 'texto',
+    default: 'MOV',
+  },
   // Pago por puntos (migración 0117, spec sueldos/2026-10-05-pago-por-puntos-design.md). SIN default
   // a propósito: la meta la fija el dueño después de un mes de uso, mirando el promedio real. En
   // blanco = desactivado; con cualquiera de las dos en blanco no se paga nada por puntos.
