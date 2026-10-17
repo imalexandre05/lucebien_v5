@@ -146,11 +146,29 @@ begin
   else r := r || format('[FALLA] caso 10a: %s;', v_err); end if;
   j2 := pg_temp.liq(ac4, otro, '2099-05-01', '2099-05-31', 900, 'borrador', adm);
   v_err := pg_temp.mensaje(format('update sueldo_liquidaciones set corrige_a = id where id = %L', j2));
-  if v_err like 'DATO:%' then r := r || '[ok] caso 10b: una liquidación no se corrige a sí misma;';
+  -- j2 ya quedó enlazada a j1 al crearse: desde la revisión adversarial ese vínculo no se cambia (CONGELADA).
+  if v_err like 'DATO:%' or v_err like 'CONGELADA:%' then r := r || '[ok] caso 10b: una liquidación no se corrige a sí misma;';
   else r := r || format('[FALLA] caso 10b: %s;', v_err); end if;
   select corrige_a into v_corr from sueldo_liquidaciones where id = j2;
   if v_corr = j1 then r := r || '[ok] caso 10c: con coincidencia exacta el enlace automático sigue funcionando;';
   else r := r || format('[FALLA] caso 10c: corrige_a=%s;', v_corr); end if;
+
+  -- ── 11) El vínculo no se suelta (revisión adversarial: 1400 pagados sobre un período de 1000) ──
+  -- j2 (900) corrige a j1, que tiene 400 abonados. Quitar o cambiar corrige_a dejaría esos 400
+  -- huérfanos y permitiría pagar el total completo encima.
+  v_err := pg_temp.mensaje(format('update sueldo_liquidaciones set corrige_a = null where id = %L', j2));
+  if v_err like 'CONGELADA:%' then r := r || '[ok] caso 11a: corrige_a no se puede quitar de una corrección;';
+  else r := r || format('[FALLA] caso 11a: %s;', v_err); end if;
+  v_err := pg_temp.mensaje(format('update sueldo_liquidaciones set corrige_a = %L where id = %L', c, j2));
+  if v_err like 'CONGELADA:%' then r := r || '[ok] caso 11b: corrige_a tampoco se puede cambiar a otra;';
+  else r := r || format('[FALLA] caso 11b: %s;', v_err); end if;
+  update sueldo_liquidaciones set estado = 'cerrada', cerrada_en = now(), cerrada_por = adm where id = j2;
+  perform pg_temp.como(adm);
+  v_err := pg_temp.mensaje(format('select sueldo_liquidacion_pagar(%L, %L, 900, %L)', j2, '2099-05-28', 'efectivo'));
+  perform pg_temp.dueno();
+  select corrige_a into v_corr from sueldo_liquidaciones where id = j2;
+  if v_corr = j1 and v_err like 'SALDO:%' then r := r || '[ok] caso 11c: sigue enlazada y no se pagan 900 encima de los 400 (1300 sobre 900);';
+  else r := r || format('[FALLA] caso 11c: corrige_a=%s err=%s;', v_corr, v_err); end if;
 
   raise exception 'RESULTADO 0137 --> %', r;
 end $$;

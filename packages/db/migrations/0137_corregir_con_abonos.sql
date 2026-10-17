@@ -7,6 +7,8 @@
 -- La corregida apunta a la liquidación (anulada) que reemplaza. Los pagos no se mueven.
 alter table sueldo_liquidaciones add column if not exists corrige_a uuid references sueldo_liquidaciones(id);
 create index if not exists idx_sueldo_liq_corrige_a on sueldo_liquidaciones(corrige_a) where corrige_a is not null;
+-- Una liquidación anulada la corrige a lo sumo una (respaldo del trigger, que también lo comprueba).
+create unique index if not exists uq_sueldo_liq_corrige_a on sueldo_liquidaciones(corrige_a) where corrige_a is not null;
 
 -- Lo pagado (abonos no anulados) de una liquidación y de toda la cadena de liquidaciones que corrige.
 -- `union` (no `union all`) corta cualquier ciclo.
@@ -53,6 +55,12 @@ begin
             and not exists (select 1 from sueldo_liquidaciones s where s.corrige_a = l.id)) then
       raise exception 'PERIODO:hay una liquidación anulada que se solapa con este período y ya tiene pagos; corrígela con el mismo contrato y período, o anula antes esos pagos con su motivo';
     end if;
+  end if;
+
+  -- Un vínculo ya hecho no se suelta ni se cambia: soltarlo dejaría los abonos huérfanos y se podría
+  -- pagar dos veces el mismo período.
+  if TG_OP = 'UPDATE' and old.corrige_a is not null and new.corrige_a is distinct from old.corrige_a then
+    raise exception 'CONGELADA:el vínculo con la liquidación corregida no se puede cambiar ni quitar';
   end if;
 
   if new.corrige_a is not null and (TG_OP = 'INSERT' or new.corrige_a is distinct from old.corrige_a) then
