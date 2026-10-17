@@ -1954,18 +1954,24 @@ Spec escrita, sin código. Defaults inventados por quien escribió la spec, a co
 1. **`pipeline_meta_puntos_por_hora` = 0,5.** Salió del mejor mes-persona medido (126,45 puntos, abril 2026) en
    ~21 días de 11 horas. Es el techo de un módulo con 2 de 11 personas registrando, así que probablemente
    subestima. Cifra tomada de este documento, no de una consulta: contrastarla con la base antes de sembrarla.
+   Sigue flexible; podría depender de la demanda de ternos.
 2. **`eval_cumplimiento_para_20` = 1,00:** cumplir toda la meta del período equivale a 20 (nota = 20 × cumplimiento,
    sin techo). Corrige mi recomendación anterior de 100 % = 16. El /20 es sólo referencia; la medida principal
    es el porcentaje de cumplimiento.
-3. **Un turno de almacén no tiene meta de reportes**: se mide sólo por pipeline.
-4. **Licencia = falta justificada** (campo existente). **Feriado o cierre = día libre por persona**, en una tabla
-   nueva (`dias_libres`) que sólo escribe el administrador: sale del contrato, sale de la meta y no se paga.
+3. **Cada área contra su meta, promediadas por horas** (no una bolsa única de puntos), porque los puntos de
+   reportes y de pipeline no están al mismo nivel de esfuerzo. Con los puntos calibrados, la bolsa única da lo mismo.
+4. **Un turno de almacén no tiene meta de reportes**: se mide sólo por pipeline.
+5. **Extras suben y incidencias bajan el cociente de reportes** (default mío, pregunta abierta §10.3).
+6. **Licencia = falta justificada** (campo existente). **Feriado o cierre = día libre por persona**, en una tabla
+   nueva (`dias_libres`) que sólo escribe el administrador: sale del contrato y de la meta, y se descuenta completo.
    Sin marca, la meta cuenta normal.
-5. **Que el día libre no se pague necesita spec propia del motor de sueldos.** Hoy `sueldos.ts` no conoce
-   excepciones por fecha. Hasta entonces la meta lee `dias_libres` y el pago no.
+7. **El descuento del día libre necesita spec propia del motor de sueldos.** `sueldos.ts` calcula
+   `valorPorHora = sueldoPactado / horasContratadas`: quitar el día del horario sin más lo dejaría pagado.
+   Hasta entonces la meta lee `dias_libres` y el pago no.
 
 Decidido por Alexander el 17-oct-2026: el período de evaluación es el tramo de pago (no la duración del
-contrato); la meta de pipeline se mide por horas en almacén según el horario fijo; pasar un día a almacén por
-poca demanda es un extra; las actividades de reporte son por sede y valen igual para todos; el /20 es una
-referencia; el feriado no lo paga el administrador y él decide persona por persona; la nota sólo informa y el
-pago sigue siendo el pactado. La cifra de la meta de pipeline se define después.
+contrato); la meta de reportes es cumplir todas las tareas; la meta de pipeline se mide por horas en almacén
+según el horario fijo; pasar un día a almacén por poca demanda es un extra; las actividades de reporte son por
+sede y valen igual para todos; el /20 es una referencia; el feriado no lo paga el administrador, él decide persona
+por persona y el día se descuenta completo a la hora normal (11 h × S/4,55 en el ejemplo); un día no trabajado
+no cuenta para el total; la nota sólo informa y el pago sigue siendo el pactado.
