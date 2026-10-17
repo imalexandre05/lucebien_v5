@@ -58,7 +58,7 @@ alter table public.capacitacion_avances   enable row level security;
 alter table public.capacitacion_examenes  enable row level security;
 
 drop policy if exists cap_items_select on public.capacitacion_items;
-create policy cap_items_select on public.capacitacion_items for select to authenticated using (true);
+create policy cap_items_select on public.capacitacion_items for select to authenticated using (auth.uid() is not null);  -- catálogo sin datos de personas
 
 drop policy if exists cap_select on public.capacitaciones;
 create policy cap_select on public.capacitaciones for select to authenticated
