@@ -1946,3 +1946,19 @@ Sin parámetros nuevos. Decisiones tomadas por el implementador, a confirmar:
 2. **`examenes`** = promedio de la nota vigente (último examen) de las capacitaciones completadas en el ciclo; sin
    capacitaciones queda manual. ¿Debe contar también un examen suelto fuera de una capacitación? Hoy no existe ese registro.
 3. La nota final no depende de ningún componente (sólo de los puntos): `examenes` es perfil, igual que los demás.
+
+## Temporadas: pago por hora y metas (ticket 15, 17-oct-2026)
+
+Decisión del dueño: el administrador crea las temporadas (nombre, desde, hasta) y edita su pago por
+hora y sus metas en `/configuracion/temporadas`. **No hay temporadas por defecto**: sin ninguna, el
+motor usa los valores normales. Defaults/decisiones que tuve que tomar, por confirmar:
+
+- **La meta pactada en el contrato gana a la temporada** (RN-10). La temporada sólo cambia la meta
+  de quien no tiene meta pactada. Si el dueño quiere que la temporada pise también lo pactado, es
+  otra decisión (y habría que revisar contratos ya firmados).
+- **Pago por hora de temporada = referencia/sugerencia**, no reescribe la cuota pactada del contrato
+  (el sueldo se pacta, `valorPorHora = pactado / horas`). Confirmar si debe cambiar lo ya pactado.
+- **Una semana toma la temporada de su primer día**; no se parte una semana entre dos temporadas.
+- Las temporadas no se solapan. Lectura abierta a todo usuario activo; `pago_por_hora` es visible
+  para ellos. Confirmar si debe ser sólo administrador.
+- `MOTOR_VERSION` pasó a `2026-10-17`.
