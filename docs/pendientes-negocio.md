@@ -1996,3 +1996,13 @@ Defaults inventados, sin confirmar con el dueño; editables en `/configuracion` 
 2. **Movimientos anteriores a la 0135 quedan sin código** (no se retrocodifica).
 3. **«Codificar»** se interpretó como dar de alta la prenda (Registrar) y se cubre con el mismo token que el resto.
    ¿Hay además un etiquetado físico que deba registrarse como paso aparte?
+## Movimientos con fecha en un período cerrado — 17-oct-2026
+
+Migración `0136` ([spec](superpowers/specs/sueldos/2026-10-17-movimientos-periodo-cerrado-design.md)), ticket #29.
+Decisión del dueño: se pregunta cada vez (siguiente período abierto o anular el cierre). Pendiente de definir:
+
+1. **Asistencia de períodos cerrados** (editable y borrable desde `/asistencias`, el huellero y la declaración): el dueño
+   sólo decidió el caso de los movimientos. Falta decidir si se congela (`CONGELADA`) o también se pregunta.
+2. **Ventas** (`sueldo_ventas`) con fecha en un período cerrado: mismo problema, sin decisión todavía.
+3. **«Siguiente período abierto»** = primera fecha posterior que cubre un contrato y no está en una liquidación cerrada
+   (salta tramos cerrados y huecos entre contratos). Si no existe, no se guarda y se pide crear el contrato.
