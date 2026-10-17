@@ -1914,3 +1914,17 @@ confirmara. El dueño contestó el 10-oct-2026:
 *Pendiente de la decisión 2:* antes de escribir la spec hay que mapear qué pantallas y funciones leen
 los puntos de otras personas (ranking, tablero, evaluación del equipo), porque cerrar esa lectura puede
 quitar vistas que hoy existen; el dueño decide qué se hace con ellas.
+
+
+## Capacitación — defaults del 17-oct-2026 ([spec](superpowers/specs/capacitacion/2026-10-17-capacitacion-checklist-design.md))
+
+Inventados para poder construir el flujo (tablero#13); el dueño debe confirmarlos o cambiarlos:
+
+1. **Nota aprobatoria del examen:** 14/20 (`capacitacion_nota_aprobatoria`, editable en /configuracion → Capacitación).
+2. **Ítems iniciales del checklist:** 5 genéricos (taller y sedes, proceso de prendas, uso del sistema, orden y
+   limpieza, trato y puntualidad). El administrador los edita en la pantalla /capacitacion.
+3. **Quién ve qué:** admin/dueño todo; el capacitador, las que dicta; el nuevo, la suya. ¿Debe verlas también el
+   encargado de la sede del nuevo?
+4. **Pago al capacitador (`valorCapacitacion`):** sin conectar. ¿Se paga al cerrar una capacitación aprobada?
+   Requiere spec completa (cadena del sueldo).
+5. **Componente `examenes` de la evaluación:** ver spec de tablero#3.
