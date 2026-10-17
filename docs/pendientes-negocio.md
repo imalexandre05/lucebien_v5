@@ -1946,3 +1946,21 @@ Sin parámetros nuevos. Decisiones tomadas por el implementador, a confirmar:
 2. **`examenes`** = promedio de la nota vigente (último examen) de las capacitaciones completadas en el ciclo; sin
    capacitaciones queda manual. ¿Debe contar también un examen suelto fuera de una capacitación? Hoy no existe ese registro.
 3. La nota final no depende de ningún componente (sólo de los puntos): `examenes` es perfil, igual que los demás.
+
+## Meta por período de pago (17-oct-2026) — [spec](superpowers/specs/evaluaciones/2026-10-17-meta-por-periodo-design.md)
+
+Spec escrita, sin código. Defaults inventados por quien escribió la spec, a confirmar con Alexander:
+
+1. **`pipeline_meta_puntos_por_hora` = 0,5.** Salió del mejor mes-persona medido (126,45 puntos, abril 2026) en
+   ~21 días de 11 horas. Es el techo de un módulo con 2 de 11 personas registrando, así que probablemente
+   subestima. Cifra tomada de este documento, no de una consulta: contrastarla con la base antes de sembrarla.
+2. **La meta de pipeline se mide por hora contratada en almacén**, no por turno entero (los turnos reales
+   son de 4 y 7 horas).
+3. **Un turno de almacén no tiene meta de reportes**: se mide sólo por pipeline.
+4. **100 % de la meta = nota 16; 150 % = 20** (la misma curva del 25-ago, con la meta del período en lugar de 5000).
+5. **Licencia = falta justificada** (campo existente). **Feriado o cierre = día sin meta pagado**, en una
+   tabla nueva que sólo escribe el administrador. Sin marca, la meta cuenta normal.
+6. **La nota sólo informa**; el pago sigue siendo el pactado (decisión de Alexander, 17-oct-2026).
+
+Decidido por Alexander el 17-oct-2026: el período de evaluación es el tramo de pago (no la duración del
+contrato); la meta de pipeline se prorratea por turnos en almacén; la cifra de esa meta se define después.
