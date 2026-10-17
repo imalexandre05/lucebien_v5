@@ -318,6 +318,12 @@ export interface EntradaLiquidacion {
   almuerzoHabilitadoPorAdmin?: boolean;
   personasCapacitadas?: number;
   /**
+   * Tardanzas de días de un período ya cerrado que se cargaron tarde y se trasladaron a este
+   * (decisión del dueño, 17-oct-2026). Suman al conteo de tardanzas ANTES de las libres: la penalidad
+   * y las libres son las de siempre. Ausente = 0.
+   */
+  tardanzasDiferidas?: number;
+  /**
    * Obsoleto: lo mandaba la 0117 y ya no se usa (spec de pago por puntos §8.2). Lo reemplaza
    * `puntosMeses`. Se deja en el tipo sólo para leer entradas guardadas antes de la 0126.
    */
@@ -1022,6 +1028,11 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     throw new Error(`El sueldo pactado no puede ser negativo: ${entrada.sueldoPactado}.`);
   }
 
+  const tardanzasDiferidas = entrada.tardanzasDiferidas ?? 0;
+  if (!Number.isInteger(tardanzasDiferidas) || tardanzasDiferidas < 0) {
+    throw new Error(`Las tardanzas trasladadas tienen que ser un entero mayor o igual a cero, llegó: ${String(entrada.tardanzasDiferidas)}.`);
+  }
+
   const dias = diasDelPeriodo(entrada.fechaInicio, entrada.fechaFin);
   const enPeriodo = (f: string): boolean => f >= entrada.fechaInicio && f <= entrada.fechaFin;
   const porDia = resumirHorario(entrada.horario);
@@ -1286,6 +1297,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     );
   }
 
+  tardanzas += tardanzasDiferidas; // trasladadas de un período cerrado (cuentan antes de las libres)
   const tardanzasInjustificadas = Math.max(0, tardanzas - p.tardanzasLibres - tardanzasJustificadas);
   const faltasInjustificadas = Math.max(0, faltas - faltasJustificadas);
 
@@ -1506,7 +1518,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     {
       grupo: 'final',
       concepto: 'Descuento por tardanzas',
-      detalle: `${tardanzas} tardanza(s) − ${p.tardanzasLibres} libre(s) − ${tardanzasJustificadas} justificada(s) = ${tardanzasInjustificadas} × S/${p.penalidadTardanza}`,
+      detalle: `${tardanzas} tardanza(s)${tardanzasDiferidas > 0 ? ` (${tardanzasDiferidas} trasladada(s) de un período ya pagado)` : ''} − ${p.tardanzasLibres} libre(s) − ${tardanzasJustificadas} justificada(s) = ${tardanzasInjustificadas} × S/${p.penalidadTardanza}`,
       monto: r2(-descuentoTardanzas),
       regla: 'RN-08',
     },
