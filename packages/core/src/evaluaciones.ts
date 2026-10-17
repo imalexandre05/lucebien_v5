@@ -237,6 +237,9 @@ export type ComponentesDeData = {
   tardanza: number;
   valores: number | null;
   valoresCantidad?: number | null;
+  /** 0132: promedio de la nota vigente de las capacitaciones cerradas en el ciclo; null si no hay. */
+  examenes?: number | null;
+  examenesCantidad?: number | null;
   descuento: number;
   bonusVentas: number;
   puntosTotal?: number;
@@ -267,7 +270,13 @@ export function armarEvaluacionAGuardar(
   if (data.ventasSinTasa === true) {
     throw new Error('Hay ventas en el período y no está definido cuántos puntos vale un sol vendido. No se guarda.');
   }
+  // 0132: si la RPC trae la nota de examen de las capacitaciones del ciclo, es ésa; si no, la manual.
+  const examenesAuto = data.examenes ?? null;
+  if (examenesAuto !== null && (!esNumeroValido(examenesAuto) || examenesAuto < 0 || examenesAuto > 20)) {
+    throw new Error(`"examenes" del cálculo debe ser un número entre 0 y 20 (${String(examenesAuto)}).`);
+  }
   for (const k of ['competencias', 'examenes'] as const) {
+    if (k === 'examenes' && examenesAuto !== null) continue;
     const v = manual[k];
     if (!esNumeroValido(v) || v < 0 || v > 20) {
       throw new Error(`"${k}" debe ser un número entre 0 y 20 (${String(v)}).`);
@@ -296,7 +305,7 @@ export function armarEvaluacionAGuardar(
       // cuántos votos se calculó (spec §7, H-6).
       valoresCantidad: esNumeroValido(data.valoresCantidad) ? data.valoresCantidad : 0,
       competencias: manual.competencias,
-      examenes: manual.examenes,
+      examenes: examenesAuto ?? manual.examenes,
     },
   };
 }
