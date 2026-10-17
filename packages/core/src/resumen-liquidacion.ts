@@ -36,6 +36,8 @@ export interface ResumenLiquidacion {
   /** 2.ª comisión = bono por metas semanales cumplidas (RN-12). */
   comision2: number;
   capacitacion: number;
+  /** Pasajes por llegar temprano. */
+  pasajes: number;
   /** Puntos, bonos extras, almuerzos y toda línea positiva no reconocida. */
   otrosBeneficios: number;
   penalidadTardanzas: number;
@@ -61,6 +63,7 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
   let comision1 = 0;
   let comision2 = 0;
   let capacitacion = 0;
+  let pasajes = 0;
   let horasExtras = 0;
   let tardanzas = 0;
   let faltas = 0;
@@ -75,6 +78,7 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
     if (c === 'Sueldo') sueldo += l.monto;
     else if (c.startsWith('Comisión')) comision1 += l.monto;
     else if (c === 'Bono por metas semanales') comision2 += l.monto;
+    else if (c === 'Pasajes por llegar temprano') pasajes += l.monto;
     else if (c === 'Apoyo en capacitación') capacitacion += l.monto;
     else if (c === 'Diferencia de horas' || c === 'Horas fuera de contrato') horasExtras += l.monto;
     else if (c === 'Descuento por tardanzas') tardanzas -= l.monto;
@@ -92,6 +96,7 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
   comision1 = r2(comision1);
   comision2 = r2(comision2);
   capacitacion = r2(capacitacion);
+  pasajes = r2(pasajes);
   horasExtras = r2(horasExtras);
   otrosBeneficios = r2(otrosBeneficios);
   otrosDescuentos = r2(otrosDescuentos);
@@ -117,13 +122,14 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
     comision1,
     comision2,
     capacitacion,
+    pasajes,
     otrosBeneficios,
     penalidadTardanzas,
     penalidadFaltas,
     penalidadReportes,
     otrosDescuentos,
     sueldo,
-    totalBeneficios: r2(comision1 + comision2 + capacitacion + otrosBeneficios),
+    totalBeneficios: r2(comision1 + comision2 + capacitacion + pasajes + otrosBeneficios),
     totalDescuentos: r2(penalidadTardanzas + penalidadFaltas + penalidadReportes + otrosDescuentos),
     totalFinalPorPagar: r2(total + adelantos),
     adelantos,

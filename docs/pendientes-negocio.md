@@ -2043,3 +2043,11 @@ dueño si es lo que quiere** o si el Total invertido debe ser el total final sol
 Sin defaults nuevos. 1.ª comisión: `sueldo_pct_comision` (2 %) y `sueldo_monto_minimo_comision` (S/120),
 se desbloquea con la meta del mes. 2.ª comisión: es el «Bono por metas semanales»
 (`sueldo_bono_meta_semanal`, S/30). Los tres se editan en Configuración → Sueldos.
+## 4B-2 · Pasajes por llegar temprano (17-oct-2026)
+
+Regla del dueño: beneficio por llegar 5 min antes del turno. Sin defaults inventados de monto:
+`sueldo_monto_pasaje` queda **vacío = no se paga** (Jordan lo define en Configuración → Sueldos);
+`sueldo_pasaje_minutos_antes` = 5. **Supuesto a confirmar:** el monto es por día puntual (no por
+semana ni por mes). Migración 0139.
+
+**4B-2 (verificador):** confirmar desde qué fecha rige el pasaje; hoy aplica a todo periodo abierto o recalculado, no a los cerrados.
