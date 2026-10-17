@@ -1549,7 +1549,7 @@ sugiere la fecha de fin que lo completa, pero no propone una fecha de fin por de
 contrato vacío (la spec §3.3 dice «sugiere el día anterior al aniversario» sin fijar cuántos meses).
 ## Seguridad 06-oct-2026 — retrabajo tras observación de tienda (residual del PR #59)
 
-**Sin decidir.** Hoy (y también después de la 0122) una prenda enviada que la tienda califica como
+**DECIDIDO el 13-oct-2026 (pregunta 1): el retrabajo NO paga** — una etapa ya pagada no vuelve a pagarse ([spec 0130](superpowers/specs/pipeline/2026-10-17-retrabajo-no-paga-design.md)). La pregunta 2 (quién califica) sigue sin decidir. Texto original: hoy (y también después de la 0122) una prenda enviada que la tienda califica como
 *observada* vuelve a una etapa del proceso **sin penalizar a nadie**, y al volver a avanzarla se
 pagan otra vez los puntos de cada etapa. El verificador lo ejecutó el 07-oct: avanzar a listo →
 enviar → calificar observada a recepción → avanzar de nuevo = +7 por ciclo, repetible. Lo puede
