@@ -2032,3 +2032,11 @@ Migración `0138` ([spec](superpowers/specs/capacitacion/2026-10-17-examenes-des
 7. **Nota presencial**: promedio simple de las habilidades (0–20). ¿Hay habilidades que pesen más?
 8. **Examen manual en la nota integral** (`examen_peso_manual`=1): el último examen que carga el capacitador entra en el
    promedio junto a los online y el presencial. ¿Debe pesar más que los online?
+
+## 4B-5 · Ventas y tardanzas con fecha en un período cerrado (17-oct-2026)
+
+Decisión del dueño (opción a), migración 0144: se avisa y la carga va al siguiente período abierto de la persona.
+Sin defaults inventados (la tardanza usa `sueldo_penalidad_tardanza` y `sueldo_tardanzas_libres`). **Pendiente:**
+(1) faltas y horas de un día cerrado NO se trasladan (dependen del horario y valor por hora del día original): siguen
+con «anular cierre» o «Corregir»; (2) la tardanza trasladada cuenta una más en el período destino, repartiendo las libres
+con las propias; (3) falta la pantalla para cargar una tardanza trasladada (existe la RPC y `crearTardanzaDiferida`).
