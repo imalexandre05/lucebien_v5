@@ -9,7 +9,7 @@ import { CapacitacionCliente } from './cliente';
 
 // Mismo permiso que la entrada del menú ('evaluaciones'), validado en el servidor: antes sólo se ocultaba
 // el enlace. Dentro, la base decide qué ve cada quien (RLS de la 0131): el administrador todo; el
-// capacitador, las que dicta; el nuevo, la suya.
+// capacitador, las que dicta; el nuevo, la suya; el encargado de tienda, la de su sede (0142).
 export default async function CapacitacionPage() {
   const sesion = await getSesion();
   if (!sesion) redirect('/login');
