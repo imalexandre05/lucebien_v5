@@ -128,6 +128,6 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
     restante,
     cancelado: pagable && restante === 0,
     almuerzos,
-    totalInvertido: r2(total + almuerzos),
+    totalInvertido: r2(r2(total + adelantos) + almuerzos),
   };
 }

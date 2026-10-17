@@ -2032,3 +2032,9 @@ Migración `0138` ([spec](superpowers/specs/capacitacion/2026-10-17-examenes-des
 7. **Nota presencial**: promedio simple de las habilidades (0–20). ¿Hay habilidades que pesen más?
 8. **Examen manual en la nota integral** (`examen_peso_manual`=1): el último examen que carga el capacitador entra en el
    promedio junto a los online y el presencial. ¿Debe pesar más que los online?
+
+## 4B-1 · Total invertido del resumen (17-oct-2026)
+
+El dueño confirmó: Total invertido = total final + almuerzos. Los almuerzos ya están dentro del total
+final (como «otros beneficios»), así que se cuentan dos veces. Se dejó como lo pidió; **confirmar con el
+dueño si es lo que quiere** o si el Total invertido debe ser el total final solo.
