@@ -112,7 +112,7 @@ export default async function ComprobanteLiquidacionPage(props: { params: Promis
         {resumen && (
           <section className="mt-8">
             <h2 className="mb-2 text-rotulo font-semibold uppercase text-muted">Resumen de liquidación</h2>
-            <ResumenLiquidacionVista r={resumen} />
+            <ResumenLiquidacionVista r={resumen.resumen} pagoDisponible={resumen.pagoDisponible} />
           </section>
         )}
 

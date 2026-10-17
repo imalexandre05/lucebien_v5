@@ -48,9 +48,13 @@ export default async function MiPagoPage() {
                       </div>
                       <div className="mt-1 tabular-nums text-apoyo text-muted">Total {soles(l.total)}</div>
                     </div>
-                    <Badge tone={l.resumen.cancelado ? 'green' : 'amber'}>
-                      {l.resumen.cancelado ? 'Cancelado' : `Falta ${soles(l.resumen.restante)}`}
-                    </Badge>
+                    {l.pagoDisponible ? (
+                      <Badge tone={l.resumen.cancelado ? 'green' : 'amber'}>
+                        {l.resumen.cancelado ? 'Cancelado' : `Falta ${soles(l.resumen.restante)}`}
+                      </Badge>
+                    ) : (
+                      <Badge tone="gray">Pago no disponible</Badge>
+                    )}
                   </CardContent>
                 </Card>
               </Link>

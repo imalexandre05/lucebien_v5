@@ -1428,6 +1428,8 @@ export type LiquidacionPropia = {
   total: number;
   cerradaEn: string | null;
   resumen: ResumenLiquidacion;
+  /** false si la tabla de abonos no respondió: el restante no es confiable y no se muestra. */
+  pagoDisponible: boolean;
 };
 
 type RowPropia = {
@@ -1443,8 +1445,8 @@ type RowPropia = {
 const SELECT_PROPIA =
   'id, periodo_desde, periodo_hasta, total, cerrada_en, ventas:resultado->ventas, sueldo_liquidacion_lineas(orden, grupo, concepto, detalle, regla, monto)';
 
-/** Abonos no anulados por liquidación. Si la 0080 no está aplicada, cuenta 0 en vez de romper. */
-async function abonosPorLiquidacion(ids: string[]): Promise<Map<string, number>> {
+/** Abonos no anulados por liquidación; `null` si la 0080 no responde (no se inventa un 0). */
+async function abonosPorLiquidacion(ids: string[]): Promise<Map<string, number> | null> {
   const m = new Map<string, number>();
   try {
     for (const p of await listarPagosDeLiquidaciones(ids)) {
@@ -1452,11 +1454,12 @@ async function abonosPorLiquidacion(ids: string[]): Promise<Map<string, number>>
     }
   } catch (e) {
     if (!(e instanceof LiquidacionPagosNoMigradoError)) throw e;
+    return null;
   }
   return m;
 }
 
-function aPropia(r: RowPropia, abonos: number): LiquidacionPropia {
+function aPropia(r: RowPropia, abonos: number | null): LiquidacionPropia {
   const lineas = (r.sueldo_liquidacion_lineas ?? []).map((l) => ({
     grupo: l.grupo as LineaGuardada['grupo'],
     concepto: l.concepto,
@@ -1473,19 +1476,20 @@ function aPropia(r: RowPropia, abonos: number): LiquidacionPropia {
       lineas,
       ventas: { total: Number(r.ventas?.total ?? 0), metaPeriodo: Number(r.ventas?.metaPeriodo ?? 0) },
       total,
-      abonos,
+      abonos: abonos ?? 0,
     }),
+    pagoDisponible: abonos != null,
   };
 }
 
 /** Resumen de una liquidación cerrada a partir de sus líneas guardadas (comprobante del admin). */
-export async function resumenDeLiquidacionCerrada(id: string): Promise<ResumenLiquidacion | null> {
+export async function resumenDeLiquidacionCerrada(id: string): Promise<LiquidacionPropia | null> {
   const sb = getServerClient();
   const { data, error } = await sb.from('sueldo_liquidaciones').select(SELECT_PROPIA).eq('id', id).eq('estado', 'cerrada').maybeSingle();
   if (error) throw errorSueldo(error);
   if (!data) return null;
   const ab = await abonosPorLiquidacion([id]);
-  return aPropia(data as unknown as RowPropia, ab.get(id) ?? 0).resumen;
+  return aPropia(data as unknown as RowPropia, ab ? (ab.get(id) ?? 0) : null);
 }
 
 export async function listarMisLiquidaciones(empleadoId: string): Promise<LiquidacionPropia[]> {
@@ -1499,7 +1503,7 @@ export async function listarMisLiquidaciones(empleadoId: string): Promise<Liquid
   if (error) throw errorSueldo(error);
   const rows = (data as unknown as RowPropia[]) ?? [];
   const ab = await abonosPorLiquidacion(rows.map((r) => r.id));
-  return rows.map((r) => aPropia(r, ab.get(r.id) ?? 0));
+  return rows.map((r) => aPropia(r, ab ? (ab.get(r.id) ?? 0) : null));
 }
 
 export async function obtenerMiLiquidacion(empleadoId: string, id: string): Promise<LiquidacionPropia | null> {
@@ -1514,7 +1518,7 @@ export async function obtenerMiLiquidacion(empleadoId: string, id: string): Prom
   if (error) throw errorSueldo(error);
   if (!data) return null;
   const ab = await abonosPorLiquidacion([id]);
-  return aPropia(data as unknown as RowPropia, ab.get(id) ?? 0);
+  return aPropia(data as unknown as RowPropia, ab ? (ab.get(id) ?? 0) : null);
 }
 
 export type PagoLiquidacionInput = {

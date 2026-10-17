@@ -31,16 +31,22 @@ function Bloque({ titulo, children }: { titulo: string; children: ReactNode }) {
   );
 }
 
-export function ResumenLiquidacionVista({ r }: { r: ResumenLiquidacion }) {
+export function ResumenLiquidacionVista({ r, pagoDisponible = true }: { r: ResumenLiquidacion; pagoDisponible?: boolean }) {
   return (
     <div className="space-y-4">
       {/* Lo que la persona más busca: cuánto es y si ya está pagado. */}
       <div className="rounded-r-chico border border-gold/30 bg-gold/10 p-5 text-center">
         <div className="text-rotulo uppercase text-muted">Restante por cobrar</div>
-        <Cifra size="xl">{soles(r.restante)}</Cifra>
-        <div className="mt-2">
-          <Badge tone={r.cancelado ? 'green' : 'amber'}>{r.cancelado ? 'Cancelado' : 'Pendiente de pago'}</Badge>
-        </div>
+        {pagoDisponible ? (
+          <>
+            <Cifra size="xl">{soles(r.restante)}</Cifra>
+            <div className="mt-2">
+              <Badge tone={r.cancelado ? 'green' : 'amber'}>{r.cancelado ? 'Cancelado' : 'Pendiente de pago'}</Badge>
+            </div>
+          </>
+        ) : (
+          <p className="mt-1 text-cuerpo text-muted">Estado de pago no disponible por ahora. Vuelve a intentar en unos minutos.</p>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
