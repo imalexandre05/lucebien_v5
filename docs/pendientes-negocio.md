@@ -1946,3 +1946,13 @@ Sin parámetros nuevos. Decisiones tomadas por el implementador, a confirmar:
 2. **`examenes`** = promedio de la nota vigente (último examen) de las capacitaciones completadas en el ciclo; sin
    capacitaciones queda manual. ¿Debe contar también un examen suelto fuera de una capacitación? Hoy no existe ese registro.
 3. La nota final no depende de ningún componente (sólo de los puntos): `examenes` es perfil, igual que los demás.
+
+## Escalas salariales editables (ticket 35, 17-oct-2026)
+
+- Las 5 escalas (S/ 2,90 · 3,20 · 3,50 · 3,80 · 5,00 por hora) son del Excel del dueño (hoja
+  PARAMETROS) y ahora se editan en `/configuracion` → «Escalas salariales».
+- **Default inventado, por confirmar:** los tramos de meses (`escala_N_desde_mes`): 1→0, 2→1, 3→2,
+  4→4 («5to mes»), 5→8 («9no mes»). El Excel no distingue escala 1 de 2 («1er mes» ambas) ni dice
+  desde cuándo es la 3.
+- **Por confirmar:** si el ascenso («de acuerdo a evaluación») exige además una nota mínima. Hoy el
+  sistema sólo sugiere por antigüedad y el administrador confirma; nada se aplica solo.

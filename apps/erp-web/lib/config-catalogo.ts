@@ -1,3 +1,4 @@
+import { ESCALAS_SUELDO_DEFAULT } from '@scilb/core';
 // config-catalogo.ts — Fase 13 tarea 1: catálogo TIPADO de los parámetros que el sistema ya
 // conoce (pts_* del pipeline, peso_*/eval_* de evaluación, turno_*_cierre de reportes,
 // despiece_pct_saco de inventario, valores_* de Valores 360°). Es la fuente de verdad de
@@ -46,6 +47,7 @@ export const SECCION_PAGO_PUNTOS = 'Pago por puntos';
 export const CLAVE_PUNTOS_META = 'sueldo_puntos_meta_mensual';
 export const CLAVE_SOLES_POR_PUNTO = 'sueldo_soles_por_punto';
 const SECCION_ACCESO = 'Acceso';
+const SECCION_ESCALAS = 'Escalas salariales';
 const SECCION_CAPACITACION = 'Capacitación';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
@@ -55,6 +57,7 @@ export const ORDEN_SECCIONES = [
   SECCION_PUNTOS,
   SECCION_EVALUACION,
   SECCION_SUELDOS,
+  SECCION_ESCALAS,
   SECCION_PAGO_PUNTOS,
   SECCION_REPORTES,
   SECCION_INVENTARIO,
@@ -99,6 +102,33 @@ function pesoItem(clave: string, etiqueta: string, def: string): ConfigCatalogoI
     max: 1,
     step: 0.01,
   };
+}
+
+// Escalas salariales (ticket 35): tarifa por hora y antigüedad de cada escala. Defaults del Excel
+// del dueño (packages/core/src/sueldos.ts::ESCALAS_SUELDO_DEFAULT); sólo SUGIEREN, el admin confirma.
+function escalaItems(): ConfigCatalogoItem[] {
+  return ESCALAS_SUELDO_DEFAULT.flatMap((e) => [
+    {
+      clave: `escala_${e.escala}_tarifa_hora`,
+      seccion: SECCION_ESCALAS,
+      etiqueta: `Escala ${e.escala}: pago por hora (S/)`,
+      descripcion: `Soles por hora de la escala ${e.escala}. Con ella se sugiere el sueldo del contrato; el administrador decide.`,
+      tipo: 'numero' as const,
+      default: String(e.tarifaHora),
+      min: 0,
+      step: 0.1,
+    },
+    {
+      clave: `escala_${e.escala}_desde_mes`,
+      seccion: SECCION_ESCALAS,
+      etiqueta: `Escala ${e.escala}: desde qué mes`,
+      descripcion: `Meses completos de antigüedad desde los que se sugiere la escala ${e.escala} (0 = primer mes). Tramo por confirmar con el dueño.`,
+      tipo: 'numero' as const,
+      default: String(e.desdeMes),
+      min: 0,
+      step: 1,
+    },
+  ]);
 }
 
 export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
@@ -779,6 +809,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     step: 0.01,
     permiteVacio: true,
   },
+  ...escalaItems(),
 ];
 
 export const CONFIG_CATALOGO_MAP: Map<string, ConfigCatalogoItem> = new Map(CONFIG_CATALOGO.map((i) => [i.clave, i]));

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import { AlertTriangle, ArrowLeft, Copy, FileSignature, Pencil, Plus, SlidersHorizontal, Trash2 } from 'lucide-react';
 import {
   ESCALAS_SUELDO_DEFAULT,
+  escalaSugeridaPorAntiguedad,
+  type EscalaSueldo,
   PARAMETROS_SUELDO_DEFAULT,
   diaSemanaISO,
   diasDelPeriodo,
@@ -21,6 +23,7 @@ import { EmptyState } from '../../../components/ui/empty-state';
 import { Aviso, Input, Label, Select, LabelGrupo } from '../../../components/ui/form';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { OpcionBotones, type Opcion } from '../../../components/ui/opcion-botones';
+import { hoyPeru } from '../../../lib/fechas';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
 import type { AcuerdoSueldo, EstadoAcuerdo, ModalidadAcuerdo } from '../../../lib/sueldos-repo';
@@ -225,7 +228,16 @@ const pctBarra = (hhmm: string): number => {
  * el número que el administrador ve al pactar y el que después le paga al colaborador podrían
  * separarse sin que nadie lo note.
  */
-function analizar(b: Borrador, vigentes: ParametrosSueldo): {
+/** Meses completos entre dos fechas AAAA-MM-DD, o null si falta la de ingreso. */
+function mesesCompletosDesde(desde: string | null, hasta: string): number | null {
+  if (!desde || !/^\d{4}-\d{2}-\d{2}$/.test(desde)) return null;
+  const [ya, ma, da] = desde.split('-').map(Number);
+  const [yb, mb, db] = hasta.split('-').map(Number);
+  const m = (yb - ya) * 12 + (mb - ma) - (db < da ? 1 : 0);
+  return Math.max(0, m);
+}
+
+function analizar(b: Borrador, vigentes: ParametrosSueldo, tablaEscalas: EscalaSueldo[]): {
   horas: number;
   dias: number;
   valorHora: number | null;
@@ -318,7 +330,7 @@ function analizar(b: Borrador, vigentes: ParametrosSueldo): {
       horas,
       dias: fechas.length,
       valorHora: horasTramo > 0 && pactado > 0 ? pactado / horasTramo : null,
-      sugerido: b.escala && horasTramo > 0 ? sueldoSugerido(Number(b.escala), horasTramo) : null,
+      sugerido: b.escala && horasTramo > 0 ? sueldoSugerido(Number(b.escala), horasTramo, tablaEscalas) : null,
       // Ya no se divide entre `meses` (C-6): `pactado` ES la cuota de cada liquidación, dividirla
       // otra vez por la duración del contrato completo la encogería a una fracción que nadie paga.
       pagoMensual: pactado > 0 ? pactado : null,
@@ -417,6 +429,7 @@ export function AcuerdosCliente({
   fechaIngresoPersona,
   abrirNuevoAlMontar,
   valoresVigentes,
+  escalas,
 }: {
   acuerdos: AcuerdoSueldo[];
   empleados: Emp[];
@@ -436,7 +449,10 @@ export function AcuerdosCliente({
    * un contrato nuevo, y lo que se muestra como respaldo si a un contrato le faltara una clave.
    */
   valoresVigentes?: ParametrosSueldo;
+  /** Escalas de /configuracion (ticket 35). Sin ellas, las del código. */
+  escalas?: EscalaSueldo[];
 }) {
+  const tablaEscalas = escalas ?? ESCALAS_SUELDO_DEFAULT;
   const router = useRouter();
   const vigentes = valoresVigentes ?? PARAMETROS_SUELDO_DEFAULT;
   // R2 (spec §2.4) más el hallazgo F6 del validador de flujo (23-ago-2026): con `personaFija`
@@ -494,7 +510,9 @@ export function AcuerdosCliente({
   const [errorLista, setErrorLista] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
 
-  const analisis = useMemo(() => analizar(b, vigentes), [b, vigentes]);
+  const mesesIngreso = mesesCompletosDesde(fechaIngresoPersona ?? null, hoyPeru());
+  const escalaPropuesta = mesesIngreso === null ? null : escalaSugeridaPorAntiguedad(mesesIngreso, tablaEscalas);
+  const analisis = useMemo(() => analizar(b, vigentes, tablaEscalas), [b, vigentes, tablaEscalas]);
   const pactados = PARAMETROS.filter((p) => b.parametros[p.clave] != null);
 
   // Al entrar o salir del editor cambia todo lo que hay en pantalla. Sin volver arriba, quien abre
@@ -910,12 +928,18 @@ export function AcuerdosCliente({
                   onChange={(e) => setB((v) => ({ ...v, escala: e.target.value }))}
                 >
                   <option value="">Sin escala</option>
-                  {ESCALAS_SUELDO_DEFAULT.map((e) => (
+                  {tablaEscalas.map((e) => (
                     <option key={e.escala} value={e.escala}>
                       {e.escala} — S/ {e.tarifaHora.toFixed(2)}/h ({e.antiguedad})
                     </option>
                   ))}
                 </Select>
+                {escalaPropuesta !== null && (
+                  <p className="mt-1 text-apoyo text-muted">
+                    Por antigüedad ({mesesIngreso} {mesesIngreso === 1 ? 'mes' : 'meses'}) corresponde la escala{' '}
+                    {escalaPropuesta}. Es una sugerencia: la confirmas tú.
+                  </p>
+                )}
               </div>
             </div>
 
