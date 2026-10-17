@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Check, PackagePlus } from 'lucide-react';
 import { registrarPrenda } from '../actions';
+import { useOperador } from '../operador';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { campoCls } from '../../../components/ui/form';
@@ -19,7 +20,8 @@ const LAVADOS = tiposLavado;
 
 const fieldCls = campoCls;
 
-export function RegistrarForm({ sedes }: { sedes: string[] }) {
+export function RegistrarForm({ sedes, compartido = false }: { sedes: string[]; compartido?: boolean }) {
+  const { conOperador, operadorRechazado, renovar, chip, dialogo } = useOperador(compartido);
   const [pending, startTransition] = useTransition();
   const codigoRef = useRef<HTMLInputElement>(null);
   const [codigo, setCodigo] = useState('');
@@ -34,6 +36,10 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
   const [registradas, setRegistradas] = useState<string[]>([]);
 
   function submit() {
+    conOperador((token) => registrar(token));
+  }
+
+  function registrar(token?: string) {
     startTransition(async () => {
       const err = await registrarPrenda({
         codigo,
@@ -44,9 +50,11 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
         tipoLavado: lavado,
         necesitaCompostura: compostura,
         obs,
-      });
+      }, token);
+      if (err?.startsWith('CODIGO:')) operadorRechazado();
       setError(err);
       if (!err) {
+        renovar();
         setRegistradas((p) => [codigo.trim().toUpperCase(), ...p].slice(0, 12));
         // Ráfaga: se limpia lo propio de la prenda, se conserva sede/lavado del lote.
         setCodigo('');
@@ -60,6 +68,8 @@ export function RegistrarForm({ sedes }: { sedes: string[] }) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
+      {chip}
+      {dialogo}
       <Link
         href="/pipeline"
         className="inline-flex items-center gap-1.5 text-cuerpo text-muted transition-colors duration-150 hover:text-navy"

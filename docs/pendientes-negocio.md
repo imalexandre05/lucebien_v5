@@ -1946,3 +1946,14 @@ Sin parámetros nuevos. Decisiones tomadas por el implementador, a confirmar:
 2. **`examenes`** = promedio de la nota vigente (último examen) de las capacitaciones completadas en el ciclo; sin
    capacitaciones queda manual. ¿Debe contar también un examen suelto fuera de una capacitación? Hoy no existe ese registro.
 3. La nota final no depende de ningún componente (sólo de los puntos): `examenes` es perfil, igual que los demás.
+
+## Código en todos los movimientos del pipeline — defaults del 17-oct-2026
+
+Migración `0135` ([spec](superpowers/specs/pipeline/2026-10-17-codigo-en-todos-los-movimientos-design.md)), ticket #16.
+Defaults inventados, sin confirmar con el dueño; editables en `/configuracion` → «Código personal».
+
+1. **Formato del código de movimiento** `MOV-AAMMDD-NNNNN` (fecha hora Perú + correlativo global). El prefijo `MOV` es
+   `pipeline_mov_prefijo`. ¿El dueño quiere otro formato (por sede, por tipo de movimiento)?
+2. **Movimientos anteriores a la 0135 quedan sin código** (no se retrocodifica).
+3. **«Codificar»** se interpretó como dar de alta la prenda (Registrar) y se cubre con el mismo token que el resto.
+   ¿Hay además un etiquetado físico que deba registrarse como paso aparte?

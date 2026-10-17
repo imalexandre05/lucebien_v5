@@ -9,6 +9,7 @@ import {
   type GeneralesEnvio,
   type ListaLavanderia,
 } from '../../lib/lavanderia-repo';
+import { operadorParaAccion } from '../../lib/pipeline-operador';
 
 export async function accionListarListas(): Promise<ListaLavanderia[]> {
   return listarListasLavanderia();
@@ -21,7 +22,7 @@ export async function accionEnviarLavanderia(p: {
   respTraslado: string;
   generales: GeneralesEnvio;
   items: ItemEnvio[];
-}): Promise<{ ok: boolean; id?: string; error?: string }> {
+}, operador?: string): Promise<{ ok: boolean; id?: string; error?: string }> {
   // UNA LISTA NECESITA AL MENOS UNA PRENDA CON CÓDIGO (decisión de Alexander, 21-ago-2026).
   // Antes bastaba con accesorios a granel. El código es lo que después permite seguir y reclamar
   // una prenda: un envío sin ninguno no se puede rastrear, y los accesorios de esa lista tampoco.
@@ -30,7 +31,7 @@ export async function accionEnviarLavanderia(p: {
     return { ok: false, error: 'La lista necesita al menos una prenda con su código.' };
   }
   try {
-    const id = await enviarLavanderia(p);
+    const id = await enviarLavanderia(p, await operadorParaAccion(operador));
     revalidatePath('/envio-lavanderia');
     revalidatePath('/pipeline');
     return { ok: true, id };
@@ -43,9 +44,9 @@ export async function accionValidarRetorno(p: {
   id: string;
   items: { id: string; estado: 'bien' | 'problema' }[];
   obsRetorno: string;
-}): Promise<{ ok: boolean; error?: string }> {
+}, operador?: string): Promise<{ ok: boolean; error?: string }> {
   try {
-    await validarRetornoLavanderia(p);
+    await validarRetornoLavanderia(p, await operadorParaAccion(operador));
     revalidatePath('/envio-lavanderia');
     return { ok: true };
   } catch (e) {
