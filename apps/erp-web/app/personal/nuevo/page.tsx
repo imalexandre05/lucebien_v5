@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { getSesion } from '../../../lib/auth';
 import { listarSedes } from '../../../lib/sedes-repo';
+import { leerCandidato } from '../../../lib/candidatos-repo';
 import { listarRoles } from '../../../lib/roles-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent } from '../../../components/ui/card';
@@ -18,7 +19,10 @@ import { NuevaPersonaCliente } from './cliente';
 // crea un perfil.
 export const dynamic = 'force-dynamic';
 
-export default async function NuevaPersonaPage() {
+export default async function NuevaPersonaPage(props: {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const searchParams = await props.searchParams;
   const sesion = await getSesion();
   if (!sesion) redirect('/login');
   const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
@@ -42,13 +46,32 @@ export default async function NuevaPersonaPage() {
     listarRoles().catch(() => []),
   ]);
 
+  // Ticket 14: viene de /personal/candidatos con la prueba cerrada. Se precargan nombre y sede;
+  // al guardar, la alta vincula al candidato (estado «contratado»).
+  const idCandidato = typeof searchParams?.candidato === 'string' ? searchParams.candidato : null;
+  const candidato = idCandidato ? await leerCandidato(idCandidato).catch(() => null) : null;
+  const precarga =
+    candidato && candidato.estado === 'prueba_cerrada'
+      ? {
+          id: candidato.id,
+          nombre: candidato.nombre,
+          sedeCod: candidato.sedeCod,
+          notas: [
+            candidato.telefono && `Teléfono: ${candidato.telefono}`,
+            candidato.dni && `DNI: ${candidato.dni}`,
+            candidato.resultado && `Prueba de ingreso: ${candidato.resultado}`,
+          ].filter(Boolean).join(' · '),
+          aviso: candidato.resultado === 'malo' ? 'La prueba de esta persona salió «mala». Tú decides si se da de alta.' : null,
+        }
+      : null;
+
   return (
     <div className="max-w-2xl">
       <PageHeader
         title="Nueva persona"
         subtitle="Paso 1 de 2 — datos. Al guardar, sigue el contrato y el horario."
       />
-      <NuevaPersonaCliente sedes={sedes} rolesDerivados={rolesDerivados} />
+      <NuevaPersonaCliente sedes={sedes} rolesDerivados={rolesDerivados} precarga={precarga} />
     </div>
   );
 }

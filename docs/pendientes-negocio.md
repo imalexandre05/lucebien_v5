@@ -1946,3 +1946,13 @@ Sin parámetros nuevos. Decisiones tomadas por el implementador, a confirmar:
 2. **`examenes`** = promedio de la nota vigente (último examen) de las capacitaciones completadas en el ciclo; sin
    capacitaciones queda manual. ¿Debe contar también un examen suelto fuera de una capacitación? Hoy no existe ese registro.
 3. La nota final no depende de ningún componente (sólo de los puntos): `examenes` es perfil, igual que los demás.
+
+## Ingreso de personal: candidatos, entrevista y prueba (ticket 14, 17-oct-2026)
+
+Migración 0134. Se usaron los defaults de la spec (`docs/superpowers/specs/empleados/2026-10-11-
+candidatos-entrevista-prueba-design.md` §7) sin respuesta del dueño — por confirmar:
+- `personal_prueba_dias = 3` (editable en `/configuracion` → «Ingreso de personal»).
+- La prueba **no se paga** en SCI-LB; se decide en el contrato.
+- La prueba puede repetirse; un descartado se reactiva; sin borrado automático de descartados.
+- Sólo administrador y dueño evalúan y ven candidatos (datos personales).
+- Un resultado «malo» no bloquea el alta: avisa, y decide el administrador.
