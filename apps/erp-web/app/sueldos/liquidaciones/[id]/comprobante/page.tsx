@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import { notFound } from 'next/navigation';
 import {
   obtenerLiquidacion,
+  resumenDeLiquidacionCerrada,
   listarPagosLiquidacion,
   LiquidacionPagosNoMigradoError,
   type PagoLiquidacion,
@@ -9,6 +10,7 @@ import {
 import { fechaHoraCorta } from '../../../../../lib/fechas';
 import { Table, TBody, TD, TH, THead, TR } from '../../../../../components/ui/table';
 import { ImprimirResumen } from './imprimir';
+import { ResumenLiquidacionVista } from '../../../../../components/liquidacion/resumen-liquidacion';
 
 // PEND-09. Vista de SOLO LECTURA del resultado del motor: no recalcula ni una linea. La hoja
 // RESUMEN del Excel calculaba su propio total y daba un numero distinto al de la otra hoja; ese
@@ -37,6 +39,8 @@ export default async function ComprobanteLiquidacionPage(props: { params: Promis
   // Las lineas solo se escriben al cerrar (comentario de LineaGuardada en sueldos-repo.ts): un
   // borrador todavia no tiene nada guardado para mostrar sin inventarlo.
   const sinCerrar = liq.lineas.length === 0;
+  // Vista tipo hoja RESUMEN del Excel (tablero#9): sólo de liquidaciones cerradas.
+  const resumen = liq.estado === 'cerrada' ? await resumenDeLiquidacionCerrada(liq.id) : null;
 
   // Pagos registrados (F1, validador de flujo 23-ago-2026): el papel mostraba el total pero no si
   // ya se había pagado. Se agrega en silencio — un borrador no tiene pagos que mostrar todavía, y
@@ -104,6 +108,13 @@ export default async function ComprobanteLiquidacionPage(props: { params: Promis
             <dd className="tabular-nums text-navy">{liq.motorVersion}</dd>
           </div>
         </dl>
+
+        {resumen && (
+          <section className="mt-8">
+            <h2 className="mb-2 text-rotulo font-semibold uppercase text-muted">Resumen de liquidación</h2>
+            <ResumenLiquidacionVista r={resumen.resumen} pagoDisponible={resumen.pagoDisponible} />
+          </section>
+        )}
 
         {/* 2. El desglose completo, agrupado ingreso / descuento / ajuste / final, igual que
                en la pantalla: concepto, de donde sale, regla, monto */}

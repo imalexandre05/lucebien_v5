@@ -354,6 +354,25 @@ describe('armarEvaluacionAGuardar', () => {
       competencias: 14, examenes: 9, descuentoIncidencias: 200, bonusVentas: 2,
     });
   });
+  // Spec 2026-10-17-componentes-automaticos: el examen de las capacitaciones cerradas en el ciclo.
+  it('si la RPC trae examenes, se guarda ése y se ignora el del cliente', () => {
+    const r = armarEvaluacionAGuardar({ ...rpc, examenes: 16.5 }, escala, manual);
+    expect(r.componentes.examenes).toBe(16.5);
+  });
+  it('examenes null o ausente → rige la entrada manual', () => {
+    expect(armarEvaluacionAGuardar({ ...rpc, examenes: null }, escala, manual).componentes.examenes).toBe(9);
+    expect(armarEvaluacionAGuardar(rpc, escala, manual).componentes.examenes).toBe(9);
+  });
+  it('examenes de la RPC no cambia la nota ni los puntos', () => {
+    const a = armarEvaluacionAGuardar(rpc, escala, manual);
+    const b = armarEvaluacionAGuardar({ ...rpc, examenes: 3 }, escala, manual);
+    expect(b.notaFinal).toBe(a.notaFinal);
+    expect(b.puntosTotal).toBe(a.puntosTotal);
+  });
+  it('examenes fuera de 0–20 o no numérico desde la RPC se rechaza', () => {
+    expect(() => armarEvaluacionAGuardar({ ...rpc, examenes: 25 }, escala, manual)).toThrow(/examenes/);
+    expect(() => armarEvaluacionAGuardar({ ...rpc, examenes: Number.NaN }, escala, manual)).toThrow(/examenes/);
+  });
   // Spec 2026-10-04-evaluacion-guardar-recalculada §7 (H-6): la 0119 publica el 360° de una fila
   // guardada sólo si componentes.valoresCantidad llega al mínimo; sin la clave no se publicaba nunca.
   it('guarda valoresCantidad tal cual lo devuelve la RPC', () => {

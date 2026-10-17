@@ -1549,7 +1549,7 @@ sugiere la fecha de fin que lo completa, pero no propone una fecha de fin por de
 contrato vacío (la spec §3.3 dice «sugiere el día anterior al aniversario» sin fijar cuántos meses).
 ## Seguridad 06-oct-2026 — retrabajo tras observación de tienda (residual del PR #59)
 
-**Sin decidir.** Hoy (y también después de la 0122) una prenda enviada que la tienda califica como
+**DECIDIDO el 13-oct-2026 (pregunta 1): el retrabajo NO paga** — una etapa ya pagada no vuelve a pagarse ([spec 0130](superpowers/specs/pipeline/2026-10-17-retrabajo-no-paga-design.md)). La pregunta 2 (quién califica) sigue sin decidir. **Pendiente nuevo:** ¿el rechazo de calidad también debe dejar de pagar a quien rehace la etapa? Hoy se deja como estaba (quien rehace cobra). Texto original: hoy (y también después de la 0122) una prenda enviada que la tienda califica como
 *observada* vuelve a una etapa del proceso **sin penalizar a nadie**, y al volver a avanzarla se
 pagan otra vez los puntos de cada etapa. El verificador lo ejecutó el 07-oct: avanzar a listo →
 enviar → calificar observada a recepción → avanzar de nuevo = +7 por ciclo, repetible. Lo puede
@@ -1914,3 +1914,35 @@ confirmara. El dueño contestó el 10-oct-2026:
 *Pendiente de la decisión 2:* antes de escribir la spec hay que mapear qué pantallas y funciones leen
 los puntos de otras personas (ranking, tablero, evaluación del equipo), porque cerrar esa lectura puede
 quitar vistas que hoy existen; el dueño decide qué se hace con ellas.
+
+## Resumen de liquidación y «Mi pago» (17-oct-2026)
+
+Spec: `docs/superpowers/specs/2026-10-17-resumen-liquidacion-design.md`. Pendiente de confirmar con Alexander:
+
+- **Mínimo de ventas para continuar / ¿continúa?** No existe en el sistema. La pantalla dice «No configurado». Hace falta decidir de dónde sale (¿por contrato? ¿global en `/configuracion`?) y la regla exacta (el Excel usa «logrado > mínimo»).
+- **2.ª comisión.** El motor tiene una sola comisión. Se muestra «No configurado».
+- **Total final por pagar** = total congelado + adelantos (el motor ya resta los adelantos; el Excel los resta después). **Restante** = total − abonos no anulados. Confirmar que es lo que el Excel quiere decir.
+- **Total invertido ADM** = total + almuerzos, tal como se pidió. Ojo: los almuerzos ya van dentro del total; confirmar que el Excel no los cuenta dos veces a propósito.
+- **Otros beneficios** (metas semanales, bono por puntos, bonos extras, almuerzos): el Excel no los tiene; se muestran en una fila aparte para que el total cuadre.
+
+## Capacitación — defaults del 17-oct-2026 ([spec](superpowers/specs/capacitacion/2026-10-17-capacitacion-checklist-design.md))
+
+Inventados para poder construir el flujo (tablero#13); el dueño debe confirmarlos o cambiarlos:
+
+1. **Nota aprobatoria del examen:** 14/20 (`capacitacion_nota_aprobatoria`, editable en /configuracion → Capacitación).
+2. **Ítems iniciales del checklist:** 5 genéricos (taller y sedes, proceso de prendas, uso del sistema, orden y
+   limpieza, trato y puntualidad). El administrador los edita en la pantalla /capacitacion.
+3. **Quién ve qué:** admin/dueño todo; el capacitador, las que dicta; el nuevo, la suya. ¿Debe verlas también el
+   encargado de la sede del nuevo?
+4. **Pago al capacitador (`valorCapacitacion`):** sin conectar. ¿Se paga al cerrar una capacitación aprobada?
+   Requiere spec completa (cadena del sueldo).
+5. **Componente `examenes` de la evaluación:** ver spec de tablero#3.
+
+## Evaluación: componentes automáticos (17-oct-2026, tablero#3) — [spec](superpowers/specs/evaluaciones/2026-10-17-componentes-automaticos-design.md)
+
+Sin parámetros nuevos. Decisiones tomadas por el implementador, a confirmar:
+
+1. **Los componentes calculados no se pisan a mano** (ya lo imponía el servidor; ahora la pantalla lo muestra).
+2. **`examenes`** = promedio de la nota vigente (último examen) de las capacitaciones completadas en el ciclo; sin
+   capacitaciones queda manual. ¿Debe contar también un examen suelto fuera de una capacitación? Hoy no existe ese registro.
+3. La nota final no depende de ningún componente (sólo de los puntos): `examenes` es perfil, igual que los demás.

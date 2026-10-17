@@ -222,8 +222,10 @@ begin
                      v_err, not exists (select 1 from pipeline_puntos where id = v_pt));
   end if;
 
-  -- 4c) Con puntos ligados no cambia nada: se borran los del movimiento (H-1) y no se toca el
-  --     punto antiguo sin ligar de esa prenda y etapa.
+  -- 4c) Adaptado a la 0130 (el retrabajo no paga): como la prenda ya tiene un punto positivo en
+  --     'recepcion', avanzar esa etapa paga 0 y no liga ninguno; deshacer funciona y el punto antiguo
+  --     (de hace 40 días, otro día Perú) sigue. El escenario original (punto antiguo + punto ligado
+  --     en la misma etapa) ya no puede producirse por la regla de la 0130.
   insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
     values ('P0128-4C', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into p;
   insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle, fecha)
@@ -236,9 +238,9 @@ begin
   v_err := pg_temp.mensaje(format('select pipeline_deshacer(%L, %L)', p, 'recepcion'));
   perform pg_temp.dueno();
   select count(*) into v_n2 from pipeline_puntos where pasada_id = p and historial_id is not null;
-  if v_pts = 1 and v_n = 1 and v_err = 'ok' and v_n2 = 0
+  if v_pts = 0 and v_n = 0 and v_err = 'ok' and v_n2 = 0
      and exists (select 1 from pipeline_puntos where id = v_pt) then
-    r := r || '[ok] caso 4c: con punto ligado, deshacer borra ése y deja el antiguo sin ligar;';
+    r := r || '[ok] caso 4c: etapa ya pagada no paga ni liga; deshacer funciona y el punto antiguo sigue;';
   else
     r := r || format('[FALLA] caso 4c: pts=%s ligados_antes=%s deshacer=%s ligados_despues=%s antiguo_sigue=%s;',
                      v_pts, v_n, v_err, v_n2, exists (select 1 from pipeline_puntos where id = v_pt));

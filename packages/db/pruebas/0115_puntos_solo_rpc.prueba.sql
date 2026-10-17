@@ -420,7 +420,7 @@ begin
 
   -- Control positivo: la tienda A sobre una prenda de SU sede sí puede.
   perform pg_temp.como(e_ta);
-  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'recepcion', 1, 'P0115 propia')$q$, e_alm, pa3));
+  v_err := pg_temp.mensaje(format($q$select private.pipeline_registrar_punto(%L, %L, 'control_calidad', 1, 'P0115 propia')$q$, e_alm, pa3));
   perform pg_temp.dueno();
   select count(*) into v_n from pipeline_puntos where detalle = 'P0115 propia' and pasada_id = pa3;
   if v_err = 'ok' and v_n = 1 then

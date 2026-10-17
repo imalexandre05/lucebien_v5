@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Package, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, Truck, Fingerprint, UsersRound, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Package, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, Truck, Fingerprint, UsersRound, GraduationCap, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -100,6 +100,7 @@ const NAV: { section: string; items: Item[] }[] = [
         icon: UsersRound,
         modulo: 'evaluaciones',
       },
+      { label: 'Capacitación', href: '/capacitacion', icon: GraduationCap, modulo: 'evaluaciones' },
       { label: 'Historial de reportes', href: '/administracion/reportes', icon: Files, modulo: 'reportes_admin' },
       { label: 'Evaluar reportes', href: '/evaluar-reportes', icon: ClipboardCheck, modulo: 'evaluar_reportes' },
       { label: 'Incidencias', href: '/incidencias', icon: AlertTriangle, modulo: 'incidencias' },

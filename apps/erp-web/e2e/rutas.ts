@@ -20,6 +20,7 @@ export const RUTAS_INTERNO = [
   '/pipeline/metricas',
   '/valores',
   '/mi-desempeno',
+  '/mi-pago',
   '/inventario',
   '/envio-lavanderia',
   '/buscar?q=a',

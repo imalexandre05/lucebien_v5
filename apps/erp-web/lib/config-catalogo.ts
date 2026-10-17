@@ -46,6 +46,7 @@ export const SECCION_PAGO_PUNTOS = 'Pago por puntos';
 export const CLAVE_PUNTOS_META = 'sueldo_puntos_meta_mensual';
 export const CLAVE_SOLES_POR_PUNTO = 'sueldo_soles_por_punto';
 const SECCION_ACCESO = 'Acceso';
+const SECCION_CAPACITACION = 'Capacitación';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
 // simplemente no se muestran; "Personalizados" — parámetros creados por el admin — va siempre al
@@ -60,6 +61,7 @@ export const ORDEN_SECCIONES = [
   SECCION_POS,
   SECCION_VALORES,
   SECCION_CODIGO,
+  SECCION_CAPACITACION,
   SECCION_ACCESO,
 ];
 
@@ -685,6 +687,17 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   },
   // Migración 0112 (spec pipeline/2026-10-04-codigo-personal-design.md §4). Los tres defaults los
   // eligió el implementador y NO están confirmados por el dueño (docs/pendientes-negocio.md).
+  // Migración 0131 (spec capacitacion/2026-10-17-...). Default provisional, NO confirmado por el dueño.
+  {
+    clave: 'capacitacion_nota_aprobatoria',
+    seccion: SECCION_CAPACITACION,
+    etiqueta: 'Nota mínima del examen para aprobar la capacitación',
+    descripcion: 'Escala /20. Con una nota menor (o con algún ítem del checklist en «malo»), la capacitación se cierra como «por reforzar».',
+    tipo: 'numero',
+    default: '14',
+    min: 1,
+    step: 0.5,
+  },
   {
     clave: 'codigo_max_intentos',
     seccion: SECCION_CODIGO,
