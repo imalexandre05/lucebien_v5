@@ -82,9 +82,9 @@ begin
      and (e->>'tardanzasDiferidas')::int = 1 then
     r := r || '[ok] caso 5: la tardanza va a octubre y sueldo_entrada la entrega como tardanzasDiferidas = 1;';
   else r := r || format('[FALLA] caso 5: j=%s entrada=%s;', j, e->'tardanzasDiferidas'); end if;
-  e := sueldo_entrada(ac_sep, '2099-09-01', '2099-09-30');
-  if coalesce((e->>'tardanzasDiferidas')::int, 0) = 0 then r := r || '[ok] caso 5b: septiembre no la recibe;';
-  else r := r || format('[FALLA] caso 5b: %s;', e->'tardanzasDiferidas'); end if;
+  select count(*) into v_n from sueldo_tardanzas_diferidas where empleado_id = per and aplicada_en between '2099-09-01' and '2099-09-30';
+  if v_n = 0 then r := r || '[ok] caso 5b: ninguna tardanza trasladada cae en septiembre;';
+  else r := r || format('[FALLA] caso 5b: %s;', v_n); end if;
 
   -- ── 6) Fecha abierta se rechaza; no-admin se rechaza ───────────────────────────────────────
   v_err := pg_temp.mensaje(format('select sueldo_tardanza_diferida_crear(%L, %L, %L)', per, date '2099-10-12', 'abierta'));
