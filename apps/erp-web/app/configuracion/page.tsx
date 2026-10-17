@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ClipboardList, Map, Building2, Shield, Shirt, AlertOctagon, Bell } from 'lucide-react';
+import { ClipboardList, Map, Building2, Shield, Shirt, AlertOctagon, Bell, CalendarRange } from 'lucide-react';
 import { listarConfig } from '../../lib/config-repo';
 import { promedioPuntosUltimosDias } from '../../lib/evaluaciones-repo';
 import { hoyPeru } from '../../lib/fechas';
@@ -31,6 +31,9 @@ export default async function ConfiguracionPage() {
             </Link>
             <Link href="/configuracion/sedes" className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
               <Building2 className="h-3.5 w-3.5" strokeWidth={2} /> Sedes
+            </Link>
+            <Link href="/configuracion/temporadas" className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
+              <CalendarRange className="h-3.5 w-3.5" strokeWidth={2} /> Temporadas
             </Link>
             <Link href="/configuracion/layout" className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
               <Map className="h-3.5 w-3.5" strokeWidth={2} /> Layout

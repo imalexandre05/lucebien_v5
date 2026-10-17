@@ -14,6 +14,7 @@ import {
   ClipboardCheck,
 } from 'lucide-react';
 import { accionEnviarLavanderia, accionValidarRetorno } from './actions';
+import { useOperador } from '../pipeline/operador';
 import type { ListaLavanderia, ItemEnvio } from '../../lib/lavanderia-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -92,11 +93,14 @@ export function EnvioLavanderiaCliente({
   sede,
   empleados,
   listasIniciales,
+  compartido = false,
 }: {
   sede: string;
   empleados: Persona[];
   listasIniciales: ListaLavanderia[];
+  compartido?: boolean;
 }) {
+  const { conOperador, operadorRechazado, renovar, chip, dialogo } = useOperador(compartido);
   const [tipo, setTipo] = useState<'LAV' | 'REF'>('LAV');
   const [items, setItems] = useState<ItemEnvio[]>([]);
   const [codigo, setCodigo] = useState('');
@@ -203,6 +207,10 @@ export function EnvioLavanderiaCliente({
   function enviar() {
     setError('');
     setOk('');
+    conOperador((token) => enviarConCodigo(token));
+  }
+
+  function enviarConCodigo(token?: string) {
     startTransition(async () => {
       const r = await accionEnviarLavanderia({
         sede,
@@ -211,11 +219,13 @@ export function EnvioLavanderiaCliente({
         respTraslado: nombrePorId(respTraslado[0] ?? ''),
         generales: tipo === 'LAV' ? generales : GENERALES_VACIO,
         items,
-      });
+      }, token);
       if (!r.ok) {
+        if (r.error?.startsWith('CODIGO:')) operadorRechazado();
         setError(r.error ?? 'No se pudo enviar la lista');
         return;
       }
+      renovar();
       setOk(`Lista ${r.id} enviada — ${items.length} prenda(s), ${totalGenerales} accesorio(s).`);
       setItems([]);
       setGenerales(GENERALES_VACIO);
@@ -258,14 +268,26 @@ export function EnvioLavanderiaCliente({
     const hayProblema = itemsEstado.some((i) => i.estado === 'problema');
     const obs = obsRetorno.trim();
     setErrorRetorno('');
+    conOperador((token) => validarConCodigo(l, itemsEstado, hayProblema, obs, token));
+  }
+
+  function validarConCodigo(
+    l: ListaLavanderia,
+    itemsEstado: { id: string; estado: 'bien' | 'problema' }[],
+    hayProblema: boolean,
+    obs: string,
+    token?: string,
+  ) {
     startTransition(async () => {
-      const r = await accionValidarRetorno({ id: l.id, items: itemsEstado, obsRetorno: obs });
+      const r = await accionValidarRetorno({ id: l.id, items: itemsEstado, obsRetorno: obs }, token);
+      if (r.error?.startsWith('CODIGO:')) operadorRechazado();
       if (!r.ok) {
         // Antes un fallo acá no se veía: la fila se quedaba igual y quien validaba no tenía cómo
         // saber si había pasado algo o si el sistema estaba pensando.
         setErrorRetorno(r.error ?? 'No se pudo validar el retorno');
         return;
       }
+      renovar();
       setListas((p) =>
         p.map((x) =>
           x.id === l.id
@@ -289,6 +311,8 @@ export function EnvioLavanderiaCliente({
 
   return (
     <div className="space-y-5">
+      {chip}
+      {dialogo}
       {/* Todo el envío en un grupo propio: es lo que hace que la barra pegada abajo deje de
           estar pegada al llegar al historial, que es otra cosa y no se manda. */}
       <div className="space-y-5">

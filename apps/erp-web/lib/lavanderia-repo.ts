@@ -1,5 +1,7 @@
 import { getServerClient } from './supabase/server';
 
+const conOperador = (operador: string | null) => (operador ? { p_operador: operador } : {});
+
 export type ListaLavanderiaItem = {
   id: string;
   cod: string;
@@ -126,7 +128,7 @@ export async function enviarLavanderia(p: {
   respTraslado: string;
   generales: GeneralesEnvio;
   items: ItemEnvio[];
-}): Promise<string> {
+}, operador: string | null = null): Promise<string> {
   const sb = getServerClient();
   const { data, error } = await sb.rpc('lavanderia_enviar', {
     p_sede: p.sede,
@@ -142,6 +144,7 @@ export async function enviarLavanderia(p: {
       zapatos: p.generales.zapatos,
     },
     p_items: p.items,
+    ...conOperador(operador),
   });
   if (error) throw new Error(error.message);
   return String(data);
@@ -151,12 +154,13 @@ export async function validarRetornoLavanderia(p: {
   id: string;
   items: { id: string; estado: 'bien' | 'problema' }[];
   obsRetorno: string;
-}): Promise<void> {
+}, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
   const { error } = await sb.rpc('lavanderia_validar_retorno', {
     p_id: p.id,
     p_items: p.items,
     p_obs_retorno: p.obsRetorno || null,
+    ...conOperador(operador),
   });
   if (error) throw new Error(error.message);
 }

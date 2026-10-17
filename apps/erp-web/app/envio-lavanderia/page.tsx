@@ -3,6 +3,7 @@ import { getSesion } from '../../lib/auth';
 import { listarEmpleados } from '../../lib/reportes-repo';
 import { listarListasLavanderia } from '../../lib/lavanderia-repo';
 import { PageHeader } from '../../components/shell/page-header';
+import { equipoCompartido } from '../../lib/pipeline-operador';
 import { EnvioLavanderiaCliente } from './cliente';
 
 // Módulo "Envío a Lavandería" (puerto de routes/lavanderia.js del sistema viejo): lo usan las
@@ -13,7 +14,11 @@ export default async function EnvioLavanderiaPage() {
   const sesion = await getSesion();
   if (!sesion) redirect('/login');
 
-  const [empleados, listas] = await Promise.all([listarEmpleados(), listarListasLavanderia()]);
+  const [empleados, listas, compartido] = await Promise.all([
+    listarEmpleados(),
+    listarListasLavanderia(),
+    equipoCompartido(),
+  ]);
 
   return (
     <div>
@@ -21,7 +26,7 @@ export default async function EnvioLavanderiaPage() {
         title="Envío a Lavandería"
         subtitle="Manda ternos sucios y accesorios al pipeline de lavado — solo tienda"
       />
-      <EnvioLavanderiaCliente sede={sesion.usuario.sede} empleados={empleados} listasIniciales={listas} />
+      <EnvioLavanderiaCliente sede={sesion.usuario.sede} empleados={empleados} listasIniciales={listas} compartido={compartido} />
     </div>
   );
 }

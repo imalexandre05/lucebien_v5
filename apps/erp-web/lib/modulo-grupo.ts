@@ -18,7 +18,6 @@ export type GrupoModulo =
 const RUTAS: readonly (readonly [prefijo: string, grupo: GrupoModulo])[] = [
   ['/', 'inicio'],
   ['/buscar', 'inicio'],
-  ['/notificaciones', 'inicio'],
   ['/sueldos', 'sueldos'],
   ['/pagos', 'sueldos'],
   ['/pipeline', 'pipeline'],

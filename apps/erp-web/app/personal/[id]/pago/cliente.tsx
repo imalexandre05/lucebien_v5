@@ -193,9 +193,17 @@ export function LiquidacionPagoCliente({
               </CardHeader>
               <CardContent className="space-y-3">
                 {!cerrada ? (
-                  <p className="text-cuerpo text-muted">
-                    {EXPLICACION_ESTADO[l.estado === 'borrador' ? 'borrador' : 'anulada']}
-                  </p>
+                  <>
+                    <p className="text-cuerpo text-muted">
+                      {EXPLICACION_ESTADO[l.estado === 'borrador' ? 'borrador' : 'anulada']}
+                    </p>
+                    {l.estado === 'borrador' && pagado > 0 && (
+                      <p className="text-cuerpo text-navy">
+                        Ya pagado en la liquidación anterior: <span className="tabular-nums">{soles(pagado)}</span>. Al
+                        cerrar esta, ese monto se descuenta solo y queda el saldo.
+                      </p>
+                    )}
+                  </>
                 ) : (
                   <>
                     <div className="grid grid-cols-3 gap-3 sm:max-w-md">
@@ -245,7 +253,12 @@ export function LiquidacionPagoCliente({
                           {pagos.map((p) => (
                             <TR key={p.id} className={p.anulado ? 'opacity-60' : undefined}>
                               <TD className="tabular-nums text-dato text-muted">{p.fecha}</TD>
-                              <TD>{p.metodo}</TD>
+                              <TD>
+                                {p.metodo}
+                                {p.deLiquidacionAnterior && (
+                                  <span className="block text-apoyo text-muted">liquidación anterior</span>
+                                )}
+                              </TD>
                               <TD className="text-apoyo text-muted">
                                 {p.anulado ? `Anulado: ${p.anuladoMotivo ?? '—'}` : p.nota || '—'}
                               </TD>
@@ -254,7 +267,7 @@ export function LiquidacionPagoCliente({
                                 {soles(p.monto)}
                               </TD>
                               <TD className="text-right">
-                                {!p.anulado && (
+                                {!p.anulado && !p.deLiquidacionAnterior && (
                                   <Button variant="ghost" onClick={() => pedirAnular(p)} aria-label="Anular pago">
                                     <Ban className="h-4 w-4" />
                                   </Button>

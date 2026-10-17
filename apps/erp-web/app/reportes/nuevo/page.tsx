@@ -1,11 +1,10 @@
 import { redirect } from 'next/navigation';
 import { getSesion } from '../../../lib/auth';
-import { listarEmpleados, listarReportesDe } from '../../../lib/reportes-repo';
+import { listarEmpleados } from '../../../lib/reportes-repo';
 import { listarTiposIncidencia } from '../../../lib/incidencias-repo';
 import { leerConfigMap, CIERRE_TURNO_DEFAULT } from '../../../lib/config-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { NuevoReporteForm } from './form';
-import { MisReportes } from '../mis-reportes';
 import { hoyPeru } from '../../../lib/fechas';
 
 export default async function NuevoReportePage() {
@@ -15,14 +14,10 @@ export default async function NuevoReportePage() {
   const fecha = hoyPeru();
   // Mismo criterio que incidencias/sueldos. Quien no es admin queda fijo como encargado (0122, H14).
   const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
-  const [empleados, tiposIncidencia, config, misReportes] = await Promise.all([
+  const [empleados, tiposIncidencia, config] = await Promise.all([
     listarEmpleados(),
     listarTiposIncidencia(),
     leerConfigMap(),
-    // Degradado (mismo criterio que leerMatrizPermisos en reportes/[id]/page.tsx): si esta
-    // consulta falla, el formulario del turno -- lo que de verdad importa ese día -- sigue
-    // funcionando. El bloque de abajo simplemente queda vacío.
-    listarReportesDe(sesion.usuario.id).catch(() => []),
   ]);
   const cierres = {
     M: config.turno_m_cierre || CIERRE_TURNO_DEFAULT.M,
@@ -42,7 +37,6 @@ export default async function NuevoReportePage() {
         tiposIncidencia={tiposIncidencia}
         cierres={cierres}
       />
-      <MisReportes reportes={misReportes} />
     </div>
   );
 }

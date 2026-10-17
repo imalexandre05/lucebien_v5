@@ -32,7 +32,7 @@
  * **Se sube la fecha cada vez que cambia una regla de cálculo.** No cuando cambia un comentario
  * ni un tipo: cuando cambia un número que le llega a alguien.
  */
-export const MOTOR_VERSION = '2026-10-07';
+export const MOTOR_VERSION = '2026-10-17';
 
 // ── Parámetros configurables (spec §3.3) ────────────────────────────────────────────────────
 // Ninguno va quemado en el código: son los defaults, editables desde /configuracion.
@@ -323,6 +323,11 @@ export interface EntradaLiquidacion {
    */
   puntosMeses?: Array<{ desde: string; hasta: string; hastaMes: string; puntos: number }> | null;
   parametros?: Partial<ParametrosSueldo>;
+  /**
+   * Temporadas que el administrador definió (ticket 15). Ausente o `[]` = ninguna: la meta sale
+   * como siempre. Cada semana mira la temporada de su primer día; ver `temporadaVigente`.
+   */
+  temporadas?: Temporada[];
 }
 
 // ── Salida ──────────────────────────────────────────────────────────────────────────────────
@@ -841,21 +846,44 @@ export function resumirHorario(horario: TurnoContratado[]): Map<number, DiaContr
 export interface EscalaSueldo {
   escala: number;
   tarifaHora: number;
+  /** Meses completos de antigüedad desde los que la escala aplica (sugerencia, no obligación). */
+  desdeMes: number;
   antiguedad: string;
 }
 
 /**
- * Default editable, no una constante de negocio: cuando suba el sueldo mínimo o el dueño
- * reajuste la escala, se pasa otra tabla en vez de tocar el core. Anotado en
- * docs/pendientes-negocio.md.
+ * Default editable desde /configuracion (claves `escala_N_tarifa_hora` y `escala_N_desde_mes`).
+ * Tarifas: Excel del dueño, hoja PARAMETROS. Los `desdeMes` son un default inventado para
+ * resolver el solape del Excel («5to mes» = 4 cumplidos, «9no» = 8): ver
+ * docs/pendientes-negocio.md (escalas salariales).
  */
 export const ESCALAS_SUELDO_DEFAULT: EscalaSueldo[] = [
-  { escala: 1, tarifaHora: 2.9, antiguedad: '1er mes' },
-  { escala: 2, tarifaHora: 3.2, antiguedad: '1er mes' },
-  { escala: 3, tarifaHora: 3.5, antiguedad: '1er a 3er mes' },
-  { escala: 4, tarifaHora: 3.8, antiguedad: 'desde el 5to mes' },
-  { escala: 5, tarifaHora: 5.0, antiguedad: 'desde el 9no mes' },
+  { escala: 1, tarifaHora: 2.9, desdeMes: 0, antiguedad: '1er mes' },
+  { escala: 2, tarifaHora: 3.2, desdeMes: 1, antiguedad: 'desde el 2do mes' },
+  { escala: 3, tarifaHora: 3.5, desdeMes: 2, antiguedad: 'hasta el 3er mes' },
+  { escala: 4, tarifaHora: 3.8, desdeMes: 4, antiguedad: 'desde el 5to mes' },
+  { escala: 5, tarifaHora: 5.0, desdeMes: 8, antiguedad: 'desde el 9no mes' },
 ];
+
+/** Arma la tabla desde el mapa de `config`; un valor ausente o inválido usa su default. */
+export function escalasDesdeConfig(cfg: Record<string, string | undefined>): EscalaSueldo[] {
+  const num = (v: string | undefined): number | null =>
+    v !== undefined && v.trim() !== '' && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null;
+  return ESCALAS_SUELDO_DEFAULT.map((d) => {
+    const tarifa = num(cfg[`escala_${d.escala}_tarifa_hora`]);
+    const desde = num(cfg[`escala_${d.escala}_desde_mes`]);
+    return { ...d, tarifaHora: tarifa ?? d.tarifaHora, desdeMes: desde ?? d.desdeMes };
+  });
+}
+
+/** La escala de mayor `desdeMes` que no pasa de los meses cumplidos. El admin confirma. */
+export function escalaSugeridaPorAntiguedad(mesesCompletos: number, escalas: EscalaSueldo[] = ESCALAS_SUELDO_DEFAULT): number {
+  const m = Math.max(0, mesesCompletos);
+  const ordenadas = [...escalas].sort((a, b) => a.desdeMes - b.desdeMes || a.escala - b.escala);
+  let elegida = ordenadas[0];
+  for (const e of ordenadas) if (e.desdeMes <= m) elegida = e;
+  return elegida.escala;
+}
 
 /** Referencia para negociar, no una obligación. Ver PEND-07: las escalas 1–3 se solapan. */
 export function sueldoSugerido(
@@ -866,6 +894,39 @@ export function sueldoSugerido(
   const e = escalas.find((x) => x.escala === escala);
   if (!e) throw new Error(`Escala inexistente: ${escala}. Válidas: ${escalas.map((x) => x.escala).join(', ')}.`);
   return r2(e.tarifaHora * horasContratadas);
+}
+
+// ── Temporadas (ticket 15) — valores que el administrador cambia por fechas ────────────────
+
+export interface Temporada {
+  id?: string;
+  nombre: string;
+  /** 'YYYY-MM-DD', inclusivo. */
+  desde: string;
+  /** 'YYYY-MM-DD', inclusivo. */
+  hasta: string;
+  /** Pago por hora de referencia. `null` = el normal. No reescribe lo pactado: ver spec. */
+  pagoPorHora: number | null;
+  /** Meta semanal de la temporada. `null` = la normal. */
+  metaSemanal: number | null;
+  /** Soles de venta por hora de la temporada. `null` = el normal. */
+  metaPorHora: number | null;
+}
+
+/** La temporada que cubre `fecha`, o `null` (sin temporadas inventadas: se usa el valor normal). */
+export function temporadaVigente(temporadas: readonly Temporada[], fecha: string): Temporada | null {
+  for (const t of temporadas) {
+    if (!RE_FECHA.test(t.desde) || !RE_FECHA.test(t.hasta) || t.hasta < t.desde) {
+      throw new Error(`Temporada «${t.nombre}» con fechas inválidas: ${t.desde} → ${t.hasta}.`);
+    }
+  }
+  return temporadas.find((t) => t.desde <= fecha && fecha <= t.hasta) ?? null;
+}
+
+/** Sueldo de referencia con el pago por hora de la temporada; `null` si no hay uno que aplicar. */
+export function sueldoSugeridoPorTemporada(temporada: Temporada | null, horasContratadas: number): number | null {
+  if (!temporada || temporada.pagoPorHora === null) return null;
+  return r2(temporada.pagoPorHora * horasContratadas);
 }
 
 // ── Semanas del periodo (RN-12) ─────────────────────────────────────────────────────────────
@@ -1274,8 +1335,14 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     // RN-10: manda lo pactado en el contrato. Sin meta pactada, se sugiere una por horas.
     // RN-10: `factorMeta` sólo descuenta la meta SUGERIDA. A una meta pactada y negociada con
     // el colaborador no se le descuenta nada (spec §3.3).
+    // Ticket 15: sin meta pactada, la temporada de la semana (si la hay) cambia la meta; la
+    // pactada en el contrato gana siempre.
     const horasDeLaMeta = p.metaSemanalFija ? horasSemanaTipo : horas;
-    const meta = p.metaSemanal ?? horasDeLaMeta * p.metaPorHora * p.factorMeta;
+    const temporada = temporadaVigente(entrada.temporadas ?? [], t.desde);
+    const meta =
+      p.metaSemanal ??
+      temporada?.metaSemanal ??
+      horasDeLaMeta * (temporada?.metaPorHora ?? p.metaPorHora) * p.factorMeta;
     metaPeriodo += meta;
     const ventasSemana = ventasValidas
       .filter((v) => v.fecha >= t.desde && v.fecha <= t.hasta)

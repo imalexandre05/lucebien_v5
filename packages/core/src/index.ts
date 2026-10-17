@@ -28,3 +28,4 @@ export * from './semanas-meta';
 export * from './rangos-fecha';
 export * from './envios';
 export * from './capacitacion';
+export * from './candidatos';
