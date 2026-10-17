@@ -31,7 +31,7 @@ do $$
 declare
   r text := '';
   adm uuid; per uuid; otro uuid; ac1 uuid; ac2 uuid;
-  a uuid; b uuid; c uuid; f uuid; g uuid; h uuid; i uuid;
+  a uuid; b uuid; c uuid; f uuid; g uuid; h uuid; i uuid; ac3 uuid;
   v_err text; v_n int; v_sum numeric; v_corr uuid;
 begin
   perform pg_temp.dueno();
@@ -42,6 +42,8 @@ begin
     values (per,'2099-01-01','2099-01-31',1000,adm,'vigente') returning id into ac1;
   insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado, creado_por, estado)
     values (per,'2099-03-01','2099-03-31',1000,adm,'vigente') returning id into ac2;
+  insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado, creado_por, estado)
+    values (per,'2099-04-01','2099-04-30',1000,adm,'vigente') returning id into ac3;
   a := pg_temp.liq(ac1, per, '2099-01-01', '2099-01-31', 1000, 'cerrada', adm);
 
   perform pg_temp.como(adm);
@@ -107,11 +109,11 @@ begin
 
   -- ── 7) Sin abonos: igual que la anulación común, sin enlace ─────────────────────────────────
   delete from sueldo_liquidaciones where id = g;
-  h := pg_temp.liq(ac2, per, '2099-03-01', '2099-03-31', 1000, 'cerrada', adm);
+  h := pg_temp.liq(ac3, per, '2099-04-01', '2099-04-30', 1000, 'cerrada', adm);
   perform pg_temp.como(adm);
   v_err := pg_temp.mensaje(format('select sueldo_liquidacion_corregir_anular(%L, %L)', h, 'sin pagos'));
   perform pg_temp.dueno();
-  i := pg_temp.liq(ac2, per, '2099-03-01', '2099-03-31', 1000, 'borrador', adm);
+  i := pg_temp.liq(ac3, per, '2099-04-01', '2099-04-30', 1000, 'borrador', adm);
   if v_err = 'ok' and (select corrige_a from sueldo_liquidaciones where id = i) is null then
     r := r || '[ok] caso 7: sin abonos anula igual y no enlaza nada;';
   else r := r || format('[FALLA] caso 7: %s;', v_err); end if;

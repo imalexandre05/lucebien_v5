@@ -1914,3 +1914,13 @@ confirmara. El dueño contestó el 10-oct-2026:
 *Pendiente de la decisión 2:* antes de escribir la spec hay que mapear qué pantallas y funciones leen
 los puntos de otras personas (ranking, tablero, evaluación del equipo), porque cerrar esa lectura puede
 quitar vistas que hoy existen; el dueño decide qué se hace con ellas.
+
+## Corregir una liquidación con abonos — 17-oct-2026
+
+Migración `0137` ([spec](superpowers/specs/sueldos/2026-10-17-corregir-con-abonos-design.md)), ticket #30.
+Decisión del dueño: lo ya pagado se descuenta solo y queda el saldo. Default inventado:
+
+1. **Pagado de más.** Si lo ya pagado supera el nuevo total, el saldo queda negativo y el cierre no se bloquea (nadie
+   devuelve plata automáticamente). ¿Cómo se compensa — contra la liquidación siguiente, o se registra como deuda?
+2. **Vínculo por período exacto.** La corregida se enlaza sola sólo si el contrato y el período coinciden exactamente con
+   los de la anulada. Si se corrige con otro período, los abonos no se trasladan (se ven en la anulada).
