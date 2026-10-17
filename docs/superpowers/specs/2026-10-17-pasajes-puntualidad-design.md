@@ -9,7 +9,7 @@ Spec corta. Regla confirmada por el dueño (17-oct-2026): hay un beneficio de pa
   se paga el monto de pasaje. N = `sueldo_pasaje_minutos_antes`, default **5** (dato del dueño).
 - Monto = `sueldo_monto_pasaje` (S/ por día). **Vacío por defecto = no se paga nada** y la liquidación no
   muestra la línea (igual que el pago por puntos). Un `0` sí es un valor.
-- Los días sin turno contratado y las faltas no cuentan.
+- Los días sin turno contratado, las faltas y los días sin horas trabajadas (ingreso marcado pero sin salida, 0 h) no cuentan: el día tiene que haberse trabajado.
 - Es un ingreso: línea «Pasajes por llegar temprano» (grupo `ingreso`, regla RN-22). Entra al total y al
   resumen en una fila propia «Pasajes».
 
@@ -17,6 +17,12 @@ Spec corta. Regla confirmada por el dueño (17-oct-2026): hay un beneficio de pa
 
 El monto se entiende **por día puntual** (como un pasaje diario). Si Jordan lo quiere por semana o por mes,
 se cambia la unidad. Anotado en `docs/pendientes-negocio.md`.
+
+## Fecha de vigencia (a confirmar)
+
+La regla rige para todo periodo abierto en cuanto exista un monto, incluidos días anteriores a que se configurara, y
+para cualquier liquidación que se reabra y se recalcule. Las liquidaciones cerradas no cambian (líneas congeladas).
+Pendiente: confirmar con el dueño desde qué fecha rige.
 
 ## Cambios
 
