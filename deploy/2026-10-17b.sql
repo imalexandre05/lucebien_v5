@@ -497,6 +497,11 @@ create or replace function private.sueldo_estado_fecha(p_empleado uuid, p_fecha 
 as $fn$
 declare l record;
 begin
+  -- SECURITY DEFINER con execute para authenticated (lo llaman RPC invoker): sin esta guarda cualquier
+  -- empleado conocería el estado de cierre del sueldo de otro. auth.uid() nulo = servicio/superusuario.
+  if auth.uid() is not null and not private.app_es_admin() then
+    raise exception 'PERMISO:sólo el administrador consulta el estado de los períodos de sueldo';
+  end if;
   select id, periodo_desde, periodo_hasta into l
     from sueldo_liquidaciones
    where empleado_id = p_empleado and estado = 'cerrada'
@@ -597,6 +602,13 @@ begin
       if v_sig is null then
         raise exception 'PERIODO:no hay un período siguiente abierto: crea el contrato siguiente o anula el cierre; no se guardó nada';
       end if;
+      -- Carrera con el cierre del borrador que cubre la fecha destino: esperar a que termine y releer.
+      perform 1 from sueldo_liquidaciones
+       where empleado_id = p_empleado and estado = 'borrador' and v_sig between periodo_desde and periodo_hasta
+       for share;
+      if private.sueldo_estado_fecha(p_empleado, v_sig)->>'estado' <> 'abierto' then
+        raise exception 'PERIODO:el período siguiente se cerró mientras tanto; vuelve a intentarlo; no se guardó nada';
+      end if;
       v_orig := p_fecha;
       v_fecha := v_sig;
       v_motivo := v_motivo || ' (fecha original ' || to_char(p_fecha, 'DD/MM/YYYY')
@@ -606,7 +618,8 @@ begin
         raise exception 'PERIODO:la fecha % no tiene contrato: no hay cierre que anular; no se guardó nada',
           to_char(p_fecha, 'DD/MM/YYYY');
       end if;
-      if exists (select 1 from sueldo_liquidacion_pagos where liquidacion_id = (st->>'liquidacion_id')::uuid and not anulado) then
+      -- Pagos de toda la cadena de correcciones (private.sueldo_pagado_cadena, de la 0137; se resuelve al ejecutar).
+      if private.sueldo_pagado_cadena((st->>'liquidacion_id')::uuid) > 0 then
         raise exception 'PERIODO:esa liquidación ya tiene pagos registrados; no se anula el cierre. Corrígela desde Liquidación y pago con «Corregir» (no anules pagos entregados); no se guardó nada';
       end if;
       perform sueldo_liquidacion_anular((st->>'liquidacion_id')::uuid,
@@ -655,20 +668,31 @@ create trigger trg_sueldo_mov_no_en_cerrado before insert or update of fecha, em
 -- La corregida apunta a la liquidación (anulada) que reemplaza. Los pagos no se mueven.
 alter table sueldo_liquidaciones add column if not exists corrige_a uuid references sueldo_liquidaciones(id);
 create index if not exists idx_sueldo_liq_corrige_a on sueldo_liquidaciones(corrige_a) where corrige_a is not null;
+-- Una liquidación anulada la corrige a lo sumo una (respaldo del trigger, que también lo comprueba).
+create unique index if not exists uq_sueldo_liq_corrige_a on sueldo_liquidaciones(corrige_a) where corrige_a is not null;
 
 -- Lo pagado (abonos no anulados) de una liquidación y de toda la cadena de liquidaciones que corrige.
 -- `union` (no `union all`) corta cualquier ciclo.
 create or replace function private.sueldo_pagado_cadena(p_liq uuid)
-  returns numeric language sql stable security definer set search_path = public, pg_temp
+  returns numeric language plpgsql stable security definer set search_path = public, pg_temp
 as $fn$
+declare v numeric;
+begin
+  -- SECURITY DEFINER con execute para authenticated (lo llaman RPC invoker): sin esta guarda cualquier
+  -- empleado conocería lo pagado en la liquidación de otro. auth.uid() nulo = servicio/superusuario.
+  if auth.uid() is not null and not private.app_es_admin() then
+    raise exception 'PERMISO:sólo el administrador consulta los pagos de una liquidación por esta vía';
+  end if;
   with recursive cadena(id) as (
     select p_liq
     union
     select l.corrige_a from sueldo_liquidaciones l join cadena c on l.id = c.id where l.corrige_a is not null
   )
-  select coalesce(sum(p.monto), 0)
+  select coalesce(sum(p.monto), 0) into v
     from sueldo_liquidacion_pagos p join cadena c on p.liquidacion_id = c.id
    where not p.anulado;
+  return v;
+end;
 $fn$;
 revoke execute on function private.sueldo_pagado_cadena(uuid) from public, anon;
 grant  execute on function private.sueldo_pagado_cadena(uuid) to authenticated;
@@ -701,6 +725,12 @@ begin
             and not exists (select 1 from sueldo_liquidaciones s where s.corrige_a = l.id)) then
       raise exception 'PERIODO:hay una liquidación anulada que se solapa con este período y ya tiene pagos; corrígela con el mismo contrato y período, o anula antes esos pagos con su motivo';
     end if;
+  end if;
+
+  -- Un vínculo ya hecho no se suelta ni se cambia: soltarlo dejaría los abonos huérfanos y se podría
+  -- pagar dos veces el mismo período.
+  if TG_OP = 'UPDATE' and old.corrige_a is not null and new.corrige_a is distinct from old.corrige_a then
+    raise exception 'CONGELADA:el vínculo con la liquidación corregida no se puede cambiar ni quitar';
   end if;
 
   if new.corrige_a is not null and (TG_OP = 'INSERT' or new.corrige_a is distinct from old.corrige_a) then
