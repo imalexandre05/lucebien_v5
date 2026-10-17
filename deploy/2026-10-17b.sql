@@ -729,8 +729,15 @@ begin
 
   -- Un vínculo ya hecho no se suelta ni se cambia: soltarlo dejaría los abonos huérfanos y se podría
   -- pagar dos veces el mismo período.
-  if TG_OP = 'UPDATE' and old.corrige_a is not null and new.corrige_a is distinct from old.corrige_a then
-    raise exception 'CONGELADA:el vínculo con la liquidación corregida no se puede cambiar ni quitar';
+  -- Tampoco se mueve la persona, el contrato ni el período de una corrección: los abonos quedarían
+  -- imputados a otra persona o a otro período.
+  if TG_OP = 'UPDATE' and old.corrige_a is not null and (
+       new.corrige_a is distinct from old.corrige_a
+       or new.empleado_id is distinct from old.empleado_id
+       or new.acuerdo_id is distinct from old.acuerdo_id
+       or new.periodo_desde is distinct from old.periodo_desde
+       or new.periodo_hasta is distinct from old.periodo_hasta) then
+    raise exception 'CONGELADA:una liquidación que corrige a otra no cambia de vínculo, persona, contrato ni período';
   end if;
 
   if new.corrige_a is not null and (TG_OP = 'INSERT' or new.corrige_a is distinct from old.corrige_a) then
@@ -745,7 +752,7 @@ begin
 end;
 $fn$;
 drop trigger if exists trg_sueldo_liq_enlazar_correccion on sueldo_liquidaciones;
-create trigger trg_sueldo_liq_enlazar_correccion before insert or update of corrige_a on sueldo_liquidaciones
+create trigger trg_sueldo_liq_enlazar_correccion before insert or update of corrige_a, empleado_id, acuerdo_id, periodo_desde, periodo_hasta on sueldo_liquidaciones
   for each row execute function private.sueldo_liq_enlazar_correccion();
 
 -- La anulación común sigue bloqueada con abonos; sólo la RPC de corrección (que fija la variable
