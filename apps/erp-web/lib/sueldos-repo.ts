@@ -1504,11 +1504,13 @@ type RowPropia = {
   total: number | string;
   cerrada_en: string | null;
   ventas: { total?: number; metaPeriodo?: number } | null;
+  asistencia: { diasConDerechoAlmuerzo?: number; almuerzosAPagar?: number } | null;
+  parametros: { valorAlmuerzo?: number } | null;
   sueldo_liquidacion_lineas: RowLinea[] | null;
 };
 
 const SELECT_PROPIA =
-  'id, periodo_desde, periodo_hasta, total, cerrada_en, ventas:resultado->ventas, sueldo_liquidacion_lineas(orden, grupo, concepto, detalle, regla, monto)';
+  'id, periodo_desde, periodo_hasta, total, cerrada_en, ventas:resultado->ventas, asistencia:resultado->asistencia, parametros:parametros_usados, sueldo_liquidacion_lineas(orden, grupo, concepto, detalle, regla, monto)';
 
 /** Abonos no anulados por liquidación; `null` si la 0080 no responde (no se inventa un 0). */
 async function abonosPorLiquidacion(ids: string[]): Promise<Map<string, number> | null> {
@@ -1531,6 +1533,12 @@ function aPropia(r: RowPropia, abonos: number | null): LiquidacionPropia {
     monto: Number(l.monto ?? 0),
   }));
   const total = Number(r.total ?? 0);
+  // Almuerzos que puso la empresa en especie, del snapshot congelado (no de la configuración de hoy).
+  const dias = Number(r.asistencia?.diasConDerechoAlmuerzo);
+  const aPagar = Number(r.asistencia?.almuerzosAPagar);
+  const valor = Number(r.parametros?.valorAlmuerzo);
+  const almuerzosEmpresa =
+    Number.isFinite(dias) && Number.isFinite(aPagar) && Number.isFinite(valor) ? Math.max(0, dias - aPagar) * valor : 0;
   return {
     id: r.id,
     periodoDesde: (r.periodo_desde ?? '').slice(0, 10),
@@ -1542,6 +1550,7 @@ function aPropia(r: RowPropia, abonos: number | null): LiquidacionPropia {
       ventas: { total: Number(r.ventas?.total ?? 0), metaPeriodo: Number(r.ventas?.metaPeriodo ?? 0) },
       total,
       abonos: abonos ?? 0,
+      almuerzosEmpresa,
     }),
     pagoDisponible: abonos != null,
   };
