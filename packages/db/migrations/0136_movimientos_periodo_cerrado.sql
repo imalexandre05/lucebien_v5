@@ -114,6 +114,13 @@ begin
       if v_sig is null then
         raise exception 'PERIODO:no hay un período siguiente abierto: crea el contrato siguiente o anula el cierre; no se guardó nada';
       end if;
+      -- Carrera con el cierre del borrador que cubre la fecha destino: esperar a que termine y releer.
+      perform 1 from sueldo_liquidaciones
+       where empleado_id = p_empleado and estado = 'borrador' and v_sig between periodo_desde and periodo_hasta
+       for share;
+      if private.sueldo_estado_fecha(p_empleado, v_sig)->>'estado' <> 'abierto' then
+        raise exception 'PERIODO:el período siguiente se cerró mientras tanto; vuelve a intentarlo; no se guardó nada';
+      end if;
       v_orig := p_fecha;
       v_fecha := v_sig;
       v_motivo := v_motivo || ' (fecha original ' || to_char(p_fecha, 'DD/MM/YYYY')
@@ -123,7 +130,8 @@ begin
         raise exception 'PERIODO:la fecha % no tiene contrato: no hay cierre que anular; no se guardó nada',
           to_char(p_fecha, 'DD/MM/YYYY');
       end if;
-      if exists (select 1 from sueldo_liquidacion_pagos where liquidacion_id = (st->>'liquidacion_id')::uuid and not anulado) then
+      -- Pagos de toda la cadena de correcciones (private.sueldo_pagado_cadena, de la 0137; se resuelve al ejecutar).
+      if private.sueldo_pagado_cadena((st->>'liquidacion_id')::uuid) > 0 then
         raise exception 'PERIODO:esa liquidación ya tiene pagos registrados; no se anula el cierre. Corrígela desde Liquidación y pago con «Corregir» (no anules pagos entregados); no se guardó nada';
       end if;
       perform sueldo_liquidacion_anular((st->>'liquidacion_id')::uuid,

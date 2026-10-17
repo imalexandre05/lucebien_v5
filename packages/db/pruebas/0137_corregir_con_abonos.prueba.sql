@@ -170,5 +170,14 @@ begin
   if v_corr = j1 and v_err like 'SALDO:%' then r := r || '[ok] caso 11c: sigue enlazada y no se pagan 900 encima de los 400 (1300 sobre 900);';
   else r := r || format('[FALLA] caso 11c: corrige_a=%s err=%s;', v_corr, v_err); end if;
 
+  -- ── 12) anular_cierre (0136) mira los pagos de toda la cadena, no sólo los propios ──────────
+  -- j2 está cerrada, no tiene pagos propios pero corrige a j1 (400 abonados).
+  perform pg_temp.como(adm);
+  v_err := pg_temp.mensaje(format('select sueldo_movimiento_crear(%L,%L,%L,50,1,%L,%L)', otro, '2099-05-15'::date, 'adelanto', 'tarde', 'anular_cierre'));
+  perform pg_temp.dueno();
+  if v_err like 'PERIODO:%pagos%' and (select estado from sueldo_liquidaciones where id = j2) = 'cerrada' then
+    r := r || '[ok] caso 12: anular_cierre no anula una corrección cuya cadena tiene abonos;';
+  else r := r || format('[FALLA] caso 12: %s;', v_err); end if;
+
   raise exception 'RESULTADO 0137 --> %', r;
 end $$;
