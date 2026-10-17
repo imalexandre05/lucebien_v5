@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useMemo, useState, useTransition } from 'react';
+import { Fragment, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Plus, Filter, ChevronRight, Award, AlertTriangle } from 'lucide-react';
@@ -166,7 +166,7 @@ export function EvaluacionesCliente({
   // TODA la pantalla, incluido el historial de abajo que no tiene nada que ver con el panel roto.
   const notaResultado = useMemo((): { ok: true; valor: number; banda: BandaEval } | { ok: false; mensaje: string } => {
     if (infoExtra === null) {
-      return { ok: false, mensaje: 'Calculá desde la data para obtener los puntos del período y la nota.' };
+      return { ok: false, mensaje: 'Calculando los puntos del período…' };
     }
     try {
       const { nota: valor, banda } = notaDesdePuntos(infoExtra.puntosTotal, escala);
@@ -214,10 +214,14 @@ export function EvaluacionesCliente({
 
   const set = (k: keyof ComponentesEval, v: number) => setComp((p) => ({ ...p, [k]: v }));
 
+  // 0132: nota de examen que trajo la data (capacitaciones cerradas en el ciclo); null = se carga a mano.
+  const [examenesAuto, setExamenesAuto] = useState<number | null>(null);
+
   function elegirEmpleado(id: string) {
     setEmpleadoId(id);
     setEvalGuardada(null);
     setInfoExtra(null);
+    setExamenesAuto(null);
     setComp(CERO);
     setCompetenciaSel({});
     setCicloEditado(false);
@@ -231,7 +235,9 @@ export function EvaluacionesCliente({
   function anularCalculo() {
     setInfoExtra(null);
     // Sólo lo automático; exámenes (entrada manual) se conserva.
-    setComp((p) => ({ ...p, operaciones: 0, software: 0, limpieza: 0, tardanza: 0, valores: 0, descuentoIncidencias: 0, bonusVentas: 0 }));
+    // `examenes` automático (0132) también se anula: si el nuevo ciclo no trae dato, no debe quedar el de otro ciclo como manual.
+    setComp((p) => ({ ...p, operaciones: 0, software: 0, limpieza: 0, tardanza: 0, valores: 0, descuentoIncidencias: 0, bonusVentas: 0, examenes: examenesAuto !== null ? 0 : p.examenes }));
+    setExamenesAuto(null);
   }
   function setCicloDesde(v: string) {
     setCiclo((c) => (c ? { ...c, desde: v } : c));
@@ -265,7 +271,9 @@ export function EvaluacionesCliente({
         // (típicamente 0) si nadie evaluó a esta persona todavía este mes.
         valores: c.valores ?? p.valores,
         bonusVentas: c.bonusVentas ?? p.bonusVentas,
+        examenes: c.examenes ?? p.examenes,
       }));
+      setExamenesAuto(c.examenes ?? null);
       // puntosTotal (0095) es lo único que de verdad hace falta para poder guardar: sin él no hay
       // nota que mostrar (notaResultado cae al mensaje "Calculá desde la data..." de arriba). El
       // resto de las claves puede faltar si esa migración todavía no corrió (undefined, no 0 — un
@@ -288,6 +296,13 @@ export function EvaluacionesCliente({
       }
     });
   }
+
+  // Cálculo automático (tablero#3): al elegir a la persona o cambiar el ciclo se calcula solo. El botón
+  // queda como «Recalcular». Cambiar el ciclo ya anuló lo anterior (anularCalculo).
+  useEffect(() => {
+    if (empleadoId && ciclo) calcularDesdeData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [empleadoId, ciclo?.desde, ciclo?.hasta]);
 
   function guardar() {
     // nota === null: sin puntosTotal, o notaDesdePuntos cortó (config rota). ventasSinTasa: la
@@ -462,11 +477,11 @@ export function EvaluacionesCliente({
                 pending={pending}
                 className="text-apoyo"
               >
-                Calcular desde la data
+                Recalcular
               </Button>
               <span className="text-apoyo text-muted">
-                Trae los puntos del período (pipeline, extras, actividades, ventas, incidencias) que dan la nota, y llena
-                operaciones/software/limpieza/valores/tardanza del perfil.
+                Se calcula solo al elegir a la persona o cambiar el ciclo: puntos del período (pipeline, extras,
+                actividades, ventas, incidencias) y el perfil. Lo calculado no se puede editar a mano.
               </span>
             </div>
 
@@ -509,7 +524,14 @@ export function EvaluacionesCliente({
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {COMPONENTES.filter(({ key }) => key !== 'competencias').map(({ key, label }) => (
                 <div key={key} className="flex items-center gap-2">
-                  <label className="flex-1 text-cuerpo text-navy">{label}</label>
+                  <label className="flex-1 text-cuerpo text-navy">
+                    {label}
+                    {key === 'examenes' && (
+                      <span className="ml-1.5 text-apoyo font-normal text-muted">
+                        {examenesAuto !== null ? 'de las capacitaciones del ciclo' : 'sin capacitaciones cerradas: cárgalo a mano'}
+                      </span>
+                    )}
+                  </label>
                   <input
                     type="number"
                     step="0.5"
@@ -517,9 +539,9 @@ export function EvaluacionesCliente({
                     max={20}
                     value={comp[key]}
                     // Todo menos «examenes» lo fija el servidor al guardar (viene del cálculo).
-                    readOnly={key !== 'examenes'}
+                    readOnly={key !== 'examenes' || examenesAuto !== null}
                     onChange={(e) => set(key, Number(e.target.value))}
-                    className={cn(fieldCls, 'w-20 text-right', key !== 'examenes' && 'bg-paper/60 text-muted')}
+                    className={cn(fieldCls, 'w-20 text-right', (key !== 'examenes' || examenesAuto !== null) && 'bg-paper/60 text-muted')}
                   />
                 </div>
               ))}
