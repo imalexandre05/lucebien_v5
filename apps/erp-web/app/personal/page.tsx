@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Award, BarChart3, CalendarCheck, Coins, FileSignature, Plus, ShoppingBag, Wallet, type LucideIcon } from 'lucide-react';
+import { Award, BarChart3, CalendarCheck, Coins, FileSignature, Plus, ShoppingBag, UserPlus, Wallet, type LucideIcon } from 'lucide-react';
 import { puede, type MatrizPermisos } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
@@ -44,6 +44,7 @@ type Herramienta = { href: string; icono: LucideIcon; label: string; gate: 'admi
 // el periodo · Evaluaciones del mes · Contratos. El plan de R1 (Tarea 2) lo había dejado con los
 // dos últimos invertidos.
 const HERRAMIENTAS: Herramienta[] = [
+  { href: '/personal/candidatos', icono: UserPlus, label: 'Candidatos', gate: 'admin' },
   { href: '/sueldos/asistencia', icono: CalendarCheck, label: 'Declarar asistencia', gate: 'admin' },
   { href: '/sueldos/ventas', icono: ShoppingBag, label: 'Ventas y metas', gate: 'admin' },
   { href: '/sueldos/movimientos', icono: Wallet, label: 'Adelantos y descuentos', gate: 'admin' },

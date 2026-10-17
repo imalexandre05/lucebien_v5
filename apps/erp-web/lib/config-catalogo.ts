@@ -48,6 +48,7 @@ export const CLAVE_PUNTOS_META = 'sueldo_puntos_meta_mensual';
 export const CLAVE_SOLES_POR_PUNTO = 'sueldo_soles_por_punto';
 const SECCION_ACCESO = 'Acceso';
 const SECCION_ESCALAS = 'Escalas salariales';
+const SECCION_INGRESO = 'Ingreso de personal';
 const SECCION_CAPACITACION = 'Capacitación';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
@@ -65,6 +66,7 @@ export const ORDEN_SECCIONES = [
   SECCION_VALORES,
   SECCION_CODIGO,
   SECCION_CAPACITACION,
+  SECCION_INGRESO,
   SECCION_ACCESO,
 ];
 
@@ -718,6 +720,17 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   // Migración 0112 (spec pipeline/2026-10-04-codigo-personal-design.md §4). Los tres defaults los
   // eligió el implementador y NO están confirmados por el dueño (docs/pendientes-negocio.md).
   // Migración 0131 (spec capacitacion/2026-10-17-...). Default provisional, NO confirmado por el dueño.
+  // Migración 0134 (ticket 14). Default del Excel del dueño («Prueba (3 días)»), por confirmar.
+  {
+    clave: 'personal_prueba_dias',
+    seccion: SECCION_INGRESO,
+    etiqueta: 'Días de la prueba de ingreso',
+    descripcion: 'Cuántos días dura la prueba de un candidato antes de decidir su alta. Cuenta el día de inicio.',
+    tipo: 'numero',
+    default: '3',
+    min: 1,
+    step: 1,
+  },
   {
     clave: 'capacitacion_nota_aprobatoria',
     seccion: SECCION_CAPACITACION,

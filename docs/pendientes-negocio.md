@@ -1977,3 +1977,12 @@ motor usa los valores normales. Defaults/decisiones que tuve que tomar, por conf
 - `meta_semanal` de temporada es una cifra única (no se ajusta por horas ni por `factorMeta`): para medio tiempo conviene usar «meta por hora».
 - El solape de temporadas se valida en la RPC sin restricción de exclusión (necesitaría `btree_gist`); dos guardados simultáneos podrían cruzarse. Riesgo bajo: un solo administrador las edita.
 - La pantalla de ventas y metas (`semanasConMeta`) aún no usa las temporadas: la meta que muestra puede diferir de la liquidada en esas semanas.
+## Ingreso de personal: candidatos, entrevista y prueba (ticket 14, 17-oct-2026)
+
+Migración 0134. Se usaron los defaults de la spec (`docs/superpowers/specs/empleados/2026-10-11-
+candidatos-entrevista-prueba-design.md` §7) sin respuesta del dueño — por confirmar:
+- `personal_prueba_dias = 3` (editable en `/configuracion` → «Ingreso de personal»).
+- La prueba **no se paga** en SCI-LB; se decide en el contrato.
+- La prueba puede repetirse; un descartado se reactiva; sin borrado automático de descartados.
+- Sólo administrador y dueño evalúan y ven candidatos (datos personales).
+- Un resultado «malo» no bloquea el alta: avisa, y decide el administrador.

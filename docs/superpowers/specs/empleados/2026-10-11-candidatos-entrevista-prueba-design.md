@@ -1,6 +1,9 @@
 # SPEC — Ingreso de personal: entrevistados y prueba de 3 días
 
-> **Estado: borrador para aprobar.** No hay código ni migración todavía (Zone Guard: la spec va
+> **Estado: aprobada para implementar el 17-oct-2026** (encargo de la maestra, ticket 14; se usan los
+> defaults de §7 tal cual). Antes era «borrador para aprobar».
+>
+> **Borrador anterior:** No hay código ni migración todavía (Zone Guard: la spec va
 > sola, el código en un commit posterior).
 >
 > **Origen.** Apuntes del cliente del 9-sep-2026 («FALTA AGREGAR EL APARTADO DE ENTREVISTADOS
@@ -104,3 +107,23 @@ código, no antes.
 
 Capacitación, exámenes y checklist (tickets 12 y 13) conectarán con `candidatos` más adelante, pero
 no se diseñan aquí: «no diseñes para requisitos hipotéticos».
+
+## 10. Cómo encaja con el proceso completo del Excel (REGISTRO DE PERSONAL) — 17-oct-2026
+
+El Excel del dueño ordena el ingreso en cinco etapas. Esta spec cubre las dos primeras y **abre** las
+tres siguientes con piezas que ya existen; no se rehace nada:
+
+| Etapa del Excel | Dónde vive |
+|---|---|
+| 1. Entrevista | `candidatos` (estado `entrevistado`) — nuevo |
+| 2. Prueba de 3 días con resultado | `candidatos` (`en_prueba` → `prueba_cerrada`, bueno/regular/malo) — nuevo |
+| 3. Registro de datos de personal | `/personal/nuevo`, precargado con los datos del candidato |
+| 4. Documentación | pestaña de documentos de la ficha (0105) |
+| 5. Acuerdos de contrato (horarios, sueldo, metas, funciones) | `/personal/[id]/contrato`: el alta ya sigue ahí (`?continuar=alta`) |
+
+**Pasar a alta** (paso 5 del flujo): el botón lleva a `/personal/nuevo?candidato=<id>`. Al crear a la
+persona, la pantalla llama a la RPC `candidato_vincular` (guarda `empleado_id`, estado `contratado`)
+y sigue al contrato como hoy. Pantalla nueva: `/personal/candidatos` (lista por estado, una acción
+visible por tarjeta). Transiciones válidas: `por_entrevistar→entrevistado→en_prueba→prueba_cerrada→
+contratado`; `prueba_cerrada→entrevistado` (repetir); cualquiera salvo `contratado`→`descartado`;
+`descartado→por_entrevistar`. Migración **0134**.
