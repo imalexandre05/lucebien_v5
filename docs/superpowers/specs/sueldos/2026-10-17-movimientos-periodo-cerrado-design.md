@@ -28,8 +28,10 @@ Nunca se guarda en silencio ni queda huérfano.
    - `anular_cierre` → anula la liquidación cerrada que cubre la fecha (con motivo automático) y
      carga con la fecha original. Si la anulación falla (p. ej. tiene pagos), el error sube y no se
      carga nada. No aplica a `sin_contrato`.
-4. **Red de seguridad:** un trigger rechaza con `PERIODO_CERRADO:` todo insert sin sello cuya fecha
-   caiga en un período cerrado, venga de donde venga.
+4. **Red de seguridad:** un trigger rechaza con `PERIODO_CERRADO:` todo insert **o cambio de fecha/persona**
+   de una fila sin sello cuya fecha caiga en un período cerrado **o sin contrato**, venga de donde venga.
+   `anular_cierre` no anula una liquidación que tiene pagos: corta con `PERIODO:` y manda a «Corregir»
+   (nunca a anular pagos reales). Carrera con el cierre: la RPC toma `for share` los borradores que cubren la fecha.
 5. **Pantalla:** al guardar, si la fecha no está abierta se muestra una pregunta con las dos
    opciones y la fecha concreta de cada una. Sin decisión no se guarda nada.
 
@@ -49,3 +51,8 @@ anotadas en `docs/pendientes-negocio.md`: el dueño sólo decidió el caso de lo
 8. Trigger: insert directo en período cerrado → `PERIODO_CERRADO:`.
 9. Un no-administrador no puede llamar a la RPC; sin permisos para `anon`.
 10. Reaplicar la migración es inocuo.
+
+## Corrección tras la revisión adversarial
+11. Un `update` de la fecha de un movimiento hacia un período cerrado o sin contrato se rechaza.
+12. Un insert directo con fecha sin contrato se rechaza.
+13. `anular_cierre` sobre una liquidación con pagos vigentes falla con `PERIODO:` y no anula nada.
