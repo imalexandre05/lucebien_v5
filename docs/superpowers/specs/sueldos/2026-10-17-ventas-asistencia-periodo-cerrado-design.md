@@ -33,6 +33,20 @@
   exactamente las de siempre (`penalidadTardanza`, `tardanzasLibres`). Ninguna regla nueva.
 - Las filas con `aplicada_en` en un período cerrado quedan congeladas (trigger de update/delete).
 
+## Enmienda tras el verificador
+
+- **Carrera con el cierre** (como la 0136): las tres RPC esperan (`for share`) al borrador que cubre la fecha tipeada y
+  al que cubre la fecha destino, y releen el estado del destino antes de escribir; si se cerró mientras tanto, error
+  `PERIODO:` y no se guarda nada.
+- **Una sola vez por día**: `unique (empleado_id, fecha_original)` en las tardanzas trasladadas, y se rechaza si el día
+  ya tiene asistencia cargada (`trabajado` o `falta`): ese día ya se liquidó con su asistencia; se corrige con «Corregir».
+- **Reasignar una venta ya trasladada** parte de su `fecha_original`, no de la fecha movida.
+- La red de seguridad también vigila el insert y el cambio de `aplicada_en` de las tardanzas (no puede caer en un período
+  cerrado).
+- Pendiente, anotado en `docs/pendientes-negocio.md`: (a) los puntos de la evaluación se calculan por `fecha`, así que una
+  venta trasladada da sus puntos al mes destino; (b) borradores calculados antes de la 0144 piden recalcular antes de
+  cerrar; (c) una tardanza de un día sin contrato también se traslada.
+
 ## Fuera de alcance de esta spec (se avisa, no se carga)
 
 Faltas y horas de un día en período cerrado **no** se trasladan: dependen del horario y del valor por hora del día
