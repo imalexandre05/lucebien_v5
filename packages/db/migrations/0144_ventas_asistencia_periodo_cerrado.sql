@@ -18,10 +18,15 @@ $$;
 -- Fecha efectiva de una carga: la misma si el período está abierto; el primer día del siguiente período
 -- abierto si está cerrado o sin contrato; error PERIODO: si no hay siguiente. Devuelve {fecha, original, aviso}.
 create or replace function private.sueldo_fecha_efectiva(p_empleado uuid, p_fecha date, p_que text)
-  returns jsonb language plpgsql stable security definer set search_path = public, pg_temp
+  returns jsonb language plpgsql volatile security definer set search_path = public, pg_temp
 as $fn$
 declare st jsonb; v_estado text; v_sig date;
 begin
+  -- Carrera con el cierre (como la 0136): si un borrador cubre la fecha, esperar a que termine un cierre en
+  -- curso (el cierre lo bloquea `for update`) y recién entonces mirar el estado.
+  perform 1 from sueldo_liquidaciones
+   where empleado_id = p_empleado and estado = 'borrador' and p_fecha between periodo_desde and periodo_hasta
+   for share;
   st := private.sueldo_estado_fecha(p_empleado, p_fecha);
   v_estado := st->>'estado';
   if v_estado = 'abierto' then
@@ -31,6 +36,13 @@ begin
   if v_sig is null then
     raise exception 'PERIODO:% no tiene un período siguiente abierto: crea el contrato siguiente o anula el cierre; no se guardó nada',
       initcap(private.sueldo_mes_es(p_fecha));
+  end if;
+  -- Lo mismo con el período destino: si se cerró mientras tanto, no se guarda nada.
+  perform 1 from sueldo_liquidaciones
+   where empleado_id = p_empleado and estado = 'borrador' and v_sig between periodo_desde and periodo_hasta
+   for share;
+  if private.sueldo_estado_fecha(p_empleado, v_sig)->>'estado' <> 'abierto' then
+    raise exception 'PERIODO:el período siguiente se cerró mientras tanto; vuelve a intentarlo; no se guardó nada';
   end if;
   return jsonb_build_object('fecha', v_sig, 'original', p_fecha,
     'aviso', case v_estado when 'cerrado'
@@ -75,11 +87,12 @@ begin
   end if;
   select * into v from sueldo_ventas where id = p_venta for update;
   if not found then raise exception 'DATO:la venta no existe'; end if;
-  ef := private.sueldo_fecha_efectiva(p_empleado, v.fecha, 'la venta');
+  -- Parte de la fecha original (la que tipeó la persona), no de la ya trasladada.
+  ef := private.sueldo_fecha_efectiva(p_empleado, coalesce(v.fecha_original, v.fecha), 'la venta');
   update sueldo_ventas
      set empleado_id = p_empleado,
          fecha = (ef->>'fecha')::date,
-         fecha_original = coalesce((ef->>'original')::date, fecha_original)
+         fecha_original = case when ef->>'original' is null then null else coalesce(v.fecha_original, v.fecha) end
    where id = p_venta;
   return jsonb_build_object('id', p_venta, 'fecha', ef->>'fecha', 'fecha_original', ef->>'original', 'aviso', ef->>'aviso');
 end;
@@ -116,6 +129,8 @@ create table if not exists sueldo_tardanzas_diferidas (
   constraint sueldo_tard_dif_motivo_chk check (length(trim(motivo)) > 0),
   constraint sueldo_tard_dif_fechas_chk check (aplicada_en > fecha_original)
 );
+-- Una tardanza trasladada por día y persona: el doble clic o un reenvío no descuentan dos veces.
+create unique index if not exists uq_sueldo_tard_dif_dia on sueldo_tardanzas_diferidas(empleado_id, fecha_original);
 create index if not exists idx_sueldo_tard_dif_emp on sueldo_tardanzas_diferidas(empleado_id, aplicada_en);
 alter table sueldo_tardanzas_diferidas enable row level security;
 drop policy if exists sueldo_tard_dif_admin on sueldo_tardanzas_diferidas;
@@ -135,6 +150,22 @@ begin
   return case when tg_op = 'DELETE' then old else new end;
 end;
 $fn$;
+-- Red de seguridad: aplicada_en no puede caer en un período cerrado o sin contrato (insert o cambio de fecha).
+create or replace function private.sueldo_tard_dif_destino_abierto() returns trigger
+  language plpgsql security definer set search_path = public, pg_temp
+as $fn$
+begin
+  if private.sueldo_estado_fecha(new.empleado_id, new.aplicada_en)->>'estado' <> 'abierto' then
+    raise exception 'PERIODO_CERRADO:la fecha % no está en un período abierto; usa sueldo_tardanza_diferida_crear',
+      to_char(new.aplicada_en, 'DD/MM/YYYY');
+  end if;
+  return new;
+end;
+$fn$;
+drop trigger if exists trg_sueldo_tard_dif_destino on sueldo_tardanzas_diferidas;
+create trigger trg_sueldo_tard_dif_destino before insert or update of aplicada_en, empleado_id on sueldo_tardanzas_diferidas
+  for each row execute function private.sueldo_tard_dif_destino_abierto();
+
 drop trigger if exists trg_sueldo_tard_dif_congelada on sueldo_tardanzas_diferidas;
 create trigger trg_sueldo_tard_dif_congelada before update or delete on sueldo_tardanzas_diferidas
   for each row execute function private.sueldo_tard_dif_congelada();
@@ -148,6 +179,12 @@ begin
     raise exception 'PERMISO:sólo el administrador carga tardanzas';
   end if;
   if v_motivo = '' then raise exception 'DATO:el motivo es obligatorio'; end if;
+  -- Si el día ya tiene asistencia cargada, ya se liquidó con ella: se corrige allí («Corregir»), no se traslada.
+  if exists (select 1 from asistencias s where s.empleado_id = p_empleado and s.fecha = p_fecha
+                and s.condicion in ('trabajado', 'falta')) then
+    raise exception 'DATO:el % ya tiene la asistencia cargada; corrígela con «Corregir» en vez de trasladar la tardanza',
+      to_char(p_fecha, 'DD/MM/YYYY');
+  end if;
   ef := private.sueldo_fecha_efectiva(p_empleado, p_fecha, 'la tardanza');
   if ef->>'original' is null then
     raise exception 'DATO:el % está en un período abierto: cárgala en la asistencia del día', to_char(p_fecha, 'DD/MM/YYYY');
