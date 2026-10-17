@@ -94,3 +94,57 @@ export const cerrarCapacitacion = (cap: string) => rpc('capacitacion_cerrar', { 
 export const cancelarCapacitacion = (cap: string) => rpc('capacitacion_cancelar', { p_cap: cap });
 export const guardarItem = (id: string | null, nombre: string, orden: number, activo: boolean) =>
   rpc('capacitacion_item_guardar', { p_id: id, p_nombre: nombre, p_orden: orden, p_activo: activo });
+
+// ── Exámenes (migración 0138) ────────────────────────────────────────────────────────────────
+// El banco (con la clave) solo lo lee el administrador por RLS. Quien rinde recibe las preguntas
+// sin clave de `examen_iniciar`. Toda escritura es una RPC.
+
+export type TipoExamen = 'software' | 'escrito';
+export type Pregunta = { id: string; tipo: TipoExamen; tema: string; enunciado: string; opciones: string[]; correcta: number; activa: boolean };
+export type Habilidad = { id: string; nombre: string; orden: number; activo: boolean };
+export type IntentoExamen = { id: string; tipo: TipoExamen; nota: number | null; estado: 'en_curso' | 'calificado'; creadoEn: string };
+export type PreguntaExamen = { id: string; enunciado: string; opciones: string[] };
+export type ExamenIniciado = { intentoId: string; tipo: TipoExamen; preguntas: PreguntaExamen[] };
+export type ResultadoExamen = { nota: number; aciertos: number; total: number };
+
+export async function listarPreguntas(): Promise<Pregunta[]> {
+  const { data, error } = await getServerClient()
+    .from('examen_preguntas').select('id, tipo, tema, enunciado, opciones, correcta, activa').order('tipo').order('created_at');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Pregunta[];
+}
+
+export async function listarHabilidades(): Promise<Habilidad[]> {
+  const { data, error } = await getServerClient().from('examen_habilidades').select('id, nombre, orden, activo').order('orden').order('nombre');
+  if (error) throw new Error(error.message);
+  return (data ?? []) as Habilidad[];
+}
+
+export async function listarIntentos(capId: string): Promise<IntentoExamen[]> {
+  const { data, error } = await getServerClient()
+    .from('examen_intentos').select('id, tipo, nota, estado, creado_en').eq('capacitacion_id', capId).order('creado_en', { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((r) => ({
+    id: r.id as string, tipo: r.tipo as TipoExamen, nota: r.nota === null ? null : Number(r.nota),
+    estado: r.estado as IntentoExamen['estado'], creadoEn: r.creado_en as string,
+  }));
+}
+
+export async function listarNotasPresencial(capId: string): Promise<Record<string, number>> {
+  const { data, error } = await getServerClient().from('examen_presencial_notas').select('habilidad_id, nota').eq('capacitacion_id', capId);
+  if (error) throw new Error(error.message);
+  return Object.fromEntries((data ?? []).map((r) => [r.habilidad_id as string, Number(r.nota)]));
+}
+
+export async function iniciarExamen(cap: string, tipo: TipoExamen): Promise<ExamenIniciado> {
+  const j = (await rpc('examen_iniciar', { p_cap: cap, p_tipo: tipo })) as { intento_id: string; tipo: TipoExamen; preguntas: PreguntaExamen[] };
+  return { intentoId: j.intento_id, tipo: j.tipo, preguntas: j.preguntas };
+}
+export const responderExamen = (intento: string, respuestas: Record<string, number>) =>
+  rpc('examen_responder', { p_intento: intento, p_respuestas: respuestas }) as Promise<ResultadoExamen>;
+export const guardarPregunta = (p: Omit<Pregunta, 'id'> & { id: string | null }) =>
+  rpc('examen_pregunta_guardar', { p_id: p.id, p_tipo: p.tipo, p_tema: p.tema, p_enunciado: p.enunciado, p_opciones: p.opciones, p_correcta: p.correcta, p_activa: p.activa });
+export const guardarHabilidad = (id: string | null, nombre: string, orden: number, activo: boolean) =>
+  rpc('examen_habilidad_guardar', { p_id: id, p_nombre: nombre, p_orden: orden, p_activo: activo });
+export const calificarPresencial = (cap: string, notas: { habilidad: string; nota: number }[]) =>
+  rpc('examen_presencial_calificar', { p_cap: cap, p_notas: notas });

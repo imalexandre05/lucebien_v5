@@ -33,6 +33,11 @@ export default async function CapacitacionPage() {
         title="Capacitación"
         subtitle={`${capacitaciones.filter((c) => c.estado === 'en_curso').length} en curso`}
       />
+      {esAdmin && (
+        <p className="mb-3 text-cuerpo">
+          <a href="/capacitacion/examenes" className="font-medium text-gold-deep underline">Banco de preguntas y habilidades de los exámenes →</a>
+        </p>
+      )}
       <CapacitacionCliente
         capacitaciones={capacitaciones}
         items={items}
