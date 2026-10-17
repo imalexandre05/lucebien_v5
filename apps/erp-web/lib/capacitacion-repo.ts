@@ -38,7 +38,7 @@ export async function notaAprobatoria(): Promise<number> {
   const sb = getServerClient();
   const { data } = await sb.from('config').select('valor').eq('clave', 'capacitacion_nota_aprobatoria').maybeSingle();
   const n = Number(data?.valor);
-  return Number.isFinite(n) && n > 0 ? n : 14;
+  return Number.isFinite(n) && n >= 0 ? n : 14; // mismo criterio que la RPC de cierre (acepta 0)
 }
 
 export async function listarCapacitaciones(): Promise<Capacitacion[]> {
