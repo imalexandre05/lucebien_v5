@@ -235,7 +235,9 @@ export function EvaluacionesCliente({
   function anularCalculo() {
     setInfoExtra(null);
     // Sólo lo automático; exámenes (entrada manual) se conserva.
-    setComp((p) => ({ ...p, operaciones: 0, software: 0, limpieza: 0, tardanza: 0, valores: 0, descuentoIncidencias: 0, bonusVentas: 0 }));
+    // `examenes` automático (0132) también se anula: si el nuevo ciclo no trae dato, no debe quedar el de otro ciclo como manual.
+    setComp((p) => ({ ...p, operaciones: 0, software: 0, limpieza: 0, tardanza: 0, valores: 0, descuentoIncidencias: 0, bonusVentas: 0, examenes: examenesAuto !== null ? 0 : p.examenes }));
+    setExamenesAuto(null);
   }
   function setCicloDesde(v: string) {
     setCiclo((c) => (c ? { ...c, desde: v } : c));
