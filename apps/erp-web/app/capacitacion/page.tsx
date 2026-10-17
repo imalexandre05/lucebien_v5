@@ -1,15 +1,25 @@
 import { redirect } from 'next/navigation';
+import { puede, type MatrizPermisos } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
+import { leerMatrizPermisos } from '../../lib/permisos-repo';
 import { PageHeader } from '../../components/shell/page-header';
 import { listarCapacitaciones, listarItems, notaAprobatoria } from '../../lib/capacitacion-repo';
 import { listarEmpleados } from '../../lib/reportes-repo';
 import { CapacitacionCliente } from './cliente';
 
-// Sin módulo propio: la base decide qué ve cada quien (RLS de la 0131). El administrador lo ve todo;
-// el capacitador, las que dicta; el nuevo, la suya.
+// Mismo permiso que la entrada del menú ('evaluaciones'), validado en el servidor: antes sólo se ocultaba
+// el enlace. Dentro, la base decide qué ve cada quien (RLS de la 0131): el administrador todo; el
+// capacitador, las que dicta; el nuevo, la suya.
 export default async function CapacitacionPage() {
   const sesion = await getSesion();
   if (!sesion) redirect('/login');
+  let matriz: MatrizPermisos = {};
+  try {
+    matriz = await leerMatrizPermisos();
+  } catch {
+    matriz = {};
+  }
+  if (!puede(matriz, sesion.usuario.rol, 'evaluaciones', 'ver', sesion.usuario.rolCod)) redirect('/reportes/nuevo');
   const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
   const [capacitaciones, items, minimo, empleados] = await Promise.all([
     listarCapacitaciones(),
