@@ -4,6 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../../lib/auth';
 import {
   crearMovimiento,
+  estadoFechaMovimiento,
+  type DecisionPeriodo,
+  type EstadoFechaMovimiento,
   eliminarMovimiento,
   validarMovimiento,
   SueldoRpcError,
@@ -77,7 +80,10 @@ function revalidarSinFallar() {
   }
 }
 
-export async function accionCrearMovimiento(p: MovimientoInput): Promise<Resultado & { id?: string }> {
+export async function accionCrearMovimiento(
+  p: MovimientoInput,
+  decision: DecisionPeriodo | null = null,
+): Promise<Resultado & { id?: string }> {
   // ── Antes del insert: todo rechazo acá es seguro que no escribió (`escrito: false`). ──
   let admId: string | null;
   try {
@@ -104,12 +110,25 @@ export async function accionCrearMovimiento(p: MovimientoInput): Promise<Resulta
   // ── El insert: un error desde acá es incierto (pudo escribirse y perderse la respuesta). ──
   let id: string;
   try {
-    id = await crearMovimiento(p, admId);
+    id = await crearMovimiento(p, admId, decision);
   } catch (e) {
     return comoResultado(e);
   }
   revalidarSinFallar();
   return { ok: true, id };
+}
+
+/** Para la pregunta «¿a qué período lo cargo?»: estado de la fecha y adónde iría «al siguiente». */
+export async function accionEstadoFechaMovimiento(
+  empleadoId: string,
+  fecha: string,
+): Promise<{ ok: boolean; estado?: EstadoFechaMovimiento; error?: string }> {
+  try {
+    if (!(await admin())) return { ok: false, error: NEGADO.error };
+    return { ok: true, estado: await estadoFechaMovimiento(empleadoId, fecha) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'No se pudo consultar el período.' };
+  }
 }
 
 export async function accionEliminarMovimiento(id: string): Promise<Resultado> {

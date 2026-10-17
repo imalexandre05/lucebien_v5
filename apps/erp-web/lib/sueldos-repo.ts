@@ -60,6 +60,8 @@ import { leerConfigMap } from './config-repo';
  * - `DESACTUALIZADA` — se cargó algo entre el cálculo y el cierre. Hay que recalcular.
  * - `CONGELADA` — se intentó tocar algo ya liquidado. No se reintenta: se corrige el mes en curso.
  * - `CONFIG` — un parámetro de `/configuracion` no es un número. Lo arregla el administrador.
+ * - `PERIODO` — la fecha del movimiento está en un período cerrado o sin contrato y falta decidir a qué
+ *   período cargarlo (migración 0136). La pantalla pregunta; no se guardó nada.
  * - `SALDO` — código de la 0080 (`sueldo_liquidacion_pagar`): el abono pedido deja lo pagado por
  *   encima del total de la liquidación. No se reintenta con el mismo monto.
  */
@@ -70,6 +72,7 @@ export type CodigoSueldo =
   | 'DESACTUALIZADA'
   | 'CONGELADA'
   | 'CONFIG'
+  | 'PERIODO'
   | 'SALDO';
 
 export class SueldoRpcError extends Error {
@@ -88,6 +91,7 @@ const CODIGOS: readonly string[] = [
   'DESACTUALIZADA',
   'CONGELADA',
   'CONFIG',
+  'PERIODO',
   'SALDO',
 ];
 
@@ -634,26 +638,49 @@ export function validarMovimiento(p: MovimientoInput): void {
   }
 }
 
-export async function crearMovimiento(p: MovimientoInput, creadoPor: string): Promise<string> {
+export type DecisionPeriodo = 'siguiente' | 'anular_cierre';
+
+/**
+ * El alta pasa por la RPC `sueldo_movimiento_crear` (0136): si la fecha cae en un período cerrado o
+ * sin contrato y no llega una decisión, falla con `PERIODO` y no escribe. Con `siguiente` se carga
+ * en el próximo período abierto; con `anular_cierre`, se anula el cierre y se carga en su fecha.
+ */
+export async function crearMovimiento(
+  p: MovimientoInput,
+  _creadoPor: string,
+  decision: DecisionPeriodo | null = null,
+): Promise<string> {
   validarMovimiento(p);
   const conteo = esConteo(p.tipo);
 
   const sb = getServerClient();
-  const { data, error } = await sb
-    .from('sueldo_movimientos')
-    .insert({
-      empleado_id: p.empleadoId,
-      fecha: p.fecha,
-      tipo: p.tipo,
-      monto: conteo ? null : p.monto,
-      cantidad: conteo ? p.cantidad : 1,
-      motivo: p.motivo.trim(),
-      creado_por: creadoPor,
-    })
-    .select('id')
-    .single();
+  const { data, error } = await sb.rpc('sueldo_movimiento_crear', {
+    p_empleado: p.empleadoId,
+    p_fecha: p.fecha,
+    p_tipo: p.tipo,
+    p_monto: conteo ? null : p.monto,
+    p_cantidad: conteo ? p.cantidad : 1,
+    p_motivo: p.motivo.trim(),
+    p_decision: decision,
+  });
   if (error) throw errorSueldo(error);
-  return String((data as { id: string }).id);
+  return String(data);
+}
+
+export type EstadoFechaMovimiento = {
+  estado: 'abierto' | 'cerrado' | 'sin_contrato';
+  desde?: string;
+  hasta?: string;
+  /** Primera fecha de un período abierto desde la pedida; null si ya no hay ninguno. */
+  siguiente?: string | null;
+};
+
+/** Estado de una fecha para una persona: lo que la pantalla necesita para preguntar. */
+export async function estadoFechaMovimiento(empleadoId: string, fecha: string): Promise<EstadoFechaMovimiento> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('sueldo_movimiento_estado_fecha', { p_empleado: empleadoId, p_fecha: fecha });
+  if (error) throw errorSueldo(error);
+  return data as EstadoFechaMovimiento;
 }
 
 /**

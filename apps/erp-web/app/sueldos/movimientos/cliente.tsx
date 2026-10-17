@@ -12,7 +12,9 @@ import { hoyPeru } from '../../../lib/fechas';
 import { esConteo, type TipoMovimiento } from '../../../lib/sueldos-tipos';
 import type { MovimientoSueldo, VentaSueldo } from '../../../lib/sueldos-repo';
 import { correrAccion, mensajeIncierto, planTrasFallo, restaurarSiVacio, sinId } from '../../../lib/movimientos-optimista';
-import { accionCrearMovimiento, accionEliminarMovimiento } from './actions';
+import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
+import type { DecisionPeriodo, EstadoFechaMovimiento } from '../../../lib/sueldos-repo';
+import { accionCrearMovimiento, accionEliminarMovimiento, accionEstadoFechaMovimiento } from './actions';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
 
@@ -88,9 +90,15 @@ export function MovimientosCliente({
   const conteo = esConteo(mov.tipo);
   const ayudaTipo = TIPOS.find((t) => t.valor === mov.tipo)?.ayuda ?? '';
 
-  const guardarMovimiento = () => {
+  // Pregunta «¿a qué período lo cargo?» (0136): la fecha cae en un período cerrado o sin contrato.
+  // Se guarda lo tipeado para repetir el alta con la decisión elegida; nada se escribe sin ella.
+  const [pregunta, setPregunta] = useState<{ tipeado: typeof mov; estado: EstadoFechaMovimiento } | null>(null);
+
+  const fechaCorta = (iso: string) => iso.split('-').reverse().join('/');
+
+  const guardarMovimiento = (tipeado = mov, decision: DecisionPeriodo | null = null) => {
     setError(null);
-    const tipeado = mov;
+    setPregunta(null);
     const tmpId = `tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     setProvisorias((ps) => [
       {
@@ -121,7 +129,7 @@ export function MovimientosCliente({
             monto: conteo ? undefined : Number(tipeado.monto),
             cantidad: conteo ? Number(tipeado.cantidad) : undefined,
             motivo: tipeado.motivo,
-          }),
+          }, decision),
         'No se pudo confirmar el registro.',
       );
       if (r.ok) {
@@ -135,6 +143,13 @@ export function MovimientosCliente({
             ? ps.filter((p) => p.id !== tmpId)
             : ps.map((p) => (p.id === tmpId ? { ...p, idReal } : p)),
         );
+      } else if (r.codigo === 'PERIODO') {
+        // Nada se escribió: se quita la fila provisoria y se pregunta a qué período cargarla.
+        setProvisorias((ps) => ps.filter((p) => p.id !== tmpId));
+        setMov((actual) => restaurarSiVacio(actual, tipeado));
+        const q = await accionEstadoFechaMovimiento(tipeado.empleadoId, tipeado.fecha);
+        if (q.ok && q.estado) setPregunta({ tipeado, estado: q.estado });
+        else setError(q.error ?? r.error ?? 'Esa fecha está en un período cerrado.');
       } else {
         const plan = planTrasFallo(r);
         setProvisorias((ps) => ps.filter((p) => p.id !== tmpId));
@@ -173,6 +188,54 @@ export function MovimientosCliente({
 
   return (
     <div className="space-y-6">
+      <Modal
+        open={pregunta !== null}
+        onClose={() => setPregunta(null)}
+        title="Esa fecha ya está cerrada"
+        subtitle={pregunta ? `${fechaCorta(pregunta.tipeado.fecha)} · ${pregunta.estado.estado === 'cerrado' ? 'período ya liquidado' : 'sin contrato'}` : undefined}
+      >
+        {pregunta && (
+          <>
+            <ModalBody className="space-y-3 text-cuerpo">
+              <p>
+                Si lo guardas con esa fecha, ninguna liquidación lo tomaría y no se descontaría ni se pagaría.
+                ¿A qué período lo cargamos?
+              </p>
+              {pregunta.estado.siguiente ? (
+                <p className="text-muted">
+                  Al siguiente período abierto: se carga con fecha {fechaCorta(pregunta.estado.siguiente)} y queda
+                  anotada la fecha original.
+                </p>
+              ) : (
+                <p className="text-error-deep">
+                  No hay un período siguiente abierto. Crea primero el contrato siguiente
+                  {pregunta.estado.estado === 'cerrado' ? ' o anula el cierre.' : '.'}
+                </p>
+              )}
+              {pregunta.estado.estado === 'cerrado' && (
+                <p className="text-muted">
+                  Anular el cierre reabre la liquidación del {fechaCorta(pregunta.estado.desde ?? '')} al{' '}
+                  {fechaCorta(pregunta.estado.hasta ?? '')} para volver a calcularla. No se puede si ya tiene pagos.
+                </p>
+              )}
+            </ModalBody>
+            <ModalFooter>
+              <Button variant="ghost" onClick={() => setPregunta(null)}>Cancelar</Button>
+              {pregunta.estado.estado === 'cerrado' && (
+                <Button variant="outline" onClick={() => guardarMovimiento(pregunta.tipeado, 'anular_cierre')}>
+                  Anular el cierre
+                </Button>
+              )}
+              <Button
+                disabled={!pregunta.estado.siguiente}
+                onClick={() => guardarMovimiento(pregunta.tipeado, 'siguiente')}
+              >
+                Cargar al siguiente período
+              </Button>
+            </ModalFooter>
+          </>
+        )}
+      </Modal>
       {error && <p className="rounded-r-chico bg-error/10 px-3 py-2 text-cuerpo text-error-deep">{error}</p>}
 
       {/* ── Movimientos ──────────────────────────────────────────────────────────────────── */}
@@ -253,7 +316,7 @@ export function MovimientosCliente({
             </p>
           )}
 
-          <Button onClick={guardarMovimiento} pending={pendiente} disabled={!mov.empleadoId || !mov.motivo.trim()}>
+          <Button onClick={() => guardarMovimiento()} pending={pendiente} disabled={!mov.empleadoId || !mov.motivo.trim()}>
             <Plus className="h-4 w-4" /> Registrar
           </Button>
         </CardContent>
