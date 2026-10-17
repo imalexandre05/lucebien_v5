@@ -125,5 +125,22 @@ begin
     r := r || format('[FALLA] caso 3: cobro=%s rechazar=%s filas-neg=%s;', v_pts, v_err, v_n);
   end if;
 
+  -- ── 6) División: A cobró en la madre y se rechazan las dos hijas hacia la misma etapa ───────
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
+    values ('P0140-6', 'Terno completo', 'normal', v_a, 'planchado') returning id into p;
+  perform pg_temp.como(e_cf);
+  v_pts := pipeline_avanzar(p, 'control_calidad');
+  v_err := pg_temp.mensaje(format('select pipeline_dividir(%L)', p));
+  perform pg_temp.como(e_alm);
+  v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_rechazar(id, %L) from prenda_pasada where codigo in (%L, %L)', 'planchado', 'P0140-6-S', 'P0140-6-P'));
+  perform pg_temp.dueno();
+  select coalesce(sum(puntos), 0) into v_suma from pipeline_puntos where empleado_id = e_cf and pasada_id in
+    (select id from prenda_pasada where codigo like 'P0140-6%');
+  if v_pts >= 0 and v_suma >= 0 then
+    r := r || '[ok] caso 6: dividida y rechazada en las dos hijas, el culpable nunca queda bajo cero;';
+  else
+    r := r || format('[FALLA] caso 6: cobro=%s neto=%s err=%s;', v_pts, v_suma, v_err);
+  end if;
+
   raise exception 'RESULTADO 0140 --> %', r;
 end $$;

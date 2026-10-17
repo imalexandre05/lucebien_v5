@@ -20,6 +20,12 @@ Cuando control de calidad **rechaza** una prenda hacia una etapa anterior (`pipe
 3. Si el culpable nunca cobró esa etapa (retrabajo previo, sin rol de pipeline, clave en 0), no hay nada
    que quitar: no se escribe ninguna fila.
 
+## Prendas divididas (hallazgo del verificador)
+
+El neto se calcula sobre toda la **familia** de la prenda: ella, su madre y las hijas de esa madre. Así, si A
+cobró la etapa en la madre y dos hijas se rechazan hacia esa etapa, el primer rechazo quita lo cobrado y el
+segundo no quita nada: A nunca queda por debajo de 0.
+
 ## Qué NO cambia
 
 Firmas, grants, `security definer`, portero, H-4, H-7, el cálculo del culpable (última persona que sacó
