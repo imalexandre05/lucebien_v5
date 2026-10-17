@@ -95,6 +95,12 @@ begin
   end if;
   if v_motivo = '' then raise exception 'DATO:el motivo es obligatorio'; end if;
 
+  -- Carrera con el cierre: si hay un borrador que cubre la fecha, esperar a que termine un cierre en
+  -- curso (el cierre lo bloquea `for update`) y recién entonces mirar el estado.
+  perform 1 from sueldo_liquidaciones
+   where empleado_id = p_empleado and estado = 'borrador' and p_fecha between periodo_desde and periodo_hasta
+   for share;
+
   st := private.sueldo_estado_fecha(p_empleado, p_fecha);
   v_estado := st->>'estado';
 
@@ -116,6 +122,9 @@ begin
       if v_estado <> 'cerrado' then
         raise exception 'PERIODO:la fecha % no tiene contrato: no hay cierre que anular; no se guardó nada',
           to_char(p_fecha, 'DD/MM/YYYY');
+      end if;
+      if exists (select 1 from sueldo_liquidacion_pagos where liquidacion_id = (st->>'liquidacion_id')::uuid and not anulado) then
+        raise exception 'PERIODO:esa liquidación ya tiene pagos registrados; no se anula el cierre. Corrígela desde Liquidación y pago con «Corregir» (no anules pagos entregados); no se guardó nada';
       end if;
       perform sueldo_liquidacion_anular((st->>'liquidacion_id')::uuid,
         'Anulada para cargar un movimiento con fecha ' || to_char(p_fecha, 'DD/MM/YYYY') || ': ' || v_motivo);
@@ -141,13 +150,13 @@ create or replace function private.sueldo_mov_no_en_cerrado() returns trigger
 as $fn$
 begin
   if new.liquidacion_id is null
-     and private.sueldo_estado_fecha(new.empleado_id, new.fecha)->>'estado' = 'cerrado' then
-    raise exception 'PERIODO_CERRADO:la fecha % está en un período ya cerrado; usa sueldo_movimiento_crear y elige a qué período cargarlo',
+     and private.sueldo_estado_fecha(new.empleado_id, new.fecha)->>'estado' in ('cerrado', 'sin_contrato') then
+    raise exception 'PERIODO_CERRADO:la fecha % está en un período cerrado o sin contrato; usa sueldo_movimiento_crear y elige a qué período cargarlo',
       to_char(new.fecha, 'DD/MM/YYYY');
   end if;
   return new;
 end;
 $fn$;
 drop trigger if exists trg_sueldo_mov_no_en_cerrado on sueldo_movimientos;
-create trigger trg_sueldo_mov_no_en_cerrado before insert on sueldo_movimientos
+create trigger trg_sueldo_mov_no_en_cerrado before insert or update of fecha, empleado_id on sueldo_movimientos
   for each row execute function private.sueldo_mov_no_en_cerrado();

@@ -142,6 +142,7 @@ begin
   else r := r || format('[FALLA] caso 10b: %s;', v_err); end if;
 
   -- ── 11) anular_cierre con un pago vigente: falla con PERIODO y manda a Corregir ─────────────
+  perform pg_temp.como(adm);
   v_err := pg_temp.mensaje(format('select sueldo_movimiento_crear(%L,%L,%L,30,1,%L,%L)', per, '2099-01-05', 'adelanto', 'con pago 2', 'anular_cierre'));
   if v_err like 'PERIODO:%' and v_err like '%Corregir%' then r := r || '[ok] caso 11: con pagos no se anula el cierre; el mensaje manda a Corregir;';
   else r := r || format('[FALLA] caso 11: %s;', v_err); end if;
