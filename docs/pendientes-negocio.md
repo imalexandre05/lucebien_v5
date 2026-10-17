@@ -1928,3 +1928,12 @@ Inventados para poder construir el flujo (tablero#13); el dueño debe confirmarl
 4. **Pago al capacitador (`valorCapacitacion`):** sin conectar. ¿Se paga al cerrar una capacitación aprobada?
    Requiere spec completa (cadena del sueldo).
 5. **Componente `examenes` de la evaluación:** ver spec de tablero#3.
+
+## Evaluación: componentes automáticos (17-oct-2026, tablero#3) — [spec](superpowers/specs/evaluaciones/2026-10-17-componentes-automaticos-design.md)
+
+Sin parámetros nuevos. Decisiones tomadas por el implementador, a confirmar:
+
+1. **Los componentes calculados no se pisan a mano** (ya lo imponía el servidor; ahora la pantalla lo muestra).
+2. **`examenes`** = promedio de la nota vigente (último examen) de las capacitaciones completadas en el ciclo; sin
+   capacitaciones queda manual. ¿Debe contar también un examen suelto fuera de una capacitación? Hoy no existe ese registro.
+3. La nota final no depende de ningún componente (sólo de los puntos): `examenes` es perfil, igual que los demás.
