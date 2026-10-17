@@ -4,10 +4,10 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, useTransitio
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Bell, Check, CheckCheck, Info, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Bell, Check, CheckCheck, RefreshCw, Info, AlertTriangle, ShieldAlert } from 'lucide-react';
 import type { Notificacion } from '../../lib/notificaciones-repo';
 import { enlaceNotificacion } from '../../lib/notificaciones-enlace';
-import { marcarLeidaAction, marcarTodasLeidasAction } from '../../app/notificaciones/actions';
+import { generarAlertasAction, marcarLeidaAction, marcarTodasLeidasAction } from '../../app/notificaciones/actions';
 import { cn } from '../../lib/cn';
 
 const SEV_ICON: Record<Notificacion['severidad'], { icon: typeof Info; cls: string }> = {
@@ -22,8 +22,8 @@ const ALTURA_ESTIMADA = 420;
 
 // Campana + ventana emergente (Fase 6, reposicionamiento en Fase 3): las notificaciones ya NO
 // viven en una página completa para lo reciente. La campana abre un popover chico; "Mostrar más"
-// ahora NAVEGA a /notificaciones (antes abría un modal `size='xl'` de 672px, insuficiente para
-// filtros + tabla completa — la página ya existe y hace exactamente eso).
+// la página /notificaciones ya no existe (redirige al inicio): la campana lista todo (hasta 30) y
+// cada fila lleva a la pantalla donde se resuelve y se marca leída al abrirla.
 //
 // Overlay Y panel van por portal a <body>, con posición calculada desde el botón: el topbar tiene
 // backdrop-blur, que crea un containing block para `position:fixed` — un overlay fixed anidado ahí
@@ -37,8 +37,8 @@ const ALTURA_ESTIMADA = 420;
 // panel (medida por `panelRef`) contra el espacio disponible.
 //
 // Cada fila con un pendiente que se resuelve en otra pantalla es un enlace a esa pantalla (mismo
-// mapeo que /notificaciones: lib/notificaciones-enlace.ts). Abrirla NO la marca como leída: leer
-// el aviso no es resolverlo, y la regla la retira sola cuando la condición deja de ser cierta (0101).
+// mapeo que /notificaciones: lib/notificaciones-enlace.ts). Abrirla la marca leída (pedido del
+// cliente, oct-2026); la regla igual la retira sola cuando la condición deja de ser cierta (0101).
 export function NotificacionesBell({ notificaciones, esAdmin }: { notificaciones: Notificacion[]; esAdmin: boolean }) {
   const router = useRouter();
   const path = usePathname();
@@ -46,7 +46,8 @@ export function NotificacionesBell({ notificaciones, esAdmin }: { notificaciones
   const panelRef = useRef<HTMLDivElement>(null);
   const [abierto, setAbierto] = useState(false);
   const [coords, setCoords] = useState<{ top: number | null; right: number }>({ top: null, right: 8 });
-  const [, startTransition] = useTransition();
+  const [pendiente, startTransition] = useTransition();
+  const [aviso, setAviso] = useState<string | null>(null);
 
   useEffect(() => setAbierto(false), [path]);
 
@@ -61,7 +62,7 @@ export function NotificacionesBell({ notificaciones, esAdmin }: { notificaciones
   // ahí; si no, sube el panel para que su base quede pegada arriba del botón. El clamp final a
   // `margen` es lo que evita que en un viewport muy bajo (móvil apaisado) el panel termine con
   // top negativo, empujado fuera de la pantalla por el propio flip — mejor que quede pegado
-  // arriba y su lista interna (`max-h-80 overflow-y-auto`) absorba el resto con scroll.
+  // arriba y su lista interna (`max-h-96 overflow-y-auto`) absorba el resto con scroll.
   const reposicionar = useCallback(() => {
     const btn = btnRef.current;
     if (!btn) return;
@@ -102,11 +103,25 @@ export function NotificacionesBell({ notificaciones, esAdmin }: { notificaciones
   }
 
   const noLeidas = notificaciones.filter((n) => !n.leida).length;
-  const recientes = notificaciones.slice(0, 6);
+  const recientes = notificaciones;
 
   function marcar(id: string) {
     startTransition(async () => {
       await marcarLeidaAction(id);
+      router.refresh();
+    });
+  }
+  // Abrir la notificación la marca leída (el cliente pidió que el clic lleve a resolverla y
+  // la saque de la lista de pendientes). La navegación la hace el <Link>; esto sólo cierra y marca.
+  function abrir(n: Notificacion) {
+    setAbierto(false);
+    if (!n.leida) marcar(n.id);
+  }
+  function revisar() {
+    setAviso(null);
+    startTransition(async () => {
+      const r = await generarAlertasAction();
+      setAviso(r.error ?? (r.creadas > 0 ? `${r.creadas} alerta(s) nueva(s).` : 'Todo al día.'));
       router.refresh();
     });
   }
@@ -179,7 +194,7 @@ export function NotificacionesBell({ notificaciones, esAdmin }: { notificaciones
                   <p className="text-apoyo text-muted">Sin notificaciones.</p>
                 </div>
               ) : (
-                <ul className="max-h-80 overflow-y-auto">
+                <ul className="max-h-96 overflow-y-auto">
                   {recientes.map((n) => {
                     const sev = SEV_ICON[n.severidad];
                     const Icon = sev.icon;
@@ -188,7 +203,7 @@ export function NotificacionesBell({ notificaciones, esAdmin }: { notificaciones
                       <li key={n.id} className={cn('flex items-start gap-2.5 border-b border-line/40 px-3.5 py-2.5 last:border-0', !n.leida && 'bg-gold/5')}>
                         <Icon className={cn('mt-0.5 h-4 w-4 shrink-0', sev.cls)} strokeWidth={1.75} aria-hidden />
                         {href ? (
-                          <Link href={href} onClick={() => setAbierto(false)} className="group min-w-0 flex-1">
+                          <Link href={href} onClick={() => abrir(n)} className="group min-w-0 flex-1">
                             <p className={cn('truncate text-apoyo font-semibold group-hover:underline', !n.leida ? 'text-navy' : 'text-ink')}>{n.titulo}</p>
                             <p className="mt-0.5 line-clamp-2 text-micro text-muted">{n.mensaje}</p>
                           </Link>
@@ -215,13 +230,19 @@ export function NotificacionesBell({ notificaciones, esAdmin }: { notificaciones
                 </ul>
               )}
 
-              <Link
-                href="/notificaciones"
-                onClick={() => setAbierto(false)}
-                className="block w-full rounded-b-xl border-t border-line/60 py-2.5 text-center text-apoyo font-medium text-navy transition-colors hover:bg-navy/5"
-              >
-                Mostrar más
-              </Link>
+              {esAdmin && (
+                <div className="flex items-center justify-between gap-2 border-t border-line/60 px-3.5 py-2">
+                  <span className="text-micro text-muted">{aviso ?? ''}</span>
+                  <button
+                    type="button"
+                    onClick={revisar}
+                    disabled={pendiente}
+                    className="inline-flex items-center gap-1 text-apoyo font-medium text-navy transition-colors hover:text-gold disabled:opacity-50"
+                  >
+                    <RefreshCw className={cn('h-3.5 w-3.5', pendiente && 'animate-spin')} strokeWidth={2} /> Revisar ahora
+                  </button>
+                </div>
+              )}
             </div>
           </>,
           document.body,

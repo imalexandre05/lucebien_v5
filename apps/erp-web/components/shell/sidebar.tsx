@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Package, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, Bell, PackagePlus, HeartHandshake, History, Send, Truck, Fingerprint, UsersRound, GraduationCap, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, Package, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, PackagePlus, HeartHandshake, History, Send, Truck, Fingerprint, UsersRound, GraduationCap, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -42,7 +42,6 @@ const NAV: { section: string; items: Item[] }[] = [
     section: 'Interno',
     items: [
       { label: 'Dashboard', href: '/', icon: LayoutDashboard, modulo: 'dashboard' },
-      { label: 'Notificaciones', href: '/notificaciones', icon: Bell, modulo: 'notificaciones' },
       // Fase 4 tarea 1: acceso operativo al formulario del turno — vive en "Interno" (uso diario),
       // separado del historial administrativo de abajo. Mismo permiso 'reportes' de siempre.
       { label: 'Reporte de Actividades', href: '/reportes/nuevo', icon: ClipboardList, modulo: 'reportes' },
