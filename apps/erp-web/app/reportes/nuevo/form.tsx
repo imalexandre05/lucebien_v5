@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Sun, Moon, Clock, Check, Square, Plus, Minus, Trash2, Send, Users, PenLine, ClipboardCheck, ArrowRight, Wallet, Star, HelpCircle } from 'lucide-react';
-import { idReporte, TURNO_LABEL, minutosHastaCierre, formatoCierre, type TurnoReporte } from '@scilb/core';
+import { idReporte, resumenLimpieza, TURNO_LABEL, minutosHastaCierre, formatoCierre, type TurnoReporte } from '@scilb/core';
 import { iniciarTurno, accionCrearReporte, accionGuardarDraft } from '../actions';
 import type { ActividadDelTurno, ExtraCatalogo, LayoutZona, YaEnviado, ReportePendiente } from '../../../lib/reportes-repo';
 import type { TipoIncidencia } from '../../../lib/incidencias-repo';
@@ -209,24 +209,13 @@ export function NuevoReporteForm({
   const actDone = useMemo(() => cat.filter((a) => done[a.cod]).length, [cat, done]);
   const actPts = useMemo(() => cat.filter((a) => done[a.cod]).reduce((s, a) => s + a.peso, 0), [cat, done]);
 
-  // Puntos de limpieza del turno (espeja el cálculo del LayoutMap).
-  const limpiezaPts = useMemo(() => {
-    const aplica = (zt: string) => {
-      const z = (zt || 'ambos').toLowerCase();
-      if (turno === 'C') return true;
-      if (turno === 'M') return z === 'ambos' || z === 'mañana';
-      if (turno === 'T') return z === 'ambos' || z === 'tarde';
-      return true;
-    };
-    // Las zonas del otro turno se pueden limpiar y SÍ suman: el total crece con las que se marquen.
-    const sel = new Set(limpieza);
-    const puntuables = zonas.filter((z) => z.tipo !== 'area' && (aplica(z.turno) || sel.has(z.cod)));
-    const tot = puntuables.reduce((s, z) => s + z.peso, 0);
-    const got = puntuables.filter((z) => sel.has(z.cod)).reduce((s, z) => s + z.peso, 0);
-    return { tot: Math.round(tot * 10) / 10, got: Math.round(got * 10) / 10 };
-  }, [zonas, limpieza, turno]);
+  // Limpieza: el 100 % son las zonas del turno; las del otro turno suman como extra encima (puede pasar de 100 %).
+  const limpiezaPts = useMemo(
+    () => resumenLimpieza(zonas, Object.fromEntries(limpieza.map((c) => [c, 1])), turno || 'C'),
+    [zonas, limpieza, turno],
+  );
 
-  const totalPts = Math.round((actPts + limpiezaPts.got) * 10) / 10;
+  const totalPts = Math.round((actPts + limpiezaPts.propiosGot + limpiezaPts.extraGot) * 10) / 10;
 
   // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): el catálogo ya trae la
   // gravedad de cada tipo (nivel_default). Sólo la categoría 'Otros' —hoy, únicamente
@@ -950,9 +939,12 @@ export function NuevoReporteForm({
               <span className="text-apoyo text-muted">
                 Limpieza{' '}
                 <span className="tabular-nums text-dato font-bold text-exito-deep">
-                  {limpiezaPts.got}
+                  {limpiezaPts.pct}%
                 </span>
-                <span className="tabular-nums text-micro text-muted">/{limpiezaPts.tot}</span>
+                <span className="tabular-nums text-micro text-muted">
+                  {' '}({limpiezaPts.propiosGot}/{limpiezaPts.propiosTot}
+                  {limpiezaPts.extraGot > 0 && ` + extra ${limpiezaPts.extraGot}`})
+                </span>
               </span>
               <span className="text-apoyo text-muted">
                 Actividades{' '}

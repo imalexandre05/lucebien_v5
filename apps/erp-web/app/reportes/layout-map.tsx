@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, Eye, X, Square, CheckSquare } from 'lucide-react';
-import { zonasSolapadas, type TurnoReporte } from '@scilb/core';
+import { zonasSolapadas, resumenLimpieza, type TurnoReporte } from '@scilb/core';
 import type { LayoutZona } from '../../lib/reportes-repo';
 import { cn } from '../../lib/cn';
 
@@ -259,14 +259,18 @@ export function LayoutMap({
   const piso = especiales.find((z) => z.cod.toUpperCase() === 'PISO');
   const otrasEspeciales = especiales.filter((z) => z !== calle && z !== piso);
 
-  const totalPts = useMemo(() => mostradas.filter(puntuable).reduce((s, z) => s + z.peso, 0), [mostradas]);
-  const ganados = useMemo(() => {
-    if (esEval) return mostradas.filter(puntuable).reduce((s, z) => s + z.peso * Math.max(estadoDe(z.cod), 0), 0);
-    return mostradas.filter((z) => puntuable(z) && sel.has(z.cod)).reduce((s, z) => s + z.peso, 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mostradas, sel, esEval, estados]);
-
   const r1 = (n: number) => Math.round(n * 10) / 10;
+  // El 100 % son las zonas del turno; las del otro turno que se limpian suman encima (decisión 17-oct-2026).
+  const resumen = useMemo(() => {
+    const cal: Record<string, number> = {};
+    for (const z of mostradas) {
+      if (!puntuable(z)) continue;
+      if (esEval) cal[z.cod] = Math.max(estadoDe(z.cod), 0);
+      else if (sel.has(z.cod)) cal[z.cod] = 1;
+    }
+    return resumenLimpieza(zonas, cal, turno);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zonas, mostradas, sel, esEval, estados, turno]);
 
   const emit = (cods: string[]) => onChange?.(cods);
   const toggle = (cod: string) => {
@@ -352,8 +356,13 @@ export function LayoutMap({
           );
         })}
         <span className="ml-auto rounded-r-pastilla bg-exito/10 px-3 py-1 tabular-nums text-dato font-bold text-exito-deep">
-          {r1(ganados)} / {r1(totalPts)} pts
+          {r1(resumen.propiosGot + resumen.extraGot)} / {resumen.propiosTot} pts · {resumen.pct}%
         </span>
+        {resumen.extraGot > 0 && (
+          <span className="rounded-r-pastilla bg-gold/15 px-3 py-1 tabular-nums text-apoyo text-muted">
+            Del turno {resumen.propiosGot}/{resumen.propiosTot} · Extra +{resumen.extraGot}
+          </span>
+        )}
       </div>
 
       {hayOtroTurno && !readOnly && !esEval && (
@@ -668,7 +677,7 @@ export function LayoutMap({
 
   // ── Panel "Calificación limpieza" (evaluación): fila por zona + total ──
   const filas = [...mostradas.filter(puntuable)].sort((a, b) => a.cod.localeCompare(b.cod));
-  const frac = totalPts > 0 ? ganados / totalPts : 1;
+  const frac = resumen.propiosTot > 0 ? Math.min(1, resumen.pct / 100) : 1;
   return (
     // SIN `max-w-4xl` (12-sep-2026). El tope de 896px para mapa + panel dejaba al lienzo en
     // ~600px aunque la pantalla midiera 1900: las zonas quedaban de 20-30px, imposibles de
@@ -721,9 +730,14 @@ export function LayoutMap({
         <div className="mt-2 flex items-center justify-between rounded-r-chico border border-gold/40 bg-gold/10 px-3 py-2">
           <span className="text-cuerpo font-semibold text-navy">Limpieza</span>
           <span className="tabular-nums text-dato font-bold text-gold-deep">
-            {r1(ganados)}/{r1(totalPts)}
+            {r1(resumen.propiosGot + resumen.extraGot)}/{resumen.propiosTot} · {resumen.pct}%
           </span>
         </div>
+        {resumen.extraGot > 0 && (
+          <p className="mt-1 text-apoyo text-muted tabular-nums">
+            Del turno {resumen.propiosGot}/{resumen.propiosTot} · Extra de otro turno +{resumen.extraGot}
+          </p>
+        )}
       </aside>
     </div>
   );
