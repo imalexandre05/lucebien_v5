@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { AlertTriangle, KeyRound, LogOut, Search } from 'lucide-react';
+import { AlertTriangle, KeyRound, LogOut, Search, Wallet } from 'lucide-react';
 import { puede, ROL_LABEL, sedesPermitidas, type MatrizPermisos } from '@scilb/core';
 import { cerrarSesion } from '../../app/login/actions';
 import { getSesion } from '../../lib/auth';
@@ -108,6 +108,16 @@ export async function Topbar() {
           <span className="hidden rounded-r-pastilla border border-gold/40 bg-gold/10 px-3 py-1 text-apoyo font-medium text-gold-deep md:inline">
             {ROL_LABEL[rol] ?? rol}
           </span>
+        )}
+        {nombre && (
+          <Link
+            href="/mi-pago"
+            title="Mi pago"
+            aria-label="Mi pago"
+            className="anillo flex h-8 w-8 items-center justify-center rounded-r-pastilla text-muted transition-colors duration-150 hover:bg-navy/5 hover:text-navy active:scale-[0.97]"
+          >
+            <Wallet className="h-4 w-4" strokeWidth={1.75} />
+          </Link>
         )}
         {nombre && (
           <Link

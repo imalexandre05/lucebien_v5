@@ -1914,3 +1914,13 @@ confirmara. El dueño contestó el 10-oct-2026:
 *Pendiente de la decisión 2:* antes de escribir la spec hay que mapear qué pantallas y funciones leen
 los puntos de otras personas (ranking, tablero, evaluación del equipo), porque cerrar esa lectura puede
 quitar vistas que hoy existen; el dueño decide qué se hace con ellas.
+
+## Resumen de liquidación y «Mi pago» (17-oct-2026)
+
+Spec: `docs/superpowers/specs/2026-10-17-resumen-liquidacion-design.md`. Pendiente de confirmar con Alexander:
+
+- **Mínimo de ventas para continuar / ¿continúa?** No existe en el sistema. La pantalla dice «No configurado». Hace falta decidir de dónde sale (¿por contrato? ¿global en `/configuracion`?) y la regla exacta (el Excel usa «logrado > mínimo»).
+- **2.ª comisión.** El motor tiene una sola comisión. Se muestra «No configurado».
+- **Total final por pagar** = total congelado + adelantos (el motor ya resta los adelantos; el Excel los resta después). **Restante** = total − abonos no anulados. Confirmar que es lo que el Excel quiere decir.
+- **Total invertido ADM** = total + almuerzos, tal como se pidió. Ojo: los almuerzos ya van dentro del total; confirmar que el Excel no los cuenta dos veces a propósito.
+- **Otros beneficios** (metas semanales, bono por puntos, bonos extras, almuerzos): el Excel no los tiene; se muestran en una fila aparte para que el total cuadre.
