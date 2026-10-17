@@ -72,6 +72,7 @@ export function ResumenLiquidacionVista({ r, pagoDisponible = true }: { r: Resum
             <NoConfigurado />
           </Fila>
           <Fila etiqueta="Adicional por capacitación">{soles(r.capacitacion)}</Fila>
+          <Fila etiqueta="Pasajes (llegar temprano)">{soles(r.pasajes)}</Fila>
           <Fila etiqueta="Otros (metas, bonos, almuerzos)">{soles(r.otrosBeneficios)}</Fila>
           <Fila etiqueta="Total beneficios" fuerte>
             {soles(r.totalBeneficios)}

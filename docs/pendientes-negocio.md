@@ -2032,3 +2032,10 @@ Migración `0138` ([spec](superpowers/specs/capacitacion/2026-10-17-examenes-des
 7. **Nota presencial**: promedio simple de las habilidades (0–20). ¿Hay habilidades que pesen más?
 8. **Examen manual en la nota integral** (`examen_peso_manual`=1): el último examen que carga el capacitador entra en el
    promedio junto a los online y el presencial. ¿Debe pesar más que los online?
+
+## 4B-2 · Pasajes por llegar temprano (17-oct-2026)
+
+Regla del dueño: beneficio por llegar 5 min antes del turno. Sin defaults inventados de monto:
+`sueldo_monto_pasaje` queda **vacío = no se paga** (Jordan lo define en Configuración → Sueldos);
+`sueldo_pasaje_minutos_antes` = 5. **Supuesto a confirmar:** el monto es por día puntual (no por
+semana ni por mes). Migración 0139.

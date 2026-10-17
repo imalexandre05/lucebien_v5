@@ -584,6 +584,28 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     step: 10,
   },
   {
+    clave: 'sueldo_monto_pasaje',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Pasaje por llegar temprano (S/ por día)',
+    descripcion:
+      'Soles que se suman a la liquidación por cada día en que la persona llega con la anticipación de abajo antes del inicio de su turno. Vacío = no se paga ningún pasaje.',
+    tipo: 'numero',
+    default: '',
+    min: 0,
+    step: 0.5,
+    permiteVacio: true,
+  },
+  {
+    clave: 'sueldo_pasaje_minutos_antes',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Minutos de anticipación para ganar el pasaje',
+    descripcion: 'Con 5, quien entra a las 08:55 o antes a un turno de las 09:00 gana el pasaje de ese día.',
+    tipo: 'numero',
+    default: '5',
+    min: 0,
+    step: 1,
+  },
+  {
     clave: 'sueldo_dias_descuento_por_falta',
     seccion: SECCION_SUELDOS,
     etiqueta: 'Días de sueldo que cuesta una falta',
