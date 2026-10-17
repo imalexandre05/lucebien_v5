@@ -841,21 +841,44 @@ export function resumirHorario(horario: TurnoContratado[]): Map<number, DiaContr
 export interface EscalaSueldo {
   escala: number;
   tarifaHora: number;
+  /** Meses completos de antigüedad desde los que la escala aplica (sugerencia, no obligación). */
+  desdeMes: number;
   antiguedad: string;
 }
 
 /**
- * Default editable, no una constante de negocio: cuando suba el sueldo mínimo o el dueño
- * reajuste la escala, se pasa otra tabla en vez de tocar el core. Anotado en
- * docs/pendientes-negocio.md.
+ * Default editable desde /configuracion (claves `escala_N_tarifa_hora` y `escala_N_desde_mes`).
+ * Tarifas: Excel del dueño, hoja PARAMETROS. Los `desdeMes` son un default inventado para
+ * resolver el solape del Excel («5to mes» = 4 cumplidos, «9no» = 8): ver
+ * docs/pendientes-negocio.md (escalas salariales).
  */
 export const ESCALAS_SUELDO_DEFAULT: EscalaSueldo[] = [
-  { escala: 1, tarifaHora: 2.9, antiguedad: '1er mes' },
-  { escala: 2, tarifaHora: 3.2, antiguedad: '1er mes' },
-  { escala: 3, tarifaHora: 3.5, antiguedad: '1er a 3er mes' },
-  { escala: 4, tarifaHora: 3.8, antiguedad: 'desde el 5to mes' },
-  { escala: 5, tarifaHora: 5.0, antiguedad: 'desde el 9no mes' },
+  { escala: 1, tarifaHora: 2.9, desdeMes: 0, antiguedad: '1er mes' },
+  { escala: 2, tarifaHora: 3.2, desdeMes: 1, antiguedad: 'desde el 2do mes' },
+  { escala: 3, tarifaHora: 3.5, desdeMes: 2, antiguedad: 'hasta el 3er mes' },
+  { escala: 4, tarifaHora: 3.8, desdeMes: 4, antiguedad: 'desde el 5to mes' },
+  { escala: 5, tarifaHora: 5.0, desdeMes: 8, antiguedad: 'desde el 9no mes' },
 ];
+
+/** Arma la tabla desde el mapa de `config`; un valor ausente o inválido usa su default. */
+export function escalasDesdeConfig(cfg: Record<string, string | undefined>): EscalaSueldo[] {
+  const num = (v: string | undefined): number | null =>
+    v !== undefined && v.trim() !== '' && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null;
+  return ESCALAS_SUELDO_DEFAULT.map((d) => {
+    const tarifa = num(cfg[`escala_${d.escala}_tarifa_hora`]);
+    const desde = num(cfg[`escala_${d.escala}_desde_mes`]);
+    return { ...d, tarifaHora: tarifa ?? d.tarifaHora, desdeMes: desde ?? d.desdeMes };
+  });
+}
+
+/** La escala de mayor `desdeMes` que no pasa de los meses cumplidos. El admin confirma. */
+export function escalaSugeridaPorAntiguedad(mesesCompletos: number, escalas: EscalaSueldo[] = ESCALAS_SUELDO_DEFAULT): number {
+  const m = Math.max(0, mesesCompletos);
+  const ordenadas = [...escalas].sort((a, b) => a.desdeMes - b.desdeMes || a.escala - b.escala);
+  let elegida = ordenadas[0];
+  for (const e of ordenadas) if (e.desdeMes <= m) elegida = e;
+  return elegida.escala;
+}
 
 /** Referencia para negociar, no una obligación. Ver PEND-07: las escalas 1–3 se solapan. */
 export function sueldoSugerido(

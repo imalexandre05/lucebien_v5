@@ -1,6 +1,7 @@
 import { Lock } from 'lucide-react';
 import { getSesion } from '../../../lib/auth';
 import { listarEmpleados } from '../../../lib/reportes-repo';
+import { escalasSalariales } from '../../../lib/config-repo';
 import { listarAcuerdos, parametrosVigentes } from '../../../lib/sueldos-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { EmptyState } from '../../../components/ui/empty-state';
@@ -39,10 +40,11 @@ export default async function AcuerdosPage() {
     );
   }
 
-  const [acuerdos, empleados, valoresVigentes] = await Promise.all([
+  const [acuerdos, empleados, valoresVigentes, escalas] = await Promise.all([
     listarAcuerdos(),
     listarEmpleados(),
     parametrosVigentes(),
+    escalasSalariales(),
   ]);
 
   const vigentes = acuerdos.filter((a) => a.estado === 'vigente').length;
@@ -59,7 +61,7 @@ export default async function AcuerdosPage() {
   return (
     <div>
       <PageHeader title="Contratos" subtitle={subtitulo} />
-      <AcuerdosCliente acuerdos={acuerdos} empleados={empleados} valoresVigentes={valoresVigentes} />
+      <AcuerdosCliente acuerdos={acuerdos} empleados={empleados} valoresVigentes={valoresVigentes} escalas={escalas} />
     </div>
   );
 }
