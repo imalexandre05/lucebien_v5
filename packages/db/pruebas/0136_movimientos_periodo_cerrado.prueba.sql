@@ -130,5 +130,21 @@ begin
   if v_err like 'PERMISO:%' and v_n = 0 then r := r || '[ok] caso 9: sólo el administrador; anon sin execute;';
   else r := r || format('[FALLA] caso 9: %s anon=%s;', v_err, v_n); end if;
 
+  -- ── 10) Cambio de fecha hacia un período cerrado, e insert directo sin contrato ─────────────
+  perform pg_temp.dueno();
+  insert into sueldo_movimientos (empleado_id, fecha, tipo, monto, motivo, creado_por)
+    values (per, '2099-02-12', 'adelanto', 5, 'mover', adm) returning id into v_id;
+  v_err := pg_temp.mensaje(format('update sueldo_movimientos set fecha = %L where id = %L', '2099-01-05', v_id));
+  if v_err like 'PERIODO_CERRADO:%' then r := r || '[ok] caso 10a: cambiar la fecha hacia un período cerrado se rechaza;';
+  else r := r || format('[FALLA] caso 10a: %s;', v_err); end if;
+  v_err := pg_temp.mensaje(format('insert into sueldo_movimientos (empleado_id, fecha, tipo, monto, motivo, creado_por) values (%L, %L, %L, 10, %L, %L)', per, '2099-03-10', 'adelanto', 'sin contrato directo', adm));
+  if v_err like 'PERIODO_CERRADO:%' then r := r || '[ok] caso 10b: un insert directo sin contrato se rechaza;';
+  else r := r || format('[FALLA] caso 10b: %s;', v_err); end if;
+
+  -- ── 11) anular_cierre con un pago vigente: falla con PERIODO y manda a Corregir ─────────────
+  v_err := pg_temp.mensaje(format('select sueldo_movimiento_crear(%L,%L,%L,30,1,%L,%L)', per, '2099-01-05', 'adelanto', 'con pago 2', 'anular_cierre'));
+  if v_err like 'PERIODO:%' and v_err like '%Corregir%' then r := r || '[ok] caso 11: con pagos no se anula el cierre; el mensaje manda a Corregir;';
+  else r := r || format('[FALLA] caso 11: %s;', v_err); end if;
+
   raise exception 'RESULTADO 0136 --> %', r;
 end $$;
