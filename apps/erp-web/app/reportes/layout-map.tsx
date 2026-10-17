@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Eye, X, Square, CheckSquare } from 'lucide-react';
 import { zonasSolapadas, type TurnoReporte } from '@scilb/core';
 import type { LayoutZona } from '../../lib/reportes-repo';
@@ -173,6 +174,7 @@ export function LayoutMap({
   onCycle,
   onMass,
   panelEval = false,
+  limpiadas,
 }: {
   zonas: LayoutZona[];
   turno: TurnoReporte;
@@ -186,17 +188,45 @@ export function LayoutMap({
   onMass?: (v: number) => void;
   // Panel lateral "Calificación limpieza" (por zona + total), como el viejo.
   panelEval?: boolean;
+  // En 'eval': zonas que el reporte marcó como limpiadas. Las del otro turno también se evalúan.
+  limpiadas?: string[];
 }) {
   const sel = useMemo(() => new Set(selected), [selected]);
   const esEval = modo === 'eval';
   const estadoDe = (cod: string) => estados?.[cod] ?? (esEval ? SIN_CALIFICAR : 1);
   // Fase 5 tarea 2: zona cuyo desplegable de "zonas ocultas en este punto" está abierto.
   const [dropdownCod, setDropdownCod] = useState<string | null>(null);
+  // Posición en pantalla del desplegable: va por portal a <body> con `fixed`, porque dentro del
+  // lienzo (overflow-hidden) quedaba recortado o tapado por las zonas vecinas y la tarjeta.
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  useEffect(() => {
+    if (!dropdownCod) return;
+    const cerrar = () => setDropdownCod(null);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && cerrar();
+    window.addEventListener('resize', cerrar);
+    window.addEventListener('scroll', cerrar, true);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('resize', cerrar);
+      window.removeEventListener('scroll', cerrar, true);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [dropdownCod]);
 
-  // Puntúa solo lo que aplica al turno, pero el lienzo muestra la tienda completa
-  // (las zonas del otro turno van atenuadas, como el viejo).
-  const mostradas = useMemo(() => zonas.filter((z) => aplicaTurno(z.turno, turno)), [zonas, turno]);
-  const especiales = useMemo(() => mostradas.filter((z) => z.forma === 'special'), [mostradas]);
+  // Las zonas del turno son las RECOMENDADAS; las del otro turno se pueden limpiar igual y SÍ
+  // suman (el servidor no filtra por turno: guarda toda zona marcada). `mostradas` = lo que
+  // cuenta para el puntaje: recomendadas + cualquier otra que se haya marcado.
+  const limpiadasSet = useMemo(() => new Set(limpiadas ?? []), [limpiadas]);
+  const mostradas = useMemo(
+    () => zonas.filter((z) => aplicaTurno(z.turno, turno) || sel.has(z.cod) || limpiadasSet.has(z.cod)),
+    [zonas, turno, sel, limpiadasSet],
+  );
+  // Al crear se ofrecen todas las tarjetas especiales (CALLE/PISO) aunque sean del otro turno.
+  const especiales = useMemo(
+    () => (readOnly || esEval ? mostradas : zonas).filter((z) => z.forma === 'special'),
+    [mostradas, zonas, readOnly, esEval],
+  );
+  const hayOtroTurno = turno !== 'C' && zonas.some((z) => puntuable(z) && !aplicaTurno(z.turno, turno));
   const enMapa = useMemo(() => zonas.filter((z) => z.forma !== 'special'), [zonas]);
 
   // Fase 5 tarea 2: zonas con nivel/sobreCod se pintan una encima de otra — sin esto, la de abajo
@@ -275,7 +305,7 @@ export function LayoutMap({
       <div className="flex flex-wrap items-center gap-2">
         {!readOnly && !esEval && (
           <>
-            <button type="button" onClick={() => emit(mostradas.filter(puntuable).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
+            <button type="button" onClick={() => emit(zonas.filter((z) => puntuable(z) && aplicaTurno(z.turno, turno)).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
               <Check className="h-3 w-3" strokeWidth={2.5} /> Turno
             </button>
             <button type="button" onClick={() => emit(zonas.filter(puntuable).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
@@ -325,6 +355,15 @@ export function LayoutMap({
           {r1(ganados)} / {r1(totalPts)} pts
         </span>
       </div>
+
+      {hayOtroTurno && !readOnly && !esEval && (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-apoyo text-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-r-chico border-2 border-gold bg-paper" aria-hidden /> Recomendadas para tu turno
+          </span>
+          <span>Las demás también se pueden limpiar y suman puntos.</span>
+        </p>
+      )}
 
       {/* Tarjeta CALLE */}
       {calle && visible(calle) && (
@@ -414,11 +453,13 @@ export function LayoutMap({
           const on = sel.has(z.cod);
           const estado = estadoDe(z.cod);
           const miTurno = aplicaTurno(z.turno, turno);
-          if (!miTurno && (readOnly || esEval)) return null;
+          if (!miTurno && !on && !limpiadasSet.has(z.cod) && (readOnly || esEval)) return null;
 
           let bg = z.color;
-          let opacity = miTurno ? 1 : 0.25;
-          let ring = '1px solid rgba(0,0,0,.08)';
+          let opacity = miTurno ? 1 : 0.55;
+          // Recomendada = del turno actual (no se marca en turno completo, donde todas lo son).
+          const recomendada = miTurno && turno !== 'C' && !esEval;
+          let ring = recomendada ? '2px solid #b8a515' : '1px solid rgba(0,0,0,.08)';
           let glow = '';
           let chip: ReactNode = null;
 
@@ -465,12 +506,19 @@ export function LayoutMap({
             <div key={z.cod} style={{ ...style, zIndex: dropdownAbierto ? 50 : zIndexBase }}>
               <button
                 type="button"
-                disabled={readOnly || !miTurno}
-                onClick={() => {
+                disabled={readOnly}
+                onClick={(e) => {
                   // Con solape: abre/cierra el desplegable de "zonas ocultas aquí" en vez de
                   // marcar directo — mismo gesto que PISO al clicar el lienzo vacío. Sin solape:
                   // toggle normal (y toggle() ya cierra cualquier desplegable ajeno que quedara abierto).
                   if (tieneSolape) {
+                    const r = e.currentTarget.getBoundingClientRect();
+                    const alto = 44 + grupo!.size * 28;
+                    const abajo = r.bottom + 4 + alto <= window.innerHeight;
+                    setDropdownPos({
+                      top: abajo ? r.bottom + 4 : Math.max(8, r.top - 4 - alto),
+                      left: Math.max(8, Math.min(r.left, window.innerWidth - 200)),
+                    });
                     setDropdownCod((c) => (c === z.cod ? null : z.cod));
                     return;
                   }
@@ -478,8 +526,8 @@ export function LayoutMap({
                 }}
                 title={
                   miTurno
-                    ? `${z.nombre || z.cod} · ${z.peso} pts — ${instruccionDe(z)}${tieneSolape ? ' · hay más zonas aquí' : ''}`
-                    : `${z.nombre || z.cod} · turno ${z.turno}`
+                    ? `${recomendada ? 'Recomendada · ' : ''}${z.nombre || z.cod} · ${z.peso} pts — ${instruccionDe(z)}${tieneSolape ? ' · hay más zonas aquí' : ''}`
+                    : `${z.nombre || z.cod} · ${z.peso} pts · fuera de tu turno (también suma)`
                 }
                 aria-label={`${z.nombre || z.cod} (${z.peso} pts)${tieneSolape ? ', zona con solape, clic para elegir' : ''}`}
                 aria-pressed={esEval ? undefined : on}
@@ -490,7 +538,7 @@ export function LayoutMap({
                   // rectángulos chicos y pegados, saber CUÁL está bajo el cursor antes de hacer
                   // clic es la mitad de la puntería. `transform` no mueve a las vecinas.
                   'anillo relative flex h-full w-full items-center justify-center overflow-visible transition-[background-color,box-shadow,opacity,transform] duration-150',
-                  readOnly || !miTurno
+                  readOnly
                     ? 'cursor-default'
                     // z-20 y no z-30: por encima de las zonas hermanas (2..14) pero por DEBAJO del
                     // header sticky (z-30) — si no, una zona en hover cerca del borde superior se
@@ -528,10 +576,13 @@ export function LayoutMap({
               </button>
 
               {/* Desplegable de zonas ocultas en este punto (Fase 5 tarea 2). */}
-              {dropdownAbierto && (
+              {dropdownAbierto && dropdownPos && createPortal(
+                <>
+                <div className="fixed inset-0 z-[70]" onClick={() => setDropdownCod(null)} aria-hidden />
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full z-[6] mt-1 w-48 space-y-0.5 rounded-r-medio border border-line bg-white p-1.5 shadow-lift"
+                  style={{ top: dropdownPos.top, left: dropdownPos.left }}
+                  className="fixed z-[80] w-48 space-y-0.5 rounded-r-medio border border-line bg-white p-1.5 shadow-lift"
                 >
                   <div className="mb-0.5 flex items-center justify-between gap-2 px-1.5 pb-1">
                     <p className="text-[9px] font-semibold uppercase tracking-wide text-muted">
@@ -574,6 +625,8 @@ export function LayoutMap({
                     );
                   })}
                 </div>
+                </>,
+                document.body,
               )}
             </div>
           );

@@ -201,6 +201,7 @@ export function EvaluarPanel({
               onCycle={ciclarZona}
               onMass={masivoLimp}
               panelEval
+              limpiadas={limpieza.map((z) => z.zoneCod)}
             />
           </CardContent>
         </Card>
