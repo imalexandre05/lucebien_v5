@@ -48,6 +48,10 @@ begin
     raise exception 'BLOQUEO:esta evaluación tiene un pago registrado. Anula primero ese pago y vuelve a intentarlo';
   end if;
 
+  -- Mismo lock que sueldo_liquidacion_cerrar (0121): serializa con un cierre concurrente de la
+  -- misma persona, para que no se cierre una liquidación entre la comprobación y el borrado.
+  perform 1 from sueldo_acuerdos where empleado_id = v_ev.empleado_id for update;
+
   if exists (
     select 1 from sueldo_liquidaciones l
      where l.empleado_id = v_ev.empleado_id
