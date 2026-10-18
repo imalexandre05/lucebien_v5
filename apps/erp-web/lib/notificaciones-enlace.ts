@@ -96,16 +96,11 @@ export function enlaceNotificacion(n: NotificacionEnlazable, esAdmin: boolean): 
       return id ? `/reportes/${id}` : null;
   }
 
-  // Reglas del módulo comercial (apagadas desde la 0101, pueden quedar avisos viejos) y cualquier
-  // tipo futuro que todavía no tenga caso propio: por el origen, como antes.
+  // Reglas del módulo comercial (apagadas desde la 0101, pueden quedar avisos viejos): el aviso se
+  // lee pero no navega — POS, materiales y caja salieron de la navegación (18-oct-2026, decisión
+  // del dueño n.º 9). Cualquier tipo futuro sin caso propio: por el origen, como antes.
   if (!id) return null;
   switch (n.refTipo) {
-    case 'pedido':
-      return `/pedidos/${id}`;
-    case 'material':
-      return '/materiales';
-    case 'caja':
-      return '/caja';
     case 'reporte':
       return `/reportes/${id}`;
     default:

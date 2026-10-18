@@ -77,10 +77,10 @@ describe('enlaceNotificacion — reportes y reglas viejas', () => {
     expect(enlaceNotificacion(n({ tipo: 'reporte_auto_evaluado', refTipo: 'reporte', refId: 'R-2' }), true)).toBe('/reportes/R-2');
   });
 
-  it('las reglas comerciales (apagadas en la 0101) conservan su enlace por origen', () => {
-    expect(enlaceNotificacion(n({ tipo: 'devolucion_vencida', refTipo: 'pedido', refId: 'P1' }), true)).toBe('/pedidos/P1');
-    expect(enlaceNotificacion(n({ tipo: 'stock_bajo', refTipo: 'material', refId: 'M1' }), true)).toBe('/materiales');
-    expect(enlaceNotificacion(n({ tipo: 'caja_sin_cerrar', refTipo: 'caja', refId: 'C1' }), true)).toBe('/caja');
+  it('las reglas comerciales (apagadas en la 0101) ya no navegan: POS e inventario salieron (18-oct-2026)', () => {
+    expect(enlaceNotificacion(n({ tipo: 'devolucion_vencida', refTipo: 'pedido', refId: 'P1' }), true)).toBeNull();
+    expect(enlaceNotificacion(n({ tipo: 'stock_bajo', refTipo: 'material', refId: 'M1' }), true)).toBeNull();
+    expect(enlaceNotificacion(n({ tipo: 'caja_sin_cerrar', refTipo: 'caja', refId: 'C1' }), true)).toBeNull();
   });
 
   it('un tipo desconocido sin origen conocido no lleva a ningún lado', () => {

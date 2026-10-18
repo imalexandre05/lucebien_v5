@@ -959,8 +959,13 @@ export type ConfigItem = {
 
 // Orden de secciones para la UI: catálogo en su orden fijo, luego cualquier sección personalizada
 // (alfabético), con "Personalizados" siempre al final de todas.
+// Secciones que /configuracion no muestra: Inventario y POS salieron de la navegación (18-oct-2026,
+// decisión del dueño n.º 9). Sus valores siguen en la base sin cambios: la pantalla reenvía cada
+// valor tal como llegó.
+export const SECCIONES_OCULTAS: readonly string[] = [SECCION_INVENTARIO, SECCION_POS];
+
 export function ordenarSecciones(items: ConfigItem[]): { nombre: string; items: ConfigItem[] }[] {
-  const nombres = new Set(items.map((i) => i.seccion));
+  const nombres = new Set(items.map((i) => i.seccion).filter((s) => !SECCIONES_OCULTAS.includes(s)));
   const catalogadas = ORDEN_SECCIONES.filter((s) => nombres.has(s));
   const otras = [...nombres].filter((s) => !ORDEN_SECCIONES.includes(s) && s !== 'Personalizados').sort();
   const orden = [...catalogadas, ...otras, ...(nombres.has('Personalizados') ? ['Personalizados'] : [])];
