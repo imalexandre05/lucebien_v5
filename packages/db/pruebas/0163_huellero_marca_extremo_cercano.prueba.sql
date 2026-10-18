@@ -208,5 +208,19 @@ begin
     r := r || format('[FALLA] 10: %s;', v_err);
   end if;
 
+  -- ── 11) Aviso viejo de «estimado» en una fila cuya bandera ya es false: se borra ───────────
+  insert into asistencias (empleado_id, fecha, turno, hora_entrada, hora_salida, condicion, fuente, minutos_tardanza,
+                           huellero_puso_entrada, huellero_puso_salida, salida_estimada, obs)
+    values (e5, '2099-03-09', 'M', '08:00', '14:01', 'trabajado', 'huellero', 0, true, true, false,
+            'estimado: no marcó la salida, se completó con la hora del turno contratado');
+  perform pg_temp.marcar(disp, e5, '2099-03-09', array['08:00', '14:01']);
+  perform huellero_derivar_asistencia(e5, '2099-03-09');
+  select * into a from asistencias where empleado_id = e5 and fecha = '2099-03-09';
+  if coalesce(a.obs, '') not like '%estimado%' and a.condicion = 'trabajado' then
+    r := r || '[ok] 11;';
+  else
+    r := r || format('[FALLA] 11: obs=%s;', a.obs);
+  end if;
+
   raise exception 'RESULTADO 0163 --> %', r;
 end $$;
