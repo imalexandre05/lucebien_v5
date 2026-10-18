@@ -1955,13 +1955,14 @@ Spec escrita, sin código. Defaults inventados por quien escribió la spec, a co
    ~21 días de 11 horas. Es el techo de un módulo con 2 de 11 personas registrando, así que probablemente
    subestima. Cifra tomada de este documento, no de una consulta: contrastarla con la base antes de sembrarla.
    Sigue flexible; podría depender de la demanda de ternos.
-2. **`eval_cumplimiento_para_20` = 1,00:** cumplir toda la meta del período equivale a 20 (nota = 20 × cumplimiento,
-   sin techo). Corrige mi recomendación anterior de 100 % = 16. El /20 es sólo referencia; la medida principal
-   es el porcentaje de cumplimiento.
+2. **`eval_cumplimiento_para_20` = 1,00:** cumplir toda la meta del período equivale a 20 (su respuesta literal;
+   nota = 20 × cumplimiento, sin techo). Alexander dudó: ¿cómo se ve a quien rinde mejor? Mi recomendación es 16
+   (parámetro 1,25), la idea original. El /20 es sólo referencia; la medida principal es el porcentaje.
 3. **Cada área contra su meta, promediadas por horas** (no una bolsa única de puntos), porque los puntos de
    reportes y de pipeline no están al mismo nivel de esfuerzo. Con los puntos calibrados, la bolsa única da lo mismo.
-4. **Un turno de almacén no tiene meta de reportes**: se mide sólo por pipeline.
-5. **Extras suben y incidencias bajan el cociente de reportes** (default mío, pregunta abierta §10.3).
+4. **Un turno de almacén tiene las dos metas** (decidido): cada hora cuenta completa en reportes y en pipeline,
+   así que el turno pesa doble en el denominador. Default mío, a confirmar: repartirla mitad y mitad.
+5. **Extras suben y incidencias bajan el cociente de reportes** (decidido por Alexander el 17-oct).
 6. **Licencia = falta justificada** (campo existente). **Feriado o cierre = día libre por persona**, en una tabla
    nueva (`dias_libres`) que sólo escribe el administrador: sale del contrato y de la meta, y se descuenta completo.
    Sin marca, la meta cuenta normal.

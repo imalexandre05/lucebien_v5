@@ -3,7 +3,7 @@
 > Escrita el 17-oct-2026, **antes** del código y de las pruebas (Zone Guard). Zona crítica
 > (puntos → evaluación → pago): spec completa, tests y verificador antes de mergear.
 > **Estado: borrador para la sesión maestra.** Sale de la conversación con Alexander del 17-oct-2026
-> (tres rondas). Lo marcado «por confirmar» es un default mío, no una decisión del dueño
+> (cuatro rondas). Lo marcado «por confirmar» es un default mío, no una decisión del dueño
 > (no-negociable 5).
 
 ## 1. Qué se quiere
@@ -45,6 +45,11 @@ El modelo de Alexander la reemplaza por una **meta propia de cada persona en cad
     bolsa mientras no se calibren (§4).
 12. **Un día que el administrador declara no trabajado deja de contar para el total**, tanto sus actividades
     como sus horas de pipeline: es como un día libre.
+13. **Un turno de almacén se mide por ambos**: también tiene reporte de actividades, además del pipeline.
+14. **Los extras del reporte suben el cumplimiento por encima de 100 % y las incidencias lo bajan.**
+15. **Hay personas con más de una sede en el mismo tramo**: la sede se guarda en cada turno, no en la persona.
+16. **Cumplir la meta vale 20**, pero Alexander planteó la duda de qué pasa con quien rinde mejor: por eso la
+    idea original era 16. Ver «De cumplimiento a nota».
 
 ## 3. Qué ya existe (verificado en el código, no se reescribe)
 
@@ -75,7 +80,7 @@ se promedian por horas.
 Para una persona y un rango `[desde, hasta]` (por defecto, su tramo de pago), sin contar los días libres (§5):
 
 ```
-horasTienda   = horas contratadas en turnos de tienda con al menos una actividad que aplique
+horasReportes = horas contratadas en turnos (de tienda y de almacén) con al menos una actividad que aplique
 horasAlmacen  = horas contratadas en turnos de almacén
 
 metaReportes  = actividades que aplican en esos turnos × pts_actividad_cumplida        (todas cumplidas = 100 %)
@@ -83,18 +88,21 @@ rReportes     = (puntos de actividades + puntos de extras − puntos de incidenc
 
 pipelineEquivalente = puntosPipeline / pipeline_meta_puntos_por_hora    (horas de pipeline «al ritmo de la meta»)
 
-cumplimiento  = (horasTienda × rReportes + pipelineEquivalente) / (horasTienda + horasAlmacen)
+cumplimiento  = (horasReportes × rReportes + pipelineEquivalente) / (horasReportes + horasAlmacen)
 ```
 
-- **Reportes.** La meta es completa: todas las actividades que aplican en esa **sede** y turno
-  (`actAplicaHoy`), iguales para todos los que comparten sede y turno. Como el puntaje de un reporte se
-  acredita a cada persona de su lista, la meta de cada una es el reporte completo. Los extras y las
-  incidencias ajustan este cociente (*por confirmar*, ver §10).
+- **Reportes.** La meta es completa: todas las actividades que aplican en la **sede** y el turno
+  (`actAplicaHoy`), iguales para todos los que comparten sede y turno, en turnos de tienda **y de almacén**.
+  Como el puntaje de un reporte se acredita a cada persona de su lista, la meta de cada una es el reporte
+  completo. Los extras suben este cociente por encima de 1 y las incidencias lo bajan (decisión 14).
 - **Pipeline.** La meta son las horas en **almacén** por `pipeline_meta_puntos_por_hora` (§6). Se mide por
   hora porque los turnos reales son de 4 y 7 horas (09:00–13:00 y 13:00–20:00). Si Alexander define después
   la meta «por turno», se convierte dividiéndola por las horas del turno.
-- **Turno de almacén sin meta de reportes** (*por confirmar*): un turno de almacén se mide sólo por
-  pipeline, para no contar el mismo turno dos veces.
+- **Un turno de almacén tiene las dos metas** (decisión 13): sus horas cuentan para reportes y para pipeline.
+  Por eso pesa el doble en el denominador que un turno de tienda, a propósito: tiene dos obligaciones en las
+  mismas horas. *Por confirmar* con Alexander: si prefiere repartir cada hora de almacén entre las dos áreas
+  (la mitad a cada una) en lugar de contarla en ambas. Verificar además que la sede de almacén tenga
+  actividades de reporte en el catálogo; si no las tiene, esas horas no entran a `horasReportes`.
 - **Lo no asignado es extra.** El pipeline hecho fuera de las horas de almacén (alguien pasa a almacén un
   día de poca demanda) entra en `pipelineEquivalente` pero no agrega horas al denominador: sube el
   cumplimiento por encima de lo que daría sólo el horario y nunca se descarta nada. Lo mismo quien trabaja
@@ -121,15 +129,18 @@ Con el default (`eval_cumplimiento_para_20` = 1,00): cumplir toda la meta es 20,
 Las bandas del 25-ago (`eval_banda_riesgo` 13, `eval_banda_ideal` 18) no cambian, y pasar de 20
 (extras, pipeline fuera de plantilla) es «sobresaliente».
 
-**Esta es una recomendación que corrige la anterior.** Había propuesto que 100 % valiera 16 para conservar
-el ancla del 25-ago. Ese 16 estaba atado a los 5000 puntos hipotéticos; con una meta por persona,
-«cumplir todo» y «20» coinciden y la fórmula se explica sola. Se puede mover con el parámetro (p. ej. 1,25
-exige 125 % de la meta para el 20). *Por confirmar.*
+**Alexander eligió 20 (17-oct), con una duda legítima:** si cumplir la meta ya vale 20, ¿cómo se ve a quien
+rinde mejor? Con la fórmula sin techo se ve por encima de 20 («sobresaliente», como dijo el 25-ago), pero una
+nota de referencia peruana no pasa de 20. La alternativa es la idea original: cumplir la meta vale 16 y el 20
+se alcanza con más (`eval_cumplimiento_para_20` = 1,25: 100 % = 16, 125 % = 20, 150 % = 24). Es un solo
+parámetro, así que cambiar de una a otra no toca código. Se deja **1,00** (su respuesta literal) y se pregunta
+en §10; mi recomendación es 16, porque encaja con las bandas que él mismo definió (<13 riesgo, >18 ideal) y
+deja espacio dentro de la escala para el buen desempeño.
 
 Se agrega una función pura `notaDesdeCumplimiento` en `evaluaciones.ts`. `notaDesdePuntos` y sus
 parámetros `eval_puntos_*` **no se tocan**: siguen leyendo las evaluaciones ya cerradas.
 
-**Sin meta no hay nota.** Si `horasTienda + horasAlmacen = 0` (rango sin turnos, todos los días libres, fuera
+**Sin meta no hay nota.** Si `horasReportes + horasAlmacen = 0` (rango sin turnos, todos los días libres, fuera
 del contrato) no se calcula nada y la pantalla dice «sin meta en este período». El llamador evita la
 división, no la captura.
 
@@ -190,11 +201,13 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
 
 1. **Estructurar el turno.** `sueldo_acuerdo_turnos.lugar` es texto libre. Hacen falta dos columnas que el
    motor pueda leer: `area` (`tienda` | `almacen`, **default `tienda`**, así ningún contrato existente gana meta
-   de pipeline hasta que el administrador lo marque) y `sede_cod` (nulo = la `sede_cod` de la persona).
-   Pantalla de horario del contrato: un selector de área y de sede por turno.
+   de pipeline hasta que el administrador lo marque) y `sede_cod`. Como hay personas con más de una sede en el
+   mismo tramo (decisión 15), la sede **se guarda en cada turno**; sólo cuando la persona tiene una única sede
+   puede quedar nula y tomar `empleados.sede_cod`. Pantalla de horario del contrato: un selector de área y de
+   sede por turno.
 2. **Tabla `dias_libres`** + RPC de alta/baja sólo administrador + pantalla de marcado para varias personas.
 3. **Core, funciones puras** (en `evaluaciones.ts`): `metaDelRango(turnos, diasLibres, licencias,
-   actividadesPorSedeYTurno, contrato, rango, params)` que devuelve `{ horasTienda, horasAlmacen, metaReportes }`,
+   actividadesPorSedeYTurno, contrato, rango, params)` que devuelve `{ horasReportes, horasAlmacen, metaReportes }`,
    y `cumplimientoDelRango` / `notaDesdeCumplimiento`. **Reciben las fechas de quien las llama, nunca
    `new Date()`** (no-negociable 4).
 4. **RPC `private.evaluacion_componentes_datos`:** agregar las claves del cálculo. Conserva firma, `security
@@ -223,22 +236,24 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
 
 - Quincenal anclado al día 1: el tramo 16–30/31 toma sus propios días; contrato que termina el día 20
   recorta el último tramo.
-- **Desbalance de áreas:** 8 días de tienda (reportes al 100 %) y 4 de almacén (pipeline en 0) dan
-  cumplimiento 88/132 = 66,7 %, no 88 %.
-- Mañana en tienda y tarde en almacén el mismo día: la mañana suma horas de tienda y la tarde horas de
-  almacén, y ninguna se cuenta dos veces.
+- **Desbalance de áreas:** 8 días de tienda y 4 de almacén (11 h cada día), reportes al 100 % y pipeline en 0:
+  cumplimiento (132×1 + 0) / (132 + 44) = 75 %. Con una sola bolsa de puntos daría ~88 %.
+- Mañana en tienda y tarde en almacén el mismo día: la mañana suma sólo a `horasReportes`; la tarde suma a
+  `horasReportes` y a `horasAlmacen` (decisión 13).
+- Una persona con turnos en dos sedes en el mismo tramo: cada turno toma las actividades de su propia sede.
 - Turnos de 4 y 7 horas en almacén: la meta de pipeline es proporcional a las horas.
 - Dos personas en la misma sede y turno: ambas tienen la misma meta de reportes.
 - Turno de tienda sin actividades que apliquen: no entra al denominador.
 - Pipeline hecho fuera de las horas de almacén: sube el cumplimiento y no cambia las horas.
-- Persona sin horas de tienda (sólo almacén): el cumplimiento es `puntosPipeline / (pph × horasAlmacen)`.
+- Persona sólo de almacén: sus horas entran a las dos áreas y el cumplimiento combina reporte y pipeline.
+- Extras suben `rReportes` por encima de 1 e incidencias lo bajan; los puntos netos negativos dan 0,00.
 - Licencia justificada: baja las horas y la meta; falta injustificada: no baja y cuenta cero.
 - Día libre para una persona y no para su compañera de sede: sólo la primera pierde meta y horas. Si trabaja
   ese día, sus puntos suman.
-- `horasTienda + horasAlmacen = 0` no lanza ni devuelve `NaN`: devuelve «sin meta».
+- `horasReportes + horasAlmacen = 0` no lanza ni devuelve `NaN`: devuelve «sin meta».
 - `nota = 20` con cumplimiento 1,00 y `eval_cumplimiento_para_20` = 1; 18 con 0,90; 13 con 0,65; más de 20
   sin techo; puntos netos negativos dan 0,00.
-- `eval_cumplimiento_para_20` = 1,25 exige 125 % para el 20.
+- `eval_cumplimiento_para_20` = 1,25 exige 125 % para el 20 y da 16 al cumplir el 100 %.
 - Contrato con cambio de mensual a quincenal el 10-nov: los tramos y sus metas coinciden con
   `calendarioDePagos` (ya probado en `sueldos.test.ts`).
 - Aislamiento: un encargado no ve la meta ni la nota de otra sede; el empleado sólo las suyas.
@@ -250,13 +265,14 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
 
 **Cerradas el 17-oct-2026:** asignación a almacén fija con extras eventuales; medición por hora; actividades
 por sede y para todos igual; feriados por persona y no pagados, descontados completos a la hora normal;
-reportes con meta completa; cada área contra su meta y promedio por horas.
+reportes con meta completa; cada área contra su meta y promedio por horas; turno de almacén con reporte y
+pipeline; extras suben e incidencias bajan; hay personas con más de una sede por tramo.
 
 **Abiertas:**
-1. ¿Confirma Alexander que 100 % de la meta vale 20 (recomendado, nota de referencia) en vez de 16?
-2. ¿Un turno de almacén se mide sólo por pipeline, sin reporte de actividades?
-3. ¿Los **extras** del reporte suben el cumplimiento por encima de 100 % (propuesto, como dijo el 25-ago:
-   «haciendo actividades extras» es sobresaliente) y las **incidencias** lo bajan? Si la persona no tiene horas
-   de tienda, ¿las incidencias restan del pipeline?
-4. ¿Hay personas con más de una sede en el mismo tramo (`empleado_tiendas`)? Si sí, el turno necesita `sede_cod`
-   siempre, no sólo como excepción.
+1. Cumplir la meta: ¿20 (su respuesta) o 16 (idea original, deja espacio hasta 20 para quien rinde más)?
+   Recomendación: 16, con `eval_cumplimiento_para_20` = 1,25.
+2. En un turno de almacén, ¿cada hora cuenta completa en las dos áreas (el turno pesa doble) o se reparte
+   mitad y mitad? Hoy: completa en ambas.
+3. ¿La sede de almacén tiene actividades de reporte en el catálogo? (Verificar en la base antes de construir.)
+4. Cómo se refleja el día libre en el sueldo: decidido (se descuenta completo), pero necesita la spec del
+   motor de sueldos (§8).
