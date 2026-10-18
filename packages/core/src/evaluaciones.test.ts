@@ -4,6 +4,8 @@ import {
   notaTardanza,
   tramoEval,
   calcularCiclo,
+  cicloCerradoAnterior,
+  ultimaEvaluacionPorMes,
   revisarPesos,
   notaDesdePuntos,
   bandaDesdeNota,
@@ -393,5 +395,86 @@ describe('armarEvaluacionAGuardar', () => {
   });
   it('escala rota lanza (no guarda Infinity/NaN)', () => {
     expect(() => armarEvaluacionAGuardar(rpc, { ...escala, puntosExcelente: 5000 }, manual)).toThrow();
+  });
+});
+
+describe('cicloCerradoAnterior', () => {
+  it('ciclo en curso: devuelve el anterior, ya terminado', () => {
+    // Ingreso el día 10; hoy 18-oct → el ciclo en curso es 10-oct..09-nov (no terminó).
+    expect(cicloCerradoAnterior('2024-03-10', '2026-10-18')).toEqual({
+      desde: '2026-09-10',
+      hasta: '2026-10-09',
+      fuente: 'aniversario',
+    });
+  });
+
+  it('borde: el ciclo que termina hoy cuenta como cerrado (hasta == hoy)', () => {
+    // hoy = 09-oct; el ciclo en curso por calcularCiclo ya es 09-sep..08-oct? No: hd < 10 →
+    // arrancó el 10-sep y termina el 09-oct = hoy.
+    expect(cicloCerradoAnterior('2024-03-10', '2026-10-09')).toEqual({
+      desde: '2026-09-10',
+      hasta: '2026-10-09',
+      fuente: 'aniversario',
+    });
+  });
+
+  it('el día siguiente al cierre ya propone el ciclo que acaba de terminar, no el nuevo', () => {
+    expect(cicloCerradoAnterior('2024-03-10', '2026-10-10').hasta).toBe('2026-10-09');
+  });
+
+  it('cruza el año', () => {
+    expect(cicloCerradoAnterior('2024-03-15', '2026-01-20')).toEqual({
+      desde: '2025-12-15',
+      hasta: '2026-01-14',
+      fuente: 'aniversario',
+    });
+  });
+
+  it('mes corto: respeta el recorte de calcularCiclo', () => {
+    // Aniversario 31; hoy 15-mar-2026 → en curso 28-feb..30-mar; el anterior 31-ene..27-feb.
+    expect(cicloCerradoAnterior('2024-01-31', '2026-03-15')).toEqual({
+      desde: '2026-01-31',
+      hasta: '2026-02-27',
+      fuente: 'aniversario',
+    });
+  });
+
+  it('sin fecha de ingreso: mes calendario anterior; el mes completo si hoy es su último día', () => {
+    expect(cicloCerradoAnterior(null, '2026-10-18')).toEqual({
+      desde: '2026-09-01',
+      hasta: '2026-09-30',
+      fuente: 'mes_calendario',
+    });
+    expect(cicloCerradoAnterior(null, '2026-10-31').hasta).toBe('2026-10-31');
+    expect(cicloCerradoAnterior(null, '2026-01-05').desde).toBe('2025-12-01');
+  });
+
+  it('nunca devuelve un ciclo que termine después de hoy', () => {
+    for (const hoy of ['2026-02-27', '2026-02-28', '2026-03-01', '2026-03-30', '2026-03-31', '2026-12-31']) {
+      expect(cicloCerradoAnterior('2024-01-31', hoy).hasta <= hoy).toBe(true);
+      expect(cicloCerradoAnterior(null, hoy).hasta <= hoy).toBe(true);
+    }
+  });
+});
+
+describe('ultimaEvaluacionPorMes', () => {
+  it('elige por mes, no por fecha de creación', () => {
+    const filas = [
+      { mes: '2026-09', nota_final: 15, created_at: '2026-10-18T10:00:00Z' }, // evaluada tarde
+      { mes: '2026-10', nota_final: 17, created_at: '2026-10-05T10:00:00Z' },
+    ];
+    expect(ultimaEvaluacionPorMes(filas)?.nota_final).toBe(17);
+  });
+
+  it('mismo mes: desempata por created_at', () => {
+    const filas = [
+      { mes: '2026-10', nota_final: 12, created_at: '2026-10-01T10:00:00Z' },
+      { mes: '2026-10', nota_final: 14, created_at: '2026-10-02T10:00:00Z' },
+    ];
+    expect(ultimaEvaluacionPorMes(filas)?.nota_final).toBe(14);
+  });
+
+  it('sin filas: null', () => {
+    expect(ultimaEvaluacionPorMes([])).toBeNull();
   });
 });
