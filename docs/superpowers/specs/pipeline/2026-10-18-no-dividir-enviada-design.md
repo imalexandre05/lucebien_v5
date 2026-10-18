@@ -9,7 +9,7 @@ envío colgando.
 
 ## Reglas
 1. **R1.** `pipeline_dividir` solo divide prendas en el proceso: `recepcion`, `codificacion`,
-   `lavado`, `empatado`, `refaccion`, `compostura`, `planchado`, `control_calidad` y `listo`
+   `lavado`, `empatado`, `vacio`, `refaccion`, `compostura`, `planchado`, `control_calidad` y `listo`
    (aún no despachada). En `enviado`, `recibido` o cualquier otra etapa → `TRANSICION:` y no se
    escribe nada (ni hijas, ni historial).
 2. **R2.** Nada más cambia: mismo cuerpo que la 0128 (código de operador, `for update`, historial con
