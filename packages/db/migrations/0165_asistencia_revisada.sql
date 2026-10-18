@@ -1,16 +1,37 @@
--- 0165_asistencia_revisada.sql — <qué hace, en una línea>
+-- 0165_asistencia_revisada.sql — marca de «día revisado» para la lista «Por revisar» de la ficha.
 --
--- Implementa <docs/superpowers/specs/.../SPEC-....md §N>.
+-- Implementa docs/superpowers/specs/sueldos/2026-10-18-ficha-unica-asistencia-por-revisar-design.md §5
+-- (decisión del dueño n.º 4, 18-oct-2026). Prueba: packages/db/pruebas/0165_asistencia_revisada.prueba.sql.
 --
--- Idempotente: se puede reaplicar sin fallar. Cada `create` lleva su `if not exists` y cada
--- restricción que no lo soporta va envuelta en un `do $$ ... $$` que consulta pg_constraint.
+-- No cambia ningún cálculo: `sueldo_entrada` no lee estas columnas. Sólo dice «el administrador ya
+-- miró este día» (una tardanza, una falta o una hora estimada que acepta tal cual). La escribe el
+-- administrador por la policy `asist_admin_write` de siempre (0025): no hace falta policy nueva.
+-- Si después cambia una hora o la condición del día, la marca se borra sola: el dato cambió y hay
+-- que volver a mirarlo.
 --
--- Recordatorios que este repo pagó caros:
---   · Los helpers de RLS viven en el schema `private` desde la 0037. SIEMPRE con el prefijo.
---   · NUNCA `private.app_es_almacen()` sobre datos de personas: devuelve true para
---     'confeccionista' además de 'encargado_almacen' (0006_pipeline_rls.sql:22-25).
---   · Toda tabla con RLS necesita policy de LECTURA **y** de ESCRITURA. Con RLS activa y sólo
---     select, las escrituras fallan en silencio.
---   · Todo default de negocio va comentado como provisional y anotado en
---     docs/pendientes-negocio.md (no-negociable 5).
+-- Sin parámetros de negocio. Idempotente.
 
+alter table asistencias add column if not exists revisada_en  timestamptz;
+alter table asistencias add column if not exists revisada_por uuid references empleados(id) on delete set null;
+
+comment on column asistencias.revisada_en is
+  'Cuándo el administrador dio el día por revisado en «Por revisar» (0165). No cambia el pago. Se
+   vuelve null sola si cambia una hora o la condición del día.';
+
+create or replace function private.asistencia_revisada_se_borra() returns trigger
+language plpgsql set search_path = public, pg_temp as $$
+begin
+  -- Sólo si esta misma escritura no está tocando la marca (quien la pone no se la borra).
+  if new.revisada_en is not distinct from old.revisada_en
+     and (new.hora_entrada is distinct from old.hora_entrada
+          or new.hora_salida is distinct from old.hora_salida
+          or new.condicion is distinct from old.condicion) then
+    new.revisada_en := null;
+    new.revisada_por := null;
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists asistencia_revisada_se_borra on asistencias;
+create trigger asistencia_revisada_se_borra before update on asistencias
+  for each row execute function private.asistencia_revisada_se_borra();
