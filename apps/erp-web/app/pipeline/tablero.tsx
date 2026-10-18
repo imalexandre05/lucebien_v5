@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useOptimistic, useTransition } from 'react';
 import {
   Inbox,
+  Tag,
   Droplets,
   Link2,
   Wrench,
@@ -81,6 +82,7 @@ const COL_MAP: Record<string, string> = {
 type Col = { k: string; n: string; icon: LucideIcon; tint: string };
 const COLUMNAS: Col[] = [
   { k: 'recepcion', n: 'Recepción', icon: Inbox, tint: '#807a6c' },        // muted
+  { k: 'codificacion', n: 'Codificación', icon: Tag, tint: '#b8a515' },   // gold: pendiente de etiqueta
   { k: 'lavado', n: 'Lavado', icon: Droplets, tint: '#2f7f88' },           // cat-mar
   { k: 'empatado', n: 'Empatado', icon: Link2, tint: '#6f5aa8' },          // cat-lila
   { k: 'refaccion', n: 'Refacción', icon: Wrench, tint: '#b5643f' },       // cat-arcilla
@@ -96,7 +98,6 @@ const NOMBRE: Record<string, string> = Object.fromEntries(COLUMNAS.map((c) => [c
 const TABS: { k: string; label: string; href?: string; pronto?: boolean }[] = [
   { k: 'kanban', label: 'Kanban', href: '/pipeline' },
   { k: 'registrar', label: 'Registrar', href: '/pipeline/registrar' },
-  { k: 'codificacion', label: 'Codificación', href: '/pipeline/codificacion' },
   { k: 'envios', label: 'Envíos a tienda', href: '/pipeline/envios' },
   { k: 'accesorios', label: 'Accesorios', href: '/pipeline/accesorios' },
   { k: 'metricas', label: 'Métricas', href: '/pipeline/metricas' },
@@ -489,7 +490,7 @@ export function TableroPipeline({
                 }}
                 className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-navy px-4 py-2 text-cuerpo font-semibold text-white transition hover:bg-[#26345c] active:scale-[.98]"
               >
-                {NOMBRE[d] ?? d} <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+                {selEtapa === 'codificacion' ? `Etiqueta puesta · ${NOMBRE[d] ?? d}` : (NOMBRE[d] ?? d)} <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
               </button>
             ))
           )}

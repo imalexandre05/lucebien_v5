@@ -45,6 +45,7 @@ import { cn } from '../lib/cn';
 
 const ETAPA_LABEL: Record<string, string> = {
   recepcion: 'Recepción',
+  codificacion: 'Codificación',
   lavado: 'Lavado',
   empatado: 'Empatado',
   vacio: 'Vacío',

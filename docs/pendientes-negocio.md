@@ -2076,3 +2076,15 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## 5A · Codificación como etapa y operador de 5 min (18-oct-2026)
+
+Defaults inventados, todos editables desde `/configuracion`:
+
+| Parámetro (`config.clave`) | Default | Qué controla |
+|---|---|---|
+| `pts_codificacion` | 0 | Puntos al completar la etapa «Codificación» (marcar que la prenda ya tiene su etiqueta). 0 porque la codificación real se hace en el sistema externo y no se paga por marcarla. Migración 0147 |
+| `codigo_operador_min` | 5 | Lo pidió el dueño (antes 10 provisional). Migración 0145 |
+
+Pendiente de confirmar con el dueño: si Codificación debe poder asignarse al registrar la prenda
+(hoy se llega a ella desde Recepción) y si debe pagar puntos.
