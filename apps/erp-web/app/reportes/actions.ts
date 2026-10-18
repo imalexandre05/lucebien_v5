@@ -26,7 +26,8 @@ import {
   type ReportePendiente,
 } from '../../lib/reportes-repo';
 import { getSesion } from '../../lib/auth';
-import { operadorParaAccion } from '../../lib/pipeline-operador';
+import { operadorParaAccion, pedirCodigoEnPantalla } from '../../lib/pipeline-operador';
+import { tokenOperadorValido } from '../../lib/operador-token';
 import { crearIncidenciasDeReporte, leerResponsableIncidencia, listarTiposIncidencia } from '../../lib/incidencias-repo';
 import { resolverIncidencia, responsableValido } from '../../lib/incidencias-catalogo';
 
@@ -90,7 +91,11 @@ export async function accionCrearReporte(
   try {
     // Equipo compartido: sin código del encargado no se envía (la base lo vuelve a exigir, 0146).
     // Con código, el encargado es quien lo ingresó: si el formulario trae otro, la RPC lo rechaza.
-    const token = await operadorParaAccion(operador);
+    let token = await operadorParaAccion(operador);
+    // Cuenta de equipo compartido en un navegador sin la cookie del equipo: la pantalla pide el
+    // código y la base lo exige (0146), pero `operadorParaAccion` lo descarta por no ser equipo
+    // compartido. Se conserva el token ya validado para que el reporte no quede sin poder enviarse.
+    if (!token && operador && tokenOperadorValido(operador) && (await pedirCodigoEnPantalla())) token = operador;
     // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): la descripción es
     // obligatoria sólo para incidencias del tipo de categoría 'Otros'. El formulario ya lo hace
     // cumplir; esto es lo que de verdad lo exige — un cliente puede saltearse una validación de
