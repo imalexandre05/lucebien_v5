@@ -10,6 +10,7 @@ import {
   frecuenciaVigente,
   type CambioFrecuencia,
   type ContratoPago,
+  type DiaPorHoras,
   type ModalidadPago,
   type EntradaLiquidacion,
   type Liquidacion,
@@ -18,6 +19,7 @@ import {
   type ResumenLiquidacion,
 } from '@scilb/core';
 import { mapaNombres } from './directorio';
+import { detalleHoras, type DetalleHoras } from './horas-del-pago';
 import { listarTemporadas } from './temporadas-repo';
 import { getServerClient } from './supabase/server';
 import { leerConfigMap } from './config-repo';
@@ -135,6 +137,8 @@ export type CambioAcuerdo = {
   modalidad: ModalidadAcuerdo;
   cadaDias: number | null;
   sueldoPactado: number;
+  /** Tarifa por hora desde `desde` (0164). Nula = sigue la anterior. */
+  tarifaHora: number | null;
   modalidadAnterior: ModalidadAcuerdo | null;
   cadaDiasAnterior: number | null;
   sueldoPactadoAnterior: number | null;
@@ -147,6 +151,7 @@ type RowCambio = {
   modalidad: string;
   cada_dias: number | null;
   sueldo_pactado: number | string;
+  tarifa_hora?: number | string | null;
   modalidad_anterior: string | null;
   cada_dias_anterior: number | null;
   sueldo_pactado_anterior: number | string | null;
@@ -172,6 +177,11 @@ export type AcuerdoSueldo = {
   /** Sólo con modalidad `'dias'`: cada cuántos días se paga (1–62). */
   cadaDias: number | null;
   sueldoPactado: number;
+  /**
+   * Soles por hora (0164). Con tarifa el contrato se paga por horas reales y `sueldoPactado` no se
+   * usa (queda en 0). Nula = sueldo fijo, el contrato de antes (spec sueldos/2026-10-18-sueldo-por-horas).
+   */
+  tarifaHora: number | null;
   escala: number | null;
   almuerzoHabilitado: boolean;
   /** Overrides de esta persona sobre los parámetros globales. `{}` = usa todos los globales. */
@@ -191,6 +201,7 @@ type RowAcuerdo = {
   modalidad: string;
   cada_dias: number | null;
   sueldo_pactado: number | string;
+  tarifa_hora?: number | string | null;
   escala: number | null;
   almuerzo_habilitado: boolean;
   parametros: Partial<ParametrosSueldo> | null;
@@ -211,7 +222,7 @@ type RowTurno = {
 // Una sola línea literal: supabase-js deduce el tipo del texto del select, y concatenar dos literales
 // con `+` lo vuelve `string` y rompe esa deducción.
 const SELECT_ACUERDO =
-  '*, sueldo_acuerdo_turnos(id, dia_semana, hora_inicio, hora_fin, lugar), sueldo_acuerdo_cambios(id, desde, modalidad, cada_dias, sueldo_pactado, modalidad_anterior, cada_dias_anterior, sueldo_pactado_anterior, creado_en)';
+  '*, sueldo_acuerdo_turnos(id, dia_semana, hora_inicio, hora_fin, lugar), sueldo_acuerdo_cambios(id, desde, modalidad, cada_dias, sueldo_pactado, tarifa_hora, modalidad_anterior, cada_dias_anterior, sueldo_pactado_anterior, creado_en)';
 
 function aCambio(r: RowCambio): CambioAcuerdo {
   return {
@@ -220,6 +231,7 @@ function aCambio(r: RowCambio): CambioAcuerdo {
     modalidad: r.modalidad as ModalidadAcuerdo,
     cadaDias: r.cada_dias,
     sueldoPactado: Number(r.sueldo_pactado ?? 0),
+    tarifaHora: r.tarifa_hora == null ? null : Number(r.tarifa_hora),
     modalidadAnterior: (r.modalidad_anterior as ModalidadAcuerdo | null) ?? null,
     cadaDiasAnterior: r.cada_dias_anterior,
     sueldoPactadoAnterior: r.sueldo_pactado_anterior == null ? null : Number(r.sueldo_pactado_anterior),
@@ -229,7 +241,13 @@ function aCambio(r: RowCambio): CambioAcuerdo {
 
 /** Lo que el core necesita de un cambio para resolver la frecuencia vigente. */
 export const cambiosParaCore = (cambios: CambioAcuerdo[]): CambioFrecuencia[] =>
-  cambios.map((c) => ({ desde: c.desde, modalidad: c.modalidad, cadaDias: c.cadaDias, sueldoPactado: c.sueldoPactado }));
+  cambios.map((c) => ({
+    desde: c.desde,
+    modalidad: c.modalidad,
+    cadaDias: c.cadaDias,
+    sueldoPactado: c.sueldoPactado,
+    tarifaHora: c.tarifaHora,
+  }));
 
 // Postgres devuelve `time` como 'HH:MM:SS'. El core valida 'H:MM' o 'HH:MM' (RE_HORA acepta los
 // segundos, pero la UI no los quiere mostrar) y `sueldo_entrada` ya recorta a 'HH24:MI'. Acá se
@@ -258,6 +276,7 @@ function aAcuerdo(r: RowAcuerdo, nombre: string | null): AcuerdoSueldo {
     modalidad: (r.modalidad as ModalidadAcuerdo) ?? 'mensual',
     cadaDias: r.cada_dias ?? null,
     sueldoPactado: Number(r.sueldo_pactado ?? 0),
+    tarifaHora: r.tarifa_hora == null ? null : Number(r.tarifa_hora),
     escala: r.escala,
     almuerzoHabilitado: Boolean(r.almuerzo_habilitado),
     parametros: r.parametros ?? {},
@@ -303,6 +322,8 @@ export type AcuerdoInput = {
   modalidad: ModalidadAcuerdo;
   cadaDias: number | null;
   sueldoPactado: number;
+  /** Con tarifa, contrato por horas: `sueldoPactado` se guarda en 0 (spec sueldo-por-horas §3.1). */
+  tarifaHora: number | null;
   escala: number | null;
   almuerzoHabilitado: boolean;
   parametros: Partial<ParametrosSueldo>;
@@ -323,6 +344,13 @@ function validarOverrides(parametros: Partial<ParametrosSueldo>): Partial<Parame
   return parametros;
 }
 
+function validarTarifaHora(t: number): number {
+  if (!Number.isFinite(t) || t <= 0) {
+    throw new SueldoRpcError('La tarifa por hora tiene que ser mayor que cero.', 'DATO');
+  }
+  return t;
+}
+
 function filaAcuerdo(p: Omit<AcuerdoInput, 'turnos'>) {
   return {
     empleado_id: p.empleadoId,
@@ -331,7 +359,9 @@ function filaAcuerdo(p: Omit<AcuerdoInput, 'turnos'>) {
     modalidad: p.modalidad,
     // Sólo 'dias' lleva N; el check de la 0120 rechaza N en cualquier otra modalidad.
     cada_dias: p.modalidad === 'dias' ? validarCadaDias(p.cadaDias) : null,
-    sueldo_pactado: p.sueldoPactado,
+    // Contrato por horas: no hay cuota. La base exige tarifa > 0 (0164); acá se avisa antes, claro.
+    sueldo_pactado: p.tarifaHora == null ? p.sueldoPactado : 0,
+    tarifa_hora: p.tarifaHora == null ? null : validarTarifaHora(p.tarifaHora),
     escala: p.escala,
     almuerzo_habilitado: p.almuerzoHabilitado,
     parametros: validarOverrides(p.parametros),
@@ -436,6 +466,11 @@ export type CambioFrecuenciaInput = {
   cadaDias: number | null;
   /** Cuota de CADA pago desde `desde`. La confirma el administrador: el sistema sólo la sugiere. */
   sueldoPactado: number;
+  /**
+   * Contrato por horas (0164): tarifa nueva desde `desde`. Ausente o nula = sigue la anterior. En un
+   * contrato por horas no hay cuota: `sueldoPactado` se ignora y se guarda 0.
+   */
+  tarifaHora?: number | null;
 };
 
 /** Lo último que ya se pagó de un contrato: el `periodo_hasta` más alto entre las liquidaciones cerradas. */
@@ -477,9 +512,12 @@ export async function cambiarFrecuencia(
       'ESTADO',
     );
   }
-  if (!Number.isFinite(p.sueldoPactado) || p.sueldoPactado <= 0) {
+  const porHoras = acuerdo.tarifaHora !== null;
+  if (!porHoras && (!Number.isFinite(p.sueldoPactado) || p.sueldoPactado <= 0)) {
     throw new SueldoRpcError('La cuota tiene que ser mayor que cero.', 'DATO');
   }
+  const tarifaNueva = porHoras && p.tarifaHora != null ? validarTarifaHora(p.tarifaHora) : null;
+  const cuota = porHoras ? 0 : p.sueldoPactado;
   const cadaDias = p.modalidad === 'dias' ? validarCadaDias(p.cadaDias) : null;
   const anterior = frecuenciaVigente(acuerdo, cambiosParaCore(acuerdo.cambios), p.desde);
 
@@ -490,7 +528,12 @@ export async function cambiarFrecuencia(
   if (p.desde === acuerdo.fechaInicio) {
     const { error: eBase } = await sb
       .from('sueldo_acuerdos')
-      .update({ modalidad: p.modalidad, cada_dias: cadaDias, sueldo_pactado: p.sueldoPactado })
+      .update({
+        modalidad: p.modalidad,
+        cada_dias: cadaDias,
+        sueldo_pactado: cuota,
+        ...(tarifaNueva !== null ? { tarifa_hora: tarifaNueva } : {}),
+      })
       .eq('id', acuerdoId);
     if (eBase) throw errorSueldo(eBase);
     return { borradores };
@@ -506,7 +549,8 @@ export async function cambiarFrecuencia(
     desde: p.desde,
     modalidad: p.modalidad,
     cada_dias: cadaDias,
-    sueldo_pactado: p.sueldoPactado,
+    sueldo_pactado: cuota,
+    tarifa_hora: tarifaNueva,
     // Si se reemplaza un cambio, «antes» es lo que había antes de ese cambio, no el cambio borrado.
     modalidad_anterior: previo?.modalidadAnterior ?? anterior.modalidad,
     cada_dias_anterior: previo ? previo.cadaDiasAnterior : (anterior.cadaDias ?? null),
@@ -856,6 +900,8 @@ export type ContratoPagoGuardado = {
   modalidad: ModalidadAcuerdo;
   cadaDias: number | null;
   sueldoPactado: number;
+  /** Sólo en un contrato por horas (0164): la RPC no emite la clave si es nula. */
+  tarifaHora?: number;
 };
 
 /** Cada elemento de `cambiosFrecuencia` tal como sale de `sueldo_entrada_pago` (0121). */
@@ -864,7 +910,12 @@ export type CambioFrecuenciaGuardado = {
   modalidad: ModalidadAcuerdo;
   cadaDias: number | null;
   sueldoPactado: number;
+  /** Sólo si el cambio trae tarifa nueva (0164). */
+  tarifaHora?: number;
 };
+
+/** Contrato por horas (0164): no hay cuota que calcular ni que comparar. */
+const esPorHoras = (c: ContratoPagoGuardado | undefined): boolean => c?.tarifaHora !== undefined && c?.tarifaHora !== null;
 
 /**
  * La cuota del tramo con los datos guardados en la entrada: la MISMA función del core y los MISMOS
@@ -934,6 +985,12 @@ export async function entradaDeAcuerdo(
   // cuota del tramo puede ser otra —cambio de frecuencia—, ir prorrateada —último pago corto— o
   // sumar varios pagos —un rango que cubre más de uno—; se resuelve en el core y se reemplaza ACÁ,
   // en el servidor, antes del cálculo.
+  // Contrato por horas (spec sueldo-por-horas §3.2): un rango cualquiera paga sus horas. No hay cuota,
+  // ni prorrateo, ni suma de cuotas (enmienda §10 de la spec de frecuencia).
+  if (esPorHoras(entrada.contratoPago)) {
+    entrada.sueldoPactado = 0;
+    return entrada;
+  }
   if (cuotaFija !== undefined) {
     entrada.sueldoPactado = cuotaFija;
     entrada.cuotaFijada = true;
@@ -1043,7 +1100,7 @@ export async function cerrarLiquidacion(id: string): Promise<void> {
   // transacción y con el contrato bloqueado: acá no se lee la base, para no abrir una carrera.
   const liq = await obtenerLiquidacion(id);
   const e = liq?.entrada as EntradaConContexto | undefined;
-  if (liq && liq.estado === 'borrador' && e?.contratoPago && !e.cuotaFijada) {
+  if (liq && liq.estado === 'borrador' && e?.contratoPago && !e.cuotaFijada && !esPorHoras(e.contratoPago)) {
     const cuota = cuotaConDatosDePago(e.contratoPago, e.cambiosFrecuencia ?? [], liq.periodoDesde, liq.periodoHasta);
     if (cuota !== e.sueldoPactado) {
       throw new SueldoRpcError(
@@ -1493,6 +1550,8 @@ export type LiquidacionPropia = {
   total: number;
   cerradaEn: string | null;
   resumen: ResumenLiquidacion;
+  /** Pago por horas: las tres filas y el detalle día por día. Null = sueldo fijo (como siempre). */
+  horas: DetalleHoras | null;
   /** false si la tabla de abonos no respondió: el restante no es confiable y no se muestra. */
   pagoDisponible: boolean;
 };
@@ -1504,13 +1563,22 @@ type RowPropia = {
   total: number | string;
   cerrada_en: string | null;
   ventas: { total?: number; metaPeriodo?: number } | null;
-  asistencia: { diasConDerechoAlmuerzo?: number; almuerzosAPagar?: number } | null;
+  asistencia: {
+    diasConDerechoAlmuerzo?: number;
+    almuerzosAPagar?: number;
+    horasDentro?: number;
+    horasExtra?: number;
+    horasFaltaron?: number;
+  } | null;
+  modo?: string | null;
+  referencia?: number | null;
+  dias?: DiaPorHoras[] | null;
   parametros: { valorAlmuerzo?: number } | null;
   sueldo_liquidacion_lineas: RowLinea[] | null;
 };
 
 const SELECT_PROPIA =
-  'id, periodo_desde, periodo_hasta, total, cerrada_en, ventas:resultado->ventas, asistencia:resultado->asistencia, parametros:parametros_usados, sueldo_liquidacion_lineas(orden, grupo, concepto, detalle, regla, monto)';
+  'id, periodo_desde, periodo_hasta, total, cerrada_en, ventas:resultado->ventas, asistencia:resultado->asistencia, modo:resultado->modo, referencia:resultado->base->referencia, dias:resultado->dias, parametros:parametros_usados, sueldo_liquidacion_lineas(orden, grupo, concepto, detalle, regla, monto)';
 
 /** Abonos no anulados por liquidación; `null` si la 0080 no responde (no se inventa un 0). */
 async function abonosPorLiquidacion(ids: string[]): Promise<Map<string, number> | null> {
@@ -1551,6 +1619,13 @@ function aPropia(r: RowPropia, abonos: number | null): LiquidacionPropia {
       total,
       abonos: abonos ?? 0,
       almuerzosEmpresa,
+    }),
+    horas: detalleHoras({
+      modo: r.modo,
+      asistencia: r.asistencia,
+      referencia: r.referencia,
+      dias: r.dias,
+      lineas,
     }),
     pagoDisponible: abonos != null,
   };

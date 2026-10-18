@@ -62,6 +62,8 @@ export default async function ComprobanteLiquidacionPage(props: { params: Promis
   const saldo = pagos ? Number((liq.total - pagado).toFixed(2)) : 0;
   // total <= 0 (descuentos >= ingresos) nunca fue "pagado" — un saldo ahí no es una deuda real.
   const sinMontoAPagar = liq.total <= 0;
+  // Pago por horas: sin la columna de reglas (códigos internos), con palabras simples.
+  const porHoras = liq.resultado.modo === 'horas';
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -112,7 +114,7 @@ export default async function ComprobanteLiquidacionPage(props: { params: Promis
         {resumen && (
           <section className="mt-8">
             <h2 className="mb-2 text-rotulo font-semibold uppercase text-muted">Resumen de liquidación</h2>
-            <ResumenLiquidacionVista r={resumen.resumen} pagoDisponible={resumen.pagoDisponible} />
+            <ResumenLiquidacionVista r={resumen.resumen} pagoDisponible={resumen.pagoDisponible} horas={resumen.horas} />
           </section>
         )}
 
@@ -131,7 +133,7 @@ export default async function ComprobanteLiquidacionPage(props: { params: Promis
                   <TR>
                     <TH>Concepto</TH>
                     <TH>De dónde sale</TH>
-                    <TH>Regla</TH>
+                    {!porHoras && <TH>Regla</TH>}
                     <TH className="text-right">Monto</TH>
                   </TR>
                 </THead>
@@ -142,7 +144,7 @@ export default async function ComprobanteLiquidacionPage(props: { params: Promis
                     return (
                       <Fragment key={g}>
                         <TR>
-                          <TD colSpan={4} className="bg-paper text-rotulo font-medium uppercase text-muted">
+                          <TD colSpan={porHoras ? 3 : 4} className="bg-paper text-rotulo font-medium uppercase text-muted">
                             {GRUPO_LABEL[g] ?? g}
                           </TD>
                         </TR>
@@ -150,7 +152,7 @@ export default async function ComprobanteLiquidacionPage(props: { params: Promis
                           <TR key={`${g}-${i}`} className={g === 'final' ? 'font-medium text-navy' : undefined}>
                             <TD>{l.concepto}</TD>
                             <TD className="text-cuerpo text-muted">{l.detalle}</TD>
-                            <TD className="text-apoyo text-muted">{l.regla}</TD>
+                            {!porHoras && <TD className="text-apoyo text-muted">{l.regla}</TD>}
                             <TD className="text-right tabular-nums">{soles(l.monto)}</TD>
                           </TR>
                         ))}

@@ -50,6 +50,9 @@ export function CambiarFrecuencia({ acuerdo, onClose }: { acuerdo: AcuerdoSueldo
   // La cuota sugerida se vuelve a calcular al cambiar la frecuencia hasta que el administrador la
   // toca a mano: desde ahí es suya.
   const [cuotaTocada, setCuotaTocada] = useState(false);
+  // Contrato por horas: no hay cuota. Se pide la tarifa por hora desde el próximo pago.
+  const porHoras = acuerdo.tarifaHora !== null;
+  const [tarifa, setTarifa] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pendientes, setPendientes] = useState<{ periodoDesde: string; periodoHasta: string }[] | null>(null);
   const [guardando, empezar] = useTransition();
@@ -58,6 +61,10 @@ export function CambiarFrecuencia({ acuerdo, onClose }: { acuerdo: AcuerdoSueldo
     accionPlanDeCambio(acuerdo.id).then((r) => {
       if (!r.ok || !r.plan) return setError(r.error ?? 'No se pudo preparar el cambio.');
       setPlan(r.plan);
+      if (r.plan.frecuenciaActual.tarifaHora != null) {
+        setTarifa(String(r.plan.frecuenciaActual.tarifaHora));
+        return;
+      }
       const sug = r.plan.desde
         ? cuotaProporcional(r.plan.frecuenciaActual, { modalidad: 'quincenal', cadaDias: null })
         : null;
@@ -90,7 +97,8 @@ export function CambiarFrecuencia({ acuerdo, onClose }: { acuerdo: AcuerdoSueldo
         desde: plan.desde as string,
         modalidad,
         cadaDias: modalidad === 'dias' ? Number(cadaDias) : null,
-        sueldoPactado: Number(cuota),
+        sueldoPactado: porHoras ? 0 : Number(cuota),
+        ...(porHoras ? { tarifaHora: Number(tarifa) } : {}),
       });
       if (!r.ok) return setError(r.error ?? 'No se pudo cambiar cómo se paga.');
       router.refresh();
@@ -109,7 +117,7 @@ export function CambiarFrecuencia({ acuerdo, onClose }: { acuerdo: AcuerdoSueldo
             Hay {pendientes.length === 1 ? 'un borrador' : `${pendientes.length} borradores`} de liquidación que se cruza
             con el cambio (
             {pendientes.map((b) => `${fechaCorta(b.periodoDesde)} al ${fechaCorta(b.periodoHasta)}`).join('; ')}
-            ). Elimínalo y vuelve a calcularlo en Liquidaciones para que use la cuota nueva.
+            ). Elimínalo y vuelve a calcularlo en Liquidaciones para que use {porHoras ? 'la tarifa nueva' : 'la cuota nueva'}.
           </Aviso>
         ) : !plan ? (
           <p className="text-cuerpo text-muted">{error ?? 'Preparando…'}</p>
@@ -119,7 +127,16 @@ export function CambiarFrecuencia({ acuerdo, onClose }: { acuerdo: AcuerdoSueldo
           <div className="space-y-4">
             <p className="text-cuerpo text-navy">
               Hoy: <strong>{nombreFrecuencia(actual!.modalidad, actual!.cadaDias)}</strong>,{' '}
-              <span className="tabular-nums">{soles(actual!.sueldoPactado)}</span> cada pago. El cambio rige{' '}
+              {porHoras ? (
+                <>
+                  <span className="tabular-nums">{soles(actual!.tarifaHora ?? 0)}</span> por hora, y cada pago paga sus horas.
+                </>
+              ) : (
+                <>
+                  <span className="tabular-nums">{soles(actual!.sueldoPactado)}</span> cada pago.
+                </>
+              )}{' '}
+              El cambio rige{' '}
               <strong>desde el próximo pago (<span className="tabular-nums">{fechaCorta(plan.desde)}</span>)</strong>; lo ya
               pagado no se toca.
             </p>
@@ -130,7 +147,25 @@ export function CambiarFrecuencia({ acuerdo, onClose }: { acuerdo: AcuerdoSueldo
               fechaInicio={plan.desde}
               fechaFin={plan.fechaFin}
               cuota={Number(cuota)}
+              porHoras={porHoras ? { turnos: acuerdo.turnos, tarifa: Number(tarifa) } : undefined}
             />
+            {porHoras ? (
+              <div>
+                <Label htmlFor="tarifa-nueva" required>Tarifa por hora desde ese pago</Label>
+                <Input
+                  id="tarifa-nueva"
+                  type="number"
+                  min={0}
+                  step="0.01"
+                  value={tarifa}
+                  onChange={(e) => setTarifa(e.target.value)}
+                  className="tabular-nums"
+                />
+                <p className="mt-1 text-apoyo text-muted">
+                  Es la que ya tiene hoy. Cámbiala solo si sube o baja desde ese pago; lo ya pagado no se toca.
+                </p>
+              </div>
+            ) : (
             <div>
               <Label htmlFor="cuota-nueva" required>Cuota de cada pago</Label>
               <Input
@@ -149,6 +184,7 @@ export function CambiarFrecuencia({ acuerdo, onClose }: { acuerdo: AcuerdoSueldo
                 Es una sugerencia proporcional a los días de cada pago. Confírmala o cámbiala: no se aplica sola.
               </p>
             </div>
+            )}
             {plan.borradores.length > 0 && (
               <Aviso tono="aviso">
                 Ya hay un borrador de liquidación que se cruza con el cambio. Al confirmar tendrás que eliminarlo y volver a calcularlo.
@@ -164,7 +200,7 @@ export function CambiarFrecuencia({ acuerdo, onClose }: { acuerdo: AcuerdoSueldo
         ) : (
           <>
             <Button variant="outline" onClick={onClose}>Cancelar</Button>
-            <Button onClick={confirmar} pending={guardando} disabled={!(Number(cuota) > 0)}>
+            <Button onClick={confirmar} pending={guardando} disabled={!(Number(porHoras ? tarifa : cuota) > 0)}>
               Confirmar cambio
             </Button>
           </>

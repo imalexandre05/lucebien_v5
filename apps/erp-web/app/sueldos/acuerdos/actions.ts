@@ -1,9 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { validarCadaDias, type ParametrosSueldo } from '@scilb/core';
+import { tarifaDelDia, validarCadaDias, type ParametrosSueldo } from '@scilb/core';
 import { getSesion } from '../../../lib/auth';
 import {
+  cambiosParaCore,
   actualizarAcuerdo,
   cambiarEstadoAcuerdo,
   cambiarFrecuencia,
@@ -43,7 +44,9 @@ export type AcuerdoForm = {
   fechaFin: string;
   modalidad: ModalidadAcuerdo;
   cadaDias: number | null;
+  /** Con tarifa, el contrato se paga por horas y no lleva sueldo pactado. Nula = sueldo fijo. */
   sueldoPactado: number;
+  tarifaHora: number | null;
   escala: number | null;
   almuerzoHabilitado: boolean;
   parametros: Partial<ParametrosSueldo>;
@@ -68,7 +71,11 @@ function validar(f: AcuerdoForm): string | null {
       return e instanceof Error ? e.message : 'Cada cuántos días se paga tiene que estar entre 1 y 62.';
     }
   }
-  if (!Number.isFinite(f.sueldoPactado) || f.sueldoPactado <= 0) {
+  if (f.tarifaHora != null) {
+    if (!Number.isFinite(f.tarifaHora) || f.tarifaHora <= 0) {
+      return 'La tarifa por hora tiene que ser mayor que cero.';
+    }
+  } else if (!Number.isFinite(f.sueldoPactado) || f.sueldoPactado <= 0) {
     return 'El sueldo pactado tiene que ser mayor que cero.';
   }
   if (f.escala != null && (!Number.isInteger(f.escala) || f.escala < 1)) {
@@ -102,7 +109,8 @@ const aInput = (f: AcuerdoForm): AcuerdoInput => ({
   fechaFin: f.fechaFin,
   modalidad: f.modalidad,
   cadaDias: f.modalidad === 'dias' ? f.cadaDias : null,
-  sueldoPactado: f.sueldoPactado,
+  sueldoPactado: f.tarifaHora != null ? 0 : f.sueldoPactado,
+  tarifaHora: f.tarifaHora ?? null,
   escala: f.escala,
   almuerzoHabilitado: f.almuerzoHabilitado,
   parametros: f.parametros,
@@ -182,7 +190,13 @@ export type PlanCambio = {
   /** Primer día del próximo pago sin pagar: desde ahí rige el cambio. Null si ya está todo pagado. */
   desde: string | null;
   /** Cuántos días y qué cuota tiene hoy ese pago, para sugerir una proporcional. */
-  frecuenciaActual: { modalidad: ModalidadAcuerdo; cadaDias: number | null; sueldoPactado: number };
+  frecuenciaActual: {
+    modalidad: ModalidadAcuerdo;
+    cadaDias: number | null;
+    sueldoPactado: number;
+    /** Tarifa por hora vigente en ese pago. Nula = contrato de sueldo fijo. */
+    tarifaHora: number | null;
+  };
   fechaFin: string;
   /** Borradores que se cruzan con el cambio: hay que recalcularlos después. */
   borradores: { id: string; periodoDesde: string; periodoHasta: string }[];
@@ -192,9 +206,13 @@ export async function accionPlanDeCambio(acuerdoId: string): Promise<{ ok: boole
   try {
     if (!(await admin())) return { ok: false, error: 'Sólo el administrador o el dueño pueden cambiar cómo se paga.' };
     const { acuerdo, proximo, borradores } = await planDeCambio(acuerdoId);
+    const tarifaHora =
+      acuerdo.tarifaHora === null
+        ? null
+        : tarifaDelDia(acuerdo, cambiosParaCore(acuerdo.cambios), proximo?.desde ?? acuerdo.fechaInicio);
     const base = proximo
-      ? { modalidad: proximo.modalidad, cadaDias: proximo.cadaDias ?? null, sueldoPactado: proximo.cuotaCompleta }
-      : { modalidad: acuerdo.modalidad, cadaDias: acuerdo.cadaDias, sueldoPactado: acuerdo.sueldoPactado };
+      ? { modalidad: proximo.modalidad, cadaDias: proximo.cadaDias ?? null, sueldoPactado: proximo.cuotaCompleta, tarifaHora }
+      : { modalidad: acuerdo.modalidad, cadaDias: acuerdo.cadaDias, sueldoPactado: acuerdo.sueldoPactado, tarifaHora };
     return {
       ok: true,
       plan: {
@@ -210,7 +228,7 @@ export async function accionPlanDeCambio(acuerdoId: string): Promise<{ ok: boole
 }
 
 /**
- * Confirma el cambio. La cuota la manda el administrador (el panel sólo la sugiere): nunca se
+ * Confirma el cambio. En un contrato por horas llega `tarifaHora` y no hay cuota. La cuota la manda el administrador (el panel sólo la sugiere): nunca se
  * aplica sola (no-negociable 5). Devuelve los borradores que quedaron desactualizados para que la
  * pantalla pida recalcularlos.
  */
