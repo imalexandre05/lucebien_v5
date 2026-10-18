@@ -2076,3 +2076,12 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## Sueldo por horas reales (sesión 7, 18-oct-2026) — [spec](superpowers/specs/sueldos/2026-10-18-sueldo-por-horas-design.md)
+
+Decisiones del dueño n.º 1 y 2, migración 0164. **Defaults inventados, a confirmar:** (1) «dentro de su horario»
+se mide por la cantidad de horas del día (`min(trabajadas, horario)`), no por la hora del reloj: llegar tarde y
+quedarse más no da horas extra; (2) la referencia «≈ S/… al mes» del contrato usa su primer mes; (3) la tarifa se
+guarda con 4 decimales. **Para decidir:** el castigo de una falta injustificada (`diasDescuentoPorFalta − 1` días
+a tarifa) sigue igual que con sueldo fijo; los contratos de sueldo fijo de antes siguen así hasta que el
+administrador les ponga tarifa.
