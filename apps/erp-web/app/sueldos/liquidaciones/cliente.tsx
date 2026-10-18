@@ -416,9 +416,9 @@ export function LiquidacionesCliente({
       {error && (
         <div className="mb-5 rounded-r-chico bg-error/10 px-4 py-3 text-cuerpo text-error-deep">
           <p>{error}</p>
-          {codigo === 'DATO' && (
+          {codigo === 'DATO' && /falta declarar la asistencia/i.test(error) && (
             <p className="mt-1 text-apoyo">
-              Faltan días por declarar. Andá a <strong>Declarar asistencia</strong> y decí qué pasó
+              Faltan días por declarar. Ve a <strong>Declarar asistencia</strong> y di qué pasó
               cada uno de esos días — un día sin dato no es una falta.
             </p>
           )}
@@ -442,7 +442,7 @@ export function LiquidacionesCliente({
           {codigo === 'PARCIAL' && (
             <p className="mt-1 text-apoyo font-medium">
               La anulación SÍ se aplicó — ya figura como «anulada» en la lista de abajo, con el
-              motivo que pusiste. El contrato y el período quedaron cargados arriba: apretá{' '}
+              motivo que pusiste. El contrato y el período quedaron cargados arriba: presiona{' '}
               <strong>Calcular</strong> y, si el número es el que esperás, <strong>Guardar
               borrador</strong>.
             </p>
@@ -554,7 +554,7 @@ export function LiquidacionesCliente({
         <CardContent className="px-0 pb-0">
           {liquidaciones.length === 0 ? (
             <p className="px-5 py-8 text-center text-cuerpo text-muted">
-              Todavía no se guardó ninguna. Calculá un contrato y guardá el borrador.
+              Todavía no se guardó ninguna. Calcula un contrato y guarda el borrador.
             </p>
           ) : (
             <Table>

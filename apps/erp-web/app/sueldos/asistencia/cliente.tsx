@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { AlertTriangle, Check } from 'lucide-react';
 import { diaSemanaISO, diasDelPeriodo, resumirHorario, soloHastaHoy } from '@scilb/core';
@@ -43,6 +43,12 @@ type Borrador = {
   salidaEstimada: boolean;
   sucio: boolean;
 };
+
+/**
+ * Clave de un borrador: el día y el tramo. Un día puede tener varias filas (mañana y tarde del
+ * huellero, el turno de un reporte); cada una se edita y se guarda por separado.
+ */
+const clave = (fecha: string, turno?: string): string => `${fecha}|${turno ?? ''}`;
 
 const vacio = (): Borrador => ({
   condicion: 'sin_dato',
@@ -132,27 +138,45 @@ export function AsistenciaCliente({
       const iso = diaSemanaISO(fecha);
       const contrato = porDia.get(iso);
       const delDia = filas.filter((f) => f.fecha === fecha);
-      // Se edita la fila de día completo si existe; si no, la primera que haya. Un día puede tener
-      // más de una fila (el envío de un reporte crea la del turno M), y crear otra más no rompe
-      // nada, pero deja al administrador editando una y mirando otra.
-      const fila = delDia.find((f) => f.turno === 'C') ?? delDia[0] ?? null;
+      // Cada fila del día es un tramo editable. Antes se editaba una sola y la pantalla mostraba
+      // sus horas como las del día, aunque el motor suma todas (4 h en pantalla, 10 h pagadas).
+      // Un día sin filas tiene un tramo vacío, que al guardar crea la fila de día completo.
+      const tramos: { clave: string; fila: AsistenciaDia | null }[] =
+        delDia.length > 0
+          ? delDia.map((f) => ({ clave: clave(fecha, f.turno), fila: f }))
+          : [{ clave: clave(fecha), fila: null }];
       return {
         fecha,
         iso,
         horasContratadas: contrato?.horas ?? 0,
         entradaContrato: contrato ? hhmm(contrato.inicioMin) : null,
-        fila,
-        otras: delDia.length > 1 ? delDia.length - 1 : 0,
+        tramos,
       };
     });
   }, [acuerdo, filas]);
 
-  const [borradores, setBorradores] = useState<Record<string, Borrador>>(() =>
-    Object.fromEntries(calendario.map((d) => [d.fecha, d.fila ? deFila(d.fila) : vacio()])),
-  );
+  const sembrar = (): Record<string, Borrador> =>
+    Object.fromEntries(
+      calendario.flatMap((d) => d.tramos.map((t) => [t.clave, t.fila ? deFila(t.fila) : vacio()] as const)),
+    );
+  const [borradores, setBorradores] = useState<Record<string, Borrador>>(sembrar);
+
+  // Cuando llegan filas nuevas del servidor (tras «Declarar todos» o un guardado), los borradores
+  // se resincronizan: los días sin cambios pendientes toman lo que dice la base, y los que la
+  // persona está editando se respetan. Sin esto la pantalla seguía mostrando «Sin declarar».
+  useEffect(() => {
+    setBorradores((previo) => {
+      const nuevo = sembrar();
+      for (const k of Object.keys(nuevo)) if (previo[k]?.sucio) nuevo[k] = previo[k];
+      return nuevo;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calendario]);
+
+  const condDe = (c: string): CondicionDia => borradores[c]?.condicion ?? 'sin_dato';
 
   const contratados = calendario.filter((d) => d.horasContratadas > 0);
-  const sinDeclarar = contratados.filter((d) => (borradores[d.fecha]?.condicion ?? 'sin_dato') === 'sin_dato');
+  const sinDeclarar = contratados.filter((d) => d.tramos.some((t) => condDe(t.clave) === 'sin_dato'));
 
   // Lo que se ve y lo que actúa el botón «Declarar … como trabajados». Con la vista acotada son
   // sólo los días visibles: declarar algo que no está en pantalla sería pagar a ciegas.
@@ -163,19 +187,45 @@ export function AsistenciaCliente({
   // La acción masiva sólo cubre los días visibles Y hasta hoy (hora Perú): una falta futura declarada
   // de antemano como trabajada se pagaría, y el huellero ya no pisa lo declarado. Los futuros se
   // declaran uno a uno.
-  const sinDeclararHastaHoy = soloHastaHoy(sinDeclararVisibles, hoyPeru());
+  // Los días de un solo tramo se declaran con el horario del contrato.
+  const sinDeclararHastaHoy = soloHastaHoy(
+    sinDeclararVisibles.filter((d) => d.tramos.length === 1),
+    hoyPeru(),
+  );
+  // Los días partidos en varios tramos (decisión del dueño, 18-oct-2026; spec
+  // 2026-10-18-declarar-dias-partidos-design.md) NO reparten las horas del contrato: cada tramo
+  // CERRADO (entrada y salida reales del huellero) se declara con sus propias horas; el tramo
+  // abierto o con hora estimada no se inventa y queda sin declarar.
+  const partidosHastaHoy = soloHastaHoy(
+    sinDeclararVisibles.filter((d) => d.tramos.length > 1),
+    hoyPeru(),
+  ).map((d) => {
+    const pend = d.tramos.filter((t) => t.fila && condDe(t.clave) === 'sin_dato');
+    const cerrado = (f: AsistenciaDia) =>
+      Boolean(f.horaEntrada && f.horaSalida) && !f.entradaEstimada && !f.salidaEstimada;
+    return {
+      fecha: d.fecha,
+      cerrados: pend.filter((t) => cerrado(t.fila!)).map((t) => t.fila!),
+      abiertos: pend.filter((t) => !cerrado(t.fila!)).map((t) => t.fila!),
+    };
+  });
+  const partidosDeclarables = partidosHastaHoy.filter((d) => d.cerrados.length > 0);
+  const tramosPartidosACerrar = partidosDeclarables.reduce((n, d) => n + d.cerrados.length, 0);
+  const totalAccion = sinDeclararHastaHoy.length + partidosDeclarables.length;
 
   // Un cambio sin guardar en un día que la vista dejó afuera no se ve, y no está en la base:
   // esconderlo sin avisar haría creer que se guardó.
   const suciosFuera = rango
-    ? calendario.filter((d) => borradores[d.fecha]?.sucio && (d.fecha < rango.desde || d.fecha > rango.hasta))
+    ? calendario.filter(
+        (d) => d.tramos.some((t) => borradores[t.clave]?.sucio) && (d.fecha < rango.desde || d.fecha > rango.hasta),
+      )
     : [];
 
-  const set = (fecha: string, cambio: Partial<Borrador>) =>
-    setBorradores((v) => ({ ...v, [fecha]: { ...v[fecha], ...cambio, sucio: true } }));
+  const set = (k: string, cambio: Partial<Borrador>) =>
+    setBorradores((v) => ({ ...v, [k]: { ...v[k], ...cambio, sucio: true } }));
 
-  const aForm = (fecha: string): DiaForm => {
-    const b = borradores[fecha];
+  const aForm = (k: string, fecha: string): DiaForm => {
+    const b = borradores[k];
     return {
       empleadoId: acuerdo.empleadoId,
       fecha,
@@ -189,12 +239,12 @@ export function AsistenciaCliente({
     };
   };
 
-  const guardar = (fecha: string) => {
+  const guardar = (k: string, fecha: string) => {
     setError(null);
     empezar(async () => {
-      const r = await accionDeclararDia(aForm(fecha));
+      const r = await accionDeclararDia(aForm(k, fecha));
       if (r.ok) {
-        setBorradores((v) => ({ ...v, [fecha]: { ...v[fecha], sucio: false } }));
+        setBorradores((v) => ({ ...v, [k]: { ...v[k], sucio: false } }));
         router.refresh();
       } else setError(r.error ?? 'No se pudo guardar.');
     });
@@ -205,15 +255,53 @@ export function AsistenciaCliente({
    * contrato. Lo confirma una persona y queda en la auditoría: el sistema no infiere nada solo.
    */
   const declararTodosTrabajados = () => {
-    const cuantos = sinDeclararHastaHoy.length;
+    const cuantos = totalAccion;
+    const horasDe = (f: AsistenciaDia) =>
+      Math.round(((minutosDeHHMM(f.horaSalida ?? '') - minutosDeHHMM(f.horaEntrada ?? '')) / 60) * 100) / 100;
+    const abiertos = partidosHastaHoy.filter((d) => d.abiertos.length > 0);
     // La confirmación más consecuente del sistema: declara N días como trabajados y eso se paga.
     // El confirm nativo la escribía con saltos de línea y en el tono del navegador; acá el título
     // dice cuántos días son y el detalle dice qué hay que hacer después, que es lo que de verdad
     // se olvida.
     conf.pedir({
       titulo: `¿Declarar ${cuantos} día(s) como trabajados?`,
-      detalle:
-        'Se usan las horas del contrato. Los días que la persona faltó hay que corregirlos después, uno por uno, y cada cambio queda registrado con tu nombre.',
+      detalle: (
+        <span className="block space-y-3 text-left">
+          {sinDeclararHastaHoy.length > 0 && (
+            <span className="block">
+              {sinDeclararHastaHoy.length} día(s) de un solo tramo, con las horas del contrato.
+            </span>
+          )}
+          {partidosDeclarables.length > 0 && (
+            <span className="block">
+              <strong>Días partidos ({tramosPartidosACerrar} tramo(s)), con las horas reales de huella:</strong>
+              {partidosDeclarables.map((d) => (
+                <span key={d.fecha} className="block tabular-nums">
+                  {d.fecha}:{' '}
+                  {d.cerrados
+                    .map((f) => `${f.turno} ${f.horaEntrada}–${f.horaSalida} (${horasDe(f)} h)`)
+                    .join(' · ')}
+                </span>
+              ))}
+            </span>
+          )}
+          {abiertos.length > 0 && (
+            <span className="block text-aviso-deep">
+              <strong>Quedan sin declarar (tramo abierto o con hora estimada):</strong>
+              {abiertos.map((d) => (
+                <span key={d.fecha} className="block tabular-nums">
+                  {d.fecha}: {d.abiertos.map((f) => f.turno).join(', ')}
+                </span>
+              ))}
+              Seguirán bloqueando la liquidación hasta que se cierren o se editen a mano.
+            </span>
+          )}
+          <span className="block">
+            Los días que la persona faltó hay que corregirlos después, uno por uno, y cada cambio queda
+            registrado con tu nombre.
+          </span>
+        </span>
+      ),
       confirmarLabel: 'Declarar',
       tono: 'aviso',
       alConfirmar: () => hacerDeclararTodos(),
@@ -224,7 +312,7 @@ export function AsistenciaCliente({
     setError(null);
     empezar(async () => {
       const dias: DiaForm[] = sinDeclararHastaHoy.map((d) => {
-        const b = borradores[d.fecha];
+        const b = borradores[d.tramos[0].clave];
         const salida = hhmm(
           // Última salida del día = entrada del contrato + horas contratadas. Con el horario
           // contiguo de LuceBien (09:00–13:00 + 13:00–20:00) da exactamente las 20:00.
@@ -242,6 +330,21 @@ export function AsistenciaCliente({
           motivoJustificacion: null,
         };
       });
+      for (const d of partidosDeclarables) {
+        for (const f of d.cerrados) {
+          dias.push({
+            empleadoId: acuerdo.empleadoId,
+            fecha: d.fecha,
+            turno: f.turno,
+            condicion: 'trabajado',
+            horaEntrada: f.horaEntrada,
+            horaSalida: f.horaSalida,
+            tardanzaJustificada: f.tardanzaJustificada,
+            faltaJustificada: f.faltaJustificada,
+            motivoJustificacion: f.motivoJustificacion ?? null,
+          });
+        }
+      }
       const r = await accionDeclararVarios(dias);
       if (!r.ok) setError(r.error ?? 'No se pudieron declarar todos.');
       else conf.cerrar();
@@ -308,9 +411,9 @@ export function AsistenciaCliente({
               )}
             </p>
           </div>
-          {sinDeclararHastaHoy.length > 0 && acuerdo.turnos.length > 0 && (
+          {(sinDeclararHastaHoy.length > 0 || partidosDeclarables.length > 0) && acuerdo.turnos.length > 0 && (
             <Button variant="outline" onClick={declararTodosTrabajados} pending={pendiente}>
-              Declarar los {sinDeclararHastaHoy.length} días hasta hoy{rango ? ' de la vista' : ''}
+              Declarar los {totalAccion} días hasta hoy{rango ? ' de la vista' : ''}
             </Button>
           )}
         </CardContent>
@@ -370,16 +473,21 @@ export function AsistenciaCliente({
                   </TD>
                 </TR>
               )}
-              {visibles.map((d) => {
-                const b = borradores[d.fecha] ?? vacio();
+              {visibles.flatMap((d) => {
                 const contratado = d.horasContratadas > 0;
-                const horasDeclaradas =
-                  b.condicion === 'trabajado' && b.horaEntrada && b.horaSalida
-                    ? (minutosDeHHMM(b.horaSalida) - minutosDeHHMM(b.horaEntrada)) / 60
-                    : 0;
+                // La suma real de los tramos del día: es lo que paga el motor.
+                const horasDeclaradas = d.tramos.reduce((suma, t) => {
+                  const x = borradores[t.clave];
+                  return x && x.condicion === 'trabajado' && x.horaEntrada && x.horaSalida
+                    ? suma + (minutosDeHHMM(x.horaSalida) - minutosDeHHMM(x.horaEntrada)) / 60
+                    : suma;
+                }, 0);
                 const paraRevisar = excedeMargen(horasDeclaradas, d.horasContratadas, margenMinutos);
+                return d.tramos.map((t, i) => {
+                const k = t.clave;
+                const b = borradores[k] ?? vacio();
                 return (
-                  <TR key={d.fecha} className={contratado ? undefined : 'opacity-60'}>
+                  <TR key={k} className={contratado ? undefined : 'opacity-60'}>
                     <TD className="whitespace-nowrap">
                       <span className="font-medium text-navy">{d.fecha}</span>
                       <span className="ml-2 text-apoyo text-muted">{DIAS_CORTO[d.iso - 1]}</span>
@@ -388,13 +496,21 @@ export function AsistenciaCliente({
                           {b.fuente}
                         </Badge>
                       )}
-                      {d.otras > 0 && (
-                        <span className="ml-2 text-apoyo text-muted">+{d.otras} fila(s) del mismo día</span>
+                      {d.tramos.length > 1 && (
+                        <span className="ml-2 text-apoyo text-muted">
+                          tramo {t.fila?.turno ?? i + 1} de {d.tramos.length}
+                        </span>
                       )}
                     </TD>
                     <TD className="whitespace-nowrap text-cuerpo text-muted">
-                      {contratado ? `${d.entradaContrato} · ${d.horasContratadas} h` : 'fuera de contrato'}
-                      {paraRevisar && (
+                      {i === 0 &&
+                        (contratado ? `${d.entradaContrato} · ${d.horasContratadas} h` : 'fuera de contrato')}
+                      {i === 0 && d.tramos.length > 1 && (
+                        <span className="ml-2 text-apoyo tabular-nums">
+                          declaradas: {Number(horasDeclaradas.toFixed(2))} h en {d.tramos.length} tramos
+                        </span>
+                      )}
+                      {i === 0 && paraRevisar && (
                         <Badge tone="amber" className="ml-2">
                           revisar: {(horasDeclaradas - d.horasContratadas).toFixed(1)} h de más
                         </Badge>
@@ -403,7 +519,7 @@ export function AsistenciaCliente({
                     <TD>
                       <Select
                         value={b.condicion}
-                        onChange={(e) => set(d.fecha, { condicion: e.target.value as CondicionDia })}
+                        onChange={(e) => set(k, { condicion: e.target.value as CondicionDia })}
                         aria-label={`Condición del ${d.fecha}`}
                         className="w-36"
                       >
@@ -422,7 +538,7 @@ export function AsistenciaCliente({
                           value={b.horaEntrada}
                           disabled={b.condicion !== 'trabajado'}
                           onChange={(e) =>
-                            set(d.fecha, { horaEntrada: e.target.value, entradaEstimada: false })
+                            set(k, { horaEntrada: e.target.value, entradaEstimada: false })
                           }
                           aria-label={`Entrada del ${d.fecha}`}
                         />
@@ -443,7 +559,7 @@ export function AsistenciaCliente({
                           value={b.horaSalida}
                           disabled={b.condicion !== 'trabajado'}
                           onChange={(e) =>
-                            set(d.fecha, { horaSalida: e.target.value, salidaEstimada: false })
+                            set(k, { horaSalida: e.target.value, salidaEstimada: false })
                           }
                           aria-label={`Salida del ${d.fecha}`}
                         />
@@ -464,7 +580,7 @@ export function AsistenciaCliente({
                             checked={b.condicion === 'falta' ? b.faltaJustificada : b.tardanzaJustificada}
                             onChange={(e) =>
                               set(
-                                d.fecha,
+                                k,
                                 b.condicion === 'falta'
                                   ? { faltaJustificada: e.target.checked }
                                   : { tardanzaJustificada: e.target.checked },
@@ -477,7 +593,7 @@ export function AsistenciaCliente({
                           className="w-52"
                           placeholder="Motivo…"
                           value={b.motivo}
-                          onChange={(e) => set(d.fecha, { motivo: e.target.value })}
+                          onChange={(e) => set(k, { motivo: e.target.value })}
                           aria-label={`Motivo del ${d.fecha}`}
                         />
                       </div>
@@ -485,7 +601,7 @@ export function AsistenciaCliente({
                     <TD className="text-right">
                       <Button
                         variant={b.sucio ? 'primary' : 'ghost'}
-                        onClick={() => guardar(d.fecha)}
+                        onClick={() => guardar(k, d.fecha)}
                         pending={pendiente}
                         disabled={!b.sucio}
                         aria-label={`Guardar el ${d.fecha}`}
@@ -495,6 +611,7 @@ export function AsistenciaCliente({
                     </TD>
                   </TR>
                 );
+                });
               })}
             </TBody>
           </Table>

@@ -2126,3 +2126,9 @@ Migración 0149. Decisión del dueño (05-oct): al suspender, el contrato vigent
 Migración 0157 (`sueldo_acuerdo_guardar`). No se inventó ningún parámetro de negocio ni default: la RPC escribe lo que el servidor ya resolvió (parámetros vigentes + overrides del formulario).
 
 - **Comportamiento que cambia, sin regla nueva:** editar un contrato que no existe ahora falla con «ese contrato no existe» (antes el update era silencioso y fallaba después al guardar turnos).
+## 5B · Declarar en bloque los días partidos en tramos (18-oct-2026)
+
+**Default puesto por el sistema, no una regla del dueño: se puede cambiar.** El dueño decidió que los días partidos en varios tramos de huella se declaren en bloque con confirmación y resumen. El detalle de cómo no estaba decidido, y se puso la opción más conservadora:
+- Cada tramo **cerrado** (entrada y salida reales, ninguna estimada) se declara `trabajado` con **sus horas de huella**; no se reparten las horas del contrato.
+- El tramo **abierto** (o con hora estimada) **no se declara**: el resumen avisa que bloquea la liquidación hasta cerrarlo o editarlo a mano.
+- Pregunta para el dueño: ¿un tramo abierto debería declararse con la salida del contrato, o seguir a mano? Hoy es a mano. Spec: `docs/superpowers/specs/sueldos/2026-10-18-declarar-dias-partidos-design.md`.

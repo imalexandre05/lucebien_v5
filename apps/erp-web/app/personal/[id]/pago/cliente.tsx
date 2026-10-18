@@ -8,6 +8,7 @@ import { Badge } from '../../../../components/ui/badge';
 import { Button } from '../../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../../components/ui/card';
 import { Aviso, Input, Label } from '../../../../components/ui/form';
+import { DialogoConfirmar, useConfirmacion } from '../../../../components/ui/confirmar';
 import { Modal, ModalBody, ModalFooter } from '../../../../components/ui/modal';
 import { OpcionBotones } from '../../../../components/ui/opcion-botones';
 import { Table, TBody, TD, TH, THead, TR } from '../../../../components/ui/table';
@@ -62,7 +63,11 @@ export function LiquidacionPagoCliente({
   // Formulario de abono: uno solo abierto a la vez, así el estado no se multiplica por tarjeta.
   const [abonoAbierto, setAbonoAbierto] = useState<string | null>(null);
   const [fecha, setFecha] = useState(hoyPeru());
-  const [monto, setMonto] = useState(0);
+  // El monto se guarda como texto: con Number(...) en un input controlado, escribir «1.50» lo
+  // reescribía a «1.5» mientras se tipeaba (ver docs/aprendizajes.md).
+  const [montoTxt, setMontoTxt] = useState('');
+  const monto = Number.isFinite(Number(montoTxt)) ? Number(montoTxt) : 0;
+  const conf = useConfirmacion();
   const [metodo, setMetodo] = useState(metodos[0] ?? '');
   const [nota, setNota] = useState('');
   const [errorAbono, setErrorAbono] = useState<string | null>(null);
@@ -79,7 +84,7 @@ export function LiquidacionPagoCliente({
   function alternarAbono(liquidacionId: string) {
     setAbonoAbierto((v) => (v === liquidacionId ? null : liquidacionId));
     setFecha(hoyPeru());
-    setMonto(0);
+    setMontoTxt('');
     setMetodo(metodos[0] ?? '');
     setNota('');
     setErrorAbono(null);
@@ -107,6 +112,20 @@ export function LiquidacionPagoCliente({
     });
   }
 
+  // Registrar un abono mueve plata y no se edita después (sólo se anula con motivo): se confirma.
+  function pedirPagar(liquidacionId: string) {
+    conf.pedir({
+      titulo: `¿Registrar un abono de ${soles(monto)}?`,
+      detalle: `${metodo} · ${fecha}. Queda a nombre de quien lo registra; si hay un error, se anula con motivo.`,
+      confirmarLabel: 'Registrar abono',
+      tono: 'aviso',
+      alConfirmar: () => {
+        conf.cerrar();
+        pagar(liquidacionId);
+      },
+    });
+  }
+
   function pedirAnular(pago: PagoLiquidacion) {
     setAnulando(pago);
     setMotivo('');
@@ -130,6 +149,7 @@ export function LiquidacionPagoCliente({
 
   return (
     <div className="space-y-4">
+      <DialogoConfirmar {...conf.props} />
       {!migrado && (
         <Aviso tono="aviso" titulo="Falta aplicar la migración 0080">
           El registro de pagos de liquidación todavía no funciona en esta base: se muestra el
@@ -304,9 +324,19 @@ export function LiquidacionPagoCliente({
                                   type="number"
                                   step="0.01"
                                   min={0}
-                                  value={monto}
-                                  onChange={(e) => setMonto(Number(e.target.value))}
+                                  inputMode="decimal"
+                                  className="tabular-nums"
+                                  value={montoTxt}
+                                  onChange={(e) => setMontoTxt(e.target.value)}
                                 />
+                                <Button
+                                  variant="ghost"
+                                  className="mt-1"
+                                  onClick={() => setMontoTxt(String(saldo))}
+                                  disabled={pendiente}
+                                >
+                                  Pagar el saldo · {soles(saldo)}
+                                </Button>
                               </div>
                             </div>
                             <div>
@@ -338,7 +368,7 @@ export function LiquidacionPagoCliente({
                               </div>
                             )}
                             <div className="flex gap-2">
-                              <Button onClick={() => pagar(l.id)} pending={pendiente} disabled={monto <= 0 || !metodo}>
+                              <Button onClick={() => pedirPagar(l.id)} pending={pendiente} disabled={monto <= 0 || !metodo}>
                                 Registrar abono · {soles(monto)}
                               </Button>
                               <Button variant="outline" onClick={() => alternarAbono(l.id)} disabled={pendiente}>

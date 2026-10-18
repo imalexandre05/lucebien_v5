@@ -451,7 +451,7 @@ function ultimaCerradaHasta(liqs: { estado: string; periodoHasta: string }[]): s
  */
 export async function planDeCambio(acuerdoId: string) {
   const acuerdo = await obtenerAcuerdo(acuerdoId);
-  if (!acuerdo) throw new SueldoRpcError('El contrato no existe o no tenés acceso.', 'DATO');
+  if (!acuerdo) throw new SueldoRpcError('El contrato no existe o no tienes acceso.', 'DATO');
   const liqs = await listarLiquidaciones({ acuerdoId });
   const proximo = proximoPagoPendiente(acuerdo, cambiosParaCore(acuerdo.cambios), ultimaCerradaHasta(liqs));
   const borradores = proximo ? liquidacionesCruzadas(liqs, proximo.desde) : [];
@@ -1016,12 +1016,12 @@ export async function crearBorrador(
     // mensaje de "ya tiene un contrato", que no es lo que pasó.
     //
     // Código 'ESTADO', no 'DATO': la pantalla (`liquidaciones/cliente.tsx`) muestra una ayuda extra
-    // fija para `codigo === 'DATO'` ("Faltan días por declarar... Andá a Declarar asistencia") que
+    // fija para `codigo === 'DATO'` ("Faltan días por declarar... Ve a Declarar asistencia") que
     // no tiene nada que ver con un solape de períodos — confundiría más de lo que ayuda. 'ESTADO'
     // es también el código que ya usaba el mensaje anterior para este mismo tipo de choque.
     if (/sueldo_liq_periodo_sin_solape/i.test(error.message ?? '')) {
       throw new SueldoRpcError(
-        'El período que elegiste se superpone con otra liquidación de este mismo acuerdo. Elegí un rango que no se pise, o anulá la existente.',
+        'El período que elegiste se superpone con otra liquidación de este mismo acuerdo. Elige un rango que no se pise, o anula la existente.',
         'ESTADO',
       );
     }

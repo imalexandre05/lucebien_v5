@@ -282,11 +282,11 @@ export async function declararDia(d: DeclaracionDia): Promise<void> {
   if (d.condicion === 'trabajado' && (!d.horaEntrada || !d.horaSalida)) {
     throw new Error(
       `${d.fecha}: un día trabajado necesita hora de entrada y de salida. ` +
-        'Si la persona no vino, declaralo como falta; si todavía no se sabe, dejalo sin dato.',
+        'Si la persona no vino, decláralo como falta; si todavía no se sabe, déjalo sin dato.',
     );
   }
   if (d.condicion === 'falta' && (d.horaEntrada || d.horaSalida)) {
-    throw new Error(`${d.fecha}: una falta no lleva horas. Quitá las horas o cambiá la condición.`);
+    throw new Error(`${d.fecha}: una falta no lleva horas. Quita las horas o cambia la condición.`);
   }
 
   const sb = getServerClient();
