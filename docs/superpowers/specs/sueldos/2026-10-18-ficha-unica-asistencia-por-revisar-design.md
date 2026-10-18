@@ -95,3 +95,26 @@ dato.
 
 - Motivo de justificación: 3 a 300 letras.
 - «Todo bien» deja de mostrar el día pero no cambia el pago.
+
+## 9. Ajustes del verificador (18-oct-2026)
+
+Reemplazan lo que §4 decía en contrario.
+
+1. **Tipo `revisar`** (nunca se oculta con «revisado»): un día con alguna fila `sin_dato` que tiene
+   **las dos horas** (el huellero no pudo decidir solo: más de dos tramos, un tramo fuera del rango
+   razonable, un identificador con dos nombres). Bloquea el cierre igual que un día sin marca.
+   Acciones: «Dar por trabajado» (declara esas filas `trabajado` con sus horas) y «Ver y corregir» (abre
+   el editor). Frase: «El huellero no pudo decidir este día solo. Hasta revisarlo, este pago no se
+   puede cerrar.»
+2. **Revisado = todas las filas del día.** Un día se oculta sólo si **todas** sus filas tienen
+   `revisada_en`. Una fila nueva (otro tramo que llega) vuelve a mostrarlo.
+3. **Tipo `turno_sin_marcas`** (se puede dar por revisado): día con dos o más turnos en su horario,
+   con horas trabajadas, donde un turno no se cruza con ningún tramo trabajado. Frase: «No hay marcas
+   del turno de las HH:MM. Esas horas no se pagan.»
+4. **Tipo `pausa_trabajada`** (se puede dar por revisado): un tramo trabajado cubre entero el hueco
+   entre dos turnos del horario (marcó de corrido). Frase: «Marcó de corrido entre sus dos turnos: el
+   tiempo entre ellos se paga como hora extra. Si no trabajó en ese rato, corrige las horas.»
+5. **Hoy no entra.** La lista mira hasta ayer: una entrada sin salida de hoy es alguien que todavía
+   está trabajando.
+6. Orden de prioridad dentro del día: una marca, revisar, sin marca, falta, tardanza, turno sin
+   marcas, pausa trabajada, hora estimada.
