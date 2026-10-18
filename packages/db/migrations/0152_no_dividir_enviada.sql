@@ -19,7 +19,7 @@ begin
   if not found then raise exception 'Prenda no encontrada'; end if;
   if v_pr.dividida then raise exception 'Esta prenda ya fue dividida'; end if;
   -- 0152: lo despachado ya no es del taller; las hijas nacerían sin envío y la tienda no las vería.
-  if v_pr.etapa not in ('recepcion', 'codificacion', 'lavado', 'empatado', 'refaccion', 'compostura',
+  if v_pr.etapa not in ('recepcion', 'codificacion', 'lavado', 'empatado', 'vacio', 'refaccion', 'compostura',
                         'planchado', 'control_calidad', 'listo') then
     raise exception 'TRANSICION: no se puede dividir una prenda en etapa "%"', v_pr.etapa;
   end if;
