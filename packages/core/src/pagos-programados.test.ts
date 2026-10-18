@@ -7,7 +7,7 @@ import type { ContratoPago, CambioFrecuencia, TurnoContratado } from './sueldos'
 // Escritos ANTES del código (Zone Guard, no-negociable 6).
 
 type Liq = { id: string; desde: string; hasta: string; estado: 'borrador' | 'cerrada' | 'anulada'; total: number; pagado: number };
-type Pago = { desde: string; hasta: string; corto: boolean; estado: 'por_cerrar' | 'cerrado' | 'pagado'; parcial: boolean; liquidaciones: { id: string; total: number; pagado: number }[]; referencia: number | null };
+type Pago = { desde: string; hasta: string; corto: boolean; estado: 'por_cerrar' | 'cerrado' | 'pagado'; parcial: boolean; pendientes: { desde: string; hasta: string }[]; liquidaciones: { id: string; total: number; pagado: number }[]; referencia: number | null };
 const api = S as unknown as {
   pagosProgramados: (c: ContratoPago, cs: CambioFrecuencia[], l: Liq[], h?: TurnoContratado[]) => Pago[];
   pagoQueContiene: <T extends { desde: string; hasta: string }>(p: T[], f: string) => T | null;
@@ -50,6 +50,18 @@ describe('pagosProgramados — spec §3', () => {
     expect(p[0].liquidaciones.map((l) => l.id)).toEqual(['a1', 'a2']);
     expect(p[1].estado).toBe('por_cerrar');
     expect(p[1].parcial).toBe(true);
+    // Ajuste del verificador (spec §9.5): lo que falta cerrar del pago parcial.
+    expect(p[1].pendientes).toEqual([{ desde: '2026-09-21', hasta: '2026-10-04' }]);
+    expect(p[0].pendientes).toEqual([]);
+    expect(p[2].pendientes).toEqual([{ desde: '2026-10-05', hasta: '2026-10-30' }]);
+  });
+
+  it('pendientes con un hueco en el medio: dos sub-rangos', () => {
+    const p = api.pagosProgramados(MENSUAL, [], [liq('m', '2026-08-10', '2026-08-20', 'cerrada', 100, 100)]);
+    expect(p[0].pendientes).toEqual([
+      { desde: '2026-08-05', hasta: '2026-08-09' },
+      { desde: '2026-08-21', hasta: '2026-09-04' },
+    ]);
   });
 
   it('3. quincenal, semanal y cada N días: los mismos cortes que calendarioDePagos', () => {

@@ -374,7 +374,8 @@ export function LiquidacionPagoCliente({
             {pagosProgramados.map((p) => {
               const sel = p.desde === periodo.desde && p.hasta === periodo.hasta;
               const e = ESTADO_PAGO[p.estado];
-              const terminado = p.hasta <= hoy;
+              // Sólo se cierra hasta ayer (spec pagos-programados §9.1).
+              const terminado = p.hasta < hoy;
               return (
                 <div
                   key={`${p.acuerdoId}-${p.desde}`}
@@ -406,14 +407,23 @@ export function LiquidacionPagoCliente({
 
                   {sel && (
                     <div className="space-y-4 border-t border-line px-4 py-4">
-                      {p.estado === 'por_cerrar' ? (
-                        terminado ? (
-                          <CierreDePago key={`${p.acuerdoId}-${p.desde}-${p.hasta}`} acuerdoId={p.acuerdoId} desde={p.desde} hasta={p.hasta} />
+                      {p.estado === 'por_cerrar' &&
+                        (terminado ? (
+                          // Pago parcial: se cierra sólo lo que falta (spec §9.5), un tramo por vez.
+                          p.pendientes.map((r) => (
+                            <div key={`${p.acuerdoId}-${r.desde}-${r.hasta}`} className="space-y-2">
+                              {p.parcial && (
+                                <p className="text-apoyo font-medium text-navy tabular-nums">
+                                  Falta cerrar del {fechaCorta(r.desde)} al {fechaCorta(r.hasta)}
+                                </p>
+                              )}
+                              <CierreDePago acuerdoId={p.acuerdoId} desde={r.desde} hasta={r.hasta} />
+                            </div>
+                          ))
                         ) : (
                           <p className="text-cuerpo text-muted">Se cierra cuando termine, el {fechaCorta(p.hasta)}.</p>
-                        )
-                      ) : (
-                        p.liquidaciones.map((x) => {
+                        ))}
+                      {p.liquidaciones.map((x) => {
                           const l = liquidaciones.find((q) => q.id === x.id);
                           if (!l) return null;
                           return (
@@ -428,8 +438,7 @@ export function LiquidacionPagoCliente({
                               />
                             </div>
                           );
-                        })
-                      )}
+                        })}
                     </div>
                   )}
                 </div>
@@ -446,7 +455,7 @@ export function LiquidacionPagoCliente({
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-cuerpo text-muted tabular-nums">
-              Del {fechaCorta(periodo.desde)} al {fechaCorta(periodo.hasta)}. Puedes cerrarlo igual si el rango ya terminó.
+              Del {fechaCorta(periodo.desde)} al {fechaCorta(periodo.hasta)}. Puedes cerrarlo igual si termina ayer o antes.
             </p>
             <CierreDePago key={`${periodo.desde}-${periodo.hasta}`} acuerdoId={acuerdoDelRango} desde={periodo.desde} hasta={periodo.hasta} />
           </CardContent>

@@ -94,3 +94,24 @@
 
 - Período por defecto = el pago que contiene hoy.
 - «Pagado» = saldo 0 en todas las liquidaciones que lo cubren.
+
+## 9. Ajustes del verificador (18-oct-2026)
+
+Reemplazan lo que §3 y §5 decían en contrario.
+
+1. **Sólo se cierra hasta ayer.** El servidor rechaza `hasta >= hoy` (hora Perú): «Hoy todavía no
+   termina: cierra hasta ayer o espera a mañana». Así ninguna marca del día queda fuera de un pago ya
+   cerrado. En la ficha, un pago cuyo último día es hoy o después dice «Se cierra cuando termine».
+2. **Antes de borrar nada se calcula.** «Confirmar y cerrar» arma primero la entrada del rango; si eso
+   falla (un día sin resolver, un rango imposible) no se borra ningún borrador y se muestra el motivo.
+3. **Qué borrador se reemplaza.** Sólo el borrador interno con **exactamente el mismo rango**. Si otro
+   borrador se pisa con el rango, no se toca: responde «Hay un cálculo pendiente del … al … que se pisa
+   con este pago: ciérralo o bórralo en Liquidaciones de todos». La cuota fijada de una corrección sólo
+   se reusa si el rango es el mismo.
+4. **Una corrección nunca pierde su cuota.** Si el cierre falla, el borrador recién creado se borra,
+   **salvo** que sea de una corrección (cuota fijada): ése queda «Por cerrar» con su cuota, y el
+   próximo «Confirmar y cerrar» la reusa. `corregirYCerrar` hace lo mismo: si el cierre falla, el
+   reemplazo queda «Por cerrar».
+5. **Pago parcial.** `pagosProgramados` devuelve también `pendientes`: los sub-rangos del pago que no
+   están en ninguna liquidación cerrada. La ficha ofrece «Ver el cálculo» y «Confirmar y cerrar» por
+   cada uno, y las liquidaciones cerradas de un pago parcial también muestran «Corregir».

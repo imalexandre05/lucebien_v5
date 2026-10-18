@@ -166,7 +166,7 @@ export default async function AsistenciasColaboradorPage(
             </CardContent>
           </Card>
 
-          <details className="group rounded-r-medio border border-line bg-white">
+          <details id="editor-asistencia" className="group rounded-r-medio border border-line bg-white">
             <summary className="cursor-pointer select-none px-5 py-3 text-cuerpo font-medium text-navy marker:content-none">
               Ver y editar todos los días
             </summary>

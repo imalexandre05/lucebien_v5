@@ -23,6 +23,7 @@ import { detalleHoras, type DetalleHoras } from './horas-del-pago';
 import { listarTemporadas } from './temporadas-repo';
 import { getServerClient } from './supabase/server';
 import { leerConfigMap } from './config-repo';
+import { hoyPeru } from './fechas';
 
 /**
  * sueldos-repo.ts — acceso a datos del motor de sueldos (migraciones 0072 y 0073).
@@ -1209,11 +1210,14 @@ export async function corregirLiquidacion(
     obtener?: typeof obtenerLiquidacion;
     anular?: typeof anularParaCorregir;
     crear?: typeof crearBorrador;
+    /** El contrato de hoy (como lo da `sueldo_entrada_pago`). Inyectable para probar sin base. */
+    pagoActual?: (acuerdoId: string) => Promise<ContratoPagoGuardado | null>;
   } = {},
 ): Promise<{ nuevoBorradorId: string }> {
   const obtener = colaboradores.obtener ?? obtenerLiquidacion;
   const anular = colaboradores.anular ?? anularParaCorregir;
   const crear = colaboradores.crear ?? crearBorrador;
+  const pagoActual = colaboradores.pagoActual ?? contratoPagoActual;
 
   const actual = await obtener(id);
   if (!actual) {
@@ -1228,6 +1232,16 @@ export async function corregirLiquidacion(
   // anularLiquidacion() valida el motivo (no vacío) antes de tocar la base, y su RPC corre en su
   // propia transacción: o queda 'anulada' entera —sellos liberados y el acuerdo vuelto a 'vigente'
   // si correspondía— o no cambia nada. No hay estado intermedio posible acá.
+  // Spec sueldo-por-horas §3.4: un pago que se hizo con sueldo fijo no se recalcula por horas. Se
+  // comprueba ANTES de anular, para no dejar un pago anulado sin reemplazo.
+  const pagadoPorHoras = esPorHoras((actual.entrada as EntradaConContexto | null | undefined)?.contratoPago);
+  if (!pagadoPorHoras && esPorHoras((await pagoActual(actual.acuerdoId)) ?? undefined)) {
+    throw new SueldoRpcError(
+      'Este pago se hizo con sueldo fijo y el contrato ahora es por horas: no se puede recalcular sin cambiar lo pagado.',
+      'ESTADO',
+    );
+  }
+
   await anular(id, motivo);
 
   // A PARTIR DE ACÁ LA ANULACIÓN YA CORRIÓ. Cualquier error de acá en más se envuelve en
@@ -1239,7 +1253,8 @@ export async function corregirLiquidacion(
       actual.acuerdoId,
       actual.periodoDesde,
       actual.periodoHasta,
-      actual.entrada?.sueldoPactado,
+      // Un pago por horas no tiene cuota: se recalcula con sus horas.
+      pagadoPorHoras ? undefined : actual.entrada?.sueldoPactado,
     );
     return { nuevoBorradorId };
   } catch (e) {
@@ -1742,47 +1757,77 @@ export async function leerMetodosPago(): Promise<string[]> {
 // borra. Los colaboradores se pueden inyectar (mismo patrón que corregirLiquidacion) para probarlo
 // sin base.
 
-type BorradorInterno = { id: string; entrada?: { sueldoPactado?: number; cuotaFijada?: true } | null };
+type BorradorInterno = {
+  id: string;
+  desde: string;
+  hasta: string;
+  entrada?: { sueldoPactado?: number; cuotaFijada?: true } | null;
+};
 
 async function borradoresQueSePisan(acuerdoId: string, desde: string, hasta: string): Promise<BorradorInterno[]> {
   const lista = await listarLiquidaciones({ acuerdoId, estado: 'borrador' });
   const pisan = lista.filter((l) => l.periodoDesde <= hasta && l.periodoHasta >= desde);
   const detalles = await Promise.all(pisan.map((l) => obtenerLiquidacion(l.id)));
-  return detalles.filter((d): d is LiquidacionDetalle => d !== null).map((d) => ({ id: d.id, entrada: d.entrada }));
+  return detalles
+    .filter((d): d is LiquidacionDetalle => d !== null)
+    .map((d) => ({ id: d.id, desde: d.periodoDesde, hasta: d.periodoHasta, entrada: d.entrada }));
+}
+
+/** Sólo se cierra hasta ayer (spec pagos-programados §9.1): hoy todavía puede llegar una marca. */
+function exigirHastaAyer(hasta: string, hoy: string): void {
+  if (hasta >= hoy) {
+    throw new SueldoRpcError('Hoy todavía no termina: cierra hasta ayer o espera a mañana.', 'ESTADO');
+  }
 }
 
 /**
- * «Confirmar y cerrar»: borra los borradores internos de ese contrato que se pisan con el rango,
- * calcula, crea el borrador y lo cierra. Si el cierre falla, borra el recién creado y propaga el
- * error tal cual (la pantalla dice qué resolver). Un borrador de corrección con cuota fijada (sueldo
- * fijo) deja su cuota al nuevo; la base vuelve a enlazar la corrección sola (0137).
+ * «Confirmar y cerrar» (spec pagos-programados §5 y §9): calcula primero (si falla no se borra
+ * nada), reemplaza sólo el borrador interno con el MISMO rango (otro que se pise responde ESTADO),
+ * crea y cierra. Si el cierre falla, borra el recién creado salvo que sea de una corrección con cuota
+ * fijada: ése queda «Por cerrar» con su cuota. La base vuelve a enlazar la corrección sola (0137).
  */
 export async function confirmarYCerrar(
   acuerdoId: string,
   desde: string,
   hasta: string,
   d: {
+    hoy?: () => string;
+    calcular?: (acuerdoId: string, desde: string, hasta: string, cuotaFija?: number) => Promise<unknown>;
     borradores?: typeof borradoresQueSePisan;
     eliminar?: typeof eliminarBorrador;
     crear?: typeof crearBorrador;
     cerrar?: typeof cerrarLiquidacion;
   } = {},
 ): Promise<string> {
+  const hoy = (d.hoy ?? hoyPeru)();
+  const calcular = d.calcular ?? entradaDeAcuerdo;
   const borradores = d.borradores ?? borradoresQueSePisan;
   const eliminar = d.eliminar ?? eliminarBorrador;
   const crear = d.crear ?? crearBorrador;
   const cerrar = d.cerrar ?? cerrarLiquidacion;
 
-  let cuotaFija: number | undefined;
-  for (const b of await borradores(acuerdoId, desde, hasta)) {
-    if (b.entrada?.cuotaFijada && typeof b.entrada.sueldoPactado === 'number') cuotaFija = b.entrada.sueldoPactado;
-    await eliminar(b.id);
+  exigirHastaAyer(hasta, hoy);
+  const pisan = await borradores(acuerdoId, desde, hasta);
+  const otro = pisan.find((b) => b.desde !== desde || b.hasta !== hasta);
+  if (otro) {
+    throw new SueldoRpcError(
+      `Hay un cálculo pendiente del ${otro.desde} al ${otro.hasta} que se pisa con este pago: ciérralo o bórralo en Liquidaciones de todos.`,
+      'ESTADO',
+    );
   }
+  const mismo = pisan[0];
+  const cuotaFija =
+    mismo?.entrada?.cuotaFijada && typeof mismo.entrada.sueldoPactado === 'number' ? mismo.entrada.sueldoPactado : undefined;
+
+  // Calcular ANTES de borrar: si falta resolver un día, no se pierde nada.
+  await calcular(acuerdoId, desde, hasta, cuotaFija);
+  if (mismo) await eliminar(mismo.id);
   const id = await crear(acuerdoId, desde, hasta, cuotaFija);
   try {
     await cerrar(id);
   } catch (e) {
-    await eliminar(id);
+    // Una corrección conserva su cuota pagada: queda «Por cerrar» y el próximo intento la reusa.
+    if (cuotaFija === undefined) await eliminar(id);
     throw e;
   }
   return id;
@@ -1790,8 +1835,8 @@ export async function confirmarYCerrar(
 
 /**
  * «Corregir» en un paso: anula para corregir (0137, conserva los abonos), crea el reemplazo con la
- * cuota pagada y lo cierra. Si el cierre falla, borra el reemplazo: el pago queda «Por cerrar» y
- * «Confirmar y cerrar» lo termina.
+ * cuota pagada y lo cierra. Si el cierre falla, el reemplazo queda «Por cerrar» con su cuota y
+ * «Confirmar y cerrar» lo termina (spec pagos-programados §9.4).
  */
 export async function corregirYCerrar(
   id: string,
@@ -1799,18 +1844,16 @@ export async function corregirYCerrar(
   d: {
     corregir?: (id: string, motivo: string) => Promise<{ nuevoBorradorId: string }>;
     cerrar?: typeof cerrarLiquidacion;
-    eliminar?: typeof eliminarBorrador;
   } = {},
 ): Promise<string> {
   const corregir = d.corregir ?? ((i: string, m: string) => corregirLiquidacion(i, m));
   const cerrar = d.cerrar ?? cerrarLiquidacion;
-  const eliminar = d.eliminar ?? eliminarBorrador;
 
   const { nuevoBorradorId } = await corregir(id, motivo);
   try {
     await cerrar(nuevoBorradorId);
   } catch (e) {
-    await eliminar(nuevoBorradorId);
+    // El reemplazo NO se borra: guarda la cuota pagada y los abonos se le enlazan (0137).
     const causa = e instanceof Error ? e.message : 'error desconocido';
     throw new SueldoRpcError(
       `El pago anterior ya quedó anulado y este pago está «Por cerrar»: ${causa.replace(/\.?\s*$/, '.')} Resuélvelo y usa «Confirmar y cerrar».`,
@@ -1818,4 +1861,11 @@ export async function corregirYCerrar(
     );
   }
   return nuevoBorradorId;
+}
+
+/** `contratoPago` del contrato tal como está hoy (0121/0164). */
+async function contratoPagoActual(acuerdoId: string): Promise<ContratoPagoGuardado | null> {
+  const { data, error } = await getServerClient().rpc('sueldo_entrada_pago', { p_acuerdo: acuerdoId });
+  if (error) throw errorSueldo(error);
+  return (data as { contratoPago?: ContratoPagoGuardado } | null)?.contratoPago ?? null;
 }

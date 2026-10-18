@@ -856,6 +856,8 @@ export interface PagoProgramado extends PagoCalendario {
   estado: EstadoPagoProgramado;
   /** Por cerrar, pero una parte de sus días ya está en una liquidación cerrada. */
   parcial: boolean;
+  /** Los sub-rangos del pago que no están en ninguna liquidación cerrada (spec §9.5). */
+  pendientes: { desde: string; hasta: string }[];
   /** Las liquidaciones CERRADAS que tocan este pago. */
   liquidaciones: { id: string; total: number; pagado: number }[];
   /** Contrato por horas: «≈ S/ … si cumple su horario» de este pago. Sueldo fijo: null. */
@@ -881,7 +883,17 @@ export function pagosProgramados(
       .filter((l) => l.desde <= pago.hasta && l.hasta >= pago.desde)
       .sort((a, b) => a.desde.localeCompare(b.desde));
     const dias = diasDelPeriodo(pago.desde, pago.hasta);
-    const cubiertos = dias.filter((d) => tocan.some((l) => l.desde <= d && d <= l.hasta)).length;
+    const pendientes: { desde: string; hasta: string }[] = [];
+    let cubiertos = 0;
+    for (const d of dias) {
+      if (tocan.some((l) => l.desde <= d && d <= l.hasta)) {
+        cubiertos += 1;
+        continue;
+      }
+      const ultimo = pendientes[pendientes.length - 1];
+      if (ultimo && fmtFecha(msDeFecha(ultimo.hasta) + MS_DIA) === d) ultimo.hasta = d;
+      else pendientes.push({ desde: d, hasta: d });
+    }
     const completo = cubiertos === dias.length;
     const conSaldo = tocan.some((l) => r2(l.total - l.pagado) > 0);
     let referencia: number | null = null;
@@ -894,6 +906,7 @@ export function pagosProgramados(
       ...pago,
       estado: completo ? (conSaldo ? 'cerrado' : 'pagado') : 'por_cerrar',
       parcial: !completo && cubiertos > 0,
+      pendientes,
       liquidaciones: tocan.map((l) => ({ id: l.id, total: l.total, pagado: l.pagado })),
       referencia,
     };
