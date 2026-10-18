@@ -437,7 +437,7 @@ export async function crearReporte(p: {
   // monto_total ya NO se mandan desde el cliente (el RPC los ignora si vinieran): son insumo de
   // pago/desempeño, el server es quien decide.
   extras: { cod: string | null; tipo: string; nombre: string; cantidad: number; detalle: string; registrado_por_id: string | null }[];
-}): Promise<string> {
+}, operador?: string | null): Promise<string> {
   const sb = getServerClient();
   const { data, error } = await sb.rpc('reportes_crear', {
     p_id: p.id,
@@ -449,6 +449,8 @@ export async function crearReporte(p: {
     p_actividades: p.actividades,
     p_extras: p.extras,
     p_encargado: p.encargado ?? null,
+    // Código personal (0146): token del operador de un equipo compartido; null = actor es la sesión.
+    p_operador: operador ?? null,
   });
   if (error) throw parsearErrorCrear(error.message);
   return String(data);

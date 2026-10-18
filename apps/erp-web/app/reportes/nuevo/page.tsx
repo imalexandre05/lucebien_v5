@@ -6,6 +6,7 @@ import { leerConfigMap, CIERRE_TURNO_DEFAULT } from '../../../lib/config-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { NuevoReporteForm } from './form';
 import { hoyPeru } from '../../../lib/fechas';
+import { equipoCompartido } from '../../../lib/pipeline-operador';
 
 export default async function NuevoReportePage() {
   const sesion = await getSesion();
@@ -14,10 +15,11 @@ export default async function NuevoReportePage() {
   const fecha = hoyPeru();
   // Mismo criterio que incidencias/sueldos. Quien no es admin queda fijo como encargado (0122, H14).
   const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
-  const [empleados, tiposIncidencia, config] = await Promise.all([
+  const [empleados, tiposIncidencia, config, compartido] = await Promise.all([
     listarEmpleados(),
     listarTiposIncidencia(),
     leerConfigMap(),
+    equipoCompartido().catch(() => false),
   ]);
   const cierres = {
     M: config.turno_m_cierre || CIERRE_TURNO_DEFAULT.M,
@@ -36,6 +38,7 @@ export default async function NuevoReportePage() {
         empleados={empleados}
         tiposIncidencia={tiposIncidencia}
         cierres={cierres}
+        compartido={compartido}
       />
     </div>
   );
