@@ -396,7 +396,11 @@ export function cicloCerradoAnterior(fechaIngreso: string | null | undefined, ho
   if (actual.hasta <= hoy) return actual;
   const [y, m, d] = actual.desde.split('-').map(Number);
   const diaPrevio = fmtUTC(Date.UTC(y, m - 1, d - 1));
-  return calcularCiclo(fechaIngreso, diaPrevio);
+  const previo = calcularCiclo(fechaIngreso, diaPrevio);
+  // El recorte de mes corto de calcularCiclo puede hacer que el previo termine el mismo día en que
+  // arranca el ciclo en curso (aniversario 29-31): ese día ya es del ciclo en curso y no puede
+  // contar en dos notas. Se corta el previo un día antes del inicio del actual.
+  return previo.hasta >= actual.desde ? { ...previo, hasta: diaPrevio } : previo;
 }
 
 /**
