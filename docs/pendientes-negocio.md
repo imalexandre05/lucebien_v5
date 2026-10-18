@@ -1955,9 +1955,9 @@ Spec escrita, sin código. Defaults inventados por quien escribió la spec, a co
    ~21 días de 11 horas. Es el techo de un módulo con 2 de 11 personas registrando, así que probablemente
    subestima. Cifra tomada de este documento, no de una consulta: contrastarla con la base antes de sembrarla.
    Sigue flexible; podría depender de la demanda de ternos.
-2. **`eval_cumplimiento_para_20` = 1,00:** cumplir toda la meta del período equivale a 20 (su respuesta literal;
-   nota = 20 × cumplimiento, sin techo). Alexander dudó: ¿cómo se ve a quien rinde mejor? Mi recomendación es 16
-   (parámetro 1,25), la idea original. El /20 es sólo referencia; la medida principal es el porcentaje.
+2. **`eval_cumplimiento_para_20` = 1,25:** cumplir toda la meta del período vale 16 y el 20 llega al 125 %
+   (nota = 16 × cumplimiento, sin techo). Decidido por Alexander el 18-oct tras dudar entre 20 y 16. El /20 es
+   sólo referencia; la medida principal es el porcentaje de cumplimiento.
 3. **Cada área contra su meta, promediadas por horas** (no una bolsa única de puntos), porque los puntos de
    reportes y de pipeline no están al mismo nivel de esfuerzo. Con los puntos calibrados, la bolsa única da lo mismo.
 4. **Un turno de almacén tiene las dos metas** (decidido): cada hora cuenta completa en reportes y en pipeline,
