@@ -15,11 +15,13 @@ Clave `eval_puntualidad_modo` en `config` (se edita en /configuración):
 
 Definiciones, dentro del ciclo evaluado y hasta hoy (hora Perú) si el ciclo no terminó:
 - **debidos**: días con turno contratado (acuerdo vigente de `sueldo_acuerdos` + `sueldo_acuerdo_turnos`
-  de ese día de la semana), salvo los días con fila `condicion = 'sin_dato'` (nadie cargó el dato:
-  no se castiga lo que no se sabe).
+  de ese día de la semana) que tienen la asistencia **declarada** (`trabajado` o `falta`) y ninguna
+  fila `sin_dato`. Un día sin fila o sin declarar (huella sin importar, hoy antes de marcar) no es
+  debido: no se castiga lo que no se sabe (igual que `sueldo_entrada`, 0160).
 - **tardanzas**: días `trabajado` cuya primera entrada supera `inicio_turno + sueldo_tolerancia_minutos`
   y no tienen `tardanza_justificada` (mismo criterio que el sueldo, RN-08).
-- **puntuales**: días `trabajado` que no son tardanza. Una falta no es puntual.
+- **puntuales**: días **debidos** `trabajado` que no son tardanza. Un día trabajado que no es debido (sábado
+  fuera de contrato, día a medias) no suma puntualidad: no puede tapar una tardanza. Una falta no es puntual.
 - Sin días debidos (persona sin acuerdo/turnos): cae a la fórmula de `minutos`, que da 20 si no hay
   atraso medible. Nunca divide entre cero.
 - Todas las claves anteriores y `puntosTotal` quedan idénticas. Claves nuevas en el jsonb:
