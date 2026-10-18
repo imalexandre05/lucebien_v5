@@ -55,6 +55,7 @@ const labelEstado = (e: string): string => LABEL[e as EstadoActivo] ?? e;
 // pipeline" muestra la etapa real en vez del estado comercial de reposo.
 const ETAPA_LABEL: Record<string, string> = {
   recepcion: 'Recepción',
+  codificacion: 'Codificación',
   lavado: 'Lavado',
   empatado: 'Empatado',
   refaccion: 'Refacción',

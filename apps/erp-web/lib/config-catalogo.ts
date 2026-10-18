@@ -140,12 +140,13 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   // no se podía editar desde ninguna pantalla. El default sigue siendo 1 justamente para no
   // cambiar ningún cálculo ya hecho (39 filas de pipeline_puntos con etapa='recepcion').
   ptsItem('pts_recepcion', 'Recepción', '1'),
+  ptsItem('pts_codificacion', 'Codificación (etiqueta puesta)', '1'),
   ptsItem('pts_lavado_normal', 'Lavado normal', '1'),
   ptsItem('pts_lavado_seco', 'Lavado en seco', '3'),
   ptsItem('pts_lavado_especializado', 'Lavado especializado', '5'),
   ptsItem('pts_empatado', 'Empatado', '0.5'),
   ptsItem('pts_refaccion', 'Refacción', '2'),
-  ptsItem('pts_compostura', 'Compostura / codificación', '5'),
+  ptsItem('pts_compostura', 'Compostura', '5'),
   ptsItem('pts_planchado', 'Planchado', '3'),
   ptsItem('pts_control_calidad', 'Control de calidad', '2'),
   ptsItem('pts_accesorio', 'Accesorio', '0.5'),

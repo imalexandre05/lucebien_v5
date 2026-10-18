@@ -423,39 +423,3 @@ export async function dispositivoCompartido(deviceId: string): Promise<boolean> 
   return data === true;
 }
 
-// Apartado de codificación (migración 0135): últimos movimientos con su código. Sólo lectura, bajo
-// RLS (cada sede ve lo suyo). `q` busca por código de movimiento.
-export type MovimientoCodificado = {
-  codigoMov: string | null;
-  prenda: string;
-  etapaAnterior: string | null;
-  etapaNueva: string;
-  quien: string | null;
-  fecha: string;
-};
-export async function listarMovimientosCodificados(q = '', limite = 200): Promise<MovimientoCodificado[]> {
-  const sb = getServerClient();
-  const termino = q.trim().replace(/[%,()]/g, '');
-  let consulta = sb
-    .from('prenda_historial')
-    .select('codigo_mov, etapa_anterior, etapa_nueva, fecha, empleado:empleados(nombre), prenda:prenda_pasada!inner(codigo)')
-    .order('fecha', { ascending: false })
-    .limit(limite);
-  if (termino) consulta = consulta.ilike('codigo_mov', `%${termino}%`);
-  const { data, error } = await consulta;
-  if (error) throw new Error(error.message);
-  type Fila = {
-    codigo_mov: string | null; etapa_anterior: string | null; etapa_nueva: string; fecha: string;
-    empleado: { nombre: string } | { nombre: string }[] | null;
-    prenda: { codigo: string } | { codigo: string }[] | null;
-  };
-  const uno = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
-  return ((data as unknown as Fila[]) ?? []).map((r) => ({
-    codigoMov: r.codigo_mov,
-    prenda: uno(r.prenda)?.codigo ?? '—',
-    etapaAnterior: r.etapa_anterior,
-    etapaNueva: r.etapa_nueva,
-    quien: uno(r.empleado)?.nombre ?? null,
-    fecha: r.fecha,
-  }));
-}
