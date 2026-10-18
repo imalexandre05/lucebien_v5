@@ -9,6 +9,8 @@ import {
   LiquidacionPagosNoMigradoError,
   type PagoLiquidacion,
 } from '../../../../lib/sueldos-repo';
+import { pagosDeLaPersona } from '../../../../lib/pagos-ficha';
+import { hoyPeru } from '../../../../lib/fechas';
 import { SeccionHeader } from '../../../../components/colaboradores/seccion-header';
 import { PagosCliente } from '../../../pagos/cliente';
 import { LiquidacionPagoCliente } from './cliente';
@@ -29,11 +31,12 @@ export default async function PagoColaboradorPage(props: { params: Promise<{ id:
   const persona = await obtenerColaborador(params.id);
   if (!persona) notFound();
 
-  const [liquidaciones, metodos, todosPagosViejos, empleadosViejo] = await Promise.all([
+  const [liquidaciones, metodos, todosPagosViejos, empleadosViejo, programados] = await Promise.all([
     listarLiquidaciones({ empleadoId: persona.id }),
     leerMetodosPago(),
     listarPagos(),
     empleadosParaPago(),
+    pagosDeLaPersona(persona.id),
   ]);
 
   const pagosViejos = todosPagosViejos.filter((p) => p.empleadoId === persona.id);
@@ -43,7 +46,7 @@ export default async function PagoColaboradorPage(props: { params: Promise<{ id:
   // Si listar los pagos de alguna liquidación cerrada revienta por tabla/función inexistente, la
   // pantalla no se cae: sigue mostrando las liquidaciones (total sin pagado/saldo) y avisa, en
   // vez de un 500. Sin liquidaciones cerradas no hace falta ni probar: no hay nada que mostrar.
-  // Los borradores también: una corregida muestra lo ya pagado en la anterior (0137).
+  // Las «por cerrar» (estado interno borrador) también: una corregida muestra lo ya pagado en la anterior (0137).
   const cerradas = liquidaciones.filter((l) => l.estado === 'cerrada' || l.estado === 'borrador');
   const pagosPorLiquidacion: Record<string, PagoLiquidacion[]> = {};
   let migrado = true;
@@ -69,6 +72,9 @@ export default async function PagoColaboradorPage(props: { params: Promise<{ id:
       <LiquidacionPagoCliente
         empleadoId={persona.id}
         liquidaciones={liquidaciones}
+        pagos={programados.pagos}
+        acuerdoId={programados.acuerdoId}
+        hoy={hoyPeru()}
         pagosPorLiquidacion={pagosPorLiquidacion}
         metodos={metodos}
         migrado={migrado}
