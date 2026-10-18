@@ -67,6 +67,7 @@
 | [superpowers/specs/pipeline/2026-10-10-puntos-solo-propios-design.md](superpowers/specs/pipeline/2026-10-10-puntos-solo-propios-design.md) | **Spec: los puntos del pipeline sólo los ven cada persona y el administrador** (decisión del dueño del 10-oct). Cierra las dos políticas de lectura duplicadas de `pipeline_puntos` y el `pipeline_ranking_hoy()` que muestra el top de todos; verificado en producción que la fuga es real hoy (almacén, ventas y tiendas). Lista qué pantallas dejan de mostrar puntos ajenos. Los puntos todavía no son soles: valen desde una meta mensual por definir. Sin implementar |
 | [superpowers/specs/pipeline/2026-10-17-codigo-en-todos-los-movimientos-design.md](superpowers/specs/pipeline/2026-10-17-codigo-en-todos-los-movimientos-design.md) | **Spec: código personal en registrar, enviar a lavandería y validar retorno + código de movimiento** (0135, ticket #16). |
 | [superpowers/specs/capacitacion/2026-10-17-examenes-design.md](superpowers/specs/capacitacion/2026-10-17-examenes-design.md) | **Spec: exámenes de software, escritos online y presencial de habilidades** (0138, ticket #12). |
+| [superpowers/specs/erp/2026-10-18-ocultar-pos-inventario-design.md](superpowers/specs/erp/2026-10-18-ocultar-pos-inventario-design.md) | **Ventas (POS) e Inventario fuera del menú** (decisión del dueño n.º 9, 18-oct-2026). Las rutas siguen vivas; permisos y parámetros ocultos sin perderse |
 
 ## Arquitectura
 
