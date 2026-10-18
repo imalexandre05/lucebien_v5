@@ -95,7 +95,7 @@ export async function listarEmpleadosAdmin(): Promise<EmpleadoAdmin[]> {
 //      estuviera abierta (el token sigue siendo válido hasta que expire);
 //   3. los helpers de RLS exigen `activo` (migración 0083), por si alguien escribe la columna a
 //      mano sin pasar por esta pantalla.
-export async function actualizarEstadoEmpleado(id: string, activo: boolean): Promise<void> {
+export async function actualizarEstadoEmpleado(id: string, activo: boolean, hoy: string): Promise<void> {
   // No se puede suspender al último administrador activo: nadie podría volver a reactivarlo desde
   // la aplicación y la empresa quedaría afuera de su propio sistema.
   if (!activo) {
@@ -114,28 +114,37 @@ export async function actualizarEstadoEmpleado(id: string, activo: boolean): Pro
     }
   }
 
+  // SUSPENDER (spec empleados/2026-10-18-suspension-cierra-contrato-design.md §2.1). Primero se
+  // cierra la puerta de calle y después se llama a la RPC, que en UNA transacción marca la ficha y
+  // cierra el contrato vigente con la fecha `hoy` (hoyPeru() de quien invoca). Si la RPC falla —por
+  // ejemplo, una liquidación que llega más allá de la baja— se quita el baneo y no cambia nada: el
+  // orden inverso dejaba el contrato cerrado y el acceso vivo si el baneo fallaba.
+  if (!activo) {
+    const { error: eBan } = await getAdminClient().auth.admin.updateUserById(id, { ban_duration: '876000h' });
+    if (eBan) {
+      throw new Error(`No se pudo suspender el acceso de esta persona: ${eBan.message}. No se cambió nada.`);
+    }
+    const { error } = await getServerClient().rpc('empleado_suspender', { p_id: id, p_hoy: hoy });
+    if (error) {
+      await getAdminClient().auth.admin.updateUserById(id, { ban_duration: 'none' });
+      // Los mensajes de la RPC llevan un prefijo de código («ESTADO:», «DATO:»…) para la capa de
+      // sueldos; a la pantalla sólo le sirve el texto.
+      throw new Error(error.message.replace(/^[A-Z_]+:/, ''));
+    }
+    return;
+  }
+
+  // REACTIVAR. No reabre el contrato (spec §2.1): quien vuelve necesita uno nuevo.
   const sb = getServerClient();
-  const { error } = await sb
-    .from('empleados')
-    .update({ activo, estado: activo ? 'activo' : 'suspendido' })
-    .eq('id', id);
+  const { error } = await sb.from('empleados').update({ activo: true, estado: 'activo' }).eq('id', id);
   if (error) throw new Error(error.message);
 
-  // El baneo es lo que cierra la puerta de calle. Si falla, se deshace la escritura de arriba: una
-  // ficha que dice "suspendido" con el acceso todavía vivo es peor que no haber hecho nada,
-  // porque el administrador se queda tranquilo.
-  const { error: eBan } = await getAdminClient().auth.admin.updateUserById(id, {
-    // 876000 horas son cien años. Supabase no tiene un "para siempre"; reactivar manda 'none'.
-    ban_duration: activo ? 'none' : '876000h',
-  });
+  // Si el desbaneo falla, se deshace la escritura de arriba: una ficha que dice "activo" con el
+  // acceso todavía cerrado es peor que no haber hecho nada.
+  const { error: eBan } = await getAdminClient().auth.admin.updateUserById(id, { ban_duration: 'none' });
   if (eBan) {
-    await sb
-      .from('empleados')
-      .update({ activo: !activo, estado: activo ? 'suspendido' : 'activo' })
-      .eq('id', id);
-    throw new Error(
-      `No se pudo ${activo ? 'reactivar' : 'suspender'} el acceso de esta persona: ${eBan.message}. No se cambió nada.`,
-    );
+    await sb.from('empleados').update({ activo: false, estado: 'suspendido' }).eq('id', id);
+    throw new Error(`No se pudo reactivar el acceso de esta persona: ${eBan.message}. No se cambió nada.`);
   }
 }
 

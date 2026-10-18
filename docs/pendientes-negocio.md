@@ -2076,3 +2076,11 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## 5B-1 · Suspensión cierra el contrato; permisos por columna (18-oct-2026)
+
+Migración 0149. Decisión del dueño (05-oct): al suspender, el contrato vigente se cierra en la fecha de suspensión.
+
+- **Defaults puestos (editables al revisar):** reactivar NO reabre el contrato (quien vuelve necesita uno nuevo); una liquidación no anulada que llegue más allá de la fecha de suspensión BLOQUEA la suspensión con un mensaje que dice qué hacer; un contrato que empieza después de la fecha de suspensión no se toca.
+- **Pregunta abierta:** ¿qué pasa con un contrato futuro ya pactado de alguien a quien se suspende? Hoy queda como está (el huellero ya lo ignora porque la persona está inactiva). Recomendación: dejarlo y avisar al administrador.
+- **Sin hacer (exige confirmar en producción):** el colaborador podría leer, llamando directo a la API, notas privadas, DNI, salario y código de su propia fila (`emp_select`, 0002:34; no hay permisos por columna). Recomendación: pasar a una vista con columnas permitidas, o revocar columnas sensibles al rol `authenticated`, tras revisar los grants reales de producción.

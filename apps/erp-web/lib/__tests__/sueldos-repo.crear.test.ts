@@ -15,7 +15,9 @@ vi.mock('../supabase/server', () => ({
     rpc: async (nombre: string) =>
       nombre === 'sueldo_parametros_vigentes'
         ? { data: vigentesDeConfig, error: null }
-        : { data: null, error: { message: `rpc inesperada ${nombre}` } },
+        : nombre === 'sueldo_acuerdo_guardar_turnos'
+          ? { data: null, error: null }
+          : { data: null, error: { message: `rpc inesperada ${nombre}` } },
     from: () => ({
       // Con #57, actualizarAcuerdo lee antes el contrato (obtenerAcuerdo) para ver si tiene cambios de
       // frecuencia. Acá no existe todavía: devuelve null y se sigue como un contrato sin cambios.

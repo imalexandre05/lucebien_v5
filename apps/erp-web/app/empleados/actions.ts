@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../lib/auth';
+import { hoyPeru } from '../../lib/fechas';
 import {
   actualizarEstadoEmpleado,
   generarContrasenaTemporalEmpleado,
@@ -25,8 +26,10 @@ async function exigirAdmin(): Promise<void> {
 export async function accionEstadoEmpleado(id: string, activo: boolean): Promise<{ ok: boolean; error?: string }> {
   try {
     await exigirAdmin();
-    await actualizarEstadoEmpleado(id, activo);
+    await actualizarEstadoEmpleado(id, activo, hoyPeru());
     revalidatePath('/personal');
+    // La suspensión cierra el contrato vigente: la lista de contratos tiene que traerlo cerrado.
+    revalidatePath('/sueldos/acuerdos');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Error' };
@@ -142,7 +145,7 @@ export async function accionSubirDocumento(
   try {
     await exigirAdmin();
     const archivo = formData.get('archivo');
-    if (!(archivo instanceof File) || archivo.size === 0) throw new Error('Elegí un archivo primero');
+    if (!(archivo instanceof File) || archivo.size === 0) throw new Error('Elige un archivo primero');
     const documento = await subirDocumento(empleadoId, archivo);
     revalidatePath(`/personal/${empleadoId}/datos`);
     return { ok: true, documento };

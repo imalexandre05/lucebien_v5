@@ -403,21 +403,18 @@ export async function actualizarAcuerdo(id: string, p: AcuerdoInput): Promise<vo
  * el horario que se usó (spec §6).
  */
 export async function guardarTurnos(acuerdoId: string, turnos: Omit<TurnoAcuerdo, 'id'>[]): Promise<void> {
+  // Una sola llamada atómica (migración 0149): borrar e insertar por separado dejaba el contrato
+  // sin horario si el insert fallaba.
   const sb = getServerClient();
-
-  const { error: eDel } = await sb.from('sueldo_acuerdo_turnos').delete().eq('acuerdo_id', acuerdoId);
-  if (eDel) throw errorSueldo(eDel);
-
-  if (turnos.length === 0) return;
-  const { error } = await sb.from('sueldo_acuerdo_turnos').insert(
-    turnos.map((t) => ({
-      acuerdo_id: acuerdoId,
+  const { error } = await sb.rpc('sueldo_acuerdo_guardar_turnos', {
+    p_acuerdo: acuerdoId,
+    p_turnos: turnos.map((t) => ({
       dia_semana: t.diaSemana,
       hora_inicio: t.horaInicio,
       hora_fin: t.horaFin,
       lugar: t.lugar || null,
     })),
-  );
+  });
   if (error) throw errorSueldo(error);
 }
 

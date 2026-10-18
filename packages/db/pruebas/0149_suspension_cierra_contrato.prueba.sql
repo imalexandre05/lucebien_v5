@@ -34,17 +34,17 @@ declare
                              {"dia_semana":2,"hora_inicio":"13:00","hora_fin":"20:00","lugar":"AL"}]';
   d int;
 begin
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Admin 0149', '0149a', 'admin', true, 'AL', 'AA') returning id into adm;
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Admin2 0149', '0149b', 'admin', true, 'AL', 'AB') returning id into adm2;
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Colab 0149', '0149c', 'ventas_junior', true, 'AL', 'CC') returning id into col;
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Vigente 0149', '0149d', 'ventas_junior', true, 'AL', 'V1') returning id into e_vig;
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Pasado 0149', '0149e', 'ventas_junior', true, 'AL', 'V2') returning id into e_pasado;
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Futuro 0149', '0149f', 'ventas_junior', true, 'AL', 'V3') returning id into e_futuro;
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('HoyFin 0149', '0149g', 'ventas_junior', true, 'AL', 'V4') returning id into e_hoyfin;
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Liq 0149', '0149h', 'ventas_junior', true, 'AL', 'V5') returning id into e_liq;
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('LiqAnu 0149', '0149i', 'ventas_junior', true, 'AL', 'V6') returning id into e_liqanu;
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('HueA 0149', '0149j', 'ventas_junior', true, 'AL', 'HA') returning id into e_hue_a;
-  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('HueS 0149', '0149k', 'ventas_junior', false, 'AL', 'HS') returning id into e_hue_s;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Admin 0149', '0149a', 'admin', true, null, 'AA') returning id into adm;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Admin2 0149', '0149b', 'admin', true, null, 'AB') returning id into adm2;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Colab 0149', '0149c', 'ventas_junior', true, null, 'CC') returning id into col;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Vigente 0149', '0149d', 'ventas_junior', true, null, 'V1') returning id into e_vig;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Pasado 0149', '0149e', 'ventas_junior', true, null, 'V2') returning id into e_pasado;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Futuro 0149', '0149f', 'ventas_junior', true, null, 'V3') returning id into e_futuro;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('HoyFin 0149', '0149g', 'ventas_junior', true, null, 'V4') returning id into e_hoyfin;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('Liq 0149', '0149h', 'ventas_junior', true, null, 'V5') returning id into e_liq;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('LiqAnu 0149', '0149i', 'ventas_junior', true, null, 'V6') returning id into e_liqanu;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('HueA 0149', '0149j', 'ventas_junior', true, null, 'HA') returning id into e_hue_a;
+  insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales) values ('HueS 0149', '0149k', 'ventas_junior', false, null, 'HS') returning id into e_hue_s;
 
   insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado) values (e_vig,    '2099-03-01', '2099-06-30', 1500) returning id into ac_vig;
   insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado) values (e_pasado, '2099-01-01', '2099-02-28', 1500) returning id into ac_pasado;

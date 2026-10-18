@@ -66,7 +66,10 @@ export async function subirDocumento(
   if (errorTamano) throw new Error(errorTamano);
 
   const sb = getServerClient();
-  const ext = archivo.name.includes('.') ? archivo.name.slice(archivo.name.lastIndexOf('.')) : '';
+  // La extensión se copia al `storage_path`, así que sólo pasa si es `.` + alfanumérico corto: un
+  // nombre como «a.b/../x» no puede meter separadores de ruta en la clave de Storage.
+  const extCruda = archivo.name.includes('.') ? archivo.name.slice(archivo.name.lastIndexOf('.')) : '';
+  const ext = /^\.[A-Za-z0-9]{1,8}$/.test(extCruda) ? extCruda : '';
   const path = `${empleadoId}/${crypto.randomUUID()}${ext}`;
 
   const { data, error } = await sb
@@ -88,7 +91,7 @@ export async function subirDocumento(
   });
   if (errorSubida) {
     throw new Error(
-      `Se registró el documento pero la subida a Storage falló: ${errorSubida.message}. Borralo e intentá de nuevo.`,
+      `Se registró el documento pero la subida a Storage falló: ${errorSubida.message}. Bórralo e inténtalo de nuevo.`,
     );
   }
 
