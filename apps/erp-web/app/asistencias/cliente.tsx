@@ -32,7 +32,7 @@ const CONDICION_TONE: Record<string, Tone> = {
 };
 const CONDICION_LABEL: Record<string, string> = {
   trabajado: 'Completo',
-  sin_dato: 'A medias',
+  sin_dato: 'Pendiente de resolver',
   falta: 'Falta',
 };
 const TURNOS = ['M', 'T', 'C'];

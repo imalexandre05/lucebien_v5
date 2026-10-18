@@ -2152,3 +2152,10 @@ Defaults inventados (editable: `eval_puntualidad_modo` en /configuración; `minu
 Sin parámetros nuevos. Regla aplicada (confirmar con Alexander): un día contratado sin declarar **no es falta ni tardanza y no suma ni resta horas**; el borrador sale con el sueldo pactado sin tocar por ese día (monto máximo, provisional) y una advertencia con las fechas. **Cerrar sigue exigiendo todo declarado** (el cierre usa la `sueldo_entrada` estricta).
 ## 6A-5 · Lista de precios de confecciones (18-oct-2026)
 Tabla `lista_precios` (0161) **vacía de origen**: no se cargó ningún precio. La dueña lo carga en /configuracion/lista-precios. Ventas puede «Sumar» un artículo activo al total de la boleta (solo prellena; el monto confirmado es el que se guarda). Pendiente de decidir: cantidades, precios por sede, historial de precios.
+## Huellero: marca al extremo más cercano (sesión 7, 18-oct-2026) — [spec](superpowers/specs/asistencias/2026-10-18-huellero-marca-extremo-cercano-design.md)
+
+Decisión del dueño n.º 3, migración 0163. **Default inventado:** `huellero_rederivar` acepta como máximo
+400 días por llamada (protección técnica, no regla de negocio). **Para revisar:** los días que antes de
+la 0163 quedaron con una hora estimada (C-3) siguen pagándose con esa hora hasta que alguien los revise;
+la lista «Por revisar» los muestra como días con problema. Con dos turnos en el día y sólo dos marcas
+(entrada de la mañana y salida de la tarde) el día sigue contándose como un solo tramo, pausa incluida.
