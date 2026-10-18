@@ -1332,6 +1332,10 @@ as $$
       and not exists (
             select 1 from asistencias s
             where s.empleado_id = p_empleado and s.fecha = g::date and s.condicion = 'sin_dato')
+      -- Decisión del dueño (18-oct-2026): una falta justificada no baja la nota.
+      and not exists (
+            select 1 from asistencias s
+            where s.empleado_id = p_empleado and s.fecha = g::date and s.condicion = 'falta' and s.falta_justificada)
   ),
   puntual_debidos as (select count(*) as n from puntual_debidos_f),
   -- Tardanza = misma regla del sueldo (RN-08): pasa la tolerancia y no está justificada. Solo cuentan
