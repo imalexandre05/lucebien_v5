@@ -25,6 +25,15 @@ begin
   return n;
 end $f$;
 
+create or replace function pg_temp.ve_vista(p_uid uuid, p_cod text) returns int language plpgsql as $f$
+declare n int;
+begin
+  perform pg_temp.como(p_uid);
+  select count(*) into n from prendas_despachadas where codigo = p_cod;
+  perform pg_temp.dueno();
+  return n;
+end $f$;
+
 do $$
 declare
   r text := '';
@@ -48,21 +57,35 @@ begin
   insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, empleado_id, obs) values (p_ab,'listo','enviado',ea,'Envío x');
   insert into pipeline_puntos (empleado_id, pasada_id, etapa, puntos, detalle, fecha) values (ea, p_ab, 'planchado', 1, 'prueba', now());
 
-  -- 1) Destino ve lo despachado; origen sigue viendo lo suyo
-  if pg_temp.ve(eb,'P151-AB') = 1 then r := r || '[ok] caso 1a: la tienda destino ve la prenda despachada;';
+  -- 1) Destino ve lo despachado en la vista; la tabla no le deja leer la fila
+  if pg_temp.ve_vista(eb,'P151-AB') = 1 then r := r || '[ok] caso 1a: la tienda destino ve la prenda despachada en la vista;';
   else r := r || '[FALLA] caso 1a;'; end if;
-  if pg_temp.ve(ea,'P151-AB') = 1 and pg_temp.ve(ea,'P151-PROC') = 1 then r := r || '[ok] caso 4a: el origen sigue viendo lo suyo;';
-  else r := r || '[FALLA] caso 4a;'; end if;
+  if pg_temp.ve(eb,'P151-AB') = 0 then r := r || '[ok] caso 4: la tabla no le deja a B leer la fila completa;';
+  else r := r || '[FALLA] caso 4: B lee la fila de prenda_pasada;'; end if;
+  if pg_temp.ve(ea,'P151-AB') = 1 and pg_temp.ve(ea,'P151-PROC') = 1 then r := r || '[ok] caso 1b: el origen sigue viendo lo suyo en la tabla;';
+  else r := r || '[FALLA] caso 1b;'; end if;
 
   -- 2) No ve lo que sigue en proceso ni lo enviado a otra tienda; C no ve A→B
-  if pg_temp.ve(eb,'P151-PROC') = 0 and pg_temp.ve(eb,'P151-AC') = 0 then r := r || '[ok] caso 2: B no ve prendas en proceso ni enviadas a otra tienda;';
+  if pg_temp.ve_vista(eb,'P151-PROC') = 0 and pg_temp.ve_vista(eb,'P151-AC') = 0 then r := r || '[ok] caso 2: B no ve prendas en proceso ni enviadas a otra tienda;';
   else r := r || '[FALLA] caso 2;'; end if;
-  if pg_temp.ve(ec,'P151-AB') = 0 and pg_temp.ve(ec,'P151-PROC') = 0 then r := r || '[ok] caso 4b: una tienda ajena no ve A→B;';
-  else r := r || '[FALLA] caso 4b;'; end if;
+  if pg_temp.ve_vista(ec,'P151-AB') = 0 and pg_temp.ve_vista(ec,'P151-PROC') = 0 and pg_temp.ve_vista(ec,'P151-AC') = 1 then r := r || '[ok] caso 2b: una tienda solo ve sus envíos;';
+  else r := r || '[FALLA] caso 2b;'; end if;
 
-  -- 3) Observada (envio_id null) no se ve en B
-  if pg_temp.ve(eb,'P151-OBS') = 0 then r := r || '[ok] caso 3a: una prenda observada (sin envío) no se ve en B;';
+  -- 3) Observada (envio_id null) no está en la vista
+  if pg_temp.ve_vista(eb,'P151-OBS') = 0 and pg_temp.ve_vista(ea,'P151-OBS') = 0 then r := r || '[ok] caso 3a: una prenda observada (sin envío) no está en la vista;';
   else r := r || '[FALLA] caso 3a;'; end if;
+
+  -- 5a) Columnas limitadas
+  select count(*) into v_n from information_schema.columns
+    where table_schema = 'public' and table_name = 'prendas_despachadas'
+      and (column_name in ('lavador_id','planchador_id','pedido_id') or column_name like 'obs%');
+  if v_n = 0 then r := r || '[ok] caso 5: la vista no expone lavador, planchador, pedido ni observaciones;';
+  else r := r || format('[FALLA] caso 5: columnas sensibles=%s;', v_n); end if;
+  -- anon no lee la vista
+  v_err := pg_temp.mensaje('set local role anon; select count(*) from prendas_despachadas');
+  perform pg_temp.dueno();
+  if v_err like '%permission denied%' then r := r || '[ok] caso 8: anon no puede leer la vista;';
+  else r := r || format('[FALLA] caso 8: %s;', v_err); end if;
 
   -- 5) B no gana permisos de escritura
   perform pg_temp.como(eb);
@@ -92,7 +115,7 @@ begin
   v_err := pg_temp.mensaje(format('select pipeline_calificar(%L, true, null, null)', p_ab));
   perform pg_temp.dueno();
   select etapa into v_etapa from prenda_pasada where id = p_ab;
-  if v_err = 'ok' and v_etapa = 'recibido' and pg_temp.ve(eb,'P151-AB') = 1 then r := r || '[ok] caso 3b/7: B califica y la prenda recibida sigue visible;';
+  if v_err = 'ok' and v_etapa = 'recibido' and pg_temp.ve_vista(eb,'P151-AB') = 1 then r := r || '[ok] caso 3b/7: B califica y la prenda recibida sigue en la vista;';
   else r := r || format('[FALLA] caso 7: %s %s;', v_err, v_etapa); end if;
 
   raise exception 'RESULTADO 0151 --> %', r;
