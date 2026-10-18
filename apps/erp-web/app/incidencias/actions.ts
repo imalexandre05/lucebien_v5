@@ -3,9 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { puede, type MatrizPermisos } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
-import { resolverIncidencia, responsableValido } from '../../lib/incidencias-catalogo';
+import { resolverIncidencia } from '../../lib/incidencias-catalogo';
 import { leerMatrizPermisos } from '../../lib/permisos-repo';
-import { actualizarResponsableIncidencia, crearIncidencia, eliminarIncidencia, leerResponsableIncidencia, listarTiposIncidencia } from '../../lib/incidencias-repo';
+import { actualizarResponsableIncidencia, crearIncidencia, eliminarIncidencia, listarTiposIncidencia, responsableIncidenciaValido } from '../../lib/incidencias-repo';
 
 function fechaPeru(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
@@ -44,8 +44,7 @@ export async function accionCrearIncidencia(input: {
     const res = resolverIncidencia(tipos, input.tipo, input.nivel);
     if (!res.ok) return { ok: false, error: res.error };
     if (input.responsableId) {
-      const r = await leerResponsableIncidencia(input.responsableId);
-      if (!r || !responsableValido(r, sesion.usuario.sede)) {
+      if (!(await responsableIncidenciaValido(input.responsableId, sesion.usuario.sede))) {
         return { ok: false, error: 'El responsable debe ser una persona activa de esta sede.' };
       }
     }

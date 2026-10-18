@@ -28,8 +28,8 @@ import {
 import { getSesion } from '../../lib/auth';
 import { operadorParaAccion, pedirCodigoEnPantalla } from '../../lib/pipeline-operador';
 import { tokenOperadorValido } from '../../lib/operador-token';
-import { crearIncidenciasDeReporte, leerResponsableIncidencia, listarTiposIncidencia } from '../../lib/incidencias-repo';
-import { resolverIncidencia, responsableValido } from '../../lib/incidencias-catalogo';
+import { crearIncidenciasDeReporte, listarTiposIncidencia, responsableIncidenciaValido } from '../../lib/incidencias-repo';
+import { resolverIncidencia } from '../../lib/incidencias-catalogo';
 
 // Inicia el espacio de trabajo de un turno: catálogo de actividades + zonas de limpieza + draft.
 // `yaEnviado` = reporte si el turno ya se envió (para pasar a Evaluación, como el viejo).
@@ -110,8 +110,7 @@ export async function accionCrearReporte(
         const r = resolverIncidencia(tiposCatalogo, i.tipo, i.nivel);
         if (!r.ok) return { ok: false, error: `${r.error} («${i.tipo}»)` };
         if (i.responsableId) {
-          const r = await leerResponsableIncidencia(i.responsableId);
-          if (!r || !responsableValido(r, input.sede)) {
+          if (!(await responsableIncidenciaValido(i.responsableId, input.sede))) {
             return { ok: false, error: `El responsable de la incidencia «${i.tipo}» debe ser una persona activa de esta sede.` };
           }
         }
