@@ -61,12 +61,13 @@ const fromRow = (r: Row): PrendaPasada => ({
   fechaActualizado: r.fecha_actualizado,
 });
 
-export async function listarPasadas(): Promise<PrendaPasada[]> {
+// `soloActivas`: el tablero no necesita las ya recibidas; sin esto, con el historial creciendo el
+// tope de 1000 filas de PostgREST dejaba fuera prendas antiguas que siguen en proceso.
+export async function listarPasadas(opts: { soloActivas?: boolean } = {}): Promise<PrendaPasada[]> {
   const sb = getServerClient();
-  const { data, error } = await sb
-    .from('prenda_pasada')
-    .select('*')
-    .order('fecha_ingreso', { ascending: false });
+  let q = sb.from('prenda_pasada').select('*');
+  if (opts.soloActivas) q = q.neq('etapa', 'recibido');
+  const { data, error } = await q.order('fecha_ingreso', { ascending: false });
   if (error) throw new Error(error.message);
   return (data as Row[]).map(fromRow);
 }
