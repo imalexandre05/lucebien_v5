@@ -2076,3 +2076,11 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## Huellero: marca al extremo más cercano (sesión 7, 18-oct-2026) — [spec](superpowers/specs/asistencias/2026-10-18-huellero-marca-extremo-cercano-design.md)
+
+Decisión del dueño n.º 3, migración 0163. **Default inventado:** `huellero_rederivar` acepta como máximo
+400 días por llamada (protección técnica, no regla de negocio). **Para revisar:** los días que antes de
+la 0163 quedaron con una hora estimada (C-3) siguen pagándose con esa hora hasta que alguien los revise;
+la lista «Por revisar» los muestra como días con problema. Con dos turnos en el día y sólo dos marcas
+(entrada de la mañana y salida de la tarde) el día sigue contándose como un solo tramo, pausa incluida.

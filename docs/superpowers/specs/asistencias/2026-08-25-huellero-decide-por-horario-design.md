@@ -117,6 +117,11 @@ se anota como provisional: es el más chico que resuelve el caso que él nombró
 
 ### C-3 — Rellenar lo que falta, sin mentir sobre su origen (B-5)
 
+> **RETIRADA el 18-oct-2026 (decisión del dueño n.º 3, migración 0163).** Con pago por horas reales
+> lo que falta ya no se completa con el horario: queda «Pendiente de resolver». C-1 también cambió:
+> la marca suelta se compara con todos los turnos del día. Ver
+> [2026-10-18-huellero-marca-extremo-cercano-design.md](2026-10-18-huellero-marca-extremo-cercano-design.md).
+
 Hoy un día con entrada y sin salida queda en `sin_dato` y **corta la liquidación del período
 entero**. Eso no fue un descuido: la migración `0085` existe porque antes ese día se pagaba a
 medias, en silencio, y era el único camino del sistema que pagaba de menos sin avisar.
