@@ -17,7 +17,8 @@ Sesión 5A · Zona crítica (permisos y no-negociable 2) · Migración 0158 · D
    (destino `listo`, desde control de calidad). Avanzar a otras etapas no lo toca. El motivo del
    rechazo queda siempre en el historial.
 3. **R3 — Activo al anular.** `prenda_pasada.activo_estado_previo` (columna nueva, texto, nula).
-   `pipeline_enviar` guarda ahí el estado del activo antes de pasarlo a `disponible`.
+   `pipeline_enviar` guarda ahí el estado del activo antes de pasarlo a `disponible` y, si el activo
+   no estaba en uno de esos estados, **borra** el valor (nunca queda un estado viejo de un envío anterior).
    `pipeline_anular_envio` lo devuelve a ese estado (solo si el activo sigue `disponible`) y limpia la
    columna; si no hay estado guardado (envíos hechos antes de la 0158) vuelve a `en_pipeline` como hoy.
 4. **R4 — Nada más cambia.** Mismo cuerpo que las versiones vivas (`pipeline_avanzar` de la 0147,
@@ -27,12 +28,17 @@ Sesión 5A · Zona crítica (permisos y no-negociable 2) · Migración 0158 · D
 Ninguno.
 
 ## Pruebas (0158_endurecer.prueba.sql)
-1. Un almacén inactivo ve 0 prendas; el mismo activo ve las suyas. `app_es_almacen()` es false si inactivo.
+1. Un almacén inactivo ve 0 prendas y no puede operar (`pipeline_avanzar` → «Prenda no encontrada»); el
+   mismo activo ve las suyas. `app_es_almacen()` es false si inactivo.
 2. Aprobar (control_calidad → listo) limpia `obs_calidad`; planchado → control_calidad no.
 3. Activo `en_compostura` → enviar → `disponible` con `activo_estado_previo='en_compostura'` → anular →
    vuelve a `en_compostura` y la columna queda nula.
 4. Activo ya `alquilado` tras el envío: anular no lo toca. Sin estado guardado: vuelve a `en_pipeline`.
+   Estado viejo: activo `codificando` → enviar → observada en tienda → reenviar con el activo ya en otro
+   estado → anular: no vuelve a `codificando`.
 5. Una sola firma por función y sin `execute` para anon.
 
 ## Orden de merge
-Depende de #93 (0147, `pipeline_avanzar`) y #103 (0156, `pipeline_anular_envio`): se mergea después de ambas.
+Depende de #93 (0147, `pipeline_avanzar`) y #103 (0156, `pipeline_anular_envio`). La R2 solo tiene efecto
+si también está #100 (0154), que es la que escribe `obs_calidad` al rechazar (también llega por datos
+del sistema viejo). Se mergea después de las tres.
