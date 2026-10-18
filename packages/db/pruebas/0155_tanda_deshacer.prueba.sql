@@ -39,8 +39,10 @@ begin
   perform pg_temp.como(e_cf);
   v_res := pipeline_avanzar_tanda_resultado(array[p1, p_x, p2], 'lavado');
   perform pg_temp.dueno();
-  if (v_res->>'movidas')::int = 2 and (v_res->>'omitidas')::int = 1 and (v_res->>'puntos')::numeric = 2 then
-    r := r || '[ok] caso 1: resultado dice 2 movidas, 1 omitida y 2 puntos;';
+  if (v_res->>'movidas')::int = 2 and (v_res->>'omitidas')::int = 1 and (v_res->>'puntos')::numeric = 2
+     and v_res->'ids_movidos' @> to_jsonb(p1::text) and v_res->'ids_movidos' @> to_jsonb(p2::text)
+     and not (v_res->'ids_movidos' @> to_jsonb(p_x::text)) then
+    r := r || '[ok] caso 1: resultado dice 2 movidas, 1 omitida, 2 puntos y cuáles se movieron;';
   else r := r || format('[FALLA] caso 1: %s;', v_res); end if;
 
   -- 2) la función vieja conserva su retorno numérico
