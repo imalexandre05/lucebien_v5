@@ -7,7 +7,11 @@
 --   4) tras anular se puede guardar de nuevo la misma (empleado, mes);
 --   5) queda una fila en audit_log con el motivo (además de la del trigger 0058);
 --   6) con un pago enlazado a la evaluación, se niega (BLOQUEO) y la evaluación sigue;
---   7) un id inexistente se niega (DATO).
+--   7) un id inexistente se niega (DATO);
+--   8) una liquidación no anulada (borrador) cuyo periodo cruza el ciclo BLOQUEA;
+--   9) una liquidación anulada del mismo periodo NO bloquea;
+--  10) una liquidación no anulada de periodo fuera del ciclo NO bloquea;
+--  11) una liquidación cerrada que cruza el ciclo BLOQUEA.
 -- SE DESCARTA SOLA: termina lanzando una excepción con el resultado, no queda ni una fila.
 -- OJO: hay que correr el archivo ENTERO (el set_config del jwt da identidad al usuario).
 -- Cómo se corre: bash tools/probar-migracion.sh 0148
@@ -16,6 +20,8 @@ do $$
 declare
   adm uuid; col uuid; emp uuid;
   ev1 uuid; ev2 uuid; ev3 uuid;
+  ac uuid;
+  ev8 uuid; ev9 uuid; ev10 uuid; ev11 uuid;
   v_res text := '';
   v_fallas int := 0;
   v_n int;
@@ -112,6 +118,70 @@ begin
   reset role;
   select count(*) into v_n from evaluaciones_mensuales where id = ev3;
   if v_n <> 1 then v_res := v_res || E'\n  [FALLA] 6b) la evaluación con pago desapareció'; v_fallas := v_fallas + 1; end if;
+
+  -- 8-11) liquidaciones de sueldo. Escenario: cada caso con su propia persona (un acuerdo por
+  -- persona) y una evaluación de ciclo 2026-09-10..2026-10-09. Cruzan el ciclo las de septiembre;
+  -- el caso 10 usa un acuerdo de agosto (fuera del ciclo).
+  for i in 8..11 loop
+    insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales)
+      values ('Liquidada Prueba 0148 ' || i, '0148l' || i, 'confeccionista', true, 'AL', 'LP')
+      returning id into emp;
+    insert into evaluaciones_mensuales (empleado_id, mes, nota_final, ciclo_desde, ciclo_hasta)
+      values (emp, '2026-09', 15, '2026-09-10', '2026-10-09') returning id into ev1;
+    insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado, estado)
+      values (emp, case when i = 10 then '2026-08-01'::date else '2026-09-01'::date end,
+                   case when i = 10 then '2026-08-31'::date else '2026-09-30'::date end, 1500, 'vigente')
+      returning id into ac;
+    insert into sueldo_liquidaciones (acuerdo_id, empleado_id, periodo_desde, periodo_hasta, estado,
+        entrada, parametros_usados, resultado, total, valor_por_hora, motor_version, anulada_motivo)
+      select ac, emp, a.fecha_inicio, a.fecha_fin,
+             case when i = 9 then 'anulada' else 'borrador' end,
+             '{}'::jsonb, '{}'::jsonb, '{}'::jsonb, 1500, 6, 'prueba-0148',
+             case when i = 9 then 'prueba' end
+        from sueldo_acuerdos a where a.id = ac;
+    if i = 11 then
+      update sueldo_liquidaciones set estado = 'cerrada', cerrada_en = now() where acuerdo_id = ac;
+    end if;
+    if i = 8 then ev8 := ev1; end if;
+    if i = 9 then ev9 := ev1; end if;
+    if i = 10 then ev10 := ev1; end if;
+    if i = 11 then ev11 := ev1; end if;
+  end loop;
+
+  set local role authenticated;
+  perform set_config('request.jwt.claims', json_build_object('sub', adm::text, 'role', 'authenticated')::text, true);
+
+  begin
+    perform evaluacion_anular(ev8, 'con liquidación borrador');
+    v_res := v_res || E'\n  [FALLA] 8) anuló con una liquidación borrador que cruza el ciclo'; v_fallas := v_fallas + 1;
+  exception when others then
+    if sqlerrm like 'BLOQUEO%' then v_res := v_res || E'\n  [ok]    8) liquidación borrador que cruza, negado';
+    else v_res := v_res || format(E'\n  [FALLA] 8) falló por otro motivo: %s', sqlerrm); v_fallas := v_fallas + 1; end if;
+  end;
+  begin
+    perform evaluacion_anular(ev9, 'liquidación anulada');
+    v_res := v_res || E'\n  [ok]    9) liquidación anulada no bloquea';
+  exception when others then
+    v_res := v_res || format(E'\n  [FALLA] 9) la anulada bloqueó o falló: %s', sqlerrm); v_fallas := v_fallas + 1;
+  end;
+  begin
+    perform evaluacion_anular(ev10, 'liquidación de otro periodo');
+    v_res := v_res || E'\n  [ok]   10) liquidación fuera del ciclo no bloquea';
+  exception when others then
+    v_res := v_res || format(E'\n  [FALLA] 10) la de otro periodo bloqueó o falló: %s', sqlerrm); v_fallas := v_fallas + 1;
+  end;
+  begin
+    perform evaluacion_anular(ev11, 'con liquidación cerrada');
+    v_res := v_res || E'\n  [FALLA] 11) anuló con una liquidación cerrada que cruza el ciclo'; v_fallas := v_fallas + 1;
+  exception when others then
+    if sqlerrm like 'BLOQUEO%' then v_res := v_res || E'\n  [ok]   11) liquidación cerrada que cruza, negado';
+    else v_res := v_res || format(E'\n  [FALLA] 11) falló por otro motivo: %s', sqlerrm); v_fallas := v_fallas + 1; end if;
+  end;
+  reset role;
+  select count(*) into v_n from evaluaciones_mensuales where id in (ev8, ev11);
+  if v_n <> 2 then v_res := v_res || E'\n  [FALLA] 8b) una evaluación bloqueada desapareció'; v_fallas := v_fallas + 1; end if;
+  select count(*) into v_n from evaluaciones_mensuales where id in (ev9, ev10);
+  if v_n <> 0 then v_res := v_res || E'\n  [FALLA] 9b) una evaluación no bloqueada sigue'; v_fallas := v_fallas + 1; end if;
 
   if v_fallas = 0 then
     raise exception 'RESULTADO 0148 --> OK, todos los casos pasan:%', v_res;
