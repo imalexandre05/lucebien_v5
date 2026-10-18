@@ -12,7 +12,7 @@
 
 do $$
 declare
-  r text := ''; e uuid; s uuid; ac uuid; j1 jsonb; j2 jsonb; j3 jsonb;
+  r text := ''; e uuid; s uuid; x uuid; ac uuid; j1 jsonb; j2 jsonb; j3 jsonb;
   d date := date '2020-03-02'; h date := date '2020-03-08';
 begin
   insert into empleados (cod, nombre, iniciales, rol) values ('P0159-A', 'P0159 A', 'PA', 'confeccionista') returning id into e;
@@ -64,6 +64,32 @@ begin
     r := r || '[ok] caso 4: puntosTotal no depende del modo de puntualidad;';
   else
     r := r || '[FALLA] caso 4: puntosTotal cambió;';
+  end if;
+
+  -- 5) un día trabajado que NO es debido (sábado, sin turno) no tapa una tardanza, y un día contratado
+  --    sin ninguna fila (miércoles sin cargar) no cuenta como debido.
+  insert into asistencias (empleado_id, fecha, hora_entrada, hora_salida, condicion)
+    values (e, date '2020-03-07', time '08:00', time '12:00', 'trabajado');
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0159-X', 'P0159 X', 'PX', 'confeccionista') returning id into x;
+  insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado)
+    values (x, date '2020-03-01', date '2020-03-31', 1000) returning id into ac;
+  insert into sueldo_acuerdo_turnos (acuerdo_id, dia_semana, hora_inicio, hora_fin)
+    select ac, n, time '08:00', time '17:00' from generate_series(1, 5) n;
+  insert into asistencias (empleado_id, fecha, hora_entrada, hora_salida, condicion) values
+    (x, date '2020-03-02', time '09:00', time '17:00', 'trabajado'),
+    (x, date '2020-03-07', time '08:00', time '12:00', 'trabajado');
+  j1 := private.evaluacion_componentes_datos(x, d, h);
+  if (j1 ->> 'puntualidadDebidos')::int = 1 and (j1 ->> 'puntualidadPuntuales')::int = 0 and (j1 ->> 'tardanza')::numeric = 0 then
+    r := r || '[ok] caso 5: el sábado no tapa la tardanza y los días sin fila no son debidos;';
+  else
+    r := r || format('[FALLA] caso 5: %s;', j1);
+  end if;
+
+  j1 := private.evaluacion_componentes_datos(e, d, h);
+  if (j1 ->> 'tardanza')::numeric = 10 then
+    r := r || '[ok] caso 6: un sábado trabajado no cambia la nota del caso 1;';
+  else
+    r := r || format('[FALLA] caso 6: tardanza=%s;', j1 ->> 'tardanza');
   end if;
 
   raise exception 'RESULTADO 0159 --> %', r;
