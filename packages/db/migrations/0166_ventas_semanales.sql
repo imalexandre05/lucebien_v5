@@ -66,8 +66,11 @@ drop trigger if exists trg_audit_sueldo_ventas_semana on sueldo_ventas_semana;
 create trigger trg_audit_sueldo_ventas_semana after insert or update or delete on sueldo_ventas_semana
   for each row execute function private.audit_log_trigger();
 
--- ═══ sueldo_entrada — cuerpo de la 0144 con `ventasSemanales` ═════════════════════════════════
-create or replace function public.sueldo_entrada(p_acuerdo uuid, p_desde date, p_hasta date)
+-- ═══ sueldo_entrada — cuerpo de la 0160 (días pendientes) con `ventasSemanales` ════════════════
+-- Una sola firma (la 0127 prohíbe sobrecargas): la 0160 dejó (uuid,date,date,boolean default false);
+-- esta migración suma la entrega de las ventas semanales a ESA misma función. Las llamadas con 3
+-- argumentos siguen siendo estrictas (default false); el cierre llama así.
+create or replace function public.sueldo_entrada(p_acuerdo uuid, p_desde date, p_hasta date, p_permitir_pendientes boolean default false)
 returns jsonb
 language plpgsql
 stable
@@ -84,6 +87,8 @@ declare
   v_meses    jsonb;
   v_par      jsonb;
   v_tard_dif int;
+  v_pend     date[] := '{}';
+  v_mix_f    date[];
   v_semanas  jsonb;   -- 0166: ventas y metas cargadas por semana
 begin
   if not private.app_es_admin() then
@@ -116,8 +121,8 @@ begin
   -- contratado tiene que tener su fila de asistencia DECLARADA. 'sin_dato' no cuenta: significa
   -- que nadie cargó nada, y mandarlo al motor con la hora en null lo convertiría en una falta de
   -- dos días de sueldo.
-  select string_agg(to_char(d.dia, 'YYYY-MM-DD'), ', ' order by d.dia)
-    into v_faltan
+  select string_agg(to_char(d.dia, 'YYYY-MM-DD'), ', ' order by d.dia), array_agg(d.dia::date order by d.dia)
+    into v_faltan, v_pend
   from generate_series(p_desde, p_hasta, interval '1 day') as d(dia)
   where exists (
           select 1 from sueldo_acuerdo_turnos t
@@ -130,7 +135,11 @@ begin
             and s.condicion <> 'sin_dato'
         );
 
-  if v_faltan is not null then
+  -- 0160: en modo borrador (p_permitir_pendientes) no corta; los días quedan en v_pend y la
+  -- asistencia que se manda al motor no los incluye. El cierre llama a la versión de 3 argumentos
+  -- (estricta), así que nunca puede cerrar con días pendientes.
+  v_pend := coalesce(v_pend, '{}');
+  if v_faltan is not null and not p_permitir_pendientes then
     raise exception 'DATO:falta declarar la asistencia de %; ningún día contratado puede quedar sin cargar',
       v_faltan;
   end if;
@@ -147,10 +156,10 @@ begin
   --
   -- Se miran TODOS los días del RANGO PEDIDO con filas, contratados o no: un tramo trabajado fuera
   -- del horario pactado también se paga (RN-17), así que perderlo en silencio duele lo mismo.
-  select string_agg(t.fecha_txt, ', ' order by t.fecha_txt)
-    into v_mixtos
+  select string_agg(t.fecha_txt, ', ' order by t.fecha_txt), array_agg(t.fecha order by t.fecha)
+    into v_mixtos, v_mix_f
   from (
-    select to_char(s.fecha, 'YYYY-MM-DD') as fecha_txt
+    select s.fecha, to_char(s.fecha, 'YYYY-MM-DD') as fecha_txt
     from asistencias s
     where s.empleado_id = a.empleado_id
       and s.fecha between p_desde and p_hasta
@@ -158,8 +167,12 @@ begin
     having bool_or(s.condicion = 'sin_dato') and bool_or(s.condicion <> 'sin_dato')
   ) t;
 
-  if v_mixtos is not null then
+  if v_mixtos is not null and not p_permitir_pendientes then
     raise exception 'DATO:hay tramos sin cerrar en %; ese día quedaría pagado a medias', v_mixtos;
+  end if;
+
+  if v_mixtos is not null then
+    v_pend := v_pend || v_mix_f;
   end if;
 
   -- ── El horario contratado ────────────────────────────────────────────────────────────────
@@ -215,6 +228,7 @@ begin
     where s.empleado_id = a.empleado_id
       and s.fecha between p_desde and p_hasta
       and s.condicion <> 'sin_dato'
+      and not (s.fecha = any(v_pend))
     group by s.fecha
   ),
   filas as (
@@ -354,6 +368,10 @@ begin
     'puntosMeses',  v_meses,
     -- Precedencia de la spec §5: default del core ← config global ← override del contrato.
     'parametros',   private.sueldo_parametros_config() || a.parametros
-  );
+  ) || case when cardinality(v_pend) > 0
+            then jsonb_build_object('diasSinDeclarar',
+                   (select jsonb_agg(to_char(x, 'YYYY-MM-DD') order by x) from (select distinct unnest(v_pend) as x) u))
+            else '{}'::jsonb end;
 end;
+
 $function$;
