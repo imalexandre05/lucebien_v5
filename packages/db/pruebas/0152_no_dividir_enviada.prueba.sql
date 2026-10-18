@@ -21,7 +21,7 @@ do $$
 declare
   r text := '';
   v_a text := 'P152A';
-  e_alm uuid; env uuid; p_env uuid; p_rec uuid; p_lav uuid; p_lis uuid;
+  e_alm uuid; env uuid; p_env uuid; p_rec uuid; p_lav uuid; p_lis uuid; p_vac uuid;
   v_err text; v_n int; v_hist int; v_hist2 int; v_etapa text;
 begin
   perform pg_temp.dueno();
@@ -32,6 +32,8 @@ begin
   insert into prenda_pasada (codigo,tipo,sede_origen_cod,etapa,envio_id) values ('P152-REC','Terno completo',v_a,'recibido',env) returning id into p_rec;
   insert into prenda_pasada (codigo,tipo,sede_origen_cod,etapa) values ('P152-LAV','Terno completo',v_a,'lavado') returning id into p_lav;
   insert into prenda_pasada (codigo,tipo,sede_origen_cod,etapa) values ('P152-LIS','Terno completo',v_a,'listo') returning id into p_lis;
+
+  insert into prenda_pasada (codigo,tipo,sede_origen_cod,etapa) values ('P152-VAC','Terno completo',v_a,'vacio') returning id into p_vac;
 
   -- 1) enviado
   select count(*) into v_hist from prenda_historial;
@@ -75,6 +77,13 @@ begin
   perform pg_temp.dueno();
   if v_err like '%ya fue dividida%' or v_err like 'TRANSICION:%' then r := r || '[ok] caso 5: una ya dividida se rechaza;';
   else r := r || format('[FALLA] caso 5: %s;', v_err); end if;
+
+  -- 6) vacio (etapa válida del check) se sigue pudiendo dividir
+  perform pg_temp.como(e_alm);
+  v_err := pg_temp.mensaje(format('select pipeline_dividir(%L)', p_vac));
+  perform pg_temp.dueno();
+  if v_err = 'ok' then r := r || '[ok] caso 6: una prenda en vacio se sigue dividiendo;';
+  else r := r || format('[FALLA] caso 6: %s;', v_err); end if;
 
   raise exception 'RESULTADO 0152 --> %', r;
 end $$;
