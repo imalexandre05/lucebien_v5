@@ -23,7 +23,10 @@ const ROLES_EDITABLES: { rol: Rol; label: string }[] = [
 ];
 
 // Mismos módulos que la sidebar (components/shell/sidebar.tsx), agrupados igual para reconocerlos.
-const GRUPOS: { seccion: string; modulos: { modulo: string; label: string }[] }[] = [
+// Los grupos `oculto` (POS, Comercial, Abastecimiento) no se dibujan ni se editan: salieron de la
+// navegación (18-oct-2026, decisión del dueño n.º 9). Como no se dibujan, guardar() los reemite tal
+// cual desde matrizInicial — sus permisos no se pierden y vuelven el día que se conecten por API.
+const TODOS_LOS_GRUPOS: { seccion: string; oculto?: boolean; modulos: { modulo: string; label: string }[] }[] = [
   {
     seccion: 'Interno',
     modulos: [
@@ -42,6 +45,7 @@ const GRUPOS: { seccion: string; modulos: { modulo: string; label: string }[] }[
   },
   {
     seccion: 'POS',
+    oculto: true,
     modulos: [
       { modulo: 'pedidos', label: 'Pedidos' },
       { modulo: 'caja', label: 'Caja (ver)' },
@@ -50,6 +54,7 @@ const GRUPOS: { seccion: string; modulos: { modulo: string; label: string }[] }[
   },
   {
     seccion: 'Comercial',
+    oculto: true,
     modulos: [
       { modulo: 'inventario', label: 'Inventario' },
       { modulo: 'clientes', label: 'Clientes' },
@@ -59,6 +64,7 @@ const GRUPOS: { seccion: string; modulos: { modulo: string; label: string }[] }[
   },
   {
     seccion: 'Abastecimiento',
+    oculto: true,
     modulos: [
       { modulo: 'proveedores', label: 'Proveedores' },
       { modulo: 'materiales', label: 'Materiales' },
@@ -66,6 +72,8 @@ const GRUPOS: { seccion: string; modulos: { modulo: string; label: string }[] }[
     ],
   },
 ];
+
+const GRUPOS = TODOS_LOS_GRUPOS.filter((g) => !g.oculto);
 
 const ACCIONES: { accion: Accion; letra: string; titulo: string }[] = [
   { accion: 'ver', letra: 'V', titulo: 'Ver' },
