@@ -17,6 +17,7 @@ import { Aviso, campoCls } from '../../../components/ui/form';
 import { PersonaPicker } from '../../../components/ui/persona-picker';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { cn } from '../../../lib/cn';
+import { useOperador } from '../../pipeline/operador';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
 // Extras (Fase 5 tarea 3): cod enlaza con el catálogo (actividades_config, categoria='EXT');
@@ -92,6 +93,7 @@ export function NuevoReporteForm({
   empleados,
   tiposIncidencia,
   cierres,
+  compartido = false,
 }: {
   sede: string;
   fecha: string;
@@ -100,8 +102,11 @@ export function NuevoReporteForm({
   empleados: Emp[];
   tiposIncidencia: TipoIncidencia[];
   cierres: Record<TurnoReporte, string>;
+  compartido?: boolean;
 }) {
   const router = useRouter();
+  // En un equipo compartido el reporte se envía con el código del encargado (spec envio-reporte-con-codigo).
+  const { conOperador, operadorRechazado, renovar, chip, dialogo } = useOperador(compartido);
   const [turno, setTurno] = useState<TurnoReporte | ''>('');
   const [cat, setCat] = useState<ActividadDelTurno[]>([]);
   const [cargando, setCargando] = useState(false);
@@ -375,13 +380,15 @@ export function NuevoReporteForm({
       .map((z) => ({ cod: `OL_${z.cod}`, nombre: `Limpieza: ${z.nombre}`, cat: 'IND', peso: z.peso, obs: '' }));
     setError('');
     setBloqueoId(null);
-    startTransition(async () => {
+    const enviar = (token?: string) => startTransition(async () => {
       const r = await accionCrearReporte({
         id,
         sede,
         fecha,
         turno,
-        encargado: encargadoSel[0] ?? null,
+        // En el equipo compartido el encargado es quien ingresa su código; el formulario solo manda
+        // uno cuando es el admin quien lo elige (y entonces debe coincidir con el código).
+        encargado: compartido && !esAdmin ? null : (encargadoSel[0] ?? null),
         actTotal: cat.length,
         actDone: actividades.length,
         trabajadores,
@@ -405,18 +412,23 @@ export function NuevoReporteForm({
             responsableId: i.responsableId || null,
             puntosPenalidad: i.puntosPenalidad,
           })),
-      });
+      }, token);
       if (!r.ok) {
-        setError(r.error ?? 'Error al crear el reporte');
+        if (r.error?.startsWith('CODIGO:')) operadorRechazado();
+        setError((r.error ?? 'Error al crear el reporte').replace(/^CODIGO:\s*/, ''));
         setBloqueoId(r.bloqueoId ?? null);
         return;
       }
+      renovar();
       router.push(`/reportes/${r.id}`);
     });
+    conOperador(enviar);
   }
 
   return (
     <div className="space-y-5">
+      {chip}
+      {dialogo}
       {/* ── Información General: turno + equipo ── */}
       <Card>
         <CardHeader>

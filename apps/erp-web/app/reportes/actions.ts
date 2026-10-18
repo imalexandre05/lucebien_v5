@@ -9,6 +9,7 @@ import {
   getDraft,
   saveDraft,
   crearReporte,
+  encargadoDeReporte,
   evaluarReporte,
   anularReporte,
   anularEval,
@@ -25,6 +26,7 @@ import {
   type ReportePendiente,
 } from '../../lib/reportes-repo';
 import { getSesion } from '../../lib/auth';
+import { operadorParaAccion } from '../../lib/pipeline-operador';
 import { crearIncidenciasDeReporte, listarTiposIncidencia } from '../../lib/incidencias-repo';
 
 // Inicia el espacio de trabajo de un turno: catálogo de actividades + zonas de limpieza + draft.
@@ -82,8 +84,12 @@ type CrearReporteInput = {
 
 export async function accionCrearReporte(
   input: CrearReporteInput,
+  operador?: string,
 ): Promise<{ ok: boolean; id?: string; error?: string; bloqueoId?: string }> {
   try {
+    // Equipo compartido: sin código del encargado no se envía (la base lo vuelve a exigir, 0146).
+    // Con código, el encargado es quien lo ingresó: si el formulario trae otro, la RPC lo rechaza.
+    const token = await operadorParaAccion(operador);
     // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): la descripción es
     // obligatoria sólo para incidencias del tipo de categoría 'Otros'. El formulario ya lo hace
     // cumplir; esto es lo que de verdad lo exige — un cliente puede saltearse una validación de
@@ -98,7 +104,7 @@ export async function accionCrearReporte(
         return { ok: false, error: `Falta la descripción de la incidencia "${faltante.tipo}": este tipo la requiere.` };
       }
     }
-    const id = await crearReporte(input);
+    const id = await crearReporte(input, token);
     // Incidencias del turno → registradas ligadas al reporte (origen='reporte').
     if (input.incidencias.length) {
       const sesion = await getSesion();
@@ -106,7 +112,8 @@ export async function accionCrearReporte(
         sede: input.sede,
         fecha: input.fecha,
         reporteId: id,
-        reportadoPorId: sesion?.usuario.id ?? null,
+        // Con código de operador, las incidencias las reporta el encargado que lo ingresó.
+        reportadoPorId: (token ? await encargadoDeReporte(id) : null) ?? sesion?.usuario.id ?? null,
         items: input.incidencias,
       });
     }
