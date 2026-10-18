@@ -23,6 +23,11 @@ export interface EntradaResumen {
   abonos: number;
   /** Aún no existe en el sistema; si algún día se configura, entra por acá. */
   minimoVentas?: number | null;
+  /**
+   * Soles de los almuerzos que la empresa entregó en especie: (días con derecho − almuerzos a pagar) × valor
+   * del almuerzo de esa liquidación. Ausente = 0. Los pagados en soles ya están dentro del total final.
+   */
+  almuerzosEmpresa?: number;
 }
 
 export interface ResumenLiquidacion {
@@ -137,6 +142,8 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
     restante,
     cancelado: pagable && restante === 0,
     almuerzos,
-    totalInvertido: r2(r2(total + adelantos) + almuerzos),
+    // Total invertido = lo pagado a la persona (total final, que ya incluye los almuerzos pagados en soles)
+    // + los almuerzos que puso la empresa en especie. Cada almuerzo entra una sola vez.
+    totalInvertido: r2(r2(total + adelantos) + r2(Math.max(0, e.almuerzosEmpresa ?? 0))),
   };
 }

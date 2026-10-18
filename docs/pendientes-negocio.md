@@ -2066,3 +2066,13 @@ con «anular cierre» o «Corregir»; (2) la tardanza trasladada cuenta una más
 con las propias; (3) falta la pantalla para cargar una tardanza trasladada (existe la RPC y `crearTardanzaDiferida`).
 
 **4B-5 (verificador):** (a) los puntos de la evaluación (0132) se suman por `fecha`, así que una venta trasladada da sus puntos al mes destino: decidir si la evaluación debe leer la fecha original; (b) los borradores calculados antes de la 0144 piden recalcular antes de cerrar (falta la clave `tardanzasDiferidas`); (c) una tardanza de un día sin contrato también se traslada; (d) si se reabre un período con «Corregir», borrar a mano la tardanza trasladada de ese día para no descontarla dos veces.
+
+## 4B · Decididas por el dueño (17-oct-2026)
+
+Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar» de 4B-1 a 4B-5 ya no están abiertas):
+
+1. **Total invertido** = lo pagado a la persona + los almuerzos que puso la empresa; cada almuerzo cuenta una sola vez (corregido en `resumenLiquidacion`: suma los entregados en especie, no la fila «Almuerzos» otra vez).
+2. **Pasaje**: se paga por cada día que llega 5 min antes, desde que el administrador (Jordan) pone el monto. Vacío = no se paga.
+3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
+4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
+5. **Puntos de una venta trasladada** cuentan en el mes destino.
