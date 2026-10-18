@@ -20,7 +20,15 @@ export interface FilaAsistenciaRevisar {
   revisadaEn?: string | null;
 }
 
-export type TipoPorRevisar = 'sin_marca' | 'una_marca' | 'tardanza' | 'falta' | 'hora_estimada';
+export type TipoPorRevisar =
+  | 'sin_marca'
+  | 'una_marca'
+  | 'revisar'
+  | 'tardanza'
+  | 'falta'
+  | 'turno_sin_marcas'
+  | 'pausa_trabajada'
+  | 'hora_estimada';
 
 export interface DiaPorRevisar {
   fecha: string;
@@ -29,6 +37,8 @@ export interface DiaPorRevisar {
   minutosTarde?: number;
   /** Sólo en `una_marca`: qué hora falta. */
   falta?: 'entrada' | 'salida';
+  /** Sólo en `turno_sin_marcas`: la hora de inicio del turno sin marcas. */
+  turno?: string;
 }
 
 const minutos = (h: string): number => {
@@ -37,8 +47,9 @@ const minutos = (h: string): number => {
 };
 
 /**
- * Los días del rango (hasta `hoy`) que tienen un problema, uno por día, del más viejo al más nuevo.
- * Orden de prioridad dentro del día: sin marca, una marca, falta, tardanza, hora estimada.
+ * Los días del rango (hasta AYER: hoy todavía se está trabajando) que tienen un problema, uno por
+ * día, del más viejo al más nuevo. Prioridad dentro del día (spec §9.6): una marca, revisar, sin
+ * marca, falta, tardanza, turno sin marcas, pausa trabajada, hora estimada.
  */
 export function diasPorRevisar(p: {
   desde: string;
@@ -49,19 +60,24 @@ export function diasPorRevisar(p: {
   toleranciaMinutos: number;
 }): DiaPorRevisar[] {
   const porDia = resumirHorario(p.horario);
-  const hasta = p.hasta < p.hoy ? p.hasta : p.hoy;
-  if (hasta < p.desde) return [];
+  if (p.hasta < p.desde) return [];
   const out: DiaPorRevisar[] = [];
-  for (const fecha of diasDelPeriodo(p.desde, hasta)) {
+  for (const fecha of diasDelPeriodo(p.desde, p.hasta)) {
+    if (fecha >= p.hoy) break;
     const filas = p.filas.filter((f) => f.fecha === fecha);
     const contratado = porDia.get(diaSemanaISO(fecha));
     const conHoras = filas.filter((f) => f.horaEntrada || f.horaSalida);
-    const revisado = filas.some((f) => f.revisadaEn);
+    // Revisado sólo si TODAS las filas del día lo están (spec §9.2).
+    const revisado = filas.length > 0 && filas.every((f) => f.revisadaEn);
 
     // Un dato que falta nunca se da por revisado: sin él no se puede pagar ni cerrar.
     const unaMarca = filas.find((f) => f.condicion === 'sin_dato' && Boolean(f.horaEntrada) !== Boolean(f.horaSalida));
     if (unaMarca) {
       out.push({ fecha, tipo: 'una_marca', falta: unaMarca.horaEntrada ? 'salida' : 'entrada' });
+      continue;
+    }
+    if (filas.some((f) => f.condicion === 'sin_dato' && f.horaEntrada && f.horaSalida)) {
+      out.push({ fecha, tipo: 'revisar' });
       continue;
     }
     const hayFalta = filas.some((f) => f.condicion === 'falta');
@@ -74,6 +90,9 @@ export function diasPorRevisar(p: {
       if (!filas.some((f) => f.faltaJustificada)) out.push({ fecha, tipo: 'falta' });
       continue;
     }
+    const tramos = conHoras
+      .filter((f) => f.horaEntrada && f.horaSalida)
+      .map((f) => ({ ini: minutos(f.horaEntrada as string), fin: minutos(f.horaSalida as string) }));
     if (contratado && filas.some((f) => f.condicion === 'trabajado') && !filas.some((f) => f.tardanzaJustificada)) {
       const entradas = conHoras.map((f) => f.horaEntrada).filter((h): h is string => Boolean(h)).map(minutos);
       if (entradas.length > 0) {
@@ -82,6 +101,23 @@ export function diasPorRevisar(p: {
           out.push({ fecha, tipo: 'tardanza', minutosTarde: Math.round(tarde) });
           continue;
         }
+      }
+    }
+    // Días con dos o más turnos (spec §9.3 y §9.4).
+    const turnos = p.horario
+      .filter((t) => t.diaSemana === diaSemanaISO(fecha))
+      .map((t) => ({ ini: minutos(t.horaInicio), fin: minutos(t.horaFin), texto: t.horaInicio.slice(0, 5) }))
+      .sort((a, b) => a.ini - b.ini);
+    if (turnos.length >= 2 && tramos.length > 0) {
+      const sinMarcas = turnos.find((t) => !tramos.some((x) => x.ini < t.fin && x.fin > t.ini));
+      if (sinMarcas) {
+        out.push({ fecha, tipo: 'turno_sin_marcas', turno: sinMarcas.texto });
+        continue;
+      }
+      const deCorrido = turnos.slice(1).some((t, k) => tramos.some((x) => x.ini <= turnos[k].fin && x.fin >= t.ini));
+      if (deCorrido) {
+        out.push({ fecha, tipo: 'pausa_trabajada' });
+        continue;
       }
     }
     if (filas.some((f) => f.entradaEstimada || f.salidaEstimada)) out.push({ fecha, tipo: 'hora_estimada' });
