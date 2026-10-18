@@ -790,9 +790,9 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     seccion: SECCION_CODIGO,
     etiqueta: 'Minutos de operador activo sin actividad',
     descripcion:
-      'Tras ingresar su código, quien opera el tablero de un equipo compartido sigue activo hasta que pasen estos minutos sin mover ninguna prenda; después tiene que volver a ingresar el código.',
+      'Tras ingresar su código, quien opera el tablero de un equipo compartido sigue activo hasta que pasen estos minutos sin mover ninguna prenda (el cierre es automático para que otra persona no mueva con su código); después tiene que volver a ingresar el código.',
     tipo: 'numero',
-    default: '10',
+    default: '5',
     min: 1,
     step: 1,
   },

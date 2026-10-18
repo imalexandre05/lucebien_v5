@@ -3,9 +3,9 @@
 // que se puedan probar sin tocar Date, y el estado vive sólo en memoria de la pestaña (nunca en
 // localStorage: el token no debe sobrevivir a la pestaña).
 
-// Default de pantalla, sin confirmar con el dueño (docs/pendientes-negocio.md). La base devuelve la
-// ventana vigente en `ventana_min` al validar el código, y ésa manda cuando existe.
-export const MINUTOS_OPERADOR_DEFECTO = 10;
+// Default de pantalla: 5 minutos, como pidió el dueño (migración 0145). La base devuelve la ventana
+// vigente en `ventana_min` al validar el código, y ésa manda cuando existe.
+export const MINUTOS_OPERADOR_DEFECTO = 5;
 
 export type OperadorActivo = {
   token: string;
@@ -42,4 +42,13 @@ export function cambiarOperador(): null {
 export function msParaExpirar(op: OperadorActivo | null, ahora: number): number {
   if (!op) return 0;
   return Math.max(0, op.ultimaActividad + op.ventanaMs - ahora);
+}
+
+// «4:12» para el chip. Redondea hacia arriba el segundo en curso para no mostrar 0:00 mientras
+// todavía queda un instante de ventana.
+export function formatoCuentaRegresiva(ms: number): string {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
