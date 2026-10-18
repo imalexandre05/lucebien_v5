@@ -116,6 +116,9 @@ begin
     if v_est_activo in ('codificando', 'en_pipeline', 'en_compostura') then
       update prenda_pasada set activo_estado_previo = v_est_activo where id = p_id;
       update inventario_activo set estado = 'disponible' where id = v_activo_id;
+    else
+      -- Nunca queda un estado previo viejo de un envío anterior (p. ej. una prenda observada y reenviada).
+      update prenda_pasada set activo_estado_previo = null where id = p_id;
     end if;
   end if;
 end;
