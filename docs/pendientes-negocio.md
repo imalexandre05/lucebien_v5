@@ -2084,3 +2084,9 @@ Migración 0149. Decisión del dueño (05-oct): al suspender, el contrato vigent
 - **Defaults puestos (editables al revisar):** reactivar NO reabre el contrato (quien vuelve necesita uno nuevo); una liquidación no anulada que llegue más allá de la fecha de suspensión BLOQUEA la suspensión con un mensaje que dice qué hacer; un contrato que empieza después de la fecha de suspensión no se toca.
 - **Pregunta abierta:** ¿qué pasa con un contrato futuro ya pactado de alguien a quien se suspende? Hoy queda como está (el huellero ya lo ignora porque la persona está inactiva). Recomendación: dejarlo y avisar al administrador.
 - **Sin hacer (exige confirmar en producción):** el colaborador podría leer, llamando directo a la API, notas privadas, DNI, salario y código de su propia fila (`emp_select`, 0002:34; no hay permisos por columna). Recomendación: pasar a una vista con columnas permitidas, o revocar columnas sensibles al rol `authenticated`, tras revisar los grants reales de producción.
+
+## 5B-2 · Contrato y horario en una sola RPC (18-oct-2026)
+
+Migración 0157 (`sueldo_acuerdo_guardar`). No se inventó ningún parámetro de negocio ni default: la RPC escribe lo que el servidor ya resolvió (parámetros vigentes + overrides del formulario).
+
+- **Comportamiento que cambia, sin regla nueva:** editar un contrato que no existe ahora falla con «ese contrato no existe» (antes el update era silencioso y fallaba después al guardar turnos).

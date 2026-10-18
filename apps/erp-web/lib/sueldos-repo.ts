@@ -355,16 +355,14 @@ export async function crearAcuerdo(p: AcuerdoInput, creadoPor: string): Promise<
   // formulario: así un cambio posterior en /configuracion no lo mueve (spec 2026-10-05). Se
   // completa acá, en el servidor, y no se confía en que la pantalla haya mandado el conjunto.
   const parametros = parametrosDeContratoNuevo(await parametrosVigentes(), p.parametros);
-  const { data, error } = await sb
-    .from('sueldo_acuerdos')
-    .insert({ ...filaAcuerdo({ ...p, parametros }), creado_por: creadoPor })
-    .select('id')
-    .single();
+  // Contrato y horario en UNA RPC (0157): con turnos solapados no queda un contrato sin horario.
+  const { data, error } = await sb.rpc('sueldo_acuerdo_guardar', {
+    p_acuerdo: null,
+    p_fila: { ...filaAcuerdo({ ...p, parametros }), creado_por: creadoPor },
+    p_turnos: turnosParaRpc(p.turnos),
+  });
   if (error) throw errorSueldo(error);
-
-  const id = String((data as { id: string }).id);
-  if (p.turnos.length > 0) await guardarTurnos(id, p.turnos);
-  return id;
+  return String(data);
 }
 
 export async function actualizarAcuerdo(id: string, p: AcuerdoInput): Promise<void> {
@@ -386,9 +384,21 @@ export async function actualizarAcuerdo(id: string, p: AcuerdoInput): Promise<vo
   const sb = getServerClient();
   // Vaciar un campo no devuelve el parámetro a seguir a /configuracion: queda con el valor vigente.
   const parametros = parametrosDeContratoNuevo(await parametrosVigentes(), p.parametros);
-  const { error } = await sb.from('sueldo_acuerdos').update(filaAcuerdo({ ...p, parametros })).eq('id', id);
+  const { error } = await sb.rpc('sueldo_acuerdo_guardar', {
+    p_acuerdo: id,
+    p_fila: filaAcuerdo({ ...p, parametros }),
+    p_turnos: turnosParaRpc(p.turnos),
+  });
   if (error) throw errorSueldo(error);
-  await guardarTurnos(id, p.turnos);
+}
+
+function turnosParaRpc(turnos: Omit<TurnoAcuerdo, 'id'>[]) {
+  return turnos.map((t) => ({
+    dia_semana: t.diaSemana,
+    hora_inicio: t.horaInicio,
+    hora_fin: t.horaFin,
+    lugar: t.lugar || null,
+  }));
 }
 
 /**
@@ -408,12 +418,7 @@ export async function guardarTurnos(acuerdoId: string, turnos: Omit<TurnoAcuerdo
   const sb = getServerClient();
   const { error } = await sb.rpc('sueldo_acuerdo_guardar_turnos', {
     p_acuerdo: acuerdoId,
-    p_turnos: turnos.map((t) => ({
-      dia_semana: t.diaSemana,
-      hora_inicio: t.horaInicio,
-      hora_fin: t.horaFin,
-      lugar: t.lugar || null,
-    })),
+    p_turnos: turnosParaRpc(turnos),
   });
   if (error) throw errorSueldo(error);
 }
