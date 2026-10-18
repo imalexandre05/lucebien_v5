@@ -324,6 +324,13 @@ export interface EntradaLiquidacion {
    */
   tardanzasDiferidas?: number;
   /**
+   * Días contratados que todavía no están declarados (asistencia en `sin_dato` o con tramos a
+   * medias). Solo los manda `sueldo_entrada` en modo borrador (0160). Un día de esta lista que no
+   * trae registro no se paga ni se castiga: la liquidación es provisional y lo avisa. Ausente =
+   * comportamiento de siempre (un día contratado sin registro corta el cálculo).
+   */
+  diasSinDeclarar?: string[];
+  /**
    * Obsoleto: lo mandaba la 0117 y ya no se usa (spec de pago por puntos §8.2). Lo reemplaza
    * `puntosMeses`. Se deja en el tipo sólo para leer entradas guardadas antes de la 0126.
    */
@@ -412,6 +419,8 @@ export interface Liquidacion {
   total: number;
   /** Cosas que no detienen el cálculo pero el administrador tiene que ver antes de pagar. */
   advertencias: string[];
+  /** Días contratados sin declarar que este borrador no pagó ni descontó (solo si hubo alguno). */
+  diasSinDeclarar?: string[];
 }
 
 // ── Fechas y horas: aritmética pura, sin zona horaria ───────────────────────────────────────
@@ -1078,10 +1087,23 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   // Un día contratado sin registro no se puede distinguir de "no cargué la asistencia", y como
   // cada falta cuesta el día de horas MÁS el descuento de RN-09, el silencio sale carísimo.
   // Una falta se declara con horaIngreso: null.
+  // Borrador (0160): los días que el administrador todavía no declaró no cortan el cálculo, pero
+  // tampoco se pagan ni se castigan; salen en `diasSinDeclarar` y en una advertencia.
+  const declaradosPendientes = new Set(entrada.diasSinDeclarar ?? []);
+  const pendientes = dias.filter((f) => {
+    const c = porDia.get(diaSemanaISO(f));
+    return c && c.horas > 0 && !porFecha.has(f) && declaradosPendientes.has(f);
+  });
   const sinRegistro = dias.filter((f) => {
     const c = porDia.get(diaSemanaISO(f));
-    return c && c.horas > 0 && !porFecha.has(f);
+    return c && c.horas > 0 && !porFecha.has(f) && !declaradosPendientes.has(f);
   });
+  if (pendientes.length > 0) {
+    advertencias.push(
+      `Liquidación provisional: faltan ${pendientes.length} día(s) por declarar (${primeros(pendientes)}). ` +
+        `No se descuentan ni se compensan: el monto es el máximo posible y no se puede cerrar hasta declararlos.`,
+    );
+  }
   if (sinRegistro.length > 0) {
     throw new Error(
       `Faltan ${sinRegistro.length} día(s) contratado(s) en la asistencia: ${primeros(sinRegistro)}. ` +
@@ -1189,6 +1211,10 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     const contratado = porDia.get(diaSemanaISO(fecha));
     const horasContratadasDelDia = contratado?.horas ?? 0;
     const reg = porFecha.get(fecha);
+    if (!reg && pendientes.includes(fecha)) {
+      trabajadas.set(fecha, 0);
+      continue;
+    }
     const horas = reg ? horasDelRegistro(reg, 'Asistencia') : 0;
 
     horasTrabajadas += horas;
@@ -1588,6 +1614,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     subtotal,
     total,
     advertencias,
+    ...(pendientes.length > 0 ? { diasSinDeclarar: pendientes } : {}),
   };
 }
 

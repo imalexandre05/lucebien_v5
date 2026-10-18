@@ -2148,3 +2148,5 @@ Defaults inventados (editable: `eval_puntualidad_modo` en /configuración; `minu
 2. Los días sin fila o `sin_dato` no cuentan como debidos; una falta sí resta (no es puntual). Pendiente: ¿una falta justificada también resta puntualidad?
 3. Una tardanza justificada cuenta como puntual; la tolerancia es la del sueldo (`sueldo_tolerancia_minutos`).
 4. Sin horario contratado: se usa la fórmula por minutos (da 20 si no hay atraso medible).
+## 6A-4 · Liquidación provisional con días por declarar (18-oct-2026)
+Sin parámetros nuevos. Regla aplicada (confirmar con Alexander): un día contratado sin declarar **no es falta ni tardanza y no suma ni resta horas**; el borrador sale con el sueldo pactado sin tocar por ese día (monto máximo, provisional) y una advertencia con las fechas. **Cerrar sigue exigiendo todo declarado** (el cierre usa la `sueldo_entrada` estricta).
