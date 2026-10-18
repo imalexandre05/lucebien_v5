@@ -39,7 +39,7 @@ begin
   v_err := pg_temp.mensaje(format('select pipeline_enviar_tanda(array[%L,%L,%L]::uuid[], %L)', p1, p_mal, p2, v_b));
   perform pg_temp.dueno();
   select count(*) into v_n from prenda_pasada where codigo in ('P153-1','P153-2','P153-MAL') and etapa = 'enviado';
-  if v_err <> 'ok' and v_n = 0 then r := r || '[ok] caso 2: si una falla no se envía ninguna;';
+  if v_err <> 'ok' and v_n = 0 and v_err like '%P153-MAL%' then r := r || '[ok] caso 2: si una falla no se envía ninguna y el error nombra la prenda;';
   else r := r || format('[FALLA] caso 2: %s enviadas=%s;', v_err, v_n); end if;
 
   -- 1) tanda completa
