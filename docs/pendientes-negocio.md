@@ -2076,3 +2076,9 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## 5A · Rechazar con motivo (18-oct-2026)
+
+Default inventado (fijo en la RPC `pipeline_rechazar`, migración 0154, a confirmar con el dueño):
+el motivo del rechazo es obligatorio y debe tener entre 3 y 500 letras. Se guarda en
+`prenda_pasada.obs_calidad` y en la observación del historial.

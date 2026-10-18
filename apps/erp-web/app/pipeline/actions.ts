@@ -40,7 +40,7 @@ async function conCodigo<T>(fn: () => Promise<T>): Promise<T | string> {
   try {
     return await fn();
   } catch (e) {
-    if (e instanceof Error && e.message.startsWith('CODIGO:')) return e.message;
+    if (e instanceof Error && (e.message.startsWith('CODIGO:') || e.message.startsWith('MOTIVO:'))) return e.message;
     throw e;
   }
 }
@@ -72,9 +72,14 @@ export async function enviarTandaPrendas(ids: string[], sede: string, operador?:
   return null;
 }
 
-export async function rechazarPrenda(id: string, destino: string, operador?: string): Promise<string | null> {
+export async function rechazarPrenda(
+  id: string,
+  destino: string,
+  motivo: string,
+  operador?: string,
+): Promise<string | null> {
   if (!id || !destino) return null;
-  const r = await conCodigo(async () => rechazarPasada(id, destino, await operadorParaAccion(operador)));
+  const r = await conCodigo(async () => rechazarPasada(id, destino, motivo, await operadorParaAccion(operador)));
   if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
   return null;

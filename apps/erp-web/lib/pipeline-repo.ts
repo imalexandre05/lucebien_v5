@@ -195,9 +195,20 @@ export async function enviarPasada(id: string, sedeDestino: string, operador: st
   if (error) throw new Error(error.message);
 }
 
-export async function rechazarPasada(id: string, destino: string, operador: string | null = null): Promise<void> {
+export async function rechazarPasada(
+  id: string,
+  destino: string,
+  motivo: string,
+  operador: string | null = null,
+): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_rechazar', { p_id: id, p_destino: destino, ...conOperador(operador) });
+  // Motivo obligatorio (0154): la base lo valida y lo guarda en obs_calidad y en el historial.
+  const { error } = await sb.rpc('pipeline_rechazar', {
+    p_id: id,
+    p_destino: destino,
+    p_motivo: motivo,
+    ...conOperador(operador),
+  });
   if (error) throw new Error(error.message);
 }
 
