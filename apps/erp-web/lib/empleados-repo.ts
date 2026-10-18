@@ -1,3 +1,4 @@
+import { reactivarConAcceso, suspenderConAcceso } from './suspension';
 import type { Rol } from '@scilb/core';
 import { generarIniciales, elegirCodigoLibre, codigosDeEmails, generarContrasenaTemporal, validarContrasenaNueva } from '@scilb/core';
 import { getServerClient } from './supabase/server';
@@ -114,43 +115,27 @@ export async function actualizarEstadoEmpleado(id: string, activo: boolean, hoy:
     }
   }
 
-  // SUSPENDER (spec empleados/2026-10-18-suspension-cierra-contrato-design.md §2.1). Primero se
-  // cierra la puerta de calle y después se llama a la RPC, que en UNA transacción marca la ficha y
-  // cierra el contrato vigente con la fecha `hoy` (hoyPeru() de quien invoca). Si la RPC falla —por
-  // ejemplo, una liquidación que llega más allá de la baja— se quita el baneo y no cambia nada: el
-  // orden inverso dejaba el contrato cerrado y el acceso vivo si el baneo fallaba.
+  // SUSPENDER y REACTIVAR: el orden de las operaciones vive en ./suspension (probado con
+  // dependencias inyectadas); acá solo se aportan las llamadas reales.
+  const admin = getAdminClient();
+  const sb = getServerClient();
+  const ban = (duracion: string) => async () =>
+    (await admin.auth.admin.updateUserById(id, { ban_duration: duracion })).error;
   if (!activo) {
-    const { error: eBan } = await getAdminClient().auth.admin.updateUserById(id, { ban_duration: '876000h' });
-    if (eBan) {
-      throw new Error(`No se pudo suspender el acceso de esta persona: ${eBan.message}. No se cambió nada.`);
-    }
-    const { error } = await getServerClient().rpc('empleado_suspender', { p_id: id, p_hoy: hoy });
-    if (error) {
-      const { error: eDesban } = await getAdminClient().auth.admin.updateUserById(id, { ban_duration: 'none' });
-      if (eDesban) {
-        throw new Error(
-          `${error.message.replace(/^[A-Z_]+:/, '')} Además, no se pudo devolver el acceso a esta persona (${eDesban.message}): reactívala desde su ficha.`,
-        );
-      }
-      // Los mensajes de la RPC llevan un prefijo de código («ESTADO:», «DATO:»…) para la capa de
-      // sueldos; a la pantalla sólo le sirve el texto.
-      throw new Error(error.message.replace(/^[A-Z_]+:/, ''));
-    }
+    await suspenderConAcceso({
+      bloquearAcceso: ban('876000h'),
+      devolverAcceso: ban('none'),
+      suspenderEnBase: async () => (await sb.rpc('empleado_suspender', { p_id: id, p_hoy: hoy })).error,
+    });
     return;
   }
-
-  // REACTIVAR. No reabre el contrato (spec §2.1): quien vuelve necesita uno nuevo.
-  const sb = getServerClient();
-  const { error } = await sb.from('empleados').update({ activo: true, estado: 'activo' }).eq('id', id);
-  if (error) throw new Error(error.message);
-
-  // Si el desbaneo falla, se deshace la escritura de arriba: una ficha que dice "activo" con el
-  // acceso todavía cerrado es peor que no haber hecho nada.
-  const { error: eBan } = await getAdminClient().auth.admin.updateUserById(id, { ban_duration: 'none' });
-  if (eBan) {
-    await sb.from('empleados').update({ activo: false, estado: 'suspendido' }).eq('id', id);
-    throw new Error(`No se pudo reactivar el acceso de esta persona: ${eBan.message}. No se cambió nada.`);
-  }
+  await reactivarConAcceso({
+    reactivarEnBase: async () => (await sb.from('empleados').update({ activo: true, estado: 'activo' }).eq('id', id)).error,
+    devolverAcceso: ban('none'),
+    deshacerReactivacion: async () => {
+      await sb.from('empleados').update({ activo: false, estado: 'suspendido' }).eq('id', id);
+    },
+  });
 }
 
 // Contraseña temporal (spec permisos/2026-10-06-login-usuario-contrasena §6). La genera el
