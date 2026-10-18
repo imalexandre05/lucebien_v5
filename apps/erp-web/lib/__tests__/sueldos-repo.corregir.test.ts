@@ -51,6 +51,9 @@ import {
 // `corregirLiquidacion` sólo lee 4 campos de lo que devuelve `obtenerLiquidacion` (estado,
 // acuerdoId, periodoDesde, periodoHasta) — el resto de `LiquidacionDetalle` (los tres jsonb, los
 // escalares de dinero, etc.) no le importa a esta función, así que el fixture no los completa.
+// El contrato de hoy, como lo devuelve `sueldo_entrada_pago`: sin tarifa (sueldo fijo).
+const sinTarifa = async () => ({ fechaInicio: '2026-07-01', fechaFin: '2026-12-31', modalidad: 'mensual', cadaDias: null, sueldoPactado: 650 });
+
 function liquidacionCerrada(extra: Partial<LiquidacionDetalle> = {}): LiquidacionDetalle {
   return {
     id: 'liq-1',
@@ -81,6 +84,7 @@ describe('corregirLiquidacion — anula y vuelve a emitir en un solo paso (D-1)'
     });
 
     const r = await corregirLiquidacion('liq-1', '  se cargó un adelanto de más  ', {
+      pagoActual: sinTarifa,
       obtener,
       anular,
       crear,
@@ -101,7 +105,7 @@ describe('corregirLiquidacion — anula y vuelve a emitir en un solo paso (D-1)'
     const anular = vi.fn();
     const crear = vi.fn();
 
-    const error = await corregirLiquidacion('liq-x', 'motivo', { obtener, anular, crear }).catch(
+    const error = await corregirLiquidacion('liq-x', 'motivo', { obtener, anular, crear, pagoActual: sinTarifa }).catch(
       (e) => e,
     );
 
@@ -116,7 +120,7 @@ describe('corregirLiquidacion — anula y vuelve a emitir en un solo paso (D-1)'
     const anular = vi.fn();
     const crear = vi.fn();
 
-    const error = await corregirLiquidacion('liq-1', 'motivo', { obtener, anular, crear }).catch(
+    const error = await corregirLiquidacion('liq-1', 'motivo', { obtener, anular, crear, pagoActual: sinTarifa }).catch(
       (e) => e,
     );
 
@@ -134,6 +138,7 @@ describe('corregirLiquidacion — anula y vuelve a emitir en un solo paso (D-1)'
     });
 
     const error = await corregirLiquidacion('liq-1', '  motivo real  ', {
+      pagoActual: sinTarifa,
       obtener,
       anular,
       crear,
@@ -147,5 +152,30 @@ describe('corregirLiquidacion — anula y vuelve a emitir en un solo paso (D-1)'
     expect(error.periodoDesde).toBe('2026-07-01');
     expect(error.periodoHasta).toBe('2026-07-31');
     expect(error.message).toContain('el período pedido se sale del acuerdo');
+  });
+});
+
+describe('corregir un pago de sueldo fijo cuando el contrato ya es por horas (spec sueldo-por-horas §3.4)', () => {
+  it('se rechaza ANTES de anular nada', async () => {
+    const obtener = vi.fn(async () => liquidacionCerrada({ entrada: { sueldoPactado: 650 } } as Partial<LiquidacionDetalle>));
+    const anular = vi.fn(async () => {});
+    const crear = vi.fn(async () => 'nuevo');
+    const porHoras = async () => ({ fechaInicio: '2026-07-01', fechaFin: '2026-12-31', modalidad: 'mensual', cadaDias: null, sueldoPactado: 0, tarifaHora: 5 });
+    const error = await corregirLiquidacion('liq-1', 'motivo', { obtener, anular, crear, pagoActual: porHoras }).catch((e) => e);
+    expect(error).toBeInstanceOf(SueldoRpcError);
+    expect(error.codigo).toBe('ESTADO');
+    expect(anular).not.toHaveBeenCalled();
+    expect(crear).not.toHaveBeenCalled();
+  });
+
+  it('un pago que ya era por horas se corrige sin cuota fija', async () => {
+    const obtener = vi.fn(async () =>
+      liquidacionCerrada({ entrada: { sueldoPactado: 0, contratoPago: { tarifaHora: 5 } } } as Partial<LiquidacionDetalle>),
+    );
+    const anular = vi.fn(async () => {});
+    const crear = vi.fn(async () => 'nuevo');
+    const porHoras = async () => ({ fechaInicio: '2026-07-01', fechaFin: '2026-12-31', modalidad: 'mensual', cadaDias: null, sueldoPactado: 0, tarifaHora: 5 });
+    await corregirLiquidacion('liq-1', 'motivo', { obtener, anular, crear, pagoActual: porHoras });
+    expect(crear).toHaveBeenCalledWith('acuerdo-1', '2026-07-01', '2026-07-31', undefined);
   });
 });

@@ -1209,11 +1209,14 @@ export async function corregirLiquidacion(
     obtener?: typeof obtenerLiquidacion;
     anular?: typeof anularParaCorregir;
     crear?: typeof crearBorrador;
+    /** El contrato de hoy (como lo da `sueldo_entrada_pago`). Inyectable para probar sin base. */
+    pagoActual?: (acuerdoId: string) => Promise<ContratoPagoGuardado | null>;
   } = {},
 ): Promise<{ nuevoBorradorId: string }> {
   const obtener = colaboradores.obtener ?? obtenerLiquidacion;
   const anular = colaboradores.anular ?? anularParaCorregir;
   const crear = colaboradores.crear ?? crearBorrador;
+  const pagoActual = colaboradores.pagoActual ?? contratoPagoActual;
 
   const actual = await obtener(id);
   if (!actual) {
@@ -1228,6 +1231,16 @@ export async function corregirLiquidacion(
   // anularLiquidacion() valida el motivo (no vacío) antes de tocar la base, y su RPC corre en su
   // propia transacción: o queda 'anulada' entera —sellos liberados y el acuerdo vuelto a 'vigente'
   // si correspondía— o no cambia nada. No hay estado intermedio posible acá.
+  // Spec sueldo-por-horas §3.4: un pago que se hizo con sueldo fijo no se recalcula por horas. Se
+  // comprueba ANTES de anular, para no dejar un pago anulado sin reemplazo.
+  const pagadoPorHoras = esPorHoras((actual.entrada as EntradaConContexto | null | undefined)?.contratoPago);
+  if (!pagadoPorHoras && esPorHoras((await pagoActual(actual.acuerdoId)) ?? undefined)) {
+    throw new SueldoRpcError(
+      'Este pago se hizo con sueldo fijo y el contrato ahora es por horas: no se puede recalcular sin cambiar lo pagado.',
+      'ESTADO',
+    );
+  }
+
   await anular(id, motivo);
 
   // A PARTIR DE ACÁ LA ANULACIÓN YA CORRIÓ. Cualquier error de acá en más se envuelve en
@@ -1239,7 +1252,8 @@ export async function corregirLiquidacion(
       actual.acuerdoId,
       actual.periodoDesde,
       actual.periodoHasta,
-      actual.entrada?.sueldoPactado,
+      // Un pago por horas no tiene cuota: se recalcula con sus horas.
+      pagadoPorHoras ? undefined : actual.entrada?.sueldoPactado,
     );
     return { nuevoBorradorId };
   } catch (e) {
@@ -1818,4 +1832,9 @@ export async function corregirYCerrar(
     );
   }
   return nuevoBorradorId;
+/** `contratoPago` del contrato tal como está hoy (0121/0164). */
+async function contratoPagoActual(acuerdoId: string): Promise<ContratoPagoGuardado | null> {
+  const { data, error } = await getServerClient().rpc('sueldo_entrada_pago', { p_acuerdo: acuerdoId });
+  if (error) throw errorSueldo(error);
+  return (data as { contratoPago?: ContratoPagoGuardado } | null)?.contratoPago ?? null;
 }
