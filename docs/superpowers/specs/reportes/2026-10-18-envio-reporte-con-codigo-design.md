@@ -12,6 +12,8 @@ que lo envía.
 1. **R1 — Misma sesión de operador.** Al enviar el reporte, en un equipo compartido se pide el
    código personal (usuario + PIN) con el mismo chip y la misma sesión corta de 5 min del pipeline
    (0112/0145). Si ya hay un operador vigente, no se vuelve a pedir.
+   **Decidido por el dueño (18-oct-2026):** si el operador vigente es el encargado y su código sigue
+   activo, envía el reporte sin volver a ponerlo; el servidor lo valida (token, `actor_pipeline`).
 2. **R2 — `reportes_crear` acepta `p_operador uuid default null`** y lo resuelve con
    `private.actor_pipeline`: cuenta de equipo compartido sin token → `CODIGO:`; token ajeno o
    vencido → `CODIGO:` y no se escribe nada; cuenta personal sin token → igual que hoy.
