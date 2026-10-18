@@ -1468,8 +1468,8 @@ $$;
 -- Prueba: packages/db/pruebas/0160_entrada_dias_pendientes.prueba.sql   ZONA CRÍTICA (verificador antes de mergear).
 --
 -- Cuerpo EXACTO de public.sueldo_entrada de la 0144, con un cuarto argumento `p_permitir_pendientes`:
---   * false (la versión de 3 argumentos, ahora un envoltorio): igual que hoy; corta con DATO. El
---     cierre (0111) llama a ésta, así que NUNCA puede cerrar una liquidación con días sin declarar.
+--   * false (el default, también cuando se llama con 3 argumentos): igual que hoy; corta con DATO. El
+--     cierre (0111) la llama así, por lo que NUNCA puede cerrar una liquidación con días sin declarar.
 --   * true: no corta; los días sin declarar y los de tramos a medias salen en `diasSinDeclarar` y
 --     NO entran a `asistencia` (un día a medias no se paga a medias). La clave solo aparece si hay
 --     pendientes: la entrada estricta no cambia ni un byte.

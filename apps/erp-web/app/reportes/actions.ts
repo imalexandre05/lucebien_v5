@@ -94,7 +94,7 @@ export async function accionCrearReporte(
     let token = await operadorParaAccion(operador);
     // Cuenta de equipo compartido en un navegador sin la cookie del equipo: la pantalla pide el
     // código y la base lo exige (0146), pero `operadorParaAccion` lo descarta por no ser equipo
-    // compartido. Se conserva el token ya validado para que el reporte no quede sin poder enviarse.
+    // compartido. Se conserva el token (formato válido; la base lo verifica de verdad, 0146) para que el reporte no quede sin poder enviarse.
     if (!token && operador && tokenOperadorValido(operador) && (await pedirCodigoEnPantalla())) token = operador;
     // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): la descripción es
     // obligatoria sólo para incidencias del tipo de categoría 'Otros'. El formulario ya lo hace
