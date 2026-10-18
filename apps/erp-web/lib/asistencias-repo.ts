@@ -202,6 +202,8 @@ export type AsistenciaDia = {
   /** Ídem `Asistencia.entradaEstimada`/`salidaEstimada`: la puso el sistema, no una marca. */
   entradaEstimada: boolean;
   salidaEstimada: boolean;
+  /** El administrador ya miró este día (0165). `null` = nadie lo ha revisado, o el dato cambió después. */
+  revisadaEn: string | null;
 };
 
 type RowDia = Row & {
@@ -209,6 +211,7 @@ type RowDia = Row & {
   tardanza_justificada: boolean;
   falta_justificada: boolean;
   motivo_justificacion: string | null;
+  revisada_en: string | null;
 };
 
 // Postgres devuelve `time` como 'HH:MM:SS'; el formulario y el motor quieren 'HH:MM'.
@@ -229,7 +232,7 @@ export async function listarAsistenciasPeriodo(
   const { data, error } = await sb
     .from('asistencias')
     .select(
-      'id, empleado_id, fecha, turno, hora_entrada, hora_salida, minutos_tardanza, fuente, obs, condicion, tardanza_justificada, falta_justificada, motivo_justificacion, entrada_estimada, salida_estimada',
+      'id, empleado_id, fecha, turno, hora_entrada, hora_salida, minutos_tardanza, fuente, obs, condicion, tardanza_justificada, falta_justificada, motivo_justificacion, entrada_estimada, salida_estimada, revisada_en',
     )
     .eq('empleado_id', empleadoId)
     .gte('fecha', desde)
@@ -251,7 +254,27 @@ export async function listarAsistenciasPeriodo(
     fuente: r.fuente,
     entradaEstimada: Boolean(r.entrada_estimada),
     salidaEstimada: Boolean(r.salida_estimada),
+    revisadaEn: r.revisada_en ?? null,
   }));
+}
+
+/**
+ * Marca como revisados los días dados de una persona (0165). No cambia ningún dato ni ningún pago:
+ * sólo deja de listar el día en «Por revisar». Si después cambia una hora o la condición, la base
+ * borra la marca sola y el día vuelve a aparecer.
+ */
+export async function marcarRevisados(empleadoId: string, fechas: string[], adminId: string): Promise<number> {
+  const unicas = [...new Set(fechas)];
+  if (unicas.length === 0) return 0;
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('asistencias')
+    .update({ revisada_en: new Date().toISOString(), revisada_por: adminId })
+    .eq('empleado_id', empleadoId)
+    .in('fecha', unicas)
+    .select('id');
+  if (error) throw new Error(error.message);
+  return (data ?? []).length;
 }
 
 export type DeclaracionDia = {

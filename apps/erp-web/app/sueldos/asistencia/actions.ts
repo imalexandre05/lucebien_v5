@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../../lib/auth';
 import { soloHastaHoy } from '@scilb/core';
 import { hoyPeru } from '../../../lib/fechas';
-import { declararDia, type CondicionDia } from '../../../lib/asistencias-repo';
+import { declararDia, marcarRevisados, type CondicionDia } from '../../../lib/asistencias-repo';
 
 /**
  * Acciones de la declaración de asistencia.
@@ -92,4 +92,29 @@ export async function accionDeclararVarios(dias: DiaForm[]): Promise<Resultado &
           ? `${hechos} día(s) declarados. ${descartados} día(s) son posteriores a hoy y no se declararon.`
           : undefined,
   };
+}
+
+/**
+ * Marca días como revisados («Está bien» y «Todo bien» de la ficha). No cambia ningún dato: el
+ * pago sale igual. Un día sin fila no tiene nada que marcar, así que los de tipo «sin marca» no
+ * se cierran por aquí (spec ficha-unica-asistencia-por-revisar §4).
+ */
+export async function accionMarcarRevisados(empleadoId: string, fechas: string[]): Promise<Resultado> {
+  try {
+    const sesion = await getSesion();
+    if (!sesion || !(sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno')) {
+      return { ok: false, error: 'Sólo el administrador o el dueño revisan la asistencia.' };
+    }
+    if (!Array.isArray(fechas) || fechas.some((f) => typeof f !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(f))) {
+      return { ok: false, error: 'La lista de días no es válida.' };
+    }
+    const hechos = await marcarRevisados(empleadoId, fechas, sesion.usuario.id);
+    revalidatePath('/personal');
+    revalidatePath('/sueldos/asistencia');
+    return hechos > 0 || fechas.length === 0
+      ? { ok: true }
+      : { ok: false, error: 'No se encontró ningún día para marcar. Recarga la página e inténtalo de nuevo.' };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'No se pudo marcar como revisado.' };
+  }
 }
