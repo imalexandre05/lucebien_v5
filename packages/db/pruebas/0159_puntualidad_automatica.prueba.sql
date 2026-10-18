@@ -92,5 +92,25 @@ begin
     r := r || format('[FALLA] caso 6: tardanza=%s;', j1 ->> 'tardanza');
   end if;
 
+  -- 7) falta JUSTIFICADA no baja la nota (decisión del dueño): lun puntual + mar falta justificada
+  --    → 1 debido, 1 puntual, 20; con la falta SIN justificar → 2 debidos, 1 puntual, 10.
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0159-F', 'P0159 F', 'PF', 'confeccionista') returning id into x;
+  insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado)
+    values (x, date '2020-03-01', date '2020-03-31', 1000) returning id into ac;
+  insert into sueldo_acuerdo_turnos (acuerdo_id, dia_semana, hora_inicio, hora_fin)
+    select ac, n, time '08:00', time '17:00' from generate_series(1, 5) n;
+  insert into asistencias (empleado_id, fecha, hora_entrada, hora_salida, condicion) values
+    (x, date '2020-03-02', time '08:00', time '17:00', 'trabajado');
+  insert into asistencias (empleado_id, fecha, condicion, falta_justificada) values (x, date '2020-03-03', 'falta', true);
+  j1 := private.evaluacion_componentes_datos(x, d, h);
+  if (j1 ->> 'puntualidadDebidos')::int = 1 and (j1 ->> 'tardanza')::numeric = 20 then
+    r := r || '[ok] caso 7: la falta justificada no cuenta como día debido;';
+  else r := r || format('[FALLA] caso 7: %s;', j1); end if;
+  update asistencias set falta_justificada = false where empleado_id = x and fecha = date '2020-03-03';
+  j1 := private.evaluacion_componentes_datos(x, d, h);
+  if (j1 ->> 'puntualidadDebidos')::int = 2 and (j1 ->> 'tardanza')::numeric = 10 then
+    r := r || '[ok] caso 8: la falta sin justificar sí resta;';
+  else r := r || format('[FALLA] caso 8: %s;', j1); end if;
+
   raise exception 'RESULTADO 0159 --> %', r;
 end $$;

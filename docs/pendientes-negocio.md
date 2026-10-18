@@ -2145,7 +2145,7 @@ Sin cambios de código: requiere decisión del dueño. Hoy ya conviven uno vigen
 ## 6A-1 · Puntualidad automática en la evaluación (18-oct-2026)
 Defaults inventados (editable: `eval_puntualidad_modo` en /configuración; `minutos` vuelve a la fórmula anterior). **Confirmar con Alexander.**
 1. Nota = 20 × días puntuales ÷ días con turno contratado en el ciclo (hasta hoy, hora Perú).
-2. Los días sin fila o `sin_dato` no cuentan como debidos; una falta sí resta (no es puntual). Pendiente: ¿una falta justificada también resta puntualidad?
+2. Los días sin fila o `sin_dato` no cuentan como debidos; una falta sí resta (no es puntual). **Decidido por el dueño:** una falta justificada no resta puntualidad (no es día debido).
 3. Una tardanza justificada cuenta como puntual; la tolerancia es la del sueldo (`sueldo_tolerancia_minutos`).
 4. Sin horario contratado: se usa la fórmula por minutos (da 20 si no hay atraso medible).
 ## 6A-4 · Liquidación provisional con días por declarar (18-oct-2026)

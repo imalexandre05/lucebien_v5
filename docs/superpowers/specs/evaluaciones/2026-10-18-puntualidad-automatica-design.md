@@ -18,6 +18,8 @@ Definiciones, dentro del ciclo evaluado y hasta hoy (hora Perú) si el ciclo no 
   de ese día de la semana) que tienen la asistencia **declarada** (`trabajado` o `falta`) y ninguna
   fila `sin_dato`. Un día sin fila o sin declarar (huella sin importar, hoy antes de marcar) no es
   debido: no se castiga lo que no se sabe (igual que `sueldo_entrada`, 0160).
+- **Decisión del dueño (18-oct-2026):** un día con falta JUSTIFICADA (`falta_justificada`) no es debido:
+  no baja la nota ni cuenta como tardanza. Una falta sin justificar sí resta.
 - **tardanzas**: días `trabajado` cuya primera entrada supera `inicio_turno + sueldo_tolerancia_minutos`
   y no tienen `tardanza_justificada` (mismo criterio que el sueldo, RN-08).
 - **puntuales**: días **debidos** `trabajado` que no son tardanza. Un día trabajado que no es debido (sábado
