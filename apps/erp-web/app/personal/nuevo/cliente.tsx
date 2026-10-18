@@ -7,6 +7,7 @@ import type { RolDerivado } from '../../../lib/roles-repo';
 import type { Sede } from '../../../lib/sedes-repo';
 import { CamposPerfil, opcionesRol } from '../../empleados/cliente';
 import { accionCrearEmpleado } from '../../empleados/actions';
+import { accionVincularCandidato } from '../candidatos/actions';
 import { Card, CardContent } from '../../../components/ui/card';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { Aviso, campoCls } from '../../../components/ui/form';
@@ -24,27 +25,33 @@ import { hoyPeru } from '../../../lib/fechas';
 export function NuevaPersonaCliente({
   sedes,
   rolesDerivados,
+  precarga,
 }: {
   sedes: Sede[];
   rolesDerivados: RolDerivado[];
+  /** Candidato que pasa a alta (ticket 14): datos ya cargados y aviso opcional. */
+  precarga?: { id: string; nombre: string; sedeCod: string | null; notas: string; aviso: string | null } | null;
 }) {
   const router = useRouter();
   const opciones = useMemo(() => opcionesRol(rolesDerivados), [rolesDerivados]);
 
-  const [nombre, setNombre] = useState('');
+  const [nombre, setNombre] = useState(precarga?.nombre ?? '');
   const [rolValor, setRolValor] = useState<string>('ventas_junior');
-  const [sedePrimaria, setSedePrimaria] = useState(sedes[0]?.cod ?? '');
-  const [tiendas, setTiendas] = useState<string[]>(sedes[0] ? [sedes[0].cod] : []);
+  const sedeInicial = sedes.find((s) => s.cod === precarga?.sedeCod)?.cod ?? sedes[0]?.cod ?? '';
+  const [sedePrimaria, setSedePrimaria] = useState(sedeInicial);
+  const [tiendas, setTiendas] = useState<string[]>(sedeInicial ? [sedeInicial] : []);
   // F4 (validador de flujo 23-ago-2026): quien se está registrando casi siempre empieza el mismo
   // día del alta. Default a hoy, no obligatorio: el campo sigue editable para el caso real de
   // cargar a alguien que ya venía trabajando.
   const [fechaIngreso, setFechaIngreso] = useState(hoyPeru());
-  const [notas, setNotas] = useState('');
+  const [notas, setNotas] = useState(precarga?.notas ?? '');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [creadaId, setCreadaId] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function crear() {
+    if (creadaId) return;
     setError('');
     if (!nombre.trim()) {
       setError('El nombre es obligatorio');
@@ -80,6 +87,17 @@ export function NuevaPersonaCliente({
         setError(r.error ?? 'No se pudo crear a la persona.');
         return;
       }
+      // Ticket 14: si venía de un candidato, queda vinculado (contratado). Si falla, el alta ya
+      // está hecha: no se bloquea la cadena, el candidato se puede vincular a mano luego.
+      if (precarga) {
+        const v = await accionVincularCandidato(precarga.id, r.id);
+        if (!v.ok) {
+          // La persona ya existe: no se vuelve a crear (duplicaría el alta). Se avisa y se ofrece su ficha.
+          setCreadaId(r.id);
+          setError(`La persona se creó, pero no se pudo marcar al candidato como contratado: ${v.error ?? 'error'}.`);
+          return;
+        }
+      }
       // Paso 2 de la cadena: el contrato, con el editor ya abierto (AcuerdosCliente +
       // abrirNuevoAlMontar) y la fecha de ingreso precompletada (F1.5).
       router.push(`/personal/${r.id}/contrato?continuar=alta`);
@@ -89,6 +107,7 @@ export function NuevaPersonaCliente({
   return (
     <Card>
       <CardContent className="space-y-4 pt-5">
+        {precarga?.aviso && <Aviso tono="aviso">{precarga.aviso}</Aviso>}
         <CamposPerfil
           nombre={nombre}
           setNombre={setNombre}
@@ -127,9 +146,15 @@ export function NuevaPersonaCliente({
           <Link href="/personal" className={buttonVariants({ variant: 'ghost' })}>
             Cancelar
           </Link>
-          <Button type="button" onClick={crear} pending={pending}>
-            {pending ? 'Creando…' : 'Guardar y seguir al contrato'}
-          </Button>
+          {creadaId ? (
+            <Link href={`/personal/${creadaId}/contrato?continuar=alta`} className={buttonVariants({ variant: 'primary' })}>
+              Seguir al contrato
+            </Link>
+          ) : (
+            <Button type="button" onClick={crear} pending={pending}>
+              {pending ? 'Creando…' : 'Guardar y seguir al contrato'}
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>

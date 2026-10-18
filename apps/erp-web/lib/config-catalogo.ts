@@ -1,3 +1,4 @@
+import { ESCALAS_SUELDO_DEFAULT } from '@scilb/core';
 // config-catalogo.ts — Fase 13 tarea 1: catálogo TIPADO de los parámetros que el sistema ya
 // conoce (pts_* del pipeline, peso_*/eval_* de evaluación, turno_*_cierre de reportes,
 // despiece_pct_saco de inventario, valores_* de Valores 360°). Es la fuente de verdad de
@@ -46,6 +47,8 @@ export const SECCION_PAGO_PUNTOS = 'Pago por puntos';
 export const CLAVE_PUNTOS_META = 'sueldo_puntos_meta_mensual';
 export const CLAVE_SOLES_POR_PUNTO = 'sueldo_soles_por_punto';
 const SECCION_ACCESO = 'Acceso';
+const SECCION_ESCALAS = 'Escalas salariales';
+const SECCION_INGRESO = 'Ingreso de personal';
 const SECCION_CAPACITACION = 'Capacitación';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
@@ -55,6 +58,7 @@ export const ORDEN_SECCIONES = [
   SECCION_PUNTOS,
   SECCION_EVALUACION,
   SECCION_SUELDOS,
+  SECCION_ESCALAS,
   SECCION_PAGO_PUNTOS,
   SECCION_REPORTES,
   SECCION_INVENTARIO,
@@ -62,6 +66,7 @@ export const ORDEN_SECCIONES = [
   SECCION_VALORES,
   SECCION_CODIGO,
   SECCION_CAPACITACION,
+  SECCION_INGRESO,
   SECCION_ACCESO,
 ];
 
@@ -99,6 +104,33 @@ function pesoItem(clave: string, etiqueta: string, def: string): ConfigCatalogoI
     max: 1,
     step: 0.01,
   };
+}
+
+// Escalas salariales (ticket 35): tarifa por hora y antigüedad de cada escala. Defaults del Excel
+// del dueño (packages/core/src/sueldos.ts::ESCALAS_SUELDO_DEFAULT); sólo SUGIEREN, el admin confirma.
+function escalaItems(): ConfigCatalogoItem[] {
+  return ESCALAS_SUELDO_DEFAULT.flatMap((e) => [
+    {
+      clave: `escala_${e.escala}_tarifa_hora`,
+      seccion: SECCION_ESCALAS,
+      etiqueta: `Escala ${e.escala}: pago por hora (S/)`,
+      descripcion: `Soles por hora de la escala ${e.escala}. Con ella se sugiere el sueldo del contrato; el administrador decide.`,
+      tipo: 'numero' as const,
+      default: String(e.tarifaHora),
+      min: 0,
+      step: 0.1,
+    },
+    {
+      clave: `escala_${e.escala}_desde_mes`,
+      seccion: SECCION_ESCALAS,
+      etiqueta: `Escala ${e.escala}: desde qué mes`,
+      descripcion: `Meses completos de antigüedad desde los que se sugiere la escala ${e.escala} (0 = primer mes). Tramo por confirmar con el dueño.`,
+      tipo: 'numero' as const,
+      default: String(e.desdeMes),
+      min: 0,
+      step: 1,
+    },
+  ]);
 }
 
 export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
@@ -498,7 +530,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_bono_meta_semanal',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Bono por semana con la meta cumplida (S/)',
+    etiqueta: '2.ª comisión: bono por semana con la meta cumplida (S/)',
     descripcion:
       'Soles que gana la persona por cada semana del periodo en la que llegó a su meta de venta. Es un premio semanal fijo, pero la meta no: una semana más larga pide más, salvo que se encienda «Meta semanal fija».',
     tipo: 'numero',
@@ -529,9 +561,9 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_pct_comision',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Comisión sobre ventas (%)',
+    etiqueta: '1.ª comisión: porcentaje sobre ventas (%)',
     descripcion:
-      'Porcentaje de la base de comisión que se paga: 1,5 = 1,5 %. Sólo comisionan las semanas en las que la persona llegó a su meta.',
+      'Porcentaje de la base de comisión que se paga: 2 = 2 %. La comisión se desbloquea sólo cuando la persona cumple la meta de venta del mes.',
     tipo: 'numero',
     // Se guarda como fracción (0.02 = 2 %), que es lo que multiplica el motor (RN-13); la pantalla
     // la muestra en porcentaje. min/max son de la fracción: 0 % a 100 %.
@@ -543,13 +575,35 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   {
     clave: 'sueldo_monto_minimo_comision',
     seccion: SECCION_SUELDOS,
-    etiqueta: 'Monto mínimo de boleta para comisionar (S/)',
+    etiqueta: '1.ª comisión: monto mínimo de boleta (S/)',
     descripcion:
       'Sólo las boletas por encima de este monto entran a la base de comisión. Se mira el total de la boleta, no cada producto.',
     tipo: 'numero',
     default: '120',
     min: 0,
     step: 10,
+  },
+  {
+    clave: 'sueldo_monto_pasaje',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Pasaje por llegar temprano (S/ por día)',
+    descripcion:
+      'Soles que se suman a la liquidación por cada día en que la persona llega con la anticipación de abajo antes del inicio de su turno. Vacío = no se paga ningún pasaje.',
+    tipo: 'numero',
+    default: '',
+    min: 0,
+    step: 0.5,
+    permiteVacio: true,
+  },
+  {
+    clave: 'sueldo_pasaje_minutos_antes',
+    seccion: SECCION_SUELDOS,
+    etiqueta: 'Minutos de anticipación para ganar el pasaje',
+    descripcion: 'Con 5, quien entra a las 08:55 o antes a un turno de las 09:00 gana el pasaje de ese día.',
+    tipo: 'numero',
+    default: '5',
+    min: 0,
+    step: 1,
   },
   {
     clave: 'sueldo_dias_descuento_por_falta',
@@ -688,6 +742,17 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   // Migración 0112 (spec pipeline/2026-10-04-codigo-personal-design.md §4). Los tres defaults los
   // eligió el implementador y NO están confirmados por el dueño (docs/pendientes-negocio.md).
   // Migración 0131 (spec capacitacion/2026-10-17-...). Default provisional, NO confirmado por el dueño.
+  // Migración 0134 (ticket 14). Default del Excel del dueño («Prueba (3 días)»), por confirmar.
+  {
+    clave: 'personal_prueba_dias',
+    seccion: SECCION_INGRESO,
+    etiqueta: 'Días de la prueba de ingreso',
+    descripcion: 'Cuántos días dura la prueba de un candidato antes de decidir su alta. Cuenta el día de inicio.',
+    tipo: 'numero',
+    default: '3',
+    min: 1,
+    step: 1,
+  },
   {
     clave: 'capacitacion_nota_aprobatoria',
     seccion: SECCION_CAPACITACION,
@@ -753,6 +818,75 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 4,
     step: 1,
   },
+  {
+    clave: 'pipeline_mov_prefijo',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Prefijo del código de movimiento',
+    descripcion:
+      'Letras con que empieza el código de cada movimiento de una prenda (MOV-AAMMDD-00001). Sólo cambia los códigos que se generen después. Valor provisional: el dueño no definió el formato.',
+    tipo: 'texto',
+    default: 'MOV',
+  },
+  {
+    clave: 'examen_preguntas_por_intento',
+    seccion: SECCION_CAPACITACION,
+    etiqueta: 'Preguntas por intento de examen',
+    descripcion: 'Cuántas preguntas se sortean del banco en cada intento del examen de software o escrito. Valor provisional.',
+    tipo: 'numero',
+    default: '10',
+    min: 1,
+    step: 1,
+  },
+  {
+    clave: 'examen_intentos_max',
+    seccion: SECCION_CAPACITACION,
+    etiqueta: 'Intentos máximos por examen',
+    descripcion: 'Cuántas veces puede rendir la persona nueva cada examen online durante su capacitación. Cuenta la última nota. Valor provisional.',
+    tipo: 'numero',
+    default: '3',
+    min: 1,
+    step: 1,
+  },
+  {
+    clave: 'examen_peso_software',
+    seccion: SECCION_CAPACITACION,
+    etiqueta: 'Peso del examen de software',
+    descripcion: 'Cuánto pesa el examen de software en la nota integral (junto a los otros dos). Con los tres iguales es un promedio simple. Valor provisional.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    step: 0.5,
+  },
+  {
+    clave: 'examen_peso_escrito',
+    seccion: SECCION_CAPACITACION,
+    etiqueta: 'Peso del examen escrito',
+    descripcion: 'Cuánto pesa el examen escrito de conocimientos en la nota integral. Valor provisional.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    step: 0.5,
+  },
+  {
+    clave: 'examen_peso_presencial',
+    seccion: SECCION_CAPACITACION,
+    etiqueta: 'Peso del examen presencial',
+    descripcion: 'Cuánto pesa el examen presencial de habilidades en la nota integral. Valor provisional.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    step: 0.5,
+  },
+  {
+    clave: 'examen_peso_manual',
+    seccion: SECCION_CAPACITACION,
+    etiqueta: 'Peso del examen cargado a mano',
+    descripcion: 'Cuánto pesa el último examen que registra el capacitador a mano en la nota integral, junto a los exámenes online y el presencial. Valor provisional.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    step: 0.5,
+  },
   // Pago por puntos (migración 0117, spec sueldos/2026-10-05-pago-por-puntos-design.md). SIN default
   // a propósito: la meta la fija el dueño después de un mes de uso, mirando el promedio real. En
   // blanco = desactivado; con cualquiera de las dos en blanco no se paga nada por puntos.
@@ -779,6 +913,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     step: 0.01,
     permiteVacio: true,
   },
+  ...escalaItems(),
 ];
 
 export const CONFIG_CATALOGO_MAP: Map<string, ConfigCatalogoItem> = new Map(CONFIG_CATALOGO.map((i) => [i.clave, i]));

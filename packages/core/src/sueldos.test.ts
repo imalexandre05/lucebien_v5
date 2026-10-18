@@ -6,6 +6,12 @@ import {
   tramosSemanales,
   diaSemanaISO,
   sueldoSugerido,
+  ESCALAS_SUELDO_DEFAULT,
+  escalasDesdeConfig,
+  escalaSugeridaPorAntiguedad,
+  temporadaVigente,
+  sueldoSugeridoPorTemporada,
+  type Temporada,
   finDePeriodo,
   soloHastaHoy,
   cuotaDelTramo,
@@ -765,7 +771,7 @@ describe('escala salarial (RN-14)', () => {
   });
 
   it('acepta una tabla de escalas distinta a la de por defecto', () => {
-    expect(sueldoSugerido(1, 100, [{ escala: 1, tarifaHora: 4, antiguedad: 'nueva escala' }])).toBe(400);
+    expect(sueldoSugerido(1, 100, [{ escala: 1, tarifaHora: 4, desdeMes: 0, antiguedad: 'nueva escala' }])).toBe(400);
   });
 
   it('rechaza una escala inexistente', () => {
@@ -1368,5 +1374,98 @@ describe('frecuencia flexible — enmienda 9.2: un rango que cubre varios pagos 
 
   it('un rango desalineado sin cambio de por medio sigue como hoy (§7.6)', () => {
     expect(cuotaDeLiquidacion(contrato, [], '2026-08-20', '2026-09-19')).toBe(1300);
+  });
+});
+
+describe('escalas editables (ticket 35)', () => {
+  it('los defaults son los valores del Excel del dueño', () => {
+    expect(ESCALAS_SUELDO_DEFAULT.map((e) => e.tarifaHora)).toEqual([2.9, 3.2, 3.5, 3.8, 5]);
+    expect(escalasDesdeConfig({})).toEqual(ESCALAS_SUELDO_DEFAULT);
+  });
+
+  it('respeta lo editado en /configuracion y cae al default si el valor no sirve', () => {
+    const t = escalasDesdeConfig({
+      escala_1_tarifa_hora: '3.1',
+      escala_2_tarifa_hora: '',
+      escala_3_tarifa_hora: '-4',
+      escala_4_tarifa_hora: 'abc',
+      escala_5_desde_mes: '12',
+    });
+    expect(t[0].tarifaHora).toBe(3.1);
+    expect(t[1].tarifaHora).toBe(3.2);
+    expect(t[2].tarifaHora).toBe(3.5);
+    expect(t[3].tarifaHora).toBe(3.8);
+    expect(t[4].desdeMes).toBe(12);
+  });
+
+  it('sugiere la escala por meses completos de antigüedad', () => {
+    const e = ESCALAS_SUELDO_DEFAULT;
+    expect([0, 1, 2, 3, 4, 7, 8, 40].map((m) => escalaSugeridaPorAntiguedad(m, e))).toEqual([1, 2, 3, 3, 4, 4, 5, 5]);
+    expect(escalaSugeridaPorAntiguedad(-3, e)).toBe(1);
+  });
+
+  it('con una tabla editada cambia la sugerencia y el sueldo sugerido', () => {
+    const t = escalasDesdeConfig({ escala_4_desde_mes: '6', escala_4_tarifa_hora: '4' });
+    expect(escalaSugeridaPorAntiguedad(5, t)).toBe(3);
+    expect(escalaSugeridaPorAntiguedad(6, t)).toBe(4);
+    expect(sueldoSugerido(4, 100, t)).toBe(400);
+  });
+});
+
+describe('temporadas: pago por hora y metas (ticket 15)', () => {
+  const T = (o: Partial<Temporada>): Temporada => ({
+    nombre: 'Navidad', desde: '2025-06-23', hasta: '2025-06-29',
+    pagoPorHora: null, metaSemanal: null, metaPorHora: null, ...o,
+  });
+  const metas = (temporadas?: Temporada[], parametros?: object) =>
+    liquidarPeriodo({ ...GOLDEN, temporadas, parametros }).ventas.semanas.map((s) => s.meta);
+
+  it('sin temporadas, o sin ninguna que cubra el periodo, la meta es la de hoy', () => {
+    const hoy = liquidarPeriodo(GOLDEN);
+    expect(liquidarPeriodo({ ...GOLDEN, temporadas: [] })).toEqual(hoy);
+    expect(liquidarPeriodo({ ...GOLDEN, temporadas: [T({ desde: '2024-12-01', hasta: '2024-12-31', metaSemanal: 9999 })] })).toEqual(hoy);
+  });
+
+  it('una temporada sin metas no cambia nada', () => {
+    expect(metas([T({ pagoPorHora: 6 })])).toEqual([1500, 1500, 1500, 3000]);
+  });
+
+  it('metaSemanal de la temporada sólo afecta a las semanas que cubre', () => {
+    expect(metas([T({ metaSemanal: 2000 })])).toEqual([1500, 2000, 1500, 3000]);
+  });
+
+  it('metaPorHora de la temporada reemplaza a la normal en esa semana', () => {
+    // 33 h × 90 = 2.970 en la semana 2; el resto sigue con 1500/33 por hora.
+    expect(metas([T({ metaPorHora: 90 })])).toEqual([1500, 2970, 1500, 3000]);
+  });
+
+  it('la meta pactada en el contrato gana a la temporada (RN-10)', () => {
+    expect(metas([T({ metaSemanal: 2000 })], { metaSemanal: 3000 })).toEqual([3000, 3000, 3000, 3000]);
+  });
+
+  it('dos temporadas distintas dentro del mismo periodo', () => {
+    const a = T({ nombre: 'Alta', desde: '2025-06-16', hasta: '2025-06-22', metaSemanal: 2500 });
+    const b = T({ nombre: 'Baja', desde: '2025-07-07', hasta: '2025-07-31', metaSemanal: 1000 });
+    expect(metas([a, b])).toEqual([2500, 1500, 1500, 1000]);
+  });
+
+  it('temporadaVigente: bordes inclusivos y sin cobertura = null', () => {
+    const t = T({});
+    expect(temporadaVigente([t], '2025-06-22')).toBeNull();
+    expect(temporadaVigente([t], '2025-06-23')).toBe(t);
+    expect(temporadaVigente([t], '2025-06-29')).toBe(t);
+    expect(temporadaVigente([t], '2025-06-30')).toBeNull();
+    expect(temporadaVigente([], '2025-06-23')).toBeNull();
+  });
+
+  it('rechaza una temporada con fechas inválidas o invertidas', () => {
+    expect(() => temporadaVigente([T({ desde: '2025-07-01', hasta: '2025-06-01' })], '2025-06-23')).toThrow(/Temporada/);
+    expect(() => temporadaVigente([T({ desde: 'ayer' })], '2025-06-23')).toThrow(/Temporada/);
+  });
+
+  it('sueldo sugerido con el pago por hora de la temporada', () => {
+    expect(sueldoSugeridoPorTemporada(T({ pagoPorHora: 6 }), 100)).toBe(600);
+    expect(sueldoSugeridoPorTemporada(T({ pagoPorHora: null }), 100)).toBeNull();
+    expect(sueldoSugeridoPorTemporada(null, 100)).toBeNull();
   });
 });

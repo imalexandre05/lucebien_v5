@@ -1,8 +1,9 @@
 'use client';
 
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Check, Eye, X, Square, CheckSquare } from 'lucide-react';
-import { zonasSolapadas, type TurnoReporte } from '@scilb/core';
+import { zonasSolapadas, resumenLimpieza, type TurnoReporte } from '@scilb/core';
 import type { LayoutZona } from '../../lib/reportes-repo';
 import { cn } from '../../lib/cn';
 
@@ -173,6 +174,7 @@ export function LayoutMap({
   onCycle,
   onMass,
   panelEval = false,
+  limpiadas,
 }: {
   zonas: LayoutZona[];
   turno: TurnoReporte;
@@ -186,17 +188,45 @@ export function LayoutMap({
   onMass?: (v: number) => void;
   // Panel lateral "Calificación limpieza" (por zona + total), como el viejo.
   panelEval?: boolean;
+  // En 'eval': zonas que el reporte marcó como limpiadas. Las del otro turno también se evalúan.
+  limpiadas?: string[];
 }) {
   const sel = useMemo(() => new Set(selected), [selected]);
   const esEval = modo === 'eval';
   const estadoDe = (cod: string) => estados?.[cod] ?? (esEval ? SIN_CALIFICAR : 1);
   // Fase 5 tarea 2: zona cuyo desplegable de "zonas ocultas en este punto" está abierto.
   const [dropdownCod, setDropdownCod] = useState<string | null>(null);
+  // Posición en pantalla del desplegable: va por portal a <body> con `fixed`, porque dentro del
+  // lienzo (overflow-hidden) quedaba recortado o tapado por las zonas vecinas y la tarjeta.
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number } | null>(null);
+  useEffect(() => {
+    if (!dropdownCod) return;
+    const cerrar = () => setDropdownCod(null);
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && cerrar();
+    window.addEventListener('resize', cerrar);
+    window.addEventListener('scroll', cerrar, true);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('resize', cerrar);
+      window.removeEventListener('scroll', cerrar, true);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [dropdownCod]);
 
-  // Puntúa solo lo que aplica al turno, pero el lienzo muestra la tienda completa
-  // (las zonas del otro turno van atenuadas, como el viejo).
-  const mostradas = useMemo(() => zonas.filter((z) => aplicaTurno(z.turno, turno)), [zonas, turno]);
-  const especiales = useMemo(() => mostradas.filter((z) => z.forma === 'special'), [mostradas]);
+  // Las zonas del turno son las RECOMENDADAS; las del otro turno se pueden limpiar igual y SÍ
+  // suman (el servidor no filtra por turno: guarda toda zona marcada). `mostradas` = lo que
+  // cuenta para el puntaje: recomendadas + cualquier otra que se haya marcado.
+  const limpiadasSet = useMemo(() => new Set(limpiadas ?? []), [limpiadas]);
+  const mostradas = useMemo(
+    () => zonas.filter((z) => aplicaTurno(z.turno, turno) || sel.has(z.cod) || limpiadasSet.has(z.cod)),
+    [zonas, turno, sel, limpiadasSet],
+  );
+  // Al crear se ofrecen todas las tarjetas especiales (CALLE/PISO) aunque sean del otro turno.
+  const especiales = useMemo(
+    () => (readOnly || esEval ? mostradas : zonas).filter((z) => z.forma === 'special'),
+    [mostradas, zonas, readOnly, esEval],
+  );
+  const hayOtroTurno = turno !== 'C' && zonas.some((z) => puntuable(z) && !aplicaTurno(z.turno, turno));
   const enMapa = useMemo(() => zonas.filter((z) => z.forma !== 'special'), [zonas]);
 
   // Fase 5 tarea 2: zonas con nivel/sobreCod se pintan una encima de otra — sin esto, la de abajo
@@ -229,14 +259,18 @@ export function LayoutMap({
   const piso = especiales.find((z) => z.cod.toUpperCase() === 'PISO');
   const otrasEspeciales = especiales.filter((z) => z !== calle && z !== piso);
 
-  const totalPts = useMemo(() => mostradas.filter(puntuable).reduce((s, z) => s + z.peso, 0), [mostradas]);
-  const ganados = useMemo(() => {
-    if (esEval) return mostradas.filter(puntuable).reduce((s, z) => s + z.peso * Math.max(estadoDe(z.cod), 0), 0);
-    return mostradas.filter((z) => puntuable(z) && sel.has(z.cod)).reduce((s, z) => s + z.peso, 0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mostradas, sel, esEval, estados]);
-
   const r1 = (n: number) => Math.round(n * 10) / 10;
+  // El 100 % son las zonas del turno; las del otro turno que se limpian suman encima (decisión 17-oct-2026).
+  const resumen = useMemo(() => {
+    const cal: Record<string, number> = {};
+    for (const z of mostradas) {
+      if (!puntuable(z)) continue;
+      if (esEval) cal[z.cod] = Math.max(estadoDe(z.cod), 0);
+      else if (sel.has(z.cod)) cal[z.cod] = 1;
+    }
+    return resumenLimpieza(zonas, cal, turno);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zonas, mostradas, sel, esEval, estados, turno]);
 
   const emit = (cods: string[]) => onChange?.(cods);
   const toggle = (cod: string) => {
@@ -275,7 +309,7 @@ export function LayoutMap({
       <div className="flex flex-wrap items-center gap-2">
         {!readOnly && !esEval && (
           <>
-            <button type="button" onClick={() => emit(mostradas.filter(puntuable).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
+            <button type="button" onClick={() => emit(zonas.filter((z) => puntuable(z) && aplicaTurno(z.turno, turno)).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
               <Check className="h-3 w-3" strokeWidth={2.5} /> Turno
             </button>
             <button type="button" onClick={() => emit(zonas.filter(puntuable).map((z) => z.cod))} className="inline-flex items-center gap-1 rounded-r-pastilla border border-line px-2.5 py-1.5 text-apoyo text-navy transition-colors duration-150 hover:border-gold active:scale-[0.97]">
@@ -322,9 +356,23 @@ export function LayoutMap({
           );
         })}
         <span className="ml-auto rounded-r-pastilla bg-exito/10 px-3 py-1 tabular-nums text-dato font-bold text-exito-deep">
-          {r1(ganados)} / {r1(totalPts)} pts
+          {r1(resumen.propiosGot + resumen.extraGot)} / {resumen.propiosTot} pts · {resumen.pct}%
         </span>
+        {resumen.extraGot > 0 && (
+          <span className="rounded-r-pastilla bg-gold/15 px-3 py-1 tabular-nums text-apoyo text-muted">
+            Del turno {resumen.propiosGot}/{resumen.propiosTot} · Extra +{resumen.extraGot}
+          </span>
+        )}
       </div>
+
+      {hayOtroTurno && !readOnly && !esEval && (
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-apoyo text-muted">
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3 w-3 rounded-r-chico border-2 border-gold bg-paper" aria-hidden /> Recomendadas para tu turno
+          </span>
+          <span>Las demás también se pueden limpiar y suman puntos.</span>
+        </p>
+      )}
 
       {/* Tarjeta CALLE */}
       {calle && visible(calle) && (
@@ -414,11 +462,13 @@ export function LayoutMap({
           const on = sel.has(z.cod);
           const estado = estadoDe(z.cod);
           const miTurno = aplicaTurno(z.turno, turno);
-          if (!miTurno && (readOnly || esEval)) return null;
+          if (!miTurno && !on && !limpiadasSet.has(z.cod) && (readOnly || esEval)) return null;
 
           let bg = z.color;
-          let opacity = miTurno ? 1 : 0.25;
-          let ring = '1px solid rgba(0,0,0,.08)';
+          let opacity = miTurno ? 1 : 0.55;
+          // Recomendada = del turno actual (no se marca en turno completo, donde todas lo son).
+          const recomendada = miTurno && turno !== 'C' && !esEval;
+          let ring = recomendada ? '2px solid #b8a515' : '1px solid rgba(0,0,0,.08)';
           let glow = '';
           let chip: ReactNode = null;
 
@@ -465,12 +515,19 @@ export function LayoutMap({
             <div key={z.cod} style={{ ...style, zIndex: dropdownAbierto ? 50 : zIndexBase }}>
               <button
                 type="button"
-                disabled={readOnly || !miTurno}
-                onClick={() => {
+                disabled={readOnly}
+                onClick={(e) => {
                   // Con solape: abre/cierra el desplegable de "zonas ocultas aquí" en vez de
                   // marcar directo — mismo gesto que PISO al clicar el lienzo vacío. Sin solape:
                   // toggle normal (y toggle() ya cierra cualquier desplegable ajeno que quedara abierto).
                   if (tieneSolape) {
+                    const r = e.currentTarget.getBoundingClientRect();
+                    const alto = 44 + grupo!.size * 28;
+                    const abajo = r.bottom + 4 + alto <= window.innerHeight;
+                    setDropdownPos({
+                      top: abajo ? r.bottom + 4 : Math.max(8, r.top - 4 - alto),
+                      left: Math.max(8, Math.min(r.left, window.innerWidth - 200)),
+                    });
                     setDropdownCod((c) => (c === z.cod ? null : z.cod));
                     return;
                   }
@@ -478,8 +535,8 @@ export function LayoutMap({
                 }}
                 title={
                   miTurno
-                    ? `${z.nombre || z.cod} · ${z.peso} pts — ${instruccionDe(z)}${tieneSolape ? ' · hay más zonas aquí' : ''}`
-                    : `${z.nombre || z.cod} · turno ${z.turno}`
+                    ? `${recomendada ? 'Recomendada · ' : ''}${z.nombre || z.cod} · ${z.peso} pts — ${instruccionDe(z)}${tieneSolape ? ' · hay más zonas aquí' : ''}`
+                    : `${z.nombre || z.cod} · ${z.peso} pts · fuera de tu turno (también suma)`
                 }
                 aria-label={`${z.nombre || z.cod} (${z.peso} pts)${tieneSolape ? ', zona con solape, clic para elegir' : ''}`}
                 aria-pressed={esEval ? undefined : on}
@@ -490,7 +547,7 @@ export function LayoutMap({
                   // rectángulos chicos y pegados, saber CUÁL está bajo el cursor antes de hacer
                   // clic es la mitad de la puntería. `transform` no mueve a las vecinas.
                   'anillo relative flex h-full w-full items-center justify-center overflow-visible transition-[background-color,box-shadow,opacity,transform] duration-150',
-                  readOnly || !miTurno
+                  readOnly
                     ? 'cursor-default'
                     // z-20 y no z-30: por encima de las zonas hermanas (2..14) pero por DEBAJO del
                     // header sticky (z-30) — si no, una zona en hover cerca del borde superior se
@@ -528,10 +585,13 @@ export function LayoutMap({
               </button>
 
               {/* Desplegable de zonas ocultas en este punto (Fase 5 tarea 2). */}
-              {dropdownAbierto && (
+              {dropdownAbierto && dropdownPos && createPortal(
+                <>
+                <div className="fixed inset-0 z-[70]" onClick={() => setDropdownCod(null)} aria-hidden />
                 <div
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute left-0 top-full z-[6] mt-1 w-48 space-y-0.5 rounded-r-medio border border-line bg-white p-1.5 shadow-lift"
+                  style={{ top: dropdownPos.top, left: dropdownPos.left }}
+                  className="fixed z-[80] w-48 space-y-0.5 rounded-r-medio border border-line bg-white p-1.5 shadow-lift"
                 >
                   <div className="mb-0.5 flex items-center justify-between gap-2 px-1.5 pb-1">
                     <p className="text-[9px] font-semibold uppercase tracking-wide text-muted">
@@ -574,6 +634,8 @@ export function LayoutMap({
                     );
                   })}
                 </div>
+                </>,
+                document.body,
               )}
             </div>
           );
@@ -615,7 +677,7 @@ export function LayoutMap({
 
   // ── Panel "Calificación limpieza" (evaluación): fila por zona + total ──
   const filas = [...mostradas.filter(puntuable)].sort((a, b) => a.cod.localeCompare(b.cod));
-  const frac = totalPts > 0 ? ganados / totalPts : 1;
+  const frac = resumen.propiosTot > 0 ? Math.min(1, resumen.pct / 100) : 1;
   return (
     // SIN `max-w-4xl` (12-sep-2026). El tope de 896px para mapa + panel dejaba al lienzo en
     // ~600px aunque la pantalla midiera 1900: las zonas quedaban de 20-30px, imposibles de
@@ -668,9 +730,14 @@ export function LayoutMap({
         <div className="mt-2 flex items-center justify-between rounded-r-chico border border-gold/40 bg-gold/10 px-3 py-2">
           <span className="text-cuerpo font-semibold text-navy">Limpieza</span>
           <span className="tabular-nums text-dato font-bold text-gold-deep">
-            {r1(ganados)}/{r1(totalPts)}
+            {r1(resumen.propiosGot + resumen.extraGot)}/{resumen.propiosTot} · {resumen.pct}%
           </span>
         </div>
+        {resumen.extraGot > 0 && (
+          <p className="mt-1 text-apoyo text-muted tabular-nums">
+            Del turno {resumen.propiosGot}/{resumen.propiosTot} · Extra de otro turno +{resumen.extraGot}
+          </p>
+        )}
       </aside>
     </div>
   );

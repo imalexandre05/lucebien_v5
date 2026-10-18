@@ -260,6 +260,44 @@ export function calcularPuntajeEval(items: { peso: number; calificacion: number 
   return max > 0 ? Math.round((total / max) * 100) : 0;
 }
 
+// ── Resumen de limpieza (decisión del dueño, 17-oct-2026) ────────────────────
+// El 100 % son SOLO las zonas del turno del reporte (turno C = todas). Las zonas del otro turno que se
+// limpian suman como extra encima: el porcentaje puede pasar de 100 (50/43,1 = 116 %).
+// Spec: docs/superpowers/specs/reportes/2026-10-17-limpieza-extras-design.md
+export type ZonaLimpieza = { cod: string; peso: number; tipo: string; turno: string };
+
+function zonaAplicaAlTurno(zTurno: string, turno: TurnoReporte): boolean {
+  const z = (zTurno || 'ambos').toLowerCase();
+  if (turno === 'C') return true;
+  if (turno === 'M') return z === 'ambos' || z === 'mañana';
+  return z === 'ambos' || z === 'tarde';
+}
+
+const r1 = (n: number) => Math.round(n * 10) / 10;
+
+// `calificaciones`: cod de zona → calificación 0..1 (1 = limpia). Al crear el reporte, toda zona marcada vale 1.
+export function resumenLimpieza(
+  zonas: ZonaLimpieza[],
+  calificaciones: Record<string, number>,
+  turno: TurnoReporte,
+): { propiosTot: number; propiosGot: number; extraGot: number; pct: number } {
+  let propiosTot = 0;
+  let propiosGot = 0;
+  let extraGot = 0;
+  for (const z of zonas) {
+    if (z.tipo === 'area') continue;
+    const ganado = z.peso * (calificaciones[z.cod] ?? 0);
+    if (zonaAplicaAlTurno(z.turno, turno)) {
+      propiosTot += z.peso;
+      propiosGot += ganado;
+    } else {
+      extraGot += ganado;
+    }
+  }
+  const pct = propiosTot > 0 ? Math.round(((propiosGot + extraGot) / propiosTot) * 100) : 0;
+  return { propiosTot: r1(propiosTot), propiosGot: r1(propiosGot), extraGot: r1(extraGot), pct };
+}
+
 // ── Cuenta regresiva del turno (Fase 4 tarea 5) ──────────────────────────────
 // Minutos restantes hasta la hora de cierre (formato 'HH:MM', hora Perú) del turno activo, a
 // partir de un instante dado. Negativo si el cierre ya pasó. Pura: no lee el reloj del sistema

@@ -47,13 +47,14 @@ describe('resumenLiquidacion', () => {
     expect(r.penalidadReportes).toBe(10);
     expect(r.almuerzos).toBe(24);
     expect(r.adelantos).toBe(300);
-    expect(r.otrosBeneficios).toBe(40 + 24 + 7); // metas + almuerzos + bonos extras
+    expect(r.comision2).toBe(40); // bono por metas semanales = 2.ª comisión
+    expect(r.otrosBeneficios).toBe(24 + 7); // almuerzos + bonos extras
   });
 
   it('las penalidades y adelantos salen en positivo (son lo que se resta)', () => {
     const r = resumenLiquidacion(base);
     expect(r.totalDescuentos).toBe(76);
-    expect(r.totalBeneficios).toBe(80 + 15 + 71);
+    expect(r.totalBeneficios).toBe(80 + 40 + 15 + 31);
   });
 
   it('total final por pagar = total congelado + adelantos, y el invariante cuadra', () => {
@@ -68,7 +69,7 @@ describe('resumenLiquidacion', () => {
       lineas: [...LINEAS, L('ajuste', 'Concepto futuro', 25), L('descuento', 'Otro descuento', -5)],
       total: TOTAL + 20,
     });
-    expect(r.otrosBeneficios).toBe(71 + 25);
+    expect(r.otrosBeneficios).toBe(31 + 25);
     expect(r.otrosDescuentos).toBe(5);
     expect(r.sueldo + r.horasExtras + r.totalBeneficios - r.totalDescuentos).toBe(r.totalFinalPorPagar);
   });
@@ -79,7 +80,7 @@ describe('resumenLiquidacion', () => {
     expect(r.ventasLogrado).toBe(5000);
     expect(r.minimoVentas).toBeNull();
     expect(r.continua).toBeNull();
-    expect(r.comision2).toBeNull();
+    expect(r.comision2).toBe(40);
   });
 
   it('si se pasa un mínimo, continúa = logrado > mínimo', () => {
@@ -103,8 +104,18 @@ describe('resumenLiquidacion', () => {
     expect(r.restante).toBe(0);
   });
 
-  it('total invertido ADM = total + almuerzos', () => {
-    expect(resumenLiquidacion(base).totalInvertido).toBe(1024);
+  it('total invertido = total final + almuerzos que puso la empresa (una sola vez)', () => {
+    const sin = resumenLiquidacion(base);
+    expect(sin.totalInvertido).toBe(sin.totalFinalPorPagar); // sin entregados en especie no se suma nada
+    const r = resumenLiquidacion({ ...base, almuerzosEmpresa: 16 });
+    expect(r.totalInvertido).toBe(1316);
+    // los almuerzos pagados en soles (fila «Almuerzos») ya están dentro del total final: no se repiten
+    expect(r.totalInvertido).toBe(r.totalFinalPorPagar + 16);
+  });
+
+  it('restante = total final − adelantos − abonos', () => {
+    const r = resumenLiquidacion({ ...base, abonos: 100 });
+    expect(r.restante).toBe(r.totalFinalPorPagar - r.adelantos - 100);
   });
 
   it('sin líneas (borrador) devuelve ceros, no revienta', () => {
@@ -155,6 +166,17 @@ describe('resumenLiquidacion contra liquidarPeriodo()', () => {
     expect(r.adelantos).toBe(200);
     expect(r.sueldo).toBe(1500);
     expect(r.otrosDescuentos).toBe(0); // ninguna línea con monto cayó en «Otros»
+  });
+
+  it('cada día con derecho a almuerzo entra una sola vez en el total invertido', () => {
+    const liq2 = liquidarPeriodo({ ...entrada, almuerzoHabilitadoPorAdmin: true, almuerzosEntregados: 5 });
+    const valor = 8;
+    const empresa = (liq2.asistencia.diasConDerechoAlmuerzo - liq2.asistencia.almuerzosAPagar) * valor;
+    const r2 = resumenLiquidacion({ lineas: liq2.lineas, ventas: liq2.ventas, total: liq2.total, abonos: 0, almuerzosEmpresa: empresa });
+    expect(empresa).toBe(5 * valor);
+    // pagados en soles + entregados en especie = todos los días con derecho × valor
+    expect(r2.almuerzos + empresa).toBe(liq2.asistencia.diasConDerechoAlmuerzo * valor);
+    expect(r2.totalInvertido).toBe(Math.round((r2.totalFinalPorPagar + empresa) * 100) / 100);
   });
 
   it('el invariante cuadra con el total real del motor', () => {

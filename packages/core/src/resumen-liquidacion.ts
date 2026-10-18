@@ -3,7 +3,7 @@
 //
 // Función pura: NO recalcula el motor. Reagrupa las líneas que `liquidarPeriodo()` ya emitió (y que
 // se congelaron al cerrar) en las filas que el equipo está acostumbrado a leer. Lo que el sistema
-// no tiene (mínimo de ventas para continuar, 2ª comisión) queda en `null` y la pantalla lo muestra
+// no tiene (mínimo de ventas para continuar) queda en `null` y la pantalla lo muestra
 // como «No configurado»: no se inventa ninguna regla.
 
 import type { GrupoLinea } from './sueldos';
@@ -23,6 +23,11 @@ export interface EntradaResumen {
   abonos: number;
   /** Aún no existe en el sistema; si algún día se configura, entra por acá. */
   minimoVentas?: number | null;
+  /**
+   * Soles de los almuerzos que la empresa entregó en especie: (días con derecho − almuerzos a pagar) × valor
+   * del almuerzo de esa liquidación. Ausente = 0. Los pagados en soles ya están dentro del total final.
+   */
+  almuerzosEmpresa?: number;
 }
 
 export interface ResumenLiquidacion {
@@ -33,10 +38,12 @@ export interface ResumenLiquidacion {
   continua: boolean | null;
   horasExtras: number;
   comision1: number;
-  /** El sistema tiene una sola comisión. */
-  comision2: null;
+  /** 2.ª comisión = bono por metas semanales cumplidas (RN-12). */
+  comision2: number;
   capacitacion: number;
-  /** Metas semanales, puntos, bonos extras, almuerzos y toda línea positiva no reconocida. */
+  /** Pasajes por llegar temprano. */
+  pasajes: number;
+  /** Puntos, bonos extras, almuerzos y toda línea positiva no reconocida. */
   otrosBeneficios: number;
   penalidadTardanzas: number;
   penalidadFaltas: number;
@@ -59,7 +66,9 @@ const r2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
   let sueldo = 0;
   let comision1 = 0;
+  let comision2 = 0;
   let capacitacion = 0;
+  let pasajes = 0;
   let horasExtras = 0;
   let tardanzas = 0;
   let faltas = 0;
@@ -73,6 +82,8 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
     const c = l.concepto;
     if (c === 'Sueldo') sueldo += l.monto;
     else if (c.startsWith('Comisión')) comision1 += l.monto;
+    else if (c === 'Bono por metas semanales') comision2 += l.monto;
+    else if (c === 'Pasajes por llegar temprano') pasajes += l.monto;
     else if (c === 'Apoyo en capacitación') capacitacion += l.monto;
     else if (c === 'Diferencia de horas' || c === 'Horas fuera de contrato') horasExtras += l.monto;
     else if (c === 'Descuento por tardanzas') tardanzas -= l.monto;
@@ -88,7 +99,9 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
 
   sueldo = r2(sueldo);
   comision1 = r2(comision1);
+  comision2 = r2(comision2);
   capacitacion = r2(capacitacion);
+  pasajes = r2(pasajes);
   horasExtras = r2(horasExtras);
   otrosBeneficios = r2(otrosBeneficios);
   otrosDescuentos = r2(otrosDescuentos);
@@ -112,15 +125,16 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
     continua: minimo == null ? null : ventasLogrado > minimo,
     horasExtras,
     comision1,
-    comision2: null,
+    comision2,
     capacitacion,
+    pasajes,
     otrosBeneficios,
     penalidadTardanzas,
     penalidadFaltas,
     penalidadReportes,
     otrosDescuentos,
     sueldo,
-    totalBeneficios: r2(comision1 + capacitacion + otrosBeneficios),
+    totalBeneficios: r2(comision1 + comision2 + capacitacion + pasajes + otrosBeneficios),
     totalDescuentos: r2(penalidadTardanzas + penalidadFaltas + penalidadReportes + otrosDescuentos),
     totalFinalPorPagar: r2(total + adelantos),
     adelantos,
@@ -128,6 +142,8 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
     restante,
     cancelado: pagable && restante === 0,
     almuerzos,
-    totalInvertido: r2(total + almuerzos),
+    // Total invertido = lo pagado a la persona (total final, que ya incluye los almuerzos pagados en soles)
+    // + los almuerzos que puso la empresa en especie. Cada almuerzo entra una sola vez.
+    totalInvertido: r2(r2(total + adelantos) + r2(Math.max(0, e.almuerzosEmpresa ?? 0))),
   };
 }

@@ -1975,3 +1975,132 @@ según el horario fijo; pasar un día a almacén por poca demanda es un extra; l
 sede y valen igual para todos; el /20 es una referencia; el feriado no lo paga el administrador, él decide persona
 por persona y el día se descuenta completo a la hora normal (11 h × S/4,55 en el ejemplo); un día no trabajado
 no cuenta para el total; la nota sólo informa y el pago sigue siendo el pactado.
+## Escalas salariales editables (ticket 35, 17-oct-2026)
+
+- Las 5 escalas (S/ 2,90 · 3,20 · 3,50 · 3,80 · 5,00 por hora) son del Excel del dueño (hoja
+  PARAMETROS) y ahora se editan en `/configuracion` → «Escalas salariales».
+- **Default inventado, por confirmar:** los tramos de meses (`escala_N_desde_mes`): 1→0, 2→1, 3→2,
+  4→4 («5to mes»), 5→8 («9no mes»). El Excel no distingue escala 1 de 2 («1er mes» ambas) ni dice
+  desde cuándo es la 3.
+- **Por confirmar:** si el ascenso («de acuerdo a evaluación») exige además una nota mínima. Hoy el
+  sistema sólo sugiere por antigüedad y el administrador confirma; nada se aplica solo.
+## Temporadas: pago por hora y metas (ticket 15, 17-oct-2026)
+
+Decisión del dueño: el administrador crea las temporadas (nombre, desde, hasta) y edita su pago por
+hora y sus metas en `/configuracion/temporadas`. **No hay temporadas por defecto**: sin ninguna, el
+motor usa los valores normales. Defaults/decisiones que tuve que tomar, por confirmar:
+
+- **La meta pactada en el contrato gana a la temporada** (RN-10). La temporada sólo cambia la meta
+  de quien no tiene meta pactada. Si el dueño quiere que la temporada pise también lo pactado, es
+  otra decisión (y habría que revisar contratos ya firmados).
+- **Pago por hora de temporada = referencia/sugerencia**, no reescribe la cuota pactada del contrato
+  (el sueldo se pacta, `valorPorHora = pactado / horas`). Confirmar si debe cambiar lo ya pactado.
+- **Una semana toma la temporada de su primer día**; no se parte una semana entre dos temporadas.
+- Las temporadas no se solapan. Lectura abierta a todo usuario activo; `pago_por_hora` es visible
+  para ellos. Confirmar si debe ser sólo administrador.
+- `MOTOR_VERSION` pasó a `2026-10-17`.
+
+**Decisiones abiertas de temporadas (hallazgos del verificador, 17-oct-2026)** — por confirmar con el dueño antes de aplicar la 0133:
+- `metaPorHora` es un valor que el contrato copia al crearse: la temporada **lo pisa** (sólo `metaSemanal` pactada gana). Si el dueño quiere que cualquier valor pactado gane, hay que distinguir «pactado» de «copiado del default».
+- `meta_semanal` de temporada es una cifra única (no se ajusta por horas ni por `factorMeta`): para medio tiempo conviene usar «meta por hora».
+- El solape de temporadas se valida en la RPC sin restricción de exclusión (necesitaría `btree_gist`); dos guardados simultáneos podrían cruzarse. Riesgo bajo: un solo administrador las edita.
+- La pantalla de ventas y metas (`semanasConMeta`) aún no usa las temporadas: la meta que muestra puede diferir de la liquidada en esas semanas.
+## Ingreso de personal: candidatos, entrevista y prueba (ticket 14, 17-oct-2026)
+
+Migración 0134. Se usaron los defaults de la spec (`docs/superpowers/specs/empleados/2026-10-11-
+candidatos-entrevista-prueba-design.md` §7) sin respuesta del dueño — por confirmar:
+- `personal_prueba_dias = 3` (editable en `/configuracion` → «Ingreso de personal»).
+- La prueba **no se paga** en SCI-LB; se decide en el contrato.
+- La prueba puede repetirse; un descartado se reactiva; sin borrado automático de descartados.
+- Sólo administrador y dueño evalúan y ven candidatos (datos personales).
+- Un resultado «malo» no bloquea el alta: avisa, y decide el administrador.
+## Código en todos los movimientos del pipeline — defaults del 17-oct-2026
+
+Migración `0135` ([spec](superpowers/specs/pipeline/2026-10-17-codigo-en-todos-los-movimientos-design.md)), ticket #16.
+Defaults inventados, sin confirmar con el dueño; editables en `/configuracion` → «Código personal».
+
+1. **Formato del código de movimiento** `MOV-AAMMDD-NNNNN` (fecha hora Perú + correlativo global). El prefijo `MOV` es
+   `pipeline_mov_prefijo`. ¿El dueño quiere otro formato (por sede, por tipo de movimiento)?
+2. **Movimientos anteriores a la 0135 quedan sin código** (no se retrocodifica).
+3. **«Codificar»** se interpretó como dar de alta la prenda (Registrar) y se cubre con el mismo token que el resto.
+   ¿Hay además un etiquetado físico que deba registrarse como paso aparte?
+## Movimientos con fecha en un período cerrado — 17-oct-2026
+
+Migración `0136` ([spec](superpowers/specs/sueldos/2026-10-17-movimientos-periodo-cerrado-design.md)), ticket #29.
+Decisión del dueño: se pregunta cada vez (siguiente período abierto o anular el cierre). Pendiente de definir:
+
+1. **Asistencia de períodos cerrados** (editable y borrable desde `/asistencias`, el huellero y la declaración): el dueño
+   sólo decidió el caso de los movimientos. Falta decidir si se congela (`CONGELADA`) o también se pregunta.
+2. **Ventas** (`sueldo_ventas`) con fecha en un período cerrado: mismo problema, sin decisión todavía.
+3. **«Siguiente período abierto»** = primera fecha posterior que cubre un contrato y no está en una liquidación cerrada
+   (salta tramos cerrados y huecos entre contratos). Si no existe, no se guarda y se pide crear el contrato.
+## Corregir una liquidación con abonos — 17-oct-2026
+
+Migración `0137` ([spec](superpowers/specs/sueldos/2026-10-17-corregir-con-abonos-design.md)), ticket #30.
+Decisión del dueño: lo ya pagado se descuenta solo y queda el saldo. Default inventado:
+
+1. **Pagado de más.** Si lo ya pagado supera el nuevo total, el saldo queda negativo y el cierre no se bloquea (nadie
+   devuelve plata automáticamente). ¿Cómo se compensa — contra la liquidación siguiente, o se registra como deuda?
+2. **Vínculo por período exacto.** La corregida se enlaza sola sólo si el contrato y el período coinciden exactamente con
+   los de la anulada. Si se corrige con otro período, los abonos no se trasladan (se ven en la anulada).
+## Exámenes de software, escritos y presencial — defaults del 17-oct-2026
+
+Migración `0138` ([spec](superpowers/specs/capacitacion/2026-10-17-examenes-design.md)), ticket #12.
+**Ninguno está confirmado por el dueño.** Todos se editan desde `/configuracion` → «Capacitación», salvo donde se indica.
+
+1. **Preguntas por intento** = 10 (`examen_preguntas_por_intento`). **Intentos máximos** = 3 por examen (`examen_intentos_max`);
+   cuenta la **última** nota, igual que el resto de exámenes.
+2. **Nota integral** = promedio ponderado de lo rendido, pesos 1/1/1 (`examen_peso_software|escrito|presencial`): el examen que
+   no se rindió no entra. El presencial entra sólo cuando todas las habilidades activas tienen nota.
+3. **Habilidades iniciales** «Planchado» y «Costura»; el administrador agrega el resto en `/capacitacion/examenes`.
+4. **El banco empieza vacío**: el cliente debe aportar las preguntas (medidas, cuadernillos, confección, software).
+5. **Sin límite de tiempo** por intento ni preguntas con imagen. ¿Se necesitan?
+6. **Quién rinde**: sólo la persona nueva, dentro de su capacitación en curso. ¿Deben rendirlo también empleados antiguos
+   (re-certificación)? Hoy no existe ese registro, y la evaluación sólo cuenta capacitaciones completadas.
+7. **Nota presencial**: promedio simple de las habilidades (0–20). ¿Hay habilidades que pesen más?
+8. **Examen manual en la nota integral** (`examen_peso_manual`=1): el último examen que carga el capacitador entra en el
+   promedio junto a los online y el presencial. ¿Debe pesar más que los online?
+
+## 4B-1 · Total invertido del resumen (17-oct-2026)
+
+El dueño confirmó: Total invertido = total final + almuerzos. Los almuerzos ya están dentro del total
+final (como «otros beneficios»), así que se cuentan dos veces. Se dejó como lo pidió; **confirmar con el
+dueño si es lo que quiere** o si el Total invertido debe ser el total final solo.
+## 4B-3 · Comisiones 1.ª y 2.ª (17-oct-2026)
+
+Sin defaults nuevos. 1.ª comisión: `sueldo_pct_comision` (2 %) y `sueldo_monto_minimo_comision` (S/120),
+se desbloquea con la meta del mes. 2.ª comisión: es el «Bono por metas semanales»
+(`sueldo_bono_meta_semanal`, S/30). Los tres se editan en Configuración → Sueldos.
+## 4B-2 · Pasajes por llegar temprano (17-oct-2026)
+
+Regla del dueño: beneficio por llegar 5 min antes del turno. Sin defaults inventados de monto:
+`sueldo_monto_pasaje` queda **vacío = no se paga** (Jordan lo define en Configuración → Sueldos);
+`sueldo_pasaje_minutos_antes` = 5. **Supuesto a confirmar:** el monto es por día puntual (no por
+semana ni por mes). Migración 0139.
+
+**4B-2 (verificador):** confirmar desde qué fecha rige el pasaje; hoy aplica a todo periodo abierto o recalculado, no a los cerrados.
+## 4B-4 · Rechazo de calidad pierde todos los puntos (17-oct-2026)
+
+Decisión del dueño, implementada en la migración 0140 (spec `docs/superpowers/specs/pipeline/2026-10-17-rechazo-calidad-pierde-puntos-design.md`).
+Sin defaults inventados. Cierra la duda de la 0130 sobre el rechazo. **Confirmar con el dueño:**
+«todos los puntos» se entendió como los de esa etapa y esa prenda; y con la regla nadie cobra la
+etapa rechazada (ni el culpable ni quien la rehace).
+## 4B-5 · Ventas y tardanzas con fecha en un período cerrado (17-oct-2026)
+
+Decisión del dueño (opción a), migración 0144: se avisa y la carga va al siguiente período abierto de la persona.
+Sin defaults inventados (la tardanza usa `sueldo_penalidad_tardanza` y `sueldo_tardanzas_libres`). **Pendiente:**
+(1) faltas y horas de un día cerrado NO se trasladan (dependen del horario y valor por hora del día original): siguen
+con «anular cierre» o «Corregir»; (2) la tardanza trasladada cuenta una más en el período destino, repartiendo las libres
+con las propias; (3) falta la pantalla para cargar una tardanza trasladada (existe la RPC y `crearTardanzaDiferida`).
+
+**4B-5 (verificador):** (a) los puntos de la evaluación (0132) se suman por `fecha`, así que una venta trasladada da sus puntos al mes destino: decidir si la evaluación debe leer la fecha original; (b) los borradores calculados antes de la 0144 piden recalcular antes de cerrar (falta la clave `tardanzasDiferidas`); (c) una tardanza de un día sin contrato también se traslada; (d) si se reabre un período con «Corregir», borrar a mano la tardanza trasladada de ese día para no descontarla dos veces.
+
+## 4B · Decididas por el dueño (17-oct-2026)
+
+Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar» de 4B-1 a 4B-5 ya no están abiertas):
+
+1. **Total invertido** = lo pagado a la persona + los almuerzos que puso la empresa; cada almuerzo cuenta una sola vez (corregido en `resumenLiquidacion`: suma los entregados en especie, no la fila «Almuerzos» otra vez).
+2. **Pasaje**: se paga por cada día que llega 5 min antes, desde que el administrador (Jordan) pone el monto. Vacío = no se paga.
+3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
+4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
+5. **Puntos de una venta trasladada** cuentan en el mes destino.

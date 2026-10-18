@@ -122,6 +122,7 @@ export function VentasCliente({
   // renderizaría donde nadie lo ve (sistema-de-diseno.md §6) — por eso es un estado aparte, arriba
   // de todo y siempre visible.
   const [errorForm, setErrorForm] = useState<string | null>(null);
+  const [avisoCarga, setAvisoCarga] = useState<string | null>(null);
   const [errorAccion, setErrorAccion] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
   const conf = useConfirmacion();
@@ -159,6 +160,7 @@ export function VentasCliente({
 
   const guardarVenta = () => {
     setErrorForm(null);
+    setAvisoCarga(null);
     empezar(async () => {
       const r = await accionCrearVenta({
         fecha: venta.fecha,
@@ -171,6 +173,7 @@ export function VentasCliente({
         // Sólo el monto y el vendedor se limpian: fecha, sede y tipo quedan como estaban, listos
         // para la boleta siguiente de la misma tienda — es el punto de esta pantalla.
         setVenta((v) => ({ ...v, monto: '', empleadoId: '' }));
+        setAvisoCarga(r.aviso ?? null);
         router.refresh();
       } else setErrorForm(r.error ?? 'No se pudo guardar la venta.');
     });
@@ -254,6 +257,7 @@ export function VentasCliente({
             silencio.
           </p>
           {errorForm && <Aviso tono="error">{errorForm}</Aviso>}
+          {avisoCarga && <Aviso tono="aviso">{avisoCarga}</Aviso>}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <Label htmlFor="v-fecha">Fecha</Label>

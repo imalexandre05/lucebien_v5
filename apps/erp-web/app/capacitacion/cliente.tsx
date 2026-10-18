@@ -180,6 +180,14 @@ function FichaCapacitacion({ cap, activos, minimo, puedeCalificar, esAdmin, disa
           })}
         </ul>
 
+        {cap.estado === 'en_curso' && (
+          <div className="border-t border-line/60 pt-3">
+            <a href={`/capacitacion/examen/${cap.id}`} className="text-cuerpo font-medium text-gold-deep underline">
+              Exámenes de software, escritos y presencial →
+            </a>
+          </div>
+        )}
+
         <div className="border-t border-line/60 pt-3">
           <div className="mb-2 text-rotulo uppercase text-muted">Examen (mínimo para aprobar: {minimo}/20)</div>
           {cap.examenes.length === 0 ? (

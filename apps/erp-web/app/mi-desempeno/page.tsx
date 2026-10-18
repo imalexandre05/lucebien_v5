@@ -8,6 +8,8 @@ import { mesPeru } from '../../lib/fechas';
 import { tieneReauth } from '../../lib/reauth';
 import { tengoPin } from '../../lib/pipeline-repo';
 import { PinPersonal } from './pin';
+import { MisReportes } from '../reportes/mis-reportes';
+import { listarReportesDe } from '../../lib/reportes-repo';
 import { PageHeader } from '../../components/shell/page-header';
 import { ReauthGate } from '../../components/ui/reauth-gate';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
@@ -61,11 +63,13 @@ export default async function MiDesempenoPage() {
   const desde = `${mes}-01`;
   const hasta = `${mes}-${String(ultimoDia).padStart(2, '0')}`;
 
-  const [d, pesos, escala, tienePin] = await Promise.all([
+  const [d, pesos, escala, tienePin, misReportes] = await Promise.all([
     miDesempeno(sesion.usuario.id, desde, hasta),
     leerPesosEval(),
     leerEscalaPuntos(),
     tengoPin().catch(() => false),
+    // Degradado: si falla, el bloque queda vacío y el resto de la pantalla sigue en pie.
+    listarReportesDe(sesion.usuario.id).catch(() => []),
   ]);
   // Los extras no se pagan en soles (decisión del dueño, 05-oct-2026): se muestran en puntos.
   const extrasPuntos = Math.round(d.extras.reduce((s, e) => s + e.puntosTotal, 0) * 100) / 100;
@@ -250,6 +254,8 @@ export default async function MiDesempenoPage() {
           <AlertTriangle className="h-3.5 w-3.5 shrink-0" strokeWidth={2} /> Aún no tienes una evaluación mensual registrada.
         </p>
       )}
+
+      <MisReportes reportes={misReportes} />
 
       <PinPersonal tienePin={tienePin} />
     </div>

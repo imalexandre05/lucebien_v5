@@ -9,7 +9,7 @@ import { CapacitacionCliente } from './cliente';
 
 // Mismo permiso que la entrada del menú ('evaluaciones'), validado en el servidor: antes sólo se ocultaba
 // el enlace. Dentro, la base decide qué ve cada quien (RLS de la 0131): el administrador todo; el
-// capacitador, las que dicta; el nuevo, la suya.
+// capacitador, las que dicta; el nuevo, la suya; el encargado de tienda, la de su sede (0142).
 export default async function CapacitacionPage() {
   const sesion = await getSesion();
   if (!sesion) redirect('/login');
@@ -33,6 +33,11 @@ export default async function CapacitacionPage() {
         title="Capacitación"
         subtitle={`${capacitaciones.filter((c) => c.estado === 'en_curso').length} en curso`}
       />
+      {esAdmin && (
+        <p className="mb-3 text-cuerpo">
+          <a href="/capacitacion/examenes" className="font-medium text-gold-deep underline">Banco de preguntas y habilidades de los exámenes →</a>
+        </p>
+      )}
       <CapacitacionCliente
         capacitaciones={capacitaciones}
         items={items}

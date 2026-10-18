@@ -1,3 +1,4 @@
+import { escalasDesdeConfig, ESCALAS_SUELDO_DEFAULT, type EscalaSueldo } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import {
   CLAVE_PUNTOS_META,
@@ -165,3 +166,12 @@ export async function metaPagoPorPuntos(): Promise<number | null> {
   }
 }
 
+
+/** Escalas salariales de /configuracion (ticket 35). Si no se puede leer, las del código. */
+export async function escalasSalariales(): Promise<EscalaSueldo[]> {
+  try {
+    return escalasDesdeConfig(await leerConfigMap());
+  } catch {
+    return ESCALAS_SUELDO_DEFAULT;
+  }
+}

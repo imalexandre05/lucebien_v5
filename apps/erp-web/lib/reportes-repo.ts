@@ -272,7 +272,7 @@ export type ExtraCatalogo = {
   cod: string;
   nombre: string;
   tipoAct: string; // 'remunerada' | 'por_puntos'
-  peso: number; // puntos por unidad — NO se muestra al usuario operativo (ver form.tsx)
+  peso: number; // puntos por unidad — se muestra en las tarjetas del selector (selector-extras.tsx)
   precioUnitario: number; // soles por unidad — 0 en 'por_puntos'
   unidad: string;
 };

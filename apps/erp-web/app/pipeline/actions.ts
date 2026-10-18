@@ -152,9 +152,10 @@ export async function registrarPrenda(p: {
   tipoLavado: string;
   necesitaCompostura: boolean;
   obs: string;
-}): Promise<string | null> {
+}, operador?: string): Promise<string | null> {
   if (!p.codigo.trim() || !p.tipo.trim() || !p.sedeOrigenCod) return 'Código, tipo y sede son obligatorios.';
   try {
+    const token = await operadorParaAccion(operador);
     await registrarPasada({
       codigo: p.codigo.trim().toUpperCase(),
       tipo: p.tipo.trim(),
@@ -164,7 +165,7 @@ export async function registrarPrenda(p: {
       tipoLavado: p.tipoLavado || null,
       necesitaCompostura: p.necesitaCompostura,
       obsGeneral: p.obs.trim() || null,
-    });
+    }, token);
   } catch (e) {
     return e instanceof Error ? e.message : 'No se pudo registrar la prenda.';
   }

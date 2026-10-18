@@ -4,11 +4,12 @@ import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Sun, Moon, Clock, Check, Square, Plus, Minus, Trash2, Send, Users, PenLine, ClipboardCheck, ArrowRight, Wallet, Star, HelpCircle } from 'lucide-react';
-import { idReporte, TURNO_LABEL, minutosHastaCierre, formatoCierre, type TurnoReporte } from '@scilb/core';
+import { idReporte, resumenLimpieza, TURNO_LABEL, minutosHastaCierre, formatoCierre, type TurnoReporte } from '@scilb/core';
 import { iniciarTurno, accionCrearReporte, accionGuardarDraft } from '../actions';
 import type { ActividadDelTurno, ExtraCatalogo, LayoutZona, YaEnviado, ReportePendiente } from '../../../lib/reportes-repo';
 import type { TipoIncidencia } from '../../../lib/incidencias-repo';
 import { LayoutMap } from '../layout-map';
+import { SelectorExtras } from './selector-extras';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/card';
 import { Badge, type Tone } from '../../../components/ui/badge';
 import { Button, buttonVariants } from '../../../components/ui/button';
@@ -208,23 +209,13 @@ export function NuevoReporteForm({
   const actDone = useMemo(() => cat.filter((a) => done[a.cod]).length, [cat, done]);
   const actPts = useMemo(() => cat.filter((a) => done[a.cod]).reduce((s, a) => s + a.peso, 0), [cat, done]);
 
-  // Puntos de limpieza del turno (espeja el cálculo del LayoutMap).
-  const limpiezaPts = useMemo(() => {
-    const aplica = (zt: string) => {
-      const z = (zt || 'ambos').toLowerCase();
-      if (turno === 'C') return true;
-      if (turno === 'M') return z === 'ambos' || z === 'mañana';
-      if (turno === 'T') return z === 'ambos' || z === 'tarde';
-      return true;
-    };
-    const puntuables = zonas.filter((z) => z.tipo !== 'area' && aplica(z.turno));
-    const sel = new Set(limpieza);
-    const tot = puntuables.reduce((s, z) => s + z.peso, 0);
-    const got = puntuables.filter((z) => sel.has(z.cod)).reduce((s, z) => s + z.peso, 0);
-    return { tot: Math.round(tot * 10) / 10, got: Math.round(got * 10) / 10 };
-  }, [zonas, limpieza, turno]);
+  // Limpieza: el 100 % son las zonas del turno; las del otro turno suman como extra encima (puede pasar de 100 %).
+  const limpiezaPts = useMemo(
+    () => resumenLimpieza(zonas, Object.fromEntries(limpieza.map((c) => [c, 1])), turno || 'C'),
+    [zonas, limpieza, turno],
+  );
 
-  const totalPts = Math.round((actPts + limpiezaPts.got) * 10) / 10;
+  const totalPts = Math.round((actPts + limpiezaPts.propiosGot + limpiezaPts.extraGot) * 10) / 10;
 
   // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): el catálogo ya trae la
   // gravedad de cada tipo (nivel_default). Sólo la categoría 'Otros' —hoy, únicamente
@@ -804,8 +795,8 @@ export function NuevoReporteForm({
             </CardContent>
           </Card>
 
-          {/* ── Actividades Extras: catálogo en botones (Fase 5 tarea 3) ──
-              Sin monto ni puntaje visibles — el operativo solo elige qué + cuántas veces + quién.
+          {/* ── Actividades Extras: catálogo con buscador y tarjetas (Fase 5 tarea 3) ──
+              Sin monto en soles — el operativo elige qué + cuántas veces + quién; los puntos sí se ven.
               El precio/peso los deriva el servidor del catálogo al enviar (reportes-repo.ts). */}
           <Card>
             <CardHeader>
@@ -820,45 +811,13 @@ export function NuevoReporteForm({
                   Catálogo de extras no configurado para esta sede — usa &quot;Otra actividad&quot; para registrar uno igual.
                 </p>
               ) : (
-                // MENÚ Y NO NUBE DE BOTONES (12-sep-2026, pedido de Alexander). El catálogo crece
-                // por sede y la nube de chips se comía media tarjeta antes de agregar nada. Un
-                // <select> nativo con <optgroup> ocupa una línea, se abre con el teclado, filtra
-                // escribiendo y en el celular usa el selector del sistema — mismo criterio que el
-                // selector de persona de la ficha (cabecera.tsx).
-                //
-                // Elegir AGREGA (no hay botón aparte) y el menú vuelve a su rótulo: el gesto es uno
-                // solo y lo agregado se confirma en la lista de abajo, que es donde se ajusta la
-                // cantidad. Si el extra ya estaba, suma +1 en vez de duplicar la fila.
-                <label className="block">
-                  <span className="mb-1 block text-rotulo font-display uppercase text-muted">Agregar del catálogo</span>
-                  <select
-                    value=""
-                    onChange={(ev) => {
-                      const c = catalogoExtras.find((x) => x.cod === ev.target.value);
-                      if (c) agregarCatalogo(c);
-                    }}
-                    className={cn(fieldCls, 'w-full cursor-pointer')}
-                  >
-                    <option value="">Elegir una actividad extra…</option>
-                    {(['remunerada', 'por_puntos'] as const).map((tipoAct) => {
-                      const grupo = catalogoExtras.filter((c) => c.tipoAct === tipoAct);
-                      if (!grupo.length) return null;
-                      return (
-                        <optgroup key={tipoAct} label={tipoAct === 'remunerada' ? 'Remuneradas' : 'Por puntos'}>
-                          {grupo.map((c) => {
-                            const enLista = extras.find((e) => e.cod === c.cod);
-                            return (
-                              <option key={c.cod} value={c.cod}>
-                                {c.nombre}
-                                {enLista ? ` · ya van ${enLista.cantidad}` : ''}
-                              </option>
-                            );
-                          })}
-                        </optgroup>
-                      );
-                    })}
-                  </select>
-                </label>
+                // BUSCADOR + TARJETAS (oct-2026, pedido del cliente): el <select> largo era monótono.
+                // Misma lógica de guardado: elegir AGREGA +1 vía agregarCatalogo (suma si ya estaba).
+                <SelectorExtras
+                  catalogo={catalogoExtras}
+                  cantidades={Object.fromEntries(extras.filter((e) => e.cod).map((e) => [e.cod as string, e.cantidad]))}
+                  onAgregar={agregarCatalogo}
+                />
               )}
 
               {extras.length > 0 && (
@@ -980,9 +939,12 @@ export function NuevoReporteForm({
               <span className="text-apoyo text-muted">
                 Limpieza{' '}
                 <span className="tabular-nums text-dato font-bold text-exito-deep">
-                  {limpiezaPts.got}
+                  {limpiezaPts.pct}%
                 </span>
-                <span className="tabular-nums text-micro text-muted">/{limpiezaPts.tot}</span>
+                <span className="tabular-nums text-micro text-muted">
+                  {' '}({limpiezaPts.propiosGot}/{limpiezaPts.propiosTot}
+                  {limpiezaPts.extraGot > 0 && ` + extra ${limpiezaPts.extraGot}`})
+                </span>
               </span>
               <span className="text-apoyo text-muted">
                 Actividades{' '}
