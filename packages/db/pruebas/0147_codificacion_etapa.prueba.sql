@@ -32,8 +32,8 @@ begin
   insert into config (clave, valor) values ('pts_recepcion','1'), ('pts_lavado_normal','1')
     on conflict (clave) do update set valor = excluded.valor;
 
-  -- 1) El default sembrado es 0
-  if v_def = '0' then r := r || '[ok] caso 1: pts_codificacion sembrado en 0;';
+  -- 1) El default sembrado es 1 (decidido por el dueño)
+  if v_def = '1' then r := r || '[ok] caso 1: pts_codificacion sembrado en 1;';
   else r := r || format('[FALLA] caso 1: pts_codificacion=%s;', coalesce(v_def, 'null')); end if;
 
   -- 2) recepción → codificación → lavado, con historial y código de movimiento
@@ -46,13 +46,13 @@ begin
   if v_err = 'ok' and v_etapa = 'codificacion' then r := r || '[ok] caso 2a: recepción → codificación;';
   else r := r || format('[FALLA] caso 2a: err=%s etapa=%s;', v_err, v_etapa); end if;
 
-  -- 3) Completar codificación con peso 0: no paga ni escribe punto
+  -- 3) Completar codificación con el peso por defecto (1): paga 1 punto
   perform pg_temp.como(e_cf);
   v_pts := pipeline_avanzar(p, 'lavado');
   perform pg_temp.dueno();
-  select count(*) into v_n from pipeline_puntos where pasada_id = p and etapa = 'codificacion';
+  select count(*) into v_n from pipeline_puntos where pasada_id = p and etapa = 'codificacion' and puntos = 1;
   select etapa into v_etapa from prenda_pasada where id = p;
-  if v_etapa = 'lavado' and v_pts = 0 and v_n = 0 then r := r || '[ok] caso 3: codificación → lavado sin pagar (peso 0);';
+  if v_etapa = 'lavado' and v_pts = 1 and v_n = 1 then r := r || '[ok] caso 3: codificación → lavado paga 1 punto;';
   else r := r || format('[FALLA] caso 3: etapa=%s pts=%s filas=%s;', v_etapa, v_pts, v_n); end if;
   select count(*) into v_n from prenda_historial where pasada_id = p and etapa_nueva in ('codificacion','lavado') and codigo_mov is not null;
   if v_n = 2 then r := r || '[ok] caso 3b: los dos movimientos tienen código MOV;';
@@ -68,6 +68,15 @@ begin
   if v_pts = 2 then r := r || '[ok] caso 4: con peso 2 se pagan 2 puntos;';
   else r := r || format('[FALLA] caso 4: pts=%s;', v_pts); end if;
   update config set valor = '0' where clave = 'pts_codificacion';
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
+    values ('P0147-0', 'Chaqueta', 'normal', v_a, 'codificacion') returning id into p;
+  perform pg_temp.como(e_cf);
+  v_pts := pipeline_avanzar(p, 'lavado');
+  perform pg_temp.dueno();
+  select count(*) into v_n from pipeline_puntos where pasada_id = p and etapa = 'codificacion';
+  if v_pts = 0 and v_n = 0 then r := r || '[ok] caso 4b: con peso 0 no se paga ni se escribe punto;';
+  else r := r || format('[FALLA] caso 4b: pts=%s filas=%s;', v_pts, v_n); end if;
+  update config set valor = '1' where clave = 'pts_codificacion';
 
   -- 5) Saltos no permitidos
   insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
