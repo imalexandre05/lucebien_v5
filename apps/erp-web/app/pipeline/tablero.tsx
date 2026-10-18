@@ -36,6 +36,7 @@ import {
   avanzarPrenda,
   enviarTandaPrendas,
   rechazarPrenda,
+  anularEnvioPrenda,
   deshacerPrenda,
   avanzarTandaPrendas,
   deshacerTandaPrendas,
@@ -119,6 +120,7 @@ type Handlers = {
   enviarTanda: (ids: string[], sede: string) => void;
   rechazar: (id: string, destino: string, motivo: string) => void;
   dividir: (id: string) => void;
+  anularEnvio: (id: string, motivo: string) => void;
   // Tarea 6: recibe el id de la MADRE (resuelto por el tablero vía madrePorHijo), no el de la
   // tarjeta -S/-P que dispara el botón.
   deshacerDivision: (madreId: string) => void;
@@ -287,6 +289,21 @@ export function TableroPipeline({
               // Deshacer la tanda: solo las que sí se movieron, todo o nada.
               undo: res.movidas > 0 && desde ? () => deshacerTanda(res.idsMovidos, desde, res.puntos, token) : undefined,
             });
+          } catch {
+            falloGenerico();
+          }
+        }),
+      ),
+    anularEnvio: (id, motivo) =>
+      conOperador((token) =>
+        startTransition(async () => {
+          aplicar({ id, etapa: 'listo' });
+          try {
+            const r = await anularEnvioPrenda(id, motivo, token);
+            if (r?.startsWith('MOTIVO:')) return setToast({ msg: r.replace(/^MOTIVO:\s*/, ''), tono: 'warn' });
+            if (r) return rechazoCodigo(r);
+            renovar();
+            setToast({ msg: 'Envío anulado: la prenda vuelve a Listo p/ envío', tono: 'gold' });
           } catch {
             falloGenerico();
           }
@@ -789,6 +806,51 @@ function Tarjeta({
         >
           Confirmar en Envíos <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
         </a>
+      )}
+      {p.etapa === 'enviado' && <AnularEnvio p={p} h={h} />}
+    </div>
+  );
+}
+
+// Anular un envío equivocado (0156): pide el motivo y devuelve la prenda a «Listo p/ envío».
+function AnularEnvio({ p, h }: { p: PrendaPasada; h: Handlers }) {
+  const [abierto, setAbierto] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const motivoOk = motivo.trim().length >= 3;
+  return (
+    <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
+      {!abierto ? (
+        <button
+          onClick={() => setAbierto(true)}
+          className="inline-flex w-full items-center justify-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-micro font-medium text-muted transition hover:border-error-line hover:text-error-deep"
+        >
+          <Undo2 className="h-3 w-3" strokeWidth={2.5} /> Anular envío
+        </button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <input
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            maxLength={500}
+            placeholder="¿Por qué se anula? (obligatorio)"
+            aria-label="Motivo de la anulación del envío"
+            className="w-full rounded-r-pastilla border border-line bg-white px-2 py-1 text-apoyo text-navy placeholder:text-muted"
+          />
+          <button
+            onClick={() => h.anularEnvio(p.id, motivo.trim())}
+            disabled={!motivoOk}
+            title={motivoOk ? undefined : 'Escribe el motivo para poder anular'}
+            className="inline-flex flex-1 items-center justify-center gap-1 rounded-r-pastilla border border-error-line bg-error-soft px-2 py-1.5 text-apoyo font-medium text-error-deep transition disabled:cursor-not-allowed disabled:opacity-50 active:scale-[.98]"
+          >
+            Confirmar anulación
+          </button>
+          <button
+            onClick={() => setAbierto(false)}
+            className="inline-flex items-center rounded-r-pastilla px-2 py-1.5 text-apoyo text-muted hover:text-navy"
+          >
+            Cancelar
+          </button>
+        </div>
       )}
     </div>
   );

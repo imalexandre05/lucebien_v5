@@ -2097,3 +2097,7 @@ Pendiente de confirmar con el dueño: si Codificación debe poder asignarse al r
 Default inventado (fijo en la RPC `pipeline_rechazar`, migración 0154, a confirmar con el dueño):
 el motivo del rechazo es obligatorio y debe tener entre 3 y 500 letras. Se guarda en
 `prenda_pasada.obs_calidad` y en la observación del historial.
+## 5A · Anular un envío (18-oct-2026)
+
+Default inventado (fijo en la RPC `pipeline_anular_envio`, migración 0156, a confirmar con el dueño):
+el motivo de la anulación es obligatorio, de 3 a 500 letras, igual que al rechazar (0154).

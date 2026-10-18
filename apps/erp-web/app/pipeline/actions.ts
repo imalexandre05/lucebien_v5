@@ -5,6 +5,7 @@ import {
   avanzarPasada,
   enviarPasada,
   enviarTandaPasadas,
+  anularEnvioPasada,
   rechazarPasada,
   deshacerPasada,
   avanzarTandaResultado,
@@ -71,6 +72,14 @@ export async function enviarTandaPrendas(ids: string[], sede: string, operador?:
     // Atómico (0153): o sale toda la tanda o no sale ninguna.
     await enviarTandaPasadas(ids, sede, token);
   });
+  if (typeof r === 'string') return r;
+  revalidatePath('/pipeline');
+  return null;
+}
+
+export async function anularEnvioPrenda(id: string, motivo: string, operador?: string): Promise<string | null> {
+  if (!id) return null;
+  const r = await conCodigo(async () => anularEnvioPasada(id, motivo, await operadorParaAccion(operador)));
   if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
   return null;
