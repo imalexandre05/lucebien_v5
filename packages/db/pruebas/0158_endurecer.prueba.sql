@@ -95,6 +95,40 @@ begin
   if v_err = 'ok' and v_est = 'en_pipeline' then r := r || '[ok] caso 4b: sin estado guardado vuelve a en_pipeline;';
   else r := r || format('[FALLA] caso 4b: %s %s;', v_err, v_est); end if;
 
+  -- 4c) estado viejo: p3 pasa a tener estado previo 'codificando' de un envío anterior; el activo
+  --     ahora está en otro estado; al reenviar el valor viejo se borra y anular no lo resucita
+  perform pg_temp.dueno();
+  update inventario_activo set estado = 'en_pipeline' where id = act3;
+  insert into prenda_pasada (codigo,tipo,sede_origen_cod,etapa,activo_id,aprobada,activo_estado_previo)
+    values ('P158-6','Saco',v_a,'listo',act3,true,'codificando') returning id into p4;
+  perform pg_temp.como(e_on);
+  perform pipeline_enviar(p4, v_b);
+  perform pg_temp.dueno();
+  select activo_estado_previo into v_prev from prenda_pasada where id = p4;
+  if v_prev = 'en_pipeline' then r := r || '[ok] caso 4c: reenviar reemplaza el estado previo viejo;';
+  else r := r || format('[FALLA] caso 4c: previo=%s;', v_prev); end if;
+  update inventario_activo set estado = 'baja' where id = act3;
+  update prenda_pasada set activo_estado_previo = 'codificando' where id = p4;
+  update inventario_activo set estado = 'baja' where id = act3;
+  perform pg_temp.dueno();
+  -- 4d) activo que no estaba en el taller al enviar: el estado previo se borra
+  update inventario_activo set estado = 'alquilado' where id = act3;
+  insert into prenda_pasada (codigo,tipo,sede_origen_cod,etapa,activo_id,aprobada,activo_estado_previo)
+    values ('P158-7','Saco',v_a,'listo',act3,true,'codificando') returning id into p4;
+  perform pg_temp.como(e_on);
+  perform pipeline_enviar(p4, v_b);
+  perform pg_temp.dueno();
+  select activo_estado_previo into v_prev from prenda_pasada where id = p4;
+  if v_prev is null then r := r || '[ok] caso 4d: si el activo no estaba en el taller, no queda estado previo viejo;';
+  else r := r || format('[FALLA] caso 4d: previo=%s;', v_prev); end if;
+
+  -- 1b) un almacén inactivo tampoco puede operar
+  perform pg_temp.como(e_off);
+  v_err := pg_temp.mensaje(format('select pipeline_avanzar(%L, %L)', p4, 'lavado'));
+  perform pg_temp.dueno();
+  if v_err like '%no encontrada%' then r := r || '[ok] caso 1b: un almacén inactivo no puede operar;';
+  else r := r || format('[FALLA] caso 1b: %s;', v_err); end if;
+
   -- 5) firmas únicas, sin anon
   select count(*) into v_n from pg_proc pr join pg_namespace n on n.oid = pr.pronamespace
     where n.nspname = 'public' and pr.proname in ('pipeline_avanzar','pipeline_enviar','pipeline_anular_envio');
