@@ -53,7 +53,7 @@ que tienen problema, con un tipo y los datos para la frase:
 | `sin_marca` | día con horario, ya pasó, sin filas o sólo filas sin horas | «Poner hora de entrada y salida», «Es falta», «Justificar falta» | «Sin resolver, este pago no se puede cerrar.» |
 | `una_marca` | alguna fila `sin_dato` con una sola hora | «Poner hora de salida» (o de entrada) | «Hasta poner la hora que falta, este día no se paga y el pago no se puede cerrar.» |
 | `tardanza` | `trabajado` y la primera entrada pasa el inicio + tolerancia, sin justificar | «Justificar tardanza (motivo)», «Está bien» | «Llegó N min tarde. Tiene T tardanzas libres; desde la siguiente se descuentan S/ P cada una. Justificada, no cuenta.» |
-| `falta` | `falta` sin justificar | «Justificar falta (motivo)», «Está bien» | «Ese día no se paga y se descuenta D día(s) más. Justificada, sólo no se paga el día.» |
+| `falta` | `falta` sin justificar | «Justificar falta (motivo)», «Está bien» | «Ese día no se paga: en total la falta cuesta D días de sueldo (`diasDescuentoPorFalta`, RN-09: el día no trabajado cuenta como uno). Justificada, sólo no se paga el día.» |
 | `hora_estimada` | alguna hora puesta por el sistema (C-3, antes de la 0163) | «Poner la hora real», «Está bien» | «Esta hora la puso el sistema, no una marca. Revísala antes de pagar.» |
 
 - Los días sin problema no aparecen: se dan por trabajados.
