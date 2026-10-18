@@ -68,7 +68,7 @@ begin
   perform pg_temp.dueno();
   update config set valor = '3' where clave = 'pts_planchado';
   perform pg_temp.como(e_alm);
-  v_err := pg_temp.mensaje(format('select pipeline_rechazar(%L, %L)', p, 'planchado'));
+  v_err := pg_temp.mensaje(format('select pipeline_rechazar(%L, %L, p_motivo => ''prueba'')', p, 'planchado'));
   perform pg_temp.dueno();
   update config set valor = '1' where clave = 'pts_planchado';
   select coalesce(sum(puntos), 0) into v_suma from pipeline_puntos where pasada_id = p and empleado_id = e_cf;
@@ -99,7 +99,7 @@ begin
 
   -- ── 4) Un segundo rechazo no descuenta de más ──────────────────────────────────────────────
   perform pg_temp.como(e_alm);
-  v_err := pg_temp.mensaje(format('select pipeline_rechazar(%L, %L)', p, 'planchado'));
+  v_err := pg_temp.mensaje(format('select pipeline_rechazar(%L, %L, p_motivo => ''prueba'')', p, 'planchado'));
   perform pg_temp.dueno();
   select coalesce(sum(puntos), 0) into v_suma from pipeline_puntos where pasada_id = p;
   if v_err = 'ok' and v_suma = 0 then
@@ -115,7 +115,7 @@ begin
   perform pg_temp.como(e_cf);
   v_pts := pipeline_avanzar(p, 'control_calidad');
   perform pg_temp.como(e_alm);
-  v_err := pg_temp.mensaje(format('select pipeline_rechazar(%L, %L)', p, 'planchado'));
+  v_err := pg_temp.mensaje(format('select pipeline_rechazar(%L, %L, p_motivo => ''prueba'')', p, 'planchado'));
   perform pg_temp.dueno();
   update config set valor = '1' where clave = 'pts_planchado';
   select count(*) into v_n from pipeline_puntos where pasada_id = p and puntos < 0;
@@ -134,11 +134,11 @@ begin
   -- Las hijas nacen en control_calidad: calidad las rechaza (sin culpable aún), A las rehace sin cobrar
   -- (la madre ya cobró) y calidad las rechaza otra vez, ahora con A como culpable de cada hija.
   perform pg_temp.como(e_alm);
-  v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_rechazar(id, %L) from prenda_pasada where codigo in (%L, %L)', 'planchado', 'P0140-6-S', 'P0140-6-P'));
+  v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_rechazar(id, %L, p_motivo => ''prueba'') from prenda_pasada where codigo in (%L, %L)', 'planchado', 'P0140-6-S', 'P0140-6-P'));
   perform pg_temp.como(e_cf);
   v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_avanzar(id, %L) from prenda_pasada where codigo in (%L, %L)', 'control_calidad', 'P0140-6-S', 'P0140-6-P'));
   perform pg_temp.como(e_alm);
-  v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_rechazar(id, %L) from prenda_pasada where codigo in (%L, %L)', 'planchado', 'P0140-6-S', 'P0140-6-P'));
+  v_err := v_err || '/' || pg_temp.mensaje(format('select pipeline_rechazar(id, %L, p_motivo => ''prueba'') from prenda_pasada where codigo in (%L, %L)', 'planchado', 'P0140-6-S', 'P0140-6-P'));
   perform pg_temp.dueno();
   select coalesce(sum(puntos), 0) into v_suma from pipeline_puntos where empleado_id = e_cf and pasada_id in
     (select id from prenda_pasada where codigo like 'P0140-6%');
