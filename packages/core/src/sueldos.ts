@@ -820,6 +820,75 @@ export function cuotaDeLiquidacion(
   return v.sueldoPactado;
 }
 
+// ── Pagos programados (decisión del dueño n.º 6, spec 2026-10-18-pagos-programados) ─────────
+
+/** Lo que hace falta de una liquidación para saber el estado de un pago. */
+export interface LiquidacionParaPagos {
+  id: string;
+  desde: string;
+  hasta: string;
+  estado: 'borrador' | 'cerrada' | 'anulada';
+  total: number;
+  /** Suma de abonos no anulados. */
+  pagado: number;
+}
+
+export type EstadoPagoProgramado = 'por_cerrar' | 'cerrado' | 'pagado';
+
+export interface PagoProgramado extends PagoCalendario {
+  estado: EstadoPagoProgramado;
+  /** Por cerrar, pero una parte de sus días ya está en una liquidación cerrada. */
+  parcial: boolean;
+  /** Las liquidaciones CERRADAS que tocan este pago. */
+  liquidaciones: { id: string; total: number; pagado: number }[];
+  /** Contrato por horas: «≈ S/ … si cumple su horario» de este pago. Sueldo fijo: null. */
+  referencia: number | null;
+}
+
+/**
+ * Los pagos del contrato (los de `calendarioDePagos`) con su estado. Sólo cuentan las liquidaciones
+ * cerradas: un borrador es interno (decisión n.º 7) y una anulada ya no paga nada. Pagado = todos
+ * sus días cerrados y sin saldo; Cerrado = todos sus días cerrados con saldo; Por cerrar = lo demás.
+ */
+export function pagosProgramados(
+  contrato: ContratoPago,
+  cambios: CambioFrecuencia[],
+  liquidaciones: readonly LiquidacionParaPagos[],
+  horario?: TurnoContratado[],
+): PagoProgramado[] {
+  const cerradas = liquidaciones.filter((l) => l.estado === 'cerrada');
+  const porHoras = contrato.tarifaHora !== null && contrato.tarifaHora !== undefined;
+  const porDia = horario ? resumirHorario(horario) : null;
+  return calendarioDePagos(contrato, cambios).map((pago) => {
+    const tocan = cerradas
+      .filter((l) => l.desde <= pago.hasta && l.hasta >= pago.desde)
+      .sort((a, b) => a.desde.localeCompare(b.desde));
+    const dias = diasDelPeriodo(pago.desde, pago.hasta);
+    const cubiertos = dias.filter((d) => tocan.some((l) => l.desde <= d && d <= l.hasta)).length;
+    const completo = cubiertos === dias.length;
+    const conSaldo = tocan.some((l) => r2(l.total - l.pagado) > 0);
+    let referencia: number | null = null;
+    if (porHoras && porDia) {
+      let ref = 0;
+      for (const d of dias) ref += (porDia.get(diaSemanaISO(d))?.horas ?? 0) * tarifaDelDia(contrato, cambios, d);
+      referencia = r2(ref);
+    }
+    return {
+      ...pago,
+      estado: completo ? (conSaldo ? 'cerrado' : 'pagado') : 'por_cerrar',
+      parcial: !completo && cubiertos > 0,
+      liquidaciones: tocan.map((l) => ({ id: l.id, total: l.total, pagado: l.pagado })),
+      referencia,
+    };
+  });
+}
+
+/** El pago que contiene `fecha` (el «hoy» lo pasa quien llama, hora Perú), o null. */
+export function pagoQueContiene<T extends { desde: string; hasta: string }>(pagos: readonly T[], fecha: string): T | null {
+  validarFecha(fecha, 'pagoQueContiene');
+  return pagos.find((p) => p.desde <= fecha && fecha <= p.hasta) ?? null;
+}
+
 /**
  * El primer pago del calendario que arranca DESPUÉS de lo último pagado (`ultimaCerradaHasta`,
  * null si nada se pagó): ahí y sólo ahí puede empezar un cambio de frecuencia (spec §3.2, «desde el
