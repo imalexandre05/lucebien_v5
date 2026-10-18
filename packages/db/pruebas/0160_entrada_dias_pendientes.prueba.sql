@@ -53,5 +53,9 @@ begin
     r := r || '[ok] caso 4: sin pendientes la permisiva == estricta y no agrega la clave;';
   else r := r || '[FALLA] caso 4: difieren sin pendientes;'; end if;
 
+  if (select count(*) from pg_proc where proname = 'sueldo_entrada' and pronamespace = 'public'::regnamespace) = 1 then
+    r := r || '[ok] caso 5: sueldo_entrada tiene una sola firma (las llamadas de 3 argumentos usan el default estricto);';
+  else r := r || '[FALLA] caso 5: sueldo_entrada tiene más de una firma;'; end if;
+
   raise exception 'RESULTADO 0160 --> %', r;
 end $$;

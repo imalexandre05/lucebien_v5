@@ -12,7 +12,10 @@
 --     pendientes: la entrada estricta no cambia ni un byte.
 -- Idempotente.
 
-create or replace function public.sueldo_entrada(p_acuerdo uuid, p_desde date, p_hasta date, p_permitir_pendientes boolean)
+-- La firma de 3 argumentos (0144) se reemplaza por la de 4 con default: una sola versión.
+drop function if exists public.sueldo_entrada(uuid, date, date);
+
+create or replace function public.sueldo_entrada(p_acuerdo uuid, p_desde date, p_hasta date, p_permitir_pendientes boolean default false)
 returns jsonb
 language plpgsql
 stable
@@ -298,18 +301,9 @@ begin
 end;
 $function$;
 
--- Versión estricta de siempre: mismo nombre y firma, ahora delega.
-create or replace function public.sueldo_entrada(p_acuerdo uuid, p_desde date, p_hasta date)
-returns jsonb
-language sql
-stable
-set search_path to 'public'
-as $$ select public.sueldo_entrada(p_acuerdo, p_desde, p_hasta, false) $$;
-
+-- Una sola firma (la 0127 prohíbe sobrecargas): las llamadas con 3 argumentos siguen siendo estrictas (default false).
 revoke execute on function public.sueldo_entrada(uuid, date, date, boolean) from public, anon;
 grant  execute on function public.sueldo_entrada(uuid, date, date, boolean) to authenticated;
-revoke execute on function public.sueldo_entrada(uuid, date, date) from public, anon;
-grant  execute on function public.sueldo_entrada(uuid, date, date) to authenticated;
 
 comment on function public.sueldo_entrada(uuid, date, date, boolean) is
   '0160: entrada de liquidación de un tramo. Con p_permitir_pendientes=true arma un borrador y lista los días sin declarar en diasSinDeclarar; con false corta con DATO como siempre.';
