@@ -2142,3 +2142,9 @@ Sin cambios de código: requiere decisión del dueño. Hoy ya conviven uno vigen
 
 - **Pregunta:** ¿cuál es el caso real? (a) renovar antes de que venza el actual; (b) dejar listo el siguiente en borrador.
 - **Recomendación:** (b) con un flujo de «renovar»: el contrato nuevo nace en borrador empezando al día siguiente del fin del actual (sin solape), y pasa a vigente al llegar su fecha. Evita relajar la regla de solape, que protege el cálculo del sueldo. Permitir solape solo en borrador exigiría rehacer la restricción de exclusión (migración y spec completa).
+## 6A-1 · Puntualidad automática en la evaluación (18-oct-2026)
+Defaults inventados (editable: `eval_puntualidad_modo` en /configuración; `minutos` vuelve a la fórmula anterior). **Confirmar con Alexander.**
+1. Nota = 20 × días puntuales ÷ días con turno contratado en el ciclo (hasta hoy, hora Perú).
+2. Los días sin fila o `sin_dato` no cuentan como debidos; una falta sí resta (no es puntual). Pendiente: ¿una falta justificada también resta puntualidad?
+3. Una tardanza justificada cuenta como puntual; la tolerancia es la del sueldo (`sueldo_tolerancia_minutos`).
+4. Sin horario contratado: se usa la fórmula por minutos (da 20 si no hay atraso medible).

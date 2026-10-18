@@ -234,12 +234,14 @@ export function EvaluacionesCliente({
 
   // 0132: nota de examen que trajo la data (capacitaciones cerradas en el ciclo); null = se carga a mano.
   const [examenesAuto, setExamenesAuto] = useState<number | null>(null);
+  const [puntualidad, setPuntualidad] = useState<{ modo?: string; debidos: number; puntuales: number; tardanzas: number } | null>(null);
 
   function elegirEmpleado(id: string) {
     setEmpleadoId(id);
     setEvalGuardada(null);
     setInfoExtra(null);
     setExamenesAuto(null);
+    setPuntualidad(null);
     setComp(CERO);
     setCompetenciaSel({});
     setCicloEditado(false);
@@ -258,6 +260,7 @@ export function EvaluacionesCliente({
     // `examenes` automático (0132) también se anula: si el nuevo ciclo no trae dato, no debe quedar el de otro ciclo como manual.
     setComp((p) => ({ ...p, operaciones: 0, software: 0, limpieza: 0, tardanza: 0, valores: 0, descuentoIncidencias: 0, bonusVentas: 0, examenes: examenesAuto !== null ? 0 : p.examenes }));
     setExamenesAuto(null);
+    setPuntualidad(null);
   }
   function setCicloDesde(v: string) {
     setCiclo((c) => (c ? { ...c, desde: v } : c));
@@ -294,6 +297,7 @@ export function EvaluacionesCliente({
         examenes: c.examenes ?? p.examenes,
       }));
       setExamenesAuto(c.examenes ?? null);
+      setPuntualidad(c.puntualidadDebidos != null ? { modo: c.puntualidadModo, debidos: c.puntualidadDebidos, puntuales: c.puntualidadPuntuales ?? 0, tardanzas: c.puntualidadTardanzas ?? 0 } : null);
       // puntosTotal (0095) es lo único que de verdad hace falta para poder guardar: sin él no hay
       // nota que mostrar (notaResultado cae al mensaje "Calcula desde la data..." de arriba). El
       // resto de las claves puede faltar si esa migración todavía no corrió (undefined, no 0 — un
@@ -546,6 +550,13 @@ export function EvaluacionesCliente({
                 <div key={key} className="flex items-center gap-2">
                   <label className="flex-1 text-cuerpo text-navy">
                     {label}
+                    {key === 'tardanza' && puntualidad !== null && (
+                      <span className="ml-1.5 text-apoyo font-normal text-muted">
+                        {puntualidad.debidos > 0 && puntualidad.modo !== 'minutos'
+                          ? `${puntualidad.puntuales} puntuales de ${puntualidad.debidos} días que debía asistir · ${puntualidad.tardanzas} tardanza${puntualidad.tardanzas === 1 ? '' : 's'}`
+                          : 'se mide por minutos de atraso (sin horario contratado o modo «minutos»)'}
+                      </span>
+                    )}
                     {key === 'examenes' && (
                       <span className="ml-1.5 text-apoyo font-normal text-muted">
                         {examenesAuto !== null ? 'de las capacitaciones del ciclo' : 'sin capacitaciones cerradas: cárgalo a mano'}
