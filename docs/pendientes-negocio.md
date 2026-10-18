@@ -2083,3 +2083,11 @@ Ticket #26. El servidor ahora exige el permiso `incidencias:ver` (el mismo de la
 
 - **Default puesto:** `ver`, porque los operativos solo tienen `ver` (0065) y el dueño pidió que puedan registrar.
 - **Pregunta para el dueño:** ¿quién puede crear incidencias desde `/incidencias`: todos los que ven el módulo (hoy) o solo quienes tengan `crear` en Permisos? Recomendación: dejarlo como está; si se quiere restringir, dar `crear` solo a encargados y mantener el reporte de turno para los operativos.
+- **Pregunta abierta (verificador):** hoy el `responsable_id` de una incidencia no se valida contra la sede de quien reporta; un operativo podría penalizar a cualquiera. Recomendación: exigir que el responsable esté activo y sea de la misma sede (o del reporte).
+
+## 5B-3 · Contratos: uno vigente y otro no vigente a la vez (ticket #21, 18-oct-2026)
+
+Sin cambios de código: requiere decisión del dueño. Hoy ya conviven uno vigente y otro no vigente si las fechas no se cruzan; `sueldo_acuerdos_sin_solape` (0072) impide el solape sin importar el estado.
+
+- **Pregunta:** ¿cuál es el caso real? (a) renovar antes de que venza el actual; (b) dejar listo el siguiente en borrador.
+- **Recomendación:** (b) con un flujo de «renovar»: el contrato nuevo nace en borrador empezando al día siguiente del fin del actual (sin solape), y pasa a vigente al llegar su fecha. Evita relajar la regla de solape, que protege el cálculo del sueldo. Permitir solape solo en borrador exigiría rehacer la restricción de exclusión (migración y spec completa).
