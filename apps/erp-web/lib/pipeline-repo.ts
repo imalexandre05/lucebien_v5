@@ -224,6 +224,43 @@ export async function avanzarTanda(ids: string[], destino: string, operador: str
   return Number(data) || 0;
 }
 
+export type ResultadoTanda = { puntos: number; movidas: number; omitidas: number; idsMovidos: string[] };
+
+// Tanda con resultado detallado (0155): cuántas se movieron, cuántas se omitieron y cuáles.
+export async function avanzarTandaResultado(
+  ids: string[],
+  destino: string,
+  operador: string | null = null,
+): Promise<ResultadoTanda> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_avanzar_tanda_resultado', {
+    p_ids: ids,
+    p_destino: destino,
+    ...conOperador(operador),
+  });
+  if (error) throw new Error(error.message);
+  const d = (data ?? {}) as Record<string, unknown>;
+  return {
+    puntos: Number(d.puntos) || 0,
+    movidas: Number(d.movidas) || 0,
+    omitidas: Number(d.omitidas) || 0,
+    idsMovidos: Array.isArray(d.ids_movidos) ? (d.ids_movidos as string[]) : [],
+  };
+}
+
+// Deshacer una tanda entera, todo o nada (0155).
+export async function deshacerTandaPasadas(
+  items: { id: string; etapaAnterior: string }[],
+  operador: string | null = null,
+): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_deshacer_tanda', {
+    p_items: items.map((i) => ({ id: i.id, etapa_anterior: i.etapaAnterior })),
+    ...conOperador(operador),
+  });
+  if (error) throw new Error(error.message);
+}
+
 export type RankingItem = { nombre: string; total: number; acciones: number };
 
 // Ranking de puntos del día (todos los operarios; security definer en 0011).

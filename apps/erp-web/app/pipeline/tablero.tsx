@@ -37,6 +37,7 @@ import {
   rechazarPrenda,
   deshacerPrenda,
   avanzarTandaPrendas,
+  deshacerTandaPrendas,
   dividirPrenda,
   deshacerDivisionPrenda,
 } from './actions';
@@ -113,7 +114,7 @@ const tipoLavadoCls = (t: string): string => {
 
 type Handlers = {
   avanzar: (id: string, destino: string, etapaActual: string) => void;
-  avanzarTanda: (ids: string[], destino: string) => void;
+  avanzarTanda: (ids: string[], destino: string, desde: string) => void;
   enviarTanda: (ids: string[], sede: string) => void;
   rechazar: (id: string, destino: string) => void;
   dividir: (id: string) => void;
@@ -155,7 +156,7 @@ export function TableroPipeline({
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), toast.undo ? 5000 : 2200);
+    const t = setTimeout(() => setToast(null), toast.undo ? 10000 : 2200);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -184,6 +185,23 @@ export function TableroPipeline({
   // «Deshacer» usa el token con el que se avanzó la prenda (quien avanzó es quien deshace su propio
   // movimiento). Los puntos que borra la base son los DE ESE movimiento, sean de quien sean
   // (migración 0112, spec §0 E-4), así que un cambio de operador entre medio no se los quita a otro.
+  const deshacerTanda = (ids: string[], etapaAnterior: string, pts: number, token?: string) =>
+    startTransition(async () => {
+      ids.forEach((id) => aplicar({ id, etapa: etapaAnterior }));
+      if (pts) setSesionPts((s) => Math.round((s - pts) * 10) / 10);
+      setToast(null);
+      try {
+        const r = await deshacerTandaPrendas(
+          ids.map((id) => ({ id, etapaAnterior })),
+          token,
+        );
+        if (r) return rechazoCodigo(r);
+        renovar();
+        setToast({ msg: `Se deshizo la tanda (${ids.length} prendas)`, tono: 'gold' });
+      } catch {
+        falloGenerico();
+      }
+    });
   const deshacer = (id: string, etapaAnterior: string, pts: number, token?: string) =>
     startTransition(async () => {
       aplicar({ id, etapa: etapaAnterior });
@@ -248,16 +266,23 @@ export function TableroPipeline({
           }
         }),
       ),
-    avanzarTanda: (ids, destino) =>
+    avanzarTanda: (ids, destino, desde) =>
       conOperador((token) =>
         startTransition(async () => {
           ids.forEach((id) => aplicar({ id, etapa: destino }));
           try {
-            const pts = await avanzarTandaPrendas(ids, destino, token);
-            if (typeof pts === 'string') return rechazoCodigo(pts);
+            const res = await avanzarTandaPrendas(ids, destino, token);
+            if (typeof res === 'string') return rechazoCodigo(res);
             renovar();
-            if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
-            setToast({ msg: `${ids.length} prendas → ${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`, tono: 'ok' });
+            if (res.puntos) setSesionPts((s) => Math.round((s + res.puntos) * 10) / 10);
+            // El aviso dice la verdad: cuántas se movieron de las que se eligieron (0155).
+            const omit = res.omitidas > 0 ? ` · ${res.omitidas} no se pudieron mover` : '';
+            setToast({
+              msg: `${res.movidas} de ${ids.length} prendas → ${NOMBRE[destino] ?? destino} · +${res.puntos} pts${omit}`,
+              tono: res.omitidas > 0 ? 'warn' : 'ok',
+              // Deshacer la tanda: solo las que sí se movieron, todo o nada.
+              undo: res.movidas > 0 && desde ? () => deshacerTanda(res.idsMovidos, desde, res.puntos, token) : undefined,
+            });
           } catch {
             falloGenerico();
           }
@@ -484,7 +509,7 @@ export function TableroPipeline({
               <button
                 key={d}
                 onClick={() => {
-                  h.avanzarTanda([...sel], d);
+                  h.avanzarTanda([...sel], d, selEtapa ?? '');
                   limpiarSel();
                 }}
                 className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-navy px-4 py-2 text-cuerpo font-semibold text-white transition hover:bg-[#26345c] active:scale-[.98]"
