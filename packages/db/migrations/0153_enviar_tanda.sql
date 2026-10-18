@@ -14,8 +14,16 @@ begin
   if p_ids is null or coalesce(array_length(p_ids, 1), 0) = 0 then
     raise exception 'La tanda está vacía: elige al menos una prenda';
   end if;
-  for v_id in select distinct x from unnest(p_ids) x loop
-    perform public.pipeline_enviar(v_id, p_sede, p_operador);
+  -- Orden fijo: dos tandas con prendas en común no se bloquean entre sí.
+  for v_id in select distinct x from unnest(p_ids) x order by x loop
+    begin
+      perform public.pipeline_enviar(v_id, p_sede, p_operador);
+    exception when others then
+      -- Se conserva el prefijo (CODIGO:, TRANSICION:, PERMISO:) y se agrega la prenda que falló.
+      if sqlerrm like 'CODIGO:%' then raise; end if;
+      raise exception '% (prenda %)', sqlerrm,
+        coalesce((select codigo from public.prenda_pasada where id = v_id), v_id::text);
+    end;
     v_n := v_n + 1;
   end loop;
   return v_n;
