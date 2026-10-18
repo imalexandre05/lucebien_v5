@@ -28,3 +28,13 @@ descuentan de la nota → sueldo, no-negociable 1). No toca `packages/core` ni n
    navegador se ignora.
 
 No cambia ningún parámetro de negocio: los puntos ya eran editables por tipo en `/configuracion`.
+
+## Addendum (verificador, 18-oct-2026): la base también cierra la puerta
+
+La policy `inc_insert` (0046) deja insertar cualquier `puntos_penalidad` a quien llame directo a
+PostgREST (cualquier usuario de la sede, o quien cumpla `app_es_almacen()`). Cerrar solo la acción del
+servidor no basta. **Migración 0150:** trigger `before insert` sobre `incidencias` que, para quien no
+es administrador, fija `puntos_penalidad` al `puntos_default` del tipo activo y rechaza un tipo que no
+exista. El administrador conserva su valor (carga manual o corrección). No se cambia la policy: se
+evita romper el reporte de turno de los operativos. Pregunta abierta: validar que el
+`responsable_id` pertenezca a la sede de quien reporta (ver `docs/pendientes-negocio.md`, 5B-2).
