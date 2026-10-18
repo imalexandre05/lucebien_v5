@@ -2076,3 +2076,14 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## 5B-2 · Incidencias: quién puede registrar (18-oct-2026)
+
+Ticket #26. Decisión del dueño: el permiso para registrar desde `/incidencias` es `incidencias:crear` (`ver` es solo lectura); hay que otorgarlo a quien corresponda en Configuración → Permisos. Los operativos siguen registrando desde su reporte de turno. Nivel y puntos salen del catálogo (servidor y base, migración 0150); el responsable debe ser una persona activa de la sede de la incidencia (regla puesta por defecto).
+
+## 5B-3 · Contratos: uno vigente y otro no vigente a la vez (ticket #21, 18-oct-2026)
+
+Sin cambios de código: requiere decisión del dueño. Hoy ya conviven uno vigente y otro no vigente si las fechas no se cruzan; `sueldo_acuerdos_sin_solape` (0072) impide el solape sin importar el estado.
+
+- **Pregunta:** ¿cuál es el caso real? (a) renovar antes de que venza el actual; (b) dejar listo el siguiente en borrador.
+- **Recomendación:** (b) con un flujo de «renovar»: el contrato nuevo nace en borrador empezando al día siguiente del fin del actual (sin solape), y pasa a vigente al llegar su fecha. Evita relajar la regla de solape, que protege el cálculo del sueldo. Permitir solape solo en borrador exigiría rehacer la restricción de exclusión (migración y spec completa).

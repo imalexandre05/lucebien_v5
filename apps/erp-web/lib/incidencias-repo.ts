@@ -256,3 +256,16 @@ export async function crearIncidenciasDeReporte(p: {
   const { error } = await sb.from('incidencias').insert(filas);
   if (error) throw new Error(error.message);
 }
+
+// Datos mínimos del responsable para validar que pertenece a la sede de la incidencia
+// (`responsableValido`). Devuelve null si no se ve a la persona: eso se trata como inválido.
+export async function leerResponsableIncidencia(id: string): Promise<{ activo: boolean; sedeCod: string | null; sedes: string[] } | undefined> {
+  const sb = getServerClient();
+  const [{ data: e, error }, { data: t }] = await Promise.all([
+    sb.from('empleados').select('activo, sede_cod').eq('id', id).maybeSingle(),
+    sb.from('empleado_tiendas').select('sede_cod').eq('empleado_id', id),
+  ]);
+  if (error || !e) return undefined;
+  const row = e as { activo: boolean; sede_cod: string | null };
+  return { activo: Boolean(row.activo), sedeCod: row.sede_cod, sedes: ((t as { sede_cod: string }[]) ?? []).map((x) => x.sede_cod) };
+}

@@ -25,7 +25,8 @@ import {
   type ReportePendiente,
 } from '../../lib/reportes-repo';
 import { getSesion } from '../../lib/auth';
-import { crearIncidenciasDeReporte, listarTiposIncidencia } from '../../lib/incidencias-repo';
+import { crearIncidenciasDeReporte, leerResponsableIncidencia, listarTiposIncidencia } from '../../lib/incidencias-repo';
+import { resolverIncidencia, responsableValido } from '../../lib/incidencias-catalogo';
 
 // Inicia el espacio de trabajo de un turno: catálogo de actividades + zonas de limpieza + draft.
 // `yaEnviado` = reporte si el turno ya se envió (para pasar a Evaluación, como el viejo).
@@ -88,8 +89,24 @@ export async function accionCrearReporte(
     // obligatoria sólo para incidencias del tipo de categoría 'Otros'. El formulario ya lo hace
     // cumplir; esto es lo que de verdad lo exige — un cliente puede saltearse una validación de
     // UI. Se comprueba ANTES de crear el reporte: si falta, no debe quedar nada a medio guardar.
+    // Nivel y puntos de cada incidencia salen del catálogo, no del navegador (spec
+    // 2026-10-18-incidencias-servidor-valida). Se resuelve acá, antes de crear el reporte.
+    let incidenciasResueltas = input.incidencias;
     if (input.incidencias.length) {
       const tiposCatalogo = await listarTiposIncidencia();
+      const resueltas = [];
+      for (const i of input.incidencias) {
+        const r = resolverIncidencia(tiposCatalogo, i.tipo, i.nivel);
+        if (!r.ok) return { ok: false, error: `${r.error} («${i.tipo}»)` };
+        if (i.responsableId) {
+          const r = await leerResponsableIncidencia(i.responsableId);
+          if (!r || !responsableValido(r, input.sede)) {
+            return { ok: false, error: `El responsable de la incidencia «${i.tipo}» debe ser una persona activa de esta sede.` };
+          }
+        }
+        resueltas.push({ ...i, nivel: r.nivel, puntosPenalidad: r.puntosPenalidad });
+      }
+      incidenciasResueltas = resueltas;
       const faltante = input.incidencias.find((i) => {
         const t = tiposCatalogo.find((x) => x.tipo === i.tipo);
         return t?.categoria === 'Otros' && !i.descripcion.trim();
@@ -107,7 +124,7 @@ export async function accionCrearReporte(
         fecha: input.fecha,
         reporteId: id,
         reportadoPorId: sesion?.usuario.id ?? null,
-        items: input.incidencias,
+        items: incidenciasResueltas,
       });
     }
     // Auto-asistencia (best-effort): no debe romper la creación del reporte si falla.
