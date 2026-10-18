@@ -18,7 +18,7 @@ import { accionDeclararDia, accionDeclararVarios, type DiaForm } from './actions
 const DIAS_CORTO = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'];
 
 const ETIQUETA: Record<CondicionDia, string> = {
-  sin_dato: 'Sin declarar',
+  sin_dato: 'Pendiente de resolver',
   trabajado: 'Trabajó',
   falta: 'Faltó',
 };

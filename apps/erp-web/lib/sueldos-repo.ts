@@ -21,6 +21,7 @@ import { mapaNombres } from './directorio';
 import { listarTemporadas } from './temporadas-repo';
 import { getServerClient } from './supabase/server';
 import { leerConfigMap } from './config-repo';
+import { hoyPeru } from './fechas';
 
 /**
  * sueldos-repo.ts — acceso a datos del motor de sueldos (migraciones 0072 y 0073).
@@ -364,6 +365,7 @@ export async function crearAcuerdo(p: AcuerdoInput, creadoPor: string): Promise<
 
   const id = String((data as { id: string }).id);
   if (p.turnos.length > 0) await guardarTurnos(id, p.turnos);
+  await releerMarcasDelContrato(p);
   return id;
 }
 
@@ -389,6 +391,35 @@ export async function actualizarAcuerdo(id: string, p: AcuerdoInput): Promise<vo
   const { error } = await sb.from('sueldo_acuerdos').update(filaAcuerdo({ ...p, parametros })).eq('id', id);
   if (error) throw errorSueldo(error);
   await guardarTurnos(id, p.turnos);
+  await releerMarcasDelContrato(p);
+}
+
+/**
+ * Con el horario nuevo, el huellero vuelve a leer las marcas del contrato hasta hoy (spec
+ * asistencias/2026-10-18-huellero-marca-extremo-cercano, R4): un día derivado antes de que hubiera
+ * horario guardaba una salida suelta como entrada. Los días de un pago cerrado no se tocan (lo
+ * hace la RPC). No bloquea el guardado: el contrato ya quedó escrito, y si esto falla las marcas se
+ * vuelven a leer con la próxima que llegue del huellero.
+ */
+async function releerMarcasDelContrato(p: Pick<AcuerdoInput, 'empleadoId' | 'fechaInicio' | 'fechaFin'>): Promise<void> {
+  const hoy = hoyPeru();
+  const hasta = p.fechaFin < hoy ? p.fechaFin : hoy;
+  if (hasta < p.fechaInicio) return;
+  // La RPC acepta hasta 400 días: un contrato más largo se relee desde 400 días antes de `hasta`.
+  const limite = new Date(`${hasta}T00:00:00Z`);
+  limite.setUTCDate(limite.getUTCDate() - 400);
+  const tope = limite.toISOString().slice(0, 10);
+  const desde = p.fechaInicio > tope ? p.fechaInicio : tope;
+  try {
+    const { error } = await getServerClient().rpc('huellero_rederivar', {
+      p_empleado: p.empleadoId,
+      p_desde: desde,
+      p_hasta: hasta,
+    });
+    if (error) console.error('No se pudieron volver a leer las marcas del huellero:', error.message);
+  } catch (e) {
+    console.error('No se pudieron volver a leer las marcas del huellero:', e);
+  }
 }
 
 /**
