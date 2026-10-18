@@ -1,3 +1,4 @@
+import { reactivarConAcceso, suspenderConAcceso } from './suspension';
 import type { Rol } from '@scilb/core';
 import { generarIniciales, elegirCodigoLibre, codigosDeEmails, generarContrasenaTemporal, validarContrasenaNueva } from '@scilb/core';
 import { getServerClient } from './supabase/server';
@@ -95,7 +96,7 @@ export async function listarEmpleadosAdmin(): Promise<EmpleadoAdmin[]> {
 //      estuviera abierta (el token sigue siendo válido hasta que expire);
 //   3. los helpers de RLS exigen `activo` (migración 0083), por si alguien escribe la columna a
 //      mano sin pasar por esta pantalla.
-export async function actualizarEstadoEmpleado(id: string, activo: boolean): Promise<void> {
+export async function actualizarEstadoEmpleado(id: string, activo: boolean, hoy: string): Promise<void> {
   // No se puede suspender al último administrador activo: nadie podría volver a reactivarlo desde
   // la aplicación y la empresa quedaría afuera de su propio sistema.
   if (!activo) {
@@ -114,29 +115,27 @@ export async function actualizarEstadoEmpleado(id: string, activo: boolean): Pro
     }
   }
 
+  // SUSPENDER y REACTIVAR: el orden de las operaciones vive en ./suspension (probado con
+  // dependencias inyectadas); acá solo se aportan las llamadas reales.
+  const admin = getAdminClient();
   const sb = getServerClient();
-  const { error } = await sb
-    .from('empleados')
-    .update({ activo, estado: activo ? 'activo' : 'suspendido' })
-    .eq('id', id);
-  if (error) throw new Error(error.message);
-
-  // El baneo es lo que cierra la puerta de calle. Si falla, se deshace la escritura de arriba: una
-  // ficha que dice "suspendido" con el acceso todavía vivo es peor que no haber hecho nada,
-  // porque el administrador se queda tranquilo.
-  const { error: eBan } = await getAdminClient().auth.admin.updateUserById(id, {
-    // 876000 horas son cien años. Supabase no tiene un "para siempre"; reactivar manda 'none'.
-    ban_duration: activo ? 'none' : '876000h',
-  });
-  if (eBan) {
-    await sb
-      .from('empleados')
-      .update({ activo: !activo, estado: activo ? 'suspendido' : 'activo' })
-      .eq('id', id);
-    throw new Error(
-      `No se pudo ${activo ? 'reactivar' : 'suspender'} el acceso de esta persona: ${eBan.message}. No se cambió nada.`,
-    );
+  const ban = (duracion: string) => async () =>
+    (await admin.auth.admin.updateUserById(id, { ban_duration: duracion })).error;
+  if (!activo) {
+    await suspenderConAcceso({
+      bloquearAcceso: ban('876000h'),
+      devolverAcceso: ban('none'),
+      suspenderEnBase: async () => (await sb.rpc('empleado_suspender', { p_id: id, p_hoy: hoy })).error,
+    });
+    return;
   }
+  await reactivarConAcceso({
+    reactivarEnBase: async () => (await sb.from('empleados').update({ activo: true, estado: 'activo' }).eq('id', id)).error,
+    devolverAcceso: ban('none'),
+    deshacerReactivacion: async () => {
+      await sb.from('empleados').update({ activo: false, estado: 'suspendido' }).eq('id', id);
+    },
+  });
 }
 
 // Contraseña temporal (spec permisos/2026-10-06-login-usuario-contrasena §6). La genera el

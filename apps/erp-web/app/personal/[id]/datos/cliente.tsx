@@ -132,8 +132,8 @@ export function DatosCliente({
     conf.pedir({
       titulo: `¿${verbo} a ${emp.nombre}?`,
       detalle: emp.activo
-        ? 'Deja de poder entrar al sistema y sale de las listas de asignación. Su historial no se toca.'
-        : 'Vuelve a poder entrar y a aparecer en las listas de asignación.',
+        ? 'Deja de poder entrar al sistema y sale de las listas de asignación. Su contrato vigente se cierra hoy y el huellero deja de marcarle faltas. Su historial no se toca.'
+        : 'Vuelve a poder entrar y a aparecer en las listas de asignación. Su contrato no se reabre: si vuelve a trabajar, pacta uno nuevo en Contratos.',
       confirmarLabel: verbo,
       tono: emp.activo ? 'peligro' : 'aviso',
       alConfirmar: () =>
