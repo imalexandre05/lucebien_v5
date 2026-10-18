@@ -9,8 +9,8 @@ Sesión 5A · Zona crítica (puntos y no-negociable 2) · Migración 0155
 
 ## Reglas
 1. **R1 — Resultado detallado.** Nueva RPC `pipeline_avanzar_tanda_resultado(p_ids, p_destino,
-   p_operador)` que devuelve `{puntos, movidas, omitidas}` (omitidas = cuántas no se pudieron
-   mover). Mismo recorrido que hoy (omite sin abortar; el token inválido aborta todo, como hoy).
+   p_operador)` que devuelve `{puntos, movidas, omitidas, ids_movidos}` (omitidas = cuántas no se
+   pudieron mover; `ids_movidos` = cuáles sí, para poder deshacer solo esas). Mismo recorrido que hoy (omite sin abortar; el token inválido aborta todo, como hoy).
 2. **R2 — Compatibilidad.** `pipeline_avanzar_tanda` conserva firma y retorno numérico (las pruebas
    0112/0115 dependen de ellos) y pasa a delegar en la nueva (`puntos`). Sin sobrecargas.
 3. **R3 — Deshacer tanda atómico.** Nueva RPC `pipeline_deshacer_tanda(p_items jsonb, p_operador)`,
