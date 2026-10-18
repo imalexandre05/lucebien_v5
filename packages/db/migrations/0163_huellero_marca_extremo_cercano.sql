@@ -318,9 +318,11 @@ begin
       case when v_final_ent is null and v_final_sal is not null then 'pendiente: falta la hora de entrada' end,
       case when v_final_sal is null and v_final_ent is not null then 'pendiente: falta la hora de salida' end
     ), '');
-    -- Un «pendiente» de una pasada anterior se borra: o ya se resolvió, o se vuelve a escribir arriba.
-    v_obs_base := nullif(btrim(regexp_replace(coalesce(v_fila.obs, ''),
-      '( · )?pendiente: falta la hora de (entrada|salida)', '', 'g'), ' ·'), '');
+    -- Un «pendiente» o un «estimado» de una pasada anterior se borra: o ya no es cierto, o se vuelve
+    -- a escribir arriba con las banderas finales (ajuste del verificador, spec §6).
+    v_obs_base := nullif(btrim(regexp_replace(regexp_replace(coalesce(v_fila.obs, ''),
+      '( · )?pendiente: falta la hora de (entrada|salida)', '', 'g'),
+      '( · )?estimado: no marcó la (entrada|salida), se completó con la hora del turno contratado', '', 'g'), ' ·'), '');
 
     update asistencias a
        set hora_entrada = v_final_ent,
@@ -391,6 +393,10 @@ begin
      order by 1
   loop
     -- Lo pagado no cambia: un día dentro de una liquidación cerrada no se vuelve a leer.
+    -- Si un cierre está corriendo, esperar a que termine (mismo patrón que la 0144).
+    perform 1 from sueldo_liquidaciones
+     where empleado_id = p_empleado and estado = 'borrador' and d between periodo_desde and periodo_hasta
+     for share;
     continue when private.sueldo_estado_fecha(p_empleado, d)->>'estado' = 'cerrado';
     perform huellero_derivar_asistencia(p_empleado, d);
     n := n + 1;
