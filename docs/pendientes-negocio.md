@@ -2076,3 +2076,15 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+## Evaluar solo ciclos terminados y anular una nota guardada (18-oct-2026)
+
+Defaults puestos en el código sin que el dueño los haya confirmado (spec
+[2026-10-18-evaluacion-corregir-y-ciclo-cerrado](superpowers/specs/evaluaciones/2026-10-18-evaluacion-corregir-y-ciclo-cerrado-design.md)).
+Ninguno es un número editable: son reglas de flujo.
+
+| Pregunta | Default actual | Estado |
+|---|---|---|
+| ¿Se puede evaluar un ciclo que termina hoy (`hasta == hoy`)? | Sí. Solo se rechaza `hasta > hoy` | Pregunta abierta |
+| ¿Quién puede anular una evaluación? | Administrador y dueño | Pregunta abierta |
+| ¿Una liquidación en `borrador` bloquea la anulación de la nota? | Sí: cualquier liquidación no anulada de esa persona que cruce el ciclo bloquea (default conservador) | Pregunta abierta |
+| ¿Con un pago ya enlazado se puede anular? | No: hay que anular primero el pago | Pregunta abierta |

@@ -450,10 +450,10 @@ describe('cicloCerradoAnterior', () => {
   });
 
   it('mes corto: respeta el recorte de calcularCiclo', () => {
-    // Aniversario 31; hoy 15-mar-2026 → en curso 28-feb..30-mar; el anterior 31-ene..27-feb.
+    // Aniversario 31; hoy 15-mar-2026 → en curso 28-feb..30-mar; el anterior 31-ene..28-feb (recorte de calcularCiclo).
     expect(cicloCerradoAnterior('2024-01-31', '2026-03-15')).toEqual({
       desde: '2026-01-31',
-      hasta: '2026-02-27',
+      hasta: '2026-02-28',
       fuente: 'aniversario',
     });
   });
