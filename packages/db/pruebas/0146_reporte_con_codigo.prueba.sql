@@ -96,6 +96,8 @@ begin
   then r := r || '[ok] caso 7: una sola firma y sin execute para anon;';
   else r := r || format('[FALLA] caso 7: firmas=%s;', v_n); end if;
 
+  update reportes set evaluado = true where id = '06-10-26_P146A_M';
+
   -- 8) Extras: con token, sin «registrado por» quedan a nombre del operador; el admin sin token
   --    conserva su comportamiento (queda a nombre del admin, no del encargado elegido)
   perform pg_temp.como(e_eq);
