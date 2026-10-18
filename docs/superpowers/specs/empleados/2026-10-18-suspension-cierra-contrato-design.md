@@ -84,9 +84,11 @@ Sólo lo que hoy deja entrar a la base un dato que ella misma rechaza o que romp
   reales; `diaSemana` que no sea entero de 1 a 7; hora que no sea `HH:MM`. Hoy llegan a Postgres
   y vuelven como error crudo o, peor, un `Invalid Date` en pantalla. Pasa a un módulo puro
   testeable. Mensajes en español neutral (los actuales tenían voseo).
-- Documento (`subirDocumento`): si Storage falla, la fila de `empleado_documentos` quedaba
-  registrada **sin archivo**. Ahora se compensa borrando la fila y el error dice «inténtalo de
-  nuevo». La extensión del nombre se sanea (`.ext` alfanumérica corta).
+- Documento (`subirDocumento`): la extensión del nombre se copia tal cual al `storage_path`; se
+  sanea (`.ext` alfanumérica de hasta 8 caracteres, si no, sin extensión). Los mensajes con voseo
+  pasan a español neutral. **No se cambia** que, si Storage falla, la fila de metadatos quede
+  visible sin archivo: es una decisión escrita de la spec `documentos-adjuntos` §5 (señal visible,
+  no rollback silencioso), no un hueco.
 
 **No se endurece** que un contrato pueda guardarse sin horario o sin DNI/teléfono de la persona:
 la spec `2026-09-08-contrato-datos-completos` decidió que lo faltante se ve como «—» y no bloquea;
@@ -100,7 +102,7 @@ es una regla de negocio ya tomada, no un hueco.
   declara falta a un suspendido pero sí a un activo; el horario conserva el anterior si el nuevo
   solapa.
 - `lib/__tests__/empleados-repo.suspender.test.ts`, `sueldos-repo.turnos.test.ts`,
-  `acuerdo-validar.test.ts`, `documentos-repo.subir.test.ts`.
+  `acuerdo-validar.test.ts`, `documentos-repo.subir.test.ts` (extensión saneada).
 
 ## 6. Preguntas abiertas para el administrador
 
