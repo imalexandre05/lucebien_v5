@@ -2076,3 +2076,10 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## 5B-2 · Incidencias: quién puede registrar (18-oct-2026)
+
+Ticket #26. El servidor ahora exige el permiso `incidencias:ver` (el mismo de la pantalla) y toma nivel y puntos del catálogo de tipos; el valor del navegador se ignora.
+
+- **Default puesto:** `ver`, porque los operativos solo tienen `ver` (0065) y el dueño pidió que puedan registrar.
+- **Pregunta para el dueño:** ¿quién puede crear incidencias desde `/incidencias`: todos los que ven el módulo (hoy) o solo quienes tengan `crear` en Permisos? Recomendación: dejarlo como está; si se quiere restringir, dar `crear` solo a encargados y mantener el reporte de turno para los operativos.

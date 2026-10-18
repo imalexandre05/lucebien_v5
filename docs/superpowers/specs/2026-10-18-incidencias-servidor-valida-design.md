@@ -19,7 +19,7 @@ descuentan de la nota → sueldo, no-negociable 1). No toca `packages/core` ni n
    para registrar incidencias.» Se usa `ver` y no `crear` porque los operativos solo tienen `ver` y
    el dueño pidió que puedan registrar (0065). Pregunta para el dueño en `docs/pendientes-negocio.md`.
 2. **Puntos desde el catálogo.** Función pura `resolverIncidencia(tipos, tipo, nivel)`
-   (`lib/incidencias-catalogo.ts`): el tipo debe existir en `incidencias_tipos` (activo); los puntos
+   (`lib/incidencias-catalogo.ts`): el tipo debe existir en `incidencia_tipos` (activo); los puntos
    son siempre `puntosDefault` del catálogo; el nivel es el enviado solo si es `Bajo`, `Medio` o
    `Alto`, y si no, el `nivelDefault` del tipo. Un tipo desconocido se rechaza con «Ese tipo de
    incidencia no existe o está desactivado.»
