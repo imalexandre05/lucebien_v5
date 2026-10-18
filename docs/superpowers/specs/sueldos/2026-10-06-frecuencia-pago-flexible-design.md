@@ -161,3 +161,25 @@ El rediseño visual completo de pagos (#44) usa esta regla; se implementa en su 
 9. Prueba SQL de la 0121: E1 (último tramo prorrateado) y E2 (tramo posterior a un cambio) se
    cierran; un cambio de frecuencia confirmado después del cálculo hace que el cierre responda
    `DESACTUALIZADA`; una corrección con cuota fijada se cierra.
+
+## 10. Enmienda del 18-oct-2026 — sueldo por horas (decisión del dueño n.º 1)
+
+> «Se paga horas REALES trabajadas según el huellero × tarifa por hora (escala 1–5). Se elimina el
+> «sueldo pactado» como cuota fija […] Liquidar del 06 al 17 paga solo las horas de esos días.»
+> Detalle completo en [2026-10-18-sueldo-por-horas-design.md](2026-10-18-sueldo-por-horas-design.md).
+
+Rige para los contratos **con tarifa por hora** (`tarifa_hora`, migración 0164). Los contratos de
+sueldo fijo de antes (sin tarifa) siguen con §3, §7.6 y §9.2 tal como estaban.
+
+- **§3 (la regla).** Las frecuencias (§3.1) y los cambios (§3.2) siguen cortando los pagos igual.
+  Lo que cambia es qué se paga en cada uno: ya no hay cuota; cada pago paga las horas de sus días ×
+  la tarifa de cada día. El cambio de §3.2 puede llevar, además de la frecuencia, una **tarifa nueva**
+  desde el próximo pago no pagado (sin «cuota sugerida»). **§3.3 no aplica**: un último pago corto no
+  se prorratea por días; paga sus horas.
+- **§7.6 (citada en §9.2: un rango que no coincide con el calendario cobra la cuota vigente entera).**
+  No aplica: un rango cualquiera paga sus horas.
+- **§9.2 (un rango que cubre varios pagos cobra la suma de sus cuotas).** No aplica: el rango paga las
+  horas de todos sus días, crucen o no un cambio de frecuencia; no se rechaza ningún rango por cruzar
+  un cambio. §9.1 (aniversario) tampoco aplica, porque no hay prorrateo.
+- §9.3 (el cierre compara lo que decide el pago) sigue valiendo: la tarifa viaja en `contratoPago` y
+  `cambiosFrecuencia`, que el cierre ya compara.
