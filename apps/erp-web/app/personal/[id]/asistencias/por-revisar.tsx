@@ -44,7 +44,10 @@ export function PorRevisar({
   const [pendiente, empezar] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const cerrables = dias.filter((d) => d.tipo === 'tardanza' || d.tipo === 'falta' || d.tipo === 'hora_estimada');
+  // «Todo bien» sólo cierra lo informativo; nunca un día al que le falta un dato (spec §4 y §9).
+  const cerrables = dias.filter(
+    (d) => d.tipo === 'tardanza' || d.tipo === 'falta' || d.tipo === 'hora_estimada' || d.tipo === 'turno_sin_marcas' || d.tipo === 'pausa_trabajada',
+  );
 
   if (dias.length === 0) {
     return (
@@ -208,10 +211,18 @@ function TarjetaDia({
     setModo(modo === m ? null : m);
   };
 
-  const sinMarcaOUna = dia.tipo === 'sin_marca' || dia.tipo === 'una_marca';
+  const sinMarcaOUna = dia.tipo === 'sin_marca' || dia.tipo === 'una_marca' || dia.tipo === 'revisar';
+  // Abre el editor completo plegado de abajo (días con varios tramos).
+  const verEditor = () => {
+    const ed = document.getElementById('editor-asistencia');
+    if (ed instanceof HTMLDetailsElement) {
+      ed.open = true;
+      ed.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
   const faltaEntrada = dia.tipo === 'una_marca' && dia.falta === 'entrada';
   const tono =
-    dia.tipo === 'falta' ? 'red' : dia.tipo === 'tardanza' ? 'amber' : dia.tipo === 'hora_estimada' ? 'info' : 'gold';
+    dia.tipo === 'falta' ? 'red' : dia.tipo === 'tardanza' || dia.tipo === 'pausa_trabajada' ? 'amber' : dia.tipo === 'hora_estimada' ? 'info' : 'gold';
   const etiqueta =
     dia.tipo === 'sin_marca'
       ? 'Sin marca'
@@ -221,7 +232,13 @@ function TarjetaDia({
           ? 'Tardanza'
           : dia.tipo === 'falta'
             ? 'Falta'
-            : 'Hora del sistema';
+            : dia.tipo === 'revisar'
+              ? 'Hay que revisarlo'
+              : dia.tipo === 'turno_sin_marcas'
+                ? 'Turno sin marcas'
+                : dia.tipo === 'pausa_trabajada'
+                  ? 'Marcó de corrido'
+                  : 'Hora del sistema';
 
   return (
     <li className="rounded-r-medio border border-line bg-paper/60 p-3 sm:p-4">
@@ -265,6 +282,21 @@ function TarjetaDia({
           <>
             <Button variant="primary" className={botonGrande} onClick={() => abrir('falta_justificada')} disabled={pendiente}>
               Justificar falta
+            </Button>
+            <Button variant="outline" className={botonGrande} onClick={estaBien} pending={pendiente}>
+              Está bien
+            </Button>
+          </>
+        )}
+        {dia.tipo === 'revisar' && (
+          <Button variant="primary" className={botonGrande} onClick={verEditor}>
+            Ver y corregir
+          </Button>
+        )}
+        {(dia.tipo === 'turno_sin_marcas' || dia.tipo === 'pausa_trabajada') && (
+          <>
+            <Button variant="primary" className={botonGrande} onClick={verEditor}>
+              Corregir las horas
             </Button>
             <Button variant="outline" className={botonGrande} onClick={estaBien} pending={pendiente}>
               Está bien

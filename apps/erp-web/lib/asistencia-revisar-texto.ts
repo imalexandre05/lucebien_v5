@@ -40,6 +40,12 @@ export function queOcurrio(d: DiaPorRevisar, previo: { entrada: string | null; s
       return 'Está marcado como falta.';
     case 'hora_estimada':
       return 'Una de las horas la puso el sistema.';
+    case 'revisar':
+      return 'El huellero dejó este día con varias horas y no pudo decidir solo.';
+    case 'turno_sin_marcas':
+      return `No hay marcas del turno de las ${d.turno ?? ''}.`.replace(' .', '.');
+    case 'pausa_trabajada':
+      return 'Marcó de corrido entre sus dos turnos.';
   }
 }
 
@@ -66,6 +72,12 @@ export function fraseDelPago(d: DiaPorRevisar, p: ParametrosFrase): string {
     }
     case 'hora_estimada':
       return 'Esa hora no fue una marca. Revísala antes de pagar; si está bien, se paga tal cual.';
+    case 'revisar':
+      return 'Hasta revisarlo, este pago no se puede cerrar.';
+    case 'turno_sin_marcas':
+      return 'Las horas de ese turno no se pagan. Si sí trabajó, pon sus horas.';
+    case 'pausa_trabajada':
+      return 'El tiempo entre sus dos turnos se paga como hora extra. Si no trabajó en ese rato, corrige las horas.';
   }
 }
 
