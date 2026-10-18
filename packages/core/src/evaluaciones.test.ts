@@ -417,6 +417,22 @@ describe('armarEvaluacionAGuardar', () => {
   });
 });
 
+describe('cicloCerradoAnterior — sin días compartidos', () => {
+  it('con aniversario 29, 30 o 31 el ciclo propuesto nunca comparte un día con el siguiente', () => {
+    for (const dia of [29, 30, 31]) {
+      const ing = `2024-01-${dia}`;
+      for (let m = 1; m <= 12; m++) {
+        for (const d of [1, 10, 28]) {
+          const hoy = `2026-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const cerrado = cicloCerradoAnterior(ing, hoy);
+          const actual = calcularCiclo(ing, hoy);
+          if (actual.hasta > hoy) expect(cerrado.hasta < actual.desde).toBe(true);
+        }
+      }
+    }
+  });
+});
+
 describe('cicloCerradoAnterior', () => {
   it('ciclo en curso: devuelve el anterior, ya terminado', () => {
     // Ingreso el día 10; hoy 18-oct → el ciclo en curso es 10-oct..09-nov (no terminó).
@@ -450,10 +466,12 @@ describe('cicloCerradoAnterior', () => {
   });
 
   it('mes corto: respeta el recorte de calcularCiclo', () => {
-    // Aniversario 31; hoy 15-mar-2026 → en curso 28-feb..30-mar; el anterior 31-ene..28-feb (recorte de calcularCiclo).
+    // Aniversario 31; hoy 15-mar-2026 → en curso 28-feb..30-mar. El anterior termina el 27-feb: el
+    // 28-feb ya es del ciclo en curso y un día no puede contar en dos notas (el recorte de
+    // calcularCiclo lo haría terminar el 28-feb).
     expect(cicloCerradoAnterior('2024-01-31', '2026-03-15')).toEqual({
       desde: '2026-01-31',
-      hasta: '2026-02-28',
+      hasta: '2026-02-27',
       fuente: 'aniversario',
     });
   });
