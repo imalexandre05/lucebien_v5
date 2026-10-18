@@ -5,7 +5,7 @@ Sesión 5A · **Spec completa**: cambia RLS (no-negociable 3) · Migración 0151
 ## Problema
 `pasada_select` (0122) deja ver una prenda solo por su **sede de origen**. Si entró por la sede A y
 se despachó a la tienda B, B no la ve en la base aunque el envío sí le llega. `pipeline_calificar`
-ya reconoce a la tienda destino (0112/0122); lo que falla es la **lectura** (listas y tableros).
+ya reconoce a la tienda destino (versión viva en 0115; 0112 la conserva); lo que falla es la **lectura** (listas y tableros).
 
 ## Pregunta al cliente (ticket «duda-cliente»)
 ¿Una tienda debe ver toda prenda que le fue enviada, sin importar por qué sede entró? Lo esperable
@@ -21,8 +21,12 @@ es que sí; esta spec lo asume y queda por confirmar con Alexander antes de merg
 3. **R3 — Solo lectura.** No cambia insert, update ni delete. La tienda destino **no** gana permiso
    para avanzar, rechazar, deshacer ni dividir (`pipeline_exigir_acceso` sigue por sede de origen);
    califica con `pipeline_calificar`, que ya la admite.
-4. **R4 — Aislamiento intacto.** `prenda_historial` y `pipeline_puntos` **no** se amplían: la
-   tienda destino no ve quién trabajó la prenda ni sus puntos (no-negociable 3).
+4. **R4 — Aislamiento.** `prenda_historial` y `pipeline_puntos` **no** se amplían: la tienda destino
+   no ve el historial ni los puntos (no-negociable 3). **Exposición declarada:** al leer la fila de
+   `prenda_pasada` la tienda destino recibe también `lavador_id`, `planchador_id`, `pedido_id` y las
+   observaciones internas. Los uuid de las personas **no se resuelven a nombre** (la RLS de `empleados`
+   no deja a la tienda leerlos) y no son sueldo, nota ni puntuación 360°. Si el dueño quiere ocultarlos,
+   el siguiente paso es una vista con columnas limitadas; queda como pendiente.
 5. Una tienda ajena (ni origen ni destino) sigue sin ver la prenda.
 
 ## Defaults inventados
