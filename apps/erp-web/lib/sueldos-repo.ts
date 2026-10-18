@@ -905,13 +905,19 @@ export async function entradaDeAcuerdo(
   hasta: string,
   /** Fuerza la cuota (la de una liquidación que se corrige): no se recalcula con la regla de hoy. */
   cuotaFija?: number,
+  /**
+   * Borrador provisional (0160): los días sin declarar no cortan; salen en `diasSinDeclarar` y la
+   * liquidación los avisa. Solo el cálculo y el borrador lo piden; el cierre siempre es estricto.
+   */
+  permitirPendientes = false,
 ): Promise<EntradaConContexto> {
   const sb = getServerClient();
-  const { data, error } = await sb.rpc('sueldo_entrada', {
-    p_acuerdo: acuerdoId,
-    p_desde: desde,
-    p_hasta: hasta,
-  });
+  const { data, error } = await sb.rpc(
+    'sueldo_entrada',
+    permitirPendientes
+      ? { p_acuerdo: acuerdoId, p_desde: desde, p_hasta: hasta, p_permitir_pendientes: true }
+      : { p_acuerdo: acuerdoId, p_desde: desde, p_hasta: hasta },
+  );
   if (error) throw errorSueldo(error);
   const entrada = data as EntradaConContexto;
 
@@ -954,7 +960,7 @@ export async function calcularPreview(
   desde: string,
   hasta: string,
 ): Promise<{ entrada: EntradaConContexto; liquidacion: Liquidacion }> {
-  const entrada = await entradaDeAcuerdo(acuerdoId, desde, hasta);
+  const entrada = await entradaDeAcuerdo(acuerdoId, desde, hasta, undefined, true);
   return { entrada, liquidacion: liquidarPeriodo(entrada) };
 }
 
@@ -975,7 +981,7 @@ export async function crearBorrador(
   hasta: string,
   cuotaFija?: number,
 ): Promise<string> {
-  const entrada = await entradaDeAcuerdo(acuerdoId, desde, hasta, cuotaFija);
+  const entrada = await entradaDeAcuerdo(acuerdoId, desde, hasta, cuotaFija, true);
   const liquidacion = liquidarPeriodo(entrada);
   const parametros = resolverParametros(entrada.parametros);
 

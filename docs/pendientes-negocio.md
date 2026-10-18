@@ -2076,3 +2076,6 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## 6A-4 · Liquidación provisional con días por declarar (18-oct-2026)
+Sin parámetros nuevos. Regla aplicada (confirmar con Alexander): un día contratado sin declarar **no es falta ni tardanza y no suma ni resta horas**; el borrador sale con el sueldo pactado sin tocar por ese día (monto máximo, provisional) y una advertencia con las fechas. **Cerrar sigue exigiendo todo declarado** (el cierre usa la `sueldo_entrada` estricta).
