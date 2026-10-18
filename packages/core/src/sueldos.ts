@@ -1101,7 +1101,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   if (pendientes.length > 0) {
     advertencias.push(
       `Liquidación provisional: faltan ${pendientes.length} día(s) por declarar (${primeros(pendientes)}). ` +
-        `No se descuentan ni se compensan: el monto es el máximo posible y no se puede cerrar hasta declararlos.`,
+        `No se descuentan ni se compensan, pero cuentan 0 horas en este borrador: el monto real puede ser mayor, y no se puede cerrar hasta declararlos.`,
     );
   }
   if (sinRegistro.length > 0) {
