@@ -373,3 +373,40 @@ export function calcularCiclo(fechaIngreso: string | null | undefined, hoyStr: s
 
   return { desde, hasta, fuente: 'aniversario' };
 }
+
+// ── Ciclo cerrado (spec 2026-10-18-evaluacion-corregir-y-ciclo-cerrado-design.md §2.1) ─────────
+/**
+ * El ciclo más reciente que YA terminó (`hasta <= hoy`). Evaluar un ciclo en curso guarda una nota
+ * con puntos parciales y deja ocupado el mes. Reutiliza calcularCiclo(): si el ciclo de `hoy`
+ * todavía no termina, pide el ciclo del día anterior a su `desde`. Borde: `hasta == hoy` cuenta
+ * como terminado (decisión por defecto, anotada en docs/pendientes-negocio.md).
+ * `hoy`: 'YYYY-MM-DD' — pasar hoyPeru(); el core no llama a `new Date()`.
+ */
+export function cicloCerradoAnterior(fechaIngreso: string | null | undefined, hoy: string): Ciclo {
+  const actual = calcularCiclo(fechaIngreso, hoy);
+  if (actual.hasta <= hoy) return actual;
+  const [y, m, d] = actual.desde.split('-').map(Number);
+  const diaPrevio = fmtUTC(Date.UTC(y, m - 1, d - 1));
+  return calcularCiclo(fechaIngreso, diaPrevio);
+}
+
+/**
+ * La «última» evaluación de una persona es la del mes mayor; `created_at` sólo desempata. Evaluar
+ * un ciclo viejo después de uno nuevo no debe volverlo «la última» (el monto sugerido de pago
+ * sale de ahí). `mes` es 'YYYY-MM', que ordena bien como texto.
+ */
+export function ultimaEvaluacionPorMes<T extends { mes: string; created_at?: string | null }>(
+  filas: readonly T[],
+): T | null {
+  let mejor: T | null = null;
+  for (const f of filas) {
+    if (
+      mejor === null ||
+      f.mes > mejor.mes ||
+      (f.mes === mejor.mes && (f.created_at ?? '') > (mejor.created_at ?? ''))
+    ) {
+      mejor = f;
+    }
+  }
+  return mejor;
+}

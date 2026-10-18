@@ -1914,3 +1914,16 @@ confirmara. El dueño contestó el 10-oct-2026:
 *Pendiente de la decisión 2:* antes de escribir la spec hay que mapear qué pantallas y funciones leen
 los puntos de otras personas (ranking, tablero, evaluación del equipo), porque cerrar esa lectura puede
 quitar vistas que hoy existen; el dueño decide qué se hace con ellas.
+
+## Evaluar solo ciclos terminados y anular una nota guardada (18-oct-2026)
+
+Defaults puestos en el código sin que el dueño los haya confirmado (spec
+[2026-10-18-evaluacion-corregir-y-ciclo-cerrado](superpowers/specs/evaluaciones/2026-10-18-evaluacion-corregir-y-ciclo-cerrado-design.md)).
+Ninguno es un número editable: son reglas de flujo.
+
+| Pregunta | Default actual | Estado |
+|---|---|---|
+| ¿Se puede evaluar un ciclo que termina hoy (`hasta == hoy`)? | Sí. Solo se rechaza `hasta > hoy` | Pregunta abierta |
+| ¿Quién puede anular una evaluación? | Administrador y dueño | Pregunta abierta |
+| ¿Una liquidación en `borrador` bloquea la anulación de la nota? | Sí: cualquier liquidación no anulada de esa persona que cruce el ciclo bloquea (default conservador) | Pregunta abierta |
+| ¿Con un pago ya enlazado se puede anular? | No: hay que anular primero el pago | Pregunta abierta |

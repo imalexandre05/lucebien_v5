@@ -277,3 +277,12 @@ export async function crearEvaluacion(p: {
   if (error) throw new Error(error.message);
   return String((data as { id: string }).id);
 }
+
+// Anula (borra) una evaluación guardada para poder recalcularla (migración 0148, spec 2026-10-18).
+// La RPC es solo-administrador y se NIEGA si hay un pago o una liquidación que dependa de la nota.
+// Sus errores llegan con prefijo PERMISO:/DATO:/BLOQUEO: — se quita el prefijo para mostrarlos.
+export async function anularEvaluacion(id: string, motivo: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('evaluacion_anular', { p_id: id, p_motivo: motivo });
+  if (error) throw new Error(error.message.replace(/^(PERMISO|DATO|BLOQUEO):\s*/, ''));
+}
