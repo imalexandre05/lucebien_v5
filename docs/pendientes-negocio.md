@@ -2092,3 +2092,8 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 
 Pendiente de confirmar con el dueño: si Codificación debe poder asignarse al registrar la prenda
 (hoy se llega a ella desde Recepción).
+## 5A · Rechazar con motivo (18-oct-2026)
+
+Default inventado (fijo en la RPC `pipeline_rechazar`, migración 0154, a confirmar con el dueño):
+el motivo del rechazo es obligatorio y debe tener entre 3 y 500 letras. Se guarda en
+`prenda_pasada.obs_calidad` y en la observación del historial.

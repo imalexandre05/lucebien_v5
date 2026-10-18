@@ -111,7 +111,7 @@ begin
   perform pg_temp.como(e_cf);
   v_pts := pipeline_avanzar(p, 'control_calidad');
   perform pg_temp.como(e_alm);
-  v_err := pg_temp.mensaje(format('select pipeline_rechazar(%L, %L)', p, 'planchado'));
+  v_err := pg_temp.mensaje(format('select pipeline_rechazar(%L, %L, p_motivo => ''prueba'')', p, 'planchado'));
   perform pg_temp.como(e_cf);
   v_c1 := pipeline_avanzar(p, 'control_calidad');
   perform pg_temp.dueno();

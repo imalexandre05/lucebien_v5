@@ -116,7 +116,7 @@ type Handlers = {
   avanzar: (id: string, destino: string, etapaActual: string) => void;
   avanzarTanda: (ids: string[], destino: string) => void;
   enviarTanda: (ids: string[], sede: string) => void;
-  rechazar: (id: string, destino: string) => void;
+  rechazar: (id: string, destino: string, motivo: string) => void;
   dividir: (id: string) => void;
   // Tarea 6: recibe el id de la MADRE (resuelto por el tablero vía madrePorHijo), no el de la
   // tarjeta -S/-P que dispara el botón.
@@ -235,12 +235,14 @@ export function TableroPipeline({
           }
         }),
       ),
-    rechazar: (id, destino) =>
+    rechazar: (id, destino, motivo) =>
       conOperador((token) =>
         startTransition(async () => {
           aplicar({ id, etapa: destino });
           try {
-            const r = await rechazarPrenda(id, destino, token);
+            const r = await rechazarPrenda(id, destino, motivo, token);
+            // MOTIVO: la base pidió un motivo; no es un problema del operador, no se le pide el código.
+            if (r?.startsWith('MOTIVO:')) return setToast({ msg: r.replace(/^MOTIVO:\s*/, ''), tono: 'warn' });
             if (r) return rechazoCodigo(r);
             renovar();
             setToast({ msg: `Devuelto a ${NOMBRE[destino] ?? destino}`, tono: 'warn' });
@@ -768,11 +770,21 @@ function Tarjeta({
 
 function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
   const [destino, setDestino] = useState('planchado');
+  const [motivo, setMotivo] = useState('');
+  const motivoOk = motivo.trim().length >= 3;
   return (
     // stopPropagation en el contenedor (tarea 4): el select y el botón Rechazar están dentro de
     // la tarjeta ahora clicable entera; sin esto, abrir el desplegable o rechazar también
     // seleccionaría/deseleccionaría la tarjeta de rebote.
-    <div className="mt-1.5 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+      <input
+        value={motivo}
+        onChange={(e) => setMotivo(e.target.value)}
+        maxLength={500}
+        placeholder="¿Por qué se rechaza? (obligatorio)"
+        aria-label="Motivo del rechazo"
+        className="w-full rounded-r-pastilla border border-line bg-white px-2 py-1 text-apoyo text-navy placeholder:text-muted"
+      />
       <select
         value={destino}
         onChange={(e) => setDestino(e.target.value)}
@@ -787,8 +799,10 @@ function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
         <option value="planchado">Planchado</option>
       </select>
       <button
-        onClick={() => h.rechazar(p.id, destino)}
-        className="inline-flex flex-1 items-center justify-center gap-1 rounded-r-pastilla border border-error-line bg-error-soft px-2 py-1.5 text-apoyo font-medium text-error-deep transition hover:bg-error-soft active:scale-[.98]"
+        onClick={() => h.rechazar(p.id, destino, motivo.trim())}
+        disabled={!motivoOk}
+        title={motivoOk ? undefined : 'Escribe el motivo para poder rechazar'}
+        className="inline-flex flex-1 disabled:cursor-not-allowed disabled:opacity-50 items-center justify-center gap-1 rounded-r-pastilla border border-error-line bg-error-soft px-2 py-1.5 text-apoyo font-medium text-error-deep transition hover:bg-error-soft active:scale-[.98]"
       >
         <Undo2 className="h-3.5 w-3.5" strokeWidth={2.5} /> Rechazar
       </button>
