@@ -2076,3 +2076,6 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## 6A-5 · Lista de precios de confecciones (18-oct-2026)
+Tabla `lista_precios` (0161) **vacía de origen**: no se cargó ningún precio. La dueña lo carga en /configuracion/lista-precios. Ventas puede «Sumar» un artículo activo al total de la boleta (solo prellena; el monto confirmado es el que se guarda). Pendiente de decidir: cantidades, precios por sede, historial de precios.
