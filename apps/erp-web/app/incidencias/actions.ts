@@ -1,8 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { puede, type MatrizPermisos } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
-import { actualizarResponsableIncidencia, crearIncidencia, eliminarIncidencia, listarTiposIncidencia } from '../../lib/incidencias-repo';
+import { resolverIncidencia, responsableValido } from '../../lib/incidencias-catalogo';
+import { leerMatrizPermisos } from '../../lib/permisos-repo';
+import { actualizarResponsableIncidencia, crearIncidencia, eliminarIncidencia, leerResponsableIncidencia, listarTiposIncidencia } from '../../lib/incidencias-repo';
 
 function fechaPeru(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Lima' }).format(new Date());
@@ -18,6 +21,16 @@ export async function accionCrearIncidencia(input: {
   try {
     const sesion = await getSesion();
     if (!sesion) return { ok: false, error: 'Sin sesión' };
+    // El permiso se comprueba acá, no solo en la pantalla: una Server Action es un endpoint público.
+    let matriz: MatrizPermisos = {};
+    try {
+      matriz = await leerMatrizPermisos();
+    } catch {
+      matriz = {};
+    }
+    if (!puede(matriz, sesion.usuario.rol, 'incidencias', 'crear', sesion.usuario.rolCod)) {
+      return { ok: false, error: 'No tienes permiso para registrar incidencias.' };
+    }
     if (!input.tipo) return { ok: false, error: 'Elige un tipo' };
     // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): la descripción es
     // obligatoria sólo para el tipo de categoría 'Otros'. El formulario ya deshabilita el botón
@@ -27,15 +40,24 @@ export async function accionCrearIncidencia(input: {
     if (tipoInfo?.categoria === 'Otros' && !input.descripcion.trim()) {
       return { ok: false, error: 'La descripción es obligatoria para este tipo de incidencia.' };
     }
+    // Nivel y puntos salen del catálogo; lo que mande el navegador en `puntosPenalidad` se ignora.
+    const res = resolverIncidencia(tipos, input.tipo, input.nivel);
+    if (!res.ok) return { ok: false, error: res.error };
+    if (input.responsableId) {
+      const r = await leerResponsableIncidencia(input.responsableId);
+      if (!r || !responsableValido(r, sesion.usuario.sede)) {
+        return { ok: false, error: 'El responsable debe ser una persona activa de esta sede.' };
+      }
+    }
     await crearIncidencia({
       sede: sesion.usuario.sede,
       fecha: fechaPeru(),
       tipo: input.tipo,
       descripcion: input.descripcion,
-      nivel: input.nivel,
+      nivel: res.nivel,
       responsableId: input.responsableId,
       reportadoPorId: sesion.usuario.id,
-      puntosPenalidad: input.puntosPenalidad,
+      puntosPenalidad: res.puntosPenalidad,
     });
     revalidatePath('/incidencias');
     return { ok: true };

@@ -2132,3 +2132,13 @@ Migración 0157 (`sueldo_acuerdo_guardar`). No se inventó ningún parámetro de
 - Cada tramo **cerrado** (entrada y salida reales, ninguna estimada) se declara `trabajado` con **sus horas de huella**; no se reparten las horas del contrato.
 - El tramo **abierto** (o con hora estimada) **no se declara**: el resumen avisa que bloquea la liquidación hasta cerrarlo o editarlo a mano.
 - Pregunta para el dueño: ¿un tramo abierto debería declararse con la salida del contrato, o seguir a mano? Hoy es a mano. Spec: `docs/superpowers/specs/sueldos/2026-10-18-declarar-dias-partidos-design.md`.
+## 5B-2 · Incidencias: quién puede registrar (18-oct-2026)
+
+Ticket #26. Decisión del dueño: el permiso para registrar desde `/incidencias` es `incidencias:crear` (`ver` es solo lectura); hay que otorgarlo a quien corresponda en Configuración → Permisos. Los operativos siguen registrando desde su reporte de turno. Nivel y puntos salen del catálogo (servidor y base, migración 0150); el responsable debe ser una persona activa de la sede de la incidencia (regla puesta por defecto).
+
+## 5B-3 · Contratos: uno vigente y otro no vigente a la vez (ticket #21, 18-oct-2026)
+
+Sin cambios de código: requiere decisión del dueño. Hoy ya conviven uno vigente y otro no vigente si las fechas no se cruzan; `sueldo_acuerdos_sin_solape` (0072) impide el solape sin importar el estado.
+
+- **Pregunta:** ¿cuál es el caso real? (a) renovar antes de que venza el actual; (b) dejar listo el siguiente en borrador.
+- **Recomendación:** (b) con un flujo de «renovar»: el contrato nuevo nace en borrador empezando al día siguiente del fin del actual (sin solape), y pasa a vigente al llegar su fecha. Evita relajar la regla de solape, que protege el cálculo del sueldo. Permitir solape solo en borrador exigiría rehacer la restricción de exclusión (migración y spec completa).
