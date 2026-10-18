@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import {
   avanzarPasada,
   enviarPasada,
+  anularEnvioPasada,
   rechazarPasada,
   deshacerPasada,
   avanzarTanda,
@@ -40,7 +41,7 @@ async function conCodigo<T>(fn: () => Promise<T>): Promise<T | string> {
   try {
     return await fn();
   } catch (e) {
-    if (e instanceof Error && e.message.startsWith('CODIGO:')) return e.message;
+    if (e instanceof Error && (e.message.startsWith('CODIGO:') || e.message.startsWith('MOTIVO:'))) return e.message;
     throw e;
   }
 }
@@ -67,6 +68,14 @@ export async function enviarTandaPrendas(ids: string[], sede: string, operador?:
     const token = await operadorParaAccion(operador);
     await Promise.all(ids.map((id) => enviarPasada(id, sede, token)));
   });
+  if (typeof r === 'string') return r;
+  revalidatePath('/pipeline');
+  return null;
+}
+
+export async function anularEnvioPrenda(id: string, motivo: string, operador?: string): Promise<string | null> {
+  if (!id) return null;
+  const r = await conCodigo(async () => anularEnvioPasada(id, motivo, await operadorParaAccion(operador)));
   if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
   return null;

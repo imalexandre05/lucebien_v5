@@ -2092,3 +2092,7 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 
 Pendiente de confirmar con el dueño: si Codificación debe poder asignarse al registrar la prenda
 (hoy se llega a ella desde Recepción).
+## 5A · Anular un envío (18-oct-2026)
+
+Default inventado (fijo en la RPC `pipeline_anular_envio`, migración 0156, a confirmar con el dueño):
+el motivo de la anulación es obligatorio, de 3 a 500 letras, igual que al rechazar (0154).
