@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   MINUTOS_OPERADOR_DEFECTO,
   cambiarOperador,
+  formatoCuentaRegresiva,
   msParaExpirar,
   nuevoOperador,
   operadorVigente,
@@ -48,5 +49,18 @@ describe('operador activo del tablero compartido', () => {
   it('msParaExpirar cuenta lo que falta y nunca baja de 0', () => {
     expect(msParaExpirar(op(), T0 + 4 * MIN)).toBe(6 * MIN);
     expect(msParaExpirar(op(), T0 + 30 * MIN)).toBe(0);
+  });
+
+  it('el default de pantalla es 5 minutos', () => {
+    expect(MINUTOS_OPERADOR_DEFECTO).toBe(5);
+  });
+
+  it('cuenta regresiva en m:ss, redondeando hacia arriba el segundo en curso', () => {
+    expect(formatoCuentaRegresiva(4 * MIN + 12_000)).toBe('4:12');
+    expect(formatoCuentaRegresiva(4 * MIN + 11_001)).toBe('4:12');
+    expect(formatoCuentaRegresiva(59_000)).toBe('0:59');
+    expect(formatoCuentaRegresiva(0)).toBe('0:00');
+    expect(formatoCuentaRegresiva(-500)).toBe('0:00');
+    expect(formatoCuentaRegresiva(10 * MIN)).toBe('10:00');
   });
 });

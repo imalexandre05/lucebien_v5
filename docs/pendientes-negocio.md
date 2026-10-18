@@ -1575,7 +1575,7 @@ dueño**. Todos se editan desde `/configuracion` → «Código personal» sin mi
 |---|---|---|
 | `codigo_max_intentos` | 5 | Fallos permitidos antes de bloquear una sesión |
 | `codigo_ventana_intentos_min` | 15 | Minutos que cuenta cada fallo |
-| `codigo_operador_min` | 10 | Minutos de operador activo sin actividad (el token se renueva con cada acción) |
+| `codigo_operador_min` | 5 | Minutos de operador activo sin actividad (el token se renueva con cada acción). **Pedido por el dueño (18-oct-2026)**; antes 10 provisional. Migración 0145 |
 | `codigo_operador_max_h` | 8 | Horas máximas de vida de un token desde su emisión (un turno), aunque se renueve; «cambiar» además lo revoca en la base |
 
 Preguntas abiertas para el dueño (spec §7): si la fase 2 (firma del FR-01, evaluar reporte,
