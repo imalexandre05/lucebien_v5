@@ -2,22 +2,18 @@
 -- Spec: docs/superpowers/specs/pipeline/2026-10-18-tienda-ve-lo-que-le-despachan-design.md
 -- Prueba: packages/db/pruebas/0151_tienda_ve_despachos.prueba.sql (escrita antes). Idempotente.
 --
--- Solo cambia la LECTURA de prenda_pasada: además de admin, almacén y la sede de origen, ve la
--- prenda quien pertenece a la sede destino de su envío. No se amplía prenda_historial ni
--- pipeline_puntos (aislamiento) ni ninguna escritura. Pendiente de confirmar con el cliente.
-create or replace function private.envio_es_de_mi_sede(p_envio uuid)
-  returns boolean language sql stable security definer set search_path = public, pg_temp
-as $$
-  select p_envio is not null and exists (
-    select 1 from public.envios_prendas e
-    where e.id = p_envio and e.sede_destino_cod in (select private.app_sedes())
-  );
-$$;
-revoke execute on function private.envio_es_de_mi_sede(uuid) from public, anon;
-grant  execute on function private.envio_es_de_mi_sede(uuid) to authenticated;
+-- Decidido por el dueño (18-oct-2026): la tienda ve toda prenda que le fue enviada, sin importar por
+-- qué sede entró, y SOLO esas. En vez de abrir la tabla prenda_pasada (que expone lavador,
+-- planchador, pedido y observaciones internas), se entrega una VISTA con columnas limitadas. La vista
+-- corre con los privilegios de su dueño; la visibilidad la fija su where: admin, almacén o sede
+-- destino del envío en app_sedes() (la misma regla que envios_rw). pasada_select no cambia.
+create or replace view public.prendas_despachadas as
+select p.id, p.codigo, p.tipo, p.color, p.talla, p.sede_origen_cod, p.etapa, p.fecha_actualizado,
+       e.id as envio_id, e.sede_destino_cod, e.fecha as fecha_envio, e.estado as estado_envio
+from public.prenda_pasada p
+join public.envios_prendas e on e.id = p.envio_id
+where private.app_es_admin() or private.app_es_almacen()
+   or e.sede_destino_cod in (select private.app_sedes());
 
-drop policy if exists pasada_select on prenda_pasada;
-create policy pasada_select on prenda_pasada for select
-  using (private.app_es_admin() or private.app_es_almacen()
-         or sede_origen_cod in (select private.app_sedes())
-         or private.envio_es_de_mi_sede(envio_id));
+revoke all on public.prendas_despachadas from public, anon;
+grant select on public.prendas_despachadas to authenticated;
