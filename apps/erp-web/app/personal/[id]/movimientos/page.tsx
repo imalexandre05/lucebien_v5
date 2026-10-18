@@ -3,7 +3,7 @@ import { Lock } from 'lucide-react';
 import { accesoColaboradores } from '../../../../lib/colaboradores-acceso';
 import { obtenerColaborador } from '../../../../lib/colaboradores-repo';
 import { listarMovimientos, listarVentas } from '../../../../lib/sueldos-repo';
-import { leerPeriodo } from '../../../../lib/periodo';
+import { leerPeriodo, rangoCorto } from '../../../../lib/periodo';
 import { Card } from '../../../../components/ui/card';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { SeccionHeader } from '../../../../components/colaboradores/seccion-header';
@@ -61,13 +61,14 @@ export default async function MovimientosColaboradorPage(
         nota={
           sinLiquidar > 0
             ? `${sinLiquidar} sin liquidar en este período. Una fila cargada después de calcular y antes de cerrar hace que el cierre corte con DESACTUALIZADA, para que no quede sellado un pago que no la incluye.`
-            : 'Cargar o asignar una venta se hace desde Ventas y metas — acá sólo se muestran las de esta persona, de sólo lectura.'
+            : `Se muestra solo el período elegido arriba (${rangoCorto(periodo.desde, periodo.hasta)}). Cargar o asignar una venta se hace desde Ventas y metas: acá solo se muestran las de esta persona.`
         }
       />
       <MovimientosCliente
         empleados={[{ id: persona.id, nombre: persona.nombre, rol: persona.rol, sedeCod: persona.sedeCod }]}
         movimientos={movimientos}
         ventas={ventas}
+        enFicha
       />
     </div>
   );

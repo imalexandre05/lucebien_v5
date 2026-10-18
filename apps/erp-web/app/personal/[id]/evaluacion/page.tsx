@@ -8,6 +8,7 @@ import {
   listarCompetenciasConfig,
   type CompetenciaConfig,
 } from '../../../../lib/evaluaciones-repo';
+import { leerPeriodo, rangoCorto } from '../../../../lib/periodo';
 import { SeccionHeader } from '../../../../components/colaboradores/seccion-header';
 import { EvaluacionesCliente } from '../../../evaluaciones/cliente';
 
@@ -16,7 +17,13 @@ import { EvaluacionesCliente } from '../../../evaluaciones/cliente';
 // probada ahí, y tenerla dos veces es cómo se llega a dos notas distintas para la misma persona.
 export const dynamic = 'force-dynamic';
 
-export default async function EvaluacionColaboradorPage(props: { params: Promise<{ id: string }> }) {
+export default async function EvaluacionColaboradorPage(
+  props: {
+    params: Promise<{ id: string }>;
+    searchParams?: Promise<Record<string, string | string[] | undefined>>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const params = await props.params;
   const acceso = await accesoColaboradores();
   if (!acceso) redirect('/login');
@@ -36,13 +43,22 @@ export default async function EvaluacionColaboradorPage(props: { params: Promise
     listarCompetenciasConfig().catch(() => [] as CompetenciaConfig[]),
   ]);
 
-  const evaluaciones = todas.filter((e) => e.empleadoId === persona.id);
+  // El período de la barra manda (decisión del dueño n.º 5): una evaluación entra si su ciclo toca el
+  // período o, sin ciclo guardado, si su mes cae entre los meses del período.
+  const periodo = leerPeriodo(searchParams);
+  const deLaPersona = todas.filter((e) => e.empleadoId === persona.id);
+  const evaluaciones = deLaPersona.filter((e) =>
+    e.cicloDesde && e.cicloHasta
+      ? e.cicloDesde <= periodo.hasta && e.cicloHasta >= periodo.desde
+      : e.mes >= periodo.desde.slice(0, 7) && e.mes <= periodo.hasta.slice(0, 7),
+  );
+  const deOtrosPeriodos = deLaPersona.length - evaluaciones.length;
 
   return (
     <div className="space-y-3">
       <SeccionHeader
         seccion="evaluacion"
-        nota="La nota sale de los puntos del período (pipeline, extras, actividades, ventas, incidencias), editables en Configuración; se guarda un snapshot del desglose por componente como perfil, y cambiar un parámetro mañana no reescribe una nota de ayer."
+        nota={`Se muestra solo el período elegido arriba (${rangoCorto(periodo.desde, periodo.hasta)})${deOtrosPeriodos > 0 ? `; hay ${deOtrosPeriodos} ${deOtrosPeriodos === 1 ? 'evaluación' : 'evaluaciones'} de otros períodos` : ''}. La nota sale de los puntos del período (pipeline, extras, actividades, ventas, incidencias), editables en Configuración; se guarda un snapshot del desglose por componente como perfil, y cambiar un parámetro mañana no reescribe una nota de ayer.`}
       />
       <EvaluacionesCliente
         evaluaciones={evaluaciones}

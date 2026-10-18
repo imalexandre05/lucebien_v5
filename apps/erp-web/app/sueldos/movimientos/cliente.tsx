@@ -43,6 +43,7 @@ export function MovimientosCliente({
   empleados,
   movimientos,
   ventas,
+  enFicha = false,
 }: {
   empleados: Emp[];
   movimientos: MovimientoSueldo[];
@@ -55,6 +56,11 @@ export function MovimientosCliente({
    * simplemente no se renderiza.
    */
   ventas?: VentaSueldo[];
+  /**
+   * true dentro de la ficha del colaborador (decisión del dueño n.º 5): nada de lo que se hace ahí
+   * manda a `/sueldos/…`, así que los textos de ventas se quedan sin enlace.
+   */
+  enFicha?: boolean;
 }) {
   // Sólo para resincronizar tras un fallo incierto (ver planTrasFallo). En el camino normal
   // NO se usa: el árbol nuevo llega en la respuesta de la acción.
@@ -380,9 +386,13 @@ export function MovimientosCliente({
           </CardHeader>
           <p className="px-5 pb-3 text-cuerpo text-muted">
             Sólo lectura: cargar una venta nueva o asignar un vendedor se hace desde{' '}
-            <a className="text-gold-deep underline" href="/sueldos/ventas">
-              Ventas y metas
-            </a>
+            {enFicha ? (
+              'Ventas y metas'
+            ) : (
+              <a className="text-gold-deep underline" href="/sueldos/ventas">
+                Ventas y metas
+              </a>
+            )}
             .
           </p>
           <div className="border-t border-line">
@@ -428,9 +438,13 @@ export function MovimientosCliente({
       ) : (
         <p className="text-cuerpo text-muted">
           Las ventas se cargan en{' '}
-          <a className="text-gold-deep underline" href="/sueldos/ventas">
-            Ventas y metas
-          </a>
+          {enFicha ? (
+            'Ventas y metas'
+          ) : (
+            <a className="text-gold-deep underline" href="/sueldos/ventas">
+              Ventas y metas
+            </a>
+          )}
           .
         </p>
       )}
