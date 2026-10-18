@@ -187,12 +187,31 @@ export function AsistenciaCliente({
   // La acción masiva sólo cubre los días visibles Y hasta hoy (hora Perú): una falta futura declarada
   // de antemano como trabajada se pagaría, y el huellero ya no pisa lo declarado. Los futuros se
   // declaran uno a uno.
-  // Un día partido en varios tramos no entra: repartir las horas del contrato entre tramos sería
-  // inventar qué hizo cada uno. Esos días se declaran tramo por tramo.
+  // Los días de un solo tramo se declaran con el horario del contrato.
   const sinDeclararHastaHoy = soloHastaHoy(
     sinDeclararVisibles.filter((d) => d.tramos.length === 1),
     hoyPeru(),
   );
+  // Los días partidos en varios tramos (decisión del dueño, 18-oct-2026; spec
+  // 2026-10-18-declarar-dias-partidos-design.md) NO reparten las horas del contrato: cada tramo
+  // CERRADO (entrada y salida reales del huellero) se declara con sus propias horas; el tramo
+  // abierto o con hora estimada no se inventa y queda sin declarar.
+  const partidosHastaHoy = soloHastaHoy(
+    sinDeclararVisibles.filter((d) => d.tramos.length > 1),
+    hoyPeru(),
+  ).map((d) => {
+    const pend = d.tramos.filter((t) => t.fila && condDe(t.clave) === 'sin_dato');
+    const cerrado = (f: AsistenciaDia) =>
+      Boolean(f.horaEntrada && f.horaSalida) && !f.entradaEstimada && !f.salidaEstimada;
+    return {
+      fecha: d.fecha,
+      cerrados: pend.filter((t) => cerrado(t.fila!)).map((t) => t.fila!),
+      abiertos: pend.filter((t) => !cerrado(t.fila!)).map((t) => t.fila!),
+    };
+  });
+  const partidosDeclarables = partidosHastaHoy.filter((d) => d.cerrados.length > 0);
+  const tramosPartidosACerrar = partidosDeclarables.reduce((n, d) => n + d.cerrados.length, 0);
+  const totalAccion = sinDeclararHastaHoy.length + partidosDeclarables.length;
 
   // Un cambio sin guardar en un día que la vista dejó afuera no se ve, y no está en la base:
   // esconderlo sin avisar haría creer que se guardó.
@@ -236,15 +255,53 @@ export function AsistenciaCliente({
    * contrato. Lo confirma una persona y queda en la auditoría: el sistema no infiere nada solo.
    */
   const declararTodosTrabajados = () => {
-    const cuantos = sinDeclararHastaHoy.length;
+    const cuantos = totalAccion;
+    const horasDe = (f: AsistenciaDia) =>
+      Math.round(((minutosDeHHMM(f.horaSalida ?? '') - minutosDeHHMM(f.horaEntrada ?? '')) / 60) * 100) / 100;
+    const abiertos = partidosHastaHoy.filter((d) => d.abiertos.length > 0);
     // La confirmación más consecuente del sistema: declara N días como trabajados y eso se paga.
     // El confirm nativo la escribía con saltos de línea y en el tono del navegador; acá el título
     // dice cuántos días son y el detalle dice qué hay que hacer después, que es lo que de verdad
     // se olvida.
     conf.pedir({
       titulo: `¿Declarar ${cuantos} día(s) como trabajados?`,
-      detalle:
-        'Se usan las horas del contrato. Los días que la persona faltó hay que corregirlos después, uno por uno, y cada cambio queda registrado con tu nombre.',
+      detalle: (
+        <span className="block space-y-3 text-left">
+          {sinDeclararHastaHoy.length > 0 && (
+            <span className="block">
+              {sinDeclararHastaHoy.length} día(s) de un solo tramo, con las horas del contrato.
+            </span>
+          )}
+          {partidosDeclarables.length > 0 && (
+            <span className="block">
+              <strong>Días partidos ({tramosPartidosACerrar} tramo(s)), con las horas reales de huella:</strong>
+              {partidosDeclarables.map((d) => (
+                <span key={d.fecha} className="block tabular-nums">
+                  {d.fecha}:{' '}
+                  {d.cerrados
+                    .map((f) => `${f.turno} ${f.horaEntrada}–${f.horaSalida} (${horasDe(f)} h)`)
+                    .join(' · ')}
+                </span>
+              ))}
+            </span>
+          )}
+          {abiertos.length > 0 && (
+            <span className="block text-aviso-deep">
+              <strong>Quedan sin declarar (tramo abierto o con hora estimada):</strong>
+              {abiertos.map((d) => (
+                <span key={d.fecha} className="block tabular-nums">
+                  {d.fecha}: {d.abiertos.map((f) => f.turno).join(', ')}
+                </span>
+              ))}
+              Seguirán bloqueando la liquidación hasta que se cierren o se editen a mano.
+            </span>
+          )}
+          <span className="block">
+            Los días que la persona faltó hay que corregirlos después, uno por uno, y cada cambio queda
+            registrado con tu nombre.
+          </span>
+        </span>
+      ),
       confirmarLabel: 'Declarar',
       tono: 'aviso',
       alConfirmar: () => hacerDeclararTodos(),
@@ -273,6 +330,21 @@ export function AsistenciaCliente({
           motivoJustificacion: null,
         };
       });
+      for (const d of partidosDeclarables) {
+        for (const f of d.cerrados) {
+          dias.push({
+            empleadoId: acuerdo.empleadoId,
+            fecha: d.fecha,
+            turno: f.turno,
+            condicion: 'trabajado',
+            horaEntrada: f.horaEntrada,
+            horaSalida: f.horaSalida,
+            tardanzaJustificada: f.tardanzaJustificada,
+            faltaJustificada: f.faltaJustificada,
+            motivoJustificacion: f.motivoJustificacion ?? null,
+          });
+        }
+      }
       const r = await accionDeclararVarios(dias);
       if (!r.ok) setError(r.error ?? 'No se pudieron declarar todos.');
       else conf.cerrar();
@@ -339,9 +411,9 @@ export function AsistenciaCliente({
               )}
             </p>
           </div>
-          {sinDeclararHastaHoy.length > 0 && acuerdo.turnos.length > 0 && (
+          {(sinDeclararHastaHoy.length > 0 || partidosDeclarables.length > 0) && acuerdo.turnos.length > 0 && (
             <Button variant="outline" onClick={declararTodosTrabajados} pending={pendiente}>
-              Declarar los {sinDeclararHastaHoy.length} días hasta hoy{rango ? ' de la vista' : ''}
+              Declarar los {totalAccion} días hasta hoy{rango ? ' de la vista' : ''}
             </Button>
           )}
         </CardContent>

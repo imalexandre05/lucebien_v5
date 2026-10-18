@@ -2076,3 +2076,10 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## 5B · Declarar en bloque los días partidos en tramos (18-oct-2026)
+
+**Default puesto por el sistema, no una regla del dueño: se puede cambiar.** El dueño decidió que los días partidos en varios tramos de huella se declaren en bloque con confirmación y resumen. El detalle de cómo no estaba decidido, y se puso la opción más conservadora:
+- Cada tramo **cerrado** (entrada y salida reales, ninguna estimada) se declara `trabajado` con **sus horas de huella**; no se reparten las horas del contrato.
+- El tramo **abierto** (o con hora estimada) **no se declara**: el resumen avisa que bloquea la liquidación hasta cerrarlo o editarlo a mano.
+- Pregunta para el dueño: ¿un tramo abierto debería declararse con la salida del contrato, o seguir a mano? Hoy es a mano. Spec: `docs/superpowers/specs/sueldos/2026-10-18-declarar-dias-partidos-design.md`.
