@@ -1,3 +1,6 @@
+-- ⚠️ 18-oct-2026: los casos 2, 3 y 10a prueban C-3 (relleno estimado), que el dueño retiró
+-- (decisión n.º 3, migración 0163). Contra una base con la 0163 aplicada esos tres casos dan FALLA
+-- a propósito; lo vigente lo prueba 0163_huellero_marca_extremo_cercano.prueba.sql.
 -- Prueba de la migración 0097_huellero_relleno_estimado_y_falta.sql
 --
 -- Cubre C-3 (relleno estimado con el horario contratado) y C-4 (falta automática con freno) de
