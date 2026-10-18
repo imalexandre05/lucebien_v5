@@ -6,9 +6,9 @@
 -- hace en el sistema externo de inventario/POS. recepcion → codificacion → lavado/refaccion; la
 -- etapa es opcional (las prendas que ya traen etiqueta siguen directo). Nada más llega a ella.
 --
--- DEFAULT INVENTADO (regla 5): pts_codificacion = 0. Sin fila, pipeline_avanzar aplicaría el peso 1
--- de respaldo, por eso se siembra. Editable en /configuracion; anotado en docs/pendientes-negocio.md.
-insert into config (clave, valor) values ('pts_codificacion', '0') on conflict (clave) do nothing;
+-- DECIDIDO POR EL DUEÑO (18-oct-2026): pts_codificacion = 1, editable en /configuracion. Se siembra la
+-- fila para que sea visible y editable. Anotado en docs/pendientes-negocio.md.
+insert into config (clave, valor) values ('pts_codificacion', '1') on conflict (clave) do nothing;
 
 alter table prenda_pasada drop constraint if exists prenda_pasada_etapa_check;
 alter table prenda_pasada add constraint prenda_pasada_etapa_check

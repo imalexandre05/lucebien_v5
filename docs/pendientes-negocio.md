@@ -2079,12 +2079,16 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 
 ## 5A · Codificación como etapa y operador de 5 min (18-oct-2026)
 
-Defaults inventados, todos editables desde `/configuracion`:
+**Decididas por el dueño (18-oct-2026):**
+- La etapa «Codificación» vale **1 punto** (`pts_codificacion = 1`), editable por el administrador en
+  `/configuracion`. Migración 0147.
+- Si el operador vigente del pipeline es el encargado y su código sigue activo, puede enviar el
+  reporte sin volver a ingresar el código; el servidor lo valida (token de operador, 0112/0146).
 
-| Parámetro (`config.clave`) | Default | Qué controla |
+| Parámetro (`config.clave`) | Valor | Qué controla |
 |---|---|---|
-| `pts_codificacion` | 0 | Puntos al completar la etapa «Codificación» (marcar que la prenda ya tiene su etiqueta). 0 porque la codificación real se hace en el sistema externo y no se paga por marcarla. Migración 0147 |
+| `pts_codificacion` | 1 | Puntos al completar la etapa «Codificación» (marcar que la prenda ya tiene su etiqueta). Decidido. Migración 0147 |
 | `codigo_operador_min` | 5 | Lo pidió el dueño (antes 10 provisional). Migración 0145 |
 
 Pendiente de confirmar con el dueño: si Codificación debe poder asignarse al registrar la prenda
-(hoy se llega a ella desde Recepción) y si debe pagar puntos.
+(hoy se llega a ella desde Recepción).
