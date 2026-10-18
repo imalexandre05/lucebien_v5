@@ -2085,3 +2085,10 @@ quedarse más no da horas extra; (2) la referencia «≈ S/… al mes» del cont
 guarda con 4 decimales. **Para decidir:** el castigo de una falta injustificada (`diasDescuentoPorFalta − 1` días
 a tarifa) sigue igual que con sueldo fijo; los contratos de sueldo fijo de antes siguen así hasta que el
 administrador les ponga tarifa.
+
+## Pagos programados, ficha y ventas por semana (sesión 7, 18-oct-2026)
+
+Decisiones del dueño n.º 6, 7, 5, 4 y 8. **Defaults inventados, a confirmar:**
+- [Pagos programados](superpowers/specs/sueldos/2026-10-18-pagos-programados-cierre-un-paso-design.md): el período por defecto de la ficha es el pago que contiene hoy; «Pagado» = sin saldo en todas las liquidaciones que lo cubren.
+- [Ficha y «Por revisar»](superpowers/specs/sueldos/2026-10-18-ficha-unica-asistencia-por-revisar-design.md) (0165): el motivo de una justificación va de 3 a 300 letras; «Todo bien» deja de mostrar el día pero no cambia el pago; «Es falta» también marca el día como revisado.
+- [Ventas por semana](superpowers/specs/sueldos/2026-10-18-ventas-metas-semanales-design.md) (0166): con carga semanal, la condición de RN-13 (llegar a la meta del mes para la 1.ª comisión) **sólo se aplica si todas las semanas cargadas traen el monto vendido**; si no, la 1.ª comisión se paga sin esa condición. Una semana dura a lo sumo 10 días. Una semana sin sí/no ni monto cuenta como no cumplida.
