@@ -386,7 +386,9 @@ export function NuevoReporteForm({
         sede,
         fecha,
         turno,
-        encargado: encargadoSel[0] ?? null,
+        // En el equipo compartido el encargado es quien ingresa su código; el formulario solo manda
+        // uno cuando es el admin quien lo elige (y entonces debe coincidir con el código).
+        encargado: compartido && !esAdmin ? null : (encargadoSel[0] ?? null),
         actTotal: cat.length,
         actDone: actividades.length,
         trabajadores,

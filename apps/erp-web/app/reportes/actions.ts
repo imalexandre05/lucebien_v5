@@ -87,7 +87,7 @@ export async function accionCrearReporte(
 ): Promise<{ ok: boolean; id?: string; error?: string; bloqueoId?: string }> {
   try {
     // Equipo compartido: sin código del encargado no se envía (la base lo vuelve a exigir, 0146).
-    // Con código, el encargado es quien lo ingresó y no el que traiga el formulario.
+    // Con código, el encargado es quien lo ingresó: si el formulario trae otro, la RPC lo rechaza.
     const token = await operadorParaAccion(operador);
     // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): la descripción es
     // obligatoria sólo para incidencias del tipo de categoría 'Otros'. El formulario ya lo hace
@@ -103,7 +103,7 @@ export async function accionCrearReporte(
         return { ok: false, error: `Falta la descripción de la incidencia "${faltante.tipo}": este tipo la requiere.` };
       }
     }
-    const id = await crearReporte(token ? { ...input, encargado: null } : input, token);
+    const id = await crearReporte(input, token);
     // Incidencias del turno → registradas ligadas al reporte (origen='reporte').
     if (input.incidencias.length) {
       const sesion = await getSesion();

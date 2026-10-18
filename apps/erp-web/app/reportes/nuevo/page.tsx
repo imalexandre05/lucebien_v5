@@ -6,7 +6,7 @@ import { leerConfigMap, CIERRE_TURNO_DEFAULT } from '../../../lib/config-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { NuevoReporteForm } from './form';
 import { hoyPeru } from '../../../lib/fechas';
-import { equipoCompartido } from '../../../lib/pipeline-operador';
+import { pedirCodigoEnPantalla } from '../../../lib/pipeline-operador';
 
 export default async function NuevoReportePage() {
   const sesion = await getSesion();
@@ -19,7 +19,7 @@ export default async function NuevoReportePage() {
     listarEmpleados(),
     listarTiposIncidencia(),
     leerConfigMap(),
-    equipoCompartido().catch(() => false),
+    pedirCodigoEnPantalla().catch(() => false),
   ]);
   const cierres = {
     M: config.turno_m_cierre || CIERRE_TURNO_DEFAULT.M,
