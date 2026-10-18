@@ -7,7 +7,7 @@
 -- planchador, pedido y observaciones internas), se entrega una VISTA con columnas limitadas. La vista
 -- corre con los privilegios de su dueño; la visibilidad la fija su where: admin, almacén o sede
 -- destino del envío en app_sedes() (la misma regla que envios_rw). pasada_select no cambia.
-create or replace view public.prendas_despachadas as
+create or replace view public.prendas_despachadas with (security_barrier = true) as
 select p.id, p.codigo, p.tipo, p.color, p.talla, p.sede_origen_cod, p.etapa, p.fecha_actualizado,
        e.id as envio_id, e.sede_destino_cod, e.fecha as fecha_envio, e.estado as estado_envio
 from public.prenda_pasada p
@@ -15,5 +15,6 @@ join public.envios_prendas e on e.id = p.envio_id
 where private.app_es_admin() or private.app_es_almacen()
    or e.sede_destino_cod in (select private.app_sedes());
 
-revoke all on public.prendas_despachadas from public, anon;
+-- Solo lectura: se quita todo (incluidos los privilegios por defecto de authenticated) y se da SELECT.
+revoke all on public.prendas_despachadas from public, anon, authenticated;
 grant select on public.prendas_despachadas to authenticated;
