@@ -20,7 +20,7 @@ describe('días por declarar (borrador provisional)', () => {
     expect(() => liquidarPeriodo(base(COMPLETA.slice(0, 3)))).toThrow(/Faltan 2 día\(s\) contratado\(s\)/);
   });
 
-  it('con el día declarado como pendiente no corta, no lo paga, no lo castiga y avisa', () => {
+  it('con el día declarado como pendiente no corta, no lo castiga y avisa', () => {
     const l = liquidarPeriodo(base(COMPLETA.slice(0, 4), { diasSinDeclarar: ['2025-07-11'] }));
     expect(l.asistencia.faltas).toBe(0);
     expect(l.asistencia.diasTrabajados).toBe(4);
@@ -31,11 +31,13 @@ describe('días por declarar (borrador provisional)', () => {
     expect(l.descuentos).toBe(0);
   });
 
-  it('un pendiente sin declarar no vale como falta: el total no baja de lo trabajado', () => {
+  it('un pendiente no vale como falta: el total es el de la semana completa, sin descuento', () => {
     const completa = liquidarPeriodo(base(COMPLETA));
     const parcial = liquidarPeriodo(base(COMPLETA.slice(0, 4), { diasSinDeclarar: ['2025-07-11'] }));
-    expect(parcial.total).toBeLessThan(completa.total);
-    expect(parcial.total).toBe(400); // 4 de 5 días de 8 h: 500 × 4/5
+    expect(parcial.total).toBe(completa.total);
+    // La misma semana con el viernes declarado como falta SÍ baja: es lo que el pendiente evita.
+    const conFalta = liquidarPeriodo(base([...COMPLETA.slice(0, 4), { fecha: '2025-07-11', horaIngreso: null, horaSalida: null }]));
+    expect(conFalta.total).toBeLessThan(parcial.total);
   });
 
   it('un día pendiente que SÍ trae registro se liquida con su registro', () => {
