@@ -126,7 +126,12 @@ export async function actualizarEstadoEmpleado(id: string, activo: boolean, hoy:
     }
     const { error } = await getServerClient().rpc('empleado_suspender', { p_id: id, p_hoy: hoy });
     if (error) {
-      await getAdminClient().auth.admin.updateUserById(id, { ban_duration: 'none' });
+      const { error: eDesban } = await getAdminClient().auth.admin.updateUserById(id, { ban_duration: 'none' });
+      if (eDesban) {
+        throw new Error(
+          `${error.message.replace(/^[A-Z_]+:/, '')} Además, no se pudo devolver el acceso a esta persona (${eDesban.message}): reactívala desde su ficha.`,
+        );
+      }
       // Los mensajes de la RPC llevan un prefijo de código («ESTADO:», «DATO:»…) para la capa de
       // sueldos; a la pantalla sólo le sirve el texto.
       throw new Error(error.message.replace(/^[A-Z_]+:/, ''));

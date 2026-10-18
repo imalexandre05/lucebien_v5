@@ -38,7 +38,7 @@ create or replace function empleado_suspender(p_id uuid, p_hoy date)
   returns jsonb
   language plpgsql
   security definer
-  set search_path = public
+  set search_path = public, pg_temp
 as $fn$
 declare
   v_nombre   text;
@@ -116,7 +116,7 @@ create or replace function huellero_declarar_faltas_del_dia(p_fecha date)
   returns jsonb
   language plpgsql
   security definer
-  set search_path = public
+  set search_path = public, pg_temp
 as $fn$
 declare
   v_max        numeric;
@@ -220,7 +220,7 @@ create or replace function sueldo_acuerdo_guardar_turnos(p_acuerdo uuid, p_turno
   returns void
   language plpgsql
   security definer
-  set search_path = public
+  set search_path = public, pg_temp
 as $fn$
 begin
   if not private.app_es_admin() then
