@@ -81,6 +81,12 @@ begin
       and (column_name in ('lavador_id','planchador_id','pedido_id') or column_name like 'obs%');
   if v_n = 0 then r := r || '[ok] caso 5: la vista no expone lavador, planchador, pedido ni observaciones;';
   else r := r || format('[FALLA] caso 5: columnas sensibles=%s;', v_n); end if;
+  -- la vista es solo lectura: authenticated no tiene INSERT/UPDATE/DELETE
+  select count(*) into v_n from information_schema.role_table_grants
+    where table_schema = 'public' and table_name = 'prendas_despachadas'
+      and grantee in ('authenticated','anon','public') and privilege_type <> 'SELECT';
+  if v_n = 0 then r := r || '[ok] caso 9: la vista es solo lectura;';
+  else r := r || format('[FALLA] caso 9: privilegios de escritura=%s;', v_n); end if;
   -- anon no lee la vista
   v_err := pg_temp.mensaje('set local role anon; select count(*) from prendas_despachadas');
   perform pg_temp.dueno();
