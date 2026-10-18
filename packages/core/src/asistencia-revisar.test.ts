@@ -17,7 +17,7 @@ type Fila = {
   salidaEstimada?: boolean;
   revisadaEn?: string | null;
 };
-type Dia = { fecha: string; tipo: string; minutosTarde?: number; falta?: 'entrada' | 'salida' };
+type Dia = { fecha: string; tipo: string; minutosTarde?: number; falta?: 'entrada' | 'salida'; turno?: string };
 const diasPorRevisar = (C as unknown as {
   diasPorRevisar: (p: { desde: string; hasta: string; hoy: string; horario: TurnoContratado[]; filas: Fila[]; toleranciaMinutos: number }) => Dia[];
 }).diasPorRevisar;
@@ -84,5 +84,49 @@ describe('diasPorRevisar — spec §4', () => {
     const semana = ['2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10'].map((f) => ok(f));
     const r = base([...semana, { fecha: '2026-10-11', condicion: 'sin_dato', horaEntrada: '09:00', horaSalida: null }], { hasta: '2026-10-11' });
     expect(r).toEqual([{ fecha: '2026-10-11', tipo: 'una_marca', falta: 'salida' }]);
+  });
+
+  // ── Ajustes del verificador (spec §9) ───────────────────────────────────────────────────
+  it('9.1 una fila sin_dato con las dos horas → revisar, aunque esté revisada', () => {
+    const r = base([
+      ok('2026-10-05'),
+      { fecha: '2026-10-06', condicion: 'sin_dato', horaEntrada: '08:00', horaSalida: '10:00', revisadaEn: '2026-10-08T10:00:00Z' },
+      { fecha: '2026-10-06', condicion: 'sin_dato', horaEntrada: '11:00', horaSalida: '12:00' },
+      ok('2026-10-07'),
+    ]);
+    expect(r).toEqual([{ fecha: '2026-10-06', tipo: 'revisar' }]);
+  });
+
+  it('9.2 se oculta sólo si TODAS las filas del día están revisadas', () => {
+    const tarde = (rev: string | null): Fila => ({ ...ok('2026-10-05', '08:30', '10:00'), revisadaEn: rev });
+    const segunda: Fila = { fecha: '2026-10-05', condicion: 'trabajado', horaEntrada: '10:30', horaSalida: '13:00' };
+    const uno = base([tarde('2026-10-08T10:00:00Z'), segunda, ok('2026-10-06'), ok('2026-10-07')]);
+    expect(uno).toEqual([{ fecha: '2026-10-05', tipo: 'tardanza', minutosTarde: 30 }]);
+    const todos = base([tarde('2026-10-08T10:00:00Z'), { ...segunda, revisadaEn: '2026-10-08T10:00:00Z' }, ok('2026-10-06'), ok('2026-10-07')]);
+    expect(todos).toEqual([]);
+  });
+
+  const DOS_TURNOS: TurnoContratado[] = [1, 2, 3, 4, 5, 6].flatMap((diaSemana) => [
+    { diaSemana, horaInicio: '08:00', horaFin: '13:00' },
+    { diaSemana, horaInicio: '15:00', horaFin: '19:00' },
+  ]);
+  const dos = (filas: Fila[]) =>
+    diasPorRevisar({ desde: '2026-10-05', hasta: '2026-10-05', hoy: '2026-10-18', horario: DOS_TURNOS, filas, toleranciaMinutos: 10 });
+
+  it('9.3 un turno sin ninguna marca → turno_sin_marcas', () => {
+    expect(dos([ok('2026-10-05', '08:00', '13:00')])).toEqual([{ fecha: '2026-10-05', tipo: 'turno_sin_marcas', turno: '15:00' }]);
+  });
+
+  it('9.4 marcó de corrido entre los dos turnos → pausa_trabajada', () => {
+    expect(dos([ok('2026-10-05', '08:00', '19:00')])).toEqual([{ fecha: '2026-10-05', tipo: 'pausa_trabajada' }]);
+    expect(dos([ok('2026-10-05', '08:00', '13:00'), ok('2026-10-05', '15:00', '19:00')])).toEqual([]);
+  });
+
+  it('9.5 hoy no entra: una entrada sin salida de hoy no aparece', () => {
+    const r = diasPorRevisar({
+      desde: '2026-10-05', hasta: '2026-10-06', hoy: '2026-10-06', horario: HORARIO, toleranciaMinutos: 10,
+      filas: [ok('2026-10-05'), { fecha: '2026-10-06', condicion: 'sin_dato', horaEntrada: '08:00', horaSalida: null }],
+    });
+    expect(r).toEqual([]);
   });
 });
