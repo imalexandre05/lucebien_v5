@@ -23,7 +23,7 @@ declare
   v_a text := 'P158A'; v_b text := 'P158B';
   e_on uuid; e_off uuid; e_cf uuid;
   p1 uuid; p2 uuid; p3 uuid; p4 uuid; act1 uuid; act2 uuid; act3 uuid;
-  v_n int; v_b1 boolean; v_b2 boolean; v_obs text; v_obs2 text; v_prev text; v_est text; v_err text;
+  v_n int; v_b1 boolean; v_b2 int; v_obs text; v_obs2 text; v_prev text; v_est text; v_err text;
 begin
   perform pg_temp.dueno();
   insert into sedes (cod, nombre) values (v_a,'P158 A'),(v_b,'P158 B');
@@ -46,7 +46,7 @@ begin
   perform pg_temp.como(e_on);
   select count(*) into v_b2 from prenda_pasada where codigo like 'P158-%';
   perform pg_temp.dueno();
-  if v_n = 0 and v_b1 = false and v_b2::int = 4 then r := r || '[ok] caso 1: un almacén inactivo no ve nada y el activo sigue viendo lo suyo;';
+  if v_n = 0 and v_b1 = false and v_b2 = 4 then r := r || '[ok] caso 1: un almacén inactivo no ve nada y el activo sigue viendo lo suyo;';
   else r := r || format('[FALLA] caso 1: inactivo ve=%s es_almacen=%s activo ve=%s;', v_n, v_b1, v_b2); end if;
 
   -- 2) obs_calidad: se limpia solo al aprobar
