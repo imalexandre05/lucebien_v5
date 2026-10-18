@@ -2150,3 +2150,5 @@ Defaults inventados (editable: `eval_puntualidad_modo` en /configuración; `minu
 4. Sin horario contratado: se usa la fórmula por minutos (da 20 si no hay atraso medible).
 ## 6A-4 · Liquidación provisional con días por declarar (18-oct-2026)
 Sin parámetros nuevos. Regla aplicada (confirmar con Alexander): un día contratado sin declarar **no es falta ni tardanza y no suma ni resta horas**; el borrador sale con el sueldo pactado sin tocar por ese día (monto máximo, provisional) y una advertencia con las fechas. **Cerrar sigue exigiendo todo declarado** (el cierre usa la `sueldo_entrada` estricta).
+## 6A-5 · Lista de precios de confecciones (18-oct-2026)
+Tabla `lista_precios` (0161) **vacía de origen**: no se cargó ningún precio. La dueña lo carga en /configuracion/lista-precios. Ventas puede «Sumar» un artículo activo al total de la boleta (solo prellena; el monto confirmado es el que se guarda). Pendiente de decidir: cantidades, precios por sede, historial de precios.

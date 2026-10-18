@@ -3,6 +3,7 @@ import { getSesion } from '../../../lib/auth';
 import { listarEmpleados } from '../../../lib/reportes-repo';
 import { listarAcuerdos, listarVentas } from '../../../lib/sueldos-repo';
 import { leerConfigMap } from '../../../lib/config-repo';
+import { listarListaPrecios } from '../../../lib/lista-precios-repo';
 import { leerPeriodo } from '../../../lib/periodo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card } from '../../../components/ui/card';
@@ -46,7 +47,7 @@ export default async function VentasPage(
 
   const periodo = leerPeriodo(searchParams);
 
-  const [empleados, ventas, ventasSinAsignar, acuerdos, config] = await Promise.all([
+  const [empleados, ventas, ventasSinAsignar, acuerdos, config, precios] = await Promise.all([
     listarEmpleados(),
     listarVentas({ desde: periodo.desde, hasta: periodo.hasta }),
     // La cola es GLOBAL, no del periodo: una boleta sin vendedor de hace dos meses sigue sin
@@ -56,6 +57,8 @@ export default async function VentasPage(
     listarVentas({ soloSinAsignar: true }),
     listarAcuerdos(),
     leerConfigMap(),
+    // Artículos activos de la lista de precios (0161): solo ayudan a armar el total de la boleta.
+    listarListaPrecios(true).catch(() => []),
   ]);
 
   // Mínimo de boleta para comisionar (RN-13): configurable, con el mismo patrón de fallback que
@@ -90,6 +93,7 @@ export default async function VentasPage(
         ventasSinAsignar={ventasSinAsignar}
         periodo={periodo}
         metaSemanal={metaSemanalReferencia}
+        precios={precios}
         montoMinimoComision={Number.isFinite(montoMinimoComision) ? montoMinimoComision : 120}
       />
     </div>

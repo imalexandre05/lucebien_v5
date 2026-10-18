@@ -15,6 +15,7 @@ import { BarraPeriodo } from '../../../components/colaboradores/barra-periodo';
 import { cn } from '../../../lib/cn';
 import { hoyPeru } from '../../../lib/fechas';
 import type { VentaSueldo } from '../../../lib/sueldos-repo';
+import type { ItemPrecio } from '../../../lib/lista-precios-repo';
 import { accionAsignarVendedor, accionCrearVenta, accionEliminarVenta } from './actions';
 
 type Emp = { id: string; nombre: string; rol: string; sedeCod: string | null };
@@ -108,6 +109,7 @@ export function VentasCliente({
   periodo,
   metaSemanal,
   montoMinimoComision,
+  precios,
 }: {
   empleados: Emp[];
   ventas: VentaSueldo[];
@@ -115,6 +117,7 @@ export function VentasCliente({
   periodo: Periodo;
   metaSemanal: number;
   montoMinimoComision: number;
+  precios: ItemPrecio[];
 }) {
   const router = useRouter();
   // El error del FORMULARIO vive con el formulario. El de una acción de la TABLA (asignar,
@@ -141,6 +144,15 @@ export function VentasCliente({
     monto: '',
     empleadoId: '',
   });
+
+  // Lista de precios (0161): elegir un artículo y «Sumar» agrega su precio al total de la boleta.
+  // Solo prellena el campo; el monto que se guarda es el que queda escrito.
+  const [articulo, setArticulo] = useState('');
+  function sumarArticulo() {
+    const item = precios.find((p) => p.id === articulo);
+    if (!item) return;
+    setVenta((v) => ({ ...v, monto: String(Math.round((Number(v.monto || 0) + item.precio) * 100) / 100) }));
+  }
 
   const semanas = useMemo(
     () => semanasConMeta(periodo.desde, periodo.hasta, ventas, metaSemanal),
@@ -303,6 +315,24 @@ export function VentasCliente({
                 onChange={(e) => setVenta((v) => ({ ...v, monto: e.target.value }))}
               />
             </div>
+            {precios.length > 0 && (
+              <div>
+                <Label htmlFor="v-art">Sumar de la lista de precios</Label>
+                <div className="flex gap-2">
+                  <Select id="v-art" value={articulo} onChange={(e) => setArticulo(e.target.value)}>
+                    <option value="">Elegir artículo…</option>
+                    {precios.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nombre} · {soles(p.precio)}
+                      </option>
+                    ))}
+                  </Select>
+                  <Button type="button" variant="outline" onClick={sumarArticulo} disabled={!articulo}>
+                    Sumar
+                  </Button>
+                </div>
+              </div>
+            )}
             <div>
               <Label htmlFor="v-emp">Vendedor</Label>
               <Select
