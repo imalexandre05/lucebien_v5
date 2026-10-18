@@ -18,10 +18,10 @@ tiene y pasa a la etapa siguiente.
    misma en `TRANSICIONES` (core) y en `pipeline_avanzar` (lista blanca de la RPC).
 3. **R3 — Solo por RPC.** Marcar «etiqueta puesta» es `pipeline_avanzar` (con código de operador
    en equipos compartidos, 0112). Deshacer funciona igual que en las demás etapas.
-4. **R4 — Puntos.** Completar `codificacion` usa la clave `pts_codificacion`. **Default inventado:
-   0** (el trabajo real se hace fuera del sistema y no se paga por marcar). Se crea en `config`,
-   editable en `/configuracion` → puntos del pipeline, y anotado en `docs/pendientes-negocio.md`.
-   Sin esa fila la RPC aplicaría el peso 1 de respaldo, por eso la migración la siembra.
+4. **R4 — Puntos.** Completar `codificacion` usa la clave `pts_codificacion`. **Decidido por el
+   dueño (18-oct-2026): vale 1 punto**, editable por el administrador en `/configuracion` → puntos
+   del pipeline. La migración siembra la fila (sin ella la RPC aplicaría igualmente el peso 1 de
+   respaldo, pero así queda visible y editable). Anotado en `docs/pendientes-negocio.md` como decidido.
 5. **R5 — Pantalla.** Columna «Codificación» en el tablero (ícono de etiqueta) con el botón
    «Etiqueta puesta» que avanza a lavado. Se elimina la pestaña `/pipeline/codificacion` y su
    consulta. El código de movimiento `MOV-…` (0135) se conserva en `prenda_historial`.
@@ -30,6 +30,6 @@ tiene y pasa a la etapa siguiente.
 ## Pruebas
 - SQL `0147_codificacion_etapa.prueba.sql`: recepción→codificación y codificación→lavado
   funcionan y dejan historial con `codigo_mov`; saltos no permitidos (lavado→codificación,
-  codificación→planchado) → `TRANSICION:`; con `pts_codificacion` = 0 no se paga ni se escribe
-  punto; con un peso editado se paga ese peso; el check acepta la etapa; deshacer vuelve a recepción.
+  codificación→planchado) → `TRANSICION:`; con `pts_codificacion` = 1 se paga 1 punto; con un
+  peso editado se paga ese peso y con 0 no se escribe punto; el check acepta la etapa; deshacer vuelve a recepción.
 - TS `pipeline.test.ts`: la etapa existe, está entre recepción y lavado y sus transiciones coinciden.
