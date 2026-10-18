@@ -3,7 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { armarEvaluacionAGuardar, type BandaEval, type EntradaManualEval } from '@scilb/core';
 import { getSesion } from '../../lib/auth';
-import { crearEvaluacion, componentesEvaluacion, leerEscalaPuntos, leerPesosEval, type ComponentesRPC } from '../../lib/evaluaciones-repo';
+import { hoyPeru } from '../../lib/fechas';
+import { anularEvaluacion, crearEvaluacion, componentesEvaluacion, leerEscalaPuntos, leerPesosEval, type ComponentesRPC } from '../../lib/evaluaciones-repo';
 
 async function esAdmin() {
   const s = await getSesion();
@@ -65,6 +66,12 @@ export async function accionCrearEvaluacion(input: {
       return { ok: false, error: 'Rango de fechas del ciclo inválido' };
     }
     if (cicloDesde > cicloHasta) return { ok: false, error: 'El ciclo empieza después de terminar' };
+    // Solo se evalúa un ciclo que ya terminó (spec 2026-10-18 §2.1). Borde: `cicloHasta == hoy` SE
+    // PERMITE. El servidor decide con la fecha de Perú; la pantalla solo propone.
+    if (cicloHasta > hoyPeru()) {
+      const [a, m, d] = cicloHasta.split('-');
+      return { ok: false, error: `El ciclo termina el ${d}/${m}/${a}; solo se puede evaluar un ciclo que ya terminó` };
+    }
     const [data, escala, pesos] = await Promise.all([
       componentesEvaluacion(input.empleadoId, cicloDesde, cicloHasta),
       leerEscalaPuntos(),
@@ -90,6 +97,25 @@ export async function accionCrearEvaluacion(input: {
     return { ok: true, id, notaFinal: r.notaFinal, banda: r.banda };
   } catch (e) {
     return { ok: false, error: mensajeDeError(e, 'Error al guardar') };
+  }
+}
+
+// Corregir una nota guardada: se anula (la base deja el motivo en el registro de auditoría) y se
+// vuelve a calcular y guardar por el flujo normal. La base se niega si ya hay un pago o una
+// liquidación que dependan de esa evaluación; el mensaje dice qué anular primero.
+export async function accionAnularEvaluacion(
+  id: string,
+  motivo: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    if (!(await esAdmin())) return { ok: false, error: 'Solo admin/dueño' };
+    if (!id) return { ok: false, error: 'Falta la evaluación' };
+    if (!motivo?.trim()) return { ok: false, error: 'Escribe el motivo de la anulación' };
+    await anularEvaluacion(id, motivo.trim());
+    revalidatePath('/evaluaciones');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Error al anular' };
   }
 }
 

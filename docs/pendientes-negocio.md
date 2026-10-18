@@ -2101,3 +2101,15 @@ el motivo del rechazo es obligatorio y debe tener entre 3 y 500 letras. Se guard
 
 Default inventado (fijo en la RPC `pipeline_anular_envio`, migración 0156, a confirmar con el dueño):
 el motivo de la anulación es obligatorio, de 3 a 500 letras, igual que al rechazar (0154).
+## Evaluar solo ciclos terminados y anular una nota guardada (18-oct-2026)
+
+Defaults puestos en el código sin que el dueño los haya confirmado (spec
+[2026-10-18-evaluacion-corregir-y-ciclo-cerrado](superpowers/specs/evaluaciones/2026-10-18-evaluacion-corregir-y-ciclo-cerrado-design.md)).
+Ninguno es un número editable: son reglas de flujo.
+
+| Pregunta | Default actual | Estado |
+|---|---|---|
+| ¿Se puede evaluar un ciclo que termina hoy (`hasta == hoy`)? | Sí. Solo se rechaza `hasta > hoy` | Pregunta abierta |
+| ¿Quién puede anular una evaluación? | Administrador y dueño | Pregunta abierta |
+| ¿Una liquidación en `borrador` bloquea la anulación de la nota? | Sí: cualquier liquidación no anulada de esa persona que cruce el ciclo bloquea (default conservador) | Pregunta abierta |
+| ¿Con un pago ya enlazado se puede anular? | No: hay que anular primero el pago | Pregunta abierta |
