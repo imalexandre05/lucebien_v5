@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input, Label, Select } from '../../../components/ui/form';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
+import { rutaSeccion } from '../../../lib/colaboradores-secciones';
 import { hoyPeru } from '../../../lib/fechas';
 import { esConteo, type TipoMovimiento } from '../../../lib/sueldos-tipos';
 import type { MovimientoSueldo, VentaSueldo } from '../../../lib/sueldos-repo';
@@ -58,13 +59,16 @@ export function MovimientosCliente({
   ventas?: VentaSueldo[];
   /**
    * true dentro de la ficha del colaborador (decisión del dueño n.º 5): nada de lo que se hace ahí
-   * manda a `/sueldos/…`, así que los textos de ventas se quedan sin enlace.
+   * manda a `/sueldos/…`: los textos de ventas apuntan a la pestaña «Ventas y metas» de la ficha.
    */
   enFicha?: boolean;
 }) {
   // Sólo para resincronizar tras un fallo incierto (ver planTrasFallo). En el camino normal
   // NO se usa: el árbol nuevo llega en la respuesta de la acción.
   const router = useRouter();
+  // En la ficha, el enlace a «Ventas y metas» conserva el período que se está mirando.
+  const query = useSearchParams().toString();
+  const enlaceVentas = rutaSeccion(empleados[0]?.id ?? '', 'ventas', query);
   const [error, setError] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
 
@@ -387,7 +391,9 @@ export function MovimientosCliente({
           <p className="px-5 pb-3 text-cuerpo text-muted">
             Sólo lectura: cargar una venta nueva o asignar un vendedor se hace desde{' '}
             {enFicha ? (
-              'Ventas y metas'
+              <a className="text-gold-deep underline" href={enlaceVentas}>
+                Ventas y metas
+              </a>
             ) : (
               <a className="text-gold-deep underline" href="/sueldos/ventas">
                 Ventas y metas
@@ -439,7 +445,9 @@ export function MovimientosCliente({
         <p className="text-cuerpo text-muted">
           Las ventas se cargan en{' '}
           {enFicha ? (
-            'Ventas y metas'
+            <a className="text-gold-deep underline" href={enlaceVentas}>
+              Ventas y metas
+            </a>
           ) : (
             <a className="text-gold-deep underline" href="/sueldos/ventas">
               Ventas y metas
