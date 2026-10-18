@@ -11,11 +11,18 @@ vi.mock('../supabase/server', () => ({ getServerClient: vi.fn(() => ({})) }));
 
 const repo = await import('../sueldos-repo');
 
-function deps(o: { borradores?: unknown[]; cerrarFalla?: Error } = {}) {
+const HOY = '2026-10-18';
+
+function deps(o: { borradores?: unknown[]; cerrarFalla?: Error; calcularFalla?: Error } = {}) {
   const llamadas: string[] = [];
   return {
     llamadas,
     d: {
+      hoy: () => HOY,
+      calcular: vi.fn(async () => {
+        llamadas.push('calcular');
+        if (o.calcularFalla) throw o.calcularFalla;
+      }),
       borradores: vi.fn(async () => o.borradores ?? []),
       eliminar: vi.fn(async (id: string) => void llamadas.push(`eliminar:${id}`)),
       crear: vi.fn(async (_a: string, _d: string, _h: string, cuota?: number) => {
@@ -34,25 +41,57 @@ function deps(o: { borradores?: unknown[]; cerrarFalla?: Error } = {}) {
   };
 }
 
-describe('confirmarYCerrar', () => {
-  it('borra los borradores que se pisan, crea y cierra', async () => {
-    const { d, llamadas } = deps({ borradores: [{ id: 'viejo', entrada: { sueldoPactado: 600 } }] });
-    const id = await repo.confirmarYCerrar('ac', '2026-09-05', '2026-10-04', d);
+const RANGO = { desde: '2026-09-05', hasta: '2026-10-04' };
+
+describe('confirmarYCerrar (spec §5 y §9)', () => {
+  it('calcula primero, reemplaza el borrador del mismo rango, crea y cierra', async () => {
+    const { d, llamadas } = deps({ borradores: [{ id: 'viejo', ...RANGO, entrada: { sueldoPactado: 600 } }] });
+    const id = await repo.confirmarYCerrar('ac', RANGO.desde, RANGO.hasta, d);
     expect(id).toBe('nuevo');
-    expect(llamadas).toEqual(['eliminar:viejo', 'crear:-', 'cerrar:nuevo']);
+    expect(llamadas).toEqual(['calcular', 'eliminar:viejo', 'crear:-', 'cerrar:nuevo']);
   });
 
-  it('reusa la cuota fijada de un borrador de corrección', async () => {
-    const { d, llamadas } = deps({ borradores: [{ id: 'corr', entrada: { sueldoPactado: 650, cuotaFijada: true } }] });
-    await repo.confirmarYCerrar('ac', '2026-09-05', '2026-10-04', d);
-    expect(llamadas).toEqual(['eliminar:corr', 'crear:650', 'cerrar:nuevo']);
+  it('reusa la cuota fijada sólo de un borrador de corrección con el mismo rango', async () => {
+    const { d, llamadas } = deps({ borradores: [{ id: 'corr', ...RANGO, entrada: { sueldoPactado: 650, cuotaFijada: true } }] });
+    await repo.confirmarYCerrar('ac', RANGO.desde, RANGO.hasta, d);
+    expect(llamadas).toEqual(['calcular', 'eliminar:corr', 'crear:650', 'cerrar:nuevo']);
+  });
+
+  it('un borrador de otro rango que se pisa no se toca: responde ESTADO', async () => {
+    const { d, llamadas } = deps({
+      borradores: [{ id: 'medio', desde: '2026-09-05', hasta: '2026-09-20', entrada: { sueldoPactado: 300, cuotaFijada: true } }],
+    });
+    await expect(repo.confirmarYCerrar('ac', RANGO.desde, RANGO.hasta, d)).rejects.toMatchObject({ codigo: 'ESTADO' });
+    expect(llamadas).toEqual([]);
+  });
+
+  it('si el cálculo falla no se borra nada', async () => {
+    const falla = new repo.SueldoRpcError('falta declarar la asistencia de 2026-10-03', 'DATO');
+    const { d, llamadas } = deps({ borradores: [{ id: 'corr', ...RANGO, entrada: { sueldoPactado: 650, cuotaFijada: true } }], calcularFalla: falla });
+    await expect(repo.confirmarYCerrar('ac', RANGO.desde, RANGO.hasta, d)).rejects.toBe(falla);
+    expect(llamadas).toEqual(['calcular']);
   });
 
   it('si el cierre falla, borra el recién creado y propaga el error', async () => {
-    const falla = new repo.SueldoRpcError('falta declarar la asistencia de 2026-10-07', 'DATO');
+    const falla = new repo.SueldoRpcError('los datos cambiaron', 'DESACTUALIZADA');
     const { d, llamadas } = deps({ cerrarFalla: falla });
-    await expect(repo.confirmarYCerrar('ac', '2026-09-05', '2026-10-04', d)).rejects.toBe(falla);
-    expect(llamadas).toEqual(['crear:-', 'cerrar:nuevo', 'eliminar:nuevo']);
+    await expect(repo.confirmarYCerrar('ac', RANGO.desde, RANGO.hasta, d)).rejects.toBe(falla);
+    expect(llamadas).toEqual(['calcular', 'crear:-', 'cerrar:nuevo', 'eliminar:nuevo']);
+  });
+
+  it('si el cierre de una corrección falla, el borrador queda con su cuota', async () => {
+    const { d, llamadas } = deps({
+      borradores: [{ id: 'corr', ...RANGO, entrada: { sueldoPactado: 650, cuotaFijada: true } }],
+      cerrarFalla: new repo.SueldoRpcError('los datos cambiaron', 'DESACTUALIZADA'),
+    });
+    await expect(repo.confirmarYCerrar('ac', RANGO.desde, RANGO.hasta, d)).rejects.toBeTruthy();
+    expect(llamadas).toEqual(['calcular', 'eliminar:corr', 'crear:650', 'cerrar:nuevo']);
+  });
+
+  it('no se cierra un rango que termina hoy o después', async () => {
+    const { d, llamadas } = deps();
+    await expect(repo.confirmarYCerrar('ac', '2026-10-05', HOY, d)).rejects.toMatchObject({ codigo: 'ESTADO' });
+    expect(llamadas).toEqual([]);
   });
 });
 
@@ -63,12 +102,12 @@ describe('corregirYCerrar', () => {
     expect(llamadas).toEqual(['corregir', 'cerrar:nuevo']);
   });
 
-  it('si el cierre falla, borra el nuevo y avisa que el pago quedó por cerrar', async () => {
+  it('si el cierre falla, el reemplazo queda por cerrar (no se borra) y lo avisa', async () => {
     const { d, llamadas } = deps({ cerrarFalla: new repo.SueldoRpcError('los datos cambiaron', 'DESACTUALIZADA') });
     await expect(repo.corregirYCerrar('l-1', 'faltaba un día', d)).rejects.toMatchObject({
       codigo: 'DESACTUALIZADA',
       message: expect.stringContaining('Por cerrar'),
     });
-    expect(llamadas).toEqual(['corregir', 'cerrar:nuevo', 'eliminar:nuevo']);
+    expect(llamadas).toEqual(['corregir', 'cerrar:nuevo']);
   });
 });

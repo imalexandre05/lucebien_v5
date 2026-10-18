@@ -94,6 +94,10 @@ horas sin tardanzas, sin extras ni bonos.
 - Las liquidaciones cerradas no se recalculan nunca (como siempre): su snapshot manda.
 - El administrador puede pasar un contrato de sueldo fijo a por horas poniéndole tarifa: rige para los
   pagos que todavía no se cerraron (lo cerrado no cambia).
+- **Corregir un pago que se pagó con sueldo fijo** cuando el contrato ya pasó a por horas: se
+  **rechaza** con un mensaje claro («Este pago se hizo con sueldo fijo y el contrato ahora es por horas:
+  no se puede recalcular sin cambiar lo pagado»). Recalcularlo por horas cambiaría un pago cerrado
+  (ajuste del verificador, 18-oct-2026).
 
 ## 4. Datos (migración 0164)
 
