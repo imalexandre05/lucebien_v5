@@ -85,3 +85,12 @@ La app la llama sola al guardar el horario de un contrato, desde el inicio del c
 
 - Tope de `huellero_rederivar`: 400 días. No es regla de negocio (es una protección técnica); se
   anota igual en `docs/pendientes-negocio.md`.
+
+## 6. Ajustes del verificador (18-oct-2026)
+
+- **R4 espera a un cierre en curso.** Antes de mirar si un día está cerrado, `huellero_rederivar` toma
+  `for share` sobre los borradores de esa persona que cubren el día (mismo patrón que la 0144): si un
+  cierre está corriendo, espera a que termine y recién entonces decide.
+- **Texto viejo en `obs`.** Cuando la bandera final `*_estimada` queda en false, la derivación borra
+  también el aviso «estimado: no marcó la …» que hubiera dejado la 0097 en esa fila.
+- Caso de prueba 11: fila heredada de la 0097 (salida estimada) que R3 corrige → `obs` sin «estimado».
