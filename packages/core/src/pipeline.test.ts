@@ -10,7 +10,9 @@ import {
 
 describe('siguienteEtapa', () => {
   it('avanza en orden', () => {
-    expect(siguienteEtapa('recepcion')).toBe('lavado');
+    // 0147: «codificacion» queda entre recepción y lavado en el orden (aunque saltarla es válido).
+    expect(siguienteEtapa('recepcion')).toBe('codificacion');
+    expect(siguienteEtapa('codificacion')).toBe('lavado');
     expect(siguienteEtapa('lavado')).toBe('empatado');
   });
   it('la última etapa no tiene siguiente', () => {
