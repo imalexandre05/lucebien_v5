@@ -195,6 +195,13 @@ export async function enviarPasada(id: string, sedeDestino: string, operador: st
   if (error) throw new Error(error.message);
 }
 
+// Tanda atómica (migración 0153): una sola transacción en la base.
+export async function enviarTandaPasadas(ids: string[], sedeDestino: string, operador: string | null = null): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_enviar_tanda', { p_ids: ids, p_sede: sedeDestino, ...conOperador(operador) });
+  if (error) throw new Error(error.message);
+}
+
 export async function rechazarPasada(id: string, destino: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
   const { error } = await sb.rpc('pipeline_rechazar', { p_id: id, p_destino: destino, ...conOperador(operador) });

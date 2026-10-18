@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import {
   avanzarPasada,
   enviarPasada,
+  enviarTandaPasadas,
   rechazarPasada,
   deshacerPasada,
   avanzarTanda,
@@ -65,7 +66,8 @@ export async function enviarTandaPrendas(ids: string[], sede: string, operador?:
   if (!ids.length || !sede) return null;
   const r = await conCodigo(async () => {
     const token = await operadorParaAccion(operador);
-    await Promise.all(ids.map((id) => enviarPasada(id, sede, token)));
+    // Atómico (0153): o sale toda la tanda o no sale ninguna.
+    await enviarTandaPasadas(ids, sede, token);
   });
   if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
