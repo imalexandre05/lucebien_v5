@@ -10,7 +10,7 @@
 create or replace function pipeline_avanzar_tanda_resultado(p_ids uuid[], p_destino text, p_operador uuid default null)
   returns jsonb language plpgsql security invoker set search_path = public
 as $$
-declare v_id uuid; v_total numeric := 0; v_mov int := 0; v_omi int := 0;
+declare v_id uuid; v_total numeric := 0; v_mov int := 0; v_omi int := 0; v_ids jsonb := '[]'::jsonb;
 begin
   if auth.uid() is null then raise exception 'No autenticado'; end if;
   perform private.actor_pipeline(p_operador);   -- lanza CODIGO: si el token no vale; aborta todo
@@ -18,11 +18,12 @@ begin
     begin
       v_total := v_total + coalesce(pipeline_avanzar(v_id, p_destino, p_operador), 0);
       v_mov := v_mov + 1;
+      v_ids := v_ids || to_jsonb(v_id::text);
     exception when others then
       v_omi := v_omi + 1;   -- omite prendas que no se pueden avanzar, pero ahora se cuentan
     end;
   end loop;
-  return jsonb_build_object('puntos', v_total, 'movidas', v_mov, 'omitidas', v_omi);
+  return jsonb_build_object('puntos', v_total, 'movidas', v_mov, 'omitidas', v_omi, 'ids_movidos', v_ids);
 end;
 $$;
 revoke execute on function pipeline_avanzar_tanda_resultado(uuid[], text, uuid) from public, anon;
