@@ -170,6 +170,16 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     step: 1,
   },
   {
+    clave: 'eval_puntualidad_modo',
+    seccion: SECCION_EVALUACION,
+    etiqueta: 'Cómo se calcula la nota de puntualidad',
+    descripcion:
+      "«proporcion» (por defecto): 20 × días puntuales ÷ días que debía asistir, según la huella. «minutos»: resta 1 punto por cada bloque de minutos de tardanza (ver arriba).",
+    tipo: 'lista',
+    default: 'proporcion',
+    opciones: ['proporcion', 'minutos'],
+  },
+  {
     clave: 'eval_bonus_ventas_max',
     seccion: SECCION_EVALUACION,
     etiqueta: 'Tope del bono manual por ventas',

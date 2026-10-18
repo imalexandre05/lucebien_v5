@@ -2076,3 +2076,10 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## 6A-1 · Puntualidad automática en la evaluación (18-oct-2026)
+Defaults inventados (editable: `eval_puntualidad_modo` en /configuración; `minutos` vuelve a la fórmula anterior). **Confirmar con Alexander.**
+1. Nota = 20 × días puntuales ÷ días con turno contratado en el ciclo (hasta hoy, hora Perú).
+2. Los días `sin_dato` no cuentan como debidos; una falta sí resta (no es puntual).
+3. Una tardanza justificada cuenta como puntual; la tolerancia es la del sueldo (`sueldo_tolerancia_minutos`).
+4. Sin horario contratado: se usa la fórmula por minutos (da 20 si no hay atraso medible).
