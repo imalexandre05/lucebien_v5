@@ -456,6 +456,12 @@ export async function crearReporte(p: {
   return String(data);
 }
 
+/** Encargado con que quedó un reporte (con código de operador es quien lo ingresó). */
+export async function encargadoDeReporte(id: string): Promise<string | null> {
+  const { data } = await getServerClient().from('reportes').select('encargado_id').eq('id', id).maybeSingle();
+  return (data?.encargado_id as string | null | undefined) ?? null;
+}
+
 export async function evaluarReporte(
   id: string,
   calificaciones: { cod: string; cal: number; obs: string }[],

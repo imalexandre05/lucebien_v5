@@ -9,6 +9,7 @@ import {
   getDraft,
   saveDraft,
   crearReporte,
+  encargadoDeReporte,
   evaluarReporte,
   anularReporte,
   anularEval,
@@ -111,7 +112,8 @@ export async function accionCrearReporte(
         sede: input.sede,
         fecha: input.fecha,
         reporteId: id,
-        reportadoPorId: sesion?.usuario.id ?? null,
+        // Con código de operador, las incidencias las reporta el encargado que lo ingresó.
+        reportadoPorId: (token ? await encargadoDeReporte(id) : null) ?? sesion?.usuario.id ?? null,
         items: input.incidencias,
       });
     }

@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { dispositivoCompartido } from './pipeline-repo';
 import { getServerClient } from './supabase/server';
+import { tokenOperadorValido } from './operador-token';
 
 // Código personal (spec codigo-personal §3): en un equipo marcado como compartido, toda acción de
 // atribución del pipeline exige un token de operador. En uno que no lo es, el token se ignora y
@@ -21,6 +22,7 @@ export async function equipoCompartido(): Promise<boolean> {
 export async function operadorParaAccion(operador?: string | null): Promise<string | null> {
   if (!(await equipoCompartido())) return null;
   if (!operador) throw new Error('CODIGO: este equipo es compartido, ingresa tu código para continuar');
+  if (!tokenOperadorValido(operador)) throw new Error('CODIGO: tu sesión de operador no es válida, ingresa tu código de nuevo');
   return operador;
 }
 
