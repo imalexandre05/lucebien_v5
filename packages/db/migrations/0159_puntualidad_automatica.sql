@@ -104,25 +104,32 @@ as $$
     select case when (select valor from config where clave = 'eval_puntualidad_modo') = 'minutos'
                 then 'minutos' else 'proporcion' end as v
   ),
-  -- Días con turno contratado dentro del ciclo y hasta hoy (hora Perú), salvo los marcados sin_dato
-  -- (nadie cargó el dato: no se castiga lo que no se sabe).
-  puntual_debidos as (
-    select count(*) as n
+  -- Días con turno contratado dentro del ciclo y hasta hoy (hora Perú) cuya asistencia está DECLARADA
+  -- (trabajado o falta) y sin ninguna fila sin_dato: un día sin cargar, sin fila o a medias no se
+  -- castiga (mismo criterio que sueldo_entrada, 0160).
+  puntual_debidos_f as (
+    select g::date as fecha
     from generate_series(p_desde::timestamp, least(p_hasta, (now() at time zone 'America/Lima')::date)::timestamp, interval '1 day') g
     where exists (
             select 1 from sueldo_acuerdos a
             join sueldo_acuerdo_turnos t on t.acuerdo_id = a.id
             where a.empleado_id = p_empleado and g::date between a.fecha_inicio and a.fecha_fin
               and t.dia_semana = extract(isodow from g))
+      and exists (
+            select 1 from asistencias s
+            where s.empleado_id = p_empleado and s.fecha = g::date and s.condicion <> 'sin_dato')
       and not exists (
             select 1 from asistencias s
             where s.empleado_id = p_empleado and s.fecha = g::date and s.condicion = 'sin_dato')
   ),
-  -- Tardanza = misma regla del sueldo (RN-08): pasa la tolerancia y no está justificada.
+  puntual_debidos as (select count(*) as n from puntual_debidos_f),
+  -- Tardanza = misma regla del sueldo (RN-08): pasa la tolerancia y no está justificada. Solo cuentan
+  -- los días debidos con turno: un día trabajado fuera de contrato no puede tapar una tardanza.
   puntual_tard as (
-    select count(*) filter (where diff_min is not null and not justificada and diff_min > (select v from tol)) as tardanzas,
-           count(*) filter (where not (diff_min is not null and not justificada and diff_min > (select v from tol))) as puntuales
+    select count(*) filter (where diff_min > (select v from tol) and not justificada) as tardanzas,
+           count(*) filter (where not (diff_min > (select v from tol) and not justificada)) as puntuales
     from dias_diff
+    where diff_min is not null and fecha in (select fecha from puntual_debidos_f)
   ),
   inc as (
     select coalesce(sum(puntos_penalidad), 0) as descuento
