@@ -12,6 +12,7 @@ import { hoyPeru } from '../../../lib/fechas';
 import { esConteo, type TipoMovimiento } from '../../../lib/sueldos-tipos';
 import type { MovimientoSueldo, VentaSueldo } from '../../../lib/sueldos-repo';
 import { correrAccion, mensajeIncierto, planTrasFallo, restaurarSiVacio, sinId } from '../../../lib/movimientos-optimista';
+import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import type { DecisionPeriodo, EstadoFechaMovimiento } from '../../../lib/sueldos-repo';
 import { accionCrearMovimiento, accionEliminarMovimiento, accionEstadoFechaMovimiento } from './actions';
@@ -162,6 +163,23 @@ export function MovimientosCliente({
 
   // Borrar oculta la fila al instante. Si la base corta (p. ej. `CONGELADA`), vuelve a verse. Si
   // sale bien, el id queda en el conjunto sin hacer daño: ya no viene en `movimientos`.
+  const conf = useConfirmacion();
+
+  // Borrar un adelanto o un descuento cambia lo que se le paga a una persona: se confirma antes.
+  const pedirBorrado = (m: { id: string; fecha: string; tipo: string; monto: number | null; cantidad: number; empleadoNombre?: string | null }) => {
+    const cuanto = m.monto == null ? `${m.cantidad} u.` : soles(m.monto);
+    conf.pedir({
+      titulo: `¿Borrar ${(LABEL_TIPO[m.tipo] ?? m.tipo).toLowerCase()} de ${cuanto}?`,
+      detalle: `${m.empleadoNombre ?? 'Sin nombre'} · ${m.fecha}. Dejará de contarse en su sueldo.`,
+      confirmarLabel: 'Borrar',
+      tono: 'peligro',
+      alConfirmar: () => {
+        conf.cerrar();
+        borrarMovimiento(m.id);
+      },
+    });
+  };
+
   const borrarMovimiento = (id: string) => {
     setError(null);
     setBorrando((b) => new Set(b).add(id));
@@ -170,7 +188,7 @@ export function MovimientosCliente({
       if (!r.ok) {
         setBorrando((b) => sinId(b, id));
         setError(
-          mensajeIncierto(r, 'No se pudo confirmar el borrado.', 'Revise la lista: si la fila sigue ahí, no se borró.'),
+          mensajeIncierto(r, 'No se pudo confirmar el borrado.', 'Revisa la lista: si la fila sigue ahí, no se borró.'),
         );
         // Si no se sabe si se borró (corte, o error de la base), la lista real lo dice.
         if (planTrasFallo(r).refrescar) router.refresh();
@@ -188,6 +206,7 @@ export function MovimientosCliente({
 
   return (
     <div className="space-y-6">
+      <DialogoConfirmar {...conf.props} />
       <Modal
         open={pregunta !== null}
         onClose={() => setPregunta(null)}
@@ -357,7 +376,7 @@ export function MovimientosCliente({
                       ) : (
                         <Button
                           variant="ghost"
-                          onClick={() => borrarMovimiento(m.id)}
+                          onClick={() => pedirBorrado(m)}
                           aria-label="Borrar"
                         >
                           <Trash2 className="h-4 w-4" />
