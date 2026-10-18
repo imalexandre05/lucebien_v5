@@ -18,6 +18,7 @@ import {
   HeartHandshake,
   IdCard,
   LayoutDashboard,
+  Target,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
@@ -29,6 +30,7 @@ export type ClaveSeccion =
   | 'asistencias'
   | 'pago'
   | 'movimientos'
+  | 'ventas'
   | 'contrato'
   | 'valores';
 
@@ -58,7 +60,7 @@ export type Seccion = {
 // primero porque ES el landing: el bare /personal/{id} resuelve ahí (segmento ''), así que primero
 // visualmente tiene que ser primero de verdad — antes Datos ocupaba el índice 0 y Resumen el 1, y
 // se aterrizaba en la SEGUNDA pestaña (fricción 4+5, hotfix R1.1). De ahí en más, el orden del
-// flujo real aprobado en la spec: Datos → Contrato → Asistencias → Movimientos → Evaluación → Pago
+// flujo real aprobado en la spec: Datos → Contrato → Asistencias → Movimientos → Ventas y metas → Evaluación → Pago
 // → Valores 360° (docs/superpowers/specs/sueldos/2026-08-23-personal-fusion-design.md §2.3).
 export const SECCIONES: Seccion[] = [
   {
@@ -106,6 +108,17 @@ export const SECCIONES: Seccion[] = [
     icon: HandCoins,
     modulo: 'sueldos',
     descripcion: 'Adelantos, descuentos y ventas atribuidas',
+    soloAdmin: true,
+  },
+  {
+    clave: 'ventas',
+    label: 'Ventas y metas',
+    segmento: 'ventas',
+    icon: Target,
+    // 'sueldos', como Adelantos y Contrato: son datos que entran al cálculo del sueldo. Sólo
+    // administrador o dueño (la RLS de sueldo_ventas_semana también), así que `soloAdmin`.
+    modulo: 'sueldos',
+    descripcion: 'Lo vendido cada semana y si cumplió la meta',
     soloAdmin: true,
   },
   {

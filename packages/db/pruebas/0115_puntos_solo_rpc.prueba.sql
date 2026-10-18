@@ -236,7 +236,7 @@ begin
   perform pipeline_avanzar(pa1, 'refaccion');
   perform pipeline_avanzar(pa1, 'planchado');
   perform pipeline_avanzar(pa1, 'control_calidad');
-  perform pipeline_rechazar(pa1, 'lavado');
+  perform pipeline_rechazar(pa1, 'lavado', p_motivo => 'prueba');
   perform pg_temp.dueno();
   select count(*), coalesce(sum(puntos), 0) into v_n, v_pts from pipeline_puntos
     where pasada_id = pa1 and etapa = 'lavado_rechazo' and empleado_id = e_alm;
@@ -538,7 +538,7 @@ begin
       perform pipeline_avanzar(w1, 'refaccion');
       perform pipeline_avanzar(w1, 'planchado');
       perform pipeline_avanzar(w1, 'control_calidad');
-      perform pipeline_rechazar(w1, 'recepcion');
+      perform pipeline_rechazar(w1, 'recepcion', p_motivo => 'prueba');
       perform pg_temp.dueno();
       select etapa into v_etapa from prenda_pasada where id = w1;
       select count(*) into v_n from prenda_historial
@@ -608,10 +608,10 @@ begin
 
       perform pg_temp.como(e_alm);
       -- 12a) rechazar desde una etapa que no es control de calidad
-      begin perform pipeline_rechazar(x1, 'recepcion'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      begin perform pipeline_rechazar(x1, 'recepcion', p_motivo => 'prueba'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
       -- 12b) rechazo doble
-      perform pipeline_rechazar(x2, 'lavado');
-      begin perform pipeline_rechazar(x2, 'lavado'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+      perform pipeline_rechazar(x2, 'lavado', p_motivo => 'prueba');
+      begin perform pipeline_rechazar(x2, 'lavado', p_motivo => 'prueba'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
       perform pg_temp.dueno();
       select count(*) into v_n from prenda_historial where pasada_id = x1;
       select count(*) into v_neg from pipeline_puntos where pasada_id = x2 and empleado_id = e_alm and puntos < 0;

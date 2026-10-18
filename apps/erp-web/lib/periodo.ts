@@ -93,3 +93,16 @@ export function leerVistaRango(
   };
   return resolverRango({ vista: uno('vista'), desde: uno('desde'), hasta: uno('hasta') }, hoyPeru(), porDefecto);
 }
+
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+
+/** '2026-08-05' → '05 ago'. Aritmética de texto: sin zona horaria. */
+export function fechaCorta(iso: string): string {
+  const [, m, d] = iso.split('-');
+  return `${d} ${MESES_CORTOS[Number(m) - 1] ?? m}`;
+}
+
+/** '05 ago – 04 sep'. */
+export function rangoCorto(desde: string, hasta: string): string {
+  return `${fechaCorta(desde)} – ${fechaCorta(hasta)}`;
+}

@@ -67,10 +67,10 @@ export async function miDesempeno(empleadoId: string, desde: string, hasta: stri
   const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
   const esPropia = sesion?.usuario.id === empleadoId;
   const consultaEvaluacion = esPropia
-    ? sb.rpc('mi_evaluacion_mensual').order('created_at', { ascending: false }).limit(1).maybeSingle()
+    ? sb.rpc('mi_evaluacion_mensual').order('mes', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle()
     : esAdmin
-      ? sb.from('evaluaciones_mensuales').select('*').eq('empleado_id', empleadoId).order('created_at', { ascending: false }).limit(1).maybeSingle()
-      : sb.rpc('evaluaciones_mensuales_visibles').eq('empleado_id', empleadoId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      ? sb.from('evaluaciones_mensuales').select('*').eq('empleado_id', empleadoId).order('mes', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle()
+      : sb.rpc('evaluaciones_mensuales_visibles').eq('empleado_id', empleadoId).order('mes', { ascending: false }).order('created_at', { ascending: false }).limit(1).maybeSingle();
 
   const [repRes, extRes, incRes, pipeRes, evalRes] = await Promise.all([
     sb.from('reportes').select('id, fecha, turno, evaluado, puntaje_eval').eq('encargado_id', empleadoId).gte('fecha', desde).lte('fecha', hasta).order('fecha', { ascending: false }),

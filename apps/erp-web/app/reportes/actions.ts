@@ -9,6 +9,7 @@ import {
   getDraft,
   saveDraft,
   crearReporte,
+  encargadoDeReporte,
   evaluarReporte,
   anularReporte,
   anularEval,
@@ -25,7 +26,10 @@ import {
   type ReportePendiente,
 } from '../../lib/reportes-repo';
 import { getSesion } from '../../lib/auth';
-import { crearIncidenciasDeReporte, listarTiposIncidencia } from '../../lib/incidencias-repo';
+import { operadorParaAccion, pedirCodigoEnPantalla } from '../../lib/pipeline-operador';
+import { tokenOperadorValido } from '../../lib/operador-token';
+import { crearIncidenciasDeReporte, listarTiposIncidencia, responsableIncidenciaValido } from '../../lib/incidencias-repo';
+import { resolverIncidencia } from '../../lib/incidencias-catalogo';
 
 // Inicia el espacio de trabajo de un turno: catálogo de actividades + zonas de limpieza + draft.
 // `yaEnviado` = reporte si el turno ya se envió (para pasar a Evaluación, como el viejo).
@@ -82,14 +86,37 @@ type CrearReporteInput = {
 
 export async function accionCrearReporte(
   input: CrearReporteInput,
+  operador?: string,
 ): Promise<{ ok: boolean; id?: string; error?: string; bloqueoId?: string }> {
   try {
+    // Equipo compartido: sin código del encargado no se envía (la base lo vuelve a exigir, 0146).
+    // Con código, el encargado es quien lo ingresó: si el formulario trae otro, la RPC lo rechaza.
+    let token = await operadorParaAccion(operador);
+    // Cuenta de equipo compartido en un navegador sin la cookie del equipo: la pantalla pide el
+    // código y la base lo exige (0146), pero `operadorParaAccion` lo descarta por no ser equipo
+    // compartido. Se conserva el token (formato válido; la base lo verifica de verdad, 0146) para que el reporte no quede sin poder enviarse.
+    if (!token && operador && tokenOperadorValido(operador) && (await pedirCodigoEnPantalla())) token = operador;
     // C-2 (spec 2026-08-25-incidencias-alcance-y-formulario-design.md §3): la descripción es
     // obligatoria sólo para incidencias del tipo de categoría 'Otros'. El formulario ya lo hace
     // cumplir; esto es lo que de verdad lo exige — un cliente puede saltearse una validación de
     // UI. Se comprueba ANTES de crear el reporte: si falta, no debe quedar nada a medio guardar.
+    // Nivel y puntos de cada incidencia salen del catálogo, no del navegador (spec
+    // 2026-10-18-incidencias-servidor-valida). Se resuelve acá, antes de crear el reporte.
+    let incidenciasResueltas = input.incidencias;
     if (input.incidencias.length) {
       const tiposCatalogo = await listarTiposIncidencia();
+      const resueltas = [];
+      for (const i of input.incidencias) {
+        const r = resolverIncidencia(tiposCatalogo, i.tipo, i.nivel);
+        if (!r.ok) return { ok: false, error: `${r.error} («${i.tipo}»)` };
+        if (i.responsableId) {
+          if (!(await responsableIncidenciaValido(i.responsableId, input.sede))) {
+            return { ok: false, error: `El responsable de la incidencia «${i.tipo}» debe ser una persona activa de esta sede.` };
+          }
+        }
+        resueltas.push({ ...i, nivel: r.nivel, puntosPenalidad: r.puntosPenalidad });
+      }
+      incidenciasResueltas = resueltas;
       const faltante = input.incidencias.find((i) => {
         const t = tiposCatalogo.find((x) => x.tipo === i.tipo);
         return t?.categoria === 'Otros' && !i.descripcion.trim();
@@ -98,7 +125,7 @@ export async function accionCrearReporte(
         return { ok: false, error: `Falta la descripción de la incidencia "${faltante.tipo}": este tipo la requiere.` };
       }
     }
-    const id = await crearReporte(input);
+    const id = await crearReporte(input, token);
     // Incidencias del turno → registradas ligadas al reporte (origen='reporte').
     if (input.incidencias.length) {
       const sesion = await getSesion();
@@ -106,8 +133,9 @@ export async function accionCrearReporte(
         sede: input.sede,
         fecha: input.fecha,
         reporteId: id,
-        reportadoPorId: sesion?.usuario.id ?? null,
-        items: input.incidencias,
+        // Con código de operador, las incidencias las reporta el encargado que lo ingresó.
+        reportadoPorId: (token ? await encargadoDeReporte(id) : null) ?? sesion?.usuario.id ?? null,
+        items: incidenciasResueltas,
       });
     }
     // Auto-asistencia (best-effort): no debe romper la creación del reporte si falla.

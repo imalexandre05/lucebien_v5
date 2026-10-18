@@ -2,7 +2,9 @@ import type { ReactNode } from 'react';
 import type { ResumenLiquidacion } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Badge } from '../ui/badge';
+import type { DetalleHoras } from '../../lib/horas-del-pago';
 import { Cifra } from '../ui/cifra';
+import { HorasDelPago } from './horas-del-pago';
 
 // Hoja RESUMEN del Excel, dentro del sistema. Sólo MUESTRA: todo viene de resumenLiquidacion()
 // (core), que reagrupa las líneas congeladas. Lo que el sistema no tiene se dice «No configurado».
@@ -31,7 +33,16 @@ function Bloque({ titulo, children }: { titulo: string; children: ReactNode }) {
   );
 }
 
-export function ResumenLiquidacionVista({ r, pagoDisponible = true }: { r: ResumenLiquidacion; pagoDisponible?: boolean }) {
+export function ResumenLiquidacionVista({
+  r,
+  pagoDisponible = true,
+  horas = null,
+}: {
+  r: ResumenLiquidacion;
+  pagoDisponible?: boolean;
+  /** Pago por horas: en lugar de «Sueldo y horas» se muestran las tres filas de horas. */
+  horas?: DetalleHoras | null;
+}) {
   return (
     <div className="space-y-4">
       {/* Lo que la persona más busca: cuánto es y si ya está pagado. */}
@@ -61,10 +72,14 @@ export function ResumenLiquidacionVista({ r, pagoDisponible = true }: { r: Resum
           </Fila>
         </Bloque>
 
-        <Bloque titulo="Sueldo y horas">
-          <Fila etiqueta="Sueldo">{soles(r.sueldo)}</Fila>
-          <Fila etiqueta="Horas extras (+/−)">{soles(r.horasExtras)}</Fila>
-        </Bloque>
+        {horas ? (
+          <HorasDelPago h={horas} />
+        ) : (
+          <Bloque titulo="Sueldo y horas">
+            <Fila etiqueta="Sueldo">{soles(r.sueldo)}</Fila>
+            <Fila etiqueta="Horas extras (+/−)">{soles(r.horasExtras)}</Fila>
+          </Bloque>
+        )}
 
         <Bloque titulo="Beneficios">
           <Fila etiqueta="1.ª comisión">{soles(r.comision1)}</Fila>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Shirt, Package, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, PackagePlus, HeartHandshake, History, Send, Truck, Fingerprint, UsersRound, GraduationCap, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Shirt, ClipboardList, ClipboardCheck, Files, AlertTriangle, Settings, Laptop, PackagePlus, HeartHandshake, History, Send, Truck, Fingerprint, UsersRound, GraduationCap, type LucideIcon } from 'lucide-react';
 import { puede, permiteModuloPerfil, type MatrizPermisos, type Rol, type SedePerfil } from '@scilb/core';
 import { cn } from '../../lib/cn';
 import { Logo } from '../brand/logo';
@@ -55,12 +55,9 @@ const NAV: { section: string; items: Item[] }[] = [
       // 'pipeline' ya está concedido a encargado_tienda y a los dos ventas_junior en
       // permisos_modulos; lo único que faltaba era la puerta.
       { label: 'Envíos a tienda', href: '/pipeline/envios', icon: Truck, modulo: 'pipeline', neutralPerfil: true },
-      // INVENTARIO SE QUEDA, aunque el resto de lo comercial salió del menú el 20-ago-2026.
-      // Confirmado por Alexander el 21-ago: conectar el otro sistema va a tomar un tiempo y
-      // mientras tanto el equipo tiene que poder trabajar con esto. Vive en «Interno» y no en una
-      // sección comercial propia porque acá se usa como herramienta de almacén —dónde está cada
-      // prenda— y no como inventario de venta.
-      { label: 'Inventario', href: '/inventario', icon: Package, modulo: 'inventario' },
+      // INVENTARIO SALIÓ DEL MENÚ (18-oct-2026, decisión del dueño n.º 9): no tiene que ver con
+      // este sistema y se conectará por API. Revierte la excepción del 21-ago. La ruta sigue viva.
+      // Spec: docs/superpowers/specs/erp/2026-10-18-ocultar-pos-inventario-design.md
       // Módulo portado del sistema viejo (routes/lavanderia.js): lo usan las TIENDAS para mandar
       // ternos sucios + accesorios a granel al pipeline. En MODULOS_SOLO_POS (@scilb/core) — no
       // aparece en sedes de perfil 'almacen'.
@@ -138,7 +135,7 @@ const NAV: { section: string; items: Item[] }[] = [
 // Con /pipeline y /pipeline/envios en el mismo menú, el startsWith de siempre marcaría las dos
 // filas a la vez. Gana la coincidencia más larga, así la ruta anidada se resalta sola y el padre
 // sólo cuando no hay una entrada más específica.
-const HREFS = NAV.flatMap((g) => g.items.map((i) => i.href));
+export const HREFS = NAV.flatMap((g) => g.items.map((i) => i.href));
 function hrefActivo(path: string): string | null {
   const coinciden = HREFS.filter((h) => (h === '/' ? path === '/' : path.startsWith(h)));
   if (coinciden.length === 0) return null;

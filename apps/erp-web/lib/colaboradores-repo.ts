@@ -304,7 +304,8 @@ export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<s
     e.diasSinDato = sinDeclarar.size;
   }
 
-  // Evaluación del período: la más reciente cuyo ciclo se solape con el rango elegido.
+  // Evaluación del período: la más reciente (por mes y, a igualdad, por created_at, como
+  // ultimaEvaluacionPorMes del core) cuyo ciclo se solape con el rango elegido.
   try {
     // Sólo el administrador lee la tabla directo (0119). Para cualquier otra persona
     // `evaluaciones_mensuales_visibles` devuelve sólo las propias (decisión del dueño, 06-oct-2026; spec
@@ -314,13 +315,15 @@ export async function estadoDelPeriodo(ids: string[], p: Periodo): Promise<Map<s
     const { data, error } = esAdmin
       ? await sb
           .from('evaluaciones_mensuales')
-          .select('empleado_id, nota_final, ciclo_desde, ciclo_hasta, created_at')
+          .select('empleado_id, mes, nota_final, ciclo_desde, ciclo_hasta, created_at')
           .in('empleado_id', ids)
+          .order('mes', { ascending: false })
           .order('created_at', { ascending: false })
       : await sb
           .rpc('evaluaciones_mensuales_visibles')
-          .select('empleado_id, nota_final, ciclo_desde, ciclo_hasta, created_at')
+          .select('empleado_id, mes, nota_final, ciclo_desde, ciclo_hasta, created_at')
           .in('empleado_id', ids)
+          .order('mes', { ascending: false })
           .order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
     const sinNotaAun = new Set<string>(); // evaluación más nueva «en cálculo»: no se cae a una anterior

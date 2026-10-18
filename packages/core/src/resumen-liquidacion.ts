@@ -80,7 +80,11 @@ export function resumenLiquidacion(e: EntradaResumen): ResumenLiquidacion {
 
   for (const l of e.lineas) {
     const c = l.concepto;
-    if (c === 'Sueldo') sueldo += l.monto;
+    // Pago por horas (spec sueldos/2026-10-18-sueldo-por-horas §5): «Horas trabajadas» es el sueldo,
+    // «Horas extra» son las horas extras y «Horas que faltaron» (monto 0) sólo informa.
+    if (c === 'Sueldo' || c === 'Horas trabajadas') sueldo += l.monto;
+    else if (c === 'Horas extra') horasExtras += l.monto;
+    else if (c === 'Horas que faltaron') continue;
     else if (c.startsWith('Comisión')) comision1 += l.monto;
     else if (c === 'Bono por metas semanales') comision2 += l.monto;
     else if (c === 'Pasajes por llegar temprano') pasajes += l.monto;

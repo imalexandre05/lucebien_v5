@@ -15,6 +15,10 @@ import { Badge } from '../../../components/ui/badge';
 import { StatBox } from '../../../components/ui/stat-box';
 import { Aviso } from '../../../components/ui/form';
 import { EmptyState } from '../../../components/ui/empty-state';
+import type { ParametrosSueldo } from '@scilb/core';
+import { listarAcuerdos, type AcuerdoSueldo } from '../../../lib/sueldos-repo';
+import { parametrosEfectivos } from '../../../lib/contrato-efectivo';
+import { SuConfiguracion } from './su-configuracion';
 import { HiloPago } from '../../../components/colaboradores/hilo-pago';
 
 // El resumen contesta dos preguntas, en este orden: qué falta para cerrar el período, y qué pasó
@@ -66,6 +70,19 @@ export default async function ResumenColaboradorPage(
     metaPuntos !== null
       ? ((await componentesEvaluacion(persona.id, periodo.desde, periodo.hasta).catch(() => null))?.puntosTotal ?? null)
       : null;
+  // «Su configuración» (decisión del dueño n.º 5): sólo el administrador, porque es lo pactado con la
+  // persona (sueldo incluido). El contrato que se muestra es el que toca el período; si ninguno, el último.
+  const esAdmin = acceso.sesion.usuario.rol === 'admin' || acceso.sesion.usuario.rol === 'dueno';
+  let contrato: AcuerdoSueldo | null = null;
+  let parametrosContrato: ParametrosSueldo | null = null;
+  if (esAdmin) {
+    const acuerdos = (await listarAcuerdos(persona.id).catch(() => [])).filter((a) => a.estado !== 'liquidado');
+    contrato =
+      acuerdos.find((a) => a.fechaInicio <= periodo.hasta && (a.fechaFin ?? '9999-12-31') >= periodo.desde) ??
+      acuerdos[0] ??
+      null;
+    parametrosContrato = contrato ? await parametrosEfectivos(contrato).catch(() => null) : null;
+  }
   const fmtPuntos = (n: number) => n.toLocaleString('es-PE', { maximumFractionDigits: 2 });
 
   return (
@@ -105,6 +122,14 @@ export default async function ResumenColaboradorPage(
           En este período lleva <span className="tabular-nums font-semibold">{fmtPuntos(puntosPeriodo)} puntos</span>. Desde{' '}
           <span className="tabular-nums font-semibold">{fmtPuntos(metaPuntos)} puntos</span> al mes cobra extra.
         </Aviso>
+      )}
+
+      {esAdmin && (
+        <SuConfiguracion
+          acuerdo={contrato}
+          parametros={parametrosContrato}
+          hrefCambiar={rutaSeccion(persona.id, 'contrato', query)}
+        />
       )}
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

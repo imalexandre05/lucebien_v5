@@ -10,6 +10,7 @@ import { EmptyState } from '../../../components/ui/empty-state';
 
 const ETAPAS: Record<string, string> = {
   recepcion: 'Recepción',
+  codificacion: 'Codificación',
   lavado: 'Lavado',
   empatado: 'Empatado',
   refaccion: 'Refacción',

@@ -1,4 +1,5 @@
 import { getServerClient } from './supabase/server';
+import { ultimaEvaluacionPorMes } from '@scilb/core';
 import { mapaNombres } from './directorio';
 import { getSesion } from './auth';
 
@@ -94,11 +95,18 @@ export async function empleadosParaPago(): Promise<EmpleadoPago[]> {
 
   const { data: evals } = await sb
     .from('evaluaciones_mensuales')
-    .select('empleado_id, nota_final, created_at')
-    .order('created_at', { ascending: false });
+    .select('empleado_id, mes, nota_final, created_at');
+  // La «última» es la del mes mayor, no la guardada más tarde (spec 2026-10-18 §2.3).
+  const porEmpleado = new Map<string, { mes: string; nota_final: number; created_at: string | null }[]>();
+  for (const e of (evals as { empleado_id: string; mes: string; nota_final: number; created_at: string | null }[]) ?? []) {
+    const l = porEmpleado.get(e.empleado_id) ?? [];
+    l.push(e);
+    porEmpleado.set(e.empleado_id, l);
+  }
   const ultima = new Map<string, number>();
-  for (const e of (evals as { empleado_id: string; nota_final: number }[]) ?? []) {
-    if (!ultima.has(e.empleado_id)) ultima.set(e.empleado_id, Number(e.nota_final));
+  for (const [id, filas] of porEmpleado) {
+    const u = ultimaEvaluacionPorMes(filas);
+    if (u) ultima.set(id, Number(u.nota_final));
   }
 
   return ((emps as { id: string; nombre: string; salario_base: number | null }[]) ?? []).map((e) => ({

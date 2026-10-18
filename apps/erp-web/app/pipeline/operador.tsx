@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
-import { UserRound } from 'lucide-react';
+import { useCallback, useEffect, useState, useSyncExternalStore, useTransition } from 'react';
+import { LogOut, UserRound } from 'lucide-react';
 import { Modal } from '../../components/ui/modal';
 import { Button } from '../../components/ui/button';
 import { Input, Label, Aviso } from '../../components/ui/form';
 import {
   cambiarOperador,
+  formatoCuentaRegresiva,
   msParaExpirar,
   nuevoOperador,
   operadorVigente,
@@ -15,57 +16,67 @@ import {
 } from '../../lib/operador-activo';
 import { cerrarOperador, validarCodigo } from './actions';
 
-// Código personal en equipos compartidos (spec codigo-personal §5).
+// Código personal en equipos compartidos (spec codigo-personal §5; operador-pc-compartida R3/R4).
 //
-// El operador vive SÓLO en memoria de la pestaña: ni localStorage ni cookie. El código se teclea,
+// El operador vive SÓLO en memoria de la pestaña: ni localStorage ni cookie. Está en un almacén de
+// módulo (no en el estado de cada pantalla) para que sobreviva a la navegación entre Kanban,
+// Registrar, Envíos y Reportes sin pedir el código otra vez; recargar o cerrar la pestaña lo borra.
+// El código se teclea,
 // (usuario + PIN) viaja una vez a `validarCodigo` (que lo valida la base y cuenta los intentos) y aquí se guarda
 // únicamente el token que devuelve. Si el equipo no es compartido, `conOperador` ejecuta la acción
 // tal cual y no se muestra nada.
-export function useOperador(compartido: boolean) {
-  const [operador, setOperador] = useState<OperadorActivo | null>(null);
-  const ref = useRef<OperadorActivo | null>(null);
-  const [pendiente, setPendiente] = useState<((token?: string) => void) | null>(null);
+let almacen: OperadorActivo | null = null;
+const oyentes = new Set<() => void>();
+function fijar(op: OperadorActivo | null) {
+  almacen = op;
+  oyentes.forEach((f) => f());
+}
+function suscribir(f: () => void) {
+  oyentes.add(f);
+  return () => {
+    oyentes.delete(f);
+  };
+}
 
-  const fijar = useCallback((op: OperadorActivo | null) => {
-    ref.current = op;
-    setOperador(op);
-  }, []);
+export function useOperador(compartido: boolean) {
+  const operador = useSyncExternalStore(suscribir, () => almacen, () => null);
+  const [pendiente, setPendiente] = useState<((token?: string) => void) | null>(null);
 
   // Al cumplirse la ventana sin actividad, el chip vuelve a «Ingresar código».
   useEffect(() => {
     if (!operador) return;
-    const t = setTimeout(() => fijar(operadorVigente(ref.current, Date.now())), msParaExpirar(operador, Date.now()) + 50);
+    const t = setTimeout(() => fijar(operadorVigente(almacen, Date.now())), msParaExpirar(operador, Date.now()) + 50);
     return () => clearTimeout(t);
-  }, [operador, fijar]);
+  }, [operador]);
 
   // Ejecuta `accion` con el token del operador vigente; si no hay, pide el código primero.
   const conOperador = useCallback(
     (accion: (token?: string) => void) => {
       if (!compartido) return accion();
-      const vigente = operadorVigente(ref.current, Date.now());
+      const vigente = operadorVigente(almacen, Date.now());
       if (vigente) return accion(vigente.token);
       fijar(null);
       setPendiente(() => accion);
     },
-    [compartido, fijar],
+    [compartido],
   );
 
   // Renueva la ventana de inactividad de la pantalla. Se llama SÓLO cuando la acción salió bien: la
   // base renueva la suya (`tocar_operador`) en el mismo caso, y las dos cuentas deben coincidir.
   const renovar = useCallback(() => {
-    const vigente = operadorVigente(ref.current, Date.now());
+    const vigente = operadorVigente(almacen, Date.now());
     if (vigente) fijar(registrarActividad(vigente, Date.now()));
-  }, [fijar]);
+  }, []);
 
   // «cambiar»: además de olvidar al operador en pantalla, se REVOCA su token en la base.
   const cambiar = useCallback(() => {
-    const token = ref.current?.token;
+    const token = almacen?.token;
     fijar(cambiarOperador());
     if (token) void cerrarOperador(token);
-  }, [fijar]);
+  }, []);
 
   // Si el servidor rechaza por operador vencido (p. ej. la base lo venció antes que la pestaña).
-  const operadorRechazado = useCallback(() => fijar(null), [fijar]);
+  const operadorRechazado = useCallback(() => fijar(null), []);
 
   const chip = compartido ? (
     <ChipOperador
@@ -100,18 +111,43 @@ function ChipOperador({
   onIngresar: () => void;
   onCambiar: () => void;
 }) {
+  // Un tic por segundo sólo mientras hay alguien operando.
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    if (!operador) return;
+    setAhora(Date.now());
+    const t = setInterval(() => setAhora(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [operador]);
+
   return (
-    <div className="mb-3 flex shrink-0 items-center gap-2 rounded-r-chico border border-line bg-paper px-3 py-1.5 text-apoyo">
+    <div
+      role="status"
+      className="mb-3 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-r-chico border border-line bg-paper px-3 py-1.5 text-apoyo"
+    >
       <UserRound className="h-4 w-4 text-muted" strokeWidth={2} />
-      <span className="text-muted">Operando:</span>
-      <span className="font-medium text-navy">{operador ? operador.nombre : '—'}</span>
-      <span aria-hidden className="text-muted">·</span>
+      {operador ? (
+        <>
+          <span className="text-muted">Operando:</span>
+          <span className="font-medium text-navy">{operador.nombre}</span>
+          <span aria-hidden className="text-muted">·</span>
+          <span className="tabular-nums text-muted">se cierra en {formatoCuentaRegresiva(msParaExpirar(operador, ahora))}</span>
+        </>
+      ) : (
+        <span className="text-muted">Nadie operando</span>
+      )}
       <button
         type="button"
         onClick={operador ? onCambiar : onIngresar}
-        className="toque inline-flex items-center px-1 font-medium text-navy underline-offset-2 hover:text-gold hover:underline"
+        className="toque inline-flex items-center gap-1 px-1 font-medium text-navy underline-offset-2 hover:text-gold hover:underline"
       >
-        {operador ? 'cambiar' : 'Ingresar PIN'}
+        {operador ? (
+          <>
+            <LogOut className="h-4 w-4" strokeWidth={2} /> Cambiar operador / Salir
+          </>
+        ) : (
+          'Ingresar código'
+        )}
       </button>
     </div>
   );
@@ -158,7 +194,7 @@ function DialogoCodigo({
     });
 
   return (
-    <Modal open={abierto} onClose={onCerrar} title="¿Quién opera?" subtitle="Ingresa tu usuario y tu PIN personal" size="sm">
+    <Modal open={abierto} onClose={onCerrar} title="¿Quién opera?" subtitle="Ingresa tu código personal: usuario y PIN" size="sm">
       <form
         onSubmit={(e) => {
           e.preventDefault();

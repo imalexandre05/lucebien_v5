@@ -1,9 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { validarCadaDias, type ParametrosSueldo } from '@scilb/core';
+import { tarifaDelDia, type ParametrosSueldo } from '@scilb/core';
+import { validarAcuerdo, type AcuerdoForm } from '../../../lib/acuerdo-validar';
 import { getSesion } from '../../../lib/auth';
 import {
+  cambiosParaCore,
   actualizarAcuerdo,
   cambiarEstadoAcuerdo,
   cambiarFrecuencia,
@@ -37,64 +39,7 @@ async function admin(): Promise<string | null> {
   return sesion.usuario.id;
 }
 
-export type AcuerdoForm = {
-  empleadoId: string;
-  fechaInicio: string;
-  fechaFin: string;
-  modalidad: ModalidadAcuerdo;
-  cadaDias: number | null;
-  sueldoPactado: number;
-  escala: number | null;
-  almuerzoHabilitado: boolean;
-  parametros: Partial<ParametrosSueldo>;
-  turnos: { diaSemana: number; horaInicio: string; horaFin: string; lugar: string | null }[];
-};
-
-/**
- * Lo que se comprueba antes de tocar la base. No reemplaza a los `check` de la 0072: los duplica
- * a propósito, porque un mensaje de constraint no le dice nada a quien está cargando un contrato.
- *
- * Lo que NO se comprueba acá es el solape de turnos: eso lo hace la restricción de exclusión de
- * la 0072 y también `resumirHorario()` del core, con un mensaje mejor que el que escribiríamos.
- */
-function validar(f: AcuerdoForm): string | null {
-  if (!f.empleadoId) return 'Elegí a la persona del contrato.';
-  if (!f.fechaInicio || !f.fechaFin) return 'El contrato necesita fecha de inicio y de fin.';
-  if (f.fechaFin < f.fechaInicio) return 'La fecha de fin no puede ser anterior a la de inicio.';
-  if (f.modalidad === 'dias') {
-    try {
-      validarCadaDias(f.cadaDias);
-    } catch (e) {
-      return e instanceof Error ? e.message : 'Cada cuántos días se paga tiene que estar entre 1 y 62.';
-    }
-  }
-  if (!Number.isFinite(f.sueldoPactado) || f.sueldoPactado <= 0) {
-    return 'El sueldo pactado tiene que ser mayor que cero.';
-  }
-  if (f.escala != null && (!Number.isInteger(f.escala) || f.escala < 1)) {
-    return 'La escala tiene que ser un número entero de 1 en adelante.';
-  }
-  // La comisión pactada en el contrato es una FRACCIÓN de la base, no un porcentaje: el motor la
-  // multiplica tal cual (RN-13, `packages/core/src/sueldos.ts`), igual que el parámetro global
-  // `sueldo_pct_comision`, que ya declara min 0 y max 1. `resolverParametros()` sólo rechaza
-  // negativos, y el `check` de la 0072 mira los nombres de las claves, no sus valores: sin este
-  // guard un 0,5 tipeado de más pactaba un 50% de comisión y se pagaba sin que nada chillara.
-  // La pantalla la pide en porcentaje y la convierte a fracción antes de enviarla
-  // (`lib/porcentaje.ts`, spec 2026-10-03-comision-en-porcentaje); esto lo vuelve a comprobar
-  // porque una Server Action es un endpoint público. El mensaje habla en porcentaje porque es la
-  // unidad que la persona ve.
-  const pctComision = f.parametros?.pctComision;
-  if (pctComision != null && (!Number.isFinite(pctComision) || pctComision < 0 || pctComision > 1)) {
-    return 'La comisión tiene que estar entre 0 % y 100 %.';
-  }
-  for (const t of f.turnos) {
-    if (!t.horaInicio || !t.horaFin) return 'Hay un turno sin hora de inicio o de fin.';
-    if (t.horaFin <= t.horaInicio) {
-      return `Turno inválido el día ${t.diaSemana}: ${t.horaInicio}–${t.horaFin}. La salida tiene que ser posterior a la entrada.`;
-    }
-  }
-  return null;
-}
+export type { AcuerdoForm };
 
 const aInput = (f: AcuerdoForm): AcuerdoInput => ({
   empleadoId: f.empleadoId,
@@ -102,7 +47,8 @@ const aInput = (f: AcuerdoForm): AcuerdoInput => ({
   fechaFin: f.fechaFin,
   modalidad: f.modalidad,
   cadaDias: f.modalidad === 'dias' ? f.cadaDias : null,
-  sueldoPactado: f.sueldoPactado,
+  sueldoPactado: f.tarifaHora != null ? 0 : f.sueldoPactado,
+  tarifaHora: f.tarifaHora ?? null,
   escala: f.escala,
   almuerzoHabilitado: f.almuerzoHabilitado,
   parametros: f.parametros,
@@ -114,7 +60,7 @@ export async function accionCrearAcuerdo(f: AcuerdoForm): Promise<Resultado> {
     const admId = await admin();
     if (!admId) return { ok: false, error: 'Sólo el administrador o el dueño pueden pactar un contrato.' };
 
-    const problema = validar(f);
+    const problema = validarAcuerdo(f);
     if (problema) return { ok: false, error: problema };
 
     const id = await crearAcuerdo(aInput(f), admId);
@@ -135,7 +81,7 @@ export async function accionActualizarAcuerdo(id: string, f: AcuerdoForm): Promi
     const admId = await admin();
     if (!admId) return { ok: false, error: 'Sólo el administrador o el dueño pueden editar un contrato.' };
 
-    const problema = validar(f);
+    const problema = validarAcuerdo(f);
     if (problema) return { ok: false, error: problema };
 
     await actualizarAcuerdo(id, aInput(f));
@@ -182,7 +128,13 @@ export type PlanCambio = {
   /** Primer día del próximo pago sin pagar: desde ahí rige el cambio. Null si ya está todo pagado. */
   desde: string | null;
   /** Cuántos días y qué cuota tiene hoy ese pago, para sugerir una proporcional. */
-  frecuenciaActual: { modalidad: ModalidadAcuerdo; cadaDias: number | null; sueldoPactado: number };
+  frecuenciaActual: {
+    modalidad: ModalidadAcuerdo;
+    cadaDias: number | null;
+    sueldoPactado: number;
+    /** Tarifa por hora vigente en ese pago. Nula = contrato de sueldo fijo. */
+    tarifaHora: number | null;
+  };
   fechaFin: string;
   /** Borradores que se cruzan con el cambio: hay que recalcularlos después. */
   borradores: { id: string; periodoDesde: string; periodoHasta: string }[];
@@ -192,9 +144,13 @@ export async function accionPlanDeCambio(acuerdoId: string): Promise<{ ok: boole
   try {
     if (!(await admin())) return { ok: false, error: 'Sólo el administrador o el dueño pueden cambiar cómo se paga.' };
     const { acuerdo, proximo, borradores } = await planDeCambio(acuerdoId);
+    const tarifaHora =
+      acuerdo.tarifaHora === null
+        ? null
+        : tarifaDelDia(acuerdo, cambiosParaCore(acuerdo.cambios), proximo?.desde ?? acuerdo.fechaInicio);
     const base = proximo
-      ? { modalidad: proximo.modalidad, cadaDias: proximo.cadaDias ?? null, sueldoPactado: proximo.cuotaCompleta }
-      : { modalidad: acuerdo.modalidad, cadaDias: acuerdo.cadaDias, sueldoPactado: acuerdo.sueldoPactado };
+      ? { modalidad: proximo.modalidad, cadaDias: proximo.cadaDias ?? null, sueldoPactado: proximo.cuotaCompleta, tarifaHora }
+      : { modalidad: acuerdo.modalidad, cadaDias: acuerdo.cadaDias, sueldoPactado: acuerdo.sueldoPactado, tarifaHora };
     return {
       ok: true,
       plan: {
@@ -210,7 +166,7 @@ export async function accionPlanDeCambio(acuerdoId: string): Promise<{ ok: boole
 }
 
 /**
- * Confirma el cambio. La cuota la manda el administrador (el panel sólo la sugiere): nunca se
+ * Confirma el cambio. En un contrato por horas llega `tarifaHora` y no hay cuota. La cuota la manda el administrador (el panel sólo la sugiere): nunca se
  * aplica sola (no-negociable 5). Devuelve los borradores que quedaron desactualizados para que la
  * pantalla pida recalcularlos.
  */

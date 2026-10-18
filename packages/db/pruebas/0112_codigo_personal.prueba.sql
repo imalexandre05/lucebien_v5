@@ -326,7 +326,7 @@ begin
   perform pipeline_avanzar(p8, 'refaccion', v_token);
   perform pipeline_avanzar(p8, 'planchado', v_token);
   perform pipeline_avanzar(p8, 'control_calidad', v_token);
-  perform pipeline_rechazar(p8, 'recepcion', v_token);
+  perform pipeline_rechazar(p8, 'recepcion', v_token, 'prueba');
   perform pg_temp.dueno();
   select count(*) into v_n from prenda_historial
     where pasada_id = p8 and obs like 'Rechazado%' and empleado_id = op1 and registrado_por = s_a;
@@ -695,7 +695,7 @@ begin
       perform pipeline_avanzar(q1, 'refaccion', v_tok);
       perform pipeline_avanzar(q1, 'planchado', v_tok);
       perform pipeline_avanzar(q1, 'control_calidad', v_tok);
-      perform pipeline_rechazar(q1, 'recepcion', v_tok);
+      perform pipeline_rechazar(q1, 'recepcion', v_tok, 'prueba');
       perform pg_temp.dueno();
       select count(*) into v_n from prenda_historial
         where pasada_id = q1 and obs like 'Rechazado%' and empleado_id = op1 and registrado_por = s_a;
@@ -788,10 +788,10 @@ begin
 
       perform pg_temp.como(s_a);
       -- 28a) rechazar desde una etapa que no es control de calidad
-      begin perform pipeline_rechazar(w1, 'recepcion'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      begin perform pipeline_rechazar(w1, 'recepcion', p_motivo => 'prueba'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
       -- 28b) rechazo doble: el segundo ya no está en control de calidad
-      perform pipeline_rechazar(w2, 'lavado');
-      begin perform pipeline_rechazar(w2, 'lavado'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+      perform pipeline_rechazar(w2, 'lavado', p_motivo => 'prueba');
+      begin perform pipeline_rechazar(w2, 'lavado', p_motivo => 'prueba'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
       perform pg_temp.dueno();
       select count(*) into v_n from prenda_historial where pasada_id = w1;
       select count(*) into v_neg from pipeline_puntos where pasada_id = w2 and empleado_id = op2 and puntos < 0;

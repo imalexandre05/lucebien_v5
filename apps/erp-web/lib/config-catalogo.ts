@@ -140,12 +140,13 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   // no se podía editar desde ninguna pantalla. El default sigue siendo 1 justamente para no
   // cambiar ningún cálculo ya hecho (39 filas de pipeline_puntos con etapa='recepcion').
   ptsItem('pts_recepcion', 'Recepción', '1'),
+  ptsItem('pts_codificacion', 'Codificación (etiqueta puesta)', '1'),
   ptsItem('pts_lavado_normal', 'Lavado normal', '1'),
   ptsItem('pts_lavado_seco', 'Lavado en seco', '3'),
   ptsItem('pts_lavado_especializado', 'Lavado especializado', '5'),
   ptsItem('pts_empatado', 'Empatado', '0.5'),
   ptsItem('pts_refaccion', 'Refacción', '2'),
-  ptsItem('pts_compostura', 'Compostura / codificación', '5'),
+  ptsItem('pts_compostura', 'Compostura', '5'),
   ptsItem('pts_planchado', 'Planchado', '3'),
   ptsItem('pts_control_calidad', 'Control de calidad', '2'),
   ptsItem('pts_accesorio', 'Accesorio', '0.5'),
@@ -168,6 +169,16 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '15',
     min: 1,
     step: 1,
+  },
+  {
+    clave: 'eval_puntualidad_modo',
+    seccion: SECCION_EVALUACION,
+    etiqueta: 'Cómo se calcula la nota de puntualidad',
+    descripcion:
+      "«proporcion» (por defecto): 20 × días puntuales ÷ días que debía asistir, según la huella. «minutos»: resta 1 punto por cada bloque de minutos de tardanza (ver arriba).",
+    tipo: 'lista',
+    default: 'proporcion',
+    opciones: ['proporcion', 'minutos'],
   },
   {
     clave: 'eval_bonus_ventas_max',
@@ -790,9 +801,9 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     seccion: SECCION_CODIGO,
     etiqueta: 'Minutos de operador activo sin actividad',
     descripcion:
-      'Tras ingresar su código, quien opera el tablero de un equipo compartido sigue activo hasta que pasen estos minutos sin mover ninguna prenda; después tiene que volver a ingresar el código.',
+      'Tras ingresar su código, quien opera el tablero de un equipo compartido sigue activo hasta que pasen estos minutos sin mover ninguna prenda (el cierre es automático para que otra persona no mueva con su código); después tiene que volver a ingresar el código.',
     tipo: 'numero',
-    default: '10',
+    default: '5',
     min: 1,
     step: 1,
   },
@@ -959,8 +970,13 @@ export type ConfigItem = {
 
 // Orden de secciones para la UI: catálogo en su orden fijo, luego cualquier sección personalizada
 // (alfabético), con "Personalizados" siempre al final de todas.
+// Secciones que /configuracion no muestra: Inventario y POS salieron de la navegación (18-oct-2026,
+// decisión del dueño n.º 9). Sus valores siguen en la base sin cambios: la pantalla reenvía cada
+// valor tal como llegó.
+export const SECCIONES_OCULTAS: readonly string[] = [SECCION_INVENTARIO, SECCION_POS];
+
 export function ordenarSecciones(items: ConfigItem[]): { nombre: string; items: ConfigItem[] }[] {
-  const nombres = new Set(items.map((i) => i.seccion));
+  const nombres = new Set(items.map((i) => i.seccion).filter((s) => !SECCIONES_OCULTAS.includes(s)));
   const catalogadas = ORDEN_SECCIONES.filter((s) => nombres.has(s));
   const otras = [...nombres].filter((s) => !ORDEN_SECCIONES.includes(s) && s !== 'Personalizados').sort();
   const orden = [...catalogadas, ...otras, ...(nombres.has('Personalizados') ? ['Personalizados'] : [])];

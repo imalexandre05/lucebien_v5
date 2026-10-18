@@ -140,6 +140,11 @@ export type ComponentesRPC = {
   // 🆕 0132: nota de examen de las capacitaciones cerradas en el ciclo; null = sin dato (entrada manual).
   examenes?: number | null;
   examenesCantidad?: number;
+  // 🆕 0159: detalle de la puntualidad automática (undefined si la migración aún no corrió).
+  puntualidadModo?: 'proporcion' | 'minutos';
+  puntualidadDebidos?: number;
+  puntualidadPuntuales?: number;
+  puntualidadTardanzas?: number;
   // 🆕 spec 2026-08-25-puntos-como-moneda-design.md — desglose de puntos (migración 0095). Quedan
   // `undefined` (no `0`) si esa migración todavía no corrió: notaDesdePuntos() los rechaza con un
   // mensaje claro en vez de calcular con un 0 que no es real (mismo principio que ya sigue
@@ -279,4 +284,13 @@ export async function crearEvaluacion(p: {
     .single();
   if (error) throw new Error(error.message);
   return String((data as { id: string }).id);
+}
+
+// Anula (borra) una evaluación guardada para poder recalcularla (migración 0148, spec 2026-10-18).
+// La RPC es solo-administrador y se NIEGA si hay un pago o una liquidación que dependa de la nota.
+// Sus errores llegan con prefijo PERMISO:/DATO:/BLOQUEO: — se quita el prefijo para mostrarlos.
+export async function anularEvaluacion(id: string, motivo: string): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('evaluacion_anular', { p_id: id, p_motivo: motivo });
+  if (error) throw new Error(error.message.replace(/^(PERMISO|DATO|BLOQUEO):\s*/, ''));
 }

@@ -1575,7 +1575,7 @@ dueño**. Todos se editan desde `/configuracion` → «Código personal» sin mi
 |---|---|---|
 | `codigo_max_intentos` | 5 | Fallos permitidos antes de bloquear una sesión |
 | `codigo_ventana_intentos_min` | 15 | Minutos que cuenta cada fallo |
-| `codigo_operador_min` | 10 | Minutos de operador activo sin actividad (el token se renueva con cada acción) |
+| `codigo_operador_min` | 5 | Minutos de operador activo sin actividad (el token se renueva con cada acción). **Pedido por el dueño (18-oct-2026)**; antes 10 provisional. Migración 0145 |
 | `codigo_operador_max_h` | 8 | Horas máximas de vida de un token desde su emisión (un turno), aunque se renueve; «cambiar» además lo revoca en la base |
 
 Preguntas abiertas para el dueño (spec §7): si la fase 2 (firma del FR-01, evaluar reporte,
@@ -2076,3 +2076,101 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+## 5A · Codificación como etapa y operador de 5 min (18-oct-2026)
+
+**Decididas por el dueño (18-oct-2026):**
+- La etapa «Codificación» vale **1 punto** (`pts_codificacion = 1`), editable por el administrador en
+  `/configuracion`. Migración 0147.
+- Si el operador vigente del pipeline es el encargado y su código sigue activo, puede enviar el
+  reporte sin volver a ingresar el código; el servidor lo valida (token de operador, 0112/0146).
+
+| Parámetro (`config.clave`) | Valor | Qué controla |
+|---|---|---|
+| `pts_codificacion` | 1 | Puntos al completar la etapa «Codificación» (marcar que la prenda ya tiene su etiqueta). Decidido. Migración 0147 |
+| `codigo_operador_min` | 5 | Lo pidió el dueño (antes 10 provisional). Migración 0145 |
+
+Pendiente de confirmar con el dueño: si Codificación debe poder asignarse al registrar la prenda
+(hoy se llega a ella desde Recepción).
+## 5A · Rechazar con motivo (18-oct-2026)
+
+Default inventado (fijo en la RPC `pipeline_rechazar`, migración 0154, a confirmar con el dueño):
+el motivo del rechazo es obligatorio y debe tener entre 3 y 500 letras. Se guarda en
+`prenda_pasada.obs_calidad` y en la observación del historial.
+## 5A · Anular un envío (18-oct-2026)
+
+Default inventado (fijo en la RPC `pipeline_anular_envio`, migración 0156, a confirmar con el dueño):
+el motivo de la anulación es obligatorio, de 3 a 500 letras, igual que al rechazar (0154).
+## Evaluar solo ciclos terminados y anular una nota guardada (18-oct-2026)
+
+Defaults puestos en el código sin que el dueño los haya confirmado (spec
+[2026-10-18-evaluacion-corregir-y-ciclo-cerrado](superpowers/specs/evaluaciones/2026-10-18-evaluacion-corregir-y-ciclo-cerrado-design.md)).
+Ninguno es un número editable: son reglas de flujo.
+
+| Pregunta | Default actual | Estado |
+|---|---|---|
+| ¿Se puede evaluar un ciclo que termina hoy (`hasta == hoy`)? | Sí. Solo se rechaza `hasta > hoy` | Pregunta abierta |
+| ¿Quién puede anular una evaluación? | Administrador y dueño | Pregunta abierta |
+| ¿Una liquidación en `borrador` bloquea la anulación de la nota? | Sí: cualquier liquidación no anulada de esa persona que cruce el ciclo bloquea (default conservador) | Pregunta abierta |
+| ¿Con un pago ya enlazado se puede anular? | No: hay que anular primero el pago | Pregunta abierta |
+## 5B-1 · Suspensión cierra el contrato; permisos por columna (18-oct-2026)
+
+Migración 0149. Decisión del dueño (05-oct): al suspender, el contrato vigente se cierra en la fecha de suspensión.
+
+- **Defaults puestos (editables al revisar):** reactivar NO reabre el contrato (quien vuelve necesita uno nuevo); una liquidación no anulada que llegue más allá de la fecha de suspensión BLOQUEA la suspensión con un mensaje que dice qué hacer; un contrato que empieza después de la fecha de suspensión no se toca.
+- **Pregunta abierta:** ¿qué pasa con un contrato futuro ya pactado de alguien a quien se suspende? Hoy queda como está (el huellero ya lo ignora porque la persona está inactiva). Recomendación: dejarlo y avisar al administrador.
+- **Sin hacer (exige confirmar en producción):** el colaborador podría leer, llamando directo a la API, notas privadas, DNI, salario y código de su propia fila (`emp_select`, 0002:34; no hay permisos por columna). Recomendación: pasar a una vista con columnas permitidas, o revocar columnas sensibles al rol `authenticated`, tras revisar los grants reales de producción.
+
+## 5B-2 · Contrato y horario en una sola RPC (18-oct-2026)
+
+Migración 0157 (`sueldo_acuerdo_guardar`). No se inventó ningún parámetro de negocio ni default: la RPC escribe lo que el servidor ya resolvió (parámetros vigentes + overrides del formulario).
+
+- **Comportamiento que cambia, sin regla nueva:** editar un contrato que no existe ahora falla con «ese contrato no existe» (antes el update era silencioso y fallaba después al guardar turnos).
+## 5B · Declarar en bloque los días partidos en tramos (18-oct-2026)
+
+**Default puesto por el sistema, no una regla del dueño: se puede cambiar.** El dueño decidió que los días partidos en varios tramos de huella se declaren en bloque con confirmación y resumen. El detalle de cómo no estaba decidido, y se puso la opción más conservadora:
+- Cada tramo **cerrado** (entrada y salida reales, ninguna estimada) se declara `trabajado` con **sus horas de huella**; no se reparten las horas del contrato.
+- El tramo **abierto** (o con hora estimada) **no se declara**: el resumen avisa que bloquea la liquidación hasta cerrarlo o editarlo a mano.
+- Pregunta para el dueño: ¿un tramo abierto debería declararse con la salida del contrato, o seguir a mano? Hoy es a mano. Spec: `docs/superpowers/specs/sueldos/2026-10-18-declarar-dias-partidos-design.md`.
+## 5B-2 · Incidencias: quién puede registrar (18-oct-2026)
+
+Ticket #26. Decisión del dueño: el permiso para registrar desde `/incidencias` es `incidencias:crear` (`ver` es solo lectura); hay que otorgarlo a quien corresponda en Configuración → Permisos. Los operativos siguen registrando desde su reporte de turno. Nivel y puntos salen del catálogo (servidor y base, migración 0150); el responsable debe ser una persona activa de la sede de la incidencia (regla puesta por defecto).
+
+## 5B-3 · Contratos: uno vigente y otro no vigente a la vez (ticket #21, 18-oct-2026)
+
+Sin cambios de código: requiere decisión del dueño. Hoy ya conviven uno vigente y otro no vigente si las fechas no se cruzan; `sueldo_acuerdos_sin_solape` (0072) impide el solape sin importar el estado.
+
+- **Pregunta:** ¿cuál es el caso real? (a) renovar antes de que venza el actual; (b) dejar listo el siguiente en borrador.
+- **Recomendación:** (b) con un flujo de «renovar»: el contrato nuevo nace en borrador empezando al día siguiente del fin del actual (sin solape), y pasa a vigente al llegar su fecha. Evita relajar la regla de solape, que protege el cálculo del sueldo. Permitir solape solo en borrador exigiría rehacer la restricción de exclusión (migración y spec completa).
+## 6A-1 · Puntualidad automática en la evaluación (18-oct-2026)
+Defaults inventados (editable: `eval_puntualidad_modo` en /configuración; `minutos` vuelve a la fórmula anterior). **Confirmar con Alexander.**
+1. Nota = 20 × días puntuales ÷ días con turno contratado en el ciclo (hasta hoy, hora Perú).
+2. Los días sin fila o `sin_dato` no cuentan como debidos; una falta sí resta (no es puntual). **Decidido por el dueño:** una falta justificada no resta puntualidad (no es día debido).
+3. Una tardanza justificada cuenta como puntual; la tolerancia es la del sueldo (`sueldo_tolerancia_minutos`).
+4. Sin horario contratado: se usa la fórmula por minutos (da 20 si no hay atraso medible).
+## 6A-4 · Liquidación provisional con días por declarar (18-oct-2026)
+Sin parámetros nuevos. Regla aplicada (confirmar con Alexander): un día contratado sin declarar **no es falta ni tardanza y no suma ni resta horas**; el borrador sale con el sueldo pactado sin tocar por ese día (monto máximo, provisional) y una advertencia con las fechas. **Cerrar sigue exigiendo todo declarado** (el cierre usa la `sueldo_entrada` estricta).
+## 6A-5 · Lista de precios de confecciones (18-oct-2026)
+Tabla `lista_precios` (0161) **vacía de origen**: no se cargó ningún precio. La dueña lo carga en /configuracion/lista-precios. Ventas puede «Sumar» un artículo activo al total de la boleta (solo prellena; el monto confirmado es el que se guarda). Pendiente de decidir: cantidades, precios por sede, historial de precios.
+## Huellero: marca al extremo más cercano (sesión 7, 18-oct-2026) — [spec](superpowers/specs/asistencias/2026-10-18-huellero-marca-extremo-cercano-design.md)
+
+Decisión del dueño n.º 3, migración 0163. **Default inventado:** `huellero_rederivar` acepta como máximo
+400 días por llamada (protección técnica, no regla de negocio). **Para revisar:** los días que antes de
+la 0163 quedaron con una hora estimada (C-3) siguen pagándose con esa hora hasta que alguien los revise;
+la lista «Por revisar» los muestra como días con problema. Con dos turnos en el día y sólo dos marcas
+(entrada de la mañana y salida de la tarde) el día sigue contándose como un solo tramo, pausa incluida.
+## Sueldo por horas reales (sesión 7, 18-oct-2026) — [spec](superpowers/specs/sueldos/2026-10-18-sueldo-por-horas-design.md)
+
+Decisiones del dueño n.º 1 y 2, migración 0164. **Defaults inventados, a confirmar:** (1) «dentro de su horario»
+se mide por la cantidad de horas del día (`min(trabajadas, horario)`), no por la hora del reloj: llegar tarde y
+quedarse más no da horas extra; (2) la referencia «≈ S/… al mes» del contrato usa su primer mes; (3) la tarifa se
+guarda con 4 decimales. **Para decidir:** el castigo de una falta injustificada (`diasDescuentoPorFalta − 1` días
+a tarifa) sigue igual que con sueldo fijo; los contratos de sueldo fijo de antes siguen así hasta que el
+administrador les ponga tarifa.
+
+## Pagos programados, ficha y ventas por semana (sesión 7, 18-oct-2026)
+
+Decisiones del dueño n.º 6, 7, 5, 4 y 8. **Defaults inventados, a confirmar:**
+- [Pagos programados](superpowers/specs/sueldos/2026-10-18-pagos-programados-cierre-un-paso-design.md): el período por defecto de la ficha es el pago que contiene hoy; «Pagado» = sin saldo en todas las liquidaciones que lo cubren.
+- [Ficha y «Por revisar»](superpowers/specs/sueldos/2026-10-18-ficha-unica-asistencia-por-revisar-design.md) (0165): el motivo de una justificación va de 3 a 300 letras; «Todo bien» deja de mostrar el día pero no cambia el pago; «Es falta» también marca el día como revisado.
+- [Ventas por semana](superpowers/specs/sueldos/2026-10-18-ventas-metas-semanales-design.md) (0166): con carga semanal, la condición de RN-13 (llegar a la meta del mes para la 1.ª comisión) **sólo se aplica si todas las semanas cargadas traen el monto vendido**; si no, la 1.ª comisión se paga sin esa condición. Una semana dura a lo sumo 10 días. Una semana sin sí/no ni monto cuenta como no cumplida.

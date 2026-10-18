@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Plus, Filter, ChevronRight, Award, AlertTriangle } from 'lucide-react';
 import {
   COMPONENTES,
-  calcularCiclo,
+  cicloCerradoAnterior,
   notaCompetencias,
   revisarPesos,
   tramoEval,
@@ -21,7 +21,7 @@ import {
   type BandaEval,
   type Ciclo,
 } from '@scilb/core';
-import { accionCrearEvaluacion, accionComponentesEval } from './actions';
+import { accionCrearEvaluacion, accionComponentesEval, accionAnularEvaluacion } from './actions';
 import type { Evaluacion, EmpleadoParaEvaluacion, CompetenciaConfig } from '../../lib/evaluaciones-repo';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../components/ui/table';
@@ -126,6 +126,24 @@ export function EvaluacionesCliente({
   } | null>(null);
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
+  // Anular una evaluación guardada (spec 2026-10-18 §2.2): una a la vez, con motivo obligatorio.
+  const [anulando, setAnulando] = useState<string | null>(null);
+  const [motivoAnular, setMotivoAnular] = useState('');
+  const [errorAnular, setErrorAnular] = useState('');
+
+  function anular(id: string) {
+    setErrorAnular('');
+    startTransition(async () => {
+      const r = await accionAnularEvaluacion(id, motivoAnular);
+      if (!r.ok) {
+        setErrorAnular(r.error ?? 'No se pudo anular');
+        return;
+      }
+      setAnulando(null);
+      setMotivoAnular('');
+      router.refresh();
+    });
+  }
 
   // Nota de referencia (R4, spec §2.6): aparece justo después de guardar la evaluación, en la
   // MISMA pantalla. Antes acá vivía el panel que registraba el pago contra el sistema viejo — ese
@@ -216,17 +234,21 @@ export function EvaluacionesCliente({
 
   // 0132: nota de examen que trajo la data (capacitaciones cerradas en el ciclo); null = se carga a mano.
   const [examenesAuto, setExamenesAuto] = useState<number | null>(null);
+  const [puntualidad, setPuntualidad] = useState<{ modo?: string; debidos: number; puntuales: number; tardanzas: number } | null>(null);
 
   function elegirEmpleado(id: string) {
     setEmpleadoId(id);
     setEvalGuardada(null);
     setInfoExtra(null);
     setExamenesAuto(null);
+    setPuntualidad(null);
     setComp(CERO);
     setCompetenciaSel({});
     setCicloEditado(false);
     const emp = empleados.find((e) => e.id === id);
-    setCiclo(emp ? calcularCiclo(emp.fechaIngreso, hoyPeru()) : null);
+    // Se propone el ciclo más reciente que YA terminó (spec 2026-10-18 §2.1); el servidor igual
+    // rechaza uno que termine después de hoy.
+    setCiclo(emp ? cicloCerradoAnterior(emp.fechaIngreso, hoyPeru()) : null);
   }
 
   // Cambiar el rango invalida lo calculado: los puntos y componentes mostrados son de OTRO ciclo.
@@ -238,6 +260,7 @@ export function EvaluacionesCliente({
     // `examenes` automático (0132) también se anula: si el nuevo ciclo no trae dato, no debe quedar el de otro ciclo como manual.
     setComp((p) => ({ ...p, operaciones: 0, software: 0, limpieza: 0, tardanza: 0, valores: 0, descuentoIncidencias: 0, bonusVentas: 0, examenes: examenesAuto !== null ? 0 : p.examenes }));
     setExamenesAuto(null);
+    setPuntualidad(null);
   }
   function setCicloDesde(v: string) {
     setCiclo((c) => (c ? { ...c, desde: v } : c));
@@ -274,8 +297,9 @@ export function EvaluacionesCliente({
         examenes: c.examenes ?? p.examenes,
       }));
       setExamenesAuto(c.examenes ?? null);
+      setPuntualidad(c.puntualidadDebidos != null ? { modo: c.puntualidadModo, debidos: c.puntualidadDebidos, puntuales: c.puntualidadPuntuales ?? 0, tardanzas: c.puntualidadTardanzas ?? 0 } : null);
       // puntosTotal (0095) es lo único que de verdad hace falta para poder guardar: sin él no hay
-      // nota que mostrar (notaResultado cae al mensaje "Calculá desde la data..." de arriba). El
+      // nota que mostrar (notaResultado cae al mensaje "Calcula desde la data..." de arriba). El
       // resto de las claves puede faltar si esa migración todavía no corrió (undefined, no 0 — un
       // 0 real y "no lo sé" no son lo mismo) y en ese caso simplemente no se completa infoExtra.
       if (c.puntosTotal != null) {
@@ -526,6 +550,13 @@ export function EvaluacionesCliente({
                 <div key={key} className="flex items-center gap-2">
                   <label className="flex-1 text-cuerpo text-navy">
                     {label}
+                    {key === 'tardanza' && puntualidad !== null && (
+                      <span className="ml-1.5 text-apoyo font-normal text-muted">
+                        {puntualidad.debidos > 0 && puntualidad.modo !== 'minutos'
+                          ? `${puntualidad.puntuales} puntuales de ${puntualidad.debidos} días que debía asistir · ${puntualidad.tardanzas} tardanza${puntualidad.tardanzas === 1 ? '' : 's'}`
+                          : 'se mide por minutos de atraso (sin horario contratado o modo «minutos»)'}
+                      </span>
+                    )}
                     {key === 'examenes' && (
                       <span className="ml-1.5 text-apoyo font-normal text-muted">
                         {examenesAuto !== null ? 'de las capacitaciones del ciclo' : 'sin capacitaciones cerradas: cárgalo a mano'}
@@ -719,6 +750,58 @@ export function EvaluacionesCliente({
                             <PerfilComponentes valoresOculto={e.valoresOculto} componentes={e.componentes} pesos={e.pesosUsados ?? (pesos as unknown as Record<string, number>)} />
                           ) : (
                             <p className="text-apoyo text-muted">Esta evaluación no guardó desglose por componente.</p>
+                          )}
+                          {esAdmin && (
+                            <div className="mt-4 border-t border-line pt-3">
+                              {anulando === e.id ? (
+                                <div className="space-y-2">
+                                  <label className="block text-apoyo font-medium text-navy" htmlFor={`motivo-${e.id}`}>
+                                    Motivo de la anulación
+                                  </label>
+                                  <input
+                                    id={`motivo-${e.id}`}
+                                    value={motivoAnular}
+                                    onChange={(ev) => setMotivoAnular(ev.target.value)}
+                                    placeholder="Por ejemplo: se cargaron mal los exámenes"
+                                    className={cn(fieldCls, 'w-full')}
+                                    disabled={pending}
+                                  />
+                                  <p className="text-apoyo text-muted">
+                                    La evaluación se borra y podrás calcularla y guardarla de nuevo. Queda registrada con tu motivo.
+                                  </p>
+                                  {errorAnular && <Aviso tono="error">{errorAnular}</Aviso>}
+                                  <div className="flex gap-2">
+                                    <Button type="button" disabled={pending || !motivoAnular.trim()} onClick={() => anular(e.id)}>
+                                      Confirmar anulación
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      disabled={pending}
+                                      onClick={() => {
+                                        setAnulando(null);
+                                        setMotivoAnular('');
+                                        setErrorAnular('');
+                                      }}
+                                    >
+                                      Cancelar
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setAnulando(e.id);
+                                    setMotivoAnular('');
+                                    setErrorAnular('');
+                                  }}
+                                >
+                                  Anular evaluación
+                                </Button>
+                              )}
+                            </div>
                           )}
                         </TD>
                       </TR>

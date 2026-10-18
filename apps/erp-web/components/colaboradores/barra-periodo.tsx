@@ -1,12 +1,12 @@
 'use client';
 
-import { useMemo, useTransition } from 'react';
+import { useEffect, useMemo, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CalendarRange } from 'lucide-react';
-import { calcularCiclo } from '@scilb/core';
+import { calcularCiclo, pagoQueContiene } from '@scilb/core';
 import { hoyPeru } from '../../lib/fechas';
 import { campoCls } from '../ui/form';
-import { diasDelPeriodo, etiquetaPeriodo, leerPeriodo, mesCalendario, type Periodo } from '../../lib/periodo';
+import { diasDelPeriodo, etiquetaPeriodo, leerPeriodo, mesCalendario, rangoCorto, type Periodo } from '../../lib/periodo';
 import { cn } from '../../lib/cn';
 
 // La barra de período que comparten TODAS las secciones del módulo.
@@ -26,12 +26,24 @@ import { cn } from '../../lib/cn';
 // fijo. Todo lo demás —hover, foco, deshabilitado, error— viene de campoCls.
 const campo = cn(campoCls, 'tabular-nums');
 
+/** Un pago programado, lo mínimo que la barra necesita para ofrecerlo. */
+export type PagoDeBarra = { desde: string; hasta: string; estado: 'por_cerrar' | 'cerrado' | 'pagado' };
+
+const ESTADO_PAGO: Record<PagoDeBarra['estado'], { texto: string; punto: string }> = {
+  pagado: { texto: 'Pagado', punto: 'bg-exito' },
+  cerrado: { texto: 'Cerrado', punto: 'bg-gold' },
+  por_cerrar: { texto: 'Por cerrar', punto: 'bg-muted' },
+};
+
 export function BarraPeriodo({
   fechaIngreso,
+  pagos = [],
   className,
 }: {
   /** Habilita «Ciclo personal»: el ciclo aniversario de esa persona. */
   fechaIngreso?: string | null;
+  /** Los pagos programados de su contrato (sólo si quien mira puede ver sueldos). */
+  pagos?: PagoDeBarra[];
   className?: string;
 }) {
   const router = useRouter();
@@ -55,6 +67,22 @@ export function BarraPeriodo({
   };
 
   const hoy = hoyPeru();
+
+  // Sin período en la dirección, la ficha abre en el pago que contiene hoy (default de pantalla,
+  // spec pagos-programados §8). Si hoy no cae en ningún pago, queda el mes actual de siempre.
+  const sinPeriodo = !sp.get('desde') && !sp.get('hasta');
+  useEffect(() => {
+    if (!sinPeriodo || pagos.length === 0) return;
+    const p = pagoQueContiene(pagos, hoyPeru());
+    if (p) {
+      const q = new URLSearchParams(sp.toString());
+      q.set('desde', p.desde);
+      q.set('hasta', p.hasta);
+      router.replace(`${pathname}?${q.toString()}`, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sinPeriodo, pagos, pathname]);
+
   const mesActual = mesCalendario(hoy);
   const mesAnterior = (() => {
     const [y, m] = hoy.split('-').map(Number);
@@ -126,6 +154,36 @@ export function BarraPeriodo({
               : 'Sin fecha de ingreso cargada: cae al mes calendario',
           )}
       </div>
+
+      {pagos.length > 0 && (
+        <div className="w-full min-w-0">
+          <p className="mb-1 text-rotulo font-medium uppercase text-muted">Sus pagos</p>
+          {/* Con muchos pagos la fila se desliza hacia el costado dentro de la barra: no ensancha la página. */}
+          <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
+            {pagos.map((p) => {
+              const activo = esIgual(p);
+              const e = ESTADO_PAGO[p.estado];
+              return (
+                <button
+                  key={`${p.desde}-${p.hasta}`}
+                  type="button"
+                  onClick={() => ir(p)}
+                  aria-pressed={activo}
+                  title={e.texto}
+                  className={cn(
+                    'anillo flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-r-pastilla border px-2.5 py-1.5 text-apoyo font-medium tabular-nums transition-colors duration-150',
+                    activo ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:bg-navy/5',
+                  )}
+                >
+                  <span className={cn('h-2 w-2 rounded-r-pastilla', e.punto)} aria-hidden />
+                  {rangoCorto(p.desde, p.hasta)}
+                  <span className="sr-only">: {e.texto}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <p className="ml-auto flex items-center gap-1.5 text-apoyo text-muted">
         <CalendarRange className="h-3.5 w-3.5" aria-hidden />
