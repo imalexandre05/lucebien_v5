@@ -188,7 +188,6 @@ export function TableroPipeline({
   const deshacerTanda = (ids: string[], etapaAnterior: string, pts: number, token?: string) =>
     startTransition(async () => {
       ids.forEach((id) => aplicar({ id, etapa: etapaAnterior }));
-      if (pts) setSesionPts((s) => Math.round((s - pts) * 10) / 10);
       setToast(null);
       try {
         const r = await deshacerTandaPrendas(
@@ -197,6 +196,8 @@ export function TableroPipeline({
         );
         if (r) return rechazoCodigo(r);
         renovar();
+        // Los puntos de la sesión se restan solo cuando la base sí deshizo la tanda.
+        if (pts) setSesionPts((s) => Math.round((s - pts) * 10) / 10);
         setToast({ msg: `Se deshizo la tanda (${ids.length} prendas)`, tono: 'gold' });
       } catch {
         falloGenerico();
