@@ -5,7 +5,8 @@ import { tieneReauth } from '../../../lib/reauth';
 import { listarColaboradores, obtenerColaborador } from '../../../lib/colaboradores-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { ReauthGate } from '../../../components/ui/reauth-gate';
-import { BarraPeriodo } from '../../../components/colaboradores/barra-periodo';
+import { pagosDeLaPersona } from '../../../lib/pagos-ficha';
+import { BarraPeriodo, type PagoDeBarra } from '../../../components/colaboradores/barra-periodo';
 import { CabeceraColaborador } from './cabecera';
 import { NavSecciones } from './nav';
 
@@ -55,10 +56,22 @@ export default async function ColaboradorLayout(
   // alta» — ver el comentario en cabecera.tsx.
   const esAdmin = acceso.sesion.usuario.rol === 'admin' || acceso.sesion.usuario.rol === 'dueno';
 
+  // «Sus pagos» (decisión del dueño n.º 6): sólo para quien puede ver sueldos. Si algo falla al
+  // calcularlos la barra sigue funcionando sin ellos: no se cae toda la ficha por esto.
+  let pagos: PagoDeBarra[] = [];
+  if (esAdmin && acceso.secciones.includes('pago')) {
+    try {
+      const r = await pagosDeLaPersona(persona.id);
+      pagos = r.pagos.map((p) => ({ desde: p.desde, hasta: p.hasta, estado: p.estado }));
+    } catch {
+      pagos = [];
+    }
+  }
+
   return (
     <div className="space-y-4">
       <CabeceraColaborador persona={persona} personas={personas} esAdmin={esAdmin} />
-      <BarraPeriodo fechaIngreso={persona.fechaIngreso} />
+      <BarraPeriodo fechaIngreso={persona.fechaIngreso} pagos={pagos} />
       <NavSecciones empleadoId={persona.id} visibles={acceso.secciones} />
       <div>{children}</div>
     </div>

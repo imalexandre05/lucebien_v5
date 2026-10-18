@@ -8,6 +8,8 @@ import {
   calcularPreview,
   cerrarLiquidacion,
   corregirLiquidacion,
+  confirmarYCerrar,
+  corregirYCerrar,
   crearBorrador,
   eliminarBorrador,
   obtenerLiquidacion,
@@ -99,6 +101,47 @@ export async function accionCerrar(id: string): Promise<Resultado> {
     revalidatePath('/sueldos/liquidaciones');
     return { ok: true };
   } catch (e) {
+    return comoResultado(e);
+  }
+}
+
+/**
+ * «Confirmar y cerrar»: un solo paso. El servidor vuelve a calcular el rango, lo guarda y lo cierra;
+ * nunca recibe un total del navegador. Si el cierre falla no queda nada a medias.
+ */
+export async function accionConfirmarYCerrar(
+  acuerdoId: string,
+  desde: string,
+  hasta: string,
+): Promise<Resultado<{ id: string }>> {
+  try {
+    if (!(await esAdmin())) return { ok: false, error: 'Sólo el administrador o el dueño cierran.' };
+    const id = await confirmarYCerrar(acuerdoId, desde, hasta);
+    revalidatePath('/sueldos/liquidaciones');
+    revalidatePath('/personal');
+    return { ok: true, datos: { id } };
+  } catch (e) {
+    return comoResultado(e);
+  }
+}
+
+/**
+ * «Corregir» en un solo paso: anula el pago cerrado (con motivo, conserva lo ya abonado) y cierra el
+ * reemplazo recalculado con los datos de hoy.
+ */
+export async function accionCorregirYCerrar(id: string, motivo: string): Promise<Resultado<{ id: string }>> {
+  try {
+    if (!(await esAdmin())) {
+      return { ok: false, error: 'Sólo el administrador o el dueño corrigen una liquidación.' };
+    }
+    const nuevo = await corregirYCerrar(id, motivo);
+    revalidatePath('/sueldos/liquidaciones');
+    revalidatePath('/personal');
+    return { ok: true, datos: { id: nuevo } };
+  } catch (e) {
+    // La anulación puede haber quedado firme aunque el cierre falle: se refresca igual para que se vea.
+    revalidatePath('/sueldos/liquidaciones');
+    revalidatePath('/personal');
     return comoResultado(e);
   }
 }

@@ -1789,6 +1789,119 @@ export async function leerMetodosPago(): Promise<string[]> {
   return metodos.length > 0 ? metodos : METODOS_PAGO_DEFAULT;
 }
 
+// ── Cerrar en un solo paso (decisión del dueño n.º 7, spec 2026-10-18-pagos-programados) ────
+//
+// El cierre de la base (0111/0121) necesita una fila `borrador` para comparar y sellar. La pantalla
+// ya no la muestra: el borrador nace y se cierra dentro de la misma acción, y si el cierre falla se
+// borra. Los colaboradores se pueden inyectar (mismo patrón que corregirLiquidacion) para probarlo
+// sin base.
+
+type BorradorInterno = {
+  id: string;
+  desde: string;
+  hasta: string;
+  entrada?: { sueldoPactado?: number; cuotaFijada?: true } | null;
+};
+
+async function borradoresQueSePisan(acuerdoId: string, desde: string, hasta: string): Promise<BorradorInterno[]> {
+  const lista = await listarLiquidaciones({ acuerdoId, estado: 'borrador' });
+  const pisan = lista.filter((l) => l.periodoDesde <= hasta && l.periodoHasta >= desde);
+  const detalles = await Promise.all(pisan.map((l) => obtenerLiquidacion(l.id)));
+  return detalles
+    .filter((d): d is LiquidacionDetalle => d !== null)
+    .map((d) => ({ id: d.id, desde: d.periodoDesde, hasta: d.periodoHasta, entrada: d.entrada }));
+}
+
+/** Sólo se cierra hasta ayer (spec pagos-programados §9.1): hoy todavía puede llegar una marca. */
+function exigirHastaAyer(hasta: string, hoy: string): void {
+  if (hasta >= hoy) {
+    throw new SueldoRpcError('Hoy todavía no termina: cierra hasta ayer o espera a mañana.', 'ESTADO');
+  }
+}
+
+/**
+ * «Confirmar y cerrar» (spec pagos-programados §5 y §9): calcula primero (si falla no se borra
+ * nada), reemplaza sólo el borrador interno con el MISMO rango (otro que se pise responde ESTADO),
+ * crea y cierra. Si el cierre falla, borra el recién creado salvo que sea de una corrección con cuota
+ * fijada: ése queda «Por cerrar» con su cuota. La base vuelve a enlazar la corrección sola (0137).
+ */
+export async function confirmarYCerrar(
+  acuerdoId: string,
+  desde: string,
+  hasta: string,
+  d: {
+    hoy?: () => string;
+    calcular?: (acuerdoId: string, desde: string, hasta: string, cuotaFija?: number) => Promise<unknown>;
+    borradores?: typeof borradoresQueSePisan;
+    eliminar?: typeof eliminarBorrador;
+    crear?: typeof crearBorrador;
+    cerrar?: typeof cerrarLiquidacion;
+  } = {},
+): Promise<string> {
+  const hoy = (d.hoy ?? hoyPeru)();
+  const calcular = d.calcular ?? entradaDeAcuerdo;
+  const borradores = d.borradores ?? borradoresQueSePisan;
+  const eliminar = d.eliminar ?? eliminarBorrador;
+  const crear = d.crear ?? crearBorrador;
+  const cerrar = d.cerrar ?? cerrarLiquidacion;
+
+  exigirHastaAyer(hasta, hoy);
+  const pisan = await borradores(acuerdoId, desde, hasta);
+  const otro = pisan.find((b) => b.desde !== desde || b.hasta !== hasta);
+  if (otro) {
+    throw new SueldoRpcError(
+      `Hay un cálculo pendiente del ${otro.desde} al ${otro.hasta} que se pisa con este pago: ciérralo o bórralo en Liquidaciones de todos.`,
+      'ESTADO',
+    );
+  }
+  const mismo = pisan[0];
+  const cuotaFija =
+    mismo?.entrada?.cuotaFijada && typeof mismo.entrada.sueldoPactado === 'number' ? mismo.entrada.sueldoPactado : undefined;
+
+  // Calcular ANTES de borrar: si falta resolver un día, no se pierde nada.
+  await calcular(acuerdoId, desde, hasta, cuotaFija);
+  if (mismo) await eliminar(mismo.id);
+  const id = await crear(acuerdoId, desde, hasta, cuotaFija);
+  try {
+    await cerrar(id);
+  } catch (e) {
+    // Una corrección conserva su cuota pagada: queda «Por cerrar» y el próximo intento la reusa.
+    if (cuotaFija === undefined) await eliminar(id);
+    throw e;
+  }
+  return id;
+}
+
+/**
+ * «Corregir» en un paso: anula para corregir (0137, conserva los abonos), crea el reemplazo con la
+ * cuota pagada y lo cierra. Si el cierre falla, el reemplazo queda «Por cerrar» con su cuota y
+ * «Confirmar y cerrar» lo termina (spec pagos-programados §9.4).
+ */
+export async function corregirYCerrar(
+  id: string,
+  motivo: string,
+  d: {
+    corregir?: (id: string, motivo: string) => Promise<{ nuevoBorradorId: string }>;
+    cerrar?: typeof cerrarLiquidacion;
+  } = {},
+): Promise<string> {
+  const corregir = d.corregir ?? ((i: string, m: string) => corregirLiquidacion(i, m));
+  const cerrar = d.cerrar ?? cerrarLiquidacion;
+
+  const { nuevoBorradorId } = await corregir(id, motivo);
+  try {
+    await cerrar(nuevoBorradorId);
+  } catch (e) {
+    // El reemplazo NO se borra: guarda la cuota pagada y los abonos se le enlazan (0137).
+    const causa = e instanceof Error ? e.message : 'error desconocido';
+    throw new SueldoRpcError(
+      `El pago anterior ya quedó anulado y este pago está «Por cerrar»: ${causa.replace(/\.?\s*$/, '.')} Resuélvelo y usa «Confirmar y cerrar».`,
+      e instanceof SueldoRpcError ? e.codigo : 'ESTADO',
+    );
+  }
+  return nuevoBorradorId;
+}
+
 /** `contratoPago` del contrato tal como está hoy (0121/0164). */
 async function contratoPagoActual(acuerdoId: string): Promise<ContratoPagoGuardado | null> {
   const { data, error } = await getServerClient().rpc('sueldo_entrada_pago', { p_acuerdo: acuerdoId });

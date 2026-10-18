@@ -13,7 +13,7 @@ import { LiquidacionesCliente } from './cliente';
  * congelada para siempre. Después de cerrar sólo se puede anular, con motivo y autor.
  *
  * NINGÚN NÚMERO VIAJA DESDE ACÁ. El preview lo calcula el servidor con la entrada de la RPC, y el
- * borrador lo vuelve a calcular igual antes de guardar. La pantalla muestra; no propone totales.
+ * cierre lo vuelve a calcular igual antes de guardar. La pantalla muestra; no propone totales.
  */
 export const dynamic = 'force-dynamic';
 
@@ -55,13 +55,13 @@ export default async function LiquidacionesPage(props: {
 
   const acuerdoInicial = Array.isArray(searchParams?.acuerdo) ? searchParams?.acuerdo[0] : searchParams?.acuerdo;
   const cerradas = liquidaciones.filter((l) => l.estado === 'cerrada').length;
-  const borradores = liquidaciones.filter((l) => l.estado === 'borrador').length;
+  const porCerrar = liquidaciones.filter((l) => l.estado === 'borrador').length;
 
   return (
     <div>
       <PageHeader
         title="Liquidaciones"
-        subtitle={`${borradores} borrador(es) · ${cerradas} cerrada(s). Una cerrada no se modifica: sólo se anula, con motivo.`}
+        subtitle={`${porCerrar} por cerrar · ${cerradas} cerrada(s). Una cerrada no se modifica: sólo se anula, con motivo.`}
       />
       <LiquidacionesCliente
         // `?acuerdo=` preselecciona el contrato: lo usa la alerta «Contrato vencido sin
