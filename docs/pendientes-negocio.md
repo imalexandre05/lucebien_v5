@@ -2159,3 +2159,11 @@ Decisión del dueño n.º 3, migración 0163. **Default inventado:** `huellero_r
 la 0163 quedaron con una hora estimada (C-3) siguen pagándose con esa hora hasta que alguien los revise;
 la lista «Por revisar» los muestra como días con problema. Con dos turnos en el día y sólo dos marcas
 (entrada de la mañana y salida de la tarde) el día sigue contándose como un solo tramo, pausa incluida.
+## Sueldo por horas reales (sesión 7, 18-oct-2026) — [spec](superpowers/specs/sueldos/2026-10-18-sueldo-por-horas-design.md)
+
+Decisiones del dueño n.º 1 y 2, migración 0164. **Defaults inventados, a confirmar:** (1) «dentro de su horario»
+se mide por la cantidad de horas del día (`min(trabajadas, horario)`), no por la hora del reloj: llegar tarde y
+quedarse más no da horas extra; (2) la referencia «≈ S/… al mes» del contrato usa su primer mes; (3) la tarifa se
+guarda con 4 decimales. **Para decidir:** el castigo de una falta injustificada (`diasDescuentoPorFalta − 1` días
+a tarifa) sigue igual que con sueldo fijo; los contratos de sueldo fijo de antes siguen así hasta que el
+administrador les ponga tarifa.

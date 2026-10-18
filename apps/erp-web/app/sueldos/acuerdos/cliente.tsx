@@ -15,6 +15,7 @@ import {
   diasDelPeriodo,
   finDePeriodo,
   parametrosDeContratoNuevo,
+  referenciaPorHoras,
   resumirHorario,
   sueldoSugerido,
   type ParametrosSueldo,
@@ -163,6 +164,14 @@ type Borrador = {
   /** Texto del campo «Cada __ días»; vacío salvo con modalidad 'dias'. */
   cadaDias: string;
   sueldoPactado: string;
+  /**
+   * Sueldo por horas (spec 2026-10-18-sueldo-por-horas): un contrato nuevo se paga por horas reales y
+   * no lleva sueldo pactado. Un contrato de antes (sin tarifa) sigue como sueldo fijo hasta que el
+   * administrador lo pase a horas.
+   */
+  porHoras: boolean;
+  /** Texto de «Tarifa por hora» (soles); se completa con la escala y se puede cambiar. */
+  tarifaHora: string;
   escala: string;
   almuerzoHabilitado: boolean;
   parametros: Partial<ParametrosSueldo>;
@@ -176,6 +185,8 @@ const VACIO: Borrador = {
   modalidad: 'mensual',
   cadaDias: '',
   sueldoPactado: '',
+  porHoras: true,
+  tarifaHora: '',
   escala: '',
   almuerzoHabilitado: false,
   parametros: {},
@@ -189,6 +200,8 @@ const deAcuerdo = (a: AcuerdoSueldo): Borrador => ({
   modalidad: a.modalidad,
   cadaDias: a.cadaDias == null ? '' : String(a.cadaDias),
   sueldoPactado: String(a.sueldoPactado),
+  porHoras: a.tarifaHora !== null,
+  tarifaHora: a.tarifaHora === null ? '' : String(a.tarifaHora),
   escala: a.escala == null ? '' : String(a.escala),
   almuerzoHabilitado: a.almuerzoHabilitado,
   parametros: { ...a.parametros },
@@ -274,7 +287,9 @@ function analizar(b: Borrador, vigentes: ParametrosSueldo, tablaEscalas: EscalaS
     const porDia = resumirHorario(b.turnos);
     const fechas = diasDelPeriodo(b.fechaInicio, b.fechaFin);
     const horas = fechas.reduce((s, f) => s + (porDia.get(diaSemanaISO(f))?.horas ?? 0), 0);
-    const pactado = Number(b.sueldoPactado);
+    // Por horas no hay cuota: el valor de la hora ES la tarifa y no hay sugerido ni pago fijo.
+    const pactado = b.porHoras ? 0 : Number(b.sueldoPactado);
+    const tarifa = b.porHoras ? Number(b.tarifaHora) : 0;
 
     // F-4 (addendum liquidación-por-tramos, 24-ago-2026): `valorHora` y `sugerido` se calculan
     // contra las horas de UNA UNIDAD de la modalidad (un mes o una semana, según corresponda) desde
@@ -332,8 +347,8 @@ function analizar(b: Borrador, vigentes: ParametrosSueldo, tablaEscalas: EscalaS
     return {
       horas,
       dias: fechas.length,
-      valorHora: horasTramo > 0 && pactado > 0 ? pactado / horasTramo : null,
-      sugerido: b.escala && horasTramo > 0 ? sueldoSugerido(Number(b.escala), horasTramo, tablaEscalas) : null,
+      valorHora: b.porHoras ? (tarifa > 0 ? tarifa : null) : horasTramo > 0 && pactado > 0 ? pactado / horasTramo : null,
+      sugerido: !b.porHoras && b.escala && horasTramo > 0 ? sueldoSugerido(Number(b.escala), horasTramo, tablaEscalas) : null,
       // Ya no se divide entre `meses` (C-6): `pactado` ES la cuota de cada liquidación, dividirla
       // otra vez por la duración del contrato completo la encogería a una fracción que nadie paga.
       pagoMensual: pactado > 0 ? pactado : null,
@@ -498,6 +513,7 @@ export function AcuerdosCliente({
         modalidad: c.modalidad,
         cadaDias: c.cadaDias,
         sueldoPactado: c.sueldoPactado,
+        tarifaHora: c.tarifaHora,
       })),
     [acuerdos, editando],
   );
@@ -522,6 +538,26 @@ export function AcuerdosCliente({
   const mesesIngreso = mesesCompletosDesde(fechaIngresoPersona ?? null, hoyPeru());
   const escalaPropuesta = mesesIngreso === null ? null : escalaSugeridaPorAntiguedad(mesesIngreso, tablaEscalas);
   const analisis = useMemo(() => analizar(b, vigentes, tablaEscalas), [b, vigentes, tablaEscalas]);
+  // «≈ S/ X al mes si cumple su horario»: horas del horario del primer mes del contrato × tarifa.
+  // Sale del core (`referenciaPorHoras`), la misma cuenta que usa la liquidación. Sólo orientación.
+  const referenciaMes = useMemo((): number | null => {
+    const tarifa = Number(b.tarifaHora);
+    if (!b.porHoras || !b.fechaInicio || !b.fechaFin || b.fechaFin < b.fechaInicio) return null;
+    if (b.turnos.length === 0 || !(tarifa > 0)) return null;
+    try {
+      return referenciaPorHoras(b.turnos, b.fechaInicio, finDePeriodo(b.fechaInicio, 'mensual', b.fechaFin), tarifa);
+    } catch {
+      return null; // horario con turnos solapados: el resumen de abajo ya lo explica
+    }
+  }, [b.porHoras, b.tarifaHora, b.fechaInicio, b.fechaFin, b.turnos]);
+  const queFalta = ((): string | null => {
+    if (!b.porHoras) return null;
+    const falta: string[] = [];
+    if (!(Number(b.tarifaHora) > 0)) falta.push('la tarifa por hora');
+    if (b.turnos.length === 0) falta.push('el horario');
+    if (!b.fechaInicio || !b.fechaFin) falta.push('las fechas del contrato');
+    return falta.length === 0 ? null : `Completa ${falta.join(', ')} para ver cuánto sería al mes.`;
+  })();
   const temporadaDelContrato = b.fechaInicio ? temporadaVigente(temporadas ?? [], b.fechaInicio) : null;
   const pactados = PARAMETROS.filter((p) => b.parametros[p.clave] != null);
 
@@ -620,7 +656,8 @@ export function AcuerdosCliente({
       fechaFin: b.fechaFin,
       modalidad: b.modalidad,
       cadaDias: b.modalidad === 'dias' ? Number(b.cadaDias) : null,
-      sueldoPactado: Number(b.sueldoPactado),
+      sueldoPactado: b.porHoras ? 0 : Number(b.sueldoPactado),
+      tarifaHora: b.porHoras ? Number(b.tarifaHora) : null,
       escala: b.escala ? Number(b.escala) : null,
       almuerzoHabilitado: b.almuerzoHabilitado,
       parametros: b.parametros,
@@ -828,6 +865,7 @@ export function AcuerdosCliente({
                 fechaFin={b.fechaFin}
                 cuota={Number(b.sueldoPactado)}
                 cambios={cambiosEnEdicion}
+                porHoras={b.porHoras ? { turnos: b.turnos, tarifa: Number(b.tarifaHora) } : undefined}
               />
             </div>
 
@@ -919,23 +957,66 @@ export function AcuerdosCliente({
 
             {/* ── Sueldo ────────────────────────────────────────────────────────────────── */}
             <div className="grid gap-4 sm:grid-cols-2">
+              {b.porHoras ? (
+                <div>
+                  <Label htmlFor="tarifa" required>Tarifa por hora</Label>
+                  <Input
+                    id="tarifa"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={b.tarifaHora}
+                    onChange={(e) => setB((v) => ({ ...v, tarifaHora: e.target.value }))}
+                    className="tabular-nums"
+                  />
+                  <p className="mt-1 text-apoyo text-muted">
+                    Se completa al elegir la escala y la puedes cambiar. Se paga por las horas que trabaje.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <Label htmlFor="sueldo" required>Sueldo fijo (contrato anterior): cuota de cada pago</Label>
+                  <Input
+                    id="sueldo"
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={b.sueldoPactado}
+                    onChange={(e) => setB((v) => ({ ...v, sueldoPactado: e.target.value }))}
+                  />
+                  {editando && (
+                    <div className="mt-2">
+                      <Button
+                        variant="outline"
+                        onClick={() =>
+                          setB((v) => {
+                            const e = tablaEscalas.find((x) => String(x.escala) === v.escala);
+                            return { ...v, porHoras: true, tarifaHora: v.tarifaHora || (e ? String(e.tarifaHora) : '') };
+                          })
+                        }
+                      >
+                        Pasar a pago por horas
+                      </Button>
+                      <p className="mt-1 text-apoyo text-muted">
+                        Al guardar, rige para los pagos que todavía no se cerraron; lo ya pagado no cambia.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
               <div>
-                <Label htmlFor="sueldo" required>Cuota de cada pago</Label>
-                <Input
-                  id="sueldo"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={b.sueldoPactado}
-                  onChange={(e) => setB((v) => ({ ...v, sueldoPactado: e.target.value }))}
-                />
-              </div>
-              <div>
-                <Label htmlFor="escala">Escala (opcional)</Label>
+                <Label htmlFor="escala">{b.porHoras ? 'Escala' : 'Escala (opcional)'}</Label>
                 <Select
                   id="escala"
                   value={b.escala}
-                  onChange={(e) => setB((v) => ({ ...v, escala: e.target.value }))}
+                  onChange={(e) =>
+                    setB((v) => {
+                      const escala = e.target.value;
+                      const fila = tablaEscalas.find((x) => String(x.escala) === escala);
+                      // Al elegir la escala se completa la tarifa de esa escala (editable después).
+                      return { ...v, escala, tarifaHora: v.porHoras && fila ? String(fila.tarifaHora) : v.tarifaHora };
+                    })
+                  }
                 >
                   <option value="">Sin escala</option>
                   {tablaEscalas.map((e) => (
@@ -960,12 +1041,30 @@ export function AcuerdosCliente({
                   <p className="mt-1 text-apoyo text-muted">
                     Temporada «{temporadaDelContrato.nombre}»: pago por hora de referencia S/{' '}
                     {temporadaDelContrato.pagoPorHora.toFixed(2)}
-                    {analisis.horas > 0 && ` · sugerido S/ ${sueldoSugeridoPorTemporada(temporadaDelContrato, analisis.horas)?.toFixed(2)}`}.
-                    Es una referencia; la cuota la pactas tú.
+                    {!b.porHoras && analisis.horas > 0 && ` · sugerido S/ ${sueldoSugeridoPorTemporada(temporadaDelContrato, analisis.horas)?.toFixed(2)}`}.
+                    {b.porHoras ? 'Es una referencia; la tarifa la defines tú.' : 'Es una referencia; la cuota la pactas tú.'}
                   </p>
                 )}
               </div>
             </div>
+
+            {b.porHoras && (
+              <div className="rounded-r-chico border border-gold/40 bg-paper px-4 py-3" aria-live="polite">
+                {referenciaMes !== null ? (
+                  <>
+                    <p className="font-display text-seccion font-semibold text-gold-deep tabular-nums">
+                      ≈ {soles(referenciaMes)} al mes si cumple su horario
+                    </p>
+                    <p className="mt-1 text-apoyo text-muted">
+                      Es solo una referencia: se paga según las horas que trabaje de verdad. Las horas extra se suman y
+                      las que falten no se pagan.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-cuerpo text-muted">{queFalta ?? 'Revisa el horario para ver cuánto sería al mes.'}</p>
+                )}
+              </div>
+            )}
 
             <div>
               <LabelGrupo>Cuándo se gana el almuerzo</LabelGrupo>
@@ -998,11 +1097,13 @@ export function AcuerdosCliente({
                       <p className="tabular-nums text-navy">{analisis.horas.toFixed(2)}</p>
                     </div>
                     <div>
-                      <p className="text-apoyo text-muted">Valor de la hora</p>
+                      <p className="text-apoyo text-muted">{b.porHoras ? 'Tarifa por hora' : 'Valor de la hora'}</p>
                       <p className="tabular-nums text-navy">
                         {analisis.valorHora == null ? '—' : soles(analisis.valorHora)}
                       </p>
                     </div>
+                    {!b.porHoras && (
+                      <>
                     <div>
                       <p className="text-apoyo text-muted">Sugerido por escala</p>
                       <p className="tabular-nums text-navy">
@@ -1024,6 +1125,8 @@ export function AcuerdosCliente({
                         {analisis.pagoMensual == null ? '—' : soles(analisis.pagoMensual)}
                       </p>
                     </div>
+                      </>
+                    )}
                     <div>
                       <p className="text-apoyo text-muted">Horas mensuales (aprox.)</p>
                       <p className="tabular-nums text-navy">
@@ -1039,7 +1142,7 @@ export function AcuerdosCliente({
                       </p>
                     </div>
                   </div>
-                  {analisis.sugerido != null && (
+                  {!b.porHoras && analisis.sugerido != null && (
                     <p className="mt-2 text-apoyo text-muted">
                       La escala es una referencia para negociar, no una obligación: el que manda es
                       el sueldo pactado.
@@ -1237,14 +1340,25 @@ export function AcuerdosCliente({
                       {a.cambios.map((c) => (
                         <p key={c.id} className="text-apoyo text-muted tabular-nums">
                           Desde el {fechaCorta(c.desde)}: {nombreFrecuencia(c.modalidad, c.cadaDias).toLowerCase()}{' '}
-                          {soles(c.sueldoPactado)}
-                          {c.modalidadAnterior && c.sueldoPactadoAnterior != null
+                          {a.tarifaHora !== null ? (c.tarifaHora != null ? `${soles(c.tarifaHora)} por hora` : 'paga sus horas') : soles(c.sueldoPactado)}
+                          {a.tarifaHora === null && c.modalidadAnterior && c.sueldoPactadoAnterior != null
                             ? ` (antes ${nombreFrecuencia(c.modalidadAnterior, c.cadaDiasAnterior).toLowerCase()} ${soles(c.sueldoPactadoAnterior)})`
                             : ''}
                         </p>
                       ))}
                     </TD>
-                    <TD className="text-right tabular-nums">{soles(a.sueldoPactado)}</TD>
+                    <TD className="text-right tabular-nums">
+                      {a.tarifaHora !== null ? (
+                        <>
+                          {soles(a.tarifaHora)} <span className="text-apoyo text-muted">por hora</span>
+                        </>
+                      ) : (
+                        <>
+                          {soles(a.sueldoPactado)}
+                          <span className="block text-apoyo text-muted">Sueldo fijo (contrato anterior)</span>
+                        </>
+                      )}
+                    </TD>
                     <TD className="text-right tabular-nums">
                       {a.turnos.length === 0 ? (
                         <Badge tone="amber">sin horario</Badge>

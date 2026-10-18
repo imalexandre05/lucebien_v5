@@ -9,7 +9,9 @@ export type AcuerdoForm = {
   fechaFin: string;
   modalidad: ModalidadAcuerdo;
   cadaDias: number | null;
+  /** Con tarifa, el contrato se paga por horas y no lleva sueldo pactado. Nula = sueldo fijo. */
   sueldoPactado: number;
+  tarifaHora: number | null;
   escala: number | null;
   almuerzoHabilitado: boolean;
   parametros: Partial<ParametrosSueldo>;
@@ -47,7 +49,11 @@ export function validarAcuerdo(f: AcuerdoForm): string | null {
       return e instanceof Error ? e.message : 'Cada cuántos días se paga tiene que estar entre 1 y 62.';
     }
   }
-  if (!Number.isFinite(f.sueldoPactado) || f.sueldoPactado <= 0) {
+  if (f.tarifaHora != null) {
+    if (!Number.isFinite(f.tarifaHora) || f.tarifaHora <= 0) {
+      return 'La tarifa por hora tiene que ser mayor que cero.';
+    }
+  } else if (!Number.isFinite(f.sueldoPactado) || f.sueldoPactado <= 0) {
     return 'El sueldo pactado tiene que ser mayor que cero.';
   }
   if (f.escala != null && (!Number.isInteger(f.escala) || f.escala < 1)) {

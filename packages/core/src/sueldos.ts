@@ -32,7 +32,7 @@
  * **Se sube la fecha cada vez que cambia una regla de cálculo.** No cuando cambia un comentario
  * ni un tipo: cuando cambia un número que le llega a alguien.
  */
-export const MOTOR_VERSION = '2026-10-17';
+export const MOTOR_VERSION = '2026-10-18';
 
 // ── Parámetros configurables (spec §3.3) ────────────────────────────────────────────────────
 // Ninguno va quemado en el código: son los defaults, editables desde /configuracion.
@@ -351,6 +351,14 @@ export interface EntradaLiquidacion {
    * como siempre. Cada semana mira la temporada de su primer día; ver `temporadaVigente`.
    */
   temporadas?: Temporada[];
+  /**
+   * Los datos del calendario de pago (`sueldo_entrada_pago`, 0121), que ya viajan en la entrada.
+   * Con `contratoPago.tarifaHora` el período se liquida **por horas reales** (spec
+   * sueldos/2026-10-18-sueldo-por-horas-design.md): no hay cuota y `sueldoPactado` no se usa. Sin
+   * tarifa (o sin `contratoPago`), como siempre: sueldo fijo.
+   */
+  contratoPago?: ContratoPago;
+  cambiosFrecuencia?: CambioFrecuencia[];
 }
 
 // ── Salida ──────────────────────────────────────────────────────────────────────────────────
@@ -379,7 +387,24 @@ export interface SemanaLiquidacion {
   cumplida: boolean;
 }
 
+/** Un día del detalle «al hacer clic» del pago por horas (spec sueldo-por-horas §5). */
+export interface DiaPorHoras {
+  fecha: string;
+  /** Horas de su horario ese día (0 = día no programado). */
+  horario: number;
+  trabajadas: number;
+  /** min(trabajadas, horario): «Horas trabajadas». */
+  dentro: number;
+  /** max(0, trabajadas − horario): «Horas extra». */
+  extra: number;
+  /** max(0, horario − trabajadas): «Horas que faltaron» (no se pagan). */
+  faltaron: number;
+  tarifa: number;
+}
+
 export interface Liquidacion {
+  /** `'horas'` = pago por horas reales (0164). Ausente = sueldo fijo, como todas las de antes. */
+  modo?: 'horas' | 'fijo';
   periodo: { desde: string; hasta: string; dias: number };
   base: {
     horasContratadas: number;
@@ -388,6 +413,10 @@ export interface Liquidacion {
     valorPorHora: number;
     /** Sólo informativo (RN-04): ningún descuento cuelga de este promedio. */
     sueldoPorDia: number;
+    /** Pago por horas: la tarifa del primer día del período. */
+    tarifaHora?: number;
+    /** Pago por horas: lo que cobraría si cumple su horario (horas del horario × tarifa). Sólo referencia. */
+    referencia?: number;
   };
   asistencia: {
     diasTrabajados: number;
@@ -402,6 +431,12 @@ export interface Liquidacion {
     diasConDerechoAlmuerzo: number;
     almuerzosAPagar: number;
     horasFueraDeContrato: number;
+    /** Pago por horas: «Horas trabajadas» (dentro de su horario). */
+    horasDentro?: number;
+    /** Pago por horas: «Horas extra» (fuera de su horario, incluido un día no programado). */
+    horasExtra?: number;
+    /** Pago por horas: «Horas que faltaron» (no se pagan). */
+    horasFaltaron?: number;
   };
   ventas: {
     total: number;
@@ -421,6 +456,8 @@ export interface Liquidacion {
   advertencias: string[];
   /** Días contratados sin declarar que este borrador no pagó ni descontó (solo si hubo alguno). */
   diasSinDeclarar?: string[];
+  /** Pago por horas: el detalle día por día. */
+  dias?: DiaPorHoras[];
 }
 
 // ── Fechas y horas: aritmética pura, sin zona horaria ───────────────────────────────────────
@@ -612,12 +649,16 @@ export interface ContratoPago extends FrecuenciaPago {
   fechaInicio: string;
   fechaFin: string;
   sueldoPactado: number;
+  /** Soles por hora (0164). Presente = contrato por horas; nulo/ausente = sueldo fijo. */
+  tarifaHora?: number | null;
 }
 
 /** Una fila de `sueldo_acuerdo_cambios`: frecuencia y cuota válidas DESDE esa fecha. */
 export interface CambioFrecuencia extends FrecuenciaPago {
   desde: string;
   sueldoPactado: number;
+  /** Tarifa por hora desde `desde` (0164). Nula/ausente = sigue la anterior. */
+  tarifaHora?: number | null;
 }
 
 export interface FrecuenciaVigente extends FrecuenciaPago {
@@ -653,6 +694,40 @@ export function frecuenciaVigente(
     }
   }
   return vigente;
+}
+
+/**
+ * La tarifa por hora de un día (spec sueldo-por-horas §3.1): la del contrato, o la del último cambio
+ * con `desde <= fecha` que traiga tarifa. Un cambio sólo de frecuencia no la mueve.
+ */
+export function tarifaDelDia(contrato: ContratoPago, cambios: readonly CambioFrecuencia[], fecha: string): number {
+  validarFecha(fecha, 'tarifaDelDia');
+  let tarifa = validarTarifa(contrato.tarifaHora, 'La tarifa por hora del contrato');
+  const orden = [...cambios].sort((a, b) => a.desde.localeCompare(b.desde));
+  for (const c of orden) {
+    if (c.desde <= fecha && c.tarifaHora !== null && c.tarifaHora !== undefined) {
+      tarifa = validarTarifa(c.tarifaHora, `La tarifa por hora del cambio del ${c.desde}`);
+    }
+  }
+  return tarifa;
+}
+
+function validarTarifa(t: unknown, donde: string): number {
+  if (typeof t !== 'number' || !Number.isFinite(t) || t <= 0) {
+    throw new Error(`${donde} tiene que ser un número mayor a cero, llegó: ${String(t)}.`);
+  }
+  return t;
+}
+
+/**
+ * «≈ S/600 al mes si cumple su horario» (spec sueldo-por-horas §3.3): horas del horario en el
+ * período × tarifa. Sólo referencia: nunca se paga.
+ */
+export function referenciaPorHoras(horario: TurnoContratado[], desde: string, hasta: string, tarifa: number): number {
+  const porDia = resumirHorario(horario);
+  let horas = 0;
+  for (const fecha of diasDelPeriodo(desde, hasta)) horas += porDia.get(diaSemanaISO(fecha))?.horas ?? 0;
+  return r2(horas * validarTarifa(tarifa, 'La tarifa por hora'));
 }
 
 export interface PagoCalendario extends FrecuenciaPago {
@@ -1057,14 +1132,29 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     }
   }
 
+  // Pago por horas reales (spec sueldo-por-horas, 0164): el contrato trae tarifa y no hay cuota.
+  const contratoPago = entrada.contratoPago;
+  const porHoras = contratoPago?.tarifaHora !== null && contratoPago?.tarifaHora !== undefined;
+  const cambiosFrecuencia = entrada.cambiosFrecuencia ?? [];
+  const tarifaDe = (fecha: string): number =>
+    porHoras ? tarifaDelDia(contratoPago as ContratoPago, cambiosFrecuencia, fecha) : 0;
+
   // RN-02: si no hay horas contratadas no hay valor por hora, y sin eso no hay nada que liquidar.
-  if (horasContratadas <= 0) {
+  // Por horas sí se puede: un rango sin horario paga sus horas extra (spec sueldo-por-horas §5).
+  if (horasContratadas <= 0 && !porHoras) {
     throw new Error(
       `El periodo ${entrada.fechaInicio}–${entrada.fechaFin} no tiene horas contratadas: no se puede liquidar.`,
     );
   }
-  const valorPorHora = entrada.sueldoPactado / horasContratadas;
-  const sueldoPorDia = entrada.sueldoPactado / diasContratados;
+  const valorPorHora = porHoras ? tarifaDe(entrada.fechaInicio) : entrada.sueldoPactado / horasContratadas;
+  // Pago por horas: la referencia se arma día por día con la tarifa de cada día.
+  let referencia = 0;
+  if (porHoras) {
+    for (const fecha of dias) referencia += (porDia.get(diaSemanaISO(fecha))?.horas ?? 0) * tarifaDe(fecha);
+  }
+  const sueldoPorDia = porHoras
+    ? diasContratados > 0 ? referencia / diasContratados : 0
+    : entrada.sueldoPactado / diasContratados;
 
   // ── Asistencia (RN-05 a RN-09, RN-15) ─────────────────────────────────────────────────────
   const asistencia = entrada.asistencia ?? [];
@@ -1204,6 +1294,15 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   let faltas = 0;
   let faltasJustificadas = 0;
   let horasFaltadas = 0; // horas contratadas de los días que faltó SIN justificar (RN-09)
+  let montoHorasFaltadas = 0; // esas horas × el valor de la hora de cada día (por horas: su tarifa)
+  // Pago por horas (spec sueldo-por-horas §3.2): por día, dentro / extra / faltaron.
+  const detalleDias = new Map<string, DiaPorHoras>();
+  const pagoDentroPorTarifa = new Map<number, number>(); // tarifa → horas dentro
+  let horasDentro = 0;
+  let horasExtraTotal = 0;
+  let horasFaltaron = 0;
+  let pagoDentro = 0;
+  let pagoExtra = 0;
   let justificacionesHuerfanas = 0;
   let diasPasaje = 0; // días que llegó con la anticipación que gana el pasaje
 
@@ -1220,6 +1319,30 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     horasTrabajadas += horas;
     trabajadas.set(fecha, horas);
     diferenciaHoras += horas - horasContratadasDelDia; // RN-06
+
+    if (porHoras) {
+      const t = tarifaDe(fecha);
+      const dentro = Math.min(horas, horasContratadasDelDia);
+      const extra = Math.max(0, horas - horasContratadasDelDia);
+      const faltaron = Math.max(0, horasContratadasDelDia - horas);
+      horasDentro += dentro;
+      horasExtraTotal += extra;
+      horasFaltaron += faltaron;
+      pagoDentro += dentro * t;
+      pagoExtra += extra * t * p.factorHoraFueraContrato;
+      pagoDentroPorTarifa.set(t, (pagoDentroPorTarifa.get(t) ?? 0) + dentro);
+      if (horasContratadasDelDia > 0 || horas > 0) {
+        detalleDias.set(fecha, {
+          fecha,
+          horario: r2(horasContratadasDelDia),
+          trabajadas: r2(horas),
+          dentro: r2(dentro),
+          extra: r2(extra),
+          faltaron: r2(faltaron),
+          tarifa: t,
+        });
+      }
+    }
 
     if (horas > 0) {
       diasTrabajados += 1;
@@ -1262,7 +1385,10 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       else justificacionesHuerfanas += 1;
     }
     // RN-09: el castigo se cobra sobre las horas del día que faltó, no sobre un día promedio.
-    if (esFalta && !reg?.faltaJustificada) horasFaltadas += horasContratadasDelDia;
+    if (esFalta && !reg?.faltaJustificada) {
+      horasFaltadas += horasContratadasDelDia;
+      montoHorasFaltadas += horasContratadasDelDia * (porHoras ? tarifaDe(fecha) : valorPorHora);
+    }
   }
 
   if (justificacionesHuerfanas > 0) {
@@ -1295,6 +1421,13 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       );
     }
     horasFuera += horas;
+    if (porHoras && horas > 0) {
+      // Un día sin horario: todo lo trabajado es extra (spec sueldo-por-horas §3.2).
+      const t = tarifaDe(fecha);
+      horasExtraTotal += horas;
+      pagoExtra += horas * t * p.factorHoraFueraContrato;
+      detalleDias.set(fecha, { fecha, horario: 0, trabajadas: r2(horas), dentro: 0, extra: r2(horas), faltaron: 0, tarifa: t });
+    }
   }
   if (fueraDelPeriodoExtra.length > 0) {
     advertencias.push(
@@ -1455,13 +1588,34 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   // uniformes: en un horario de lunes de 11 h y sábados de 1 h, faltar al sábado costaba 10,3
   // sábados de trabajo.
   const diasCastigoPorFalta = Math.max(0, p.diasDescuentoPorFalta - 1);
-  const descuentoFaltas = horasFaltadas * valorPorHora * diasCastigoPorFalta;
+  const descuentoFaltas = montoHorasFaltadas * diasCastigoPorFalta;
   const descuentoTardanzas = tardanzasInjustificadas * p.penalidadTardanza; // RN-08
 
   const bonoPuntos = bonoPorPuntos(entrada, p, advertencias);
 
+  // Pago por horas: «Horas trabajadas» y «Horas extra» reemplazan a «Sueldo», «Horas fuera de
+  // contrato» y «Diferencia de horas» (decisión del dueño n.º 2: una sola idea de horas).
+  const factorTxt = p.factorHoraFueraContrato === 1 ? '' : ` × ${fmtEs(p.factorHoraFueraContrato)}`;
+  const tarifasDentro = [...pagoDentroPorTarifa.entries()].filter(([, h]) => h > 0).sort((a, b) => a[0] - b[0]);
+  const detalleDentro =
+    tarifasDentro.length <= 1
+      ? `${fmtEs(horasDentro)} h dentro de su horario × S/${fmtEs(tarifasDentro[0]?.[0] ?? valorPorHora, 4)}`
+      : `${fmtEs(horasDentro)} h dentro de su horario: ${tarifasDentro.map(([t, h]) => `${fmtEs(h)} h × S/${fmtEs(t, 4)}`).join(' + ')}`;
+  const lineasHoras: LineaLiquidacion[] = porHoras
+    ? [
+        { grupo: 'ingreso', concepto: 'Horas trabajadas', detalle: detalleDentro, monto: r2(pagoDentro), regla: 'RN-23' },
+        {
+          grupo: 'ingreso',
+          concepto: 'Horas extra',
+          detalle: `${fmtEs(horasExtraTotal)} h fuera de su horario × S/${fmtEs(valorPorHora, 4)}${factorTxt}`,
+          monto: r2(pagoExtra),
+          regla: 'RN-23',
+        },
+      ]
+    : [{ grupo: 'ingreso', concepto: 'Sueldo', detalle: 'Pactado para el periodo', monto: r2(entrada.sueldoPactado), regla: 'RN-19' }];
+
   const lineas: LineaLiquidacion[] = [
-    { grupo: 'ingreso', concepto: 'Sueldo', detalle: 'Pactado para el periodo', monto: r2(entrada.sueldoPactado), regla: 'RN-19' },
+    ...lineasHoras,
     {
       grupo: 'ingreso',
       concepto: `Comisión ${r2(p.pctComision * 100)}%`,
@@ -1501,8 +1655,8 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       monto: r2(almuerzosAPagar * p.valorAlmuerzo),
       regla: 'RN-15',
     },
-    {
-      grupo: 'ingreso',
+    ...(porHoras ? [] : [{
+      grupo: 'ingreso' as const,
       concepto: 'Horas fuera de contrato',
       // El factor sólo se nombra en el detalle cuando no es 1, para que la boleta de la persona
       // que cobra la hora al precio de siempre no cargue con un "× 1" que no explica nada.
@@ -1512,7 +1666,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
           : `${r2(horasFuera)} h × S/${valorPorHora.toFixed(4)} × ${p.factorHoraFueraContrato} (factor pactado)`,
       monto: r2(horasFuera * valorPorHora * p.factorHoraFueraContrato),
       regla: 'RN-17',
-    },
+    }]),
     {
       grupo: 'descuento',
       concepto: 'Faltas injustificadas',
@@ -1527,13 +1681,23 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       monto: r2(-adelantos),
       regla: 'RN-19',
     },
-    {
-      grupo: 'ajuste',
-      concepto: 'Diferencia de horas',
-      detalle: `${r2(horasTrabajadas)} h trabajadas − ${r2(horasContratadas)} h contratadas = ${r2(diferenciaHoras)} h × S/${valorPorHora.toFixed(4)}`,
-      monto: r2(diferenciaHoras * valorPorHora),
-      regla: 'RN-07',
-    },
+    ...(porHoras
+      ? horasFaltaron > 0
+        ? [{
+            grupo: 'ajuste' as const,
+            concepto: 'Horas que faltaron',
+            detalle: `${fmtEs(horasFaltaron)} h de su horario que no trabajó: no se pagan`,
+            monto: 0,
+            regla: 'RN-23',
+          }]
+        : []
+      : [{
+          grupo: 'ajuste' as const,
+          concepto: 'Diferencia de horas',
+          detalle: `${r2(horasTrabajadas)} h trabajadas − ${r2(horasContratadas)} h contratadas = ${r2(diferenciaHoras)} h × S/${valorPorHora.toFixed(4)}`,
+          monto: r2(diferenciaHoras * valorPorHora),
+          regla: 'RN-07',
+        }]),
     {
       grupo: 'ajuste',
       concepto: 'Apoyo en capacitación',
@@ -1577,7 +1741,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     advertencias.push(`El total del periodo es negativo (S/${total}): el colaborador le debería plata a la empresa. Revisá antes de pagar.`);
   }
 
-  return {
+  const resultado: Liquidacion = {
     periodo: { desde: entrada.fechaInicio, hasta: entrada.fechaFin, dias: dias.length },
     base: {
       horasContratadas: r2(horasContratadas),
@@ -1615,6 +1779,19 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     total,
     advertencias,
     ...(pendientes.length > 0 ? { diasSinDeclarar: pendientes } : {}),
+  };
+  if (!porHoras) return resultado;
+  return {
+    modo: 'horas',
+    ...resultado,
+    base: { ...resultado.base, tarifaHora: valorPorHora, referencia: r2(referencia) },
+    asistencia: {
+      ...resultado.asistencia,
+      horasDentro: r2(horasDentro),
+      horasExtra: r2(horasExtraTotal),
+      horasFaltaron: r2(horasFaltaron),
+    },
+    dias: [...detalleDias.values()].sort((a, b) => a.fecha.localeCompare(b.fecha)),
   };
 }
 

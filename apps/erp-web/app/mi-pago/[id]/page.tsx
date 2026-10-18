@@ -32,7 +32,7 @@ export default async function MiLiquidacionPage(props: { params: Promise<{ id: s
         subtitle={`${sesion.nombre} · ${liq.periodoDesde} → ${liq.periodoHasta}`}
         action={<PrintButton />}
       />
-      <ResumenLiquidacionVista r={liq.resumen} pagoDisponible={liq.pagoDisponible} />
+      <ResumenLiquidacionVista r={liq.resumen} pagoDisponible={liq.pagoDisponible} horas={liq.horas} />
     </div>
   );
 }

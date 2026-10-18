@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Input, Label, Select } from '../../../components/ui/form';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
+import { HorasDelPago } from '../../../components/liquidacion/horas-del-pago';
+import { detalleHoras } from '../../../lib/horas-del-pago';
 import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
 import type { AcuerdoSueldo, EstadoLiquidacion, LiquidacionDetalle, LiquidacionResumen } from '../../../lib/sueldos-repo';
 import {
@@ -42,7 +44,14 @@ const GRUPO_LABEL: Record<string, string> = {
 };
 
 /** El desglose, agrupado como lo lee una persona: primero lo que suma, después lo que resta. */
-function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; concepto: string; detalle: string; regla: string; monto: number })[] }) {
+function Desglose({
+  lineas,
+  sinRegla = false,
+}: {
+  lineas: (LineaLiquidacion | { grupo: string; concepto: string; detalle: string; regla: string; monto: number })[];
+  /** Pago por horas: sin la columna de reglas (códigos internos). */
+  sinRegla?: boolean;
+}) {
   const grupos = ['ingreso', 'descuento', 'ajuste', 'final'];
   return (
     <Table>
@@ -50,7 +59,7 @@ function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; con
         <TR>
           <TH>Concepto</TH>
           <TH>De dónde sale</TH>
-          <TH>Regla</TH>
+          {!sinRegla && <TH>Regla</TH>}
           <TH className="text-right">Monto</TH>
         </TR>
       </THead>
@@ -63,7 +72,7 @@ function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; con
             // cada grupo. Envolver en <tbody> no sirve: rompería el <table>.
             <Fragment key={g}>
               <TR>
-                <TD colSpan={4} className="bg-paper text-rotulo font-medium uppercase text-muted">
+                <TD colSpan={sinRegla ? 3 : 4} className="bg-paper text-rotulo font-medium uppercase text-muted">
                   {GRUPO_LABEL[g] ?? g}
                 </TD>
               </TR>
@@ -71,7 +80,7 @@ function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; con
                 <TR key={`${g}-${i}`} className={g === 'final' ? 'font-medium text-navy' : undefined}>
                   <TD>{l.concepto}</TD>
                   <TD className="text-cuerpo text-muted">{l.detalle}</TD>
-                  <TD className="text-apoyo text-muted">{l.regla}</TD>
+                  {!sinRegla && <TD className="text-apoyo text-muted">{l.regla}</TD>}
                   <TD className={`text-right tabular-nums ${l.monto < 0 ? 'text-error-deep' : ''}`}>
                     {soles(l.monto)}
                   </TD>
@@ -360,6 +369,19 @@ export function LiquidacionesCliente({
   };
 
   const liq = preview?.liquidacion;
+  // Pago por horas: las tres filas y el día por día. Null = sueldo fijo, todo como siempre.
+  const horasPreview = liq
+    ? detalleHoras({ modo: liq.modo, asistencia: liq.asistencia, referencia: liq.base.referencia, dias: liq.dias, lineas: liq.lineas })
+    : null;
+  const horasDetalle = detalle
+    ? detalleHoras({
+        modo: detalle.resultado.modo,
+        asistencia: detalle.resultado.asistencia,
+        referencia: detalle.resultado.base?.referencia,
+        dias: detalle.resultado.dias,
+        lineas: detalle.lineas.length > 0 ? detalle.lineas : detalle.resultado.lineas,
+      })
+    : null;
 
   return (
     <>
@@ -473,9 +495,15 @@ export function LiquidacionesCliente({
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
               <Dato etiqueta="Días del periodo" valor={liq.periodo.dias} />
-              <Dato etiqueta="Horas contratadas" valor={liq.base.horasContratadas.toFixed(2)} />
-              <Dato etiqueta="Horas trabajadas" valor={liq.asistencia.horasTrabajadas.toFixed(2)} />
-              <Dato etiqueta="Valor de la hora" valor={soles(liq.base.valorPorHora)} />
+              {horasPreview ? (
+                <Dato etiqueta="Tarifa por hora" valor={soles(liq.base.tarifaHora ?? liq.base.valorPorHora)} />
+              ) : (
+                <>
+                  <Dato etiqueta="Horas contratadas" valor={liq.base.horasContratadas.toFixed(2)} />
+                  <Dato etiqueta="Horas trabajadas" valor={liq.asistencia.horasTrabajadas.toFixed(2)} />
+                  <Dato etiqueta="Valor de la hora" valor={soles(liq.base.valorPorHora)} />
+                </>
+              )}
               <Dato etiqueta="Tardanzas" valor={`${liq.asistencia.tardanzas} (${liq.asistencia.tardanzasInjustificadas} cobradas)`} />
               <Dato etiqueta="Faltas" valor={`${liq.asistencia.faltas} (${liq.asistencia.faltasInjustificadas} sin justificar)`} />
               <Dato etiqueta="Ventas" valor={soles(liq.ventas.total)} />
@@ -485,9 +513,13 @@ export function LiquidacionesCliente({
                 valor={`${liq.ventas.semanasCumplidas} de ${liq.ventas.semanas.length}`}
               />
               <Dato etiqueta="Almuerzos a pagar" valor={liq.asistencia.almuerzosAPagar} />
-              <Dato etiqueta="Horas fuera de contrato" valor={liq.asistencia.horasFueraDeContrato.toFixed(2)} />
+              {!horasPreview && (
+                <Dato etiqueta="Horas fuera de contrato" valor={liq.asistencia.horasFueraDeContrato.toFixed(2)} />
+              )}
               <Dato etiqueta="Total" valor={soles(liq.total)} />
             </div>
+
+            {horasPreview && <HorasDelPago h={horasPreview} />}
 
             {(() => {
               const sinVentas = liq.advertencias.some((a) =>
@@ -541,7 +573,7 @@ export function LiquidacionesCliente({
             })()}
           </CardContent>
           <div className="border-t border-line">
-            <Desglose lineas={liq.lineas} />
+            <Desglose lineas={liq.lineas} sinRegla={Boolean(horasPreview)} />
           </div>
         </Card>
       )}
@@ -650,7 +682,15 @@ export function LiquidacionesCliente({
                 Esto es el desglose tal como se emitió. No se recalcula al abrirlo: si mañana cambia
                 un parámetro de Configuración, este recibo sigue diciendo lo mismo.
               </p>
-              <Desglose lineas={detalle.lineas.length > 0 ? detalle.lineas : detalle.resultado.lineas} />
+              {horasDetalle && (
+                <div className="mb-3">
+                  <HorasDelPago h={horasDetalle} />
+                </div>
+              )}
+              <Desglose
+                lineas={detalle.lineas.length > 0 ? detalle.lineas : detalle.resultado.lineas}
+                sinRegla={Boolean(horasDetalle)}
+              />
               {detalle.resultado.advertencias.length > 0 && (
                 <div className="mt-3 rounded-r-chico bg-aviso/10 px-3 py-2">
                   {detalle.resultado.advertencias.map((a) => (
