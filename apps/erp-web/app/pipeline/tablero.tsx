@@ -378,7 +378,7 @@ export function TableroPipeline({
   );
 
   // Tarea 6: mapa hijo→madre para ofrecer "Deshacer división" en las tarjetas -S/-P. Las madres
-  // (etapa 'dividido') SÍ están en `optimistas` — listarPasadas no filtra por etapa — pero ninguna
+  // (etapa 'dividido') SÍ están en `optimistas` — listarPasadas({ soloActivas }) solo excluye las recibidas — pero ninguna
   // columna del kanban las pinta (COLUMNAS no tiene 'dividido'); solo se leen acá para el vínculo.
   const madrePorHijo = useMemo(() => {
     const m = new Map<string, string>();

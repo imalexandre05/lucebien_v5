@@ -7,7 +7,7 @@ import { TableroPipeline } from './tablero';
 
 export default async function PipelinePage() {
   const [pasadas, ranking, sesion, sedes, compartido] = await Promise.all([
-    listarPasadas(),
+    listarPasadas({ soloActivas: true }),
     rankingHoy(),
     getSesion(),
     listarSedes().catch(() => []),
