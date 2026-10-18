@@ -45,7 +45,8 @@ El modelo de Alexander la reemplaza por una **meta propia de cada persona en cad
     bolsa mientras no se calibren (§4).
 12. **Un día que el administrador declara no trabajado deja de contar para el total**, tanto sus actividades
     como sus horas de pipeline: es como un día libre.
-13. **Un turno de almacén se mide por ambos**: también tiene reporte de actividades, además del pipeline.
+13. **Un turno de almacén se mide por ambos**: también tiene reporte de actividades, además del pipeline. Una hora
+    de almacén pesa lo mismo que una hora de tienda: se reparte entre las dos áreas (§4).
 14. **Los extras del reporte suben el cumplimiento por encima de 100 % y las incidencias lo bajan.**
 15. **Hay personas con más de una sede en el mismo tramo**: la sede se guarda en cada turno, no en la persona.
 16. **Cumplir la meta vale 16** (decidido el 18-oct-2026, tras dudar entre 20 y 16): deja espacio hasta 20 para
@@ -81,15 +82,19 @@ se promedian por horas.
 Para una persona y un rango `[desde, hasta]` (por defecto, su tramo de pago), sin contar los días libres (§5):
 
 ```
-horasReportes = horas contratadas en turnos (de tienda y de almacén) con al menos una actividad que aplique
+f             = eval_almacen_reparto_pipeline          (parte de cada hora de almacén que va al pipeline; default 0,5)
+horasTienda   = horas contratadas en turnos de tienda con al menos una actividad que aplique
 horasAlmacen  = horas contratadas en turnos de almacén
 
-metaReportes  = actividades que aplican en esos turnos × pts_actividad_cumplida        (todas cumplidas = 100 %)
+pesoReportes  = horasTienda + (1 − f) × horasAlmacen   (si el almacén tiene actividades que apliquen)
+pesoPipeline  = f × horasAlmacen
+
+metaReportes  = actividades obligatorias que aplican en esos turnos × pts_actividad_cumplida   (todas cumplidas = 100 %)
 rReportes     = (puntos de actividades + puntos de extras − puntos de incidencias) / metaReportes
 
 pipelineEquivalente = puntosPipeline / pipeline_meta_puntos_por_hora    (horas de pipeline «al ritmo de la meta»)
 
-cumplimiento  = (horasReportes × rReportes + pipelineEquivalente) / (horasReportes + horasAlmacen)
+cumplimiento  = (pesoReportes × rReportes + f × pipelineEquivalente) / (pesoReportes + pesoPipeline)
 ```
 
 - **Reportes.** La meta es completa: todas las actividades **obligatorias** (`tipo_act = 'obligatoria'`; las
@@ -100,11 +105,13 @@ cumplimiento  = (horasReportes × rReportes + pipelineEquivalente) / (horasRepor
 - **Pipeline.** La meta son las horas en **almacén** por `pipeline_meta_puntos_por_hora` (§6). Se mide por
   hora porque los turnos reales son de 4 y 7 horas (09:00–13:00 y 13:00–20:00). Si Alexander define después
   la meta «por turno», se convierte dividiéndola por las horas del turno.
-- **Un turno de almacén tiene las dos metas** (decisión 13): sus horas cuentan para reportes y para pipeline.
-  Por eso pesa el doble en el denominador que un turno de tienda, a propósito: tiene dos obligaciones en las
-  mismas horas. *Por confirmar* con Alexander: si prefiere repartir cada hora de almacén entre las dos áreas
-  (la mitad a cada una) en lugar de contarla en ambas. Verificado en la base (18-oct, ver §3): la sede de
-  almacén sí tiene actividades de reporte; la de lavandería no, y sus horas no entran a `horasReportes`.
+- **Un turno de almacén tiene las dos metas** (decisión 13), pero **una hora de almacén pesa lo mismo que una de
+  tienda**: se reparte entre las dos áreas, por defecto la mitad al reporte y la mitad al pipeline
+  (`eval_almacen_reparto_pipeline` = 0,5, editable). La alternativa descartada es contar cada hora completa en
+  las dos áreas: haría que un día de almacén pese el doble que uno de tienda sólo por estar en almacén, y el
+  reporte de almacén es chico (9 obligatorias contra 27 a 29 en las tiendas). Verificado en la base (18-oct, ver
+  §3): la sede de almacén sí tiene actividades de reporte; la de lavandería no, y sus horas no entran al
+  peso de reportes.
 - **Lo no asignado es extra.** El pipeline hecho fuera de las horas de almacén (alguien pasa a almacén un
   día de poca demanda) entra en `pipelineEquivalente` pero no agrega horas al denominador: sube el
   cumplimiento por encima de lo que daría sólo el horario y nunca se descarta nada. Lo mismo quien trabaja
@@ -188,6 +195,7 @@ Esto toca la cadena del sueldo: spec completa, tests y verificador **aparte** (�
 | Clave | Default | De dónde sale |
 |---|---|---|
 | `pipeline_meta_puntos_por_hora` | **0,5** | **Elegido por mí, no por Alexander.** El mejor mes-persona medido (126,45 puntos, abril 2026) dividido en ~21 días de 11 horas da ~0,55 por hora. Es el techo de un módulo con poca adopción (2 de 11 personas registraron avances), así que probablemente subestima la capacidad real. A recalibrar tras un mes de uso; más adelante podría variar con la demanda de ternos |
+| `eval_almacen_reparto_pipeline` | **0,5** | **Elegido por mí:** cada hora de almacén se reparte mitad al reporte y mitad al pipeline, para que pese lo mismo que una hora de tienda. Se puede inclinar (p. ej. 0,7 da más peso al pipeline) sin tocar código |
 | `eval_cumplimiento_para_20` | **1,25** | Decidido por Alexander (18-oct): cumplir toda la meta vale 16 y el 20 llega al 125 %. Ver §4 |
 
 *Antes de dar por buena la cifra de pipeline*, la sesión maestra debe contrastarla con la base
@@ -236,15 +244,18 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
 - Quincenal anclado al día 1: el tramo 16–30/31 toma sus propios días; contrato que termina el día 20
   recorta el último tramo.
 - **Desbalance de áreas:** 8 días de tienda y 4 de almacén (11 h cada día), reportes al 100 % y pipeline en 0:
-  cumplimiento (132×1 + 0) / (132 + 44) = 75 %. Con una sola bolsa de puntos daría ~88 %.
-- Mañana en tienda y tarde en almacén el mismo día: la mañana suma sólo a `horasReportes`; la tarde suma a
-  `horasReportes` y a `horasAlmacen` (decisión 13).
+  pesoReportes = 88 + 22 = 110, pesoPipeline = 22, cumplimiento 110 / 132 = 83,3 %. Con una sola bolsa de puntos
+  daría ~88 %.
+- Con pipeline al 50 % en el mismo caso: (110×1 + 22×0,5) / 132 = 91,7 %. Con `eval_almacen_reparto_pipeline` = 1
+  todo el almacén es pipeline.
+- Mañana en tienda y tarde en almacén el mismo día: la mañana pesa 4 h en reportes; la tarde (7 h) se reparte
+  entre reportes y pipeline según `eval_almacen_reparto_pipeline`. En total ese día pesa 11 h, ni más ni menos.
 - Una persona con turnos en dos sedes en el mismo tramo: cada turno toma las actividades de su propia sede.
 - Turnos de 4 y 7 horas en almacén: la meta de pipeline es proporcional a las horas.
 - Dos personas en la misma sede y turno: ambas tienen la misma meta de reportes.
 - Turno de tienda sin actividades que apliquen: no entra al denominador.
 - Pipeline hecho fuera de las horas de almacén: sube el cumplimiento y no cambia las horas.
-- Persona sólo de almacén: sus horas entran a las dos áreas y el cumplimiento combina reporte y pipeline.
+- Persona sólo de almacén: sus horas se reparten entre las dos áreas y el cumplimiento combina reporte y pipeline.
 - Extras suben `rReportes` por encima de 1 e incidencias lo bajan; los puntos netos negativos dan 0,00.
 - Licencia justificada: baja las horas y la meta; falta injustificada: no baja y cuenta cero.
 - Día libre para una persona y no para su compañera de sede: sólo la primera pierde meta y horas. Si trabaja
@@ -273,8 +284,8 @@ pipeline; extras suben e incidencias bajan; hay personas con más de una sede po
 sí tiene actividades de reporte (9 obligatorias); la de lavandería no tiene ninguna.
 
 **Abiertas:**
-1. En un turno de almacén, ¿cada hora cuenta completa en las dos áreas (el turno pesa doble) o se reparte
-   (propuesta: la mitad a cada área, con un parámetro de reparto editable)? Hoy la fórmula cuenta completa en ambas.
+1. ¿El reparto 50/50 de las horas de almacén le parece bien a Alexander, o quiere inclinarlo hacia el pipeline
+   o hacia el reporte? (Es el parámetro `eval_almacen_reparto_pipeline`.)
 2. Cómo se refleja el día libre en el sueldo: decidido (se descuenta completo), pero necesita la spec del
    motor de sueldos (§8).
 3. Hallazgo: no hay reportes en ninguna sede desde el 23-ago-2026. ¿El módulo de reportes del ERP aún no se usa y

@@ -1960,8 +1960,9 @@ Spec escrita, sin código. Defaults inventados por quien escribió la spec, a co
    sólo referencia; la medida principal es el porcentaje de cumplimiento.
 3. **Cada área contra su meta, promediadas por horas** (no una bolsa única de puntos), porque los puntos de
    reportes y de pipeline no están al mismo nivel de esfuerzo. Con los puntos calibrados, la bolsa única da lo mismo.
-4. **Un turno de almacén tiene las dos metas** (decidido): cada hora cuenta completa en reportes y en pipeline,
-   así que el turno pesa doble en el denominador. Default mío, a confirmar: repartirla mitad y mitad.
+4. **Un turno de almacén tiene las dos metas, y su hora se reparte** (`eval_almacen_reparto_pipeline` = 0,5): mitad
+   al reporte y mitad al pipeline, para que una hora de almacén pese lo mismo que una de tienda. Default mío, a
+   confirmar con Alexander (se puede inclinar sin tocar código).
 5. **Extras suben y incidencias bajan el cociente de reportes** (decidido por Alexander el 17-oct).
 6. **Licencia = falta justificada** (campo existente). **Feriado o cierre = día libre por persona**, en una tabla
    nueva (`dias_libres`) que sólo escribe el administrador: sale del contrato y de la meta, y se descuenta completo.
