@@ -9,8 +9,9 @@
 
 ## Regla nueva
 1. **Borrador provisional.** Se puede calcular y guardar un borrador aunque falten días. Cada día
-   pendiente **no se paga ni se descuenta** (no es falta, no es tardanza, no suma horas): el monto es
-   provisional y la liquidación avisa con una advertencia que nombra los días.
+   pendiente **no se castiga ni se compensa** (no es falta, no es tardanza, no suma ni resta horas): el
+   sueldo pactado queda sin tocar por ese día, así que el monto es el máximo posible y es
+   provisional; la liquidación avisa con una advertencia que nombra los días.
 2. **Cerrar sigue exigiendo todo declarado.** El cierre vuelve a leer `sueldo_entrada` en modo
    estricto (0111): con un día pendiente corta con `DATO`, igual que hoy. Nadie paga un sueldo con
    días sin declarar.
