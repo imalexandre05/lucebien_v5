@@ -1,6 +1,6 @@
--- ⚠️ 18-oct-2026: los casos 2, 3 y 10a prueban C-3 (relleno estimado), que el dueño retiró
--- (decisión n.º 3, migración 0163). Contra una base con la 0163 aplicada esos tres casos dan FALLA
--- a propósito; lo vigente lo prueba 0163_huellero_marca_extremo_cercano.prueba.sql.
+-- 18-oct-2026: los casos 2, 3 y 10a probaban C-3 (relleno estimado), que el dueño retiró (decisión
+-- n.º 3: «la que falte queda Pendiente de resolver», migración 0163). Se actualizaron a la regla
+-- vigente: la marca suelta va al extremo más cercano y el otro lado queda vacío, en 'sin_dato'.
 -- Prueba de la migración 0097_huellero_relleno_estimado_y_falta.sql
 --
 -- Cubre C-3 (relleno estimado con el horario contratado) y C-4 (falta automática con freno) de
@@ -111,31 +111,31 @@ begin
   insert into sueldo_acuerdo_turnos(acuerdo_id, dia_semana, hora_inicio, hora_fin)
     select v_acuerdo, dia, '14:00', '20:00' from generate_series(1, 7) as dia;
 
-  -- ── 2) Una sola marca, cerca de la SALIDA: se rellena la entrada, marcada como estimada ────
+  -- ── 2) Una sola marca, cerca de la SALIDA: es la salida; la entrada queda pendiente (0163) ─
   insert into marcas_huellero(dispositivo_id, employee_no, empleado_id, marcada_en, evento_serial, nombre_equipo)
     values (disp, '970', eA, '2099-08-01T20:20:00-05:00', 970001, 'A');
   perform huellero_derivar_asistencia(eA, '2099-08-01');
   select condicion, hora_entrada, hora_salida, entrada_estimada, salida_estimada
     into v_cond, v_ent, v_sal, v_ee, v_se
     from asistencias where empleado_id = eA and fecha = '2099-08-01';
-  if v_cond = 'trabajado' and v_ent = '14:00' and v_sal = '20:20' and v_ee and not v_se then
+  if v_cond = 'sin_dato' and v_ent is null and v_sal = '20:20' and not v_ee and not v_se then
     r := r || '2=ok ';
   else
-    r := r || format('2-NO-RELLENA-ENTRADA=FALLA(cond=%s ent=%s sal=%s ee=%s se=%s) ',
+    r := r || format('2-NO-QUEDA-PENDIENTE=FALLA(cond=%s ent=%s sal=%s ee=%s se=%s) ',
                      v_cond, v_ent, v_sal, v_ee, v_se);
   end if;
 
-  -- ── 3) Una sola marca, cerca de la ENTRADA: se rellena la salida, banderas al revés ────────
+  -- ── 3) Una sola marca, cerca de la ENTRADA: es la entrada; la salida queda pendiente (0163) 
   insert into marcas_huellero(dispositivo_id, employee_no, empleado_id, marcada_en, evento_serial, nombre_equipo)
     values (disp, '971', eB, '2099-08-02T14:05:00-05:00', 971001, 'B');
   perform huellero_derivar_asistencia(eB, '2099-08-02');
   select condicion, hora_entrada, hora_salida, entrada_estimada, salida_estimada
     into v_cond, v_ent, v_sal, v_ee, v_se
     from asistencias where empleado_id = eB and fecha = '2099-08-02';
-  if v_cond = 'trabajado' and v_ent = '14:05' and v_sal = '20:00' and not v_ee and v_se then
+  if v_cond = 'sin_dato' and v_ent = '14:05' and v_sal is null and not v_ee and not v_se then
     r := r || '3=ok ';
   else
-    r := r || format('3-NO-RELLENA-SALIDA=FALLA(cond=%s ent=%s sal=%s ee=%s se=%s) ',
+    r := r || format('3-NO-QUEDA-PENDIENTE=FALLA(cond=%s ent=%s sal=%s ee=%s se=%s) ',
                      v_cond, v_ent, v_sal, v_ee, v_se);
   end if;
 
@@ -198,7 +198,7 @@ begin
     select condicion, hora_entrada, hora_salida, entrada_estimada, salida_estimada
       into v_cond, v_ent, v_sal, v_ee, v_se
       from asistencias where empleado_id = eA and fecha = '2099-08-01';
-    if v_cond <> 'trabajado' or v_ent <> '14:00' or v_sal <> '20:20' or not v_ee or v_se then
+    if v_cond <> 'sin_dato' or v_ent is not null or v_sal <> '20:20' or v_ee or v_se then
       r := r || format('10a-RE-DERIVAR-CAMBIA-EL-ESTADO=FALLA(cond=%s ent=%s sal=%s ee=%s se=%s) ',
                        v_cond, v_ent, v_sal, v_ee, v_se);
     else
