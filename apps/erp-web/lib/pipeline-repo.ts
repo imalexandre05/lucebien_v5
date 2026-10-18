@@ -202,6 +202,13 @@ export async function rechazarPasada(id: string, destino: string, operador: stri
 }
 
 // Deshacer: revierte la prenda a la etapa anterior y quita los puntos recién ganados.
+// Anular un envío equivocado (0156): la prenda vuelve a «listo». Motivo obligatorio.
+export async function anularEnvioPasada(id: string, motivo: string, operador: string | null = null): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_anular_envio', { p_id: id, p_motivo: motivo, ...conOperador(operador) });
+  if (error) throw new Error(error.message);
+}
+
 export async function deshacerPasada(id: string, etapaAnterior: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
   const { error } = await sb.rpc('pipeline_deshacer', {
