@@ -128,7 +128,7 @@ begin
       coalesce(cat.precio_unitario, 0) * coalesce((e->>'cantidad')::int, 1),
       (cat.cod is null),
       coalesce(e->>'detalle', ''),
-      coalesce(nullif(e->>'registrado_por_id', '')::uuid, v_encargado)
+      coalesce(nullif(e->>'registrado_por_id', '')::uuid, case when p_operador is not null then v_encargado else v_actor end)
     from jsonb_array_elements(p_extras) e
     left join actividades_config cat
       on cat.sede_cod = p_sede and cat.cod = nullif(e->>'cod', '') and cat.categoria = 'EXT'
@@ -143,3 +143,12 @@ revoke execute on function reportes_crear(text, text, text, int, int, uuid[], js
   from public, anon;
 grant  execute on function reportes_crear(text, text, text, int, int, uuid[], jsonb, jsonb, uuid, uuid)
   to authenticated;
+
+-- La pantalla decide si pide el código también cuando la CUENTA es de un equipo compartido
+-- (aunque el navegador no tenga la cookie de equipo): sin esto la base exige el token y la
+-- pantalla no lo pediría. Solo responde sobre la propia sesión.
+create or replace function public.sesion_cuenta_compartida()
+  returns boolean language sql stable security invoker set search_path = public
+as $$ select private.sesion_es_cuenta_compartida(); $$;
+revoke execute on function public.sesion_cuenta_compartida() from public, anon;
+grant  execute on function public.sesion_cuenta_compartida() to authenticated;
