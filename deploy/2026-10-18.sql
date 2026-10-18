@@ -1,4 +1,4 @@
--- Release 2026-10-18: migraciones 0145 a 0161 en orden. Idempotente. Sin schema_migrations.
+-- Release 2026-10-18: migraciones 0145 a 0162 en orden. Idempotente. Sin schema_migrations.
 -- Generado de packages/db/migrations; no editar a mano.
 begin;
 
@@ -1475,7 +1475,10 @@ $$;
 --     pendientes: la entrada estricta no cambia ni un byte.
 -- Idempotente.
 
-create or replace function public.sueldo_entrada(p_acuerdo uuid, p_desde date, p_hasta date, p_permitir_pendientes boolean)
+-- La firma de 3 argumentos (0144) se reemplaza por la de 4 con default: una sola versión.
+drop function if exists public.sueldo_entrada(uuid, date, date);
+
+create or replace function public.sueldo_entrada(p_acuerdo uuid, p_desde date, p_hasta date, p_permitir_pendientes boolean default false)
 returns jsonb
 language plpgsql
 stable
@@ -1761,18 +1764,9 @@ begin
 end;
 $function$;
 
--- Versión estricta de siempre: mismo nombre y firma, ahora delega.
-create or replace function public.sueldo_entrada(p_acuerdo uuid, p_desde date, p_hasta date)
-returns jsonb
-language sql
-stable
-set search_path to 'public'
-as $$ select public.sueldo_entrada(p_acuerdo, p_desde, p_hasta, false) $$;
-
+-- Una sola firma (la 0127 prohíbe sobrecargas): las llamadas con 3 argumentos siguen siendo estrictas (default false).
 revoke execute on function public.sueldo_entrada(uuid, date, date, boolean) from public, anon;
 grant  execute on function public.sueldo_entrada(uuid, date, date, boolean) to authenticated;
-revoke execute on function public.sueldo_entrada(uuid, date, date) from public, anon;
-grant  execute on function public.sueldo_entrada(uuid, date, date) to authenticated;
 
 comment on function public.sueldo_entrada(uuid, date, date, boolean) is
   '0160: entrada de liquidación de un tramo. Con p_permitir_pendientes=true arma un borrador y lista los días sin declarar en diasSinDeclarar; con false corta con DATO como siempre.';
@@ -1825,5 +1819,49 @@ create trigger lista_precios_audit after insert or update or delete on public.li
 
 comment on table public.lista_precios is
   'Lista de precios de confecciones (0161). El administrador escribe, todo empleado activo lee. Vacía de origen: no hay precios inventados.';
+
+
+-- ===== 0162_responsable_incidencia.sql =====
+-- 0162_responsable_incidencia.sql — valida el responsable de una incidencia sin abrir `empleados`.
+--
+-- Spec: docs/superpowers/specs/2026-10-18-release-arreglos-verificador-design.md §1.
+-- Un encargado solo ve su propia fila de `empleados` (RLS, 0002), así que la validación del
+-- responsable hecha desde la app rechazaba todo reporte con un responsable ajeno. Esta función
+-- decide por dentro y devuelve únicamente un booleano: no expone ningún dato de la persona.
+-- Idempotente.
+
+create or replace function public.incidencia_responsable_valido(p_empleado uuid, p_sede text)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path to 'public'
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'PERMISO: inicia sesión para continuar';
+  end if;
+  if p_empleado is null or coalesce(p_sede, '') = '' then
+    return false;
+  end if;
+  -- Solo el administrador o quien trabaja en esa sede puede preguntar por una persona de esa sede.
+  if not (private.app_es_admin() or p_sede in (select private.app_sedes())) then
+    raise exception 'PERMISO: no tienes acceso a esta sede';
+  end if;
+  return exists (
+    select 1 from empleados e
+    where e.id = p_empleado
+      and e.activo
+      and (e.sede_cod = p_sede
+           or exists (select 1 from empleado_tiendas t where t.empleado_id = e.id and t.sede_cod = p_sede))
+  );
+end;
+$$;
+
+revoke execute on function public.incidencia_responsable_valido(uuid, text) from public, anon;
+grant  execute on function public.incidencia_responsable_valido(uuid, text) to authenticated;
+
+comment on function public.incidencia_responsable_valido(uuid, text) is
+  '0162: ¿el empleado está activo y pertenece a la sede? Solo devuelve un booleano; exige ser admin o de esa sede.';
 
 commit;

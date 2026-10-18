@@ -21,7 +21,7 @@ begin
     return false;
   end if;
   -- Solo el administrador o quien trabaja en esa sede puede preguntar por una persona de esa sede.
-  if not (app_es_admin() or p_sede in (select app_sedes())) then
+  if not (private.app_es_admin() or p_sede in (select private.app_sedes())) then
     raise exception 'PERMISO: no tienes acceso a esta sede';
   end if;
   return exists (

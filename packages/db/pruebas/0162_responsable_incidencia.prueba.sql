@@ -20,7 +20,7 @@ begin
   perform pg_temp.dueno();
   insert into sedes (cod, nombre) values ('P162-A', 'P162 A'), ('P162-B', 'P162 B');
   s1 := 'P162-A'; s2 := 'P162-B';
-  insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P162-EN', 'P162 Encargado', 'EN', 'encargado', s1) returning id into enc;
+  insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P162-EN', 'P162 Encargado', 'EN', 'encargado_tienda', s1) returning id into enc;
   insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P162-OT', 'P162 Otro', 'OT', 'confeccionista', s1) returning id into otro;
   insert into empleados (cod, nombre, iniciales, rol, sede_cod, activo) values ('P162-IN', 'P162 Inactivo', 'IN', 'confeccionista', s1, false) returning id into inact;
   insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P162-EX', 'P162 Extra', 'EX', 'confeccionista', s2) returning id into extra;
