@@ -44,6 +44,8 @@ begin
   insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P171-CO','Prueba 0171 Compañero','CO','ventas_junior', v_a) returning id into e_comp;
   insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P171-AJ','Prueba 0171 Ajeno','AJ','ventas_junior', v_b) returning id into e_ajeno;
   insert into empleados (cod, nombre, iniciales, rol, sede_cod, activo) values ('P171-IN','Prueba 0171 Inactivo','IN','ventas_junior', v_a, false) returning id into e_inact;
+  -- Desde la 0178 el tope es «sin tope»; esta prueba mide el tope de la 0171, así que lo fija en 50.
+  update config set valor = '50' where clave = 'reporte_extra_cantidad_max';
   insert into actividades_config (sede_cod, cod, nombre, categoria, tipo_act, peso, precio_unitario)
     values (v_a, 'EXT-P171', 'Extra de prueba', 'EXT', 'por_puntos', 2, 1.5);
 
