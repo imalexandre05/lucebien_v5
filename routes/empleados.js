@@ -2,7 +2,7 @@ const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { getDB, hoyLocal, mesLocal } = require('../database/db');
-const SECRET = process.env.JWT_SECRET || 'lucebien-secret-2026-xK9mP3qR';
+const SECRET = require('../middleware/auth').JWT_SECRET;
 
 function auth(req,res,next){try{var h=req.headers['authorization'];if(!h||!h.startsWith('Bearer '))return res.status(401).json({error:'Token requerido'});req.user=jwt.verify(h.slice(7),SECRET);next();}catch(e){return res.status(401).json({error:'Token invalido'});}}
 function admin(req,res,next){auth(req,res,function(){if(req.user.rol!=='admin'&&req.user.rol!=='dueno')return res.status(403).json({error:'Solo admin'});next();});}
