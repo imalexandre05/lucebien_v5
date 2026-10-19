@@ -30,6 +30,21 @@ create policy calif_sel on public.prenda_calificacion for select
           where e.id = prenda_calificacion.envio_id and e.sede_destino_cod in (select private.app_sedes())))
   );
 
+-- El permiso se mide también sobre el DUEÑO DEL CÓDIGO (quien actúa), no solo sobre la sesión del equipo.
+create or replace function private.actor_recibe_en(p_actor uuid, p_sede text)
+  returns boolean language sql stable security definer set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from empleados e
+     where e.id = p_actor and e.activo
+       and (e.rol in ('admin', 'dueno')
+            or (e.rol not in ('encargado_almacen', 'confeccionista')
+                and (e.sede_cod = p_sede
+                     or exists (select 1 from empleado_tiendas et where et.empleado_id = e.id and et.sede_cod = p_sede))))
+  );
+$$;
+revoke execute on function private.actor_recibe_en(uuid, text) from public, anon;
+
 -- R2 + R3: mismo cuerpo que la 0112, con portero de tienda destino, cualquier etapa y nota obligatoria.
 create or replace function public.pipeline_calificar(p_id uuid, p_aceptada boolean, p_destino text, p_obs text,
                                                      p_operador uuid default null)
@@ -49,6 +64,9 @@ begin
     raise exception 'Prenda no encontrada';
   end if;
   v_actor := private.actor_pipeline(p_operador);
+  if not private.actor_recibe_en(v_actor, (select e.sede_destino_cod from prenda_pasada p join envios_prendas e on e.id = p.envio_id where p.id = p_id)) then
+    raise exception 'PERMISO: solo la tienda destino recibe esta prenda';
+  end if;
   select etapa, envio_id into v_etapa, v_envio from prenda_pasada where id = p_id for update;
   if not found then raise exception 'Prenda no encontrada'; end if;
   if v_etapa <> 'enviado' then
