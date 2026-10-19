@@ -28,6 +28,11 @@ declare
   v_fin    date;
   v_meses  int;
   v_nuevo  uuid;
+  c        sueldo_acuerdo_cambios%rowtype;
+  v_mod    text;
+  v_cada   int;
+  v_cuota  numeric;
+  v_tarifa numeric;
 begin
   if not private.app_es_admin() then
     raise exception 'PERMISO:solo el administrador puede renovar un contrato';
@@ -43,6 +48,14 @@ begin
   if exists (select 1 from sueldo_acuerdos n where n.empleado_id = a.empleado_id and n.fecha_inicio > a.fecha_fin) then
     raise exception 'ESTADO:este contrato ya tiene uno que lo sigue; edita ese';
   end if;
+
+  -- Frecuencia y cuota o tarifa VIGENTES al final del contrato (0120/0121): la última fila de cambios con
+  -- desde <= fecha_fin; sin cambios, las del contrato. Una tarifa nula en el cambio sigue la anterior.
+  select * into c from sueldo_acuerdo_cambios where acuerdo_id = a.id and desde <= a.fecha_fin order by desde desc limit 1;
+  v_mod    := coalesce(c.modalidad, a.modalidad);
+  v_cada   := case when c.id is not null then c.cada_dias else a.cada_dias end;
+  v_tarifa := case when c.id is not null then coalesce(c.tarifa_hora, a.tarifa_hora) else a.tarifa_hora end;
+  v_cuota  := case when v_tarifa is not null then 0 when c.id is not null then c.sueldo_pactado else a.sueldo_pactado end;
 
   v_ini := a.fecha_fin + 1;
   -- Meses completos (1-oct a 31-oct → 1 mes): el nuevo dura lo mismo. Si no, los mismos días.
@@ -61,10 +74,10 @@ begin
       'empleado_id',         a.empleado_id,
       'fecha_inicio',        v_ini,
       'fecha_fin',           v_fin,
-      'modalidad',           a.modalidad,
-      'cada_dias',           a.cada_dias,
-      'sueldo_pactado',      a.sueldo_pactado,
-      'tarifa_hora',         a.tarifa_hora,
+      'modalidad',           v_mod,
+      'cada_dias',           v_cada,
+      'sueldo_pactado',      v_cuota,
+      'tarifa_hora',         v_tarifa,
       'escala',              a.escala,
       'almuerzo_habilitado', a.almuerzo_habilitado,
       'parametros',          a.parametros,
