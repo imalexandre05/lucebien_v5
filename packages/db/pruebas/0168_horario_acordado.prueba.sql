@@ -58,7 +58,7 @@ begin
   if (j ->> 'puntualidadTardanzas')::int = 1 then r := r || '[ok] 5;'; else r := r || format('[FALLA] 5: %s;', j); end if;
   update asistencias set hora_entrada = time '08:55' where id = v_id;
 
-  -- 6) sueldo_entrada manda inicioAcordado en el día; sin hora acordada la clave viene null
+  -- 6) sueldo_entrada manda inicioAcordado en el día; sin hora acordada la clave no se emite (un borrador anterior no queda «desactualizado»)
   perform pg_temp.como(adm);
   j := public.sueldo_entrada(ac, date '2020-03-02', date '2020-03-06', true);
   fila := (j -> 'asistencia') -> 0;
@@ -68,7 +68,7 @@ begin
   perform pg_temp.como(adm);
   j := public.sueldo_entrada(ac, date '2020-03-02', date '2020-03-06', true);
   fila := (j -> 'asistencia') -> 0;
-  if fila -> 'inicioAcordado' = 'null'::jsonb then r := r || '[ok] 6b;'; else r := r || format('[FALLA] 6b: %s;', fila); end if;
+  if not (fila ? 'inicioAcordado') then r := r || '[ok] 6b;'; else r := r || format('[FALLA] 6b: %s;', fila); end if;
   perform pg_temp.dueno();
 
   -- 7) un motivo de más de 300 letras se rechaza
