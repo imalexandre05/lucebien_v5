@@ -19,7 +19,7 @@ const dia = (fecha: string, horaIngreso: string, extra: Record<string, unknown> 
   ...extra,
 });
 // La semana tiene 3 días contratados (lun 16, mar 17, mié 18): los que la prueba no toca llegan puntuales.
-const liquidar = (cambios: ReturnType<typeof dia>[]) => {
+const liquidar = (cambios: ReturnType<typeof dia>[], extra: Partial<EntradaLiquidacion> = {}) => {
   const asistencia = ['2025-06-16', '2025-06-17', '2025-06-18'].map(
     (f) => cambios.find((c) => c.fecha === f) ?? dia(f, '09:00'),
   );
@@ -37,6 +37,7 @@ const liquidar = (cambios: ReturnType<typeof dia>[]) => {
     almuerzosEntregados: 0,
     almuerzoHabilitadoPorAdmin: false,
     personasCapacitadas: 0,
+    ...extra,
   } as EntradaLiquidacion);
 };
 
@@ -65,6 +66,19 @@ describe('horario acordado — motor del sueldo (spec §3)', () => {
 
   it('un horario acordado mal escrito se rechaza con un mensaje claro', () => {
     expect(() => liquidar([dia('2025-06-16', '09:00', { inicioAcordado: '25:99' })])).toThrow(/Asistencia 2025-06-16/);
+  });
+
+  it('el pasaje se mide contra el horario acordado cuando existe (respuesta del dueño, 19-oct-2026)', () => {
+    const conPasaje = (cambios: ReturnType<typeof dia>[]) =>
+      liquidar(cambios, { parametros: { montoPasaje: 2, minutosAntesPasaje: 5 } });
+    const pasaje = (l: ReturnType<typeof liquidar>) => l.lineas.find((x) => x.regla === 'RN-22')?.monto ?? 0;
+    // Contratado 09:00. Los otros dos días llegan 09:00: no ganan pasaje (hay que llegar 08:55 o antes).
+    expect(pasaje(conPasaje([dia('2025-06-16', '09:50')]))).toBe(0);
+    // Acordado 10:00 y llegó 09:50: 10 min antes del acordado → gana el pasaje de ese día.
+    expect(pasaje(conPasaje([dia('2025-06-16', '09:50', { inicioAcordado: '10:00' })]))).toBe(2);
+    // Acordado más temprano (08:00): llegar 08:00 no gana; 07:50 sí.
+    expect(pasaje(conPasaje([dia('2025-06-17', '08:00', { inicioAcordado: '08:00' })]))).toBe(0);
+    expect(pasaje(conPasaje([dia('2025-06-17', '07:50', { inicioAcordado: '08:00' })]))).toBe(2);
   });
 
   it('no cambia las horas trabajadas ni el pago por horas', () => {
