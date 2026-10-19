@@ -47,36 +47,23 @@ export async function tiposAccesorioUsados(): Promise<string[]> {
   return Array.from(tipos).sort();
 }
 
-export async function crearEnvioAccesorios(p: {
-  sedeDestinoCod: string;
-  obs: string | null;
-  items: ItemAccesorio[];
-}): Promise<void> {
-  const sb = getServerClient();
-  const { data: u } = await sb.auth.getUser();
-  const { data: envio, error } = await sb
-    .from('envios_accesorios')
-    .insert({
-      sede_destino_cod: p.sedeDestinoCod,
-      fecha: new Date().toISOString(),
-      responsable_id: u?.user?.id ?? null,
-      obs: p.obs,
-    })
-    .select('id')
-    .single();
+// Enviar y validar van por RPC (0182): cada acción queda a nombre del dueño del código personal.
+const conOperador = (operador: string | null) => (operador ? { p_operador: operador } : {});
+
+export async function crearEnvioAccesorios(
+  p: { sedeDestinoCod: string; obs: string | null; items: ItemAccesorio[] },
+  operador: string | null = null,
+): Promise<void> {
+  const { error } = await getServerClient().rpc('accesorios_enviar', {
+    p_sede: p.sedeDestinoCod,
+    p_obs: p.obs ?? '',
+    p_items: p.items.map((i) => ({ tipo: i.tipo, cantidad: i.cantidad })),
+    ...conOperador(operador),
+  });
   if (error) throw new Error(error.message);
-  const { error: eItems } = await sb.from('envio_accesorios_items').insert(
-    p.items.map((i) => ({ envio_id: envio.id, tipo: i.tipo, cantidad: i.cantidad })),
-  );
-  if (eItems) throw new Error(eItems.message);
 }
 
-export async function validarEnvioAccesorios(id: string): Promise<void> {
-  const sb = getServerClient();
-  const { data: u } = await sb.auth.getUser();
-  const { error } = await sb
-    .from('envios_accesorios')
-    .update({ validado_tienda: true, validado_por_id: u?.user?.id ?? null, fecha_validado: new Date().toISOString() })
-    .eq('id', id);
+export async function validarEnvioAccesorios(id: string, operador: string | null = null): Promise<void> {
+  const { error } = await getServerClient().rpc('accesorios_validar', { p_id: id, ...conOperador(operador) });
   if (error) throw new Error(error.message);
 }

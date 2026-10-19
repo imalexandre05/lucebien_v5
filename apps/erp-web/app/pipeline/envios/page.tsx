@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { leerFiltrosEnvios, sedesFiltroEnvios } from '@scilb/core';
 import { listarEnviosEnCamino, listarEnviosRecibidos, TOPE_EN_CAMINO } from '../../../lib/envios-repo';
 import { getSesion } from '../../../lib/auth';
@@ -22,6 +23,8 @@ export default async function EnviosPage(props: {
     listarSedes().catch(() => []),
     equipoCompartido(),
   ]);
+  // Recepción en tienda (0181): el almacén solo despacha; esta pantalla no es suya.
+  if (!sesion || sesion.usuario.rol === 'encargado_almacen' || sesion.usuario.rol === 'confeccionista') redirect('/pipeline');
   // Destinos posibles: las sedes que no son almacén, como en el kanban (pipeline/page.tsx).
   const destinos = sedes.filter((s) => s.perfil !== 'almacen').map((s) => s.cod);
   const opciones = sesion ? sedesFiltroEnvios(sesion.usuario, destinos) : [];
@@ -35,8 +38,8 @@ export default async function EnviosPage(props: {
   return (
     <div>
       <PageHeader
-        title="Envíos a tienda"
-        subtitle="Confirma en tienda lo que llegó del almacén; observado vuelve al taller"
+        title="Recepción en tienda"
+        subtitle="Acepta lo que llegó del almacén o devuélvelo a cualquier etapa con una nota"
       />
       <EnviosCliente
         enCamino={enCamino.prendas}
