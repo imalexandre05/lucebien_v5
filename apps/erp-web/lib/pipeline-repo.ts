@@ -61,14 +61,42 @@ const fromRow = (r: Row): PrendaPasada => ({
   fechaActualizado: r.fecha_actualizado,
 });
 
+// Las recibidas (estado final, sólo historial) crecen sin tope y ninguna pantalla las dibuja: se traen
+// únicamente las de los últimos RECIBIDAS_DIAS días (el KPI «ingresaron hoy» las puede necesitar) y el
+// total histórico sale de contarRecibidas(). Además se pagina de a 1000: PostgREST corta en 1000 filas
+// y una lista truncada «perdía» prendas sin avisar.
+const PAGINA_PASADAS = 1000;
+const RECIBIDAS_DIAS = 7;
+
 export async function listarPasadas(): Promise<PrendaPasada[]> {
   const sb = getServerClient();
-  const { data, error } = await sb
+  const corte = new Date(Date.now() - RECIBIDAS_DIAS * 86400000).toISOString();
+  const filas: Row[] = [];
+  for (let desde = 0; ; desde += PAGINA_PASADAS) {
+    const { data, error } = await sb
+      .from('prenda_pasada')
+      .select('*')
+      .or(`etapa.neq.recibido,fecha_actualizado.gte.${corte}`)
+      .order('fecha_ingreso', { ascending: false })
+      .order('id', { ascending: true })
+      .range(desde, desde + PAGINA_PASADAS - 1);
+    if (error) throw new Error(error.message);
+    const pagina = (data as Row[]) ?? [];
+    filas.push(...pagina);
+    if (pagina.length < PAGINA_PASADAS) break;
+  }
+  return filas.map(fromRow);
+}
+
+/** Total histórico de prendas recibidas (sólo el conteo, sin traer las filas). */
+export async function contarRecibidas(): Promise<number> {
+  const sb = getServerClient();
+  const { count, error } = await sb
     .from('prenda_pasada')
-    .select('*')
-    .order('fecha_ingreso', { ascending: false });
+    .select('id', { count: 'exact', head: true })
+    .eq('etapa', 'recibido');
   if (error) throw new Error(error.message);
-  return (data as Row[]).map(fromRow);
+  return count ?? 0;
 }
 
 // Alta manual desde la pestaña Registrar: prendas que llegan al almacén sin pedido asociado.
