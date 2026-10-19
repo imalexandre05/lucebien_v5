@@ -301,7 +301,7 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     seccion: SECCION_REPORTES,
     etiqueta: 'Hora de cierre — turno Mañana',
     descripcion:
-      'Hora límite para enviar el reporte del turno Mañana. Después de esta hora, el sistema lo marca "no enviado" conservando lo que se alcanzó a llenar. Default heredado del sistema viejo, no confirmado por el dueño.',
+      'Hora límite para enviar el reporte del turno Mañana. Después de esta hora, el sistema lo envía solo con lo que se alcanzó a llenar. Default heredado del sistema viejo, no confirmado por el dueño.',
     tipo: 'horario',
     default: '15:00',
   },
@@ -322,6 +322,15 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
       'Hora límite para enviar el reporte del turno Corrido. Default heredado del sistema viejo, no confirmado por el dueño.',
     tipo: 'horario',
     default: '23:00',
+  },
+  {
+    clave: 'reporte_recordatorios_min',
+    seccion: SECCION_REPORTES,
+    etiqueta: 'Recordatorios antes de la hora límite (minutos)',
+    descripcion:
+      'Minutos antes de la hora límite en que se avisa en la campana que el reporte se enviará solo. Separados por coma, por ejemplo 30,10. Default propuesto, no confirmado por el dueño.',
+    tipo: 'texto',
+    default: '30,10',
   },
 
   // ── Inventario (Fase 7, migración 0055 — pendiente de aplicar) ─────────────────────────────

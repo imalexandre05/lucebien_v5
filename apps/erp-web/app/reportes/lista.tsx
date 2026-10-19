@@ -164,6 +164,7 @@ export function ReportesLista({ reportes }: { reportes: Reporte[] }) {
                         {/* Tarea 4: distingue un envío real de uno auto-cerrado con contenido —
                             "pendiente" solo no dice si alguien le dio a Enviar o venció el plazo. */}
                         {r.estadoEnvio === 'no_enviado' && <Badge tone="amber">No enviado</Badge>}
+{r.estadoEnvio === 'enviado' && r.autoEnviado && <Badge tone="amber">Enviado automáticamente</Badge>}
                       </div>
                     </TD>
                     <TD className="pr-5 text-cuerpo text-muted">{r.evaluadorNombre ?? '—'}</TD>
