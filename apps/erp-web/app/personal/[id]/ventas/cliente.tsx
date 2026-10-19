@@ -8,7 +8,7 @@ import { Card } from '../../../../components/ui/card';
 import { campoCls } from '../../../../components/ui/form';
 import { OpcionBotones } from '../../../../components/ui/opcion-botones';
 import { cn } from '../../../../lib/cn';
-import { accionGuardarVentaSemana } from './actions';
+import { accionGuardarMetaMes, accionGuardarVentaSemana } from './actions';
 
 export type FilaSemana = {
   desde: string;
@@ -286,5 +286,67 @@ export function VentasSemanaCliente({
         </p>
       )}
     </div>
+  );
+}
+
+const MESES_LARGO = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/** «¿Cumplió la meta del mes?» — desbloquea la 1.ª comisión (2%). Se guarda al marcar. */
+export function MetaMesCasilla({
+  empleadoId,
+  mes,
+  marcada,
+  cerrada,
+}: {
+  empleadoId: string;
+  /** Primer día del mes, 'YYYY-MM-01'. */
+  mes: string;
+  marcada: boolean;
+  cerrada: boolean;
+}) {
+  const [valor, setValor] = useState(marcada);
+  const [error, setError] = useState<string | null>(null);
+  const [pendiente, empezar] = useTransition();
+  const nombreMes = `${MESES_LARGO[Number(mes.slice(5, 7)) - 1]} de ${mes.slice(0, 4)}`;
+
+  const cambiar = (nuevo: boolean) => {
+    setError(null);
+    setValor(nuevo);
+    empezar(async () => {
+      const r = await accionGuardarMetaMes(empleadoId, mes, nuevo);
+      if (!r.ok) {
+        setValor(!nuevo);
+        setError(r.error ?? 'No se pudo guardar.');
+      }
+    });
+  };
+
+  return (
+    <Card>
+      <div className="p-3 sm:p-4">
+        <label className={cn('flex min-h-[44px] items-center gap-3 text-sub font-semibold text-navy', cerrada && 'opacity-70')}>
+          <input
+            type="checkbox"
+            className="h-5 w-5 accent-navy"
+            checked={valor}
+            disabled={cerrada || pendiente}
+            onChange={(e) => cambiar(e.target.checked)}
+          />
+          ¿Cumplió la meta del mes? <span className="font-normal text-muted">({nombreMes})</span>
+        </label>
+        <p className="mt-1 text-apoyo text-muted">
+          {cerrada
+            ? 'Ese mes ya está en un pago cerrado: no se puede cambiar.'
+            : valor
+              ? 'Se paga la comisión del 2% sobre las boletas mayores a S/120.'
+              : 'Sin marcarla, no se paga la comisión del 2%. El bono por meta de cada semana no depende de esta casilla.'}
+        </p>
+        {error && (
+          <p className="mt-1 text-apoyo text-error-deep" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+    </Card>
   );
 }

@@ -371,6 +371,12 @@ export interface EntradaLiquidacion {
    * siempre.
    */
   ventasSemanales?: VentaSemanal[];
+  /**
+   * La casilla «¿Cumplió la meta del mes?» (0169, decisión del dueño n.º 2, 19-oct-2026). Si viene
+   * (true o false), manda ella: marcada paga la 1.ª comisión, sin marcar no se paga. Ausente =
+   * entrada guardada antes de la 0169: rige la regla anterior (ventas del mes ≥ meta del mes).
+   */
+  metaMesCumplida?: boolean;
 }
 
 /** Una semana cargada a mano (spec sueldos/2026-10-18-ventas-metas-semanales §5). */
@@ -1681,7 +1687,8 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   // 0166 (default a confirmar, spec §3): con carga semanal sin el monto vendido no se sabe la venta
   // del mes, así que la condición de RN-13 sólo se aplica si todas las cargas traen el monto.
   const sinMonto = cargas.some((c) => c.montoVendido === null || c.montoVendido === undefined);
-  const metaAlcanzada = sinMonto || ventasTotal >= metaPeriodo;
+  const casillaMes = entrada.metaMesCumplida;
+  const metaAlcanzada = casillaMes !== undefined ? casillaMes : sinMonto || ventasTotal >= metaPeriodo;
   const baseComision =
     ventasSueltas.filter((v) => v.monto > p.montoMinimoComision).reduce((s, v) => s + v.monto, 0) +
     cargas.reduce((s, c) => s + c.totalBoletasMayores, 0);
@@ -1755,7 +1762,9 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       concepto: `Comisión ${r2(p.pctComision * 100)}%`,
       detalle: metaAlcanzada
         ? `${r2(p.pctComision * 100)}% de S/${r2(baseComision)} en boletas mayores a S/${p.montoMinimoComision}${cargas.length > 0 ? ' (carga semanal)' : ''}`
-        : `Sin comisión: ventas S/${r2(ventasTotal)} no alcanzan la meta de S/${r2(metaPeriodo)}`,
+        : casillaMes === false
+          ? 'Sin comisión: falta marcar «¿Cumplió la meta del mes?»'
+          : `Sin comisión: ventas S/${r2(ventasTotal)} no alcanzan la meta de S/${r2(metaPeriodo)}`,
       monto: r2(comision),
       regla: 'RN-13',
     },

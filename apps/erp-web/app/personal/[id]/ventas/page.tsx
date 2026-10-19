@@ -11,11 +11,11 @@ import {
   listarVentas,
   obtenerAcuerdo,
 } from '../../../../lib/sueldos-repo';
-import { listarVentasSemana } from '../../../../lib/ventas-semana-repo';
+import { leerMetaMes, listarVentasSemana, primerDiaDelMes } from '../../../../lib/ventas-semana-repo';
 import { Card } from '../../../../components/ui/card';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { SeccionHeader } from '../../../../components/colaboradores/seccion-header';
-import { VentasSemanaCliente, type FilaSemana } from './cliente';
+import { MetaMesCasilla, VentasSemanaCliente, type FilaSemana } from './cliente';
 
 // Ventas y metas por semana (decisión del dueño n.º 8, migración 0166). Puente temporal hasta
 // conectar el punto de venta: en vez de boleta por boleta, una fila por semana del período.
@@ -91,6 +91,13 @@ export default async function VentasColaboradorPage(
   }
 
   const tramos = tramosSemanales(desde, hasta);
+  // El «mes» de un pago es el mes de su último día (default anotado en pendientes-negocio.md).
+  const mes = primerDiaDelMes(hasta);
+  const finDeMes = new Date(Date.UTC(Number(mes.slice(0, 4)), Number(mes.slice(5, 7)), 0)).toISOString().slice(0, 10);
+  const [metaMes, estadoMes] = await Promise.all([
+    leerMetaMes(persona.id, mes),
+    estadoFechaMovimiento(persona.id, finDeMes).catch(() => null),
+  ]);
   const [cargadas, sueltas, estados, preview] = await Promise.all([
     listarVentasSemana(persona.id, desde, hasta),
     listarVentas({ empleadoId: persona.id, desde, hasta }),
@@ -126,6 +133,7 @@ export default async function VentasColaboradorPage(
         seccion="ventas"
         nota={`Se muestran las semanas de ${rangoCorto(desde, hasta)}. Lo que ves a la derecha es una referencia: el pago lo calcula al cerrar.`}
       />
+      <MetaMesCasilla empleadoId={persona.id} mes={mes} marcada={metaMes} cerrada={estadoMes?.estado === 'cerrado'} />
       <VentasSemanaCliente
         key={`${desde}|${hasta}`}
         empleadoId={persona.id}

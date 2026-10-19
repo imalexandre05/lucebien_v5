@@ -82,3 +82,34 @@ export async function guardarVentaSemana(
     throw new Error('No se pudo guardar la semana. Intenta de nuevo.');
   }
 }
+
+// ── «¿Cumplió la meta del mes?» (migración 0169, decisión del dueño n.º 2) ──────────────────────
+// Una fila por persona y mes (`mes` = primer día). Sin fila = no marcada. Mismo cliente y misma RLS
+// que las semanas; el trigger de la base corta si el mes ya está en un pago cerrado.
+
+/** Primer día del mes de una fecha 'YYYY-MM-DD'. */
+export const primerDiaDelMes = (fecha: string): string => `${fecha.slice(0, 7)}-01`;
+
+export async function leerMetaMes(empleadoId: string, mes: string): Promise<boolean> {
+  const { data, error } = await getServerClient()
+    .from('sueldo_meta_mes')
+    .select('cumplida')
+    .eq('empleado_id', empleadoId)
+    .eq('mes', primerDiaDelMes(mes))
+    .maybeSingle();
+  if (error) throw new Error('No se pudo leer si cumplió la meta del mes. Intenta de nuevo.');
+  return Boolean((data as { cumplida: boolean } | null)?.cumplida);
+}
+
+export async function guardarMetaMes(empleadoId: string, mes: string, cumplida: boolean, adminId: string): Promise<void> {
+  const { error } = await getServerClient()
+    .from('sueldo_meta_mes')
+    .upsert(
+      { empleado_id: empleadoId, mes: primerDiaDelMes(mes), cumplida, creado_por: adminId },
+      { onConflict: 'empleado_id,mes' },
+    );
+  if (error) {
+    if (String(error.message ?? '').includes('PERIODO_CERRADO:')) throw new Error('Ese mes ya está en un pago cerrado: no se puede cambiar.');
+    throw new Error('No se pudo guardar. Intenta de nuevo.');
+  }
+}
