@@ -2222,3 +2222,7 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - **Default inventado:** `reporte_extra_cantidad_max = 50` unidades por extra en un reporte (0171). Editable en `/configuracion` → Reportes de turno.
 - **Para decidir:** ¿un extra debe sumar puntos y «Bonos extras» antes de que el administrador evalúe el reporte? Hoy suma apenas se envía.
 - **Para decidir:** ¿se puede poner en el equipo del turno a alguien de otra sede? Hoy sí (la 0171 sólo exige que esté activo).
+## Escrituras directas del pipeline (auditoría 1, 19-oct-2026)
+
+- **Cerrado (0175):** envíos y calificaciones se escriben sólo por RPC.
+- **Para decidir:** `prenda_pasada.pasada_insert` sigue permitiendo dar de alta una prenda con un `insert` plano (sin código de operador ni historial). No se cerró porque `pedido_crear` y `pedido_devolver` (módulo comercial, fuera del menú) lo usan. Si el módulo comercial no vuelve, se puede retirar.
