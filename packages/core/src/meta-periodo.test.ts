@@ -90,6 +90,26 @@ describe('meta del período — 1.ª comisión (spec §3)', () => {
     expect(l.ventas.metaAlcanzada).toBe(true);
   });
 
+  it('sin horas trabajadas la 1.ª comisión no aplica: no es Cumplida y no se paga', () => {
+    const l = liquidar(400, {}, [falta(LUN), falta(MAR), falta(MIE)]);
+    expect(l.ventas.primeraComisionAplica).toBe(false);
+    expect(l.ventas.metaAlcanzada).toBe(false);
+    expect(linea(l, 'RN-13')).toBe(0);
+    expect(liquidar(400).ventas.primeraComisionAplica).toBe(true);
+  });
+
+  it('una temporada que cubre solo una semana prorratea la meta por días', () => {
+    // Dos semanas (lun 16 y lun 23), 33 h cada una. Temporada de la 1.ª semana: S/20 por hora.
+    const dos = ['2025-06-16', '2025-06-17', '2025-06-18', '2025-06-23', '2025-06-24', '2025-06-25'].map(dia);
+    const base = { fechaFin: '2025-06-29', asistencia: dos };
+    const temporada = (extra: object) => ({ nombre: 'T', desde: '2025-06-16', hasta: '2025-06-22', pagoPorHora: null, metaSemanal: null, metaPorHora: 20, ...extra });
+    const l = liquidar(1000, { ...base, temporadas: [temporada({})] } as Partial<EntradaLiquidacion>, dos);
+    expect(l.ventas.metaPeriodo).toBe(990); // 33 × 20 + 33 × 10
+    // Una meta semanal pactada de la temporada vale solo para su semana; la otra se estima por horas.
+    const m = liquidar(1000, { ...base, temporadas: [temporada({ metaPorHora: null, metaSemanal: 500 })] } as Partial<EntradaLiquidacion>, dos);
+    expect(m.ventas.metaPeriodo).toBe(830); // 500 + 33 × 10
+  });
+
   it('una meta puesta inválida se rechaza', () => {
     expect(() => liquidar(400, { metaPeriodoManual: -5 })).toThrow(/meta/i);
   });
