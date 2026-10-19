@@ -11,6 +11,7 @@ import {
   Wallet,
   Target,
   TrendingUp,
+  Activity,
 } from 'lucide-react';
 import {
   ETAPAS_PIPELINE,
@@ -28,6 +29,7 @@ import {
   reportesPorEvaluarPorSede,
   incidenciasDesde,
   asistenciaDelDia,
+  actividadReciente,
   pagosPorCerrar,
   metasRecientes,
 } from '../lib/dashboard-repo';
@@ -44,7 +46,7 @@ import { getSesion } from '../lib/auth';
 import { listarSedes } from '../lib/sedes-repo';
 import { leerMatrizPermisos } from '../lib/permisos-repo';
 import { leerConfigMap, CIERRE_TURNO_DEFAULT } from '../lib/config-repo';
-import { hoyPeru, fechaLargaPeru, saludoPeru } from '../lib/fechas';
+import { hoyPeru, fechaLargaPeru, saludoPeru, tiempoRelativo } from '../lib/fechas';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table';
 import { Badge, type Tone } from '../components/ui/badge';
@@ -113,16 +115,20 @@ export default async function Dashboard() {
 
   const hoy = hoyPeru();
   const ahora = new Date();
+  const peru = new Date(Date.now() - 5 * 3600000);
+  const diaSemanaHoy = peru.getUTCDay() || 7; // 1 = lunes … 7 = domingo, como los turnos del contrato
+  const horaPeru = peru.toISOString().slice(11, 16);
   const dias = ultimosDias(hoy, 14);
   const desde14 = dias[0];
 
-  const [pasadas, reportes, porEvaluarSede, incidencias, asistencia, movs, ranking, sedesTodas, config, pagos, metas] =
+  const [actividad, pasadas, reportes, porEvaluarSede, incidencias, asistencia, movs, ranking, sedesTodas, config, pagos, metas] =
     await Promise.all([
+      actividadReciente(alcance).catch(() => []),
       prendasEnProceso(hoy),
       reportesDesde(desde14, alcance),
       reportesPorEvaluarPorSede(alcance),
       incidenciasDesde(desde14, alcance),
-      asistenciaDelDia(hoy),
+      asistenciaDelDia(hoy, diaSemanaHoy, horaPeru),
       movimientosRecientes(14).catch(() => []),
       rankingHoy().catch(() => []),
       listarSedes().catch(() => []),
@@ -175,6 +181,7 @@ export default async function Dashboard() {
     luzMayorEsPeor(asistencia.tardanzas, U.tardanzas),
   ]);
   const totalAsist = asistencia.presentes + asistencia.faltas + asistencia.sinDato;
+  const hayEsperados = asistencia.esperados != null;
 
   // ── Tendencias de 14 días ──
   const movPorDia = new Map<string, number>();
@@ -242,7 +249,11 @@ export default async function Dashboard() {
                 <span className="ml-1.5 text-lg font-medium opacity-75">presentes</span>
               </>
             }
-            detalle={`${asistencia.tardanzas} con tardanza · ${asistencia.faltas} falta(s)`}
+            detalle={
+              hayEsperados
+                ? `de ${asistencia.esperados} que debían venir · ${asistencia.tardanzas} con tardanza · ${asistencia.faltas} faltan`
+                : `${asistencia.tardanzas} con tardanza · ${asistencia.faltas} falta(s)`
+            }
           />
           {esAdmin && (
             <TarjetaLuz
@@ -448,7 +459,7 @@ export default async function Dashboard() {
                 <dl className="mt-3 grid grid-cols-2 gap-3 text-apoyo sm:grid-cols-4">
                   <div><dt className="text-muted">Presentes</dt><dd className="tabular-nums text-lg font-semibold text-exito-deep">{asistencia.presentes}</dd></div>
                   <div><dt className="text-muted">Tardanzas</dt><dd className="tabular-nums text-lg font-semibold text-aviso-deep">{asistencia.tardanzas}</dd></div>
-                  <div><dt className="text-muted">Faltas</dt><dd className="tabular-nums text-lg font-semibold text-error-deep">{asistencia.faltas}</dd></div>
+                  <div><dt className="text-muted">{hayEsperados ? 'Faltan' : 'Faltas'}</dt><dd className="tabular-nums text-lg font-semibold text-error-deep">{asistencia.faltas}</dd></div>
                   <div><dt className="text-muted">Sin dato</dt><dd className="tabular-nums text-lg font-semibold text-muted">{asistencia.sinDato}</dd></div>
                 </dl>
               </>
@@ -493,6 +504,34 @@ export default async function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Actividad reciente: sólo los últimos movimientos (consulta con límite) ── */}
+      <Card className="mt-6">
+        <CardHeader>
+          <Titulo icon={Activity}>Actividad reciente</Titulo>
+        </CardHeader>
+        <CardContent className="px-0 pb-1">
+          {actividad.length === 0 ? (
+            <EmptyState icon={Activity} titulo="Aún no hay movimientos registrados" compacto>
+              Los reportes, incidencias y avances de prendas aparecerán aquí.
+            </EmptyState>
+          ) : (
+            <ul className="divide-y divide-line/70">
+              {actividad.map((ev, i) => (
+                <li key={i}>
+                  <Link href={ev.href} className="flex items-center gap-3 px-5 py-3 outline-none transition-colors duration-150 hover:bg-navy/[0.03] focus-visible:bg-navy/[0.05]">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-cuerpo text-ink">{ev.titulo}</span>
+                      {ev.detalle && <span className="block truncate text-apoyo text-muted">{ev.detalle}</span>}
+                    </span>
+                    <span className="shrink-0 tabular-nums text-micro text-muted">{tiempoRelativo(ev.ts, ahora)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

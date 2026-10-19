@@ -11,6 +11,7 @@ import {
   sumarDias,
   ultimosDias,
   atrasoPorEtapa,
+  resumenAsistencia,
 } from '../dashboard-semaforos';
 
 describe('semáforos del dashboard', () => {
@@ -55,5 +56,19 @@ describe('semáforos del dashboard', () => {
     );
     expect(m.get('lavado')).toEqual({ total: 3, ambar: 1, rojo: 1 });
     expect(m.get('listo')).toEqual({ total: 1, ambar: 0, rojo: 0 });
+  });
+
+  it('asistencia con esperados: quien debía venir y no vino cuenta como falta', () => {
+    const reg = new Map([
+      ['a', { falta: false, trabajo: true, tarde: true }],
+      ['b', { falta: true, trabajo: false, tarde: false }],
+      ['z', { falta: false, trabajo: false, tarde: false }], // no le tocaba
+    ]);
+    const r = resumenAsistencia(reg, new Set(['a', 'b', 'c']));
+    expect(r).toEqual({ presentes: 1, tardanzas: 1, faltas: 2, sinDato: 0, esperados: 3 });
+  });
+  it('asistencia sin esperados: sólo lo registrado', () => {
+    const reg = new Map([['a', { falta: false, trabajo: true, tarde: false }], ['b', { falta: false, trabajo: false, tarde: false }]]);
+    expect(resumenAsistencia(reg, null)).toEqual({ presentes: 1, tardanzas: 0, faltas: 0, sinDato: 1, esperados: null });
   });
 });

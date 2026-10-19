@@ -120,3 +120,40 @@ export function atrasoPorEtapa(prendas: PrendaAtraso[], u: Umbral) {
   }
   return m;
 }
+
+export type AsistenciaPersona = { falta: boolean; trabajo: boolean; tarde: boolean };
+
+export type ResumenAsistencia = {
+  presentes: number;
+  tardanzas: number;
+  /** Con falta registrada, o (si se conocen los esperados) esperados que aún no tienen asistencia. */
+  faltas: number;
+  sinDato: number;
+  /** Personas con turno contratado que ya empezó hoy; null = no se pudo saber (sin permiso). */
+  esperados: number | null;
+};
+
+/**
+ * Presentes / tardanzas / faltas de hoy. Con `esperados` (quienes debían venir: contrato vigente con
+ * turno hoy que ya empezó), los que no llegaron cuentan como falta; sin él, sólo lo registrado.
+ */
+export function resumenAsistencia(
+  porPersona: Map<string, AsistenciaPersona>,
+  esperados: Set<string> | null,
+): ResumenAsistencia {
+  let presentes = 0;
+  let tardanzas = 0;
+  let faltas = 0;
+  let sinDato = 0;
+  const ids = new Set<string>(porPersona.keys());
+  if (esperados) for (const id of esperados) ids.add(id);
+  for (const id of ids) {
+    const p = porPersona.get(id);
+    if (esperados && !esperados.has(id) && !(p?.trabajo)) continue; // no le tocaba venir y no vino
+    if (p?.trabajo) presentes += 1;
+    else if (p?.falta || esperados) faltas += 1;
+    else sinDato += 1;
+    if (p?.tarde) tardanzas += 1;
+  }
+  return { presentes, tardanzas, faltas, sinDato, esperados: esperados ? esperados.size : null };
+}

@@ -1,7 +1,7 @@
 import type { EstadoEnvio, TurnoReporte } from '@scilb/core';
 import { getServerClient } from './supabase/server';
 import { diaPeruDe } from './fechas';
-import { diasEntre, sumarDias, type PrendaAtraso } from './dashboard-semaforos';
+import { diasEntre, sumarDias, resumenAsistencia, type AsistenciaPersona, type ResumenAsistencia, type PrendaAtraso } from './dashboard-semaforos';
 
 // Consultas AGREGADAS del dashboard (sesión 8B): cada una trae sólo las columnas que el panel
 // dibuja, acotadas por fecha o por estado. Nada de tablas completas. La RLS decide qué filas ve
@@ -89,21 +89,51 @@ export async function incidenciasDesde(desde: string, a: Alcance): Promise<Incid
   }
 }
 
-export type AsistenciaHoy = { presentes: number; tardanzas: number; faltas: number; sinDato: number };
-
-/** Asistencia de un día: la RLS de `asistencias` decide cuántas filas ve cada persona. */
-export async function asistenciaDelDia(fecha: string): Promise<AsistenciaHoy> {
-  const vacio = { presentes: 0, tardanzas: 0, faltas: 0, sinDato: 0 };
+/**
+ * Quiénes debían venir hoy: contratos vigentes con un turno ese día que ya empezó. Sólo el
+ * administrador lee los acuerdos de todos (RLS); para el resto devuelve null y el panel cuenta
+ * únicamente lo registrado.
+ */
+async function esperadosDeHoy(dia: number, hoy: string, horaActual: string): Promise<Set<string> | null> {
   try {
     const sb = getServerClient();
-    const { data, error } = await sb
-      .from('asistencias')
-      .select('empleado_id, condicion, minutos_tardanza')
-      .eq('fecha', fecha)
-      .limit(500);
+    const [ac, inact] = await Promise.all([
+      sb
+        .from('sueldo_acuerdos')
+        .select('empleado_id, sueldo_acuerdo_turnos(dia_semana, hora_inicio)')
+        .eq('estado', 'vigente')
+        .lte('fecha_inicio', hoy)
+        .gte('fecha_fin', hoy)
+        .limit(200),
+      sb.from('empleados').select('id').eq('activo', false).limit(200),
+    ]);
+    if (ac.error || !ac.data?.length) return null;
+    const baja = new Set(((inact.data as { id: string }[]) ?? []).map((r) => r.id));
+    const out = new Set<string>();
+    for (const r of ac.data as unknown as { empleado_id: string; sueldo_acuerdo_turnos: { dia_semana: number; hora_inicio: string }[] | null }[]) {
+      if (baja.has(r.empleado_id)) continue;
+      if ((r.sueldo_acuerdo_turnos ?? []).some((t) => t.dia_semana === dia && String(t.hora_inicio).slice(0, 5) <= horaActual)) {
+        out.add(r.empleado_id);
+      }
+    }
+    return out;
+  } catch {
+    return null;
+  }
+}
+
+/** Asistencia de un día: la RLS de `asistencias` decide cuántas filas ve cada persona. */
+export async function asistenciaDelDia(fecha: string, dia: number, horaActual: string): Promise<ResumenAsistencia> {
+  const vacio = resumenAsistencia(new Map(), null);
+  try {
+    const sb = getServerClient();
+    const [{ data, error }, esperados] = await Promise.all([
+      sb.from('asistencias').select('empleado_id, condicion, minutos_tardanza').eq('fecha', fecha).limit(500),
+      esperadosDeHoy(dia, fecha, horaActual),
+    ]);
     if (error) return vacio;
-    // Una persona puede tener dos turnos: se cuenta una vez, y la falta pesa más que lo demás.
-    const porPersona = new Map<string, { falta: boolean; trabajo: boolean; tarde: boolean }>();
+    // Una persona puede tener dos turnos: se cuenta una vez.
+    const porPersona = new Map<string, AsistenciaPersona>();
     for (const r of (data as { empleado_id: string; condicion: string | null; minutos_tardanza: number | null }[]) ?? []) {
       const p = porPersona.get(r.empleado_id) ?? { falta: false, trabajo: false, tarde: false };
       if (r.condicion === 'falta') p.falta = true;
@@ -111,14 +141,7 @@ export async function asistenciaDelDia(fecha: string): Promise<AsistenciaHoy> {
       if ((r.minutos_tardanza ?? 0) > 0) p.tarde = true;
       porPersona.set(r.empleado_id, p);
     }
-    const out = { ...vacio };
-    for (const p of porPersona.values()) {
-      if (p.falta && !p.trabajo) out.faltas += 1;
-      else if (p.trabajo) out.presentes += 1;
-      else out.sinDato += 1;
-      if (p.tarde) out.tardanzas += 1;
-    }
-    return out;
+    return resumenAsistencia(porPersona, esperados);
   } catch {
     return vacio;
   }
@@ -167,4 +190,29 @@ export async function metasRecientes(desde: string): Promise<MetasSemana | null>
   } catch {
     return null;
   }
+}
+
+export type Evento = { kind: 'reporte' | 'incidencia' | 'pipeline'; ts: string; titulo: string; detalle: string | null; href: string };
+
+/** Los últimos movimientos de las tres fuentes: 6 de cada una (con `limit` en la consulta). */
+export async function actividadReciente(a: Alcance): Promise<Evento[]> {
+  const sb = getServerClient();
+  const [rep, inc, mov] = await Promise.all([
+    sedeQ(sb.from('reportes').select('id, sede_cod, turno, created_at').order('created_at', { ascending: false }).limit(6), a),
+    sedeQ(sb.from('incidencias').select('sede_cod, tipo, descripcion, created_at').order('created_at', { ascending: false }).limit(6), a),
+    sb.from('prenda_historial').select('fecha, etapa_nueva, prenda_pasada(codigo, tipo)').order('fecha', { ascending: false }).limit(6),
+  ]);
+  const out: Evento[] = [];
+  for (const r of (rep.data as { id: string; sede_cod: string; turno: string; created_at: string }[]) ?? []) {
+    out.push({ kind: 'reporte', ts: r.created_at, titulo: `Reporte de turno · ${r.sede_cod} · ${r.turno}`, detalle: null, href: `/reportes/${r.id}` });
+  }
+  for (const r of (inc.data as { sede_cod: string; tipo: string; descripcion: string | null; created_at: string }[]) ?? []) {
+    out.push({ kind: 'incidencia', ts: r.created_at, titulo: `${r.tipo} · ${r.sede_cod}`, detalle: r.descripcion, href: '/incidencias' });
+  }
+  type M = { fecha: string; etapa_nueva: string; prenda_pasada: { codigo: string; tipo: string | null } | { codigo: string; tipo: string | null }[] | null };
+  for (const r of (mov.data as unknown as M[]) ?? []) {
+    const pp = Array.isArray(r.prenda_pasada) ? r.prenda_pasada[0] : r.prenda_pasada;
+    out.push({ kind: 'pipeline', ts: r.fecha, titulo: `${pp?.codigo ?? 'Prenda'} → ${r.etapa_nueva}`, detalle: pp?.tipo ?? null, href: '/pipeline' });
+  }
+  return out.filter((e) => e.ts).sort((x, y) => y.ts.localeCompare(x.ts)).slice(0, 7);
 }

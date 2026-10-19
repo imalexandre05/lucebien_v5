@@ -2191,5 +2191,5 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 
 - «Pagos por cerrar» = liquidaciones en borrador cuyo período termina en ≤7 días; sólo cuenta, no muestra montos. Sólo administrador.
 - «Metas» = semanas de «Ventas y metas» iniciadas en los últimos 14 días con meta marcada (cumplida / no). Sólo administrador.
-- «Asistencia de hoy» no sabe cuántas personas debían venir (no hay horarios): cuenta presentes/faltas/tardanzas de lo registrado.
-- Sale de la pantalla «Actividad reciente» (traía listas completas de reportes, incidencias y prendas).
+- «Asistencia de hoy»: esperados = contratos vigentes con un turno hoy que ya empezó (hora de Perú); quien no llegó cuenta como «falta» para el semáforo. Solo el administrador lee los contratos de todos (RLS): para un encargado se cuenta únicamente lo registrado.
+- «Actividad reciente»: las últimas 7 entre reportes, incidencias y movimientos de prendas (6 por fuente, con límite en la consulta).
