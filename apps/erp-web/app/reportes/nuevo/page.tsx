@@ -27,7 +27,9 @@ export default async function NuevoReportePage() {
     C: config.turno_c_cierre || CIERRE_TURNO_DEFAULT.C,
   };
   // Mismo tope que valida reportes_crear (0171); el default vive en config-catalogo.
-  const topeExtra = Math.max(1, Math.floor(Number(config.reporte_extra_cantidad_max)) || TOPE_EXTRA_DEFAULT);
+  // 0 o vacío = sin tope (0178): se pasa un número enorme para que la pantalla no limite.
+  const topeConfig = Math.floor(Number(config.reporte_extra_cantidad_max ?? TOPE_EXTRA_DEFAULT));
+  const topeExtra = topeConfig > 0 ? topeConfig : 99999;
 
   return (
     <div>

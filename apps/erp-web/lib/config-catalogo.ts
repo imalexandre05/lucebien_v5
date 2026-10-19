@@ -290,10 +290,10 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     seccion: SECCION_REPORTES,
     etiqueta: 'Máximo de unidades por extra en un reporte',
     descripcion:
-      'Cuántas veces se puede contar un mismo extra en un reporte de turno. La base rechaza el reporte si se pasa (migración 0171). Default provisional, no confirmado por el dueño.',
+      'Cuántas veces se puede contar un mismo extra en un reporte de turno. 0 = sin tope (decisión del dueño por ahora; el tope definitivo está pendiente). La base rechaza el reporte si se pasa (migraciones 0171 y 0178).',
     tipo: 'numero',
-    default: '50',
-    min: 1,
+    default: '0',
+    min: 0,
     step: 1,
   },
   {
