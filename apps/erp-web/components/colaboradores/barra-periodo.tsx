@@ -179,7 +179,7 @@ export function BarraPeriodo({
               {elegido ? (
                 <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                   <div>
-                    <p className="font-display text-xl text-navy tabular-nums">{rangoCorto(elegido.desde, elegido.hasta)}</p>
+                    <p className="font-display text-titulo text-navy tabular-nums">{rangoCorto(elegido.desde, elegido.hasta)}</p>
                     <p className="text-apoyo text-muted tabular-nums">{diasDelPeriodo(elegido)} días</p>
                   </div>
                   <div className="text-right">
@@ -194,7 +194,7 @@ export function BarraPeriodo({
                 </div>
               ) : (
                 <div>
-                  <p className="font-display text-xl text-navy tabular-nums">{etiquetaPeriodo(periodo)}</p>
+                  <p className="font-display text-titulo text-navy tabular-nums">{etiquetaPeriodo(periodo)}</p>
                   <p className="text-apoyo text-muted">Rango a tu medida · elige un pago de la lista para volver a uno programado</p>
                 </div>
               )}
