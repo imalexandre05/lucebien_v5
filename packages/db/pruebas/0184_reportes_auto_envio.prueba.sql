@@ -1,7 +1,7 @@
--- Prueba de la migración 0185_reportes_auto_envio.sql
+-- Prueba de la migración 0184_reportes_auto_envio.sql
 -- Spec: docs/superpowers/specs/reportes/2026-10-19-reportes-auto-envio-design.md
 -- Escrita ANTES que la migración (Zone Guard). Termina con una excepción RESULTADO.
--- Se corre con:  bash tools/postgres-local.sh aplicar && bash tools/postgres-local.sh probar 0185
+-- Se corre con:  bash tools/postgres-local.sh aplicar && bash tools/postgres-local.sh probar 0184
 
 create or replace function pg_temp.como(p_uid uuid) returns void language plpgsql as $f$
 begin
@@ -27,7 +27,7 @@ declare
   v_t timestamptz;
 begin
   perform pg_temp.dueno();
-  insert into sedes (cod, nombre) values (v_s, 'P0185 Sede');
+  insert into sedes (cod, nombre) values (v_s, 'P0184 Sede');
   insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P185-EN','Prueba Encargada','EN','encargado_tienda', v_s) returning id into e_enc;
   insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P185-TR','Prueba Trabajador','TR','ventas_junior', v_s) returning id into e_trab;
   insert into empleados (cod, nombre, iniciales, rol, sede_cod) values ('P185-AD','Prueba Admin','AD','admin', v_s) returning id into e_adm;

@@ -1,6 +1,6 @@
 # SPEC — Reportes de tienda que se envían solos
 
-> Spec completa (alimenta la evaluación /20) · sesión 10B · 19-oct-2026 · migración **0185**.
+> Spec completa (alimenta la evaluación /20) · sesión 10B · 19-oct-2026 · migración **0184**.
 > Decisión del dueño: al llegar la hora límite del turno, el reporte se envía con lo que haya; antes
 > hay recordatorios en la campana. Reemplaza el «no enviado» del auto-cierre (0052/0081).
 
@@ -66,7 +66,7 @@ En `/configuracion` (sección «Reportes de turno»): parámetro `reporte_record
 «Hora límite por sede» con una tabla sede × turno editable. Los reportes automáticos se ven con la
 etiqueta «Enviado automáticamente»; ya no «No enviado».
 
-## 6. Pruebas (`0185_reportes_auto_envio.prueba.sql`)
+## 6. Pruebas (`0184_reportes_auto_envio.prueba.sql`)
 
 1. Borrador con contenido, pasada la hora → 1 reporte `enviado`+`auto_enviado`, a nombre del encargado, borrador borrado.
 2. Antes de la hora → no crea nada. 3. Segunda corrida → idempotente. 4. Sin borrador → nada.
