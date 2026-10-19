@@ -2174,3 +2174,22 @@ Decisiones del dueño n.º 6, 7, 5, 4 y 8. **Defaults inventados, a confirmar:**
 - [Pagos programados](superpowers/specs/sueldos/2026-10-18-pagos-programados-cierre-un-paso-design.md): el período por defecto de la ficha es el pago que contiene hoy; «Pagado» = sin saldo en todas las liquidaciones que lo cubren.
 - [Ficha y «Por revisar»](superpowers/specs/sueldos/2026-10-18-ficha-unica-asistencia-por-revisar-design.md) (0165): el motivo de una justificación va de 3 a 300 letras; «Todo bien» deja de mostrar el día pero no cambia el pago; «Es falta» también marca el día como revisado.
 - [Ventas por semana](superpowers/specs/sueldos/2026-10-18-ventas-metas-semanales-design.md) (0166): con carga semanal, la condición de RN-13 (llegar a la meta del mes para la 1.ª comisión) **sólo se aplica si todas las semanas cargadas traen el monto vendido**; si no, la 1.ª comisión se paga sin esa condición. Una semana dura a lo sumo 10 días. Una semana sin sí/no ni monto cuenta como no cumplida.
+
+## Dashboard con semáforos (sesión 8B, 19-oct-2026)
+
+Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configuracion` → «Panel de inicio»; sin valor, rige el default de `apps/erp-web/lib/dashboard-semaforos.ts`. «Desde» = a partir de ese valor cambia de color (en metas: por debajo).
+
+| Semáforo | Ámbar | Rojo |
+|---|---|---|
+| Prenda sin moverse de etapa (días) | 2 | 4 |
+| Reportes por evaluar | 3 | 8 |
+| Incidencias del día | 1 | 3 |
+| Faltas de hoy | 1 | 3 |
+| Tardanzas de hoy | 2 | 5 |
+| Metas semanales cumplidas (%, piso) | < 70 | < 40 |
+| Pagos por cerrar | período por terminar esta semana | período ya vencido (fijo, sin parámetro) |
+
+- «Pagos por cerrar» = liquidaciones en borrador cuyo período termina en ≤7 días; sólo cuenta, no muestra montos. Sólo administrador.
+- «Metas» = semanas de «Ventas y metas» iniciadas en los últimos 14 días con meta marcada (cumplida / no). Sólo administrador.
+- «Asistencia de hoy»: esperados = contratos vigentes con un turno hoy que ya empezó (hora de Perú); quien no llegó cuenta como «falta» para el semáforo. Solo el administrador lee los contratos de todos (RLS): para un encargado se cuenta únicamente lo registrado.
+- «Actividad reciente»: las últimas 7 entre reportes, incidencias y movimientos de prendas (6 por fuente, con límite en la consulta).

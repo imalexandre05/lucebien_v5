@@ -50,6 +50,7 @@ const SECCION_ACCESO = 'Acceso';
 const SECCION_ESCALAS = 'Escalas salariales';
 const SECCION_INGRESO = 'Ingreso de personal';
 const SECCION_CAPACITACION = 'Capacitación';
+const SECCION_PANEL = 'Panel de inicio';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
 // simplemente no se muestran; "Personalizados" — parámetros creados por el admin — va siempre al
@@ -61,6 +62,7 @@ export const ORDEN_SECCIONES = [
   SECCION_ESCALAS,
   SECCION_PAGO_PUNTOS,
   SECCION_REPORTES,
+  SECCION_PANEL,
   SECCION_INVENTARIO,
   SECCION_POS,
   SECCION_VALORES,
@@ -923,6 +925,150 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     min: 0,
     step: 0.01,
     permiteVacio: true,
+  },
+  {
+    clave: 'dash_prenda_ambar_dias',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Prendas: ámbar desde (días sin moverse)',
+    descripcion:
+      'Una prenda que lleva tantos días en la misma etapa se cuenta como «atención» (ámbar). Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '2',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_prenda_rojo_dias',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Prendas: rojo desde (días sin moverse)',
+    descripcion:
+      'Una prenda que lleva tantos días en la misma etapa se cuenta como «atrasada» (rojo). Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '4',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_eval_ambar',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Reportes por evaluar: ámbar desde',
+    descripcion:
+      'Cantidad de reportes sin evaluar desde la cual el semáforo pasa a ámbar. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '3',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_eval_rojo',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Reportes por evaluar: rojo desde',
+    descripcion:
+      'Cantidad de reportes sin evaluar desde la cual el semáforo pasa a rojo. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '8',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_incid_ambar',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Incidencias del día: ámbar desde',
+    descripcion:
+      'Incidencias registradas hoy desde las cuales el semáforo pasa a ámbar. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_incid_rojo',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Incidencias del día: rojo desde',
+    descripcion:
+      'Incidencias registradas hoy desde las cuales el semáforo pasa a rojo. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '3',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_faltas_ambar',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Faltas de hoy: ámbar desde',
+    descripcion:
+      'Personas con falta hoy desde las cuales el semáforo pasa a ámbar. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_faltas_rojo',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Faltas de hoy: rojo desde',
+    descripcion:
+      'Personas con falta hoy desde las cuales el semáforo pasa a rojo. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '3',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_tardanzas_ambar',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Tardanzas de hoy: ámbar desde',
+    descripcion:
+      'Personas con tardanza hoy desde las cuales el semáforo pasa a ámbar. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '2',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_tardanzas_rojo',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Tardanzas de hoy: rojo desde',
+    descripcion:
+      'Personas con tardanza hoy desde las cuales el semáforo pasa a rojo. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '5',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_metas_ambar_pct',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Metas semanales: ámbar por debajo de (%)',
+    descripcion:
+      'Si el porcentaje de metas cumplidas queda por debajo de este valor, el semáforo pasa a ámbar. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '70',
+    min: 0,
+    max: 100,
+    step: 1,
+  },
+  {
+    clave: 'dash_metas_rojo_pct',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Metas semanales: rojo por debajo de (%)',
+    descripcion:
+      'Si el porcentaje de metas cumplidas queda por debajo de este valor, el semáforo pasa a rojo. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '40',
+    min: 0,
+    max: 100,
+    step: 1,
   },
   ...escalaItems(),
 ];
