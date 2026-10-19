@@ -216,7 +216,7 @@ export function EnviosCliente({
       )}
 
       {sel.size > 0 && (
-        <div className="sticky top-2 z-10 space-y-3 rounded-r-tarjeta border border-line bg-white p-3 shadow-sm">
+        <div className="sticky top-2 z-10 space-y-3 rounded-r-chico border border-line bg-white p-3 shadow-elev-1">
           <div className="flex flex-wrap items-center gap-2">
             <span className="tabular-nums text-cuerpo font-medium text-navy">
               {sel.size} {sel.size === 1 ? 'prenda elegida' : 'prendas elegidas'}
