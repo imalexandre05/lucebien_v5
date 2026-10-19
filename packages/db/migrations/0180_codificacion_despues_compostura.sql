@@ -39,9 +39,10 @@ begin
     else array[]::text[]
   end;
   -- Orden viejo (0147): entró a codificación desde recepción y aún no se lavó.
-  if v_etapa = 'codificacion' and exists (
-       select 1 from prenda_historial where pasada_id = p_id
-         and etapa_anterior = 'recepcion' and etapa_nueva = 'codificacion') then
+  if v_etapa = 'codificacion' and (
+       select h.etapa_anterior from prenda_historial h
+        where h.pasada_id = p_id and h.etapa_nueva = 'codificacion'
+        order by h.fecha desc limit 1) = 'recepcion' then
     v_permitidos := v_permitidos || array['lavado', 'refaccion'];
   end if;
   if p_destino is null or not (p_destino = any(v_permitidos)) then
