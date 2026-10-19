@@ -1,5 +1,5 @@
 -- Prueba de la migración 0174_puntos_solo_propios.sql
--- Spec: docs/superpowers/specs/pipeline/2026-10-19-puntos-solo-propios-design.md
+-- Spec: docs/superpowers/specs/pipeline/2026-10-10-puntos-solo-propios-design.md (decisión 2 del dueño)
 -- Escrita ANTES que la migración. Se descarta sola: termina con una excepción RESULTADO.
 -- Se corre con:  bash tools/postgres-local.sh aplicar && bash tools/postgres-local.sh probar 0174
 
@@ -47,8 +47,8 @@ begin
   then r := r || '[ok] caso 1: el operario ve lo suyo y no lo del compañero;';
   else r := r || format('[FALLA] caso 1: compañero=%s propio=%s;', pg_temp.ve(e_op, e_comp), pg_temp.ve(e_op, e_op)); end if;
 
-  if pg_temp.ve(e_enc, e_comp) = 1 and pg_temp.ve(e_enc, e_ajeno) = 0
-  then r := r || '[ok] caso 2: el encargado ve su sede y no la otra;';
+  if pg_temp.ve(e_enc, e_comp) = 0 and pg_temp.ve(e_enc, e_ajeno) = 0
+  then r := r || '[ok] caso 2: el encargado de tienda no ve puntos ajenos (ni de su sede);';
   else r := r || format('[FALLA] caso 2: sede=%s otra=%s;', pg_temp.ve(e_enc, e_comp), pg_temp.ve(e_enc, e_ajeno)); end if;
 
   if pg_temp.ve(e_conf, e_comp) = 0 and pg_temp.ve(e_conf, e_ajeno) = 0
@@ -62,6 +62,24 @@ begin
   select count(*) into v_n from pg_policies where schemaname = 'public' and tablename = 'pipeline_puntos' and cmd in ('SELECT', 'ALL');
   if v_n = 1 then r := r || '[ok] caso 5: una sola policy de lectura;';
   else r := r || format('[FALLA] caso 5: policies=%s;', v_n); end if;
+
+  -- 6) pipeline_ranking_hoy: el admin ve a todos; el resto sólo su fila
+  perform pg_temp.como(e_op);
+  select count(*) into v_n from pipeline_ranking_hoy() where nombre <> 'Prueba 0174 Operario';
+  perform pg_temp.dueno();
+  if v_n = 0 then r := r || '[ok] caso 6a: el ranking de un no admin trae sólo su fila;';
+  else r := r || format('[FALLA] caso 6a: filas ajenas=%s;', v_n); end if;
+  perform pg_temp.como(e_adm);
+  select count(*) into v_n from pipeline_ranking_hoy() where nombre like 'Prueba 0174%';
+  perform pg_temp.dueno();
+  if v_n = 3 then r := r || '[ok] caso 6b: el admin ve el ranking completo;';
+  else r := r || format('[FALLA] caso 6b: filas=%s;', v_n); end if;
+  select count(*) into v_n from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and p.proname = 'pipeline_ranking_hoy';
+  if v_n = 1 and not exists (select 1 from pg_proc where proname = 'pipeline_ranking_hoy'
+                               and has_function_privilege('anon', oid, 'execute'))
+  then r := r || '[ok] caso 7: una sola firma del ranking y sin anon;';
+  else r := r || format('[FALLA] caso 7: firmas=%s;', v_n); end if;
 
   raise exception 'RESULTADO %', r;
 end $$;
