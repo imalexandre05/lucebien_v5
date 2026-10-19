@@ -2174,3 +2174,9 @@ Decisiones del dueño n.º 6, 7, 5, 4 y 8. **Defaults inventados, a confirmar:**
 - [Pagos programados](superpowers/specs/sueldos/2026-10-18-pagos-programados-cierre-un-paso-design.md): el período por defecto de la ficha es el pago que contiene hoy; «Pagado» = sin saldo en todas las liquidaciones que lo cubren.
 - [Ficha y «Por revisar»](superpowers/specs/sueldos/2026-10-18-ficha-unica-asistencia-por-revisar-design.md) (0165): el motivo de una justificación va de 3 a 300 letras; «Todo bien» deja de mostrar el día pero no cambia el pago; «Es falta» también marca el día como revisado.
 - [Ventas por semana](superpowers/specs/sueldos/2026-10-18-ventas-metas-semanales-design.md) (0166): con carga semanal, la condición de RN-13 (llegar a la meta del mes para la 1.ª comisión) **sólo se aplica si todas las semanas cargadas traen el monto vendido**; si no, la 1.ª comisión se paga sin esa condición. Una semana dura a lo sumo 10 días. Una semana sin sí/no ni monto cuenta como no cumplida.
+
+## Horario acordado ese día (sesión 8A, 19-oct-2026) — [spec](superpowers/specs/asistencias/2026-10-19-horario-acordado-design.md)
+
+- **Decisión del dueño n.º 1:** «dentro de su horario» se mide por cantidad de horas; si el administrador y la persona acuerdan otro horario ese día, la tardanza se mide contra la hora acordada (columna `asistencias.inicio_acordado`, 0168).
+- **Default inventado:** el pasaje (llegar con anticipación) sigue midiéndose contra el inicio **contratado**, no contra el acordado. Confirmar con el dueño si debe seguir al acordado.
+- **Default inventado:** el motivo es opcional y de hasta 300 letras (igual que las justificaciones).

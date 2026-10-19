@@ -204,6 +204,8 @@ export type AsistenciaDia = {
   salidaEstimada: boolean;
   /** El administrador ya miró este día (0165). `null` = nadie lo ha revisado, o el dato cambió después. */
   revisadaEn: string | null;
+  /** Hora de inicio acordada ese día (0168): la tardanza se mide contra ella. `null` = sin acuerdo. */
+  inicioAcordado: string | null;
 };
 
 type RowDia = Row & {
@@ -212,6 +214,7 @@ type RowDia = Row & {
   falta_justificada: boolean;
   motivo_justificacion: string | null;
   revisada_en: string | null;
+  inicio_acordado: string | null;
 };
 
 // Postgres devuelve `time` como 'HH:MM:SS'; el formulario y el motor quieren 'HH:MM'.
@@ -232,7 +235,7 @@ export async function listarAsistenciasPeriodo(
   const { data, error } = await sb
     .from('asistencias')
     .select(
-      'id, empleado_id, fecha, turno, hora_entrada, hora_salida, minutos_tardanza, fuente, obs, condicion, tardanza_justificada, falta_justificada, motivo_justificacion, entrada_estimada, salida_estimada, revisada_en',
+      'id, empleado_id, fecha, turno, hora_entrada, hora_salida, minutos_tardanza, fuente, obs, condicion, tardanza_justificada, falta_justificada, motivo_justificacion, entrada_estimada, salida_estimada, revisada_en, inicio_acordado',
     )
     .eq('empleado_id', empleadoId)
     .gte('fecha', desde)
@@ -255,6 +258,7 @@ export async function listarAsistenciasPeriodo(
     entradaEstimada: Boolean(r.entrada_estimada),
     salidaEstimada: Boolean(r.salida_estimada),
     revisadaEn: r.revisada_en ?? null,
+    inicioAcordado: hhmm(r.inicio_acordado ?? null),
   }));
 }
 
@@ -272,6 +276,27 @@ export async function marcarRevisados(empleadoId: string, fechas: string[], admi
     .update({ revisada_en: new Date().toISOString(), revisada_por: adminId })
     .eq('empleado_id', empleadoId)
     .in('fecha', unicas)
+    .select('id');
+  if (error) throw new Error(error.message);
+  return (data ?? []).length;
+}
+
+/**
+ * «Horario acordado ese día» (0168): deja la hora de inicio acordada en TODAS las filas del día
+ * (`null` la quita). No cambia ninguna hora trabajada: sólo contra qué se mide la tardanza.
+ */
+export async function guardarHorarioAcordado(
+  empleadoId: string,
+  fecha: string,
+  inicio: string | null,
+  motivo: string | null,
+): Promise<number> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('asistencias')
+    .update({ inicio_acordado: inicio, motivo_acordado: inicio ? motivo : null })
+    .eq('empleado_id', empleadoId)
+    .eq('fecha', fecha)
     .select('id');
   if (error) throw new Error(error.message);
   return (data ?? []).length;

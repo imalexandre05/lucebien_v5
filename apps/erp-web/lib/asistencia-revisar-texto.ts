@@ -59,7 +59,7 @@ export function fraseDelPago(d: DiaPorRevisar, p: ParametrosFrase): string {
     case 'tardanza':
       return (
         `Tiene ${plural(p.tardanzasLibres, 'tardanza libre', 'tardanzas libres')}; desde la siguiente se ` +
-        `descuentan ${soles(p.penalidadTardanza)} por cada una. Si la justificas, no cuenta.`
+        `descuentan ${soles(p.penalidadTardanza)} por cada una. Si la justificas, o si ese día acordaron otro horario, no cuenta.`
       );
     case 'falta': {
       // RN-09: `diasDescuentoPorFalta` es lo que la falta cuesta EN TOTAL; el día no trabajado ya es uno.

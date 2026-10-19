@@ -265,6 +265,12 @@ export interface RegistroAsistencia {
   tardanzaJustificada?: boolean;
   faltaJustificada?: boolean;
   motivoJustificacion?: string;
+  /**
+   * Hora de inicio acordada para ESE día ('HH:MM'), cuando el administrador y la persona cambiaron el
+   * horario sin cambiar las horas (decisión del dueño n.º 1, 19-oct-2026; migración 0168). Si viene,
+   * la tardanza se mide contra ella y no contra el inicio contratado. No cambia las horas pagadas.
+   */
+  inicioAcordado?: string | null;
   observacion?: string;
   /**
    * true cuando esa hora la propuso el sistema a partir del horario contratado, porque no hubo
@@ -1461,7 +1467,12 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
         esFalta = true; // RN-09
       } else {
         // RN-08: el límite se deriva del horario del día + la tolerancia, no es un texto fijo.
-        const limite = (contratado as DiaContratado).inicioMin + p.toleranciaMinutos;
+        // Si ese día se acordó otro inicio (0168), la tardanza se mide contra el acordado.
+        const inicioDelDia =
+          reg?.inicioAcordado != null && reg.inicioAcordado !== ''
+            ? minutosDeHora(reg.inicioAcordado, `Asistencia ${fecha} (horario acordado)`)
+            : (contratado as DiaContratado).inicioMin;
+        const limite = inicioDelDia + p.toleranciaMinutos;
         const llegada = minutosDeHora(ingreso, `Asistencia ${fecha}`);
         esTardanza = llegada > limite;
         if (horas > 0 && llegada <= (contratado as DiaContratado).inicioMin - p.minutosAntesPasaje) diasPasaje += 1;
