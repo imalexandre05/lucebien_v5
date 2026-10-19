@@ -15,7 +15,7 @@ begin execute p_sql; return 'ok'; exception when others then return sqlerrm; end
 
 do $$
 declare
-  r text := ''; adm uuid; otro uuid; per uuid; per2 uuid; a1 uuid; a2 uuid; nuevo uuid; msg text; cnt int; f record;
+  r text := ''; adm uuid; otro uuid; per uuid; per2 uuid; per3 uuid; a3 uuid; a1 uuid; a2 uuid; nuevo uuid; msg text; cnt int; f record;
 begin
   perform pg_temp.dueno();
   insert into empleados (cod, nombre, iniciales, rol) values ('P170-AD', 'P170 Admin', 'AD', 'admin') returning id into adm;
@@ -97,6 +97,20 @@ begin
   if sueldo_renovaciones_activar(date '2099-12-31') = 0
      and (select estado from sueldo_acuerdos where empleado_id = otro) = 'borrador' then r := r || '[ok] 11;';
   else r := r || '[FALLA] 11: activó un borrador manual;'; end if;
+
+  -- 12) con un cambio de frecuencia dentro del contrato, el borrador copia lo vigente al final
+  perform pg_temp.dueno();
+  insert into empleados (cod, nombre, iniciales, rol) values ('P170-P3', 'P170 Persona 3', 'P3', 'confeccionista') returning id into per3;
+  insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, modalidad, sueldo_pactado, creado_por, estado)
+    values (per3, '2098-10-01', '2098-12-31', 'mensual', 1200, adm, 'vigente') returning id into a3;
+  insert into sueldo_acuerdo_cambios (acuerdo_id, desde, modalidad, sueldo_pactado, modalidad_anterior, sueldo_pactado_anterior, creado_por)
+    values (a3, '2098-12-01', 'quincenal', 650, 'mensual', 1200, adm);
+  perform pg_temp.como(adm);
+  nuevo := sueldo_acuerdo_renovar(a3);
+  perform pg_temp.dueno();
+  select * into f from sueldo_acuerdos where id = nuevo;
+  if f.modalidad = 'quincenal' and f.sueldo_pactado = 650 then r := r || '[ok] 12;';
+  else r := r || format('[FALLA] 12: %s %s;', f.modalidad, f.sueldo_pactado); end if;
 
   raise exception 'RESULTADO 0170 --> %', r;
 end $$;
