@@ -1951,10 +1951,9 @@ Sin parámetros nuevos. Decisiones tomadas por el implementador, a confirmar:
 
 Spec escrita, sin código. Defaults inventados por quien escribió la spec, a confirmar con Alexander:
 
-1. **`pipeline_meta_puntos_por_hora` = 0,5.** Salió del mejor mes-persona medido (126,45 puntos, abril 2026) en
-   ~21 días de 11 horas. Es el techo de un módulo con 2 de 11 personas registrando, así que probablemente
-   subestima. Cifra tomada de este documento, no de una consulta: contrastarla con la base antes de sembrarla.
-   Sigue flexible; podría depender de la demanda de ternos.
+1. **`pipeline_meta_puntos_por_hora` queda sin valor** (decidido por Alexander el 19-oct: la meta de pipeline se medirá
+   después). Vacío = desactivado: mientras no tenga valor, el pipeline no entra a la nota. Podría depender de la
+   demanda de ternos. Ya no hay default de 0,5.
 2. **`eval_cumplimiento_para_20` = 1,25:** cumplir toda la meta del período vale 16 y el 20 llega al 125 %
    (nota = 16 × cumplimiento, sin techo). Decidido por Alexander el 18-oct tras dudar entre 20 y 16. El /20 es
    sólo referencia; la medida principal es el porcentaje de cumplimiento.
@@ -2268,3 +2267,8 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 
 - **Cerrado (0175):** envíos y calificaciones se escriben sólo por RPC.
 - **Para decidir:** `prenda_pasada.pasada_insert` sigue permitiendo dar de alta una prenda con un `insert` plano (sin código de operador ni historial). No se cerró porque `pedido_crear` y `pedido_devolver` (módulo comercial, fuera del menú) lo usan. Si el módulo comercial no vuelve, se puede retirar.
+13. **Verificación de parámetros (19-oct, contra el código):** `peso_competencias`, `peso_valores`, `peso_operaciones`,
+    `peso_software`, `peso_limpieza`, `peso_examenes` y `peso_tardanza` se pueden editar en `/configuracion` pero
+    **hoy no cambian la nota** (sólo se muestran junto a las barras y se guardan en el snapshot `pesos_usados`;
+    `calcularNotaMensual` no se usa). La spec los pone a trabajar y exige una prueba de efecto por parámetro. Los pesos por
+    defecto se dejan como están (decidido el 19-oct).
