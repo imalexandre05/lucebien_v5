@@ -74,6 +74,22 @@ describe('meta del período — 1.ª comisión (spec §3)', () => {
     expect(linea(liquidar(100000, { metaPeriodoManual: 9999999 }), 'RN-12')).toBe(base);
   });
 
+  it('las horas fuera de contrato también cuentan para la meta estimada', () => {
+    // Jueves 2025-06-19 sin horario contratado: 4 h fuera de contrato → 33 + 4 = 37 h → meta 370.
+    const l = liquidar(400, {
+      horasFueraDeContrato: [{ fecha: '2025-06-19', horaIngreso: '09:00', horaSalida: '13:00' }],
+    });
+    expect(l.ventas.metaPeriodo).toBe(370);
+    expect(linea(l, 'RN-13')).toBe(8);
+  });
+
+  it('la meta se redondea a céntimos antes de comparar (lo que dice la pantalla es lo que paga)', () => {
+    // 33 h × 10,00303 = 330,10 (redondeada); ventas 330,10 deben alcanzarla.
+    const l = liquidar(330.1, { parametros: { metaPorHora: 10.00303 } });
+    expect(l.ventas.metaPeriodo).toBe(330.1);
+    expect(l.ventas.metaAlcanzada).toBe(true);
+  });
+
   it('una meta puesta inválida se rechaza', () => {
     expect(() => liquidar(400, { metaPeriodoManual: -5 })).toThrow(/meta/i);
   });

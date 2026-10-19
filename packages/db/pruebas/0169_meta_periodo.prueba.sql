@@ -40,6 +40,9 @@ begin
   e := public.sueldo_entrada(ac2, '2099-07-01', '2099-07-31');
   if not (e ? 'metaPeriodoManual') then r := r || '[ok] 1;'; else r := r || '[FALLA] 1: trae la clave sin fila;'; end if;
 
+  -- 1b) siempre trae la marca de regla (un borrador anterior no la tiene y el cierre lo marca desactualizado)
+  if (e ->> 'reglaMetaPeriodo')::int = 2 then r := r || '[ok] 1b;'; else r := r || format('[FALLA] 1b: %s;', e ->> 'reglaMetaPeriodo'); end if;
+
   -- 2) el admin pone la meta del período; sueldo_entrada la entrega
   insert into sueldo_meta_periodo (empleado_id, desde, hasta, meta, creado_por) values (per, '2099-07-01', '2099-07-31', 1500.50, adm);
   e := public.sueldo_entrada(ac2, '2099-07-01', '2099-07-31');
