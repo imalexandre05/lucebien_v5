@@ -1475,7 +1475,8 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
         const limite = inicioDelDia + p.toleranciaMinutos;
         const llegada = minutosDeHora(ingreso, `Asistencia ${fecha}`);
         esTardanza = llegada > limite;
-        if (horas > 0 && llegada <= (contratado as DiaContratado).inicioMin - p.minutosAntesPasaje) diasPasaje += 1;
+        // El pasaje también se mide contra la hora acordada del día cuando existe (0168, respuesta del dueño).
+        if (horas > 0 && llegada <= inicioDelDia - p.minutosAntesPasaje) diasPasaje += 1;
       }
     }
     // Un día sin horario contratado no genera ni tardanza ni falta (RN-08 / RN-09).

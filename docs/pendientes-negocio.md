@@ -2178,5 +2178,5 @@ Decisiones del dueño n.º 6, 7, 5, 4 y 8. **Defaults inventados, a confirmar:**
 ## Horario acordado ese día (sesión 8A, 19-oct-2026) — [spec](superpowers/specs/asistencias/2026-10-19-horario-acordado-design.md)
 
 - **Decisión del dueño n.º 1:** «dentro de su horario» se mide por cantidad de horas; si el administrador y la persona acuerdan otro horario ese día, la tardanza se mide contra la hora acordada (columna `asistencias.inicio_acordado`, 0168).
-- **Default inventado:** el pasaje (llegar con anticipación) sigue midiéndose contra el inicio **contratado**, no contra el acordado. Confirmar con el dueño si debe seguir al acordado.
+- **Respuesta del dueño (19-oct-2026):** el pasaje se mide contra el horario acordado del día cuando existe; si no, contra el contratado.
 - **Default inventado:** el motivo es opcional y de hasta 300 letras (igual que las justificaciones).
