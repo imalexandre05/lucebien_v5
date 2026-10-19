@@ -16,7 +16,7 @@ begin execute 'reset role'; perform set_config('request.jwt.claims', '', true); 
 
 do $$
 declare
-  r text := ''; adm uuid; otro uuid; e uuid; ac uuid; v_id uuid; j jsonb; fila jsonb; n int;
+  r text := ''; adm uuid; otro uuid; e uuid; ac uuid; v_id uuid; j jsonb; fila jsonb; cnt int;
 begin
   perform pg_temp.dueno();
   insert into empleados (cod, nombre, iniciales, rol) values ('P168-AD', 'P168 Admin', 'AD', 'admin') returning id into adm;
@@ -31,8 +31,8 @@ begin
   delete from config where clave = 'eval_puntualidad_modo';
 
   -- 1) las columnas existen y empiezan vacías
-  select count(*) into n from asistencias where id = v_id and inicio_acordado is null and motivo_acordado is null;
-  if n = 1 then r := r || '[ok] 1;'; else r := r || '[FALLA] 1: columnas ausentes o con valor;'; end if;
+  select count(*) into cnt from asistencias where id = v_id and inicio_acordado is null and motivo_acordado is null;
+  if cnt = 1 then r := r || '[ok] 1;'; else r := r || '[FALLA] 1: columnas ausentes o con valor;'; end if;
 
   -- 2) sin hora acordada: tardanza (la nota de puntualidad es 0 con 1 debido y 0 puntuales)
   j := private.evaluacion_componentes_datos(e, date '2020-03-02', date '2020-03-08');
@@ -43,8 +43,8 @@ begin
   perform pg_temp.como(adm);
   update asistencias set inicio_acordado = time '09:00', motivo_acordado = 'Cambio acordado con Jordan' where id = v_id;
   perform pg_temp.dueno();
-  select count(*) into n from asistencias where id = v_id and inicio_acordado = time '09:00';
-  if n = 1 then r := r || '[ok] 3;'; else r := r || '[FALLA] 3: el admin no pudo escribirla;'; end if;
+  select count(*) into cnt from asistencias where id = v_id and inicio_acordado = time '09:00';
+  if cnt = 1 then r := r || '[ok] 3;'; else r := r || '[FALLA] 3: el admin no pudo escribirla;'; end if;
 
   -- 4) con hora acordada 09:00 la puntualidad lo cuenta puntual
   j := private.evaluacion_componentes_datos(e, date '2020-03-02', date '2020-03-08');
@@ -85,8 +85,8 @@ begin
   exception when others then null;
   end;
   perform pg_temp.dueno();
-  select count(*) into n from asistencias where id = v_id and inicio_acordado is null;
-  if n = 1 then r := r || '[ok] 8;'; else r := r || '[FALLA] 8: un no admin la escribió;'; end if;
+  select count(*) into cnt from asistencias where id = v_id and inicio_acordado is null;
+  if cnt = 1 then r := r || '[ok] 8;'; else r := r || '[FALLA] 8: un no admin la escribió;'; end if;
 
   raise exception 'RESULTADO 0168 --> %', r;
 end $$;
