@@ -2226,3 +2226,19 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 
 - **Cerrado (0175):** envíos y calificaciones se escriben sólo por RPC.
 - **Para decidir:** `prenda_pasada.pasada_insert` sigue permitiendo dar de alta una prenda con un `insert` plano (sin código de operador ni historial). No se cerró porque `pedido_crear` y `pedido_devolver` (módulo comercial, fuera del menú) lo usan. Si el módulo comercial no vuelve, se puede retirar.
+
+## Sesión 9 (19-oct-2026): decisiones tomadas y pendientes
+
+**Decisiones del dueño aplicadas (PR aparte):**
+- **Código personal siempre (0177).** `codigo_siempre` = sí y `codigo_exigir_admin` = no. Editables en `/configuracion` → Código personal. [spec](superpowers/specs/pipeline/2026-10-19-codigo-siempre-design.md)
+- **Extras sin tope por ahora (0178).** `reporte_extra_cantidad_max` = 0 (sin tope). **Decisión pendiente:** qué tope definitivo poner, si alguno. Los puntos del extra suman a la persona que lo hizo (verificado). [spec](superpowers/specs/reportes/2026-10-19-extras-sin-tope-design.md)
+
+**Pendientes (NO hechos en esta sesión):**
+- [ ] Pasar el repositorio a **privado** y limpiar la base vieja (`database/lucebien.db*`) del historial de git.
+- [ ] En Supabase: activar **CAPTCHA** y la **protección de contraseñas filtradas**.
+- [ ] **Cambio de códigos de empleados** (los códigos actuales siguen vigentes).
+- [ ] **Tope de extras**: definir el valor definitivo (hoy sin tope).
+- [ ] **Confeccionista en `app_es_almacen`**: decidir si ese rol cuenta como almacén.
+- [ ] **Capturas de la interfaz de Jordan** para el rediseño visual.
+- [ ] **Pago por puntos**: la spec se hace en otra sesión.
+- [ ] **Correos**: falta configurar `RESEND_API_KEY` para que salgan.
