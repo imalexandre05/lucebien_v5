@@ -109,7 +109,7 @@ rProductividad = (pipelineEquivalente + horasTienda × rVentas) / (horasAlmacen 
 
 base          = eval_peso_reportes × min(rReportes, 1) + (1 − eval_peso_reportes) × min(rProductividad, 1)
 exceso        = eval_peso_reportes × max(rReportes − 1, 0) + (1 − eval_peso_reportes) × max(rProductividad − 1, 0)
-cumplimiento  = base + min(exceso, eval_tope_extra)
+cumplimiento  = base + min(exceso, eval_tope_exceso)
 ```
 
 - **Reportes.** La meta es completa: todas las actividades **obligatorias** (`tipo_act = 'obligatoria'`; las
@@ -132,7 +132,7 @@ cumplimiento  = base + min(exceso, eval_tope_extra)
   ventas) o de reportes (sin actividades que apliquen), el cumplimiento es el otro componente. Si no tiene
   ninguno, no hay nota.
 - **El exceso no tapa faltas.** Cada componente cuenta como máximo su 100 % en la base. Lo que pase de 100 % se
-  suma aparte como extra, con un tope (`eval_tope_extra`, default 0,25 = 25 puntos de cumplimiento). Ejemplo: 0 %
+  suma aparte como extra, con un tope (`eval_tope_exceso`, default 0,25 = 25 puntos de cumplimiento). Ejemplo: 0 %
   en reportes y 250 % en productividad dan base 50 % + extra 25 % = 75 % (nota 12, en banda de riesgo), no 125 %.
   Quien cumple todo y además rinde más llega a 125 %, que con el anclaje de 16 es la nota 20.
 - **Lo no asignado es extra.** El pipeline hecho fuera de las horas de almacén (alguien pasa a almacén un día de
@@ -236,7 +236,7 @@ Esto toca la cadena del sueldo: spec completa, tests y verificador **aparte** (�
 |---|---|---|
 | `pipeline_meta_puntos_por_hora` | **0,5** | **Elegido por mí, no por Alexander.** El mejor mes-persona medido (126,45 puntos, abril 2026) dividido en ~21 días de 11 horas da ~0,55 por hora. Es el techo de un módulo con poca adopción (2 de 11 personas registraron avances), así que probablemente subestima la capacidad real. Es un marcador: Alexander dijo que la meta de pipeline podría depender de la demanda de ternos y que se define después, y el sistema aún no está en uso. Se reemplaza cuando se defina |
 | `eval_peso_reportes` | **0,5** | **Elegido por mí:** reportes y productividad pesan igual en el cumplimiento. Se puede inclinar (p. ej. 0,4 da más peso a la productividad) sin tocar código |
-| `eval_tope_extra` | **0,25** | **Elegido por mí:** el exceso sobre 100 % suma como mucho 25 puntos de cumplimiento (125 % = nota 20 en la parte de puntos). Subirlo permite notas sobresalientes (>20) |
+| `eval_tope_exceso` | **0,25** | **Elegido por mí:** el exceso sobre 100 % suma como mucho 25 puntos de cumplimiento (125 % = nota 20 en la parte de puntos). Subirlo permite notas sobresalientes (>20) |
 | `peso_puntos` | **0,30** | Tomado de los pesos existentes: `peso_operaciones` + `peso_software` + `peso_limpieza` (0,10 cada uno). Los demás pesos (`peso_competencias` 0,25, `peso_valores` 0,25, `peso_examenes` 0,15, `peso_tardanza` 0,05) no cambian |
 | `eval_cumplimiento_para_20` | **1,25** | Decidido por Alexander (18-oct): cumplir toda la meta vale 16 y el 20 llega al 125 %. Ver §4 |
 
@@ -316,7 +316,7 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
 - La meta de reportes cuenta sólo actividades con `tipo_act = 'obligatoria'`: las `por_puntos` (categoría EXT) no
   suman a la meta, entran como extras.
 - **El exceso no tapa faltas:** reportes 0 % y productividad 250 % dan base 50 % + extra 25 % = 75 % (nota 12);
-  reportes 100 % y productividad 150 % dan 100 % + 25 % = 125 % (nota 20). `eval_tope_extra` = 0,5 sube el techo.
+  reportes 100 % y productividad 150 % dan 100 % + 25 % = 125 % (nota 20). `eval_tope_exceso` = 0,5 sube el techo.
 - **Nota final:** puntos en 16, competencias 18, valores 17, exámenes 15, puntualidad 20, con los pesos por defecto,
   dan 0,30×16 + 0,25×18 + 0,25×17 + 0,15×15 + 0,05×20 = 16,8. Pesos que no suman 1,00 se rechazan al guardar.
 - Las incidencias bajan `rReportes` una sola vez y no se restan de la nota final.

@@ -2114,7 +2114,7 @@ Decidido por Alexander el 19-oct-2026 (y defaults míos asociados):
    pesos editables. `peso_puntos` = 0,30 sale de sumar `peso_operaciones` + `peso_software` + `peso_limpieza`; los
    otros cuatro pesos no cambian. Con eso los puntos pesan 30 %, menos que lo dicho el 25-ago: editable.
 9. **El exceso no tapa faltas** (se siguió mi recomendación): cada componente cuenta hasta 100 % en la base y el exceso
-   suma aparte con tope `eval_tope_extra` = 0,25 (default mío).
+   suma aparte con tope `eval_tope_exceso` = 0,25 (default mío).
 10. **Ventas:** las carga el administrador a mano por ahora; luego se conectarán con el nuevo sistema de inventario y POS.
 11. **El sistema aún no se usa:** no hay reportes recientes. `pipeline_meta_puntos_por_hora` = 0,5 es un marcador; la
     idea de Alexander es que la meta de pipeline dependa de la demanda de ternos, y se define después.
