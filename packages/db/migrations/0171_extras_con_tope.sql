@@ -120,6 +120,15 @@ begin
     ) then
       raise exception 'CANTIDAD: cada extra debe tener una cantidad entera entre 1 y %; corrige la cantidad y vuelve a enviar', v_tope;
     end if;
+    -- El tope es por extra del reporte: las filas del mismo código de catálogo se suman.
+    if exists (
+      select 1 from jsonb_array_elements(p_extras) e
+       where nullif(e->>'cod', '') is not null
+       group by e->>'cod'
+      having sum(coalesce(btrim(e->>'cantidad')::int, 1)) > v_tope
+    ) then
+      raise exception 'CANTIDAD: un mismo extra no puede sumar más de % en un reporte; junta las filas y corrige la cantidad', v_tope;
+    end if;
     -- 0171 R2: un «registrado por» explícito debe ser alguien del turno (trabajador o encargado).
     if exists (
       select 1 from jsonb_array_elements(p_extras) e

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getSesion } from '../../../lib/auth';
-import { listarEmpleados } from '../../../lib/reportes-repo';
+import { listarEmpleadosActivos } from '../../../lib/reportes-repo';
 import { listarTiposIncidencia } from '../../../lib/incidencias-repo';
 import { leerConfigMap, CIERRE_TURNO_DEFAULT, TOPE_EXTRA_DEFAULT } from '../../../lib/config-repo';
 import { PageHeader } from '../../../components/shell/page-header';
@@ -16,7 +16,7 @@ export default async function NuevoReportePage() {
   // Mismo criterio que incidencias/sueldos. Quien no es admin queda fijo como encargado (0122, H14).
   const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
   const [empleados, tiposIncidencia, config, compartido] = await Promise.all([
-    listarEmpleados(),
+    listarEmpleadosActivos(),
     listarTiposIncidencia(),
     leerConfigMap(),
     pedirCodigoEnPantalla().catch(() => false),
