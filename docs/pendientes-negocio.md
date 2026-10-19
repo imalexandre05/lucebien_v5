@@ -2231,6 +2231,7 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 
 **Decisiones del dueño aplicadas (PR aparte):**
 - **Código personal siempre (0177).** `codigo_siempre` = sí y `codigo_exigir_admin` = no. Editables en `/configuracion` → Código personal. [spec](superpowers/specs/pipeline/2026-10-19-codigo-siempre-design.md)
+- **Código de empleado como código del operador (0179).** `codigo_modo` = `cod` (el `empleados.cod` de 4 dígitos, que el dueño aceptó que no es secreto) y `codigo_exigir_admin` = sí (también el admin pone su código). Editables en `/configuracion` → Código personal. **Decisión pendiente:** si más adelante se quiere secreto real, pasar a `pin` (cada persona define el suyo en «Mi desempeño»). [spec](superpowers/specs/pipeline/2026-10-19-codigo-empleado-design.md)
 - **Extras sin tope por ahora (0178).** `reporte_extra_cantidad_max` = 0 (sin tope). **Decisión pendiente:** qué tope definitivo poner, si alguno. Los puntos del extra suman a la persona que lo hizo (verificado). [spec](superpowers/specs/reportes/2026-10-19-extras-sin-tope-design.md)
 
 **Pendientes (NO hechos en esta sesión):**

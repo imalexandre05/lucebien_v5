@@ -24,6 +24,7 @@ export default async function PipelinePage() {
         ranking={ranking}
         operario={sesion?.nombre ?? ''}
         compartido={compartido}
+        verRecepcion={sesion?.usuario.rol !== 'encargado_almacen' && sesion?.usuario.rol !== 'confeccionista'}
         tiendas={tiendas.length ? tiendas : ['LB', 'ST', 'TR']}
       />
     </div>

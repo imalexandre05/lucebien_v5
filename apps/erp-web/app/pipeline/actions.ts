@@ -14,8 +14,10 @@ import {
   dividirPasada,
   deshacerDivisionPasada,
   calificarPasada,
+  calificarPasadaTanda,
   registrarPasada,
   validarCodigoOperador,
+  modoCodigoPersonal,
   cerrarOperadorCodigo,
   type ValidacionCodigo,
 } from '../../lib/pipeline-repo';
@@ -30,11 +32,19 @@ import { deviceIdActual, operadorParaAccion } from '../../lib/pipeline-operador'
 
 // Única puerta del código: usuario + PIN los valida la base, que cuenta los intentos y emite el
 // token. El PIN no se guarda ni se registra en ningún otro lado.
+//
+// Modo 'cod' (0179, default): `pin` trae el código de empleado y el usuario va vacío. Modo 'pin':
+// usuario + PIN como antes (la base rechaza y cuenta el intento si falta alguno).
 export async function validarCodigo(usuario: string, pin: string): Promise<ValidacionCodigo> {
   const u = (usuario ?? '').trim();
   const p = (pin ?? '').trim();
-  if (!u || !p) return { ok: false };
+  if (!p) return { ok: false };
   return validarCodigoOperador(u, p, (await deviceIdActual()) || null);
+}
+
+// Modo del código personal para la pantalla (cod = una sola casilla «Tu código»).
+export async function modoCodigo(): Promise<'cod' | 'pin'> {
+  return modoCodigoPersonal();
 }
 
 // Los errores `CODIGO:` (token vencido, ajeno o ausente) se devuelven COMO VALOR (string), no como
@@ -168,10 +178,26 @@ export async function calificarPrenda(
   id: string,
   aceptada: boolean,
   destino = '',
+  obs = '',
   operador?: string,
 ): Promise<string | null> {
   if (!id) return null;
-  const r = await conCodigo(async () => calificarPasada(id, aceptada, destino, '', await operadorParaAccion(operador)));
+  const r = await conCodigo(async () => calificarPasada(id, aceptada, destino, obs, await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
+  revalidatePath('/pipeline');
+  return null;
+}
+
+// Varias prendas juntas (0181). Devuelve un texto si el código venció o falta la nota; null si salió bien.
+export async function calificarTanda(
+  ids: string[],
+  aceptada: boolean,
+  destino = '',
+  obs = '',
+  operador?: string,
+): Promise<string | null> {
+  if (!ids?.length) return null;
+  const r = await conCodigo(async () => calificarPasadaTanda(ids, aceptada, destino, obs, await operadorParaAccion(operador)));
   if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
   return null;

@@ -286,11 +286,12 @@ export function NuevoReporteForm({
   );
   // «¿Quién lo hizo?» ofrece sólo al equipo del turno: reportes_crear rechaza un extra a nombre de
   // alguien que no está en él (0171).
-  // En un equipo compartido (sin admin) el encargado es quien pone su código, no la cuenta abierta:
-  // se ofrece sólo a los colaboradores, y dejarlo vacío lo deja a nombre de quien envía.
+  // Cuando se pide código (siempre, también al admin si así se configuró) el encargado es quien pone
+  // su código, no la cuenta abierta: se ofrece sólo a los colaboradores, y dejarlo vacío lo deja a
+  // nombre de quien envía.
   const equipoIds = useMemo(
-    () => new Set([...trabajadores, ...(compartido && !esAdmin ? [] : encargadoSel)]),
-    [trabajadores, encargadoSel, compartido, esAdmin],
+    () => new Set([...trabajadores, ...(compartido ? [] : encargadoSel)]),
+    [trabajadores, encargadoSel, compartido],
   );
   const equipoDelTurno = useMemo(
     () => empleadosOrden.filter((emp) => equipoIds.has(emp.id)),
@@ -400,9 +401,8 @@ export function NuevoReporteForm({
         sede,
         fecha,
         turno,
-        // En el equipo compartido el encargado es quien ingresa su código; el formulario solo manda
-        // uno cuando es el admin quien lo elige (y entonces debe coincidir con el código).
-        encargado: compartido && !esAdmin ? null : (encargadoSel[0] ?? null),
+        // Con código el encargado es quien lo ingresa (reportes_crear rechaza otro): no se manda.
+        encargado: compartido ? null : (encargadoSel[0] ?? null),
         actTotal: cat.length,
         actDone: actividades.length,
         trabajadores,
@@ -501,7 +501,7 @@ export function NuevoReporteForm({
                   <PenLine className="h-3.5 w-3.5" strokeWidth={2} /> Encargado del turno
                   <span className="font-normal normal-case text-muted/80">· quien firma</span>
                 </div>
-                {esAdmin ? (
+                {esAdmin && !compartido ? (
                 <PersonaPicker
                   empleados={empleadosOrden}
                   selected={encargadoSel}
@@ -512,7 +512,7 @@ export function NuevoReporteForm({
                 />
                 ) : (
                   <div className="rounded-md border border-line px-3 py-2 text-cuerpo" data-testid="encargado-fijo">
-                    {empleados.find((e) => e.id === encargadoId)?.nombre ?? 'Tú'}
+                    {compartido ? 'Quien ingresa su código' : (empleados.find((e) => e.id === encargadoId)?.nombre ?? 'Tú')}
                     <span className="ml-2 text-apoyo text-muted">· quien registra el turno es quien lo firma</span>
                   </div>
                 )}

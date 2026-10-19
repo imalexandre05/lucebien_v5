@@ -364,7 +364,7 @@ export async function deshacerDivisionPasada(id: string, operador: string | null
   if (error) throw new Error(error.message);
 }
 
-// Calificar en tienda: aceptar (→ recibido) u observar (→ etapa destino, vuelve al trabajo).
+// Calificar en tienda: aceptar (→ recibido) o devolver a cualquier etapa con una nota (0181).
 export async function calificarPasada(
   id: string,
   aceptada: boolean,
@@ -383,6 +383,26 @@ export async function calificarPasada(
   if (error) throw new Error(error.message);
 }
 
+// Varias prendas a la vez (0181): todas o ninguna. Devuelve cuántas se calificaron.
+export async function calificarPasadaTanda(
+  ids: string[],
+  aceptada: boolean,
+  destino = '',
+  obs = '',
+  operador: string | null = null,
+): Promise<number> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_calificar_tanda', {
+    p_ids: ids,
+    p_aceptada: aceptada,
+    p_destino: destino,
+    p_obs: obs,
+    ...conOperador(operador),
+  });
+  if (error) throw new Error(error.message);
+  return Number(data) || 0;
+}
+
 // ── Código personal (migración 0112, spec codigo-personal) ────────────────────────────────────
 // Usuario + PIN se teclean UNA vez y sólo viajan a pipeline_validar_codigo, que cuenta los intentos
 // (por sesión y por persona) y devuelve un token de operador. Las demás RPC reciben ese token
@@ -394,7 +414,7 @@ export type ValidacionCodigo =
       ok: false;
       bloqueadoMin?: number;
       intentosRestantes?: number;
-      motivo?: 'equipo_no_compartido' | 'sin_pin';
+      motivo?: 'equipo_no_compartido' | 'sin_pin' | 'codigo_no_encontrado' | 'codigo_repetido';
     };
 
 export async function validarCodigoOperador(
@@ -432,8 +452,22 @@ export async function validarCodigoOperador(
     ok: false,
     bloqueadoMin: r.bloqueado_min,
     intentosRestantes: r.intentos_restantes,
-    motivo: r.motivo === 'equipo_no_compartido' || r.motivo === 'sin_pin' ? r.motivo : undefined,
+    motivo:
+      r.motivo === 'equipo_no_compartido' ||
+      r.motivo === 'sin_pin' ||
+      r.motivo === 'codigo_no_encontrado' ||
+      r.motivo === 'codigo_repetido'
+        ? r.motivo
+        : undefined,
   };
+}
+
+// Modo del código personal (0179): 'cod' = código de empleado de 4 dígitos (default); 'pin' = usuario +
+// PIN. Si la función aún no existe (0179 sin aplicar) se asume 'pin', que es lo que la base sabe hacer.
+export async function modoCodigoPersonal(): Promise<'cod' | 'pin'> {
+  const { data, error } = await getServerClient().rpc('codigo_modo');
+  if (error) return 'pin';
+  return data === 'pin' ? 'pin' : 'cod';
 }
 
 export type ResultadoPin =

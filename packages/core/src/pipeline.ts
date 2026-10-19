@@ -1,12 +1,12 @@
 // Pipeline de lavandería: 10 etapas. Modelo genérico; los pesos de puntos viven en config (adapter).
 export const ETAPAS_PIPELINE = [
   'recepcion',
-  'codificacion', // etiqueta con el código puesta (la codificación real es del sistema externo)
   'lavado',
   'empatado',
   'vacio',
   'refaccion',
   'compostura',
+  'codificacion', // etiqueta con el código puesta (la codificación real es del sistema externo)
   'planchado',
   'control_calidad',
   'listo', // listo p/ envío
@@ -22,13 +22,13 @@ export function siguienteEtapa(e: EtapaPipeline): EtapaPipeline | null {
 // Transiciones permitidas en el tablero (portadas del kanban viejo). 'listo' = aprobado en
 // control de calidad; el envío a tienda y el rechazo son flujos aparte.
 export const TRANSICIONES: Record<EtapaPipeline, EtapaPipeline[]> = {
-  recepcion: ['lavado', 'refaccion', 'codificacion'],
-  codificacion: ['lavado', 'refaccion'],
+  recepcion: ['lavado', 'refaccion'],
   lavado: ['empatado'],
   empatado: ['refaccion'],
   vacio: [],
-  refaccion: ['compostura', 'planchado'],
-  compostura: ['planchado'],
+  refaccion: ['compostura', 'codificacion', 'planchado'],
+  compostura: ['codificacion', 'planchado'],
+  codificacion: ['planchado'],
   planchado: ['control_calidad'],
   control_calidad: ['listo'],
   listo: [],
