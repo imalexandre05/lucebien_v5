@@ -90,6 +90,7 @@ export function EvaluacionesCliente({
   escala,
   esAdmin,
   competenciasConfig,
+  enFicha,
 }: {
   evaluaciones: Evaluacion[];
   empleados: EmpleadoParaEvaluacion[];
@@ -97,6 +98,8 @@ export function EvaluacionesCliente({
   escala: EscalaPuntos;
   esAdmin: boolean;
   competenciasConfig: CompetenciaConfig[];
+  /** Dentro de la ficha de una persona: sin buscador ni filtros; se evalúa a ESA persona en ESE período. */
+  enFicha?: { empleadoId: string; desde: string; hasta: string };
 }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
@@ -375,16 +378,17 @@ export function EvaluacionesCliente({
   return (
     <div className="space-y-4">
       {/* Resumen */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {!enFicha && <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatBox index={0} label="Evaluaciones" valor={resumen.total} tone="navy" />
         <StatBox index={1} label="Promedio" valor={resumen.promedio} tone="gold" />
         <StatBox index={2} label="Excelente" valor={resumen.excelente} tone="exito" />
         <StatBox index={3} label="Bajo" valor={resumen.bajo} tone="neutro" />
-      </div>
+      </div>}
 
       {/* Filtros + acción */}
       <Card>
         <CardContent className="flex flex-wrap items-center gap-2 py-4">
+          {!enFicha && (<>
           <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
@@ -410,14 +414,27 @@ export function EvaluacionesCliente({
               </option>
             ))}
           </select>
+          </>)}
+          {enFicha && (
+            <p className="text-cuerpo text-muted">
+              Evaluación del período elegido arriba ({enFicha.desde} a {enFicha.hasta}).
+            </p>
+          )}
           {esAdmin && (
             <button
               type="button"
-              onClick={() => (abierto ? reiniciar() : setAbierto(true))}
+              onClick={() => {
+                if (abierto) return reiniciar();
+                setAbierto(true);
+                if (enFicha) {
+                  elegirEmpleado(enFicha.empleadoId);
+                  setCiclo({ desde: enFicha.desde, hasta: enFicha.hasta, fuente: 'mes_calendario' });
+                }
+              }}
               className={cn(buttonVariants({ variant: abierto ? 'outline' : 'primary' }), 'ml-auto')}
             >
               <Plus className="h-4 w-4" strokeWidth={2} />
-              {abierto ? 'Cerrar' : 'Nueva evaluación'}
+              {abierto ? 'Cerrar' : enFicha ? 'Evaluar este período' : 'Nueva evaluación'}
             </button>
           )}
         </CardContent>
@@ -463,7 +480,7 @@ export function EvaluacionesCliente({
               </div>
             )}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
+              {!enFicha && (<div>
                 <label className="mb-1 block text-rotulo uppercase text-muted">Empleado</label>
                 <select value={empleadoId} onChange={(e) => elegirEmpleado(e.target.value)} disabled={pending} className={cn(fieldCls, 'w-full')} aria-label="Empleado">
                   <option value="">Elige…</option>
@@ -473,11 +490,14 @@ export function EvaluacionesCliente({
                     </option>
                   ))}
                 </select>
-              </div>
+              </div>)}
               <div>
                 <label className="mb-1 block text-rotulo uppercase text-muted">
                   Ciclo
-                  {ciclo && (
+                  {ciclo && enFicha && (
+                    <span className="ml-1.5 font-normal normal-case text-muted">(el período elegido arriba)</span>
+                  )}
+                  {ciclo && !enFicha && (
                     <span className="ml-1.5 font-normal normal-case text-muted">
                       ({ciclo.fuente === 'aniversario' ? 'por aniversario' : 'mes calendario — sin fecha de ingreso'}
                       {cicloEditado ? ', editado' : ''})
@@ -485,9 +505,9 @@ export function EvaluacionesCliente({
                   )}
                 </label>
                 <div className="flex items-center gap-2">
-                  <input type="date" value={ciclo?.desde ?? ''} disabled={!ciclo || pending} onChange={(e) => setCicloDesde(e.target.value)} className={cn(fieldCls, 'w-full')} />
+                  <input type="date" value={ciclo?.desde ?? ''} disabled={!ciclo || pending || Boolean(enFicha)} onChange={(e) => setCicloDesde(e.target.value)} className={cn(fieldCls, 'w-full')} />
                   <span className="text-apoyo text-muted">a</span>
-                  <input type="date" value={ciclo?.hasta ?? ''} disabled={!ciclo || pending} onChange={(e) => setCicloHasta(e.target.value)} className={cn(fieldCls, 'w-full')} />
+                  <input type="date" value={ciclo?.hasta ?? ''} disabled={!ciclo || pending || Boolean(enFicha)} onChange={(e) => setCicloHasta(e.target.value)} className={cn(fieldCls, 'w-full')} />
                 </div>
               </div>
             </div>
@@ -812,9 +832,9 @@ export function EvaluacionesCliente({
               {filtradas.length === 0 && (
                 <TR>
                   <TD colSpan={5}>
-                    <EmptyState icon={Award} titulo={evaluaciones.length === 0 ? 'Sin evaluaciones registradas' : 'Ninguna coincide con el filtro'} compacto>
+                    <EmptyState icon={Award} titulo={evaluaciones.length === 0 ? (enFicha ? 'Sin evaluación en este período' : 'Sin evaluaciones registradas') : 'Ninguna coincide con el filtro'} compacto>
                       {evaluaciones.length === 0
-                        ? 'Crea la primera evaluación del mes con "Nueva evaluación".'
+                        ? (enFicha ? 'Pulsa «Evaluar este período» para crearla.' : 'Crea la primera evaluación del mes con "Nueva evaluación".')
                         : 'Prueba con otro mes, tramo o nombre.'}
                     </EmptyState>
                   </TD>

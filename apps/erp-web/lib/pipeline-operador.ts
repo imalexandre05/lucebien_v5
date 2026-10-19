@@ -3,9 +3,9 @@ import { dispositivoCompartido } from './pipeline-repo';
 import { getServerClient } from './supabase/server';
 import { tokenOperadorValido } from './operador-token';
 
-// Código personal (spec codigo-personal §3): en un equipo marcado como compartido, toda acción de
-// atribución del pipeline exige un token de operador. En uno que no lo es, el token se ignora y
-// el actor es la sesión, como hoy. La decisión la toma el servidor (la cookie `sci_device` es
+// Código personal (spec codigo-personal §3 y codigo-siempre): toda acción de atribución del pipeline
+// exige un token de operador cuando la base lo pide (siempre, salvo admin). Si no lo pide, el token
+// se ignora y el actor es la sesión. La decisión la toma el servidor (la cookie `sci_device` es
 // httpOnly): el navegador no puede declararse «no compartido».
 const DEVICE_COOKIE = 'sci_device';
 
@@ -13,7 +13,16 @@ export async function deviceIdActual(): Promise<string> {
   return (await cookies()).get(DEVICE_COOKIE)?.value ?? '';
 }
 
+// ¿La base exige el código a esta sesión siempre (parámetro «Pedir código siempre», 0177)? El admin
+// queda exento salvo que se encienda «exigir código también al admin».
+async function codigoSiempre(): Promise<boolean> {
+  const { data, error } = await getServerClient().rpc('sesion_debe_dar_codigo');
+  // PGRST202: la 0177 aún no se aplicó → se cae a la regla anterior (equipo compartido).
+  return !error && data === true;
+}
+
 export async function equipoCompartido(): Promise<boolean> {
+  if (await codigoSiempre()) return true;
   return dispositivoCompartido(await deviceIdActual());
 }
 

@@ -290,10 +290,10 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     seccion: SECCION_REPORTES,
     etiqueta: 'Máximo de unidades por extra en un reporte',
     descripcion:
-      'Cuántas veces se puede contar un mismo extra en un reporte de turno. La base rechaza el reporte si se pasa (migración 0171). Default provisional, no confirmado por el dueño.',
+      'Cuántas veces se puede contar un mismo extra en un reporte de turno. 0 = sin tope (decisión del dueño por ahora; el tope definitivo está pendiente). La base rechaza el reporte si se pasa (migraciones 0171 y 0178).',
     tipo: 'numero',
-    default: '50',
-    min: 1,
+    default: '0',
+    min: 0,
     step: 1,
   },
   {
@@ -808,6 +808,24 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '15',
     min: 1,
     step: 1,
+  },
+  {
+    clave: 'codigo_siempre',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Pedir código siempre',
+    descripcion:
+      'Encendido (recomendado): para mover prendas y enviar reportes se pide el código personal en cualquier computadora y cuenta, así cada punto queda a nombre de quien lo hizo. Apagado: solo se pide en los equipos o cuentas marcados como compartidos. El administrador que entró con su usuario no lo necesita, salvo que enciendas la opción de abajo.',
+    tipo: 'booleano',
+    default: 'true',
+  },
+  {
+    clave: 'codigo_exigir_admin',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Exigir código también al administrador',
+    descripcion:
+      'Apagado (default): el administrador mueve prendas y envía reportes sin código si ya entró con su usuario. Encendido: también debe dar su código personal.',
+    tipo: 'booleano',
+    default: 'false',
   },
   {
     clave: 'codigo_operador_min',
