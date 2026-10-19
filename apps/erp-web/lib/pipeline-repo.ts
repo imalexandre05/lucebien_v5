@@ -364,7 +364,7 @@ export async function deshacerDivisionPasada(id: string, operador: string | null
   if (error) throw new Error(error.message);
 }
 
-// Calificar en tienda: aceptar (→ recibido) u observar (→ etapa destino, vuelve al trabajo).
+// Calificar en tienda: aceptar (→ recibido) o devolver a cualquier etapa con una nota (0181).
 export async function calificarPasada(
   id: string,
   aceptada: boolean,
@@ -381,6 +381,26 @@ export async function calificarPasada(
     ...conOperador(operador),
   });
   if (error) throw new Error(error.message);
+}
+
+// Varias prendas a la vez (0181): todas o ninguna. Devuelve cuántas se calificaron.
+export async function calificarPasadaTanda(
+  ids: string[],
+  aceptada: boolean,
+  destino = '',
+  obs = '',
+  operador: string | null = null,
+): Promise<number> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_calificar_tanda', {
+    p_ids: ids,
+    p_aceptada: aceptada,
+    p_destino: destino,
+    p_obs: obs,
+    ...conOperador(operador),
+  });
+  if (error) throw new Error(error.message);
+  return Number(data) || 0;
 }
 
 // ── Código personal (migración 0112, spec codigo-personal) ────────────────────────────────────

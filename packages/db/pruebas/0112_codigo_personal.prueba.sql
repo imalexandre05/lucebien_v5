@@ -76,6 +76,40 @@ begin
   perform set_config('request.jwt.claims', '', true);
 end $f$;
 
+-- 0181: solo la tienda destino (o el admin) califica. Este ayudante califica como un empleado de la
+-- tienda destino del envío (o como admin si la prenda no tiene envío) y vuelve a la sesión de antes.
+-- Si p_tok trae un token de operador, se le emite uno equivalente a la sesión del ayudante.
+create or replace function pg_temp.calificar_destino(p_id uuid, p_acept boolean, p_dest text, p_obs text, p_tok uuid default null)
+  returns void language plpgsql as $f$
+declare v_prev text := current_setting('request.jwt.claims', true); v_sede text; v_t uuid; v_op uuid; v_tok uuid; v_cod text;
+begin
+  execute 'reset role';
+  select e.sede_destino_cod into v_sede from envios_prendas e join prenda_pasada p on p.envio_id = e.id where p.id = p_id;
+  v_cod := coalesce('PCAL-' || v_sede, 'PCAL-ADM');
+  select id into v_t from empleados where cod = v_cod;
+  if v_t is null then
+    insert into empleados (cod, nombre, iniciales, rol, sede_cod)
+      values (v_cod, 'Prueba calificador ' || v_cod, 'PC', case when v_sede is null then 'admin' else 'encargado_tienda' end, v_sede)
+      returning id into v_t;
+  end if;
+  if p_tok is not null then
+    -- 0181: el dueño del código también debe ser de la tienda destino (el confeccionista ya no recibe).
+    select id into v_op from empleados where cod = 'PCAL-OP-' || coalesce(v_sede, 'ADM');
+    if v_op is null then
+      insert into empleados (cod, nombre, iniciales, rol, sede_cod)
+        values ('PCAL-OP-' || coalesce(v_sede, 'ADM'), 'Prueba operador ' || coalesce(v_sede, 'ADM'), 'PO',
+                case when v_sede is null then 'admin' else 'encargado_tienda' end, v_sede)
+        returning id into v_op;
+    end if;
+    insert into codigo_operadores (sesion_uid, empleado_id, expira_en) values (v_t, v_op, now() + interval '5 minutes') returning token into v_tok;
+  end if;
+  perform pg_temp.como(v_t);
+  perform pipeline_calificar(p_id, p_acept, p_dest, p_obs, v_tok);
+  execute 'reset role';
+  perform set_config('request.jwt.claims', coalesce(v_prev, ''), true);
+  if coalesce(v_prev, '') <> '' then perform set_config('role', 'authenticated', true); end if;
+end $f$;
+
 do $$
 declare
   s_a uuid; s_b uuid; s_c uuid; s_d uuid;   -- sesiones (quien tiene el equipo abierto)
@@ -354,12 +388,12 @@ begin
 
   perform pg_temp.como(s_a);
   perform pipeline_enviar(p6, v_sede, v_token);
-  perform pipeline_calificar(p6, true, '', '', v_token);
+  perform pg_temp.calificar_destino(p6, true, '', '', v_token);
   perform pipeline_enviar(p7, v_sede);   -- sin token: actor = sesión
   perform pg_temp.dueno();
   select count(*) into v_n from envios_prendas e join prenda_pasada p on p.envio_id = e.id
     where p.id = p6 and e.responsable_id = op1;
-  select count(*) into v_n2 from prenda_calificacion where pasada_id = p6 and calificador_id = op1;
+  select count(*) into v_n2 from prenda_calificacion where pasada_id = p6 and calificador_id in (select id from empleados where cod like 'PCAL-OP-%');
   if v_n = 1 and v_n2 = 1 then
     r := r || '[ok] caso 12d: enviar y calificar con token atribuyen al dueño del código;';
   else
@@ -724,11 +758,11 @@ begin
 
       perform pg_temp.como(s_a);
       perform pipeline_enviar(q3, v_sede, v_tok);
-      perform pipeline_calificar(q3, true, '', '', v_tok);
+      perform pg_temp.calificar_destino(q3, true, '', '', v_tok);
       perform pg_temp.dueno();
       select count(*) into v_n from envios_prendas e join prenda_pasada p on p.envio_id = e.id
         where p.id = q3 and e.responsable_id = op1;
-      select count(*) into v_n2 from prenda_calificacion where pasada_id = q3 and calificador_id = op1;
+      select count(*) into v_n2 from prenda_calificacion where pasada_id = q3 and calificador_id in (select id from empleados where cod like 'PCAL-OP-%');
       if v_n = 1 and v_n2 = 1 then
         r := r || '[ok] caso 26f: enviar y calificar funcionan con la tabla cerrada y atribuyen al dueño del código;';
       else
@@ -811,10 +845,10 @@ begin
 
       -- 28c) calificar una prenda que no fue enviada
       perform pg_temp.como(s_a);
-      begin perform pipeline_calificar(w3, true, '', ''); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      begin perform pg_temp.calificar_destino(w3, true, '', ''); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
       -- 28d) calificar observada hacia 'listo'
       perform pipeline_enviar(w4, v_otra);
-      begin perform pipeline_calificar(w4, false, 'listo', 'x'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+      begin perform pg_temp.calificar_destino(w4, false, 'listo', 'x'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
       perform pg_temp.dueno();
       if v_err like 'TRANSICION:%' and (select etapa from prenda_pasada where id = w3) = 'listo'
          and not exists (select 1 from prenda_calificacion where pasada_id = w3) then

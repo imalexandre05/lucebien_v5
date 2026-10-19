@@ -35,6 +35,8 @@ type Item = {
    * almacén a las tres tiendas, que es justo lo que el perfil de sede quiere evitar.
    */
   neutralPerfil?: boolean;
+  /** La recepción en tienda no es del almacén (0181): roles de almacén no la ven. */
+  ocultoAlmacen?: boolean;
 };
 
 const NAV: { section: string; items: Item[] }[] = [
@@ -54,7 +56,7 @@ const NAV: { section: string; items: Item[] }[] = [
       // una sede 'pos' está escondido — la pantalla existía y no se podía alcanzar. El permiso
       // 'pipeline' ya está concedido a encargado_tienda y a los dos ventas_junior en
       // permisos_modulos; lo único que faltaba era la puerta.
-      { label: 'Envíos a tienda', href: '/pipeline/envios', icon: Truck, modulo: 'pipeline', neutralPerfil: true },
+      { label: 'Recepción en tienda', href: '/pipeline/envios', icon: Truck, modulo: 'pipeline', neutralPerfil: true, ocultoAlmacen: true },
       // INVENTARIO SALIÓ DEL MENÚ (18-oct-2026, decisión del dueño n.º 9): no tiene que ver con
       // este sistema y se conectará por API. Revierte la excepción del 21-ago. La ruta sigue viva.
       // Spec: docs/superpowers/specs/erp/2026-10-18-ocultar-pos-inventario-design.md
@@ -165,6 +167,7 @@ export function SidebarNav({
         // (Fase 3) — antes quedaba un título "Administración" o "Comercial" huérfano, sin ítems
         // debajo, para roles que no ven ninguno de sus módulos.
         const items = group.items.filter((it) => {
+          if (it.ocultoAlmacen && (rol === 'encargado_almacen' || rol === 'confeccionista')) return false;
           const candidatos = [it.modulo, ...(it.modulosAlternos ?? [])];
           return candidatos.some(
             (m) =>
