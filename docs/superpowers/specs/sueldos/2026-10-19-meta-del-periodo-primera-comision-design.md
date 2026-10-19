@@ -31,6 +31,10 @@
    inicio del período; si no hay, el de la configuración). `factorMeta` vale 1 salvo que se cambie; se mantiene
    porque ya descontaba la meta sugerida (default, anotado en `pendientes-negocio.md`).
 
+**Horas trabajadas** = las de la asistencia (incluidas las extra de un día con horario) **más** las horas
+fuera de contrato del período: las ventas de esos días también suman, así que sus horas cuentan para la meta.
+La meta se **redondea a céntimos antes de compararla**, para que lo que dice la pantalla sea lo que paga el motor.
+
 **Cumplida** si las ventas del período llegan a la meta (`>=`). Las ventas son las boletas sueltas más los
 montos vendidos de las cargas semanales. Sin monto en alguna carga semanal no se puede comparar y se
 mantiene la regla de la 0166 (se da por cumplida). Cumplida → 1.ª comisión = 2% × base; No cumplida → 0.
@@ -42,13 +46,18 @@ La 2.ª comisión (bono por meta semanal) **no cambia**: sigue usando las metas 
 Una tabla chica `sueldo_meta_periodo (empleado_id, desde, hasta, meta)`, una fila por persona y período.
 Mismo aislamiento que las ventas semanales: el administrador escribe; cada persona lee lo suyo; nadie
 lee lo de otro. Un período que cae en un pago cerrado no se cambia. `sueldo_entrada` entrega
-`metaPeriodoManual` **solo cuando hay fila** (así los borradores anteriores no quedan desactualizados).
+`metaPeriodoManual` **solo cuando hay fila**. Además entrega siempre `reglaMetaPeriodo: 2`: un borrador
+guardado antes de esta regla no la trae, y el cierre (0111) lo marca «desactualizado» y obliga a recalcularlo
+(si no, se cerraría con la meta vieja).
 
 ## 5. Pantalla («Ventas y metas» de la ficha)
 
 Tarjeta sobre la lista de semanas: «Meta del período: S/X» con la etiqueta «estimada» (o «puesta por ti»),
 «Ventas del período: S/Y» y el estado **Cumplida / No cumplida**. «Editar» abre un campo para poner otra
-meta; «Volver a la estimada» la quita. Solo lectura si el pago ya está cerrado.
+meta; «Volver a la estimada» la quita. Solo lectura si el pago ya está cerrado. **La meta solo se puede poner cuando el rango elegido arriba coincide
+con un pago de la persona**: la base la busca por el período exacto de la liquidación, y una meta guardada con
+otro rango se ignoraría en silencio. Si no coincide, la tarjeta pide elegir un pago. El estado Cumplida / No
+cumplida lo da el motor, no la pantalla.
 
 ## 6. Casos que debe cubrir la prueba
 
@@ -58,4 +67,5 @@ meta; «Volver a la estimada» la quita. Solo lectura si el pago ya está cerrad
 4. Meta semanal pactada en el contrato manda sobre la estimada.
 5. La 2.ª comisión no cambia con la meta puesta.
 6. Base: `sueldo_entrada` entrega `metaPeriodoManual` solo con fila.
-7. Aislamiento (la persona lee la suya, otro nada, nadie no-admin escribe), período cerrado y meta ≥ 0.
+7. Las horas fuera de contrato suman a la meta estimada; la meta se redondea a céntimos antes de comparar.
+8. Aislamiento (la persona lee la suya, otro nada, nadie no-admin escribe), período cerrado y meta ≥ 0.
