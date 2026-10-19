@@ -66,7 +66,8 @@ begin
     format('[{"cod":"EXT-P178","cantidad":3,"registrado_por_id":"%s"}]', e_comp)::jsonb);
   j  := evaluacion_componentes(e_comp, date '2026-10-01', date '2026-10-31');
   j2 := evaluacion_componentes(e_op,   date '2026-10-01', date '2026-10-31');
-  if (j->>'extrasPuntos')::numeric >= 6 and (j2->>'extrasPuntos')::numeric < (j->>'extrasPuntos')::numeric
+  -- el compañero tiene solo lo suyo (3 × 2 = 6); el operario, solo los 5000 × 2 del caso 1
+  if (j->>'extrasPuntos')::numeric = 6 and (j2->>'extrasPuntos')::numeric = 10000
   then r := r || '[ok] caso 4: los puntos del extra van a la persona que lo hizo;';
   else r := r || format('[FALLA] caso 4: comp=%s op=%s;', j->>'extrasPuntos', j2->>'extrasPuntos'); end if;
 
