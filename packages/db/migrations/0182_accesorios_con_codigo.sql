@@ -5,6 +5,29 @@
 -- Antes: la remesa y su validación se escribían directo con la sesión (sin código) y envios_acc_rw
 -- dejaba escribir a cualquiera con la sede. Ahora cada acción queda a nombre del dueño del código.
 
+-- El permiso se mide también sobre el DUEÑO DEL CÓDIGO (quien actúa), no solo sobre la sesión del equipo.
+create or replace function private.actor_recibe_en(p_actor uuid, p_sede text)
+  returns boolean language sql stable security definer set search_path = public, pg_temp
+as $$
+  select exists (
+    select 1 from empleados e
+     where e.id = p_actor and e.activo
+       and (e.rol in ('admin', 'dueno')
+            or (e.rol not in ('encargado_almacen', 'confeccionista')
+                and (e.sede_cod = p_sede
+                     or exists (select 1 from empleado_tiendas et where et.empleado_id = e.id and et.sede_cod = p_sede))))
+  );
+$$;
+revoke execute on function private.actor_recibe_en(uuid, text) from public, anon;
+
+create or replace function private.actor_es_almacen(p_actor uuid)
+  returns boolean language sql stable security definer set search_path = public, pg_temp
+as $$
+  select exists (select 1 from empleados e where e.id = p_actor and e.activo
+                   and e.rol in ('admin', 'dueno', 'encargado_almacen', 'confeccionista'));
+$$;
+revoke execute on function private.actor_es_almacen(uuid) from public, anon;
+
 create or replace function public.accesorios_enviar(p_sede text, p_obs text, p_items jsonb, p_operador uuid default null)
   returns uuid language plpgsql security definer set search_path = public, pg_temp
 as $$
@@ -15,6 +38,9 @@ begin
     raise exception 'PERMISO: solo el almacén envía remesas de accesorios';
   end if;
   v_actor := private.actor_pipeline(p_operador);
+  if not private.actor_es_almacen(v_actor) then
+    raise exception 'PERMISO: solo el almacén envía remesas de accesorios';
+  end if;
   if p_sede is null or not exists (select 1 from sedes where cod = p_sede) then
     raise exception 'La sede de destino % no existe', coalesce(p_sede, '(vacía)');
   end if;
@@ -47,6 +73,9 @@ begin
     raise exception 'Envío no encontrado';
   end if;
   v_actor := private.actor_pipeline(p_operador);
+  if not private.actor_recibe_en(v_actor, v_dest) then
+    raise exception 'PERMISO: solo la tienda destino valida esta remesa';
+  end if;
   if v_ok then raise exception 'TRANSICION: esa remesa ya fue validada'; end if;
   update envios_accesorios set validado_tienda = true, validado_por_id = v_actor, fecha_validado = now()
     where id = p_id;
