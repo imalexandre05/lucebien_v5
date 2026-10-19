@@ -110,6 +110,14 @@ begin
   if v_err = 'ok' and v_n = 2 then r := r || '[ok] caso 7b: desde la sede marca asistencia;';
   else r := r || format('[FALLA] caso 7b: err=%s n=%s;', v_err, v_n); end if;
 
+  -- 9) El tope es por extra del reporte: repetir el mismo código en varias filas no lo salta
+  v_err := pg_temp.crear(e_op, '09-10-26_P171A_M', v_a, array[e_comp],
+    (select jsonb_agg(jsonb_build_object('cod', 'EXT-P171', 'cantidad', 50, 'registrado_por_id', e_comp))
+       from generate_series(1, 3))::jsonb);
+  select count(*) into v_n from reportes where id = '09-10-26_P171A_M';
+  if v_err like 'CANTIDAD:%' and v_n = 0 then r := r || '[ok] caso 9: el mismo extra repetido en filas no pasa el tope;';
+  else r := r || format('[FALLA] caso 9: err=%s n=%s;', v_err, v_n); end if;
+
   -- 8) Firmas
   select count(*) into v_n from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname in ('reportes_crear', 'reportes_marcar_asistencia');

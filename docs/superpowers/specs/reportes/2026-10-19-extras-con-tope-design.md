@@ -50,4 +50,6 @@ Auditoría 1 · Zona crítica (cadena del sueldo, no-negociable 1) · Migración
 5. `registrado_por_id` de un trabajador del turno → se guarda a su nombre.
 6. Un trabajador inexistente o inactivo → `PERMISO:`.
 7. `reportes_marcar_asistencia` desde otra sede → `PERMISO:` y sin filas nuevas; desde la sede → funciona.
+9. El mismo extra de catálogo repetido en varias filas (3 × 50) → `CANTIDAD:`: el tope es por extra
+   del reporte, sumando sus filas.
 8. Sigue habiendo una sola firma de `reportes_crear` y ninguna de las dos es ejecutable por `anon`.
