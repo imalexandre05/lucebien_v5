@@ -2193,3 +2193,8 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - «Metas» = semanas de «Ventas y metas» iniciadas en los últimos 14 días con meta marcada (cumplida / no). Sólo administrador.
 - «Asistencia de hoy»: esperados = contratos vigentes con un turno hoy que ya empezó (hora de Perú); quien no llegó cuenta como «falta» para el semáforo. Solo el administrador lee los contratos de todos (RLS): para un encargado se cuenta únicamente lo registrado.
 - «Actividad reciente»: las últimas 7 entre reportes, incidencias y movimientos de prendas (6 por fuente, con límite en la consulta).
+## Horario acordado ese día (sesión 8A, 19-oct-2026) — [spec](superpowers/specs/asistencias/2026-10-19-horario-acordado-design.md)
+
+- **Decisión del dueño n.º 1:** «dentro de su horario» se mide por cantidad de horas; si el administrador y la persona acuerdan otro horario ese día, la tardanza se mide contra la hora acordada (columna `asistencias.inicio_acordado`, 0168).
+- **Respuesta del dueño (19-oct-2026):** el pasaje se mide contra el horario acordado del día cuando existe; si no, contra el contratado.
+- **Default inventado:** el motivo es opcional y de hasta 300 letras (igual que las justificaciones).

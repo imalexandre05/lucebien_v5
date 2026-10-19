@@ -16,6 +16,8 @@ export interface FilaAsistenciaRevisar {
   faltaJustificada?: boolean;
   entradaEstimada?: boolean;
   salidaEstimada?: boolean;
+  /** Hora de inicio acordada ese día (0168): la tardanza se mide contra ella. */
+  inicioAcordado?: string | null;
   /** El administrador ya lo miró (0165). Oculta tardanza, falta y hora estimada; nunca un dato que falta. */
   revisadaEn?: string | null;
 }
@@ -96,7 +98,10 @@ export function diasPorRevisar(p: {
     if (contratado && filas.some((f) => f.condicion === 'trabajado') && !filas.some((f) => f.tardanzaJustificada)) {
       const entradas = conHoras.map((f) => f.horaEntrada).filter((h): h is string => Boolean(h)).map(minutos);
       if (entradas.length > 0) {
-        const tarde = Math.min(...entradas) - contratado.inicioMin;
+        // Si algún tramo del día trae un inicio acordado (0168), manda sobre el horario contratado.
+        const acordado = filas.map((f) => f.inicioAcordado).find((h): h is string => Boolean(h));
+        const inicio = acordado ? minutos(acordado) : contratado.inicioMin;
+        const tarde = Math.min(...entradas) - inicio;
         if (tarde > p.toleranciaMinutos) {
           out.push({ fecha, tipo: 'tardanza', minutosTarde: Math.round(tarde) });
           continue;
