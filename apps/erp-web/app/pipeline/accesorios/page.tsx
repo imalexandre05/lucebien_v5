@@ -27,6 +27,8 @@ export default async function AccesoriosPage() {
         tiendas={tiendas.length ? tiendas : ['LB', 'ST', 'TR']}
         miSede={sesion?.usuario.sede ?? ''}
         compartido={compartido}
+        puedeValidar={sesion?.usuario.rol !== 'encargado_almacen' && sesion?.usuario.rol !== 'confeccionista'}
+        validaTodas={sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno'}
       />
     </div>
   );

@@ -27,12 +27,16 @@ export function AccesoriosCliente({
   tiendas,
   miSede,
   compartido = false,
+  puedeValidar = false,
+  validaTodas = false,
 }: {
   envios: EnvioAccesorios[];
   tipos: string[];
   tiendas: string[];
   miSede: string;
   compartido?: boolean;
+  puedeValidar?: boolean;
+  validaTodas?: boolean;
 }) {
   const { conOperador, operadorRechazado, renovar, chip, dialogo } = useOperador(compartido);
   const router = useRouter();
@@ -206,6 +210,8 @@ export function AccesoriosCliente({
                           {Boolean(e.obs) && <span className="block text-apoyo text-muted">{e.obs}</span>}
                         </TD>
                         <TD className="pr-5 text-right">
+                          {/* Solo la tienda destino (o el admin) valida; el almacén no ve el botón (0182). */}
+                          {validaTodas || (puedeValidar && e.sedeDestinoCod === miSede) ? (
                           <button
                             type="button"
                             disabled={pending}
@@ -214,6 +220,9 @@ export function AccesoriosCliente({
                           >
                             <Check className="h-3.5 w-3.5" strokeWidth={3} /> Confirmar recibido
                           </button>
+                          ) : (
+                            <span className="text-apoyo text-muted">Pendiente de la tienda</span>
+                          )}
                         </TD>
                       </TR>
                     ))}
