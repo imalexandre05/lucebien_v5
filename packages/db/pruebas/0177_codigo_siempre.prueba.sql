@@ -70,7 +70,7 @@ begin
   else r := r || '[FALLA] caso 6;'; end if;
 
   -- 7) validar código desde un equipo NO compartido ya no responde equipo_no_compartido
-  perform pg_temp.dueno();
+  perform pg_temp.como(e_per);
   v_msg := (pipeline_validar_codigo('P177-OP', '0000', 'equipo-que-no-existe')->>'motivo');
   if v_msg is distinct from 'equipo_no_compartido' then r := r || '[ok] caso 7: el código se evalúa en cualquier equipo;';
   else r := r || '[FALLA] caso 7;'; end if;
