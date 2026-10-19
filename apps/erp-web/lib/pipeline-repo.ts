@@ -61,15 +61,42 @@ const fromRow = (r: Row): PrendaPasada => ({
   fechaActualizado: r.fecha_actualizado,
 });
 
-// `soloActivas`: el tablero no necesita las ya recibidas; sin esto, con el historial creciendo el
-// tope de 1000 filas de PostgREST dejaba fuera prendas antiguas que siguen en proceso.
+// Las recibidas (estado final, sólo historial) crecen sin tope y ninguna pantalla las dibuja: se traen
+// únicamente las de los últimos RECIBIDAS_DIAS días (el KPI «ingresaron hoy» las puede necesitar) y el
+// total histórico sale de contarRecibidas(). Además se pagina de a 1000: PostgREST corta en 1000 filas
+// y una lista truncada «perdía» prendas sin avisar.
+const PAGINA_PASADAS = 1000;
+const RECIBIDAS_DIAS = 7;
+
+// `soloActivas`: el tablero omite también las recibidas recientes (solo las usan las métricas).
 export async function listarPasadas(opts: { soloActivas?: boolean } = {}): Promise<PrendaPasada[]> {
   const sb = getServerClient();
-  let q = sb.from('prenda_pasada').select('*');
-  if (opts.soloActivas) q = q.neq('etapa', 'recibido');
-  const { data, error } = await q.order('fecha_ingreso', { ascending: false });
+  const corte = new Date(Date.now() - RECIBIDAS_DIAS * 86400000).toISOString();
+  const filas: Row[] = [];
+  for (let desde = 0; ; desde += PAGINA_PASADAS) {
+    let q = sb.from('prenda_pasada').select('*');
+    q = opts.soloActivas ? q.neq('etapa', 'recibido') : q.or(`etapa.neq.recibido,fecha_actualizado.gte.${corte}`);
+    const { data, error } = await q
+      .order('fecha_ingreso', { ascending: false })
+      .order('id', { ascending: true })
+      .range(desde, desde + PAGINA_PASADAS - 1);
+    if (error) throw new Error(error.message);
+    const pagina = (data as Row[]) ?? [];
+    filas.push(...pagina);
+    if (pagina.length < PAGINA_PASADAS) break;
+  }
+  return filas.map(fromRow);
+}
+
+/** Total histórico de prendas recibidas (sólo el conteo, sin traer las filas). */
+export async function contarRecibidas(): Promise<number> {
+  const sb = getServerClient();
+  const { count, error } = await sb
+    .from('prenda_pasada')
+    .select('id', { count: 'exact', head: true })
+    .eq('etapa', 'recibido');
   if (error) throw new Error(error.message);
-  return (data as Row[]).map(fromRow);
+  return count ?? 0;
 }
 
 // Alta manual desde la pestaña Registrar: prendas que llegan al almacén sin pedido asociado.

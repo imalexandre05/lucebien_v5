@@ -1,7 +1,7 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const { getDB, hoyLocal } = require('../database/db');
-const SECRET = process.env.JWT_SECRET || 'lucebien-secret-2026-xK9mP3qR';
+const SECRET = require('../middleware/auth').JWT_SECRET;
 
 function auth(req,res,next){try{var h=req.headers['authorization'];if(!h||!h.startsWith('Bearer '))return res.status(401).json({error:'Token requerido'});req.user=jwt.verify(h.slice(7),SECRET);next();}catch(e){return res.status(401).json({error:'Token invalido'});}}
 function safe(fn){return function(req,res){try{fn(req,res);}catch(e){console.error('[Pipeline]',e.message);res.status(500).json({error:e.message});}};}

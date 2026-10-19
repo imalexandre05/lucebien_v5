@@ -1,3 +1,10 @@
+-- Guardia de base vacía/obsoleta: la 0093 retiró sueldo_entrada(uuid) a propósito; lo cubren las pruebas 0093 y posteriores
+select to_regprocedure('public.sueldo_entrada(uuid)') is null as omitir \gset
+\if :omitir
+do $$ begin raise exception 'RESULTADO 0073: OMITIDA — la 0093 retiró sueldo_entrada(uuid) a propósito; lo cubren las pruebas 0093 y posteriores'; end $$;
+\quit
+\endif
+
 -- Prueba de la migración 0073_sueldos_rpc.sql
 --
 -- Comprueba las tres RPC contra un caso real, incluida la carrera entre el cálculo y el cierre.

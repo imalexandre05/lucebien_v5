@@ -91,9 +91,11 @@ begin
            (disp, '961', eB, '2099-07-02T20:01:00-05:00', 961002, 'B');
 
   perform huellero_derivar_asistencia(eB, '2099-07-02');
-  select condicion, hora_entrada, hora_salida into v_cond, v_ent, v_sal
+  select condicion, hora_entrada, hora_salida, entrada_estimada into v_cond, v_ent, v_sal, v_ee
     from asistencias where empleado_id = eB and fecha = '2099-07-02';
-  if v_sal = '20:00' and v_ent is null and v_cond = 'sin_dato' then
+  -- Desde la 0097 (C-3) la entrada que falta se rellena con la del horario contratado y queda marcada
+  -- como estimada: el punto de este caso sigue siendo que el 20:01 no aparece en ningún lado.
+  if v_sal = '20:00' and ((v_ent is null and v_cond = 'sin_dato') or (v_ee and v_cond = 'trabajado')) then
     r := r || '4=ok ';
   else
     r := r || format('4-NO-DESCARTA-EL-SEGUNDO-TOQUE=FALLA(cond=%s ent=%s sal=%s) ', v_cond, v_ent, v_sal);

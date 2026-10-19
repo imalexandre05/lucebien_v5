@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { getSesion } from '../../../lib/auth';
-import { listarEmpleados } from '../../../lib/reportes-repo';
+import { listarEmpleadosActivos } from '../../../lib/reportes-repo';
 import { listarTiposIncidencia } from '../../../lib/incidencias-repo';
-import { leerConfigMap, CIERRE_TURNO_DEFAULT } from '../../../lib/config-repo';
+import { leerConfigMap, CIERRE_TURNO_DEFAULT, TOPE_EXTRA_DEFAULT } from '../../../lib/config-repo';
 import { PageHeader } from '../../../components/shell/page-header';
 import { NuevoReporteForm } from './form';
 import { hoyPeru } from '../../../lib/fechas';
@@ -16,7 +16,7 @@ export default async function NuevoReportePage() {
   // Mismo criterio que incidencias/sueldos. Quien no es admin queda fijo como encargado (0122, H14).
   const esAdmin = sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno';
   const [empleados, tiposIncidencia, config, compartido] = await Promise.all([
-    listarEmpleados(),
+    listarEmpleadosActivos(),
     listarTiposIncidencia(),
     leerConfigMap(),
     pedirCodigoEnPantalla().catch(() => false),
@@ -26,6 +26,8 @@ export default async function NuevoReportePage() {
     T: config.turno_t_cierre || CIERRE_TURNO_DEFAULT.T,
     C: config.turno_c_cierre || CIERRE_TURNO_DEFAULT.C,
   };
+  // Mismo tope que valida reportes_crear (0171); el default vive en config-catalogo.
+  const topeExtra = Math.max(1, Math.floor(Number(config.reporte_extra_cantidad_max)) || TOPE_EXTRA_DEFAULT);
 
   return (
     <div>
@@ -39,6 +41,7 @@ export default async function NuevoReportePage() {
         tiposIncidencia={tiposIncidencia}
         cierres={cierres}
         compartido={compartido}
+        topeExtra={topeExtra}
       />
     </div>
   );

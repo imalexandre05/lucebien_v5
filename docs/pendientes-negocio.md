@@ -2216,3 +2216,13 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - **Default inventado:** el contrato nuevo dura los mismos meses si el actual es de meses completos (1-oct a 31-oct → 1-nov a 30-nov); si no, los mismos días. Se edita antes de que empiece.
 - **Default inventado:** si al llegar el día el contrato anterior sigue «vigente» (falta cerrar su último pago), la renovación espera y se activa el día siguiente en que el anterior pase a «liquidado». Así nunca hay dos vigentes.
 - **Para producción:** la 0170 programa un cron diario (00:10 hora Perú) `sueldo-renovaciones-activar`. Confirmar que quedó creado tras aplicar la migración.
+
+## Extras del reporte con tope (auditoría 1, 19-oct-2026) — [spec](superpowers/specs/reportes/2026-10-19-extras-con-tope-design.md)
+
+- **Default inventado:** `reporte_extra_cantidad_max = 50` unidades por extra en un reporte (0171). Editable en `/configuracion` → Reportes de turno.
+- **Para decidir:** ¿un extra debe sumar puntos y «Bonos extras» antes de que el administrador evalúe el reporte? Hoy suma apenas se envía.
+- **Para decidir:** ¿se puede poner en el equipo del turno a alguien de otra sede? Hoy sí (la 0171 sólo exige que esté activo).
+## Escrituras directas del pipeline (auditoría 1, 19-oct-2026)
+
+- **Cerrado (0175):** envíos y calificaciones se escriben sólo por RPC.
+- **Para decidir:** `prenda_pasada.pasada_insert` sigue permitiendo dar de alta una prenda con un `insert` plano (sin código de operador ni historial). No se cerró porque `pedido_crear` y `pedido_devolver` (módulo comercial, fuera del menú) lo usan. Si el módulo comercial no vuelve, se puede retirar.

@@ -181,8 +181,9 @@ begin
   end if;
 
   -- ── 2) La lectura no cambió ─────────────────────────────────────────────────────────────────
-  --   puntos : admin 3 · almacén 3 · tienda A (r1, r3 por prenda de su sede) 2 ·
-  --            empleado (sede B: r2 por sede, r3 por ser suyo) 2 · tienda B (r2) 1
+  --   puntos : desde la 0174 (spec pipeline/2026-10-10-puntos-solo-propios, decisión 2 del dueño)
+  --            cada persona ve sólo los suyos y el admin todos: admin 3 · almacén (r1, r2) 2 ·
+  --            tienda A 0 · empleado (r3) 1 · tienda B 0
   --   historial: admin 2 · almacén 2 · tienda A 1 · tienda B 1 · empleado (sede B) 1
   v_fallas := '';
   for i in 1 .. 5 loop
@@ -191,7 +192,7 @@ begin
     perform pg_temp.como(v_uid);
     select count(*) into v_n  from pipeline_puntos  where detalle like 'P0115 r%';
     select count(*) into v_n2 from prenda_historial where obs like 'P0115 h%';
-    if v_n <> (array[3, 3, 2, 2, 1])[i] or v_n2 <> (array[2, 2, 1, 1, 1])[i] then
+    if v_n <> (array[3, 2, 0, 1, 0])[i] or v_n2 <> (array[2, 2, 1, 1, 1])[i] then
       v_fallas := v_fallas || format('%s ve puntos=%s historial=%s; ', v_nom, v_n, v_n2);
     end if;
   end loop;
