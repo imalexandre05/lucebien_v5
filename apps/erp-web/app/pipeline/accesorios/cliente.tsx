@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, Package, PackageCheck, Plus, Send, Trash2 } from 'lucide-react';
 import type { EnvioAccesorios } from '../../../lib/accesorios-repo';
 import { crearRemesaAccesorios, confirmarRemesaAccesorios } from './actions';
+import { useOperador } from '../operador';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
@@ -25,12 +26,15 @@ export function AccesoriosCliente({
   tipos,
   tiendas,
   miSede,
+  compartido = false,
 }: {
   envios: EnvioAccesorios[];
   tipos: string[];
   tiendas: string[];
   miSede: string;
+  compartido?: boolean;
 }) {
+  const { conOperador, operadorRechazado, renovar, chip, dialogo } = useOperador(compartido);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [sede, setSede] = useState(tiendas[0] ?? 'LB');
@@ -38,23 +42,35 @@ export function AccesoriosCliente({
   const [filas, setFilas] = useState<Fila[]>([{ tipo: '', cantidad: 1 }]);
   const [error, setError] = useState<string | null>(null);
 
+  // Si la base rechaza por código vencido o ausente, se vuelve a pedir; si salió bien, se renueva la ventana.
+  function resultado(err: string | null) {
+    setError(err);
+    if (err?.toLowerCase().includes('código') || err?.toLowerCase().includes('operador')) operadorRechazado();
+    else if (!err) renovar();
+  }
+
   function enviar() {
-    startTransition(async () => {
-      const err = await crearRemesaAccesorios({ sedeDestinoCod: sede, obs, items: filas });
-      setError(err);
-      if (!err) {
-        setFilas([{ tipo: '', cantidad: 1 }]);
-        setObs('');
-        router.refresh();
-      }
-    });
+    conOperador((token) =>
+      startTransition(async () => {
+        const err = await crearRemesaAccesorios({ sedeDestinoCod: sede, obs, items: filas }, token);
+        resultado(err);
+        if (!err) {
+          setFilas([{ tipo: '', cantidad: 1 }]);
+          setObs('');
+          router.refresh();
+        }
+      }),
+    );
   }
 
   function confirmar(id: string) {
-    startTransition(async () => {
-      await confirmarRemesaAccesorios(id);
-      router.refresh();
-    });
+    conOperador((token) =>
+      startTransition(async () => {
+        const err = await confirmarRemesaAccesorios(id, token);
+        resultado(err);
+        router.refresh();
+      }),
+    );
   }
 
   const pendientes = envios.filter((e) => !e.validadoTienda);
@@ -62,6 +78,8 @@ export function AccesoriosCliente({
 
   return (
     <div className="space-y-5">
+      {chip}
+      {dialogo}
       <Link
         href="/pipeline"
         className="inline-flex items-center gap-1.5 text-cuerpo text-muted transition-colors duration-150 hover:text-navy"
