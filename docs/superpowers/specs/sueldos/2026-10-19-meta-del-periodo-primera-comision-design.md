@@ -25,15 +25,19 @@
 
 **Meta del período** (`ventas.metaPeriodo`), en este orden:
 1. **La que puso el administrador** para ese período (`metaPeriodoManual`), si existe.
-2. Si el contrato (o la temporada vigente) fija una **meta semanal pactada**: la suma de las metas semanales,
-   como hoy (RN-10: lo pactado manda).
-3. Si no: **metaPorHora × horas trabajadas del período × factorMeta** (`metaPorHora` de la temporada vigente al
-   inicio del período; si no hay, el de la configuración). `factorMeta` vale 1 salvo que se cambie; se mantiene
-   porque ya descontaba la meta sugerida (default, anotado en `pendientes-negocio.md`).
+2. Si no, **semana por semana**: si el contrato (o la temporada de esa semana) fija una **meta semanal
+   pactada**, esa semana vale su meta pactada (RN-10: lo pactado manda); si no, vale lo estimado de **esa
+   semana**: la suma, día por día, de `horas trabajadas del día × metaPorHora × factorMeta`, con el
+   `metaPorHora` de la **temporada vigente ese día** (si no hay, el de la configuración). Así una temporada
+   que cubre solo parte del período se **prorratea por los días** de cada temporada. La meta del período es
+   la suma de las semanas. `factorMeta` vale 1 salvo que se cambie (default, anotado en `pendientes-negocio.md`).
 
 **Horas trabajadas** = las de la asistencia (incluidas las extra de un día con horario) **más** las horas
 fuera de contrato del período: las ventas de esos días también suman, así que sus horas cuentan para la meta.
 La meta se **redondea a céntimos antes de compararla**, para que lo que dice la pantalla sea lo que paga el motor.
+
+**Sin horas trabajadas** en el período (cero horas, contando las fuera de contrato) **la 1.ª comisión no
+aplica**: no se marca Cumplida ni se paga (`ventas.primeraComisionAplica = false`; la pantalla dice «No aplica»).
 
 **Cumplida** si las ventas del período llegan a la meta (`>=`). Las ventas son las boletas sueltas más los
 montos vendidos de las cargas semanales. Sin monto en alguna carga semanal no se puede comparar y se
@@ -67,5 +71,6 @@ cumplida lo da el motor, no la pantalla.
 4. Meta semanal pactada en el contrato manda sobre la estimada.
 5. La 2.ª comisión no cambia con la meta puesta.
 6. Base: `sueldo_entrada` entrega `metaPeriodoManual` solo con fila.
-7. Las horas fuera de contrato suman a la meta estimada; la meta se redondea a céntimos antes de comparar.
-8. Aislamiento (la persona lee la suya, otro nada, nadie no-admin escribe), período cerrado y meta ≥ 0.
+7. Sin horas trabajadas la 1.ª comisión no aplica (no Cumplida, 0). Una temporada que cubre parte del período prorratea la meta por días; una meta pactada de una semana vale solo para esa semana.
+8. Las horas fuera de contrato suman a la meta estimada; la meta se redondea a céntimos antes de comparar.
+9. Aislamiento (la persona lee la suya, otro nada, nadie no-admin escribe), período cerrado y meta ≥ 0.

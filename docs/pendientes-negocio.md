@@ -2189,5 +2189,6 @@ Decisiones del dueño n.º 6, 7, 5, 4 y 8. **Defaults inventados, a confirmar:**
 - **Cambio de cifras:** los casos dorados de `sueldos.test.ts` pasaron de meta del período 7.500 (horas contratadas) a 8.181,06 (horas trabajadas); `metaSemanalFija` ahora solo mueve el bono semanal, no la comisión.
 - **Se mantiene (0166):** si alguna carga semanal no trae el monto vendido, no se puede comparar y la meta se da por cumplida; conviene que la carga semanal traiga siempre el monto.
 - **Aviso al desplegar:** los borradores de liquidación anteriores quedan con otra meta del período y conviene recalcularlos.
-- **Default inventado:** las horas fuera de contrato del período también cuentan como horas trabajadas para la meta estimada (sus ventas suman). Confirmar con el dueño.
-- **Para revisar (no resuelto):** con cero horas trabajadas (todas las faltas justificadas, o días aún por declarar en una vista previa) la meta estimada es 0 y la comisión se paga si hay boletas; y una temporada con meta semanal pactada que cubre solo parte del período hace que todo el período use la suma de las semanales.
+- **Decidido por el dueño (19-oct-2026):** las horas fuera de contrato SÍ cuentan para la meta estimada.
+- **Decidido por el dueño (19-oct-2026):** con 0 horas trabajadas la 1.ª comisión «no aplica» (no se marca Cumplida). Una temporada que cubre parte del período prorratea la meta por los días de cada temporada; una meta semanal pactada solo vale para su semana.
+- **Para revisar (no resuelto):** el trigger de la meta solo mira la fecha final del período.
