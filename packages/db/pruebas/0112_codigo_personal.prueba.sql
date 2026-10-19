@@ -120,6 +120,9 @@ begin
   -- los casos 1b y 8 fallarían por montaje, no por la migración). Todo se descarta al final.
   insert into config (clave, valor) values ('pts_recepcion', '1')
     on conflict (clave) do update set valor = '1';
+  -- Esta prueba cubre el modo usuario + PIN; desde la 0179 el modo por defecto es 'cod'.
+  insert into config (clave, valor) values ('codigo_modo', 'pin') on conflict (clave) do update set valor = 'pin';
+  insert into config (clave, valor) values ('codigo_exigir_admin', 'false') on conflict (clave) do update set valor = 'false';
   insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-5', 'Terno completo', v_sede, 'recepcion') returning id into p5;
   insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-6', 'Chaqueta', v_sede, 'listo') returning id into p6;
   insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P0112-7', 'Chaqueta', v_sede, 'listo') returning id into p7;
