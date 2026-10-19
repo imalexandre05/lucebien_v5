@@ -16,6 +16,7 @@ import {
   calificarPasada,
   registrarPasada,
   validarCodigoOperador,
+  modoCodigoPersonal,
   cerrarOperadorCodigo,
   type ValidacionCodigo,
 } from '../../lib/pipeline-repo';
@@ -30,11 +31,19 @@ import { deviceIdActual, operadorParaAccion } from '../../lib/pipeline-operador'
 
 // Única puerta del código: usuario + PIN los valida la base, que cuenta los intentos y emite el
 // token. El PIN no se guarda ni se registra en ningún otro lado.
+//
+// Modo 'cod' (0179, default): `pin` trae el código de empleado y el usuario va vacío. Modo 'pin':
+// usuario + PIN como antes (la base rechaza y cuenta el intento si falta alguno).
 export async function validarCodigo(usuario: string, pin: string): Promise<ValidacionCodigo> {
   const u = (usuario ?? '').trim();
   const p = (pin ?? '').trim();
-  if (!u || !p) return { ok: false };
+  if (!p) return { ok: false };
   return validarCodigoOperador(u, p, (await deviceIdActual()) || null);
+}
+
+// Modo del código personal para la pantalla (cod = una sola casilla «Tu código»).
+export async function modoCodigo(): Promise<'cod' | 'pin'> {
+  return modoCodigoPersonal();
 }
 
 // Los errores `CODIGO:` (token vencido, ajeno o ausente) se devuelven COMO VALOR (string), no como

@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState, useSyncExternalStore, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, useTransition } from 'react';
 import { LogOut, UserRound } from 'lucide-react';
 import { Modal } from '../../components/ui/modal';
 import { Button } from '../../components/ui/button';
-import { Input, Label, Aviso } from '../../components/ui/form';
+import { Input, Label, Aviso, campoCls } from '../../components/ui/form';
+import { cn } from '../../lib/cn';
 import {
   cambiarOperador,
   formatoCuentaRegresiva,
@@ -14,7 +15,7 @@ import {
   registrarActividad,
   type OperadorActivo,
 } from '../../lib/operador-activo';
-import { cerrarOperador, validarCodigo } from './actions';
+import { cerrarOperador, modoCodigo, validarCodigo } from './actions';
 
 // Código personal en equipos compartidos (spec codigo-personal §5; operador-pc-compartida R3/R4).
 //
@@ -38,8 +39,31 @@ function suscribir(f: () => void) {
   };
 }
 
+// Modo del código (0179): 'cod' = una sola casilla «Tu código» con el código de empleado (default);
+// 'pin' = diálogo con usuario + PIN. Se pregunta una vez a la base y se recuerda mientras viva la
+// pestaña. Mientras llega la respuesta se muestra el modo por defecto.
+let modoCache: 'cod' | 'pin' | null = null;
+function useModo(activo: boolean): 'cod' | 'pin' {
+  const [modo, setModo] = useState<'cod' | 'pin'>(modoCache ?? 'cod');
+  useEffect(() => {
+    if (!activo || modoCache) return;
+    let vivo = true;
+    modoCodigo()
+      .then((m) => {
+        modoCache = m;
+        if (vivo) setModo(m);
+      })
+      .catch(() => undefined);
+    return () => {
+      vivo = false;
+    };
+  }, [activo]);
+  return modo;
+}
+
 export function useOperador(compartido: boolean) {
   const operador = useSyncExternalStore(suscribir, () => almacen, () => null);
+  const modo = useModo(compartido);
   const [pendiente, setPendiente] = useState<((token?: string) => void) | null>(null);
 
   // Al cumplirse la ventana sin actividad, el chip vuelve a «Ingresar código».
@@ -78,28 +102,148 @@ export function useOperador(compartido: boolean) {
   // Si el servidor rechaza por operador vencido (p. ej. la base lo venció antes que la pestaña).
   const operadorRechazado = useCallback(() => fijar(null), []);
 
-  const chip = compartido ? (
+  const alValidar = (op: OperadorActivo) => {
+    fijar(op);
+    const accion = pendiente;
+    setPendiente(null);
+    accion?.(op.token);
+  };
+
+  const chip = !compartido ? null : modo === 'cod' ? (
+    <PanelCodigo operador={operador} esperando={pendiente !== null} onValidado={alValidar} onCambiar={cambiar} />
+  ) : (
     <ChipOperador
       operador={operador}
       onIngresar={() => setPendiente(() => () => undefined)}
       onCambiar={cambiar}
     />
-  ) : null;
+  );
 
-  const dialogo = compartido ? (
+  const dialogo = compartido && modo === 'pin' ? (
     <DialogoCodigo
       abierto={pendiente !== null}
       onCerrar={() => setPendiente(null)}
-      onValidado={(op) => {
-        fijar(op);
-        const accion = pendiente;
-        setPendiente(null);
-        accion?.(op.token);
-      }}
+      onValidado={alValidar}
     />
   ) : null;
 
   return { conOperador, operadorRechazado, renovar, chip, dialogo, operador };
+}
+
+// Modo 'cod': la casilla «Tu código» está SIEMPRE a la vista, arriba. Sin operador pide el código de
+// empleado; con operador muestra quién opera, la cuenta regresiva y «Cambiar operador». El código no
+// es secreto (decisión del dueño), pero igual se enmascara y no se guarda en ningún lado: sólo se
+// conserva el token que devuelve la base.
+function PanelCodigo({
+  operador,
+  esperando,
+  onValidado,
+  onCambiar,
+}: {
+  operador: OperadorActivo | null;
+  esperando: boolean;
+  onValidado: (op: OperadorActivo) => void;
+  onCambiar: () => void;
+}) {
+  const [codigo, setCodigo] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const [ahora, setAhora] = useState(() => Date.now());
+  const campo = useRef<HTMLInputElement>(null);
+
+  // Un tic por segundo sólo mientras hay alguien operando.
+  useEffect(() => {
+    if (!operador) return;
+    setAhora(Date.now());
+    const t = setInterval(() => setAhora(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [operador]);
+
+  // Sin operador la casilla toma el foco; también cuando una acción se quedó esperando el código.
+  useEffect(() => {
+    if (!operador) campo.current?.focus();
+  }, [operador, esperando]);
+
+  const entrar = () =>
+    start(async () => {
+      setError(null);
+      try {
+        const r = await validarCodigo('', codigo);
+        if (r.ok) {
+          setCodigo('');
+          onValidado(nuevoOperador({ token: r.token, nombre: r.nombre, ventanaMin: r.ventanaMin }, Date.now()));
+          return;
+        }
+        setCodigo('');
+        setError(mensajeFallo(r));
+        campo.current?.focus();
+      } catch {
+        setError('No se pudo validar el código. Inténtalo de nuevo.');
+      }
+    });
+
+  if (operador) {
+    return (
+      <div
+        role="status"
+        className="mb-3 flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-r-chico border border-line bg-paper px-3 py-1.5 text-apoyo"
+      >
+        <UserRound className="h-4 w-4 text-muted" strokeWidth={2} />
+        <span className="text-muted">Operando:</span>
+        <span className="font-medium text-navy">{operador.nombre}</span>
+        <span aria-hidden className="text-muted">·</span>
+        <span className="tabular-nums text-muted">se cierra en {formatoCuentaRegresiva(msParaExpirar(operador, ahora))}</span>
+        <button
+          type="button"
+          onClick={onCambiar}
+          className="toque inline-flex items-center gap-1 px-1 font-medium text-navy underline-offset-2 hover:text-gold hover:underline"
+        >
+          <LogOut className="h-4 w-4" strokeWidth={2} /> Cambiar operador
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (codigo.trim() && !pending) entrar();
+      }}
+      className="mb-3 shrink-0 rounded-r-chico border border-line bg-paper px-3 py-2"
+    >
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <UserRound className="h-4 w-4 text-muted" strokeWidth={2} />
+        <Label htmlFor="codigo-empleado" className="mb-0">
+          Tu código
+        </Label>
+        <input
+          id="codigo-empleado"
+          ref={campo}
+          type="password"
+          inputMode="numeric"
+          autoComplete="new-password"
+          data-lpignore="true"
+          spellCheck={false}
+          maxLength={12}
+          placeholder="4 dígitos"
+          value={codigo}
+          onChange={(e) => setCodigo(e.target.value.replace(/\s/g, ''))}
+          aria-invalid={error ? true : undefined}
+          className={cn(campoCls, 'w-32 tabular-nums')}
+        />
+        <Button type="submit" pending={pending} disabled={!codigo.trim()}>
+          Entrar
+        </Button>
+        {esperando && !error && <span className="text-apoyo text-muted">Ingresa tu código para continuar.</span>}
+      </div>
+      {error && (
+        <div className="mt-2">
+          <Aviso tono="error">{error}</Aviso>
+        </div>
+      )}
+    </form>
+  );
 }
 
 function ChipOperador({
@@ -253,11 +397,14 @@ function DialogoCodigo({
 }
 
 function mensajeFallo(r: { bloqueadoMin?: number; intentosRestantes?: number; motivo?: string }): string {
+  if (r.motivo === 'codigo_repetido') {
+    return 'Ese código lo tienen dos personas activas. Avisa al administrador para que lo corrija.';
+  }
   if (r.motivo === 'equipo_no_compartido') {
     return 'Este equipo no está marcado como compartido. Pídele al administrador que lo active en Dispositivos.';
   }
   if (r.bloqueadoMin) {
-    return `Demasiados intentos. Espera ${r.bloqueadoMin} ${r.bloqueadoMin === 1 ? 'minuto' : 'minutos'}.`;
+    return `Demasiados intentos, espera ${r.bloqueadoMin} ${r.bloqueadoMin === 1 ? 'minuto' : 'minutos'}.`;
   }
   const quedan =
     typeof r.intentosRestantes === 'number'
@@ -268,5 +415,6 @@ function mensajeFallo(r: { bloqueadoMin?: number; intentosRestantes?: number; mo
   if (r.motivo === 'sin_pin') {
     return `Esa persona aún no definió su PIN. Puede hacerlo desde su sesión, en «Mi desempeño».${quedan}`;
   }
+  if (r.motivo === 'codigo_no_encontrado') return `Código no encontrado.${quedan}`;
   return `Usuario o PIN incorrectos.${quedan}`;
 }
