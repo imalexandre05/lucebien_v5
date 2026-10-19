@@ -93,7 +93,14 @@ begin
       returning id into v_t;
   end if;
   if p_tok is not null then
-    select empleado_id into v_op from codigo_operadores where token = p_tok;
+    -- 0181: el dueño del código también debe ser de la tienda destino (el confeccionista ya no recibe).
+    select id into v_op from empleados where cod = 'PCAL-OP-' || coalesce(v_sede, 'ADM');
+    if v_op is null then
+      insert into empleados (cod, nombre, iniciales, rol, sede_cod)
+        values ('PCAL-OP-' || coalesce(v_sede, 'ADM'), 'Prueba operador ' || coalesce(v_sede, 'ADM'), 'PO',
+                case when v_sede is null then 'admin' else 'encargado_tienda' end, v_sede)
+        returning id into v_op;
+    end if;
     insert into codigo_operadores (sesion_uid, empleado_id, expira_en) values (v_t, v_op, now() + interval '5 minutes') returning token into v_tok;
   end if;
   perform pg_temp.como(v_t);
@@ -383,7 +390,7 @@ begin
   perform pg_temp.dueno();
   select count(*) into v_n from envios_prendas e join prenda_pasada p on p.envio_id = e.id
     where p.id = p6 and e.responsable_id = op1;
-  select count(*) into v_n2 from prenda_calificacion where pasada_id = p6 and calificador_id = op1;
+  select count(*) into v_n2 from prenda_calificacion where pasada_id = p6 and calificador_id in (select id from empleados where cod like 'PCAL-OP-%');
   if v_n = 1 and v_n2 = 1 then
     r := r || '[ok] caso 12d: enviar y calificar con token atribuyen al dueño del código;';
   else
@@ -752,7 +759,7 @@ begin
       perform pg_temp.dueno();
       select count(*) into v_n from envios_prendas e join prenda_pasada p on p.envio_id = e.id
         where p.id = q3 and e.responsable_id = op1;
-      select count(*) into v_n2 from prenda_calificacion where pasada_id = q3 and calificador_id = op1;
+      select count(*) into v_n2 from prenda_calificacion where pasada_id = q3 and calificador_id in (select id from empleados where cod like 'PCAL-OP-%');
       if v_n = 1 and v_n2 = 1 then
         r := r || '[ok] caso 26f: enviar y calificar funcionan con la tabla cerrada y atribuyen al dueño del código;';
       else

@@ -24,7 +24,7 @@ begin execute p_sql; return 'ok'; exception when others then return sqlerrm; end
 do $$
 declare
   r text := '';
-  e_alm uuid; e_a uuid; e_b uuid; e_adm uuid; p1 uuid; p2 uuid; p3 uuid; v_n int; v_err text; v_etapa text; v_cal uuid;
+  e_alm uuid; e_a uuid; e_b uuid; e_adm uuid; p1 uuid; p2 uuid; p3 uuid; v_n int; v_err text; v_etapa text; v_cal uuid; v_tok uuid;
 begin
   perform pg_temp.dueno();
   insert into sedes (cod, nombre) values ('P181A', 'P0181 Tienda A'), ('P181B', 'P0181 Tienda B'), ('P181X', 'P0181 Almacen');
@@ -95,6 +95,24 @@ begin
   perform pg_temp.dueno();
   if v_err = 'ok' then r := r || '[ok] caso 5: admin califica;';
   else r := r || format('[FALLA] caso 5: %s;', v_err); end if;
+
+  -- 6) el permiso mide también al dueño del código: alguien de otra tienda o de almacén no recibe con su código
+  insert into prenda_pasada (codigo, tipo, sede_origen_cod, etapa) values ('P181-5','Saco','P181X','listo') returning id into p1;
+  perform pg_temp.como(e_adm);
+  perform pipeline_enviar(p1, 'P181A', null);
+  perform pg_temp.dueno();
+  insert into codigo_operadores (sesion_uid, empleado_id, expira_en) values (e_a, e_b, now() + interval '5 minutes') returning token into v_tok;
+  perform pg_temp.como(e_a);
+  v_err := pg_temp.mensaje(format('select pipeline_calificar(%L, true, %L, %L, %L)', p1, '', '', v_tok));
+  perform pg_temp.dueno();
+  if v_err like 'PERMISO:%' then r := r || '[ok] caso 6a: el código de otra tienda no recibe en un equipo ajeno;';
+  else r := r || format('[FALLA] caso 6a: %s;', v_err); end if;
+  insert into codigo_operadores (sesion_uid, empleado_id, expira_en) values (e_a, e_alm, now() + interval '5 minutes') returning token into v_tok;
+  perform pg_temp.como(e_a);
+  v_err := pg_temp.mensaje(format('select pipeline_calificar(%L, true, %L, %L, %L)', p1, '', '', v_tok));
+  perform pg_temp.dueno();
+  if v_err like 'PERMISO:%' then r := r || '[ok] caso 6b: el código de almacén no recibe;';
+  else r := r || format('[FALLA] caso 6b: %s;', v_err); end if;
 
   raise exception 'RESULTADO 0181 --> %', r;
 end $$;

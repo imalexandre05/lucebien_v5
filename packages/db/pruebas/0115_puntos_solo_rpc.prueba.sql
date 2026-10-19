@@ -337,7 +337,7 @@ begin
   select count(*) into v_n from prenda_historial
     where pasada_id = pl and etapa_anterior = 'listo' and etapa_nueva = 'enviado' and registrado_por = e_alm;
   select count(*) into v_n2 from prenda_historial
-    where pasada_id = pl and etapa_nueva = 'recibido' and registrado_por is not null;  -- 0181: lo registra la tienda destino
+    where pasada_id = pl and etapa_nueva = 'recibido' and registrado_por = (select id from empleados where cod = 'PCAL-' || v_b);  -- 0181: lo registra la tienda destino
   if v_n = 1 and v_n2 = 1 then
     r := r || '[ok] caso 4f: pipeline_enviar y pipeline_calificar dejan su historial;';
   else
@@ -595,7 +595,7 @@ begin
       perform pg_temp.calificar_destino(w3, true, '', '');
       perform pg_temp.dueno();
       select count(*) into v_n from prenda_pasada where id = w3 and envio_id is not null;
-      select count(*) into v_n2 from prenda_calificacion where pasada_id = w3 and calificador_id is not null;  -- 0181: califica la tienda destino
+      select count(*) into v_n2 from prenda_calificacion where pasada_id = w3 and calificador_id = (select id from empleados where cod = 'PCAL-' || v_a);  -- 0181: califica la tienda destino
       if v_n = 1 and v_n2 = 1 then
         r := r || '[ok] caso 11e: enviar y calificar funcionan con las tablas cerradas;';
       else
