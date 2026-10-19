@@ -94,6 +94,7 @@ export function NuevoReporteForm({
   tiposIncidencia,
   cierres,
   compartido = false,
+  topeExtra,
 }: {
   sede: string;
   fecha: string;
@@ -103,6 +104,7 @@ export function NuevoReporteForm({
   tiposIncidencia: TipoIncidencia[];
   cierres: Record<TurnoReporte, string>;
   compartido?: boolean;
+  topeExtra: number;
 }) {
   const router = useRouter();
   // En un equipo compartido el reporte se envía con el código del encargado (spec envio-reporte-con-codigo).
@@ -282,6 +284,18 @@ export function NuevoReporteForm({
     () => new Set([...trabajadores, ...encargadoSel]).size,
     [trabajadores, encargadoSel],
   );
+  // «¿Quién lo hizo?» ofrece sólo al equipo del turno: reportes_crear rechaza un extra a nombre de
+  // alguien que no está en él (0171).
+  // En un equipo compartido (sin admin) el encargado es quien pone su código, no la cuenta abierta:
+  // se ofrece sólo a los colaboradores, y dejarlo vacío lo deja a nombre de quien envía.
+  const equipoIds = useMemo(
+    () => new Set([...trabajadores, ...(compartido && !esAdmin ? [] : encargadoSel)]),
+    [trabajadores, encargadoSel, compartido, esAdmin],
+  );
+  const equipoDelTurno = useMemo(
+    () => empleadosOrden.filter((emp) => equipoIds.has(emp.id)),
+    [empleadosOrden, equipoIds],
+  );
 
   // Tarea 5: cuenta regresiva hasta el cierre del turno elegido. Solo informativa — el cierre
   // real lo hace el cron server-side (reportes_auto_cierre); esto avisa antes de que llegue.
@@ -346,12 +360,12 @@ export function NuevoReporteForm({
   function agregarCatalogo(c: ExtraCatalogo) {
     setExtras((p) => {
       const i = p.findIndex((e) => e.cod === c.cod);
-      if (i >= 0) return p.map((e, j) => (j === i ? { ...e, cantidad: e.cantidad + 1 } : e));
+      if (i >= 0) return p.map((e, j) => (j === i ? { ...e, cantidad: Math.min(topeExtra, e.cantidad + 1) } : e));
       return [...p, { cod: c.cod, nombre: c.nombre, tipoAct: c.tipoAct as Extra['tipoAct'], cantidad: 1, registradoPorId: '' }];
     });
   }
   function cambiarCantidadExtra(i: number, delta: number) {
-    setExtras((p) => p.map((e, j) => (j === i ? { ...e, cantidad: Math.max(1, e.cantidad + delta) } : e)));
+    setExtras((p) => p.map((e, j) => (j === i ? { ...e, cantidad: Math.min(topeExtra, Math.max(1, e.cantidad + delta)) } : e)));
   }
   function quitarExtra(i: number) {
     setExtras((p) => p.filter((_, j) => j !== i));
@@ -401,7 +415,8 @@ export function NuevoReporteForm({
             nombre: e.nombre,
             cantidad: e.cantidad || 1,
             detalle: '',
-            registrado_por_id: e.registradoPorId || null,
+            // Quien salió del equipo (o vino en un borrador viejo) no se manda: la pantalla ya no lo muestra.
+            registrado_por_id: equipoIds.has(e.registradoPorId) ? e.registradoPorId : null,
           })),
         incidencias: incidencias
           .filter((i) => i.tipo)
@@ -876,13 +891,13 @@ export function NuevoReporteForm({
                         </button>
                       </div>
                       <select
-                        value={e.registradoPorId}
+                        value={equipoIds.has(e.registradoPorId) ? e.registradoPorId : ''}
                         onChange={(ev) => setExtras((p) => p.map((x, j) => (j === i ? { ...x, registradoPorId: ev.target.value } : x)))}
                         aria-label="Quién lo hizo"
                         className={cn(fieldCls, 'w-full sm:w-auto sm:flex-1')}
                       >
                         <option value="">¿Quién lo hizo?…</option>
-                        {empleadosOrden.map((emp) => (
+                        {equipoDelTurno.map((emp) => (
                           <option key={emp.id} value={emp.id}>
                             {emp.nombre}
                           </option>

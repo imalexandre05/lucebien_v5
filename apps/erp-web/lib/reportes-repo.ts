@@ -309,6 +309,16 @@ export async function listarEmpleados(): Promise<EmpPicker[]> {
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
+// Sólo las personas activas: reportes_crear rechaza un colaborador suspendido (0171). Cruza el
+// directorio con app_directorio_activos(), que devuelve id y nombre de los activos.
+export async function listarEmpleadosActivos(): Promise<EmpPicker[]> {
+  const sb = getServerClient();
+  const [todos, activos] = await Promise.all([listarEmpleados(), sb.rpc('app_directorio_activos')]);
+  if (activos.error) throw new Error(activos.error.message);
+  const ids = new Set(((activos.data as { id: string }[]) ?? []).map((d) => String(d.id)));
+  return todos.filter((e) => ids.has(e.id));
+}
+
 // ¿Ya existe un reporte para esta sede/fecha/turno? Devuelve id + estadoEnvio (para enrutar a
 // evaluación, como el viejo: si el turno ya se envió, la pantalla pasa a Evaluación) — el
 // estadoEnvio deja distinguir en la UI un envío real de uno auto-cerrado (Fase 4 tarea 4).

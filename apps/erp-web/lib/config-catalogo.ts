@@ -286,6 +286,17 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
 
   // ── Reportes de turno (Fase 4, migración 0052 — pendiente de aplicar) ──────────────────────
   {
+    clave: 'reporte_extra_cantidad_max',
+    seccion: SECCION_REPORTES,
+    etiqueta: 'Máximo de unidades por extra en un reporte',
+    descripcion:
+      'Cuántas veces se puede contar un mismo extra en un reporte de turno. La base rechaza el reporte si se pasa (migración 0171). Default provisional, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '50',
+    min: 1,
+    step: 1,
+  },
+  {
     clave: 'turno_m_cierre',
     seccion: SECCION_REPORTES,
     etiqueta: 'Hora de cierre — turno Mañana',

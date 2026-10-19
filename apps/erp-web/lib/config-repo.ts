@@ -24,6 +24,9 @@ export const ordenarSecciones = _ordenarSecciones;
 // no es una hora confirmada por el dueño, ver docs/pendientes-negocio.md.
 export const CIERRE_TURNO_DEFAULT = { M: '15:00', T: '23:00', C: '23:00' } as const;
 
+// Tope de unidades por extra en un reporte (0171). Mismo default provisional que la migración.
+export const TOPE_EXTRA_DEFAULT = 50;
+
 // select('*') a propósito (lección de la Fase 4): las columnas tipo/descripcion/seccion/opciones
 // son de la migración 0058, que puede no estar aplicada — pedirlas por nombre en el select
 // tumbaría la página entera con un 500 si no existen. Con '*' simplemente no vienen esas claves.
