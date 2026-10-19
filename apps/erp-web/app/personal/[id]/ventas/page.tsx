@@ -11,11 +11,11 @@ import {
   listarVentas,
   obtenerAcuerdo,
 } from '../../../../lib/sueldos-repo';
-import { listarVentasSemana } from '../../../../lib/ventas-semana-repo';
+import { leerMetaPeriodo, listarVentasSemana } from '../../../../lib/ventas-semana-repo';
 import { Card } from '../../../../components/ui/card';
 import { EmptyState } from '../../../../components/ui/empty-state';
 import { SeccionHeader } from '../../../../components/colaboradores/seccion-header';
-import { VentasSemanaCliente, type FilaSemana } from './cliente';
+import { MetaPeriodoTarjeta, VentasSemanaCliente, type FilaSemana } from './cliente';
 
 // Ventas y metas por semana (decisión del dueño n.º 8, migración 0166). Puente temporal hasta
 // conectar el punto de venta: en vez de boleta por boleta, una fila por semana del período.
@@ -58,7 +58,7 @@ export default async function VentasColaboradorPage(
   }
 
   const periodo = leerPeriodo(searchParams);
-  const { acuerdoId } = await pagosDeLaPersona(persona.id);
+  const { acuerdoId, pagos } = await pagosDeLaPersona(persona.id);
   const acuerdo = acuerdoId ? await obtenerAcuerdo(acuerdoId) : null;
 
   if (!acuerdo) {
@@ -97,6 +97,11 @@ export default async function VentasColaboradorPage(
     Promise.all(tramos.map((t) => estadoFechaMovimiento(persona.id, t.desde).catch(() => null))),
     calcularPreview(acuerdo.id, desde, hasta).catch(() => null),
   ]);
+  // La meta del período: la que puso el administrador, o la estimada que calcula el motor.
+  const [metaPuesta, estadoPeriodo] = await Promise.all([
+    leerMetaPeriodo(persona.id, desde, hasta),
+    estadoFechaMovimiento(persona.id, hasta).catch(() => null),
+  ]);
 
   const parametros = preview ? resolverParametros(preview.entrada.parametros) : null;
   const filas: FilaSemana[] = tramos.map((t, i) => {
@@ -125,6 +130,19 @@ export default async function VentasColaboradorPage(
       <SeccionHeader
         seccion="ventas"
         nota={`Se muestran las semanas de ${rangoCorto(desde, hasta)}. Lo que ves a la derecha es una referencia: el pago lo calcula al cerrar.`}
+      />
+      <MetaPeriodoTarjeta
+        empleadoId={persona.id}
+        desde={desde}
+        hasta={hasta}
+        meta={preview?.liquidacion.ventas.metaPeriodo ?? null}
+        ventas={preview?.liquidacion.ventas.total ?? null}
+        cumplida={preview ? preview.liquidacion.ventas.metaAlcanzada : null}
+        aplica={preview ? preview.liquidacion.ventas.primeraComisionAplica : true}
+        puesta={metaPuesta !== null}
+        cerrada={estadoPeriodo?.estado === 'cerrado'}
+        // La meta se guarda por el período exacto de un pago: con otro rango se ignoraría en silencio.
+        esUnPago={pagos.some((pg) => pg.desde === desde && pg.hasta === hasta)}
       />
       <VentasSemanaCliente
         key={`${desde}|${hasta}`}

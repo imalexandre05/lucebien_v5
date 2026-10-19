@@ -265,6 +265,12 @@ export interface RegistroAsistencia {
   tardanzaJustificada?: boolean;
   faltaJustificada?: boolean;
   motivoJustificacion?: string;
+  /**
+   * Hora de inicio acordada para ESE día ('HH:MM'), cuando el administrador y la persona cambiaron el
+   * horario sin cambiar las horas (decisión del dueño n.º 1, 19-oct-2026; migración 0168). Si viene,
+   * la tardanza se mide contra ella y no contra el inicio contratado. No cambia las horas pagadas.
+   */
+  inicioAcordado?: string | null;
   observacion?: string;
   /**
    * true cuando esa hora la propuso el sistema a partir del horario contratado, porque no hubo
@@ -365,6 +371,12 @@ export interface EntradaLiquidacion {
    * siempre.
    */
   ventasSemanales?: VentaSemanal[];
+  /**
+   * La meta del período que puso el administrador (0169, decisión del dueño n.º 2, corregida el
+   * 19-oct-2026). Si viene, manda sobre la estimada y sobre la meta semanal pactada. Ausente = la
+   * meta sale sola: meta semanal pactada o `metaPorHora × horas trabajadas del período`.
+   */
+  metaPeriodoManual?: number;
 }
 
 /** Una semana cargada a mano (spec sueldos/2026-10-18-ventas-metas-semanales §5). */
@@ -459,6 +471,8 @@ export interface Liquidacion {
     total: number;
     metaPeriodo: number;
     metaAlcanzada: boolean;
+    /** false = sin horas trabajadas en el período: la 1.ª comisión no aplica (0169). */
+    primeraComisionAplica: boolean;
     baseComision: number;
     semanas: SemanaLiquidacion[];
     semanasCumplidas: number;
@@ -1461,10 +1475,16 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
         esFalta = true; // RN-09
       } else {
         // RN-08: el límite se deriva del horario del día + la tolerancia, no es un texto fijo.
-        const limite = (contratado as DiaContratado).inicioMin + p.toleranciaMinutos;
+        // Si ese día se acordó otro inicio (0168), la tardanza se mide contra el acordado.
+        const inicioDelDia =
+          reg?.inicioAcordado != null && reg.inicioAcordado !== ''
+            ? minutosDeHora(reg.inicioAcordado, `Asistencia ${fecha} (horario acordado)`)
+            : (contratado as DiaContratado).inicioMin;
+        const limite = inicioDelDia + p.toleranciaMinutos;
         const llegada = minutosDeHora(ingreso, `Asistencia ${fecha}`);
         esTardanza = llegada > limite;
-        if (horas > 0 && llegada <= (contratado as DiaContratado).inicioMin - p.minutosAntesPasaje) diasPasaje += 1;
+        // El pasaje también se mide contra la hora acordada del día cuando existe (0168, respuesta del dueño).
+        if (horas > 0 && llegada <= inicioDelDia - p.minutosAntesPasaje) diasPasaje += 1;
       }
     }
     // Un día sin horario contratado no genera ni tardanza ni falta (RN-08 / RN-09).
@@ -1501,6 +1521,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
 
   // RN-17: una fecha no puede cobrarse dos veces, ni arrastrarse de otro periodo.
   let horasFuera = 0;
+  const horasFueraPorFecha = new Map<string, number>();
   const fechasFuera = new Set<string>();
   const fueraDelPeriodoExtra: string[] = [];
   for (const r of fueraDeContrato) {
@@ -1520,6 +1541,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       );
     }
     horasFuera += horas;
+    horasFueraPorFecha.set(fecha, horas);
     if (porHoras && horas > 0) {
       // Un día sin horario: todo lo trabajado es extra (spec sueldo-por-horas §3.2).
       const t = tarifaDe(fecha);
@@ -1620,7 +1642,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   // RN-12: la última semana absorbe los días sobrantes para que ninguna venta quede fuera, pero
   // su meta NO sube por eso: es la de una semana tipo (spec §9.2).
   const horasSemanaTipo = [...porDia.values()].reduce((s, d) => s + d.horas, 0);
-  let metaPeriodo = 0; // RN-11: la meta del mes es la suma de las semanales, no un cálculo aparte
+  let metaAutomatica = 0; // meta del período sin la que pone el administrador: suma de sus semanas
   const semanas: SemanaLiquidacion[] = tramosSem.map((t, i) => {
     const diasSemana = diasDelPeriodo(t.desde, t.hasta);
     let horas = 0;
@@ -1643,7 +1665,16 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       p.metaSemanal ??
       temporada?.metaSemanal ??
       horasDeLaMeta * (temporada?.metaPorHora ?? p.metaPorHora) * p.factorMeta;
-    metaPeriodo += meta;
+    // 0169: la meta del período se arma semana por semana. Una meta semanal pactada (contrato o
+    // temporada) vale para esa semana (RN-10); si no, lo estimado de la semana: día por día, horas
+    // trabajadas × metaPorHora de la temporada vigente ESE día × factorMeta (prorratea por temporada).
+    const pactadaSemana = p.metaSemanal != null || temporada?.metaSemanal != null;
+    let estimadaSemana = 0;
+    for (const fecha of diasSemana) {
+      const h = (trabajadas.get(fecha) ?? 0) + (horasFueraPorFecha.get(fecha) ?? 0);
+      estimadaSemana += h * (temporadaVigente(entrada.temporadas ?? [], fecha)?.metaPorHora ?? p.metaPorHora) * p.factorMeta;
+    }
+    metaAutomatica += pactadaSemana ? meta : estimadaSemana;
     const carga = cargaDe(t);
     const ventasSemana = carga
       ? carga.montoVendido ?? 0
@@ -1665,12 +1696,29 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   });
   const semanasCumplidas = semanas.filter((s) => s.cumplida).length;
 
-  // RN-13: la comisión se desbloquea sólo al llegar a la meta del mes. Es un premio distinto al
+  // 0169 — Meta del PERÍODO (la que desbloquea la 1.ª comisión). En este orden: la que puso el
+  // administrador; la meta semanal pactada (suma de las semanales, RN-10); o la estimada
+  // `metaPorHora × horas TRABAJADAS del período × factorMeta` (la temporada vigente al inicio manda
+  // sobre la configuración).
+  const manual = entrada.metaPeriodoManual;
+  if (manual !== undefined && manual !== null && (typeof manual !== 'number' || !Number.isFinite(manual) || manual < 0)) {
+    throw new Error(`La meta del período que puso el administrador es inválida (${String(manual)}). Tiene que ser un número desde 0.`);
+  }
+  // Se redondea a céntimos ANTES de comparar: lo que muestra la pantalla es lo que paga el motor.
+  const metaPeriodo = r2(
+    manual !== undefined && manual !== null
+      ? manual
+      : metaAutomatica,
+  );
+
+  // RN-13: la comisión se desbloquea sólo al llegar a la meta del período. Es un premio distinto al
   // bono semanal, no un reemplazo: se pueden cobrar los dos.
   // 0166 (default a confirmar, spec §3): con carga semanal sin el monto vendido no se sabe la venta
   // del mes, así que la condición de RN-13 sólo se aplica si todas las cargas traen el monto.
   const sinMonto = cargas.some((c) => c.montoVendido === null || c.montoVendido === undefined);
-  const metaAlcanzada = sinMonto || ventasTotal >= metaPeriodo;
+  // Sin horas trabajadas (contando las fuera de contrato) la 1.ª comisión no aplica: no es Cumplida.
+  const primeraComisionAplica = horasTrabajadas + horasFuera > 0;
+  const metaAlcanzada = primeraComisionAplica && (sinMonto || ventasTotal >= metaPeriodo);
   const baseComision =
     ventasSueltas.filter((v) => v.monto > p.montoMinimoComision).reduce((s, v) => s + v.monto, 0) +
     cargas.reduce((s, c) => s + c.totalBoletasMayores, 0);
@@ -1744,7 +1792,9 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       concepto: `Comisión ${r2(p.pctComision * 100)}%`,
       detalle: metaAlcanzada
         ? `${r2(p.pctComision * 100)}% de S/${r2(baseComision)} en boletas mayores a S/${p.montoMinimoComision}${cargas.length > 0 ? ' (carga semanal)' : ''}`
-        : `Sin comisión: ventas S/${r2(ventasTotal)} no alcanzan la meta de S/${r2(metaPeriodo)}`,
+        : !primeraComisionAplica
+          ? 'Sin comisión: no hay horas trabajadas en el período'
+          : `Sin comisión: ventas S/${r2(ventasTotal)} no alcanzan la meta de S/${r2(metaPeriodo)}`,
       monto: r2(comision),
       regla: 'RN-13',
     },
@@ -1890,6 +1940,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       total: r2(ventasTotal),
       metaPeriodo: r2(metaPeriodo),
       metaAlcanzada,
+      primeraComisionAplica,
       baseComision: r2(baseComision),
       semanas,
       semanasCumplidas,

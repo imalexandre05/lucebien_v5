@@ -1,5 +1,6 @@
 # Dependencias
 node_modules/
+/packages/*/node_modules
 
 # Variables de entorno (sensibles, no commitear)
 .env

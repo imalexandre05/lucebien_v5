@@ -9,7 +9,7 @@ import { Badge } from '../../../../components/ui/badge';
 import { Aviso, campoCls } from '../../../../components/ui/form';
 import { cn } from '../../../../lib/cn';
 import { fechaAmable, fraseDelPago, queOcurrio, type ParametrosFrase } from '../../../../lib/asistencia-revisar-texto';
-import { accionDeclararDia, accionMarcarRevisados } from '../../../sueldos/asistencia/actions';
+import { accionDeclararDia, accionHorarioAcordado, accionMarcarRevisados } from '../../../sueldos/asistencia/actions';
 
 // La lista «Por revisar» de la ficha (decisión del dueño n.º 4, 18-oct-2026). Cada día con
 // problema lleva sus botones de un clic; los días sin problema no salen: se dan por trabajados.
@@ -27,7 +27,7 @@ export type DiaConPrevio = DiaPorRevisar & {
 const MOTIVO_MIN = 3;
 const MOTIVO_MAX = 300; // Default inventado (spec §8): 3 a 300 letras.
 
-type Modo = null | 'horas' | 'hora' | 'falta_justificada' | 'tardanza_justificada';
+type Modo = null | 'horas' | 'hora' | 'falta_justificada' | 'tardanza_justificada' | 'acordado';
 
 const botonGrande = 'min-h-[44px] flex-1 sm:flex-none';
 
@@ -122,6 +122,7 @@ function TarjetaDia({
   const [entrada, setEntrada] = useState(dia.previo.entrada ?? '');
   const [salida, setSalida] = useState(dia.previo.salida ?? '');
   const [motivo, setMotivo] = useState('');
+  const [acordado, setAcordado] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
 
@@ -204,6 +205,12 @@ function TarjetaDia({
     );
   };
 
+  const guardarAcordado = () => {
+    if (!/^\d{2}:\d{2}$/.test(acordado)) return setError('Pon la hora de inicio acordada.');
+    if (motivo.trim().length > MOTIVO_MAX) return setError(`El motivo puede tener hasta ${MOTIVO_MAX} letras.`);
+    correr(() => accionHorarioAcordado(empleadoId, dia.fecha, acordado, motivo));
+  };
+
   const estaBien = () => correr(() => accionMarcarRevisados(empleadoId, [dia.fecha]));
 
   const abrir = (m: Modo) => {
@@ -273,6 +280,9 @@ function TarjetaDia({
             <Button variant="primary" className={botonGrande} onClick={() => abrir('tardanza_justificada')} disabled={pendiente}>
               Justificar tardanza
             </Button>
+            <Button variant="outline" className={botonGrande} onClick={() => abrir('acordado')} disabled={pendiente}>
+              Horario acordado
+            </Button>
             <Button variant="outline" className={botonGrande} onClick={estaBien} pending={pendiente}>
               Está bien
             </Button>
@@ -341,6 +351,38 @@ function TarjetaDia({
           )}
           <Button variant="gold" className={botonGrande} onClick={() => guardarHoras(entrada, salida)} pending={pendiente}>
             Guardar
+          </Button>
+        </div>
+      )}
+
+      {modo === 'acordado' && (
+        <div className="mt-3 space-y-2">
+          <p className="text-apoyo text-muted">
+            Si ese día trabajó las mismas horas pero en otro horario, pon a qué hora quedaron en que empezara. Ya no
+            contará como tardanza si llegó a esa hora.
+          </p>
+          <label className="block text-apoyo text-muted">
+            Hora de inicio acordada
+            <input
+              type="time"
+              value={acordado}
+              onChange={(e) => setAcordado(e.target.value)}
+              className={cn(campoCls, 'mt-1 block min-h-[44px] tabular-nums')}
+            />
+          </label>
+          <label className="block text-apoyo text-muted">
+            Motivo (opcional)
+            <input
+              type="text"
+              value={motivo}
+              onChange={(e) => setMotivo(e.target.value)}
+              maxLength={MOTIVO_MAX}
+              placeholder="Por ejemplo: cambió su turno con un compañero"
+              className={cn(campoCls, 'mt-1 block min-h-[44px] w-full')}
+            />
+          </label>
+          <Button variant="gold" className={botonGrande} onClick={guardarAcordado} pending={pendiente}>
+            Guardar horario acordado
           </Button>
         </div>
       )}

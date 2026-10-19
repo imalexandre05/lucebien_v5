@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../../../lib/auth';
-import { guardarVentaSemana } from '../../../../lib/ventas-semana-repo';
+import { guardarMetaPeriodo, guardarVentaSemana } from '../../../../lib/ventas-semana-repo';
 
 /**
  * Guarda una semana de «Ventas y metas». Sólo administrador o dueño: la acción lo vuelve a
@@ -30,5 +30,32 @@ export async function accionGuardarVentaSemana(p: {
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'No se pudo guardar la semana. Intenta de nuevo.' };
+  }
+}
+
+/** Pone la meta del período (o la quita con `null` para volver a la estimada). Sólo administrador o dueño. */
+export async function accionGuardarMetaPeriodo(
+  empleadoId: string,
+  desde: string,
+  hasta: string,
+  meta: number | null,
+): Promise<ResultadoVentaSemana> {
+  try {
+    const sesion = await getSesion();
+    const rol = sesion?.usuario.rol;
+    if (!sesion || (rol !== 'admin' && rol !== 'dueno')) {
+      return { ok: false, error: 'Solo el administrador o el dueño pueden cargar esto.' };
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(desde) || !/^\d{4}-\d{2}-\d{2}$/.test(hasta) || hasta < desde) {
+      return { ok: false, error: 'El período no es válido.' };
+    }
+    if (meta !== null && (typeof meta !== 'number' || !Number.isFinite(meta) || meta < 0)) {
+      return { ok: false, error: 'Pon una meta de 0 o más.' };
+    }
+    await guardarMetaPeriodo(empleadoId, desde, hasta, meta, sesion.usuario.id);
+    revalidatePath(`/personal/${empleadoId}/ventas`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'No se pudo guardar. Intenta de nuevo.' };
   }
 }
