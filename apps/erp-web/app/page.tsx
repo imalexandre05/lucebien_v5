@@ -1,46 +1,58 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import type { ReactNode } from 'react';
 import {
   Shirt,
   ClipboardCheck,
-  ClipboardList,
   AlertTriangle,
   Trophy,
-  Activity,
   LayoutGrid,
   LayoutDashboard,
-  type LucideIcon,
+  UserCheck,
+  Wallet,
+  Target,
+  TrendingUp,
 } from 'lucide-react';
 import {
   ETAPAS_PIPELINE,
-  estadoReporte,
-  estadoActividadReporte,
-  ESTADO_ACTIVIDAD_LABEL,
-  type EstadoActividad,
   coberturaTurno,
   ESTADO_COBERTURA_LABEL,
   type EstadoCobertura,
   minutosHastaCierre,
-  TURNO_LABEL,
   puede,
   type MatrizPermisos,
 } from '@scilb/core';
-import { listarPasadas, rankingHoy } from '../lib/pipeline-repo';
-import { listarReportes } from '../lib/reportes-repo';
-import { listarIncidencias } from '../lib/incidencias-repo';
+import { rankingHoy, movimientosRecientes } from '../lib/pipeline-repo';
+import {
+  prendasEnProceso,
+  reportesDesde,
+  reportesPorEvaluarPorSede,
+  incidenciasDesde,
+  asistenciaDelDia,
+  pagosPorCerrar,
+  metasRecientes,
+} from '../lib/dashboard-repo';
+import {
+  atrasoPorEtapa,
+  luzMayorEsPeor,
+  luzMenorEsPeor,
+  peorLuz,
+  umbralesDesdeConfig,
+  ultimosDias,
+  sumarDias,
+} from '../lib/dashboard-semaforos';
 import { getSesion } from '../lib/auth';
 import { listarSedes } from '../lib/sedes-repo';
 import { leerMatrizPermisos } from '../lib/permisos-repo';
 import { leerConfigMap, CIERRE_TURNO_DEFAULT } from '../lib/config-repo';
-import { hoyPeru, fechaLargaPeru, saludoPeru, tiempoRelativo, fechaHoraCorta } from '../lib/fechas';
+import { hoyPeru, fechaLargaPeru, saludoPeru } from '../lib/fechas';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../components/ui/table';
 import { Badge, type Tone } from '../components/ui/badge';
-import { StatBox } from '../components/ui/stat-box';
 import { CountUp } from '../components/ui/count-up';
 import { EmptyState } from '../components/ui/empty-state';
 import { BandaModulo } from '../components/ui/banda-modulo';
+import { TarjetaLuz, PuntoLuz } from '../components/dashboard/semaforo';
+import { Tendencia } from '../components/dashboard/tendencia';
 import { cn } from '../lib/cn';
 
 const ETAPA_LABEL: Record<string, string> = {
@@ -54,33 +66,10 @@ const ETAPA_LABEL: Record<string, string> = {
   planchado: 'Planchado',
   control_calidad: 'Calidad',
   listo: 'Listo',
-  enviado: 'Enviada',
-  recibido: 'Recibida',
-  dividido: 'Dividida',
 };
 
-// Segunda pasada visual: el tile pasa a la superficie/sombra teñida del acento del módulo
-// (--acento, fase 5 -- en `/` es navy) en vez del blanco liso de antes.
-const KPI_TONE = 'border-acento-line bg-acento-soft text-acento-deep shadow-elev-1';
-// Semáforo (Fase 6 tarea 3): mismo tile, solo cambia de tono cuando el valor amerita atención.
-const KPI_TONE_AMBER = 'border-aviso-line bg-aviso-soft text-aviso-deep shadow-elev-1';
-
-// Badge de estado por color (Fase 6 tarea 1) — icono circular de la fila de "Actividad reciente"
-// y Badge de texto comparten la misma paleta para que se lean como el mismo estado.
-const ESTADO_ACTIVIDAD_TONE: Record<EstadoActividad, Tone> = {
-  ok: 'green',
-  por_evaluar: 'amber',
-  no_enviado: 'red',
-  sin_actividad: 'gray',
-};
-const ICONO_ESTADO_CLS: Record<EstadoActividad, string> = {
-  ok: 'bg-exito/10 text-exito-deep',
-  por_evaluar: 'bg-aviso/15 text-aviso-deep',
-  no_enviado: 'bg-error/15 text-error-deep',
-  sin_actividad: 'bg-ink/10 text-muted',
-};
-// Cobertura de turnos (tarea 2): verde = cubierto, rojo = falta (no_enviado o sin_reportar),
-// gris = todavía no vence — mismo criterio "de un vistazo" que el resto del dashboard.
+// Cobertura de turnos: verde = cubierto, rojo = falta (no_enviado o sin_reportar), gris = todavía
+// no vence.
 const ESTADO_COBERTURA_TONE: Record<EstadoCobertura, Tone> = {
   cubierto: 'green',
   no_enviado: 'red',
@@ -88,23 +77,18 @@ const ESTADO_COBERTURA_TONE: Record<EstadoCobertura, Tone> = {
   en_curso: 'gray',
 };
 
-type Evento = {
-  kind: 'reporte' | 'incidencia' | 'pipeline';
-  ts: string;
-  icon: LucideIcon;
-  titulo: ReactNode;
-  detalle: string | null;
-  href: string;
-  // Solo kind === 'reporte' (tarea 1): badge de estado + % de cumplimiento cuando ya se evaluó.
-  estado?: EstadoActividad;
-  puntaje?: number | null;
-};
+const ROLES_ADMIN = ['admin', 'dueno'];
+
+const Titulo = ({ icon: Icon, children }: { icon: typeof Shirt; children: React.ReactNode }) => (
+  <CardTitle className="flex items-center gap-2">
+    <Icon className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
+    {children}
+  </CardTitle>
+);
 
 export default async function Dashboard() {
   // Landing directo operativo (Fase 4): un usuario sin permiso de 've' el dashboard entra
-  // directo a su Reporte de Actividades, como el sistema viejo — antes de disparar las
-  // consultas pesadas del panel gerencial. Fallback seguro: si la matriz falla, no ve el
-  // dashboard (solo admin/dueno pasan siempre, por el mecanismo de puede()).
+  // directo a su Reporte de Actividades, como el sistema viejo.
   const sesionPrevia = await getSesion();
   let matriz: MatrizPermisos = {};
   if (sesionPrevia) {
@@ -118,39 +102,50 @@ export default async function Dashboard() {
     }
   }
 
-  // EL DASHBOARD YA NO MIRA DINERO (20-ago-2026, decisión de Alexander).
-  //
-  // Pedidos, caja, cobros pendientes y garantías salieron del panel junto con todo el módulo
-  // comercial: lo va a manejar otro programador en un sistema aparte. Con eso se van también las
-  // cuatro consultas que sólo los alimentaban — `pedidosRepo.listar()` traía TODOS los pedidos con
-  // sus líneas y era, de lejos, la más cara de esta pantalla.
-  const [sesion, pasadas, reportes, incidencias, ranking, sedes, config] = await Promise.all([
-    getSesion(),
-    listarPasadas(),
-    listarReportes(),
-    listarIncidencias(),
-    rankingHoy(),
-    listarSedes().catch(() => []),
-    leerConfigMap().catch(() => ({}) as Record<string, string>),
-  ]);
-  const SEDE_NOMBRE = Object.fromEntries(sedes.map((s) => [s.cod, s.nombre]));
+  // Dashboard de la sesión 8B: semáforos + gráficos, todo con consultas AGREGADAS (ver
+  // lib/dashboard-repo.ts). Sin dinero, caja ni inventario (módulo comercial fuera de alcance).
+  // Admin ve todo; un encargado sólo su(s) sede(s) y nada de pagos ni metas (la RLS ya se lo niega,
+  // y acá ni se consulta).
+  const sesion = sesionPrevia;
+  const esAdmin = sesion ? ROLES_ADMIN.includes(sesion.usuario.rol) : false;
+  const misSedes = esAdmin ? null : (sesion?.usuario.tiendas ?? []);
+  const alcance = { sedes: misSedes };
 
   const hoy = hoyPeru();
   const ahora = new Date();
+  const dias = ultimosDias(hoy, 14);
+  const desde14 = dias[0];
+
+  const [pasadas, reportes, porEvaluarSede, incidencias, asistencia, movs, ranking, sedesTodas, config, pagos, metas] =
+    await Promise.all([
+      prendasEnProceso(hoy),
+      reportesDesde(desde14, alcance),
+      reportesPorEvaluarPorSede(alcance),
+      incidenciasDesde(desde14, alcance),
+      asistenciaDelDia(hoy),
+      movimientosRecientes(14).catch(() => []),
+      rankingHoy().catch(() => []),
+      listarSedes().catch(() => []),
+      leerConfigMap().catch(() => ({}) as Record<string, string>),
+      esAdmin ? pagosPorCerrar(hoy) : Promise.resolve(null),
+      esAdmin ? metasRecientes(sumarDias(hoy, -13)) : Promise.resolve(null),
+    ]);
+
+  const sedes = misSedes ? sedesTodas.filter((s) => misSedes.includes(s.cod)) : sedesTodas;
+  const U = umbralesDesdeConfig(config);
   const primerNombre = sesion?.nombre.trim().split(/\s+/)[0] ?? '';
-  const sede = sesion?.usuario.sede ?? '';
 
-  // KPIs del día (§4A del brief): pipeline, evaluación, caja, incidencias.
-  const etapas = ETAPAS_PIPELINE as readonly string[];
-  const enPipeline = pasadas.filter((p) => etapas.includes(p.etapa)).length;
-  const ingresaronHoy = pasadas.filter((p) => p.fechaIngreso === hoy).length;
-  const porEvaluar = reportes.filter((r) => estadoReporte(r) === 'pendiente').length;
+  // ── Prendas: atraso por etapa ──
+  const atraso = atrasoPorEtapa(pasadas, U.atraso);
+  const enPipeline = pasadas.length;
+  const prendasRojas = [...atraso.values()].reduce((n, e) => n + e.rojo, 0);
+  const prendasAmbar = [...atraso.values()].reduce((n, e) => n + e.ambar, 0);
+  const luzPrendas = prendasRojas > 0 ? 'rojo' : prendasAmbar > 0 ? 'ambar' : 'verde';
+  const maxEtapa = Math.max(1, ...ETAPAS_PIPELINE.map((e) => atraso.get(e)?.total ?? 0));
+
+  // ── Reportes ──
+  const porEvaluar = Object.values(porEvaluarSede).reduce((a, b) => a + b, 0);
   const enviadosHoy = reportes.filter((r) => r.fecha === hoy).length;
-  const incidenciasHoy = incidencias.filter((i) => i.fecha === hoy).length;
-  const incidenciasMes = incidencias.filter((i) => i.fecha.startsWith(hoy.slice(0, 7))).length;
-
-  // Cobertura de turnos de hoy (§tarea 2): matriz sede × turno lógico (M/T) — un reporte 'C'
-  // cubre ambos. Mismas horas de cierre que /reportes/nuevo (config con default compartido).
   const cierres = {
     M: config.turno_m_cierre || CIERRE_TURNO_DEFAULT.M,
     T: config.turno_t_cierre || CIERRE_TURNO_DEFAULT.T,
@@ -163,6 +158,7 @@ export default async function Dashboard() {
       sedeNombre: s.nombre || s.cod,
       m: coberturaTurno('M', deLaSede, minutosHastaCierre(ahora, cierres.M)),
       t: coberturaTurno('T', deLaSede, minutosHastaCierre(ahora, cierres.T)),
+      porEvaluar: porEvaluarSede[s.cod] ?? 0,
     };
   });
   const faltanPorCubrir = cobertura.reduce(
@@ -170,135 +166,133 @@ export default async function Dashboard() {
     0,
   );
 
+  // ── Incidencias ──
+  const incidenciasHoy = incidencias.filter((i) => i.fecha === hoy);
 
-  // Distribución del pipeline por etapa (flujo de 9 pasos).
-  const porEtapa = new Map<string, number>();
-  for (const p of pasadas) porEtapa.set(p.etapa, (porEtapa.get(p.etapa) ?? 0) + 1);
-  const maxEtapa = Math.max(1, ...ETAPAS_PIPELINE.map((e) => porEtapa.get(e) ?? 0));
-  const totalFlujo = ETAPAS_PIPELINE.reduce((s, e) => s + (porEtapa.get(e) ?? 0), 0);
+  // ── Asistencia ──
+  const luzAsistencia = peorLuz([
+    luzMayorEsPeor(asistencia.faltas, U.faltas),
+    luzMayorEsPeor(asistencia.tardanzas, U.tardanzas),
+  ]);
+  const totalAsist = asistencia.presentes + asistencia.faltas + asistencia.sinDato;
 
-  // Actividad reciente: reportes + incidencias + movimientos de prendas, mezclados por fecha.
-  // Los reportes (tarea 1) llevan además estado (color) y puntaje — es la fuente correcta
-  // introducida en la Fase 4 (estadoEnvio tri-estado), no el chip uniforme de antes.
-  const eventos: Evento[] = [
-    ...reportes.slice(0, 12).map((r) => {
-      const estado = estadoActividadReporte(r);
-      return {
-        kind: 'reporte' as const,
-        ts: r.createdAt,
-        icon: ClipboardList,
-        titulo: (
-          <>
-            Reporte de Actividades · {r.sedeCod} · {TURNO_LABEL[r.turno] ?? r.turno}
-          </>
-        ),
-        detalle: r.encargadoNombre ? `Encargado: ${r.encargadoNombre}` : null,
-        href: `/reportes/${r.id}`,
-        estado,
-        puntaje: r.evaluado ? (r.puntajeEval ?? r.puntaje) : null,
-      };
-    }),
-    ...incidencias.slice(0, 12).map((i) => ({
-      kind: 'incidencia' as const,
-      ts: i.createdAt,
-      icon: AlertTriangle,
-      titulo: (
-        <>
-          {i.tipo} · {i.sedeCod}
-        </>
-      ),
-      detalle: i.responsableNombre ?? i.descripcion,
-      href: '/incidencias',
-    })),
-    ...pasadas
-      .filter((p) => p.fechaActualizado)
-      .slice(0, 12)
-      .map((p) => ({
-        kind: 'pipeline' as const,
-        ts: p.fechaActualizado as string,
-        icon: Shirt,
-        titulo: (
-          <>
-            <span className="tabular-nums">{p.codigo}</span> → {ETAPA_LABEL[p.etapa] ?? p.etapa}
-          </>
-        ),
-        detalle: p.tipo || null,
-        href: '/pipeline',
-      })),
-  ]
-    .filter((e) => e.ts)
-    .sort((a, b) => b.ts.localeCompare(a.ts))
-    .slice(0, 8);
+  // ── Tendencias de 14 días ──
+  const movPorDia = new Map<string, number>();
+  for (const m of movs) movPorDia.set(m.fecha, (movPorDia.get(m.fecha) ?? 0) + 1);
+  const repPorDia = new Map<string, number>();
+  for (const r of reportes) repPorDia.set(r.fecha, (repPorDia.get(r.fecha) ?? 0) + 1);
+  const incPorDia = new Map<string, number>();
+  for (const i of incidencias) incPorDia.set(i.fecha, (incPorDia.get(i.fecha) ?? 0) + 1);
+  const serie = (m: Map<string, number>) => dias.map((fecha) => ({ fecha, valor: m.get(fecha) ?? 0 }));
 
-  // BandaModulo (arquetipo A, spec §5): el saludo y la fecha ya decían todo lo que el
-  // recuadro-espejo del día repetía como adorno — se cae sin perder dato. La sede se suma al
-  // final del subtítulo en vez de vivir en un chip aparte.
+  // ── Pagos y metas (sólo admin) ──
+  const luzPagos = !pagos ? 'verde' : pagos.vencidos > 0 ? 'rojo' : pagos.proximos > 0 ? 'ambar' : 'verde';
+  const metasTotal = metas ? metas.cumplidas + metas.noCumplidas : 0;
+  const metasPct = metas && metasTotal > 0 ? Math.round((metas.cumplidas / metasTotal) * 100) : null;
+  const luzMetas = metasPct == null ? 'verde' : luzMenorEsPeor(metasPct, U.metas);
+
   const saludo = `${saludoPeru(ahora)}${primerNombre ? `, ${primerNombre}` : ''}`;
-  const subtituloBanda = sede
-    ? `${fechaLargaPeru(ahora)} · Sede ${SEDE_NOMBRE[sede] ?? sede}`
-    : fechaLargaPeru(ahora);
+  const sede = sesion?.usuario.sede ?? '';
+  const nombreSede = sedesTodas.find((s) => s.cod === sede)?.nombre ?? sede;
+  const subtituloBanda = !esAdmin && nombreSede ? `${fechaLargaPeru(ahora)} · Sede ${nombreSede}` : fechaLargaPeru(ahora);
 
   return (
     <div>
       <BandaModulo titulo={saludo} subtitulo={subtituloBanda} icono={LayoutDashboard} />
 
-      {/* ── KPIs del día: los tiles se montan sobre el borde inferior de la banda (spec §3.10). ── */}
-      <section aria-label="Indicadores del día" className="relative z-10 -mt-6">
+      {/* ── Semáforos del día: lo que hay que mirar primero. Cada tarjeta lleva al lugar donde se resuelve. ── */}
+      <section aria-label="Semáforos del día" className="relative z-10 -mt-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <StatBox
-            index={0}
-            size="xl"
-            align="left"
-            icon={Shirt}
+          <TarjetaLuz
+            titulo="Prendas atrasadas"
+            icono={Shirt}
             href="/pipeline"
-            tone={KPI_TONE}
-            label="Prendas en pipeline"
-            valor={<CountUp value={enPipeline} />}
-            sub={ingresaronHoy > 0 ? `+${ingresaronHoy} ingresaron hoy` : 'en las 9 etapas del taller'}
+            luz={luzPrendas}
+            valor={<CountUp value={prendasRojas + prendasAmbar} />}
+            detalle={
+              prendasRojas + prendasAmbar === 0
+                ? `Las ${enPipeline} prendas en proceso van al día`
+                : `${prendasRojas} con ${U.atraso.rojo}+ días sin moverse · ${prendasAmbar} con ${U.atraso.ambar}+ días`
+            }
           />
-          <StatBox
-            index={1}
-            size="xl"
-            align="left"
-            icon={ClipboardCheck}
+          <TarjetaLuz
+            titulo="Reportes por evaluar"
+            icono={ClipboardCheck}
             href="/evaluar-reportes"
-            tone={porEvaluar > 0 ? KPI_TONE_AMBER : KPI_TONE}
-            label="Reportes por evaluar"
+            luz={luzMayorEsPeor(porEvaluar, U.evaluar)}
             valor={<CountUp value={porEvaluar} delayMs={60} />}
-            sub={`${enviadosHoy} enviado(s) hoy`}
+            detalle={`${enviadosHoy} enviado(s) hoy${faltanPorCubrir > 0 ? ` · faltan ${faltanPorCubrir} turno(s) por cubrir` : ''}`}
           />
-          <StatBox
-            index={3}
-            size="xl"
-            align="left"
-            icon={AlertTriangle}
+          <TarjetaLuz
+            titulo="Incidencias hoy"
+            icono={AlertTriangle}
             href="/incidencias"
-            tone={incidenciasHoy > 0 ? KPI_TONE_AMBER : KPI_TONE}
-            label="Incidencias hoy"
-            valor={<CountUp value={incidenciasHoy} delayMs={180} />}
-            sub={`${incidenciasMes} en el mes`}
+            luz={luzMayorEsPeor(incidenciasHoy.length, U.incidencias)}
+            valor={<CountUp value={incidenciasHoy.length} delayMs={120} />}
+            detalle={`${incidencias.length} en los últimos 14 días`}
           />
+          <TarjetaLuz
+            titulo="Asistencia de hoy"
+            icono={UserCheck}
+            href="/asistencias"
+            luz={luzAsistencia}
+            valor={
+              <>
+                <CountUp value={asistencia.presentes} delayMs={180} />
+                <span className="ml-1.5 text-lg font-medium opacity-75">presentes</span>
+              </>
+            }
+            detalle={`${asistencia.tardanzas} con tardanza · ${asistencia.faltas} falta(s)`}
+          />
+          {esAdmin && (
+            <TarjetaLuz
+              titulo="Pagos por cerrar"
+              icono={Wallet}
+              href="/pagos"
+              luz={pagos ? luzPagos : 'verde'}
+              valor={pagos ? <CountUp value={pagos.porCerrar} delayMs={240} /> : '—'}
+              detalle={
+                !pagos
+                  ? 'No se pudo leer. Intenta recargar.'
+                  : pagos.porCerrar === 0
+                    ? 'Nada por cerrar esta semana'
+                    : `${pagos.vencidos} con período vencido · ${pagos.proximos} esta semana`
+              }
+            />
+          )}
+          {esAdmin && (
+            <TarjetaLuz
+              titulo="Metas semanales"
+              icono={Target}
+              href="/personal"
+              luz={luzMetas}
+              valor={metasPct == null ? '—' : `${metasPct}%`}
+              detalle={
+                metasPct == null
+                  ? 'Aún no hay metas cargadas en «Ventas y metas»'
+                  : `${metas!.cumplidas} de ${metasTotal} semanas cumplieron la meta`
+              }
+            />
+          )}
         </div>
       </section>
 
-      {/* ── Pipeline vivo: flujo de las 9 etapas ── */}
+      {/* ── Pipeline: barras por etapa, con las prendas atrasadas marcadas en ámbar y rojo ── */}
       <Card className="mt-6">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2.5">
+          <CardTitle className="flex flex-wrap items-center gap-2.5">
             Pipeline de lavandería
             <span className="rounded-r-pastilla bg-navy/5 px-2.5 py-0.5 tabular-nums text-dato font-semibold text-navy">
-              {totalFlujo} en proceso
+              {enPipeline} en proceso
             </span>
+            <PuntoLuz luz={luzPrendas} />
           </CardTitle>
-          <Link
-            href="/pipeline"
-            className="text-apoyo font-medium text-navy transition-colors duration-150 hover:text-gold"
-          >
+          <Link href="/pipeline" className="text-apoyo font-medium text-navy transition-colors duration-150 hover:text-gold">
             Abrir tablero →
           </Link>
         </CardHeader>
         <CardContent className="pt-1">
-          {totalFlujo === 0 ? (
+          {enPipeline === 0 ? (
             <EmptyState icon={Shirt} titulo="Sin prendas en el pipeline" compacto>
               Cuando el taller registre prendas verás aquí el flujo en vivo, etapa por etapa.
             </EmptyState>
@@ -306,73 +300,89 @@ export default async function Dashboard() {
             <div className="overflow-x-auto">
               <div className="min-w-[680px]">
                 <div className="flex items-stretch">
-                  {ETAPAS_PIPELINE.map((e, i) => {
-                    const n = porEtapa.get(e) ?? 0;
-                    const esListo = e === 'listo';
-                    const alto = n === 0 ? 0 : Math.max(10, Math.round((n / maxEtapa) * 72));
+                  {ETAPAS_PIPELINE.map((e) => {
+                    const d = atraso.get(e) ?? { total: 0, ambar: 0, rojo: 0 };
+                    const alto = d.total === 0 ? 0 : Math.max(10, Math.round((d.total / maxEtapa) * 80));
+                    const seg = (n: number) => (d.total ? (n / d.total) * 100 : 0);
                     return (
                       <Link
                         key={e}
                         href="/pipeline"
-                        title={`${n} prenda(s) en ${ETAPA_LABEL[e]}`}
-                        aria-label={`${ETAPA_LABEL[e]}: ${n} prenda(s)`}
-                        className="anillo group flex-1 rounded-t-lg px-1 pt-2 text-center transition-colors duration-150 hover:bg-navy/[0.04]"
+                        title={`${ETAPA_LABEL[e]}: ${d.total} prenda(s), ${d.ambar} en atención, ${d.rojo} atrasada(s)`}
+                        aria-label={`${ETAPA_LABEL[e]}: ${d.total} prenda(s), ${d.rojo} atrasada(s)`}
+                        className="anillo flex-1 rounded-t-lg px-1 pt-2 text-center transition-colors duration-150 hover:bg-navy/[0.04]"
                       >
-                        <div
-                          className={cn(
-                            'animate-rise tabular-nums text-lg font-semibold',
-                            n === 0 ? 'text-muted/60' : esListo ? 'text-gold-deep' : 'text-navy',
-                          )}
-                          style={{ animationDelay: `${i * 45}ms` }}
-                        >
-                          {n}
+                        <div className={cn('tabular-nums text-lg font-semibold', d.total === 0 ? 'text-muted/60' : 'text-navy')}>
+                          {d.total}
                         </div>
-                        <div className="mt-1.5 flex h-[72px] items-end justify-center">
-                          {n > 0 && (
-                            <div
-                              className={cn(
-                                'w-6 origin-bottom animate-grow-y rounded-t-[4px]',
-                                esListo ? 'bg-gold' : 'bg-navy',
-                              )}
-                              style={{ height: alto, animationDelay: `${i * 45}ms` }}
-                            />
+                        <div className="mt-1.5 flex h-[80px] items-end justify-center">
+                          {d.total > 0 && (
+                            <div className="flex w-6 flex-col-reverse overflow-hidden rounded-t-[4px]" style={{ height: alto }}>
+                              <div className="bg-navy" style={{ height: `${seg(d.total - d.ambar - d.rojo)}%` }} />
+                              <div className="bg-aviso" style={{ height: `${seg(d.ambar)}%` }} />
+                              <div className="bg-error" style={{ height: `${seg(d.rojo)}%` }} />
+                            </div>
                           )}
                         </div>
                       </Link>
                     );
                   })}
                 </div>
-                {/* El hilo del atelier: riel que se enhebra bajo el flujo al montar. */}
-                <div className="h-0.5 overflow-hidden rounded-r-pastilla bg-line/70">
-                  <div className="h-full origin-left animate-draw-x bg-gradient-to-r from-gold via-gold/80 to-gold/40" />
-                </div>
+                <div className="h-0.5 rounded-r-pastilla bg-line/70" />
                 <div className="flex" aria-hidden="true">
                   {ETAPAS_PIPELINE.map((e) => (
-                    <div
-                      key={e}
-                      className="flex-1 px-0.5 pb-1 pt-2 text-center text-rotulo font-medium uppercase leading-tight text-muted"
-                    >
+                    <div key={e} className="flex-1 px-0.5 pb-1 pt-2 text-center text-rotulo font-medium uppercase leading-tight text-muted">
                       {ETAPA_LABEL[e]}
                     </div>
                   ))}
                 </div>
               </div>
+              <p className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-micro text-muted">
+                <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-navy" />Al día</span>
+                <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-aviso" />{U.atraso.ambar}+ días sin moverse</span>
+                <span><span className="mr-1 inline-block h-2 w-2 rounded-sm bg-error" />{U.atraso.rojo}+ días sin moverse</span>
+              </p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* ── Cobertura de turnos: matriz sede × turno de hoy (tarea 2) — "qué falta hoy" de un
-          vistazo. Va ANTES de la actividad reciente a propósito (el brief pide "encima"). ── */}
+      {/* ── Tendencias de 14 días ── */}
+      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <Titulo icon={TrendingUp}>Prendas movidas por día</Titulo>
+          </CardHeader>
+          <CardContent>
+            <Tendencia datos={serie(movPorDia)} etiquetaSerie="Prendas que cambiaron de etapa" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Titulo icon={ClipboardCheck}>Reportes enviados por día</Titulo>
+          </CardHeader>
+          <CardContent>
+            <Tendencia datos={serie(repPorDia)} etiquetaSerie="Reportes de turno enviados" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Titulo icon={AlertTriangle}>Incidencias por día</Titulo>
+          </CardHeader>
+          <CardContent>
+            <Tendencia datos={serie(incPorDia)} etiquetaSerie="Incidencias registradas" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── Cobertura de turnos por tienda ── */}
       <Card className="mt-6">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <LayoutGrid className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
-            Cobertura de turnos hoy
+            Reportes de hoy por tienda
           </CardTitle>
-          {faltanPorCubrir > 0 && (
-            <Badge tone="red">{faltanPorCubrir} por cubrir</Badge>
-          )}
+          {faltanPorCubrir > 0 && <Badge tone="red">{faltanPorCubrir} por cubrir</Badge>}
         </CardHeader>
         <CardContent className="overflow-x-auto px-0 pb-3">
           {cobertura.length === 0 ? (
@@ -386,6 +396,7 @@ export default async function Dashboard() {
                   <TH className="pl-5">Sede</TH>
                   <TH className="text-center">Mañana</TH>
                   <TH className="text-center">Tarde</TH>
+                  <TH className="text-center">Por evaluar</TH>
                 </TR>
               </THead>
               <TBody>
@@ -398,6 +409,11 @@ export default async function Dashboard() {
                     <TD className="text-center">
                       <Badge tone={ESTADO_COBERTURA_TONE[c.t]}>{ESTADO_COBERTURA_LABEL[c.t]}</Badge>
                     </TD>
+                    <TD className="text-center">
+                      <Link href="/evaluar-reportes" className="tabular-nums font-semibold text-navy hover:text-gold">
+                        {c.porEvaluar}
+                      </Link>
+                    </TD>
                   </TR>
                 ))}
               </TBody>
@@ -406,71 +422,44 @@ export default async function Dashboard() {
         </CardContent>
       </Card>
 
-      {/* ── Actividad reciente + ranking del día ── */}
-      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      {/* ── Asistencia de hoy + ranking ── */}
+      <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
-              Actividad reciente
-            </CardTitle>
+            <Titulo icon={UserCheck}>Asistencia de hoy</Titulo>
+            <PuntoLuz luz={luzAsistencia} />
           </CardHeader>
-          <CardContent className="px-0 pb-1">
-            {eventos.length === 0 ? (
-              <EmptyState icon={Activity} titulo="Aún no hay movimientos registrados" compacto>
-                Los reportes, incidencias y avances de prendas aparecerán aquí.
+          <CardContent>
+            {totalAsist === 0 ? (
+              <EmptyState icon={UserCheck} titulo="Aún no hay asistencia registrada hoy" compacto>
+                Aparece cuando el huellero o el encargado registran la entrada.
               </EmptyState>
             ) : (
-              <ul className="divide-y divide-line/70">
-                {eventos.map((ev, i) => {
-                  const Icon = ev.icon;
-                  const esReporte = ev.kind === 'reporte';
-                  const chipCls = esReporte && ev.estado ? ICONO_ESTADO_CLS[ev.estado] : 'bg-navy/5 text-navy';
-                  return (
-                    <li key={i} className="animate-rise" style={{ animationDelay: `${i * 40}ms` }}>
-                      <Link
-                        href={ev.href}
-                        className="group flex items-center gap-3 px-5 py-3 outline-none transition-colors duration-150 hover:bg-navy/[0.03] focus-visible:bg-navy/[0.05]"
-                      >
-                        <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-r-pastilla', chipCls)}>
-                          <Icon className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                            <span className="truncate text-cuerpo text-ink">{ev.titulo}</span>
-                            {esReporte && ev.estado && (
-                              <Badge tone={ESTADO_ACTIVIDAD_TONE[ev.estado]}>{ESTADO_ACTIVIDAD_LABEL[ev.estado]}</Badge>
-                            )}
-                            {esReporte && ev.puntaje != null && <PuntajePill puntaje={ev.puntaje} />}
-                          </span>
-                          {ev.detalle && <span className="block truncate text-apoyo text-muted">{ev.detalle}</span>}
-                        </span>
-                        <span className="shrink-0 text-right">
-                          <span className="block tabular-nums text-micro text-muted">{tiempoRelativo(ev.ts, ahora)}</span>
-                          {/* Fecha absoluta (tarea 1): "hace 3 h" no dice CUÁNDO fue — solo en reportes. */}
-                          {esReporte && (
-                            <span className="block tabular-nums text-micro text-muted/70">{fechaHoraCorta(ev.ts)}</span>
-                          )}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+              <>
+                <div
+                  className="flex h-3 overflow-hidden rounded-r-pastilla bg-paper"
+                  role="img"
+                  aria-label={`${asistencia.presentes} presentes, ${asistencia.faltas} faltas, ${asistencia.sinDato} sin dato`}
+                >
+                  <div className="bg-exito" style={{ width: `${(asistencia.presentes / totalAsist) * 100}%` }} />
+                  <div className="bg-error" style={{ width: `${(asistencia.faltas / totalAsist) * 100}%` }} />
+                  <div className="bg-line" style={{ width: `${(asistencia.sinDato / totalAsist) * 100}%` }} />
+                </div>
+                <dl className="mt-3 grid grid-cols-2 gap-3 text-apoyo sm:grid-cols-4">
+                  <div><dt className="text-muted">Presentes</dt><dd className="tabular-nums text-lg font-semibold text-exito-deep">{asistencia.presentes}</dd></div>
+                  <div><dt className="text-muted">Tardanzas</dt><dd className="tabular-nums text-lg font-semibold text-aviso-deep">{asistencia.tardanzas}</dd></div>
+                  <div><dt className="text-muted">Faltas</dt><dd className="tabular-nums text-lg font-semibold text-error-deep">{asistencia.faltas}</dd></div>
+                  <div><dt className="text-muted">Sin dato</dt><dd className="tabular-nums text-lg font-semibold text-muted">{asistencia.sinDato}</dd></div>
+                </dl>
+              </>
             )}
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-gold" strokeWidth={1.75} aria-hidden />
-              Top operarios hoy
-            </CardTitle>
-            <Link
-              href="/pipeline"
-              className="text-apoyo font-medium text-navy transition-colors duration-150 hover:text-gold"
-            >
+            <Titulo icon={Trophy}>Top operarios hoy</Titulo>
+            <Link href="/pipeline" className="text-apoyo font-medium text-navy transition-colors duration-150 hover:text-gold">
               Tablero →
             </Link>
           </CardHeader>
@@ -483,20 +472,13 @@ export default async function Dashboard() {
               ranking.slice(0, 6).map((r, i) => {
                 const maxPts = Math.max(1, ranking[0]?.total ?? 1);
                 return (
-                  <div key={r.nombre} className="animate-rise" style={{ animationDelay: `${i * 50}ms` }}>
+                  <div key={r.nombre}>
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="flex min-w-0 items-baseline gap-2">
                         <span className="w-6 shrink-0 tabular-nums text-micro text-muted">#{i + 1}</span>
                         <span className="truncate text-cuerpo text-ink">{r.nombre}</span>
                       </span>
-                      <span
-                        className={cn(
-                          'tabular-nums text-dato font-bold',
-                          i === 0 ? 'text-gold-deep' : 'text-navy',
-                        )}
-                      >
-                        {r.total}
-                      </span>
+                      <span className={cn('tabular-nums text-dato font-bold', i === 0 ? 'text-gold-deep' : 'text-navy')}>{r.total}</span>
                     </div>
                     <div className="ml-8 mt-1.5 h-1.5 overflow-hidden rounded-r-pastilla bg-paper">
                       <div
@@ -511,24 +493,6 @@ export default async function Dashboard() {
           </CardContent>
         </Card>
       </div>
-
     </div>
-  );
-}
-
-// Puntaje de un reporte evaluado, como pastilla compacta (tarea 1: "% de cumplimiento cuando
-// exista"). Mismos umbrales que Puntaje en app/reportes/lista.tsx para leerse igual en todo
-// el ERP: ≥85 verde, ≥60 dorado, el resto rojo.
-function PuntajePill({ puntaje }: { puntaje: number }) {
-  const cls =
-    puntaje >= 85
-      ? 'bg-exito/10 text-exito-deep'
-      : puntaje >= 60
-        ? 'bg-gold/20 text-gold-deep'
-        : 'bg-error/15 text-error-deep';
-  return (
-    <span className={cn('rounded-r-pastilla px-2 py-0.5 tabular-nums text-micro font-bold', cls)}>
-      {puntaje}%
-    </span>
   );
 }
