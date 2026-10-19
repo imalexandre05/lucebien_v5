@@ -2107,3 +2107,15 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 3. **Rechazo de calidad**: quita sólo los puntos de esa etapa en esa prenda y nadie cobra la etapa.
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
+
+Decidido por Alexander el 19-oct-2026 (y defaults míos asociados):
+
+8. **Los demás factores entran a la nota** (competencias, exámenes, puntualidad; valores 360° como hoy, a confirmar), con
+   pesos editables. `peso_puntos` = 0,30 sale de sumar `peso_operaciones` + `peso_software` + `peso_limpieza`; los
+   otros cuatro pesos no cambian. Con eso los puntos pesan 30 %, menos que lo dicho el 25-ago: editable.
+9. **El exceso no tapa faltas** (se siguió mi recomendación): cada componente cuenta hasta 100 % en la base y el exceso
+   suma aparte con tope `eval_tope_extra` = 0,25 (default mío).
+10. **Ventas:** las carga el administrador a mano por ahora; luego se conectarán con el nuevo sistema de inventario y POS.
+11. **El sistema aún no se usa:** no hay reportes recientes. `pipeline_meta_puntos_por_hora` = 0,5 es un marcador; la
+    idea de Alexander es que la meta de pipeline dependa de la demanda de ternos, y se define después.
+12. **El descuento del día libre en el sueldo** se está trabajando en la sesión maestra.

@@ -3,7 +3,7 @@
 > Escrita el 17-oct-2026, **antes** del código y de las pruebas (Zone Guard). Zona crítica
 > (puntos → evaluación → pago): spec completa, tests y verificador antes de mergear.
 > **Estado: borrador para la sesión maestra.** Sale de la conversación con Alexander del 17-oct-2026
-> (seis rondas). Lo marcado «por confirmar» es un default mío, no una decisión del dueño
+> (siete rondas). Lo marcado «por confirmar» es un default mío, no una decisión del dueño
 > (no-negociable 5).
 
 ## 1. Qué se quiere
@@ -52,6 +52,14 @@ El modelo de Alexander la reemplaza por una **meta propia de cada persona en cad
 15. **Hay personas con más de una sede en el mismo tramo**: la sede se guarda en cada turno, no en la persona.
 16. **Cumplir la meta vale 16** (decidido el 18-oct-2026, tras dudar entre 20 y 16): deja espacio hasta 20 para
     quien rinde más. Ver «De cumplimiento a nota».
+17. **Los demás factores de la evaluación entran a la nota** (19-oct): competencias, exámenes y puntualidad, con
+    peso editable desde `/configuracion`. Los valores 360° siguen como hoy (*por confirmar*). Ver «Nota final».
+18. **El exceso de un componente no tapa la falta del otro** (19-oct, se sigue la recomendación): cada componente
+    cuenta hasta su 100 % en la base y lo que pase suma aparte, con un tope (§4).
+19. **Las ventas las carga el administrador a mano por ahora**; más adelante se conectarán con el nuevo sistema de
+    inventario y POS (19-oct).
+20. **El sistema aún está en desarrollo y no se usa** (19-oct): por eso no hay reportes recientes; las cifras de
+    calibración son marcadores hasta que haya datos reales.
 
 ## 3. Qué ya existe (verificado en el código, no se reescribe)
 
@@ -99,7 +107,9 @@ pipelineEquivalente = puntosPipeline / pipeline_meta_puntos_por_hora      (horas
 rVentas       = ventas del rango / metaVentas del rango                   (la misma meta que usa el motor, RN-10/RN-11)
 rProductividad = (pipelineEquivalente + horasTienda × rVentas) / (horasAlmacen + horasTienda)
 
-cumplimiento  = eval_peso_reportes × rReportes + (1 − eval_peso_reportes) × rProductividad
+base          = eval_peso_reportes × min(rReportes, 1) + (1 − eval_peso_reportes) × min(rProductividad, 1)
+exceso        = eval_peso_reportes × max(rReportes − 1, 0) + (1 − eval_peso_reportes) × max(rProductividad − 1, 0)
+cumplimiento  = base + min(exceso, eval_tope_extra)
 ```
 
 - **Reportes.** La meta es completa: todas las actividades **obligatorias** (`tipo_act = 'obligatoria'`; las
@@ -121,6 +131,10 @@ cumplimiento  = eval_peso_reportes × rReportes + (1 − eval_peso_reportes) × 
 - **Componente sin meta.** Si la persona no tiene meta de productividad (sin horas de almacén y sin meta de
   ventas) o de reportes (sin actividades que apliquen), el cumplimiento es el otro componente. Si no tiene
   ninguno, no hay nota.
+- **El exceso no tapa faltas.** Cada componente cuenta como máximo su 100 % en la base. Lo que pase de 100 % se
+  suma aparte como extra, con un tope (`eval_tope_extra`, default 0,25 = 25 puntos de cumplimiento). Ejemplo: 0 %
+  en reportes y 250 % en productividad dan base 50 % + extra 25 % = 75 % (nota 12, en banda de riesgo), no 125 %.
+  Quien cumple todo y además rinde más llega a 125 %, que con el anclaje de 16 es la nota 20.
 - **Lo no asignado es extra.** El pipeline hecho fuera de las horas de almacén (alguien pasa a almacén un día de
   poca demanda) entra en `pipelineEquivalente` pero no agrega horas al denominador: sube el cumplimiento y nunca se
   descarta nada. Lo mismo quien trabaja un día libre.
@@ -159,6 +173,27 @@ la división, no la captura.
 por `fecha_inicio`/`fecha_fin` del contrato; el primer y el último tramo, si el contrato los corta, tienen
 meta proporcional a lo que cae dentro. Si cambia la modalidad a mitad de contrato, `calendarioDePagos` ya
 parte los tramos.
+
+### Nota final: los puntos y los demás factores
+
+Los demás factores se evalúan y **también entran a la nota**, con pesos editables. Cada uno es una nota sobre 20:
+
+```
+notaPuntos = 20 × cumplimiento / eval_cumplimiento_para_20                (16 al cumplir la meta)
+notaFinal  = peso_puntos × notaPuntos + peso_competencias × competencias + peso_valores × valores
+           + peso_examenes × examenes + peso_tardanza × puntualidad
+```
+
+- Todos los pesos viven en `/configuracion` y **deben sumar 1,00** (se valida al guardar). Se agrega la clave
+  `peso_puntos`; reemplaza a `peso_operaciones`, `peso_software` y `peso_limpieza`, que medían el trabajo y ahora
+  los cubre el bloque de puntos.
+- **Defaults sin inventar nada:** se toman de los pesos que ya existen. `peso_puntos` = 0,10 + 0,10 + 0,10 = **0,30**;
+  competencias 0,25; valores 360° 0,25; exámenes 0,15; puntualidad 0,05. Suman 1,00. Ojo: así los puntos pesan 30 %,
+  menos de lo que el administrador describió el 25-ago; se sube editando el peso, sin tocar código.
+- **Las incidencias no se restan otra vez:** ya bajan `rReportes` (decisión 14). El bono por ventas de la fórmula
+  vieja tampoco aplica: las ventas ya están dentro de la productividad.
+- Las barras del perfil de la pantalla se siguen mostrando como hoy. Las evaluaciones ya cerradas conservan su
+  fórmula (se rotulan «escala anterior»).
 
 ## 5. Días sin obligación: un solo registro de excepciones
 
@@ -199,8 +234,10 @@ Esto toca la cadena del sueldo: spec completa, tests y verificador **aparte** (�
 
 | Clave | Default | De dónde sale |
 |---|---|---|
-| `pipeline_meta_puntos_por_hora` | **0,5** | **Elegido por mí, no por Alexander.** El mejor mes-persona medido (126,45 puntos, abril 2026) dividido en ~21 días de 11 horas da ~0,55 por hora. Es el techo de un módulo con poca adopción (2 de 11 personas registraron avances), así que probablemente subestima la capacidad real. A recalibrar tras un mes de uso; más adelante podría variar con la demanda de ternos |
+| `pipeline_meta_puntos_por_hora` | **0,5** | **Elegido por mí, no por Alexander.** El mejor mes-persona medido (126,45 puntos, abril 2026) dividido en ~21 días de 11 horas da ~0,55 por hora. Es el techo de un módulo con poca adopción (2 de 11 personas registraron avances), así que probablemente subestima la capacidad real. Es un marcador: Alexander dijo que la meta de pipeline podría depender de la demanda de ternos y que se define después, y el sistema aún no está en uso. Se reemplaza cuando se defina |
 | `eval_peso_reportes` | **0,5** | **Elegido por mí:** reportes y productividad pesan igual en el cumplimiento. Se puede inclinar (p. ej. 0,4 da más peso a la productividad) sin tocar código |
+| `eval_tope_extra` | **0,25** | **Elegido por mí:** el exceso sobre 100 % suma como mucho 25 puntos de cumplimiento (125 % = nota 20 en la parte de puntos). Subirlo permite notas sobresalientes (>20) |
+| `peso_puntos` | **0,30** | Tomado de los pesos existentes: `peso_operaciones` + `peso_software` + `peso_limpieza` (0,10 cada uno). Los demás pesos (`peso_competencias` 0,25, `peso_valores` 0,25, `peso_examenes` 0,15, `peso_tardanza` 0,05) no cambian |
 | `eval_cumplimiento_para_20` | **1,25** | Decidido por Alexander (18-oct): cumplir toda la meta vale 16 y el 20 llega al 125 %. Ver §4 |
 
 *Antes de dar por buena la cifra de pipeline*, la sesión maestra debe contrastarla con la base
@@ -232,6 +269,8 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
 6. **Pantalla `/evaluaciones` y «Mi desempeño»:** mostrar el **porcentaje de cumplimiento** como lo principal,
    la nota /20 como referencia, y las dos razones; el mismo aislamiento de hoy (nadie ve la nota ni el sueldo de
    otro).
+6 bis. **Nota final ponderada:** función pura `calcularNotaFinal` en `evaluaciones.ts` (reutiliza `PesosEval` y agrega
+   `peso_puntos`), validación de que los pesos sumen 1,00 y la pantalla de pesos en `/configuracion`.
 7. **Evaluaciones ya cerradas no se recalculan.** Conservan su escala absoluta; la pantalla las rotula como
    «escala anterior».
 
@@ -245,7 +284,7 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
 - **Motor de sueldos y `dias_libres`: dependencia con spec propia.** Para que «el día libre se descuenta» sea
   cierto, `sueldos.ts` debe leer `dias_libres` y aplicar lo descrito en §5. Mientras no exista, **la meta puede
   leer `dias_libres` pero el pago no**, y la pantalla de marcado debe decirlo con todas las letras, para que
-  nadie crea que ya se descuenta.
+  nadie crea que ya se descuenta. Esa spec se está trabajando en la sesión maestra (confirmado el 19-oct).
 
 ## 9. Pruebas que debe tener el código (escribirlas primero)
 
@@ -276,6 +315,11 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
 - `eval_cumplimiento_para_20` = 1,00 da 20 al cumplir el 100 %: el parámetro cambia la escala sin tocar código.
 - La meta de reportes cuenta sólo actividades con `tipo_act = 'obligatoria'`: las `por_puntos` (categoría EXT) no
   suman a la meta, entran como extras.
+- **El exceso no tapa faltas:** reportes 0 % y productividad 250 % dan base 50 % + extra 25 % = 75 % (nota 12);
+  reportes 100 % y productividad 150 % dan 100 % + 25 % = 125 % (nota 20). `eval_tope_extra` = 0,5 sube el techo.
+- **Nota final:** puntos en 16, competencias 18, valores 17, exámenes 15, puntualidad 20, con los pesos por defecto,
+  dan 0,30×16 + 0,25×18 + 0,25×17 + 0,15×15 + 0,05×20 = 16,8. Pesos que no suman 1,00 se rechazan al guardar.
+- Las incidencias bajan `rReportes` una sola vez y no se restan de la nota final.
 - Contrato con cambio de mensual a quincenal el 10-nov: los tramos y sus metas coinciden con
   `calendarioDePagos` (ya probado en `sueldos.test.ts`).
 - Aislamiento: un encargado no ve la meta ni la nota de otra sede; el empleado sólo las suyas.
@@ -290,19 +334,17 @@ por sede y para todos igual; feriados por persona y no pagados, descontados comp
 reportes con meta completa; cada área contra su meta y promedio por horas; turno de almacén con reporte y
 pipeline; extras suben e incidencias bajan; hay personas con más de una sede por tramo.
 
-**Cerradas el 18-oct-2026:** cumplir la meta vale 16 (`eval_cumplimiento_para_20` = 1,25); la sede de almacén
-sí tiene actividades de reporte (9 obligatorias); la de lavandería no tiene ninguna; el reparto de horas de almacén
-queda descartado: el reporte es igual en toda sede y la productividad se mide con pipeline en almacén y con ventas
-en tienda.
+**Cerradas:** cumplir la meta vale 16 (`eval_cumplimiento_para_20` = 1,25); la sede de almacén sí tiene actividades de
+reporte (9 obligatorias) y la de lavandería ninguna; el reporte es igual en toda sede y la productividad se mide con
+pipeline en almacén y con ventas en tienda; los demás factores entran a la nota con pesos editables; el exceso no tapa
+faltas; las ventas las carga el administrador a mano por ahora; el sistema aún no se usa, así que no hay reportes
+recientes; el descuento del día libre se trabaja en la sesión maestra.
 
 **Abiertas:**
-1. ¿Reportes y productividad pesan 50/50 en el cumplimiento? (`eval_peso_reportes`.)
-2. ¿El exceso de un componente puede compensar la falta del otro? Ejemplo: reportes en 0 % y productividad en
-   250 % dan 125 %. Recomendación: cada componente cuenta hasta su 100 % en el promedio base y el exceso suma aparte
-   como extra con un límite.
-3. Cómo se refleja el día libre en el sueldo: decidido (se descuenta completo), pero necesita la spec del
-   motor de sueldos (§8).
-4. Hallazgo: no hay reportes en ninguna sede desde el 23-ago-2026. ¿El módulo de reportes del ERP aún no se usa?
-   Sin reportes, `rReportes` no se puede calcular.
-5. La nota de tienda depende de que las ventas estén cargadas y asignadas a su vendedor. ¿Quién las carga y con
-   qué frecuencia, para poder evaluar cada tramo?
+1. ¿Qué peso quiere el administrador para los puntos en la nota final? Por defecto 30 %, tomado de los pesos
+   existentes; es editable. Y ¿los valores 360° siguen entrando con su 25 %?
+2. ¿Reportes y productividad pesan 50/50 dentro de los puntos? Es editable (`eval_peso_reportes`); se deja así si
+   no hay una preferencia.
+3. **Meta de pipeline:** hoy es una tasa fija provisional (0,5 puntos por hora). Alexander dijo que podría depender de
+   la demanda de ternos. ¿Cómo se define? (Ejemplo: los puntos de trabajo que entran a almacén en el tramo, repartidos
+   entre las horas de las personas que trabajan ahí.)
