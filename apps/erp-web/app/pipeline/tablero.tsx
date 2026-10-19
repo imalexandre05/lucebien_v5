@@ -84,11 +84,11 @@ const COL_MAP: Record<string, string> = {
 type Col = { k: string; n: string; icon: LucideIcon; tint: string };
 const COLUMNAS: Col[] = [
   { k: 'recepcion', n: 'Recepción', icon: Inbox, tint: '#807a6c' },        // muted
-  { k: 'codificacion', n: 'Codificación', icon: Tag, tint: '#b8a515' },   // gold: pendiente de etiqueta
   { k: 'lavado', n: 'Lavado', icon: Droplets, tint: '#2f7f88' },           // cat-mar
   { k: 'empatado', n: 'Empatado', icon: Link2, tint: '#6f5aa8' },          // cat-lila
   { k: 'refaccion', n: 'Refacción', icon: Wrench, tint: '#b5643f' },       // cat-arcilla
   { k: 'compostura', n: 'Compostura', icon: Scissors, tint: '#8a462a' },   // cat-arcilla-deep
+  { k: 'codificacion', n: 'Codificación', icon: Tag, tint: '#b8a515' },   // gold: pendiente de etiqueta
   { k: 'planchado', n: 'Planchado', icon: Shirt, tint: '#1e5a61' },        // cat-mar-deep
   { k: 'control_calidad', n: 'Control calidad', icon: BadgeCheck, tint: '#2d9e6b' }, // exito
   { k: 'listo', n: 'Listo p/ envío', icon: PackageCheck, tint: '#b8a515' },// gold
