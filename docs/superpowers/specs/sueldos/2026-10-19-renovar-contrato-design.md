@@ -31,7 +31,10 @@ hora, escala, almuerzo, parámetros del contrato y todo el horario. Queda en `bo
   (1-oct a 31-oct → 1-nov a 30-nov); si no, los mismos días.
 - **Se rechaza** si el contrato de origen es un borrador, o si la persona ya tiene un contrato que
   empieza después de su fin (ya está renovado). Un solo borrador de renovación por contrato.
-- No copia: cambios de frecuencia, liquidaciones, movimientos ni marcas de asistencia.
+- **Copia la frecuencia y la cuota o tarifa VIGENTES al final del contrato**, no las del primer día: si
+  tuvo un cambio de frecuencia (0120/0121), se toma el último con `desde <= fecha_fin`. Si no, las del
+  contrato. (Hallazgo del verificador: copiar las del primer día pagaba de menos tras un cambio.)
+- No copia: el historial de cambios, liquidaciones, movimientos ni marcas de asistencia.
 
 **Activación `sueldo_renovaciones_activar(p_hoy)`** (cron diario, hora Perú): pasa a `vigente` el
 borrador con `renueva_a` cuyo inicio ya llegó, **solo si la persona no tiene otro contrato vigente**.
@@ -54,3 +57,4 @@ dice «Ya renovado» y lleva al borrador.
 5. Activación: antes del inicio no hace nada; con el anterior aún vigente espera; con el anterior liquidado pasa a vigente. Nunca dos vigentes.
 6. Un borrador sin `renueva_a` no se activa solo.
 7. El administrador puede editar el borrador antes de que empiece.
+8. Con un cambio de frecuencia/cuota dentro del contrato, el borrador sale con lo vigente al final (no con lo del primer día).
