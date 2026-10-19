@@ -810,6 +810,24 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     step: 1,
   },
   {
+    clave: 'codigo_siempre',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Pedir código siempre',
+    descripcion:
+      'Encendido (recomendado): para mover prendas y enviar reportes se pide el código personal en cualquier computadora y cuenta, así cada punto queda a nombre de quien lo hizo. Apagado: solo se pide en los equipos o cuentas marcados como compartidos. El administrador que entró con su usuario no lo necesita, salvo que enciendas la opción de abajo.',
+    tipo: 'booleano',
+    default: 'true',
+  },
+  {
+    clave: 'codigo_exigir_admin',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Exigir código también al administrador',
+    descripcion:
+      'Apagado (default): el administrador mueve prendas y envía reportes sin código si ya entró con su usuario. Encendido: también debe dar su código personal.',
+    tipo: 'booleano',
+    default: 'false',
+  },
+  {
     clave: 'codigo_operador_min',
     seccion: SECCION_CODIGO,
     etiqueta: 'Minutos de operador activo sin actividad',
