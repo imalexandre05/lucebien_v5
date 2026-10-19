@@ -83,33 +83,42 @@ export async function guardarVentaSemana(
   }
 }
 
-// ── «¿Cumplió la meta del mes?» (migración 0169, decisión del dueño n.º 2) ──────────────────────
-// Una fila por persona y mes (`mes` = primer día). Sin fila = no marcada. Mismo cliente y misma RLS
-// que las semanas; el trigger de la base corta si el mes ya está en un pago cerrado.
+// ── Meta del período (migración 0169, decisión del dueño n.º 2, corregida el 19-oct-2026) ────────
+// Una fila por persona y período con la meta que puso el administrador. Sin fila, la meta sale sola
+// (metaPorHora × horas trabajadas). Mismo cliente y misma RLS que las semanas; el trigger de la base
+// corta si el período ya está en un pago cerrado.
 
-/** Primer día del mes de una fecha 'YYYY-MM-DD'. */
-export const primerDiaDelMes = (fecha: string): string => `${fecha.slice(0, 7)}-01`;
-
-export async function leerMetaMes(empleadoId: string, mes: string): Promise<boolean> {
+export async function leerMetaPeriodo(empleadoId: string, desde: string, hasta: string): Promise<number | null> {
   const { data, error } = await getServerClient()
-    .from('sueldo_meta_mes')
-    .select('cumplida')
+    .from('sueldo_meta_periodo')
+    .select('meta')
     .eq('empleado_id', empleadoId)
-    .eq('mes', primerDiaDelMes(mes))
+    .eq('desde', desde)
+    .eq('hasta', hasta)
     .maybeSingle();
-  if (error) throw new Error('No se pudo leer si cumplió la meta del mes. Intenta de nuevo.');
-  return Boolean((data as { cumplida: boolean } | null)?.cumplida);
+  if (error) throw new Error('No se pudo leer la meta del período. Intenta de nuevo.');
+  const meta = (data as { meta: number | string } | null)?.meta;
+  return meta == null ? null : Number(meta);
 }
 
-export async function guardarMetaMes(empleadoId: string, mes: string, cumplida: boolean, adminId: string): Promise<void> {
-  const { error } = await getServerClient()
-    .from('sueldo_meta_mes')
-    .upsert(
-      { empleado_id: empleadoId, mes: primerDiaDelMes(mes), cumplida, creado_por: adminId },
-      { onConflict: 'empleado_id,mes' },
-    );
+/** Pone la meta del período, o la quita (`meta = null`) para volver a la estimada. */
+export async function guardarMetaPeriodo(
+  empleadoId: string,
+  desde: string,
+  hasta: string,
+  meta: number | null,
+  adminId: string,
+): Promise<void> {
+  const sb = getServerClient();
+  if (meta !== null && (!Number.isFinite(meta) || meta < 0)) throw new Error('La meta no puede ser negativa.');
+  const { error } =
+    meta === null
+      ? await sb.from('sueldo_meta_periodo').delete().eq('empleado_id', empleadoId).eq('desde', desde).eq('hasta', hasta)
+      : await sb
+          .from('sueldo_meta_periodo')
+          .upsert({ empleado_id: empleadoId, desde, hasta, meta, creado_por: adminId }, { onConflict: 'empleado_id,desde,hasta' });
   if (error) {
-    if (String(error.message ?? '').includes('PERIODO_CERRADO:')) throw new Error('Ese mes ya está en un pago cerrado: no se puede cambiar.');
+    if (String(error.message ?? '').includes('PERIODO_CERRADO:')) throw new Error('Ese período ya está en un pago cerrado: no se puede cambiar.');
     throw new Error('No se pudo guardar. Intenta de nuevo.');
   }
 }

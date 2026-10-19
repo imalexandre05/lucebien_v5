@@ -2181,9 +2181,11 @@ Decisiones del dueño n.º 6, 7, 5, 4 y 8. **Defaults inventados, a confirmar:**
 - **Respuesta del dueño (19-oct-2026):** el pasaje se mide contra el horario acordado del día cuando existe; si no, contra el contratado.
 - **Default inventado:** el motivo es opcional y de hasta 300 letras (igual que las justificaciones).
 
-## Meta del mes y 1.ª comisión (sesión 8A, 19-oct-2026) — [spec](superpowers/specs/sueldos/2026-10-19-meta-del-mes-primera-comision-design.md)
+## Meta del período y 1.ª comisión (sesión 8A, 19-oct-2026) — [spec](superpowers/specs/sueldos/2026-10-19-meta-del-periodo-primera-comision-design.md)
 
-- **Decisión del dueño n.º 2:** la 1.ª comisión (2% de boletas > S/120) solo se paga si el administrador marca «¿Cumplió la meta del mes?» (tabla `sueldo_meta_mes`, 0169). Sin marcar, 0. La 2.ª comisión no cambia.
-- **Default inventado:** el «mes» de un pago es el mes calendario de su último día. Con pagos que cruzan de mes, la casilla que vale es la del mes en que termina el período.
-- **Aviso al desplegar:** los borradores de liquidación guardados antes de la 0169 quedan «desactualizados» y hay que recalcularlos.
-- **Riesgo a confirmar con el dueño (hallazgo del verificador):** con pagos semanales o quincenales, un pago que cierra a mitad de mes lee la casilla del mes todavía sin marcar y paga 0 de 1.ª comisión; marcarla después solo beneficia a los pagos siguientes. Decidir: ¿marcar la casilla antes de cerrar el primer pago del mes, o que la comisión se pague completa en el pago que cierra el mes?
+- **Decisión del dueño n.º 2 (corregida el 19-oct-2026):** la 1.ª comisión (2% de boletas > S/120) va según el **período de pago** (quincenal → quincenal, etc.). Meta del período = `metaPorHora` (o la de la temporada vigente) × **horas trabajadas** del período, estimada y editable por el administrador (tabla `sueldo_meta_periodo`, 0169). Si las ventas del período llegan a la meta, se paga; si no, 0. La 2.ª comisión no cambia.
+- **Default inventado:** la estimada también multiplica por `factorMeta` (1 salvo que se cambie), igual que la meta semanal sugerida.
+- **Default inventado:** una meta semanal **pactada** en el contrato (o en la temporada) sigue mandando sobre la estimada (RN-10: lo negociado manda); la que pone el administrador manda sobre todo.
+- **Cambio de cifras:** los casos dorados de `sueldos.test.ts` pasaron de meta del período 7.500 (horas contratadas) a 8.181,06 (horas trabajadas); `metaSemanalFija` ahora solo mueve el bono semanal, no la comisión.
+- **Se mantiene (0166):** si alguna carga semanal no trae el monto vendido, no se puede comparar y la meta se da por cumplida; conviene que la carga semanal traiga siempre el monto.
+- **Aviso al desplegar:** los borradores de liquidación anteriores quedan con otra meta del período y conviene recalcularlos.

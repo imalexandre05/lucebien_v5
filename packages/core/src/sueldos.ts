@@ -372,11 +372,11 @@ export interface EntradaLiquidacion {
    */
   ventasSemanales?: VentaSemanal[];
   /**
-   * La casilla «¿Cumplió la meta del mes?» (0169, decisión del dueño n.º 2, 19-oct-2026). Si viene
-   * (true o false), manda ella: marcada paga la 1.ª comisión, sin marcar no se paga. Ausente =
-   * entrada guardada antes de la 0169: rige la regla anterior (ventas del mes ≥ meta del mes).
+   * La meta del período que puso el administrador (0169, decisión del dueño n.º 2, corregida el
+   * 19-oct-2026). Si viene, manda sobre la estimada y sobre la meta semanal pactada. Ausente = la
+   * meta sale sola: meta semanal pactada o `metaPorHora × horas trabajadas del período`.
    */
-  metaMesCumplida?: boolean;
+  metaPeriodoManual?: number;
 }
 
 /** Una semana cargada a mano (spec sueldos/2026-10-18-ventas-metas-semanales §5). */
@@ -1638,7 +1638,8 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   // RN-12: la última semana absorbe los días sobrantes para que ninguna venta quede fuera, pero
   // su meta NO sube por eso: es la de una semana tipo (spec §9.2).
   const horasSemanaTipo = [...porDia.values()].reduce((s, d) => s + d.horas, 0);
-  let metaPeriodo = 0; // RN-11: la meta del mes es la suma de las semanales, no un cálculo aparte
+  let metaSemanalesSuma = 0; // RN-11: suma de las metas semanales (se usa si hay meta pactada)
+  let hayMetaPactada = false;
   const semanas: SemanaLiquidacion[] = tramosSem.map((t, i) => {
     const diasSemana = diasDelPeriodo(t.desde, t.hasta);
     let horas = 0;
@@ -1661,7 +1662,8 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       p.metaSemanal ??
       temporada?.metaSemanal ??
       horasDeLaMeta * (temporada?.metaPorHora ?? p.metaPorHora) * p.factorMeta;
-    metaPeriodo += meta;
+    metaSemanalesSuma += meta;
+    if (p.metaSemanal != null || temporada?.metaSemanal != null) hayMetaPactada = true;
     const carga = cargaDe(t);
     const ventasSemana = carga
       ? carga.montoVendido ?? 0
@@ -1683,13 +1685,28 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
   });
   const semanasCumplidas = semanas.filter((s) => s.cumplida).length;
 
-  // RN-13: la comisión se desbloquea sólo al llegar a la meta del mes. Es un premio distinto al
+  // 0169 — Meta del PERÍODO (la que desbloquea la 1.ª comisión). En este orden: la que puso el
+  // administrador; la meta semanal pactada (suma de las semanales, RN-10); o la estimada
+  // `metaPorHora × horas TRABAJADAS del período × factorMeta` (la temporada vigente al inicio manda
+  // sobre la configuración).
+  const manual = entrada.metaPeriodoManual;
+  if (manual !== undefined && manual !== null && (typeof manual !== 'number' || !Number.isFinite(manual) || manual < 0)) {
+    throw new Error(`La meta del período que puso el administrador es inválida (${String(manual)}). Tiene que ser un número desde 0.`);
+  }
+  const temporadaPeriodo = temporadaVigente(entrada.temporadas ?? [], entrada.fechaInicio);
+  const metaPeriodo =
+    manual !== undefined && manual !== null
+      ? manual
+      : hayMetaPactada
+        ? metaSemanalesSuma
+        : horasTrabajadas * (temporadaPeriodo?.metaPorHora ?? p.metaPorHora) * p.factorMeta;
+
+  // RN-13: la comisión se desbloquea sólo al llegar a la meta del período. Es un premio distinto al
   // bono semanal, no un reemplazo: se pueden cobrar los dos.
   // 0166 (default a confirmar, spec §3): con carga semanal sin el monto vendido no se sabe la venta
   // del mes, así que la condición de RN-13 sólo se aplica si todas las cargas traen el monto.
   const sinMonto = cargas.some((c) => c.montoVendido === null || c.montoVendido === undefined);
-  const casillaMes = entrada.metaMesCumplida;
-  const metaAlcanzada = casillaMes !== undefined ? casillaMes : sinMonto || ventasTotal >= metaPeriodo;
+  const metaAlcanzada = sinMonto || ventasTotal >= metaPeriodo;
   const baseComision =
     ventasSueltas.filter((v) => v.monto > p.montoMinimoComision).reduce((s, v) => s + v.monto, 0) +
     cargas.reduce((s, c) => s + c.totalBoletasMayores, 0);
@@ -1763,9 +1780,7 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
       concepto: `Comisión ${r2(p.pctComision * 100)}%`,
       detalle: metaAlcanzada
         ? `${r2(p.pctComision * 100)}% de S/${r2(baseComision)} en boletas mayores a S/${p.montoMinimoComision}${cargas.length > 0 ? ' (carga semanal)' : ''}`
-        : casillaMes === false
-          ? 'Sin comisión: falta marcar «¿Cumplió la meta del mes?»'
-          : `Sin comisión: ventas S/${r2(ventasTotal)} no alcanzan la meta de S/${r2(metaPeriodo)}`,
+        : `Sin comisión: ventas S/${r2(ventasTotal)} no alcanzan la meta de S/${r2(metaPeriodo)}`,
       monto: r2(comision),
       regla: 'RN-13',
     },

@@ -1,63 +1,64 @@
--- 0169_meta_mes.sql — la casilla «¿Cumplió la meta del mes?» que desbloquea la 1.ª comisión.
+-- 0169_meta_periodo.sql — la meta del período que el administrador puede modificar (1.ª comisión).
 --
--- Spec: docs/superpowers/specs/sueldos/2026-10-19-meta-del-mes-primera-comision-design.md (decisión del dueño n.º 2,
--- 19-oct-2026). Prueba: packages/db/pruebas/0169_meta_mes.prueba.sql.   ZONA CRÍTICA (verificador antes de mergear).
+-- Spec: docs/superpowers/specs/sueldos/2026-10-19-meta-del-periodo-primera-comision-design.md (decisión del dueño n.º 2,
+-- corregida el 19-oct-2026). Prueba: packages/db/pruebas/0169_meta_periodo.prueba.sql.   ZONA CRÍTICA (verificador antes de mergear).
 --
--- Una tabla chica (una fila por persona y mes) y `sueldo_entrada` (cuerpo de la 0168) con una clave más:
--- `metaMesCumplida`. La regla vive en el core. Default inventado (anotado en docs/pendientes-negocio.md): «el
--- mes» de un pago es el mes calendario de su último día. Idempotente.
+-- Una tabla chica (una fila por persona y período) y `sueldo_entrada` (cuerpo de la 0168) con una clave más,
+-- `metaPeriodoManual`, solo cuando hay fila. La regla vive en el core. Aún no está en producción. Idempotente.
 
-create table if not exists sueldo_meta_mes (
+create table if not exists sueldo_meta_periodo (
   id             uuid primary key default gen_random_uuid(),
   empleado_id    uuid not null references empleados(id) on delete restrict,
-  mes            date not null,
-  cumplida       boolean not null default false,
+  desde          date not null,
+  hasta          date not null,
+  meta           numeric(12,2) not null,
   creado_por     uuid references empleados(id) on delete set null,
   creado_en      timestamptz not null default now(),
   actualizado_en timestamptz not null default now(),
-  constraint sueldo_meta_mes_dia1 check (mes = date_trunc('month', mes)::date),
-  constraint sueldo_meta_mes_unica unique (empleado_id, mes)
+  constraint sueldo_mp_meta_chk  check (meta >= 0),
+  constraint sueldo_mp_rango_chk check (hasta >= desde),
+  constraint sueldo_mp_unica     unique (empleado_id, desde, hasta)
 );
 
-comment on table sueldo_meta_mes is
-  'Casilla mensual «¿Cumplió la meta del mes?» (0169, decisión del dueño n.º 2): sin marcarla, la 1.ª comisión (2%) es 0.';
+comment on table sueldo_meta_periodo is
+  'Meta del período puesta por el administrador (0169, decisión del dueño n.º 2): reemplaza la estimada (metaPorHora × horas trabajadas) para desbloquear la 1.ª comisión.';
 
-alter table sueldo_meta_mes enable row level security;
-drop policy if exists sueldo_mm_select on sueldo_meta_mes;
-create policy sueldo_mm_select on sueldo_meta_mes for select
+alter table sueldo_meta_periodo enable row level security;
+drop policy if exists sueldo_mp_select on sueldo_meta_periodo;
+create policy sueldo_mp_select on sueldo_meta_periodo for select
   using (private.app_es_admin() or empleado_id = auth.uid());
-drop policy if exists sueldo_mm_admin on sueldo_meta_mes;
-create policy sueldo_mm_admin on sueldo_meta_mes for all
+drop policy if exists sueldo_mp_admin on sueldo_meta_periodo;
+create policy sueldo_mp_admin on sueldo_meta_periodo for all
   using (private.app_es_admin()) with check (private.app_es_admin());
 
--- Lo pagado no se toca: un mes cuyo último día cae en un pago cerrado no se marca, cambia ni borra.
-create or replace function private.sueldo_mm_no_en_cerrado() returns trigger
+-- Lo pagado no se toca: un período cuyo último día cae en un pago cerrado no se carga, cambia ni borra.
+create or replace function private.sueldo_mp_no_en_cerrado() returns trigger
   language plpgsql security definer set search_path = public, pg_temp
 as $fn$
 declare r record;
 begin
-  for r in select * from (values (case when tg_op <> 'INSERT' then old.empleado_id end, case when tg_op <> 'INSERT' then old.mes end),
-                                 (case when tg_op <> 'DELETE' then new.empleado_id end, case when tg_op <> 'DELETE' then new.mes end)) v(emp, m)
+  for r in select * from (values (case when tg_op <> 'INSERT' then old.empleado_id end, case when tg_op <> 'INSERT' then old.hasta end),
+                                 (case when tg_op <> 'DELETE' then new.empleado_id end, case when tg_op <> 'DELETE' then new.hasta end)) v(emp, d)
            where emp is not null loop
-    if private.sueldo_estado_fecha(r.emp, (r.m + interval '1 month')::date - 1)->>'estado' = 'cerrado' then
-      raise exception 'PERIODO_CERRADO:el mes de % ya está en un pago cerrado; no se puede cambiar', to_char(r.m, 'MM/YYYY');
+    if private.sueldo_estado_fecha(r.emp, r.d)->>'estado' = 'cerrado' then
+      raise exception 'PERIODO_CERRADO:el período que termina el % ya está en un pago cerrado; no se puede cambiar', to_char(r.d, 'DD/MM/YYYY');
     end if;
   end loop;
   if tg_op = 'UPDATE' then new.actualizado_en := now(); end if;
   return case when tg_op = 'DELETE' then old else new end;
 end;
 $fn$;
-revoke execute on function private.sueldo_mm_no_en_cerrado() from public, anon;
+revoke execute on function private.sueldo_mp_no_en_cerrado() from public, anon;
 
-drop trigger if exists trg_sueldo_mm_no_en_cerrado on sueldo_meta_mes;
-create trigger trg_sueldo_mm_no_en_cerrado before insert or update or delete on sueldo_meta_mes
-  for each row execute function private.sueldo_mm_no_en_cerrado();
+drop trigger if exists trg_sueldo_mp_no_en_cerrado on sueldo_meta_periodo;
+create trigger trg_sueldo_mp_no_en_cerrado before insert or update or delete on sueldo_meta_periodo
+  for each row execute function private.sueldo_mp_no_en_cerrado();
 
-drop trigger if exists trg_audit_sueldo_meta_mes on sueldo_meta_mes;
-create trigger trg_audit_sueldo_meta_mes after insert or update or delete on sueldo_meta_mes
+drop trigger if exists trg_audit_sueldo_meta_periodo on sueldo_meta_periodo;
+create trigger trg_audit_sueldo_meta_periodo after insert or update or delete on sueldo_meta_periodo
   for each row execute function private.audit_log_trigger();
 
--- ═══ sueldo_entrada — cuerpo de la 0168 con `metaMesCumplida` ═════════════════════════════════
+-- ═══ sueldo_entrada — cuerpo de la 0168 con `metaPeriodoManual` ═══════════════════════════════
 create or replace function public.sueldo_entrada(p_acuerdo uuid, p_desde date, p_hasta date, p_permitir_pendientes boolean default false)
 returns jsonb
 language plpgsql
@@ -330,10 +331,10 @@ begin
   -- lee `== null`), y quien abra este snapshot dentro de un año tiene que verlo.
   return case when v_semanas is null then '{}'::jsonb
               else jsonb_build_object('ventasSemanales', v_semanas) end
-  -- 0169: la casilla «¿Cumplió la meta del mes?» del mes del último día del período. Sin fila = false.
-  || jsonb_build_object('metaMesCumplida', coalesce(
-       (select m.cumplida from sueldo_meta_mes m
-         where m.empleado_id = a.empleado_id and m.mes = date_trunc('month', p_hasta)::date), false))
+  -- 0169: la meta del período que puso el administrador. La clave SOLO sale si hay fila: así un borrador
+  -- guardado antes de esta migración no queda «desactualizado» al cerrar (0111 compara la entrada entera).
+  || coalesce((select jsonb_build_object('metaPeriodoManual', m.meta) from sueldo_meta_periodo m
+                where m.empleado_id = a.empleado_id and m.desde = p_desde and m.hasta = p_hasta), '{}'::jsonb)
   || jsonb_build_object(
     'acuerdoId',     a.id,
     'empleadoId',    a.empleado_id,
