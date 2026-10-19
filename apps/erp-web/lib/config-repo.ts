@@ -25,7 +25,7 @@ export const ordenarSecciones = _ordenarSecciones;
 export const CIERRE_TURNO_DEFAULT = { M: '15:00', T: '23:00', C: '23:00' } as const;
 
 // Tope de unidades por extra en un reporte (0171). Mismo default provisional que la migración.
-export const TOPE_EXTRA_DEFAULT = 50;
+export const TOPE_EXTRA_DEFAULT = 0; // 0 = sin tope (decisión del dueño, 19-oct-2026; migración 0178)
 
 // select('*') a propósito (lección de la Fase 4): las columnas tipo/descripcion/seccion/opciones
 // son de la migración 0058, que puede no estar aplicada — pedirlas por nombre en el select

@@ -90,7 +90,7 @@ export function MovimientosCliente({
   }, [movimientos]);
 
   const [mov, setMov] = useState({
-    empleadoId: '',
+    empleadoId: enFicha ? (empleados[0]?.id ?? '') : '',
     fecha: hoyPeru(),
     tipo: 'adelanto' as TipoMovimiento,
     monto: '',
@@ -274,7 +274,7 @@ export function MovimientosCliente({
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
-            <div className="lg:col-span-2">
+            {!enFicha && <div className="lg:col-span-2">
               <Label htmlFor="m-emp">Persona</Label>
               <Select
                 id="m-emp"
@@ -288,7 +288,7 @@ export function MovimientosCliente({
                   </option>
                 ))}
               </Select>
-            </div>
+            </div>}
             <div>
               <Label htmlFor="m-fecha">Fecha</Label>
               <Input

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { CalendarRange } from 'lucide-react';
+import { CalendarRange, ChevronLeft, ChevronRight } from 'lucide-react';
 import { calcularCiclo, pagoQueContiene } from '@scilb/core';
 import { hoyPeru } from '../../lib/fechas';
 import { campoCls } from '../ui/form';
@@ -27,17 +27,27 @@ import { cn } from '../../lib/cn';
 const campo = cn(campoCls, 'tabular-nums');
 
 /** Un pago programado, lo mínimo que la barra necesita para ofrecerlo. */
-export type PagoDeBarra = { desde: string; hasta: string; estado: 'por_cerrar' | 'cerrado' | 'pagado' };
-
-const ESTADO_PAGO: Record<PagoDeBarra['estado'], { texto: string; punto: string }> = {
-  pagado: { texto: 'Pagado', punto: 'bg-exito' },
-  cerrado: { texto: 'Cerrado', punto: 'bg-gold' },
-  por_cerrar: { texto: 'Por cerrar', punto: 'bg-muted' },
+export type PagoDeBarra = {
+  desde: string;
+  hasta: string;
+  estado: 'por_cerrar' | 'cerrado' | 'pagado';
+  /** Monto a mostrar: el total liquidado, o el estimado si aún no se cierra. null = sin dato. */
+  monto?: number | null;
+  /** true cuando el monto es una estimación (todavía no hay liquidación cerrada). */
+  estimado?: boolean;
 };
+
+const ESTADO_PAGO: Record<PagoDeBarra['estado'], { texto: string; punto: string; borde: string; pastilla: string }> = {
+  pagado: { texto: 'Pagado', punto: 'bg-exito', borde: 'border-exito/40', pastilla: 'bg-exito/10 text-exito' },
+  cerrado: { texto: 'Cerrado', punto: 'bg-gold', borde: 'border-gold/50', pastilla: 'bg-gold/15 text-gold-deep' },
+  por_cerrar: { texto: 'Por cerrar', punto: 'bg-muted', borde: 'border-line', pastilla: 'bg-navy/5 text-muted' },
+};
+
+const soles = (n: number) => `S/ ${n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 export function BarraPeriodo({
   fechaIngreso,
-  pagos = [],
+  pagos: pagosEntrada = [],
   className,
 }: {
   /** Habilita «Ciclo personal»: el ciclo aniversario de esa persona. */
@@ -50,6 +60,9 @@ export function BarraPeriodo({
   const pathname = usePathname();
   const sp = useSearchParams();
   const [pendiente, iniciar] = useTransition();
+  const [otroRango, setOtroRango] = useState(false);
+
+  const pagos = useMemo(() => [...pagosEntrada].sort((a, b) => a.desde.localeCompare(b.desde)), [pagosEntrada]);
 
   // El período sale de la URL, no de una prop. El layout de la persona no recibe searchParams, así
   // que si dependiera de que se lo pasen habría que inventar un segundo lugar donde vive. Servidor
@@ -109,87 +122,182 @@ export function BarraPeriodo({
     </button>
   );
 
+  // ── «Sus pagos»: el pago elegido, destacado, con flechas; debajo, todos agrupados por año ──────
+  const idxElegido = pagos.findIndex(esIgual);
+  const hayPagos = pagos.length > 0;
+  const elegido = idxElegido >= 0 ? pagos[idxElegido] : null;
+  // Con un rango suelto, las flechas saltan al pago más cercano a ese rango.
+  const idxAnterior = idxElegido >= 0 ? idxElegido - 1 : pagos.reduce((a, p, i) => (p.hasta < periodo.desde ? i : a), -1);
+  const idxSiguiente = idxElegido >= 0 ? idxElegido + 1 : pagos.findIndex((p) => p.desde > periodo.hasta);
+  const anterior = idxAnterior >= 0 ? pagos[idxAnterior] : null;
+  const siguiente = idxSiguiente >= 0 && idxSiguiente < pagos.length ? pagos[idxSiguiente] : null;
+
+  const porAnio = useMemo(() => {
+    const m = new Map<string, PagoDeBarra[]>();
+    for (const p of pagos) {
+      const a = p.desde.slice(0, 4);
+      m.set(a, [...(m.get(a) ?? []), p]);
+    }
+    return [...m.entries()];
+  }, [pagos]);
+
+  const flecha = (destino: PagoDeBarra | null, lado: 'izq' | 'der') => (
+    <button
+      type="button"
+      onClick={() => destino && ir(destino)}
+      disabled={!destino}
+      aria-label={lado === 'izq' ? 'Pago anterior' : 'Pago siguiente'}
+      title={destino ? rangoCorto(destino.desde, destino.hasta) : lado === 'izq' ? 'No hay un pago anterior' : 'No hay un pago siguiente'}
+      className="anillo flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-r-pastilla border border-line text-navy transition-colors duration-150 hover:bg-navy/5 disabled:cursor-not-allowed disabled:opacity-30"
+    >
+      {lado === 'izq' ? <ChevronLeft className="h-5 w-5" aria-hidden /> : <ChevronRight className="h-5 w-5" aria-hidden />}
+    </button>
+  );
+
+  const rangoAbierto = otroRango || !hayPagos;
+
   return (
     <div
       className={cn(
-        'flex flex-wrap items-end gap-x-3 gap-y-2 rounded-r-medio border border-line bg-white px-4 py-3 shadow-card',
+        'space-y-3 rounded-r-medio border border-line bg-white px-4 py-3 shadow-card',
         pendiente && 'opacity-60',
         className,
       )}
     >
-      <div>
-        <label htmlFor="periodo-desde" className="block text-rotulo font-medium uppercase text-muted">
-          Desde
-        </label>
-        <input
-          id="periodo-desde"
-          type="date"
-          value={periodo.desde}
-          onChange={(e) => e.target.value && ir({ ...periodo, desde: e.target.value })}
-          className={campo}
-        />
-      </div>
-      <div>
-        <label htmlFor="periodo-hasta" className="block text-rotulo font-medium uppercase text-muted">
-          Hasta
-        </label>
-        <input
-          id="periodo-hasta"
-          type="date"
-          value={periodo.hasta}
-          onChange={(e) => e.target.value && ir({ ...periodo, hasta: e.target.value })}
-          className={campo}
-        />
-      </div>
+      {hayPagos && (
+        <div className="min-w-0">
+          <p className="mb-2 text-rotulo font-medium uppercase text-muted">Sus pagos</p>
+          <div className="flex items-stretch gap-2">
+            {flecha(anterior, 'izq')}
+            <div
+              className={cn(
+                'min-w-0 flex-1 rounded-r-medio border-2 px-4 py-2.5',
+                elegido ? ESTADO_PAGO[elegido.estado].borde : 'border-line',
+              )}
+              aria-live="polite"
+            >
+              {elegido ? (
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                  <div>
+                    <p className="font-display text-titulo text-navy tabular-nums">{rangoCorto(elegido.desde, elegido.hasta)}</p>
+                    <p className="text-apoyo text-muted tabular-nums">{diasDelPeriodo(elegido)} días</p>
+                  </div>
+                  <div className="text-right">
+                    <span className={cn('inline-flex items-center gap-1.5 rounded-r-pastilla px-2.5 py-0.5 text-apoyo font-medium', ESTADO_PAGO[elegido.estado].pastilla)}>
+                      <span className={cn('h-2 w-2 rounded-r-pastilla', ESTADO_PAGO[elegido.estado].punto)} aria-hidden />
+                      {ESTADO_PAGO[elegido.estado].texto}
+                    </span>
+                    <p className="mt-1 text-cuerpo font-semibold text-navy tabular-nums">
+                      {elegido.monto != null ? `${elegido.estimado ? '≈ ' : ''}${soles(elegido.monto)}` : 'Se calcula al cerrar'}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="font-display text-titulo text-navy tabular-nums">{etiquetaPeriodo(periodo)}</p>
+                  <p className="text-apoyo text-muted">Rango a tu medida · elige un pago de la lista para volver a uno programado</p>
+                </div>
+              )}
+            </div>
+            {flecha(siguiente, 'der')}
+          </div>
 
-      <div className="flex items-center gap-1">
-        {preset('Mes actual', mesActual)}
-        {preset('Mes anterior', mesAnterior)}
-        {ciclo &&
-          preset(
-            'Ciclo personal',
-            { desde: ciclo.desde, hasta: ciclo.hasta },
-            ciclo.fuente === 'aniversario'
-              ? 'Del aniversario de ingreso al día anterior al próximo'
-              : 'Sin fecha de ingreso cargada: cae al mes calendario',
-          )}
-      </div>
-
-      {pagos.length > 0 && (
-        <div className="w-full min-w-0">
-          <p className="mb-1 text-rotulo font-medium uppercase text-muted">Sus pagos</p>
-          {/* Con muchos pagos la fila se desliza hacia el costado dentro de la barra: no ensancha la página. */}
-          <div className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-1">
-            {pagos.map((p) => {
-              const activo = esIgual(p);
-              const e = ESTADO_PAGO[p.estado];
-              return (
-                <button
-                  key={`${p.desde}-${p.hasta}`}
-                  type="button"
-                  onClick={() => ir(p)}
-                  aria-pressed={activo}
-                  title={e.texto}
-                  className={cn(
-                    'anillo flex shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-r-pastilla border px-2.5 py-1.5 text-apoyo font-medium tabular-nums transition-colors duration-150',
-                    activo ? 'border-navy bg-navy text-paper' : 'border-line text-navy hover:bg-navy/5',
-                  )}
-                >
-                  <span className={cn('h-2 w-2 rounded-r-pastilla', e.punto)} aria-hidden />
-                  {rangoCorto(p.desde, p.hasta)}
-                  <span className="sr-only">: {e.texto}</span>
-                </button>
-              );
-            })}
+          <div className="mt-3 space-y-2">
+            {porAnio.map(([anio, lista]) => (
+              <div key={anio} className="flex items-start gap-3">
+                <span className="w-10 shrink-0 pt-1.5 text-apoyo font-semibold text-muted tabular-nums">{anio}</span>
+                <div className="flex flex-wrap gap-1">
+                  {lista.map((p) => {
+                    const activo = esIgual(p);
+                    const actual = p.desde <= hoy && hoy <= p.hasta;
+                    const futuro = p.desde > hoy;
+                    const e = ESTADO_PAGO[p.estado];
+                    return (
+                      <button
+                        key={`${p.desde}-${p.hasta}`}
+                        type="button"
+                        onClick={() => ir(p)}
+                        aria-pressed={activo}
+                        aria-current={actual ? 'date' : undefined}
+                        title={`${e.texto}${actual ? ' · el de hoy' : futuro ? ' · todavía no llega' : ''}`}
+                        className={cn(
+                          'anillo flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-r-pastilla border px-2 py-1 text-apoyo font-medium tabular-nums transition-colors duration-150',
+                          activo ? 'border-navy bg-navy text-paper' : cn(e.borde, 'text-navy hover:bg-navy/5'),
+                          actual && !activo && 'ring-2 ring-gold/60',
+                          futuro && !activo && 'opacity-50 hover:opacity-100',
+                        )}
+                      >
+                        <span className={cn('h-2 w-2 rounded-r-pastilla', e.punto)} aria-hidden />
+                        {rangoCorto(p.desde, p.hasta)}
+                        <span className="sr-only">: {e.texto}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      <p className="ml-auto flex items-center gap-1.5 text-apoyo text-muted">
-        <CalendarRange className="h-3.5 w-3.5" aria-hidden />
-        <span>{etiquetaPeriodo(periodo)}</span>
-        <span className="tabular-nums">· {diasDelPeriodo(periodo)} días</span>
-      </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        {hayPagos && (
+          <button
+            type="button"
+            onClick={() => setOtroRango((v) => !v)}
+            aria-expanded={otroRango}
+            className="anillo cursor-pointer text-apoyo text-muted underline underline-offset-2 hover:text-navy"
+          >
+            {otroRango ? 'Ocultar otro rango de fechas' : 'Otro rango de fechas'}
+          </button>
+        )}
+        <p className="ml-auto flex items-center gap-1.5 text-apoyo text-muted">
+          <CalendarRange className="h-3.5 w-3.5" aria-hidden />
+          <span>{etiquetaPeriodo(periodo)}</span>
+          <span className="tabular-nums">· {diasDelPeriodo(periodo)} días</span>
+        </p>
+      </div>
+
+      {rangoAbierto && (
+        <div className="flex flex-wrap items-end gap-x-3 gap-y-2 border-t border-line pt-3">
+          <div>
+            <label htmlFor="periodo-desde" className="block text-rotulo font-medium uppercase text-muted">
+              Desde
+            </label>
+            <input
+              id="periodo-desde"
+              type="date"
+              value={periodo.desde}
+              onChange={(e) => e.target.value && ir({ ...periodo, desde: e.target.value })}
+              className={campo}
+            />
+          </div>
+          <div>
+            <label htmlFor="periodo-hasta" className="block text-rotulo font-medium uppercase text-muted">
+              Hasta
+            </label>
+            <input
+              id="periodo-hasta"
+              type="date"
+              value={periodo.hasta}
+              onChange={(e) => e.target.value && ir({ ...periodo, hasta: e.target.value })}
+              className={campo}
+            />
+          </div>
+          <div className="flex items-center gap-1">
+            {preset('Mes actual', mesActual)}
+            {preset('Mes anterior', mesAnterior)}
+            {ciclo &&
+              preset(
+                'Ciclo personal',
+                { desde: ciclo.desde, hasta: ciclo.hasta },
+                ciclo.fuente === 'aniversario'
+                  ? 'Del aniversario de ingreso al día anterior al próximo'
+                  : 'Sin fecha de ingreso cargada: cae al mes calendario',
+              )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
