@@ -143,11 +143,11 @@ describe('golden test — spec §5', () => {
   it('ventas y meta del periodo (RN-10, RN-11, RN-13)', () => {
     expect(l.ventas.total).toBe(7200);
     // Sin meta pactada, la meta del PERIODO sale de las horas TRABAJADAS (decisión del dueño,
-    // 19-oct-2026): 179,98 h × S/45.4545 = S/8.181,06. (Las metas semanales siguen siendo las de
+    // 19-oct-2026): 179,98 h + 6 h fuera de contrato = 185,98 h × S/45.4545 = S/8.453,79. (Las metas semanales siguen siendo las de
     // las horas contratadas: 33 h × S/45.4545 = S/1.500, y la semana larga pide el doble.)
-    expect(l.ventas.metaPeriodo).toBe(8181.06);
+    expect(l.ventas.metaPeriodo).toBe(8453.79);
     expect(l.ventas.baseComision).toBe(2320);
-    // Las ventas del periodo (7.200) NO llegan a la meta del periodo (8.181,06), así que no hay comisión.
+    // Las ventas del periodo (7.200) NO llegan a la meta del periodo (8.453,79), así que no hay comisión.
     // La base se calcula igual: es el dato del que saldría la comisión si la meta se alcanzara.
     expect(l.ventas.metaAlcanzada).toBe(false);
     expect(linea('Comisión').monto).toBe(0);
@@ -229,7 +229,7 @@ describe('golden test — spec §5', () => {
     expect(fija.ventas.semanasCumplidas).toBe(4);
     // La meta del periodo ya no es la suma de las semanales: sale de las horas trabajadas, así que
     // `metaSemanalFija` sólo mueve el bono semanal (S/120) y no la comisión.
-    expect(fija.ventas.metaPeriodo).toBe(8181.06);
+    expect(fija.ventas.metaPeriodo).toBe(8453.79);
     expect(fija.ventas.metaAlcanzada).toBe(false);
     expect(fija.lineas.find((x) => x.concepto === 'Bono por metas semanales')!.monto).toBe(120);
     expect(fija.lineas.find((x) => x.concepto.startsWith('Comisión'))!.monto).toBe(0);
@@ -240,8 +240,8 @@ describe('golden test — spec §5', () => {
   // de las semanales: `metaSemanalFija` sólo cambia el bono de la semana larga (S/30 de diferencia).
   it('metaSemanalFija no mueve la meta del periodo, sólo el bono de la semana larga', () => {
     const fija = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanalFija: true } });
-    expect(fija.ventas.metaPeriodo).toBe(8181.06);
-    expect(l.ventas.metaPeriodo).toBe(8181.06);
+    expect(fija.ventas.metaPeriodo).toBe(8453.79);
+    expect(l.ventas.metaPeriodo).toBe(8453.79);
     expect(fija.total - l.total).toBeCloseTo(30, 2);
   });
 
