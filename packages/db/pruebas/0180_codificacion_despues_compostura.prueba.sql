@@ -1,8 +1,8 @@
--- Prueba de la migración 0179_codificacion_despues_compostura.sql
+-- Prueba de la migración 0180_codificacion_despues_compostura.sql
 -- Spec: docs/superpowers/specs/pipeline/2026-10-19-codificacion-despues-de-compostura-design.md
 -- Escrita ANTES que la migración (Zone Guard). Se descarta sola: termina con una excepción
 -- RESULTADO con un [ok]/[FALLA] por caso.
--- Se corre con:  bash tools/postgres-local.sh aplicar && bash tools/postgres-local.sh probar 0179
+-- Se corre con:  bash tools/postgres-local.sh aplicar && bash tools/postgres-local.sh probar 0180
 
 create or replace function pg_temp.como(p_uid uuid) returns void language plpgsql as $f$
 begin
@@ -21,18 +21,18 @@ begin execute p_sql; return 'ok'; exception when others then return sqlerrm; end
 do $$
 declare
   r text := '';
-  v_a text := 'P179A';
+  v_a text := 'P180A';
   e_cf uuid; p uuid;
   v_pts numeric; v_err text; v_n int; v_etapa text;
 begin
   perform pg_temp.dueno();
-  insert into sedes (cod, nombre) values (v_a, 'P0179 Sede A');
-  insert into empleados (cod, nombre, iniciales, rol) values ('P0179-CF', 'Prueba 0179 Confeccionista', 'CF', 'confeccionista') returning id into e_cf;
+  insert into sedes (cod, nombre) values (v_a, 'P0180 Sede A');
+  insert into empleados (cod, nombre, iniciales, rol) values ('P0180-CF', 'Prueba 0180 Confeccionista', 'CF', 'confeccionista') returning id into e_cf;
   insert into config (clave, valor) values ('pts_compostura','1'), ('pts_codificacion','1') on conflict (clave) do update set valor = excluded.valor;
 
   -- 1) compostura → codificación → planchado, con puntos y movimientos con código
   insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
-    values ('P0179-1', 'Chaqueta', 'normal', v_a, 'compostura') returning id into p;
+    values ('P0180-1', 'Chaqueta', 'normal', v_a, 'compostura') returning id into p;
   perform pg_temp.como(e_cf);
   v_err := pg_temp.mensaje(format('select pipeline_avanzar(%L, %L)', p, 'codificacion'));
   perform pg_temp.dueno();
@@ -52,7 +52,7 @@ begin
 
   -- 2) refacción → codificación (compostura saltada) funciona
   insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
-    values ('P0179-2', 'Chaqueta', 'normal', v_a, 'refaccion') returning id into p;
+    values ('P0180-2', 'Chaqueta', 'normal', v_a, 'refaccion') returning id into p;
   perform pg_temp.como(e_cf);
   v_err := pg_temp.mensaje(format('select pipeline_avanzar(%L, %L)', p, 'codificacion'));
   perform pg_temp.dueno();
@@ -61,21 +61,21 @@ begin
 
   -- 3) Ya no se llega desde recepción ni desde lavado; y codificación (sin historial viejo) no vuelve a lavado
   insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
-    values ('P0179-3', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into p;
+    values ('P0180-3', 'Chaqueta', 'normal', v_a, 'recepcion') returning id into p;
   perform pg_temp.como(e_cf);
   v_err := pg_temp.mensaje(format('select pipeline_avanzar(%L, %L)', p, 'codificacion'));
   perform pg_temp.dueno();
   if v_err like 'TRANSICION:%' then r := r || '[ok] caso 3a: recepción → codificación rechazado;';
   else r := r || format('[FALLA] caso 3a: %s;', v_err); end if;
   insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
-    values ('P0179-4', 'Chaqueta', 'normal', v_a, 'lavado') returning id into p;
+    values ('P0180-4', 'Chaqueta', 'normal', v_a, 'lavado') returning id into p;
   perform pg_temp.como(e_cf);
   v_err := pg_temp.mensaje(format('select pipeline_avanzar(%L, %L)', p, 'codificacion'));
   perform pg_temp.dueno();
   if v_err like 'TRANSICION:%' then r := r || '[ok] caso 3b: lavado → codificación rechazado;';
   else r := r || format('[FALLA] caso 3b: %s;', v_err); end if;
   insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
-    values ('P0179-5', 'Chaqueta', 'normal', v_a, 'codificacion') returning id into p;
+    values ('P0180-5', 'Chaqueta', 'normal', v_a, 'codificacion') returning id into p;
   perform pg_temp.como(e_cf);
   v_err := pg_temp.mensaje(format('select pipeline_avanzar(%L, %L)', p, 'lavado'));
   perform pg_temp.dueno();
@@ -84,7 +84,7 @@ begin
 
   -- 4) Prenda que entró a codificación con el orden viejo (recepción → codificación) conserva su salida
   insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
-    values ('P0179-6', 'Chaqueta', 'normal', v_a, 'codificacion') returning id into p;
+    values ('P0180-6', 'Chaqueta', 'normal', v_a, 'codificacion') returning id into p;
   insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva) values (p, 'recepcion', 'codificacion');
   perform pg_temp.como(e_cf);
   v_err := pg_temp.mensaje(format('select pipeline_avanzar(%L, %L)', p, 'lavado'));
@@ -95,7 +95,7 @@ begin
 
   -- 5) Deshacer vuelve a compostura
   insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
-    values ('P0179-7', 'Chaqueta', 'normal', v_a, 'compostura') returning id into p;
+    values ('P0180-7', 'Chaqueta', 'normal', v_a, 'compostura') returning id into p;
   perform pg_temp.como(e_cf);
   perform pipeline_avanzar(p, 'codificacion');
   v_err := pg_temp.mensaje(format('select pipeline_deshacer(%L, %L)', p, 'compostura'));
@@ -104,5 +104,5 @@ begin
   if v_err = 'ok' and v_etapa = 'compostura' then r := r || '[ok] caso 5: deshacer vuelve a compostura;';
   else r := r || format('[FALLA] caso 5: err=%s etapa=%s;', v_err, v_etapa); end if;
 
-  raise exception 'RESULTADO 0179 --> %', r;
+  raise exception 'RESULTADO 0180 --> %', r;
 end $$;

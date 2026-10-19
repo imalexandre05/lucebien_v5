@@ -10,7 +10,7 @@ import {
 
 describe('siguienteEtapa', () => {
   it('avanza en orden', () => {
-    // 0179: «codificacion» queda entre compostura y planchado (aunque saltarla es válido).
+    // 0180: «codificacion» queda entre compostura y planchado (aunque saltarla es válido).
     expect(siguienteEtapa('recepcion')).toBe('lavado');
     expect(siguienteEtapa('compostura')).toBe('codificacion');
     expect(siguienteEtapa('codificacion')).toBe('planchado');

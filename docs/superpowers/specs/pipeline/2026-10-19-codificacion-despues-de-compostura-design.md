@@ -1,6 +1,6 @@
 # Codificación después de Compostura
 
-Sesión 10A · Zona crítica (no-negociable 2: avance solo por RPC) · Migración 0179 · Corrige la 0147
+Sesión 10A · Zona crítica (no-negociable 2: avance solo por RPC) · Migración 0180 · Corrige la 0147
 
 ## Problema
 La 0147 puso «Codificación» entre Recepción y Lavado. El dueño (19-oct-2026) indica que va
@@ -23,7 +23,7 @@ La 0147 puso «Codificación» entre Recepción y Lavado. El dueño (19-oct-2026
    completar `codificacion` paga `pts_codificacion` (1, editable). Deshacer funciona igual.
 
 ## Pruebas
-- SQL `0179_codificacion_despues_compostura.prueba.sql`: compostura→codificación y
+- SQL `0180_codificacion_despues_compostura.prueba.sql`: compostura→codificación y
   codificación→planchado funcionan; refacción→codificación funciona; recepción→codificación,
   codificación→lavado (sin historial viejo) y lavado→codificación → `TRANSICION:`; una prenda con
   historial recepción→codificación todavía sale a lavado; el avance deja historial con código.
