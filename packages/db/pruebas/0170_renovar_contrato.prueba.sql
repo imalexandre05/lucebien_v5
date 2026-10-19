@@ -85,10 +85,11 @@ begin
 
   -- 10) con el anterior liquidado, pasa a vigente
   update sueldo_acuerdos set estado = 'liquidado' where id = a2;
-  if sueldo_renovaciones_activar(date '2099-08-04') = 1
+  cnt := sueldo_renovaciones_activar(date '2099-08-04');
+  if cnt = 1
      and (select estado from sueldo_acuerdos where id = nuevo) = 'vigente'
      and (select count(*) from sueldo_acuerdos where empleado_id = per2 and estado = 'vigente') = 1 then r := r || '[ok] 10;';
-  else r := r || '[FALLA] 10: no activó;'; end if;
+  else r := r || format('[FALLA] 10: activó %s;', cnt); end if;
 
   -- 11) un borrador sin renueva_a nunca se activa solo
   insert into sueldo_acuerdos (empleado_id, fecha_inicio, fecha_fin, sueldo_pactado, creado_por, estado)
