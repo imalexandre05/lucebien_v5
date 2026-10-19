@@ -333,6 +333,9 @@ begin
               else jsonb_build_object('ventasSemanales', v_semanas) end
   -- 0169: la meta del período que puso el administrador. La clave SOLO sale si hay fila: así un borrador
   -- guardado antes de esta migración no queda «desactualizado» al cerrar (0111 compara la entrada entera).
+  -- Marca de regla: un borrador guardado antes de esta migración no la trae, y el cierre (0111) lo marca
+  -- «desactualizado» en vez de cerrarlo con la meta vieja.
+  || jsonb_build_object('reglaMetaPeriodo', 2)
   || coalesce((select jsonb_build_object('metaPeriodoManual', m.meta) from sueldo_meta_periodo m
                 where m.empleado_id = a.empleado_id and m.desde = p_desde and m.hasta = p_hasta), '{}'::jsonb)
   || jsonb_build_object(

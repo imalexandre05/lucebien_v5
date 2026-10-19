@@ -301,8 +301,10 @@ export function MetaPeriodoTarjeta({
   hasta,
   meta,
   ventas,
+  cumplida,
   puesta,
   cerrada,
+  esUnPago,
 }: {
   empleadoId: string;
   desde: string;
@@ -310,9 +312,13 @@ export function MetaPeriodoTarjeta({
   /** Meta que usa el cálculo (la puesta o la estimada); null si todavía no se puede calcular. */
   meta: number | null;
   ventas: number | null;
+  /** Lo que dice el motor (no se recalcula acá); null si todavía no se puede calcular. */
+  cumplida: boolean | null;
   /** La meta la puso el administrador (no es la estimada). */
   puesta: boolean;
   cerrada: boolean;
+  /** El rango elegido coincide con un pago de la persona: solo así la meta puesta cuenta. */
+  esUnPago: boolean;
 }) {
   const router = useRouter();
   const [editando, setEditando] = useState(false);
@@ -338,8 +344,6 @@ export function MetaPeriodoTarjeta({
     guardar(n);
   };
 
-  const cumplida = meta !== null && ventas !== null ? ventas >= meta : null;
-
   return (
     <Card>
       <div className="p-3 sm:p-4">
@@ -349,7 +353,7 @@ export function MetaPeriodoTarjeta({
             {meta !== null && <span className="font-normal text-muted">({puesta ? 'puesta por ti' : 'estimada'})</span>}
           </p>
           {cumplida !== null && <Badge tone={cumplida ? 'green' : 'amber'}>{cumplida ? 'Cumplida' : 'No cumplida'}</Badge>}
-          {!cerrada && meta !== null && !editando && (
+          {!cerrada && esUnPago && !editando && (
             <button type="button" className="text-apoyo text-gold-deep underline" onClick={() => setEditando(true)}>
               editar
             </button>
@@ -364,8 +368,13 @@ export function MetaPeriodoTarjeta({
               : 'Sin llegar a la meta no se paga la comisión del 2%. El bono de cada semana no depende de esto.'}
         </p>
         {cerrada && <p className="mt-1 text-apoyo text-muted">Ese período ya está en un pago cerrado: no se puede cambiar.</p>}
+        {!cerrada && !esUnPago && (
+          <p className="mt-1 text-apoyo text-muted">
+            Para poner otra meta, elige arriba el período de uno de sus pagos: la meta se guarda por pago.
+          </p>
+        )}
 
-        {editando && !cerrada && (
+        {editando && !cerrada && esUnPago && (
           <div className="mt-3 flex flex-wrap items-end gap-3">
             <label className="text-apoyo text-muted">
               Meta del período (S/)

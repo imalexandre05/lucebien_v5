@@ -1694,12 +1694,14 @@ export function liquidarPeriodo(entrada: EntradaLiquidacion): Liquidacion {
     throw new Error(`La meta del período que puso el administrador es inválida (${String(manual)}). Tiene que ser un número desde 0.`);
   }
   const temporadaPeriodo = temporadaVigente(entrada.temporadas ?? [], entrada.fechaInicio);
-  const metaPeriodo =
+  // Se redondea a céntimos ANTES de comparar: lo que muestra la pantalla es lo que paga el motor.
+  const metaPeriodo = r2(
     manual !== undefined && manual !== null
       ? manual
       : hayMetaPactada
         ? metaSemanalesSuma
-        : horasTrabajadas * (temporadaPeriodo?.metaPorHora ?? p.metaPorHora) * p.factorMeta;
+        : (horasTrabajadas + horasFuera) * (temporadaPeriodo?.metaPorHora ?? p.metaPorHora) * p.factorMeta
+  );
 
   // RN-13: la comisión se desbloquea sólo al llegar a la meta del período. Es un premio distinto al
   // bono semanal, no un reemplazo: se pueden cobrar los dos.
