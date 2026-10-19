@@ -10,9 +10,10 @@ import {
 
 describe('siguienteEtapa', () => {
   it('avanza en orden', () => {
-    // 0147: «codificacion» queda entre recepción y lavado en el orden (aunque saltarla es válido).
-    expect(siguienteEtapa('recepcion')).toBe('codificacion');
-    expect(siguienteEtapa('codificacion')).toBe('lavado');
+    // 0179: «codificacion» queda entre compostura y planchado (aunque saltarla es válido).
+    expect(siguienteEtapa('recepcion')).toBe('lavado');
+    expect(siguienteEtapa('compostura')).toBe('codificacion');
+    expect(siguienteEtapa('codificacion')).toBe('planchado');
     expect(siguienteEtapa('lavado')).toBe('empatado');
   });
   it('la última etapa no tiene siguiente', () => {
@@ -31,15 +32,16 @@ describe('TRANSICIONES del tablero', () => {
   it('control de calidad va a listo', () => {
     expect(TRANSICIONES.control_calidad).toEqual(['listo']);
   });
-  it('codificación es una etapa entre recepción y lavado', () => {
+  it('codificación es una etapa entre compostura y planchado', () => {
     const i = ETAPAS_PIPELINE.indexOf('codificacion');
-    expect(i).toBe(ETAPAS_PIPELINE.indexOf('recepcion') + 1);
-    expect(ETAPAS_PIPELINE[i + 1]).toBe('lavado');
+    expect(i).toBe(ETAPAS_PIPELINE.indexOf('compostura') + 1);
+    expect(ETAPAS_PIPELINE[i + 1]).toBe('planchado');
   });
-  it('a codificación solo se llega desde recepción y de ahí se sigue a lavado o refacción', () => {
+  it('a codificación se llega desde refacción o compostura y de ahí solo se va a planchado', () => {
     const origenes = ETAPAS_PIPELINE.filter((e) => (TRANSICIONES[e] as readonly string[]).includes('codificacion'));
-    expect(origenes).toEqual(['recepcion']);
-    expect(TRANSICIONES.codificacion).toEqual(['lavado', 'refaccion']);
+    expect(origenes).toEqual(['refaccion', 'compostura']);
+    expect(TRANSICIONES.codificacion).toEqual(['planchado']);
+    expect(TRANSICIONES.recepcion).not.toContain('codificacion');
   });
   it('completar codificación usa pts_codificacion', () => {
     expect(clavePuntos('codificacion')).toBe('pts_codificacion');
