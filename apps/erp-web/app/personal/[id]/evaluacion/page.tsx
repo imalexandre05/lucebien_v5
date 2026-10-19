@@ -74,6 +74,7 @@ export default async function EvaluacionColaboradorPage(
         escala={escala}
         esAdmin={esAdmin}
         competenciasConfig={competenciasConfig}
+        enFicha={{ empleadoId: persona.id, desde: periodo.desde, hasta: periodo.hasta }}
       />
     </div>
   );

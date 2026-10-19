@@ -62,7 +62,18 @@ export default async function ColaboradorLayout(
   if (esAdmin && acceso.secciones.includes('pago')) {
     try {
       const r = await pagosDeLaPersona(persona.id);
-      pagos = r.pagos.map((p) => ({ desde: p.desde, hasta: p.hasta, estado: p.estado }));
+      pagos = r.pagos.map((p) => {
+        // Cerrado o pagado: el total liquidado. Por cerrar: la referencia (≈) si el contrato es por horas.
+        const liquidado = p.liquidaciones.reduce((s, l) => s + l.total, 0);
+        const conLiquidacion = p.liquidaciones.length > 0;
+        return {
+          desde: p.desde,
+          hasta: p.hasta,
+          estado: p.estado,
+          monto: conLiquidacion ? liquidado : p.referencia,
+          estimado: !conLiquidacion,
+        };
+      });
     } catch {
       pagos = [];
     }
