@@ -2198,3 +2198,15 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - **Decisión del dueño n.º 1:** «dentro de su horario» se mide por cantidad de horas; si el administrador y la persona acuerdan otro horario ese día, la tardanza se mide contra la hora acordada (columna `asistencias.inicio_acordado`, 0168).
 - **Respuesta del dueño (19-oct-2026):** el pasaje se mide contra el horario acordado del día cuando existe; si no, contra el contratado.
 - **Default inventado:** el motivo es opcional y de hasta 300 letras (igual que las justificaciones).
+
+## Meta del período y 1.ª comisión (sesión 8A, 19-oct-2026) — [spec](superpowers/specs/sueldos/2026-10-19-meta-del-periodo-primera-comision-design.md)
+
+- **Decisión del dueño n.º 2 (corregida el 19-oct-2026):** la 1.ª comisión (2% de boletas > S/120) va según el **período de pago** (quincenal → quincenal, etc.). Meta del período = `metaPorHora` (o la de la temporada vigente) × **horas trabajadas** del período, estimada y editable por el administrador (tabla `sueldo_meta_periodo`, 0169). Si las ventas del período llegan a la meta, se paga; si no, 0. La 2.ª comisión no cambia.
+- **Default inventado:** la estimada también multiplica por `factorMeta` (1 salvo que se cambie), igual que la meta semanal sugerida.
+- **Default inventado:** una meta semanal **pactada** en el contrato (o en la temporada) sigue mandando sobre la estimada (RN-10: lo negociado manda); la que pone el administrador manda sobre todo.
+- **Cambio de cifras:** los casos dorados de `sueldos.test.ts` pasaron de meta del período 7.500 (horas contratadas) a 8.181,06 (horas trabajadas); `metaSemanalFija` ahora solo mueve el bono semanal, no la comisión.
+- **Se mantiene (0166):** si alguna carga semanal no trae el monto vendido, no se puede comparar y la meta se da por cumplida; conviene que la carga semanal traiga siempre el monto.
+- **Aviso al desplegar:** los borradores de liquidación anteriores quedan con otra meta del período y conviene recalcularlos.
+- **Decidido por el dueño (19-oct-2026):** las horas fuera de contrato SÍ cuentan para la meta estimada.
+- **Decidido por el dueño (19-oct-2026):** con 0 horas trabajadas la 1.ª comisión «no aplica» (no se marca Cumplida). Una temporada que cubre parte del período prorratea la meta por los días de cada temporada; una meta semanal pactada solo vale para su semana.
+- **Para revisar (no resuelto):** el trigger de la meta solo mira la fecha final del período.
