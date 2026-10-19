@@ -2174,3 +2174,10 @@ Decisiones del dueño n.º 6, 7, 5, 4 y 8. **Defaults inventados, a confirmar:**
 - [Pagos programados](superpowers/specs/sueldos/2026-10-18-pagos-programados-cierre-un-paso-design.md): el período por defecto de la ficha es el pago que contiene hoy; «Pagado» = sin saldo en todas las liquidaciones que lo cubren.
 - [Ficha y «Por revisar»](superpowers/specs/sueldos/2026-10-18-ficha-unica-asistencia-por-revisar-design.md) (0165): el motivo de una justificación va de 3 a 300 letras; «Todo bien» deja de mostrar el día pero no cambia el pago; «Es falta» también marca el día como revisado.
 - [Ventas por semana](superpowers/specs/sueldos/2026-10-18-ventas-metas-semanales-design.md) (0166): con carga semanal, la condición de RN-13 (llegar a la meta del mes para la 1.ª comisión) **sólo se aplica si todas las semanas cargadas traen el monto vendido**; si no, la 1.ª comisión se paga sin esa condición. Una semana dura a lo sumo 10 días. Una semana sin sí/no ni monto cuenta como no cumplida.
+
+## Renovar contrato (sesión 8A, 19-oct-2026) — [spec](superpowers/specs/sueldos/2026-10-19-renovar-contrato-design.md)
+
+- **Decisión del dueño n.º 3 (tablero #21):** botón «Renovar» crea el contrato nuevo en borrador (copia tarifa o cuota, horario, frecuencia y parámetros) y se activa solo el día siguiente al fin del actual. Nunca dos contratos vigentes.
+- **Default inventado:** el contrato nuevo dura los mismos meses si el actual es de meses completos (1-oct a 31-oct → 1-nov a 30-nov); si no, los mismos días. Se edita antes de que empiece.
+- **Default inventado:** si al llegar el día el contrato anterior sigue «vigente» (falta cerrar su último pago), la renovación espera y se activa el día siguiente en que el anterior pase a «liquidado». Así nunca hay dos vigentes.
+- **Para producción:** la 0170 programa un cron diario (00:10 hora Perú) `sueldo-renovaciones-activar`. Confirmar que quedó creado tras aplicar la migración.

@@ -40,7 +40,7 @@ import {
   porcentajeAFraccion,
   type Lectura,
 } from '../../../lib/porcentaje';
-import { accionActualizarAcuerdo, accionCambiarEstado, accionCrearAcuerdo, type AcuerdoForm } from './actions';
+import { accionActualizarAcuerdo, accionCambiarEstado, accionCrearAcuerdo, accionRenovarAcuerdo, type AcuerdoForm } from './actions';
 import { CambiarFrecuencia } from './cambiar-frecuencia';
 import { ComoSePaga, fechaCorta, nombreFrecuencia } from './como-se-paga';
 
@@ -533,6 +533,7 @@ export function AcuerdosCliente({
   // cuando se dispara, el formulario no está en pantalla y el mensaje se renderizaría donde nadie
   // lo ve.
   const [errorLista, setErrorLista] = useState<string | null>(null);
+  const [avisoRenovado, setAvisoRenovado] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
 
   const mesesIngreso = mesesCompletosDesde(fechaIngresoPersona ?? null, hoyPeru());
@@ -686,6 +687,23 @@ export function AcuerdosCliente({
       const r = await accionCambiarEstado(id, estado);
       if (!r.ok) setErrorLista(r.error ?? 'No se pudo cambiar el estado.');
       else router.refresh();
+    });
+  };
+
+  const renovar = (id: string) => {
+    setErrorLista(null);
+    setAvisoRenovado(null);
+    empezar(async () => {
+      const r = await accionRenovarAcuerdo(id);
+      if (!r.ok) {
+        setErrorLista(r.error ?? 'No se pudo renovar el contrato.');
+        return;
+      }
+      const [a, m, d] = (r.inicio ?? '').split('-');
+      setAvisoRenovado(
+        `Listo: el contrato nuevo empieza el ${d}/${m}/${a}. Aparece en borrador y puedes cambiarlo hasta entonces; se activa solo ese día.`,
+      );
+      router.refresh();
     });
   };
 
@@ -1301,6 +1319,11 @@ export function AcuerdosCliente({
           {errorLista}
         </Aviso>
       )}
+      {avisoRenovado && (
+        <Aviso tono="exito" className="mb-3">
+          {avisoRenovado}
+        </Aviso>
+      )}
 
       <Card>
         <CardHeader>
@@ -1374,6 +1397,11 @@ export function AcuerdosCliente({
                         {a.estado === 'borrador' && a.turnos.length > 0 && (
                           <Button variant="outline" onClick={() => cambiarEstado(a.id, 'vigente')} pending={pendiente}>
                             Poner vigente
+                          </Button>
+                        )}
+                        {a.estado === 'vigente' && (
+                          <Button variant="outline" onClick={() => renovar(a.id)} pending={pendiente}>
+                            Renovar
                           </Button>
                         )}
                         {a.estado === 'vigente' && (
