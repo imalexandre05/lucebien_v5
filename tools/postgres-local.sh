@@ -126,6 +126,10 @@ probar() {
   for p in "$@"; do
     for f in packages/db/pruebas/${p}_*.prueba.sql; do
       [ -e "$f" ] || { echo "✗ no hay prueba para $p"; fallos=$((fallos+1)); continue; }
+      # Las pruebas anteriores a la 0177 suponen que una cuenta personal mueve prendas sin código:
+      # se apaga «codigo_siempre» para ellas. La 0177 fija sus propios valores.
+      echo "update config set valor = 'false' where clave = 'codigo_siempre';" > "$DIR/prelude.sql"
+      psql_pg -f "$DIR/prelude.sql" >/dev/null 2>&1
       salida=$(como_pg "$BIN/psql -X -h $DIR -p $PORT -d $DB -v ON_ERROR_STOP=0 -f $PWD/$f" 2>&1)
       res=$(printf '%s' "$salida" | grep -o 'RESULTADO.*' | head -1)
       printf '\n%s\n  %s\n' "$(basename "$f" .prueba.sql)" "${res:-(la prueba no llegó al final)}"
