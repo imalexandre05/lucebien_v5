@@ -3,10 +3,10 @@
 import { useMemo, useState, useTransition, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Check, Eye, Truck, ArrowLeft } from 'lucide-react';
+import { Check, Undo2, Truck, ArrowLeft } from 'lucide-react';
 import type { FiltrosEnvios } from '@scilb/core';
 import type { PrendaEnviada } from '../../../lib/envios-repo';
-import { calificarPrenda } from '../actions';
+import { calificarTanda } from '../actions';
 import { useOperador } from '../operador';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
@@ -14,7 +14,7 @@ import { Badge } from '../../../components/ui/badge';
 import { EmptyState } from '../../../components/ui/empty-state';
 import { BarraFiltros } from '../../../components/ui/barra-filtros';
 import { Button, buttonVariants } from '../../../components/ui/button';
-import { Aviso, campoCls } from '../../../components/ui/form';
+import { Aviso, Input, Label, campoCls } from '../../../components/ui/form';
 import { OpcionBotones } from '../../../components/ui/opcion-botones';
 import { cn } from '../../../lib/cn';
 
@@ -27,6 +27,18 @@ const fecha = (iso: string | null) => {
 };
 
 const RUTA = '/pipeline/envios';
+
+// La tienda puede devolver una prenda a cualquier etapa del proceso (0181).
+const ETAPAS_DEVOLUCION = [
+  { k: 'recepcion', n: 'Recepción' },
+  { k: 'lavado', n: 'Lavado' },
+  { k: 'empatado', n: 'Empatado' },
+  { k: 'refaccion', n: 'Refacción' },
+  { k: 'compostura', n: 'Compostura' },
+  { k: 'codificacion', n: 'Codificación' },
+  { k: 'planchado', n: 'Planchado' },
+  { k: 'control_calidad', n: 'Control calidad' },
+];
 
 // URL de la pantalla con los filtros actuales más `cambios` (null borra la clave).
 function urlCon(f: FiltrosEnvios, cambios: Partial<Record<'sede' | 'desde' | 'hasta' | 'pag', string | null>>) {
@@ -67,7 +79,9 @@ export function EnviosCliente({
   const { conOperador, operadorRechazado, renovar, chip, dialogo } = useOperador(compartido);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
-  const [destinoObs, setDestinoObs] = useState<Record<string, string>>({});
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [devolverA, setDevolverA] = useState('lavado');
+  const [nota, setNota] = useState('');
   const [error, setError] = useState<string | null>(null);
   const hayFiltros = Boolean(filtros.sede || filtros.desde || filtros.hasta);
 
@@ -97,20 +111,47 @@ export function EnviosCliente({
     );
   }, [enCamino, miSede]);
 
-  function calificar(p: PrendaEnviada, aceptada: boolean) {
+  const alternar = (id: string) =>
+    setSel((prev) => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  const alternarGrupo = (ids: string[]) =>
+    setSel((prev) => {
+      const n = new Set(prev);
+      const todas = ids.every((i) => n.has(i));
+      for (const i of ids) {
+        if (todas) n.delete(i);
+        else n.add(i);
+      }
+      return n;
+    });
+
+  // Aceptar o devolver todas las seleccionadas juntas (0181). Siempre con el código de quien opera.
+  function calificar(aceptada: boolean) {
+    const ids = [...sel];
+    if (ids.length === 0) return;
+    if (!aceptada && nota.trim().length < 3) {
+      setError('Escribe qué pasó con la prenda (por ejemplo: «mancha, regresar a lavado»).');
+      return;
+    }
     conOperador((token) =>
       startTransition(async () => {
         setError(null);
         try {
-          const r = await calificarPrenda(p.id, aceptada, aceptada ? '' : destinoObs[p.id] || 'recepcion', token);
+          const r = await calificarTanda(ids, aceptada, aceptada ? '' : devolverA, aceptada ? '' : nota.trim(), token);
           if (r) {
-            operadorRechazado();
-            setError('Operador vencido. Ingresa tu código de nuevo.');
+            if (r.startsWith('CODIGO:')) operadorRechazado();
+            setError(r.replace(/^(CODIGO|MOTIVO): ?/, ''));
           } else {
             renovar();
+            setSel(new Set());
+            setNota('');
           }
         } catch {
-          setError('No se pudo calificar la prenda. Actualiza la lista e inténtalo de nuevo.');
+          setError('No se pudo completar. Actualiza la lista e inténtalo de nuevo.');
         }
         router.refresh();
       }),
@@ -174,6 +215,64 @@ export function EnviosCliente({
         </Aviso>
       )}
 
+      {sel.size > 0 && (
+        <div className="sticky top-2 z-10 space-y-3 rounded-r-tarjeta border border-line bg-white p-3 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="tabular-nums text-cuerpo font-medium text-navy">
+              {sel.size} {sel.size === 1 ? 'prenda elegida' : 'prendas elegidas'}
+            </span>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => calificar(true)}
+              className="inline-flex items-center gap-1 rounded-r-pastilla bg-exito px-3 py-1.5 text-cuerpo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
+            >
+              <Check className="h-4 w-4" strokeWidth={3} /> Aceptar
+            </button>
+            <button
+              type="button"
+              onClick={() => setSel(new Set())}
+              className="ml-auto text-apoyo text-muted hover:text-navy"
+            >
+              Limpiar selección
+            </button>
+          </div>
+          <div className="flex flex-wrap items-end gap-2">
+            <div>
+              <Label htmlFor="devolver-a">Devolver a</Label>
+              <select
+                id="devolver-a"
+                value={devolverA}
+                onChange={(e) => setDevolverA(e.target.value)}
+                className={campoCls}
+              >
+                {ETAPAS_DEVOLUCION.map((e) => (
+                  <option key={e.k} value={e.k}>{e.n}</option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-[14rem] flex-1">
+              <Label htmlFor="devolver-nota">Qué pasó</Label>
+              <Input
+                id="devolver-nota"
+                value={nota}
+                maxLength={500}
+                placeholder="Ej.: mancha, regresar a lavado"
+                onChange={(e) => setNota(e.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => calificar(false)}
+              className="inline-flex items-center gap-1 rounded-r-pastilla border border-aviso-line bg-aviso-soft px-3 py-1.5 text-cuerpo font-medium text-aviso-deep transition hover:bg-aviso-soft active:scale-[.97]"
+            >
+              <Undo2 className="h-4 w-4" strokeWidth={2.5} /> Devolver
+            </button>
+          </div>
+        </div>
+      )}
+
       {porSede.length === 0 ? (
         <Card>
           <CardContent className="pb-0">
@@ -201,52 +300,39 @@ export function EnviosCliente({
               <Table>
                 <THead>
                   <TR>
-                    <TH className="pl-5">Código</TH>
+                    <TH className="pl-5">
+                      <input
+                        type="checkbox"
+                        aria-label={`Elegir todas las prendas hacia ${sede}`}
+                        checked={items.length > 0 && items.every((p) => sel.has(p.id))}
+                        onChange={() => alternarGrupo(items.map((p) => p.id))}
+                        className="h-4 w-4 accent-navy"
+                      />
+                    </TH>
+                    <TH>Código</TH>
                     <TH>Prenda</TH>
                     <TH>Origen</TH>
-                    <TH>Enviada</TH>
-                    <TH className="pr-5 text-right">Confirmación en tienda</TH>
+                    <TH className="pr-5">Enviada</TH>
                   </TR>
                 </THead>
                 <TBody>
                   {items.map((p) => (
                     <TR key={p.id}>
-                      <TD className="pl-5 tabular-nums text-dato font-semibold text-navy">{p.codigo}</TD>
+                      <TD className="pl-5">
+                        <input
+                          type="checkbox"
+                          aria-label={`Elegir ${p.codigo}`}
+                          checked={sel.has(p.id)}
+                          onChange={() => alternar(p.id)}
+                          className="h-4 w-4 accent-navy"
+                        />
+                      </TD>
+                      <TD className="tabular-nums text-dato font-semibold text-navy">{p.codigo}</TD>
                       <TD className="text-cuerpo text-ink">
                         {[p.tipo, p.color, p.talla ? `T.${p.talla}` : ''].filter(Boolean).join(' · ') || '—'}
                       </TD>
                       <TD className="tabular-nums text-dato text-muted">{p.sedeOrigenCod}</TD>
-                      <TD className="tabular-nums text-dato text-muted">{fecha(p.fechaEnvio)}</TD>
-                      <TD className="pr-5">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            disabled={pending}
-                            onClick={() => calificar(p, true)}
-                            className="inline-flex items-center gap-1 rounded-r-pastilla bg-exito px-2.5 py-1.5 text-apoyo font-semibold text-white transition hover:bg-exito-deep active:scale-[.97]"
-                          >
-                            <Check className="h-3.5 w-3.5" strokeWidth={3} /> Aceptar
-                          </button>
-                          <select
-                            value={destinoObs[p.id] ?? 'recepcion'}
-                            onChange={(e) => setDestinoObs((prev) => ({ ...prev, [p.id]: e.target.value }))}
-                            aria-label={`Observar ${p.codigo}: devolver a`}
-                            className="rounded-r-pastilla border border-line bg-white px-1.5 py-1 text-apoyo text-navy"
-                          >
-                            <option value="recepcion">Recepción</option>
-                            <option value="planchado">Planchado</option>
-                            <option value="control_calidad">Control calidad</option>
-                          </select>
-                          <button
-                            type="button"
-                            disabled={pending}
-                            onClick={() => calificar(p, false)}
-                            className="inline-flex items-center gap-1 rounded-r-pastilla border border-aviso-line bg-aviso-soft px-2 py-1.5 text-apoyo font-medium text-aviso-deep transition hover:bg-aviso-soft active:scale-[.97]"
-                          >
-                            <Eye className="h-3.5 w-3.5" strokeWidth={2.5} /> Observar
-                          </button>
-                        </div>
-                      </TD>
+                      <TD className="pr-5 tabular-nums text-dato text-muted">{fecha(p.fechaEnvio)}</TD>
                     </TR>
                   ))}
                 </TBody>

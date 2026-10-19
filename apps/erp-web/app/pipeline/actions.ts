@@ -14,6 +14,7 @@ import {
   dividirPasada,
   deshacerDivisionPasada,
   calificarPasada,
+  calificarPasadaTanda,
   registrarPasada,
   validarCodigoOperador,
   cerrarOperadorCodigo,
@@ -168,10 +169,26 @@ export async function calificarPrenda(
   id: string,
   aceptada: boolean,
   destino = '',
+  obs = '',
   operador?: string,
 ): Promise<string | null> {
   if (!id) return null;
-  const r = await conCodigo(async () => calificarPasada(id, aceptada, destino, '', await operadorParaAccion(operador)));
+  const r = await conCodigo(async () => calificarPasada(id, aceptada, destino, obs, await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
+  revalidatePath('/pipeline');
+  return null;
+}
+
+// Varias prendas juntas (0181). Devuelve un texto si el código venció o falta la nota; null si salió bien.
+export async function calificarTanda(
+  ids: string[],
+  aceptada: boolean,
+  destino = '',
+  obs = '',
+  operador?: string,
+): Promise<string | null> {
+  if (!ids?.length) return null;
+  const r = await conCodigo(async () => calificarPasadaTanda(ids, aceptada, destino, obs, await operadorParaAccion(operador)));
   if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
   return null;
