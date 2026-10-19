@@ -294,7 +294,13 @@ export async function guardarHorarioAcordado(
   const sb = getServerClient();
   const { data, error } = await sb
     .from('asistencias')
-    .update({ inicio_acordado: inicio, motivo_acordado: inicio ? motivo : null })
+    .update({
+      inicio_acordado: inicio,
+      motivo_acordado: inicio ? motivo : null,
+      // El dato del día cambió: vuelve a «Por revisar» si con la hora acordada hay algo que mirar.
+      revisada_en: null,
+      revisada_por: null,
+    })
     .eq('empleado_id', empleadoId)
     .eq('fecha', fecha)
     .select('id');
