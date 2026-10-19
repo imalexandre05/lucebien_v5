@@ -41,10 +41,13 @@ export function PagosCliente({
   pagos,
   empleados,
   esAdmin,
+  enFicha = false,
 }: {
   pagos: Pago[];
   empleados: EmpleadoPago[];
   esAdmin: boolean;
+  /** Dentro de la ficha de una persona: sin buscador de empleado. */
+  enFicha?: boolean;
 }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
@@ -153,12 +156,14 @@ export function PagosCliente({
           <span className="inline-flex items-center gap-1.5 text-rotulo font-semibold uppercase text-muted">
             <Filter className="h-3.5 w-3.5" strokeWidth={2} /> Filtros
           </span>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar empleado…"
-            className={`${fieldCls} min-w-[12rem] flex-1`}
-          />
+          {!enFicha && (
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Buscar empleado…"
+              className={`${fieldCls} min-w-[12rem] flex-1`}
+            />
+          )}
           <OpcionBotones opciones={OPC_FILTRO_METODO} value={fMetodo} onChange={setFMetodo} ariaLabel="Método" />
           <OpcionBotones opciones={OPC_FILTRO_ESTADO} value={fEstado} onChange={setFEstado} ariaLabel="Estado" />
           {esAdmin && (

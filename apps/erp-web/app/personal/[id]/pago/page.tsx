@@ -97,6 +97,7 @@ export default async function PagoColaboradorPage(props: { params: Promise<{ id:
                 : [{ id: persona.id, nombre: persona.nombre, salarioBase: persona.salarioBase, ultimaNota: null }]
             }
             esAdmin={false}
+            enFicha
           />
         </div>
       </details>
