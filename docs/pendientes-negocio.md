@@ -1947,6 +1947,36 @@ Sin parámetros nuevos. Decisiones tomadas por el implementador, a confirmar:
    capacitaciones queda manual. ¿Debe contar también un examen suelto fuera de una capacitación? Hoy no existe ese registro.
 3. La nota final no depende de ningún componente (sólo de los puntos): `examenes` es perfil, igual que los demás.
 
+## Meta por período de pago (17-oct-2026) — [spec](superpowers/specs/evaluaciones/2026-10-17-meta-por-periodo-design.md)
+
+Spec escrita, sin código. Defaults inventados por quien escribió la spec, a confirmar con Alexander:
+
+1. **`pipeline_meta_puntos_por_hora` queda sin valor** (decidido por Alexander el 19-oct: la meta de pipeline se medirá
+   después). Vacío = desactivado: mientras no tenga valor, el pipeline no entra a la nota. Podría depender de la
+   demanda de ternos. Ya no hay default de 0,5.
+2. **`eval_cumplimiento_para_20` = 1,25:** cumplir toda la meta del período vale 16 y el 20 llega al 125 %
+   (nota = 16 × cumplimiento, sin techo). Decidido por Alexander el 18-oct tras dudar entre 20 y 16. El /20 es
+   sólo referencia; la medida principal es el porcentaje de cumplimiento.
+3. **Cada área contra su meta, promediadas por horas** (no una bolsa única de puntos), porque los puntos de
+   reportes y de pipeline no están al mismo nivel de esfuerzo. Con los puntos calibrados, la bolsa única da lo mismo.
+4. **Dos componentes** (decidido por Alexander el 18-oct): reportes, iguales en toda sede, y productividad, que es
+   pipeline en almacén y ventas en tienda (contra la meta de ventas del contrato). `eval_peso_reportes` = 0,5
+   (reportes y productividad pesan igual) es default mío, a confirmar. Reemplaza el reparto de horas de almacén que
+   había propuesto.
+5. **Extras suben y incidencias bajan el cociente de reportes** (decidido por Alexander el 17-oct).
+6. **Licencia = falta justificada** (campo existente). **Feriado o cierre = día libre por persona**, en una tabla
+   nueva (`dias_libres`) que sólo escribe el administrador: sale del contrato y de la meta, y se descuenta completo.
+   Sin marca, la meta cuenta normal.
+7. **El descuento del día libre necesita spec propia del motor de sueldos.** `sueldos.ts` calcula
+   `valorPorHora = sueldoPactado / horasContratadas`: quitar el día del horario sin más lo dejaría pagado.
+   Hasta entonces la meta lee `dias_libres` y el pago no.
+
+Decidido por Alexander el 17-oct-2026: el período de evaluación es el tramo de pago (no la duración del
+contrato); la meta de reportes es cumplir todas las tareas; la meta de pipeline se mide por horas en almacén
+según el horario fijo; pasar un día a almacén por poca demanda es un extra; las actividades de reporte son por
+sede y valen igual para todos; el /20 es una referencia; el feriado no lo paga el administrador, él decide persona
+por persona y el día se descuenta completo a la hora normal (11 h × S/4,55 en el ejemplo); un día no trabajado
+no cuenta para el total; la nota sólo informa y el pago sigue siendo el pactado.
 ## Escalas salariales editables (ticket 35, 17-oct-2026)
 
 - Las 5 escalas (S/ 2,90 · 3,20 · 3,50 · 3,80 · 5,00 por hora) son del Excel del dueño (hoja
@@ -2077,6 +2107,17 @@ Las cinco dudas de la sesión 4B quedaron **decididas** (las notas «a confirmar
 4. **Faltas y horas de un día cerrado NO se trasladan** al siguiente período (sí ventas y tardanzas, 0144).
 5. **Puntos de una venta trasladada** cuentan en el mes destino.
 
+Decidido por Alexander el 19-oct-2026 (y defaults míos asociados):
+
+8. **Los demás factores entran a la nota** (competencias, exámenes, puntualidad; valores 360° como hoy, a confirmar), con
+   pesos editables. `peso_puntos` = 0,30 sale de sumar `peso_operaciones` + `peso_software` + `peso_limpieza`; los
+   otros cuatro pesos no cambian. Con eso los puntos pesan 30 %, menos que lo dicho el 25-ago: editable.
+9. **El exceso no tapa faltas** (se siguió mi recomendación): cada componente cuenta hasta 100 % en la base y el exceso
+   suma aparte con tope `eval_tope_exceso` = 0,25 (default mío).
+10. **Ventas:** las carga el administrador a mano por ahora; luego se conectarán con el nuevo sistema de inventario y POS.
+11. **El sistema aún no se usa:** no hay reportes recientes. `pipeline_meta_puntos_por_hora` queda sin valor (sin
+    marcador); la idea de Alexander es que la meta de pipeline dependa de la demanda de ternos, y se mide después.
+12. **El descuento del día libre en el sueldo** se está trabajando en la sesión maestra.
 ## 5A · Codificación como etapa y operador de 5 min (18-oct-2026)
 
 **Decididas por el dueño (18-oct-2026):**
@@ -2226,6 +2267,11 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 
 - **Cerrado (0175):** envíos y calificaciones se escriben sólo por RPC.
 - **Para decidir:** `prenda_pasada.pasada_insert` sigue permitiendo dar de alta una prenda con un `insert` plano (sin código de operador ni historial). No se cerró porque `pedido_crear` y `pedido_devolver` (módulo comercial, fuera del menú) lo usan. Si el módulo comercial no vuelve, se puede retirar.
+13. **Verificación de parámetros (19-oct, contra el código):** `peso_competencias`, `peso_valores`, `peso_operaciones`,
+    `peso_software`, `peso_limpieza`, `peso_examenes` y `peso_tardanza` se pueden editar en `/configuracion` pero
+    **hoy no cambian la nota** (sólo se muestran junto a las barras y se guardan en el snapshot `pesos_usados`;
+    `calcularNotaMensual` no se usa). La spec los pone a trabajar y exige una prueba de efecto por parámetro. Los pesos por
+    defecto se dejan como están (decidido el 19-oct).
 
 ## Sesión 9 (19-oct-2026): decisiones tomadas y pendientes
 
@@ -2242,3 +2288,8 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - [ ] **Capturas de la interfaz de Jordan** para el rediseño visual.
 - [ ] **Pago por puntos**: la spec se hace en otra sesión.
 - [ ] **Correos**: falta configurar `RESEND_API_KEY` para que salgan.
+14. **Coherencia con el sueldo por horas y la meta del período (19-oct, a pedido de la sesión maestra, verificado en
+    `sueldos.ts`):** desde la 0164 un contrato con `tarifa_hora` paga horas reales y el día libre no necesita línea
+    de descuento (solo salir del horario); el descuento «Día libre» queda para los contratos de sueldo fijo. La meta
+    de ventas de la nota es `ventas.metaPeriodo` de la 0169 (manual → pactada → estimada por horas trabajadas) y sin
+    horas trabajadas no hay componente de ventas. No se inventó ningún parámetro.
