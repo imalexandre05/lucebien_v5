@@ -701,7 +701,7 @@ export function AcuerdosCliente({
       }
       const [a, m, d] = (r.inicio ?? '').split('-');
       setAvisoRenovado(
-        `Listo: el contrato nuevo empieza el ${d}/${m}/${a}. Aparece en borrador y puedes cambiarlo hasta entonces; se activa solo ese día, siempre que ya hayas cerrado el último pago del contrato actual.`,
+        `Listo: el contrato nuevo empieza el ${d}/${m}/${a}. Queda en borrador y puedes cambiarlo hasta entonces. Se activa solo ese día, pero antes falta cerrar el último pago del contrato actual: mientras no se cierre, el nuevo sigue en borrador.`,
       );
       router.refresh();
     });
