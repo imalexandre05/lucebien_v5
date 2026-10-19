@@ -31,6 +31,7 @@ inicio del horario contratado (como hoy). La tolerancia se aplica igual sobre la
 |---|---|
 | `sueldo_entrada` | cada día emite `inicioAcordado` (null si no hay). |
 | Motor (`sueldos.ts`) | `limite = (inicioAcordado ?? inicio contratado) + tolerancia`. |
+| Pasaje (motor) | `inicioAcordado ?? inicio contratado` − minutos de anticipación. |
 | Puntualidad (`evaluacion_componentes_datos`, 0159) | `inicio_turno` = hora acordada del día si existe. |
 | «Por revisar» (`diasPorRevisar`) | la tardanza se mide contra la hora acordada. |
 
@@ -38,8 +39,8 @@ inicio del horario contratado (como hoy). La tolerancia se aplica igual sobre la
 
 - Horas trabajadas, tarifa, horas extra y faltas: nada. Sigue siendo por cantidad de horas.
 - La justificación de tardanza sigue siendo aparte (llegó tarde y se perdona).
-- El pasaje (llegar con anticipación) sigue midiéndose contra el inicio contratado. **Default
-  inventado**, anotado en `docs/pendientes-negocio.md`.
+- **El pasaje** (llegar con anticipación) también se mide contra la hora acordada del día cuando existe;
+  si no, contra el inicio contratado (respuesta del dueño, 19-oct-2026).
 - Un snapshot guardado antes de esta migración no trae `inicioAcordado` y se lee igual que siempre.
 
 ## 5. Pantalla
@@ -57,3 +58,4 @@ como tardanza.»
 4. Acordado más temprano que el contratado (07:00) y llegó 08:00 → tardanza de 60 min.
 5. El motivo largo (> 300) y la hora acordada en una fila de otra persona se rechazan.
 6. Un no administrador no puede escribir la hora acordada.
+7. Pasaje: contratado 09:00, acordado 10:00, llegó 09:50 (anticipación 5 min) → gana el pasaje; sin acordado no.
