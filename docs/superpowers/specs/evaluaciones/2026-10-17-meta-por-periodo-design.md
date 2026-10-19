@@ -37,7 +37,8 @@ El modelo de Alexander la reemplaza por una **meta propia de cada persona en cad
 9. **Un feriado no lo paga el administrador.** Él decide, persona por persona, que un día es libre; si alguien
    va a trabajar ese día, se considera. El día sale del contrato de esa persona, así que el período tiene
    menos días y la meta baja (§5). **El pago baja en un día completo**: las horas de ese día por el valor
-   normal de la hora (en el ejemplo, 11 h × S/4,55 = S/50), sin suavizarlo.
+   normal de la hora (en el ejemplo, 11 h × S/4,55 = S/50), sin suavizarlo. En un contrato **por horas** eso
+   ocurre solo, al salir el día del horario; en uno de **sueldo fijo** hace falta una línea de descuento (§5).
 10. La empresa es muy flexible: habrá muchas casuísticas. El diseño debe tener **un solo lugar** donde el
     administrador registre las excepciones, no una regla por caso.
 11. **En reportes, la meta es cumplir todas las tareas del reporte.** Está definida y no se flexibiliza.
@@ -73,11 +74,11 @@ El modelo de Alexander la reemplaza por una **meta propia de cada persona en cad
 | Horario contratado: plantilla semanal | `sueldo_acuerdo_turnos` (`dia_semana`, `hora_inicio`, `hora_fin`, `lugar`), migración 0072. `lugar` es **texto informativo**: no distingue tienda de almacén ni dice la sede de forma que el sistema pueda usarla |
 | Sede de la persona | `empleados.sede_cod` y `empleado_tiendas` (varias sedes por persona) |
 | **Los puntos de actividades se acreditan a cada persona del reporte**, no sólo a quien lo envía | `private.evaluacion_componentes_datos` (0110): suma `calificacion` (0 a 1) de las actividades de los reportes `evaluado` donde la persona es `encargado_id` o figura en `reporte_trabajadores`. Un reporte por sede y turno (`idReporte`) |
-| El sueldo es un monto fijo del período y la hora se deriva de él | `sueldos.ts`: `valorPorHora = sueldoPactado / horasContratadas` (línea 975); «Sueldo — Pactado para el periodo» (RN-19); falta = horas faltadas × valor × castigo (RN-09); horas fuera de contrato (RN-17) |
+| **Dos formas de pagar (verificado en el código, 19-oct, tras la 0164)** | **Por horas** (contrato con `tarifa_hora`, desde el 18-oct): se pagan las horas reales del huellero × tarifa; `sueldoPactado` no se usa; las «horas que faltaron» no se pagan y un día sin horario trabajado paga todas sus horas como extra (`sueldos.ts` ~1250–1262, `porHoras`). **Sueldo fijo** (los contratos de antes): `valorPorHora = sueldoPactado / horasContratadas` (`sueldos.ts` ~1262), «Sueldo — Pactado para el periodo» (RN-19). En ambas, falta injustificada = castigo sobre las horas de ese día (RN-09) y horas fuera de contrato (RN-17) |
 | Licencia = falta que el administrador marca justificada | `asistencias.condicion = 'falta'` + `falta_justificada` (`pendientes-negocio.md`, 14-ago-2026) |
 | Trabajo fuera del horario pactado (RN-17) | Se deriva de que ese día no tenga turno en la plantilla (`pendientes-negocio.md`, §«Lo que la capa de datos dejó abierto»); ahí mismo queda anotado «confirmar que ese criterio alcanza» |
 | **Actividades de reporte por sede (verificado en la base `scilb`, 18-oct-2026)** | `actividades_config`: `AL` Almacén Central y Taller tiene 20 activas, de las cuales **9 obligatorias** (6 de limpieza y 3 de operación) y 11 extras `por_puntos`. Las tiendas tienen 27 a 29 obligatorias cada una (`LB`, `ST`, `TR`). `LV` Lavandería–Recepción (perfil almacén) tiene **0**. En `reportes` hay ~270 por sede desde abril, de ellos 64 evaluados en `AL`; el más reciente de cualquier sede es del 23-ago-2026 |
-| **Ventas y su meta ya existen en el motor** | `sueldo_ventas` (monto, fecha, `empleado_id` del vendedor; hoy se cargan a mano, `origen = 'manual'`). La meta de ventas se pacta por contrato (`parametros.metaSemanal`, RN-10) y la del período es la suma de las semanales (RN-11): `metaPeriodo` en `liquidarPeriodo()` (`sueldos.ts` ~1348–1391). Si el contrato no la pacta, el motor la sugiere por horas |
+| **Ventas y su meta ya existen en el motor** | `sueldo_ventas` (monto, fecha, `empleado_id` del vendedor; hoy se cargan a mano, `origen = 'manual'`). **La meta de ventas del período (0169, `sueldos.ts` ~1700–1720) sale, en este orden, de:** (1) la que puso el administrador para ese período (`metaPeriodoManual`, tabla `sueldo_meta_periodo`); (2) la suma de las metas semanales pactadas en el contrato o en la temporada (RN-10); (3) la estimada `metaPorHora × horas TRABAJADAS del período × factorMeta` (las horas incluyen las extra y las fuera de contrato). Se redondea a céntimos. **Sin horas trabajadas la meta no aplica** (`primeraComisionAplica = false`) |
 | Curva puntos → nota | `notaDesdePuntos(puntos, escala)` en `evaluaciones.ts` |
 | Actividades que aplican a una fecha y turno | `actAplicaHoy` en `reportes.ts` (turnos M/T/C) |
 
@@ -108,7 +109,7 @@ rReportes     = (puntos de actividades + puntos de extras − puntos de incidenc
 horasAlmacen  = horas contratadas en turnos de almacén
 horasTienda   = horas contratadas en turnos de tienda
 pipelineEquivalente = puntosPipeline / pipeline_meta_puntos_por_hora      (horas de pipeline «al ritmo de la meta»)
-rVentas       = ventas del rango / metaVentas del rango                   (la misma meta que usa el motor, RN-10/RN-11)
+rVentas       = ventas del rango / ventas.metaPeriodo                     (la misma meta que usa el motor, 0169)
 rProductividad = (pipelineEquivalente + horasTienda × rVentas) / (horasAlmacen + horasTienda)
 
 base          = eval_peso_reportes × min(rReportes, 1) + (1 − eval_peso_reportes) × min(rProductividad, 1)
@@ -128,7 +129,7 @@ cumplimiento  = base + min(exceso, eval_tope_exceso)
   no entra al cálculo**: las horas de almacén salen de `horasAlmacen` y de `pipelineEquivalente`, y la persona se
   evalúa con reportes (y con ventas, si tiene horas de tienda). La pantalla lo dice con todas las letras: «La meta
   de pipeline aún no está definida».
-- **Ventas (tienda).** Se miden contra la meta de ventas del contrato de esa persona, la que ya calcula el motor.
+- **Ventas (tienda).** Se miden contra la **meta de ventas del período** que ya calcula el motor (`ventas.metaPeriodo`, 0169: la manual del administrador, o la pactada, o la estimada por horas trabajadas). La nota **lee ese valor**, no lo recalcula. Si la meta es 0 o «no aplica» (sin horas trabajadas), la tienda no tiene componente de ventas (ver «Componente sin meta»). Como la meta estimada crece con las horas trabajadas, quien trabaja menos tiene una meta más baja: así lo decidió el dueño para la comisión y la nota lo hereda.
   No se inventa ninguna meta nueva ni hace falta definir «cuántos puntos vale un sol vendido»
   (`pts_por_sol_vendido` sigue vacío y no se usa aquí). Hoy las ventas se cargan a mano y por vendedor; una venta
   sin vendedor asignado no cuenta para nadie (cola de sin asignar de la 0072).
@@ -136,7 +137,8 @@ cumplimiento  = base + min(exceso, eval_tope_exceso)
   su pipeline, pero cada área se promedia por separado y luego se combinan con `eval_peso_reportes`: nada se
   reparte ni se cuenta doble.
 - **Componente sin meta.** Si la persona no tiene meta de productividad (sin horas de almacén y sin meta de
-  ventas) o de reportes (sin actividades que apliquen), el cumplimiento es el otro componente. Si no tiene
+  ventas) o de reportes (sin actividades que apliquen), el cumplimiento es el otro componente. «Sin meta de ventas» incluye
+  meta 0 y «sin horas trabajadas» (0169). Si no tiene
   ninguno, no hay nota.
 - **El exceso no tapa faltas.** Cada componente cuenta como máximo su 100 % en la base. Lo que pase de 100 % se
   suma aparte como extra, con un tope (`eval_tope_exceso`, default 0,25 = 25 puntos de cumplimiento). Ejemplo: 0 %
@@ -237,19 +239,29 @@ no marca el día, la meta cuenta normal: ningún feriado se asume.
 **Esta tabla es el lugar de las excepciones** (decisión 10). Cualquier casuística nueva de «ese día esta persona
 no debía» se resuelve con una fila, no con otra regla.
 
-### El pago del día libre (decidido por Alexander, necesita spec propia del motor)
+### El pago del día libre (decidido por Alexander; ajustado al sueldo por horas el 19-oct)
 
-Alexander decidió que el día libre **se descuenta completo**, a la hora normal. Ejemplo ilustrativo: sueldo de
-S/600, 12 días de 11 horas (132 h), hora a S/4,55, día libre = 11 h × S/4,55 = S/50 → cobra S/550. Si trabaja
-ese día, las 11 h se pagan como horas fuera de contrato (RN-17) y vuelve a S/600.
+Alexander decidió que el día libre **se descuenta completo**, a la hora normal. Ejemplo ilustrativo: hora a
+S/4,55, 12 días de 11 horas (132 h ≈ S/600); día libre = 11 h × S/4,55 = S/50 → cobra ≈ S/550. Si trabaja ese
+día, las 11 h se pagan como horas fuera de horario (RN-17) y vuelve a ≈ S/600.
 
-**No basta con quitar el día del horario.** El sueldo es un monto fijo del período y `valorPorHora =
-sueldoPactado / horasContratadas` (`sueldos.ts:975`): quitar el día dejaría el sueldo entero, subiría la hora
-a S/4,96 y **el día quedaría pagado**. El motor debe (a) calcular el valor de la hora con el calendario
-**normal** del período, sin los días libres, y (b) agregar una línea visible de descuento «Día libre» por las
-horas de esos días. Así el valor de la hora, de las horas extra y del castigo por falta no se mueve.
+Desde la 0164 (18-oct) el motor tiene dos formas de pagar, y el día libre se comporta distinto en cada una
+(verificado en `sueldos.ts`):
 
-Esto toca la cadena del sueldo: spec completa, tests y verificador **aparte** (§8).
+- **Contrato por horas (`tarifa_hora`), el caso normal desde ahora.** Se pagan las horas reales por la tarifa y
+  las horas del horario que no se trabajan **no se pagan**. Basta con que el motor trate el día libre como un
+  día **sin horario**: ya no suma horas contratadas ni «horas que faltaron», no cuenta como falta (RN-09) y, si la
+  persona trabaja, todas sus horas pagan como extra. **No hace falta una línea de descuento**, y la hora no se
+  mueve porque la tarifa es un dato del contrato. El cambio en el motor es pequeño: que el cálculo del horario
+  del día consulte `dias_libres`.
+- **Contrato de sueldo fijo (los de antes de la 0164).** El sueldo es un monto del período y `valorPorHora =
+  sueldoPactado / horasContratadas`: quitar el día dejaría el sueldo entero, subiría la hora y **el día quedaría
+  pagado**. Aquí sí hacen falta (a) calcular el valor de la hora con el calendario **normal** del período, sin
+  los días libres, y (b) una línea visible de descuento «Día libre» por las horas de esos días.
+
+Esto toca la cadena del sueldo: spec completa, tests y verificador **aparte** (§8). La sesión maestra decide si
+el caso de sueldo fijo se cubre o se deja morir con esos contratos; la nota no depende de eso, solo de que el
+día salga de la meta.
 
 ## 6. Parámetros nuevos (provisionales, editables desde `/configuracion`)
 
@@ -280,8 +292,8 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
    actividadesPorSedeYTurno, contrato, rango, params)` que devuelve `{ horasReportes, horasAlmacen, horasTienda, metaReportes }`,
    y `cumplimientoDelRango` / `notaDesdeCumplimiento`. **Reciben las fechas de quien las llama, nunca
    `new Date()`** (no-negociable 4).
-3 bis. **Meta de ventas reutilizada, no copiada.** Extraer del motor (`metaPeriodo` en `liquidarPeriodo()`, RN-10/RN-11) una
-   función pura que calcule la meta de ventas de un rango, y que la usen el motor y la nota. Una segunda fórmula
+3 bis. **Meta de ventas reutilizada, no copiada.** Leer la `ventas.metaPeriodo` que ya entrega `liquidarPeriodo()` (0169: manual →
+   pactada → estimada por horas trabajadas), o extraer esa lógica a una función pura que usen el motor y la nota. Una segunda fórmula
    divergería con el tiempo (no-negociable 1: la cadena del sueldo no se duplica).
 4. **RPC `private.evaluacion_componentes_datos`:** agregar las claves del cálculo. Conserva firma, `security
    definer`, `search_path` y permisos. Sin `getAdminClient()` nuevo (no-negociable 3).
@@ -311,7 +323,8 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
 - **`sugerirMontoPago`** (`pagos.ts`): sin cambios; sigue siendo una sugerencia que el administrador decide.
 - **Puntos como moneda** (spec del 25-ago): esta spec la modifica en un solo punto, la escala de la nota.
 - **Motor de sueldos y `dias_libres`: dependencia con spec propia.** Para que «el día libre se descuenta» sea
-  cierto, `sueldos.ts` debe leer `dias_libres` y aplicar lo descrito en §5. Mientras no exista, **la meta puede
+  cierto, `sueldos.ts` debe leer `dias_libres`: en contratos por horas basta tratar el día como sin horario; en los
+  de sueldo fijo, además, la línea de descuento (§5). Mientras no exista, **la meta puede
   leer `dias_libres` pero el pago no**, y la pantalla de marcado debe decirlo con todas las letras, para que
   nadie crea que ya se descuenta. Esa spec se está trabajando en la sesión maestra (confirmado el 19-oct).
 
@@ -355,8 +368,13 @@ Hay que sembrar ambos con un comentario de «provisional» en la migración y an
   `calendarioDePagos` (ya probado en `sueldos.test.ts`).
 - Aislamiento: un encargado no ve la meta ni la nota de otra sede; el empleado sólo las suyas.
 - Fechas en hora Perú: un avance registrado a las 23:30 Perú del último día del tramo cae en ese tramo.
-- **Motor de sueldos (spec aparte):** con S/600, 12 días × 11 h y un día libre, la liquidación da S/550 y la hora
-  sigue en S/4,55; trabajando ese día vuelve a S/600.
+- **Motor de sueldos, contrato por horas (spec aparte):** tarifa S/4,55, 12 días × 11 h con un día libre: no suma
+  horas contratadas, no da falta ni «horas que faltaron», y paga 121 h × 4,55; si trabaja ese día, las 11 h pagan
+  como extra.
+- **Motor de sueldos, sueldo fijo (spec aparte, si se cubre):** con S/600, 12 días × 11 h y un día libre, la
+  liquidación da S/550 y la hora sigue en S/4,55; trabajando ese día vuelve a S/600.
+- **Ventas:** con `metaPeriodoManual` puesta por el administrador, la nota usa esa meta; sin horas trabajadas, la
+  tienda no tiene componente de ventas y no hay división por cero.
 
 ## 10. Preguntas
 

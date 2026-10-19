@@ -2288,3 +2288,8 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - [ ] **Capturas de la interfaz de Jordan** para el rediseño visual.
 - [ ] **Pago por puntos**: la spec se hace en otra sesión.
 - [ ] **Correos**: falta configurar `RESEND_API_KEY` para que salgan.
+14. **Coherencia con el sueldo por horas y la meta del período (19-oct, a pedido de la sesión maestra, verificado en
+    `sueldos.ts`):** desde la 0164 un contrato con `tarifa_hora` paga horas reales y el día libre no necesita línea
+    de descuento (solo salir del horario); el descuento «Día libre» queda para los contratos de sueldo fijo. La meta
+    de ventas de la nota es `ventas.metaPeriodo` de la 0169 (manual → pactada → estimada por horas trabajadas) y sin
+    horas trabajadas no hay componente de ventas. No se inventó ningún parámetro.
