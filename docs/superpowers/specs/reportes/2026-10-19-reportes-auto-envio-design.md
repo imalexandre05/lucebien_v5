@@ -30,13 +30,14 @@ cascarones). Esto es un default: anotado en `docs/pendientes-negocio.md` hasta q
 **3.2 Envío automático** (`reportes_auto_enviar()`, security definer, solo `service_role`): para cada
 borrador de hoy (hora Perú) cuyo turno ya pasó su hora límite y sin reporte real del turno:
 - crea el reporte con `estado_envio = 'enviado'`, `auto_enviado = true`,
-  `auto_enviado_razon = 'auto-envio-hora-limite'`, `encargado_id` = el del borrador;
+  `auto_enviado_razon = 'auto-envio-hora-limite'`, `encargado_id` = el del borrador (el encargado que ingresó su código); si el borrador no lo trae, el encargado
+  de tienda activo de esa sede (el de menor código, si hubiera varios); si tampoco hay, queda sin encargado;
 - copia trabajadores, actividades marcadas, limpieza y extras igual que el cierre actual
   (el encargado queda también como trabajador);
 - borra el borrador; es idempotente (el id es `DD-MM-YY_TURNO-SEDE`).
 Si el borrador no tiene encargado ni contenido, no se crea reporte y el borrador se borra.
 El **puntaje no se toca**: nace sin evaluar (`puntaje 0`, `evaluado false`), igual que un envío manual;
-lo evalúa el flujo normal. Esta spec no cambia fórmula alguna de puntos ni sueldo.
+lo evalúa SOLO el administrador (0183), como cualquier reporte. Esta spec no cambia fórmula alguna de puntos ni sueldo.
 
 **3.3 Recordatorios** (`reportes_recordar()`): por cada borrador de hoy sin reporte, y por cada minuto
 `m` de `reporte_recordatorios_min` (default `30,10`), cuando falta `<= m` min y todavía no pasó la hora,
@@ -46,12 +47,14 @@ inserta una notificación a la sede (`destinatario_sede`, rol encargado, tipo `r
 **3.4 Hora límite por sede.** Tabla `reporte_hora_limite (sede_cod, turno, hora)`. Se usa la de la
 sede si existe; si no, la global de `config`. Solo el administrador escribe, vía
 `reporte_hora_limite_guardar(sede, turno, hora)` (guard adentro; `hora` nula borra el ajuste). Todos
-los autenticados leen (la pantalla la muestra). Se audita en `auditoria`.
+los autenticados leen (la pantalla la muestra). Se audita con el trigger genérico de `audit_log` (tabla con `id`).
 
 **3.5 pg_cron.** Un solo job `reportes-auto-enviar`, cada 5 min, llama a ambas funciones. Se agenda con
 `cron.unschedule` envuelto + `cron.schedule`: reaplicar la migración no duplica. Los tres jobs viejos
 siguen desprogramados. **El job queda activo al aplicar la migración**: la reactivación del cron que el
 CLAUDE.md protegía queda autorizada por esta decisión del dueño, con la salvaguarda de 3.1.
+
+**3.6 Reloj.** Ambas funciones reciben `p_ahora timestamptz default now()` (el core nunca llama al reloj; las pruebas lo fijan).
 
 ## 4. Aislamiento
 
