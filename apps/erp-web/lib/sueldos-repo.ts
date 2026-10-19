@@ -485,6 +485,17 @@ export async function guardarTurnos(acuerdoId: string, turnos: Omit<TurnoAcuerdo
   if (error) throw errorSueldo(error);
 }
 
+/**
+ * «Renovar» (0170): crea en borrador el contrato que sigue a este, copiando frecuencia, cuota o
+ * tarifa, horario y parámetros. Empieza el día siguiente al fin del actual y se activa solo ese día
+ * (si la persona no tiene otro vigente). Devuelve el id del contrato nuevo.
+ */
+export async function renovarAcuerdo(id: string): Promise<string> {
+  const { data, error } = await getServerClient().rpc('sueldo_acuerdo_renovar', { p_acuerdo: id });
+  if (error) throw errorSueldo(error);
+  return String(data);
+}
+
 export async function cambiarEstadoAcuerdo(id: string, estado: EstadoAcuerdo): Promise<void> {
   const sb = getServerClient();
   const { error } = await sb.from('sueldo_acuerdos').update({ estado }).eq('id', id);

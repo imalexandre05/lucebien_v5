@@ -2210,3 +2210,9 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - **Decidido por el dueño (19-oct-2026):** las horas fuera de contrato SÍ cuentan para la meta estimada.
 - **Decidido por el dueño (19-oct-2026):** con 0 horas trabajadas la 1.ª comisión «no aplica» (no se marca Cumplida). Una temporada que cubre parte del período prorratea la meta por los días de cada temporada; una meta semanal pactada solo vale para su semana.
 - **Para revisar (no resuelto):** el trigger de la meta solo mira la fecha final del período.
+## Renovar contrato (sesión 8A, 19-oct-2026) — [spec](superpowers/specs/sueldos/2026-10-19-renovar-contrato-design.md)
+
+- **Decisión del dueño n.º 3 (tablero #21):** botón «Renovar» crea el contrato nuevo en borrador (copia tarifa o cuota, horario, frecuencia y parámetros) y se activa solo el día siguiente al fin del actual. Nunca dos contratos vigentes.
+- **Default inventado:** el contrato nuevo dura los mismos meses si el actual es de meses completos (1-oct a 31-oct → 1-nov a 30-nov); si no, los mismos días. Se edita antes de que empiece.
+- **Default inventado:** si al llegar el día el contrato anterior sigue «vigente» (falta cerrar su último pago), la renovación espera y se activa el día siguiente en que el anterior pase a «liquidado». Así nunca hay dos vigentes.
+- **Para producción:** la 0170 programa un cron diario (00:10 hora Perú) `sueldo-renovaciones-activar`. Confirmar que quedó creado tras aplicar la migración.

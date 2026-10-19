@@ -10,7 +10,9 @@ import {
   cambiarEstadoAcuerdo,
   cambiarFrecuencia,
   crearAcuerdo,
+  obtenerAcuerdo,
   planDeCambio,
+  renovarAcuerdo,
   type AcuerdoInput,
   type CambioFrecuenciaInput,
   type EstadoAcuerdo,
@@ -184,5 +186,22 @@ export async function accionCambiarFrecuencia(
     return { ok: true, borradores: borradores.map((b) => ({ id: b.id, periodoDesde: b.periodoDesde, periodoHasta: b.periodoHasta })) };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'No se pudo cambiar cómo se paga.' };
+  }
+}
+
+/**
+ * «Renovar» (decisión del dueño n.º 3, 19-oct-2026): crea el contrato que sigue, en borrador. Se
+ * puede editar hasta que empiece; se activa solo el día de su inicio. Devuelve cuándo empieza.
+ */
+export async function accionRenovarAcuerdo(id: string): Promise<Resultado & { inicio?: string }> {
+  try {
+    if (!(await admin())) return { ok: false, error: 'Sólo el administrador o el dueño pueden renovar un contrato.' };
+    const nuevoId = await renovarAcuerdo(id);
+    const nuevo = await obtenerAcuerdo(nuevoId);
+    revalidatePath('/sueldos/acuerdos');
+    revalidatePath('/personal', 'layout');
+    return { ok: true, id: nuevoId, inicio: nuevo?.fechaInicio };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'No se pudo renovar el contrato.' };
   }
 }
