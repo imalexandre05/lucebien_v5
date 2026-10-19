@@ -24,7 +24,7 @@ begin execute p_sql; return 'ok'; exception when others then return sqlerrm; end
 do $$
 declare
   r text := '';
-  e_al uuid; e_op uuid; e_ta uuid; e_tb uuid; v_id uuid; v_err text; v_n int; v_tok uuid;
+  e_al uuid; e_op uuid; e_ta uuid; e_tb uuid; v_id uuid; v_err text; v_n int; v_tok uuid; v_id2 uuid;
 begin
   perform pg_temp.dueno();
   insert into sedes (cod, nombre) values ('P182X', 'P0182 Almacen'), ('P182A', 'P0182 Tienda A'), ('P182B', 'P0182 Tienda B');
@@ -60,17 +60,37 @@ begin
   v_err := pg_temp.mensaje(format('select accesorios_validar(%L, null)', v_id));
   perform pg_temp.dueno();
   if v_err <> 'ok' then r := r || '[ok] caso 3a: otra tienda no valida;'; else r := r || '[FALLA] caso 3a;'; end if;
-  insert into codigo_operadores (sesion_uid, empleado_id, expira_en) values (e_ta, e_op, now() + interval '5 minutes') returning token into v_tok;
+  insert into codigo_operadores (sesion_uid, empleado_id, expira_en) values (e_ta, e_ta, now() + interval '5 minutes') returning token into v_tok;
   perform pg_temp.como(e_ta);
   v_err := pg_temp.mensaje(format('select accesorios_validar(%L, %L)', v_id, v_tok));
   perform pg_temp.dueno();
-  select count(*) into v_n from envios_accesorios where id = v_id and validado_tienda and validado_por_id = e_op;
+  select count(*) into v_n from envios_accesorios where id = v_id and validado_tienda and validado_por_id = e_ta;
   if v_err = 'ok' and v_n = 1 then r := r || '[ok] caso 3b: la destino valida a nombre del código;';
   else r := r || format('[FALLA] caso 3b: %s %s;', v_err, v_n); end if;
   perform pg_temp.como(e_ta);
   v_err := pg_temp.mensaje(format('select accesorios_validar(%L, null)', v_id));
   perform pg_temp.dueno();
   if v_err <> 'ok' then r := r || '[ok] caso 3c: no se valida dos veces;'; else r := r || '[FALLA] caso 3c;'; end if;
+
+  -- 3d) el código de otra tienda o de almacén no valida en el equipo de la destino
+  perform pg_temp.dueno();
+  insert into envios_accesorios (sede_destino_cod, fecha) values ('P182A', now()) returning id into v_id2;
+  insert into codigo_operadores (sesion_uid, empleado_id, expira_en) values (e_ta, e_tb, now() + interval '5 minutes') returning token into v_tok;
+  perform pg_temp.como(e_ta);
+  v_err := pg_temp.mensaje(format('select accesorios_validar(%L, %L)', v_id2, v_tok));
+  perform pg_temp.dueno();
+  if v_err like 'PERMISO:%' then r := r || '[ok] caso 3d: el código de otra tienda no valida;'; else r := r || format('[FALLA] caso 3d: %s;', v_err); end if;
+  insert into codigo_operadores (sesion_uid, empleado_id, expira_en) values (e_ta, e_al, now() + interval '5 minutes') returning token into v_tok;
+  perform pg_temp.como(e_ta);
+  v_err := pg_temp.mensaje(format('select accesorios_validar(%L, %L)', v_id2, v_tok));
+  perform pg_temp.dueno();
+  if v_err like 'PERMISO:%' then r := r || '[ok] caso 3e: el código de almacén no valida;'; else r := r || format('[FALLA] caso 3e: %s;', v_err); end if;
+  -- 3f) el código de una tienda no envía remesas desde un equipo de almacén
+  insert into codigo_operadores (sesion_uid, empleado_id, expira_en) values (e_al, e_ta, now() + interval '5 minutes') returning token into v_tok;
+  perform pg_temp.como(e_al);
+  v_err := pg_temp.mensaje(format('select accesorios_enviar(%L, %L, %L::jsonb, %L)', 'P182A', '', '[{"tipo":"Corbata","cantidad":1}]', v_tok));
+  perform pg_temp.dueno();
+  if v_err like 'PERMISO:%' then r := r || '[ok] caso 3f: el código de una tienda no envía remesas;'; else r := r || format('[FALLA] caso 3f: %s;', v_err); end if;
 
   -- 4) con la regla «código siempre», sin token se pide el código
   update config set valor = 'true' where clave = 'codigo_siempre';
