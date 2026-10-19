@@ -181,8 +181,9 @@ begin
   end if;
 
   -- ── 2) La lectura no cambió ─────────────────────────────────────────────────────────────────
-  --   puntos : admin 3 · almacén 3 · tienda A (r1, r3 por prenda de su sede) 2 ·
-  --            empleado (sede B: r2 por sede, r3 por ser suyo) 2 · tienda B (r2) 1
+  --   puntos : desde la 0174 (spec pipeline/2026-10-10-puntos-solo-propios, decisión 2 del dueño)
+  --            cada persona ve sólo los suyos y el admin todos: admin 3 · almacén (r1, r2) 2 ·
+  --            tienda A 0 · empleado (r3) 1 · tienda B 0
   --   historial: admin 2 · almacén 2 · tienda A 1 · tienda B 1 · empleado (sede B) 1
   v_fallas := '';
   for i in 1 .. 5 loop
@@ -191,7 +192,7 @@ begin
     perform pg_temp.como(v_uid);
     select count(*) into v_n  from pipeline_puntos  where detalle like 'P0115 r%';
     select count(*) into v_n2 from prenda_historial where obs like 'P0115 h%';
-    if v_n <> (array[3, 3, 2, 2, 1])[i] or v_n2 <> (array[2, 2, 1, 1, 1])[i] then
+    if v_n <> (array[3, 2, 0, 1, 0])[i] or v_n2 <> (array[2, 2, 1, 1, 1])[i] then
       v_fallas := v_fallas || format('%s ve puntos=%s historial=%s; ', v_nom, v_n, v_n2);
     end if;
   end loop;
@@ -236,7 +237,7 @@ begin
   perform pipeline_avanzar(pa1, 'refaccion');
   perform pipeline_avanzar(pa1, 'planchado');
   perform pipeline_avanzar(pa1, 'control_calidad');
-  perform pipeline_rechazar(pa1, 'lavado');
+  perform pipeline_rechazar(pa1, 'lavado', p_motivo => 'prueba');
   perform pg_temp.dueno();
   select count(*), coalesce(sum(puntos), 0) into v_n, v_pts from pipeline_puntos
     where pasada_id = pa1 and etapa = 'lavado_rechazo' and empleado_id = e_alm;
@@ -538,7 +539,7 @@ begin
       perform pipeline_avanzar(w1, 'refaccion');
       perform pipeline_avanzar(w1, 'planchado');
       perform pipeline_avanzar(w1, 'control_calidad');
-      perform pipeline_rechazar(w1, 'recepcion');
+      perform pipeline_rechazar(w1, 'recepcion', p_motivo => 'prueba');
       perform pg_temp.dueno();
       select etapa into v_etapa from prenda_pasada where id = w1;
       select count(*) into v_n from prenda_historial
@@ -608,10 +609,10 @@ begin
 
       perform pg_temp.como(e_alm);
       -- 12a) rechazar desde una etapa que no es control de calidad
-      begin perform pipeline_rechazar(x1, 'recepcion'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
+      begin perform pipeline_rechazar(x1, 'recepcion', p_motivo => 'prueba'); v_err := 'EJECUTO'; exception when others then v_err := sqlerrm; end;
       -- 12b) rechazo doble
-      perform pipeline_rechazar(x2, 'lavado');
-      begin perform pipeline_rechazar(x2, 'lavado'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
+      perform pipeline_rechazar(x2, 'lavado', p_motivo => 'prueba');
+      begin perform pipeline_rechazar(x2, 'lavado', p_motivo => 'prueba'); v_err2 := 'EJECUTO'; exception when others then v_err2 := sqlerrm; end;
       perform pg_temp.dueno();
       select count(*) into v_n from prenda_historial where pasada_id = x1;
       select count(*) into v_neg from pipeline_puntos where pasada_id = x2 and empleado_id = e_alm and puntos < 0;

@@ -10,7 +10,7 @@ var _db = require('./database/db');
 var initDB = _db.initDB, getDB = _db.getDB, hoyLocal = _db.hoyLocal;
 var registrarAudit = function(req,accion,modulo,detalle){try{var db=getDB();db.exec("CREATE TABLE IF NOT EXISTS audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, fecha TEXT, hora TEXT, usuario_cod TEXT, usuario_nombre TEXT, sede TEXT, accion TEXT, modulo TEXT, detalle TEXT, ip TEXT, created_at TEXT DEFAULT (datetime('now','localtime')))");var u=req.user||{};var now=new Date();db.prepare('INSERT INTO audit_log (fecha,hora,usuario_cod,usuario_nombre,sede,accion,modulo,detalle,ip) VALUES (?,?,?,?,?,?,?,?,?)').run(hoyLocal(),now.toTimeString().slice(0,8),String(u.cod||u.id||''),u.nombre||'',u.sede||'',accion||'',modulo||'',JSON.stringify(detalle||{}),(req.headers||{})['x-forwarded-for']||'');}catch(e){}};
 const jwt = require('jsonwebtoken');
-const SECRET = process.env.JWT_SECRET || 'lucebien-secret-2026-xK9mP3qR';
+const SECRET = require('./middleware/auth').JWT_SECRET;
 
 const app = express();
 const PORT = process.env.PORT || 3000;

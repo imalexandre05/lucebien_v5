@@ -4,7 +4,10 @@ import { useMemo } from 'react';
 import {
   calendarioDePagos,
   finDePeriodo,
+  referenciaPorHoras,
+  tarifaDelDia,
   type CambioFrecuencia,
+  type TurnoContratado,
   type ModalidadPago,
   type PagoCalendario,
 } from '@scilb/core';
@@ -61,6 +64,27 @@ export function resumenDePagos(pagos: PagoCalendario[]): { linea: string; ultimo
   return { linea: base, ultimoCorto: corto };
 }
 
+/**
+ * Contrato por horas (spec sueldo-por-horas §6): no hay cuota por pago; cada pago paga las horas
+ * que se trabajen. Se muestra cuántos pagos son y, sólo como orientación, lo que cobraría cada uno
+ * si cumple su horario (`referenciaPorHoras` del core, sobre las fechas de ese pago).
+ */
+export function resumenDePagosPorHoras(
+  pagos: PagoCalendario[],
+  referenciaDe: ((p: PagoCalendario) => number) | null,
+): string {
+  if (pagos.length === 0) return '';
+  const n = pagos.length;
+  const base = `${n} ${n === 1 ? 'pago' : 'pagos'} · cada uno paga sus horas`;
+  if (!referenciaDe) return base;
+  const refs = pagos.map(referenciaDe);
+  const min = Math.min(...refs);
+  const max = Math.max(...refs);
+  if (!(max > 0)) return base;
+  const rango = min === max ? soles(max) : `entre ${soles(min)} y ${soles(max)}`;
+  return `${base} (≈ ${rango} si cumple su horario)`;
+}
+
 export function ComoSePaga({
   modalidad,
   cadaDias,
@@ -70,6 +94,7 @@ export function ComoSePaga({
   cuota,
   cambios,
   disabled,
+  porHoras,
 }: {
   modalidad: ModalidadPago;
   cadaDias: string;
@@ -79,21 +104,49 @@ export function ComoSePaga({
   cuota: number;
   cambios?: CambioFrecuencia[];
   disabled?: boolean;
+  /** Contrato por horas: la vista previa habla de horas, no de cuota. `tarifa` 0 = aún sin completar. */
+  porHoras?: { turnos: TurnoContratado[]; tarifa: number };
 }) {
   const calendario = useMemo(() => {
-    if (!fechaInicio || !fechaFin || fechaFin < fechaInicio || !(cuota > 0)) return null;
+    // Por horas no hay cuota: el calendario sólo necesita las fechas (la cuota 1 no se muestra).
+    if (!fechaInicio || !fechaFin || fechaFin < fechaInicio || !(porHoras || cuota > 0)) return null;
     try {
       const n = Number(cadaDias);
       return calendarioDePagos(
-        { fechaInicio, fechaFin, modalidad, cadaDias: modalidad === 'dias' ? n : null, sueldoPactado: cuota },
+        { fechaInicio, fechaFin, modalidad, cadaDias: modalidad === 'dias' ? n : null, sueldoPactado: porHoras ? 1 : cuota },
         cambios ?? [],
       );
     } catch {
       return null; // «Cada __ días» sin un N válido todavía: no hay vista previa que mostrar.
     }
-  }, [modalidad, cadaDias, fechaInicio, fechaFin, cuota, cambios]);
+  }, [modalidad, cadaDias, fechaInicio, fechaFin, cuota, cambios, porHoras]);
 
-  const resumen = calendario ? resumenDePagos(calendario) : null;
+  const resumen = calendario && !porHoras ? resumenDePagos(calendario) : null;
+
+  const lineaPorHoras = useMemo(() => {
+    if (!calendario || !porHoras) return null;
+    let referenciaDe: ((p: PagoCalendario) => number) | null = null;
+    if (porHoras.tarifa > 0 && porHoras.turnos.length > 0) {
+      try {
+        const contrato = {
+          fechaInicio,
+          fechaFin,
+          modalidad,
+          cadaDias: modalidad === 'dias' ? Number(cadaDias) : null,
+          sueldoPactado: 0,
+          tarifaHora: porHoras.tarifa,
+        };
+        const lista = cambios ?? [];
+        // Prueba una vez: si el horario es inválido (turnos solapados) no hay referencia que dar.
+        referenciaPorHoras(porHoras.turnos, fechaInicio, fechaInicio, porHoras.tarifa);
+        referenciaDe = (p) =>
+          referenciaPorHoras(porHoras.turnos, p.desde, p.hasta, tarifaDelDia(contrato, lista, p.desde));
+      } catch {
+        referenciaDe = null;
+      }
+    }
+    return resumenDePagosPorHoras(calendario, referenciaDe);
+  }, [calendario, porHoras, fechaInicio, fechaFin, modalidad, cadaDias, cambios]);
 
   // Si el último pago queda corto, se sugiere terminar donde cierra ese período (spec §3.3: «el día
   // anterior al aniversario»). Sólo sugiere: el administrador decide.
@@ -146,6 +199,7 @@ export function ComoSePaga({
           {resumen.ultimoCorto && <span className="block text-navy">{resumen.ultimoCorto}</span>}
         </p>
       )}
+      {lineaPorHoras && <p className="text-apoyo text-muted tabular-nums">{lineaPorHoras}</p>}
       {sugerenciaFin && resumen?.ultimoCorto && (
         <Aviso tono="aviso" className="text-apoyo">
           El último pago queda más corto que los demás. Si el contrato termina el{' '}

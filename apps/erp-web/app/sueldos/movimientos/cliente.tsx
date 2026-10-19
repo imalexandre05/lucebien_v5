@@ -1,17 +1,19 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Lock, Plus, Trash2 } from 'lucide-react';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input, Label, Select } from '../../../components/ui/form';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
+import { rutaSeccion } from '../../../lib/colaboradores-secciones';
 import { hoyPeru } from '../../../lib/fechas';
 import { esConteo, type TipoMovimiento } from '../../../lib/sueldos-tipos';
 import type { MovimientoSueldo, VentaSueldo } from '../../../lib/sueldos-repo';
 import { correrAccion, mensajeIncierto, planTrasFallo, restaurarSiVacio, sinId } from '../../../lib/movimientos-optimista';
+import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import type { DecisionPeriodo, EstadoFechaMovimiento } from '../../../lib/sueldos-repo';
 import { accionCrearMovimiento, accionEliminarMovimiento, accionEstadoFechaMovimiento } from './actions';
@@ -43,6 +45,7 @@ export function MovimientosCliente({
   empleados,
   movimientos,
   ventas,
+  enFicha = false,
 }: {
   empleados: Emp[];
   movimientos: MovimientoSueldo[];
@@ -55,10 +58,18 @@ export function MovimientosCliente({
    * simplemente no se renderiza.
    */
   ventas?: VentaSueldo[];
+  /**
+   * true dentro de la ficha del colaborador (decisión del dueño n.º 5): nada de lo que se hace ahí
+   * manda a `/sueldos/…`: los textos de ventas apuntan a la pestaña «Ventas y metas» de la ficha.
+   */
+  enFicha?: boolean;
 }) {
   // Sólo para resincronizar tras un fallo incierto (ver planTrasFallo). En el camino normal
   // NO se usa: el árbol nuevo llega en la respuesta de la acción.
   const router = useRouter();
+  // En la ficha, el enlace a «Ventas y metas» conserva el período que se está mirando.
+  const query = useSearchParams().toString();
+  const enlaceVentas = rutaSeccion(empleados[0]?.id ?? '', 'ventas', query);
   const [error, setError] = useState<string | null>(null);
   const [pendiente, empezar] = useTransition();
 
@@ -162,6 +173,23 @@ export function MovimientosCliente({
 
   // Borrar oculta la fila al instante. Si la base corta (p. ej. `CONGELADA`), vuelve a verse. Si
   // sale bien, el id queda en el conjunto sin hacer daño: ya no viene en `movimientos`.
+  const conf = useConfirmacion();
+
+  // Borrar un adelanto o un descuento cambia lo que se le paga a una persona: se confirma antes.
+  const pedirBorrado = (m: { id: string; fecha: string; tipo: string; monto: number | null; cantidad: number; empleadoNombre?: string | null }) => {
+    const cuanto = m.monto == null ? `${m.cantidad} u.` : soles(m.monto);
+    conf.pedir({
+      titulo: `¿Borrar ${(LABEL_TIPO[m.tipo] ?? m.tipo).toLowerCase()} de ${cuanto}?`,
+      detalle: `${m.empleadoNombre ?? 'Sin nombre'} · ${m.fecha}. Dejará de contarse en su sueldo.`,
+      confirmarLabel: 'Borrar',
+      tono: 'peligro',
+      alConfirmar: () => {
+        conf.cerrar();
+        borrarMovimiento(m.id);
+      },
+    });
+  };
+
   const borrarMovimiento = (id: string) => {
     setError(null);
     setBorrando((b) => new Set(b).add(id));
@@ -170,7 +198,7 @@ export function MovimientosCliente({
       if (!r.ok) {
         setBorrando((b) => sinId(b, id));
         setError(
-          mensajeIncierto(r, 'No se pudo confirmar el borrado.', 'Revise la lista: si la fila sigue ahí, no se borró.'),
+          mensajeIncierto(r, 'No se pudo confirmar el borrado.', 'Revisa la lista: si la fila sigue ahí, no se borró.'),
         );
         // Si no se sabe si se borró (corte, o error de la base), la lista real lo dice.
         if (planTrasFallo(r).refrescar) router.refresh();
@@ -188,6 +216,7 @@ export function MovimientosCliente({
 
   return (
     <div className="space-y-6">
+      <DialogoConfirmar {...conf.props} />
       <Modal
         open={pregunta !== null}
         onClose={() => setPregunta(null)}
@@ -357,7 +386,7 @@ export function MovimientosCliente({
                       ) : (
                         <Button
                           variant="ghost"
-                          onClick={() => borrarMovimiento(m.id)}
+                          onClick={() => pedirBorrado(m)}
                           aria-label="Borrar"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -380,9 +409,15 @@ export function MovimientosCliente({
           </CardHeader>
           <p className="px-5 pb-3 text-cuerpo text-muted">
             Sólo lectura: cargar una venta nueva o asignar un vendedor se hace desde{' '}
-            <a className="text-gold-deep underline" href="/sueldos/ventas">
-              Ventas y metas
-            </a>
+            {enFicha ? (
+              <a className="text-gold-deep underline" href={enlaceVentas}>
+                Ventas y metas
+              </a>
+            ) : (
+              <a className="text-gold-deep underline" href="/sueldos/ventas">
+                Ventas y metas
+              </a>
+            )}
             .
           </p>
           <div className="border-t border-line">
@@ -428,9 +463,15 @@ export function MovimientosCliente({
       ) : (
         <p className="text-cuerpo text-muted">
           Las ventas se cargan en{' '}
-          <a className="text-gold-deep underline" href="/sueldos/ventas">
-            Ventas y metas
-          </a>
+          {enFicha ? (
+            <a className="text-gold-deep underline" href={enlaceVentas}>
+              Ventas y metas
+            </a>
+          ) : (
+            <a className="text-gold-deep underline" href="/sueldos/ventas">
+              Ventas y metas
+            </a>
+          )}
           .
         </p>
       )}

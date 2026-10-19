@@ -1,3 +1,10 @@
+-- Guardia de base vacía/obsoleta: la 0093 retiró sueldo_entrada(uuid) a propósito; lo cubren las pruebas 0093 y posteriores
+select to_regprocedure('public.sueldo_entrada(uuid)') is null as omitir \gset
+\if :omitir
+do $$ begin raise exception 'RESULTADO 0085: OMITIDA — la 0093 retiró sueldo_entrada(uuid) a propósito; lo cubren las pruebas 0093 y posteriores'; end $$;
+\quit
+\endif
+
 -- Prueba de la migración 0085_sueldo_entrada_dia_mixto.sql
 --
 -- Comprueba la promesa de la spec (docs/superpowers/specs/sueldos/2026-08-23-dia-mixto-design.md):

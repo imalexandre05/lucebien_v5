@@ -1,3 +1,10 @@
+-- Guardia de base vacía/obsoleta: auditoría de datos reales (códigos 7158, 7073…): sólo tiene sentido sobre una copia de producción
+select not exists (select 1 from empleados where cod = '7158') as omitir \gset
+\if :omitir
+do $$ begin raise exception 'RESULTADO 0102: OMITIDA — auditoría de datos reales (códigos 7158, 7073…): sólo tiene sentido sobre una copia de producción'; end $$;
+\quit
+\endif
+
 -- Prueba de la migración 0102_identidades_duplicadas_empleados.sql
 --
 -- A diferencia de las pruebas anteriores, esta migración no crea una policy ni una RPC reusable:

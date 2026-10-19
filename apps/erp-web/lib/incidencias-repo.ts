@@ -256,3 +256,12 @@ export async function crearIncidenciasDeReporte(p: {
   const { error } = await sb.from('incidencias').insert(filas);
   if (error) throw new Error(error.message);
 }
+
+// ¿El responsable pertenece a la sede de la incidencia y está activo? La decide la base (0162,
+// security definer): un encargado no puede leer a otros empleados por RLS, y la función solo
+// devuelve un booleano, sin datos de la persona.
+export async function responsableIncidenciaValido(id: string, sede: string): Promise<boolean> {
+  const { data, error } = await getServerClient().rpc('incidencia_responsable_valido', { p_empleado: id, p_sede: sede });
+  if (error) throw new Error(error.message);
+  return data === true;
+}

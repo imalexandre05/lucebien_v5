@@ -61,14 +61,42 @@ const fromRow = (r: Row): PrendaPasada => ({
   fechaActualizado: r.fecha_actualizado,
 });
 
-export async function listarPasadas(): Promise<PrendaPasada[]> {
+// Las recibidas (estado final, sólo historial) crecen sin tope y ninguna pantalla las dibuja: se traen
+// únicamente las de los últimos RECIBIDAS_DIAS días (el KPI «ingresaron hoy» las puede necesitar) y el
+// total histórico sale de contarRecibidas(). Además se pagina de a 1000: PostgREST corta en 1000 filas
+// y una lista truncada «perdía» prendas sin avisar.
+const PAGINA_PASADAS = 1000;
+const RECIBIDAS_DIAS = 7;
+
+// `soloActivas`: el tablero omite también las recibidas recientes (solo las usan las métricas).
+export async function listarPasadas(opts: { soloActivas?: boolean } = {}): Promise<PrendaPasada[]> {
   const sb = getServerClient();
-  const { data, error } = await sb
+  const corte = new Date(Date.now() - RECIBIDAS_DIAS * 86400000).toISOString();
+  const filas: Row[] = [];
+  for (let desde = 0; ; desde += PAGINA_PASADAS) {
+    let q = sb.from('prenda_pasada').select('*');
+    q = opts.soloActivas ? q.neq('etapa', 'recibido') : q.or(`etapa.neq.recibido,fecha_actualizado.gte.${corte}`);
+    const { data, error } = await q
+      .order('fecha_ingreso', { ascending: false })
+      .order('id', { ascending: true })
+      .range(desde, desde + PAGINA_PASADAS - 1);
+    if (error) throw new Error(error.message);
+    const pagina = (data as Row[]) ?? [];
+    filas.push(...pagina);
+    if (pagina.length < PAGINA_PASADAS) break;
+  }
+  return filas.map(fromRow);
+}
+
+/** Total histórico de prendas recibidas (sólo el conteo, sin traer las filas). */
+export async function contarRecibidas(): Promise<number> {
+  const sb = getServerClient();
+  const { count, error } = await sb
     .from('prenda_pasada')
-    .select('*')
-    .order('fecha_ingreso', { ascending: false });
+    .select('id', { count: 'exact', head: true })
+    .eq('etapa', 'recibido');
   if (error) throw new Error(error.message);
-  return (data as Row[]).map(fromRow);
+  return count ?? 0;
 }
 
 // Alta manual desde la pestaña Registrar: prendas que llegan al almacén sin pedido asociado.
@@ -195,13 +223,38 @@ export async function enviarPasada(id: string, sedeDestino: string, operador: st
   if (error) throw new Error(error.message);
 }
 
-export async function rechazarPasada(id: string, destino: string, operador: string | null = null): Promise<void> {
+// Tanda atómica (migración 0153): una sola transacción en la base.
+export async function enviarTandaPasadas(ids: string[], sedeDestino: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
-  const { error } = await sb.rpc('pipeline_rechazar', { p_id: id, p_destino: destino, ...conOperador(operador) });
+  const { error } = await sb.rpc('pipeline_enviar_tanda', { p_ids: ids, p_sede: sedeDestino, ...conOperador(operador) });
+  if (error) throw new Error(error.message);
+}
+
+export async function rechazarPasada(
+  id: string,
+  destino: string,
+  motivo: string,
+  operador: string | null = null,
+): Promise<void> {
+  const sb = getServerClient();
+  // Motivo obligatorio (0154): la base lo valida y lo guarda en obs_calidad y en el historial.
+  const { error } = await sb.rpc('pipeline_rechazar', {
+    p_id: id,
+    p_destino: destino,
+    p_motivo: motivo,
+    ...conOperador(operador),
+  });
   if (error) throw new Error(error.message);
 }
 
 // Deshacer: revierte la prenda a la etapa anterior y quita los puntos recién ganados.
+// Anular un envío equivocado (0156): la prenda vuelve a «listo». Motivo obligatorio.
+export async function anularEnvioPasada(id: string, motivo: string, operador: string | null = null): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_anular_envio', { p_id: id, p_motivo: motivo, ...conOperador(operador) });
+  if (error) throw new Error(error.message);
+}
+
 export async function deshacerPasada(id: string, etapaAnterior: string, operador: string | null = null): Promise<void> {
   const sb = getServerClient();
   const { error } = await sb.rpc('pipeline_deshacer', {
@@ -222,6 +275,43 @@ export async function avanzarTanda(ids: string[], destino: string, operador: str
   });
   if (error) throw new Error(error.message);
   return Number(data) || 0;
+}
+
+export type ResultadoTanda = { puntos: number; movidas: number; omitidas: number; idsMovidos: string[] };
+
+// Tanda con resultado detallado (0155): cuántas se movieron, cuántas se omitieron y cuáles.
+export async function avanzarTandaResultado(
+  ids: string[],
+  destino: string,
+  operador: string | null = null,
+): Promise<ResultadoTanda> {
+  const sb = getServerClient();
+  const { data, error } = await sb.rpc('pipeline_avanzar_tanda_resultado', {
+    p_ids: ids,
+    p_destino: destino,
+    ...conOperador(operador),
+  });
+  if (error) throw new Error(error.message);
+  const d = (data ?? {}) as Record<string, unknown>;
+  return {
+    puntos: Number(d.puntos) || 0,
+    movidas: Number(d.movidas) || 0,
+    omitidas: Number(d.omitidas) || 0,
+    idsMovidos: Array.isArray(d.ids_movidos) ? (d.ids_movidos as string[]) : [],
+  };
+}
+
+// Deshacer una tanda entera, todo o nada (0155).
+export async function deshacerTandaPasadas(
+  items: { id: string; etapaAnterior: string }[],
+  operador: string | null = null,
+): Promise<void> {
+  const sb = getServerClient();
+  const { error } = await sb.rpc('pipeline_deshacer_tanda', {
+    p_items: items.map((i) => ({ id: i.id, etapa_anterior: i.etapaAnterior })),
+    ...conOperador(operador),
+  });
+  if (error) throw new Error(error.message);
 }
 
 export type RankingItem = { nombre: string; total: number; acciones: number };
@@ -423,39 +513,3 @@ export async function dispositivoCompartido(deviceId: string): Promise<boolean> 
   return data === true;
 }
 
-// Apartado de codificación (migración 0135): últimos movimientos con su código. Sólo lectura, bajo
-// RLS (cada sede ve lo suyo). `q` busca por código de movimiento.
-export type MovimientoCodificado = {
-  codigoMov: string | null;
-  prenda: string;
-  etapaAnterior: string | null;
-  etapaNueva: string;
-  quien: string | null;
-  fecha: string;
-};
-export async function listarMovimientosCodificados(q = '', limite = 200): Promise<MovimientoCodificado[]> {
-  const sb = getServerClient();
-  const termino = q.trim().replace(/[%,()]/g, '');
-  let consulta = sb
-    .from('prenda_historial')
-    .select('codigo_mov, etapa_anterior, etapa_nueva, fecha, empleado:empleados(nombre), prenda:prenda_pasada!inner(codigo)')
-    .order('fecha', { ascending: false })
-    .limit(limite);
-  if (termino) consulta = consulta.ilike('codigo_mov', `%${termino}%`);
-  const { data, error } = await consulta;
-  if (error) throw new Error(error.message);
-  type Fila = {
-    codigo_mov: string | null; etapa_anterior: string | null; etapa_nueva: string; fecha: string;
-    empleado: { nombre: string } | { nombre: string }[] | null;
-    prenda: { codigo: string } | { codigo: string }[] | null;
-  };
-  const uno = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
-  return ((data as unknown as Fila[]) ?? []).map((r) => ({
-    codigoMov: r.codigo_mov,
-    prenda: uno(r.prenda)?.codigo ?? '—',
-    etapaAnterior: r.etapa_anterior,
-    etapaNueva: r.etapa_nueva,
-    quien: uno(r.empleado)?.nombre ?? null,
-    fecha: r.fecha,
-  }));
-}

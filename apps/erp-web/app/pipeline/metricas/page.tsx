@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { ArrowLeft, Gauge, PackageCheck, Send, Trophy, Zap } from 'lucide-react';
-import { listarPasadas, rankingHoy, movimientosRecientes } from '../../../lib/pipeline-repo';
+import { listarPasadas, contarRecibidas, rankingHoy, movimientosRecientes } from '../../../lib/pipeline-repo';
 import { hoyPeru } from '../../../lib/fechas';
+import { getSesion } from '../../../lib/auth';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Table, THead, TBody, TR, TH, TD } from '../../../components/ui/table';
@@ -10,6 +11,7 @@ import { EmptyState } from '../../../components/ui/empty-state';
 
 const ETAPAS: Record<string, string> = {
   recepcion: 'Recepción',
+  codificacion: 'Codificación',
   lavado: 'Lavado',
   empatado: 'Empatado',
   refaccion: 'Refacción',
@@ -28,7 +30,11 @@ const diaLabel = (iso: string) => {
 
 // Métricas del pipeline: qué se movió, quién lo movió y dónde está la carga hoy.
 export default async function MetricasPage() {
-  const [pasadas, ranking, movs] = await Promise.all([listarPasadas(), rankingHoy(), movimientosRecientes(7)]);
+  const [pasadas, ranking, movs, recibidas] = await Promise.all([listarPasadas(), rankingHoy(), movimientosRecientes(7), contarRecibidas()]);
+
+  const sesion = await getSesion();
+  // La 0174 limita el ranking a lo propio para quien no es administrador: la etiqueta debe decirlo.
+  const esAdmin = sesion?.usuario.rol === 'admin' || sesion?.usuario.rol === 'dueno';
 
   const hoy = hoyPeru();
   const enProceso = pasadas.filter((p) => !['enviado', 'recibido'].includes(p.etapa)).length;
@@ -39,7 +45,7 @@ export default async function MetricasPage() {
 
   // Carga actual por etapa (solo etapas con prendas, orden del pipeline).
   const porEtapa = Object.keys(ETAPAS)
-    .map((k) => ({ k, n: ETAPAS[k], c: pasadas.filter((p) => p.etapa === k).length }))
+    .map((k) => ({ k, n: ETAPAS[k], c: k === 'recibido' ? recibidas : pasadas.filter((p) => p.etapa === k).length }))
     .filter((e) => e.c > 0);
   const maxEtapa = Math.max(1, ...porEtapa.map((e) => e.c));
 
@@ -68,7 +74,7 @@ export default async function MetricasPage() {
           <StatBox index={1} label="Listas p/ envío" valor={listas} sub="esperan despacho" tone="gold" />
           <StatBox index={2} label="En camino" valor={enCamino} sub="por confirmar en tienda" tone="navy" />
           <StatBox index={3} label="Movimientos hoy" valor={movsHoy} sub="avances de etapa" tone="exito" />
-          <StatBox index={4} label="Puntos hoy" valor={ptsHoy} sub="todo el equipo" tone="gold" />
+          <StatBox index={4} label={esAdmin ? 'Puntos hoy' : 'Tus puntos de hoy'} valor={ptsHoy} sub={esAdmin ? 'todo el equipo' : 'solo los tuyos'} tone="gold" />
         </div>
 
         <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">

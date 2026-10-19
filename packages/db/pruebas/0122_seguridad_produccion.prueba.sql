@@ -263,7 +263,7 @@ begin
   begin
     perform set_config('request.jwt.claims', json_build_object('sub', c1, 'role','authenticated')::text, true);
     execute 'set local role authenticated';
-    perform pipeline_rechazar(p_rec, 'planchado');
+    perform pipeline_rechazar(p_rec, 'planchado', p_motivo => 'prueba');
     v_state := 'sin error';
   exception when others then
     v_state := sqlstate; v_msg := sqlerrm;
@@ -531,7 +531,7 @@ begin
       perform set_config('request.jwt.claims', json_build_object('sub', c1, 'role','authenticated')::text, true);
       execute 'set local role authenticated';
       if rec.accion = 'rechazar' then
-        perform pipeline_rechazar(p9, rec.destino);
+        perform pipeline_rechazar(p9, rec.destino, p_motivo => 'prueba');
       else
         perform pipeline_calificar(p9, false, rec.destino, 'QA22');
       end if;

@@ -5,7 +5,7 @@
 const router = require('express').Router();
 const jwt = require('jsonwebtoken');
 const { getDB, hoyLocal } = require('../database/db');
-const SECRET = process.env.JWT_SECRET || 'lucebien-secret-2026-xK9mP3qR';
+const SECRET = require('../middleware/auth').JWT_SECRET;
 
 function auth(req, res, next) {
   try {

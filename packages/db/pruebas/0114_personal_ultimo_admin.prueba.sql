@@ -22,7 +22,10 @@ declare
 begin
   insert into sedes (cod, nombre) values ('AL', 'Sede prueba 0114') on conflict (cod) do nothing;
   -- Aísla el escenario: ningún otro admin/dueño activo en la base de prueba.
+  -- (se apaga el trigger de último admin de la 0125 sólo para armar el escenario)
+  set local session_replication_role = replica;
   update empleados set activo = false where rol in ('admin', 'dueno') and activo;
+  set local session_replication_role = origin;
 
   insert into empleados (nombre, cod, rol, activo, sede_cod, iniciales)
     values ('Admin Prueba 0114', '0114a', 'admin', true, 'AL', 'AP') returning id into adm;

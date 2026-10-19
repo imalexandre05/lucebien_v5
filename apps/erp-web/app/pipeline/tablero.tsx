@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, useOptimistic, useTransition } from 'react';
 import {
   Inbox,
+  Tag,
   Droplets,
   Link2,
   Wrench,
@@ -35,8 +36,10 @@ import {
   avanzarPrenda,
   enviarTandaPrendas,
   rechazarPrenda,
+  anularEnvioPrenda,
   deshacerPrenda,
   avanzarTandaPrendas,
+  deshacerTandaPrendas,
   dividirPrenda,
   deshacerDivisionPrenda,
 } from './actions';
@@ -81,6 +84,7 @@ const COL_MAP: Record<string, string> = {
 type Col = { k: string; n: string; icon: LucideIcon; tint: string };
 const COLUMNAS: Col[] = [
   { k: 'recepcion', n: 'Recepción', icon: Inbox, tint: '#807a6c' },        // muted
+  { k: 'codificacion', n: 'Codificación', icon: Tag, tint: '#b8a515' },   // gold: pendiente de etiqueta
   { k: 'lavado', n: 'Lavado', icon: Droplets, tint: '#2f7f88' },           // cat-mar
   { k: 'empatado', n: 'Empatado', icon: Link2, tint: '#6f5aa8' },          // cat-lila
   { k: 'refaccion', n: 'Refacción', icon: Wrench, tint: '#b5643f' },       // cat-arcilla
@@ -96,7 +100,6 @@ const NOMBRE: Record<string, string> = Object.fromEntries(COLUMNAS.map((c) => [c
 const TABS: { k: string; label: string; href?: string; pronto?: boolean }[] = [
   { k: 'kanban', label: 'Kanban', href: '/pipeline' },
   { k: 'registrar', label: 'Registrar', href: '/pipeline/registrar' },
-  { k: 'codificacion', label: 'Codificación', href: '/pipeline/codificacion' },
   { k: 'envios', label: 'Envíos a tienda', href: '/pipeline/envios' },
   { k: 'accesorios', label: 'Accesorios', href: '/pipeline/accesorios' },
   { k: 'metricas', label: 'Métricas', href: '/pipeline/metricas' },
@@ -113,10 +116,11 @@ const tipoLavadoCls = (t: string): string => {
 
 type Handlers = {
   avanzar: (id: string, destino: string, etapaActual: string) => void;
-  avanzarTanda: (ids: string[], destino: string) => void;
+  avanzarTanda: (ids: string[], destino: string, desde: string) => void;
   enviarTanda: (ids: string[], sede: string) => void;
-  rechazar: (id: string, destino: string) => void;
+  rechazar: (id: string, destino: string, motivo: string) => void;
   dividir: (id: string) => void;
+  anularEnvio: (id: string, motivo: string) => void;
   // Tarea 6: recibe el id de la MADRE (resuelto por el tablero vía madrePorHijo), no el de la
   // tarjeta -S/-P que dispara el botón.
   deshacerDivision: (madreId: string) => void;
@@ -155,7 +159,7 @@ export function TableroPipeline({
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), toast.undo ? 5000 : 2200);
+    const t = setTimeout(() => setToast(null), toast.undo ? 10000 : 2200);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -184,6 +188,24 @@ export function TableroPipeline({
   // «Deshacer» usa el token con el que se avanzó la prenda (quien avanzó es quien deshace su propio
   // movimiento). Los puntos que borra la base son los DE ESE movimiento, sean de quien sean
   // (migración 0112, spec §0 E-4), así que un cambio de operador entre medio no se los quita a otro.
+  const deshacerTanda = (ids: string[], etapaAnterior: string, pts: number, token?: string) =>
+    startTransition(async () => {
+      ids.forEach((id) => aplicar({ id, etapa: etapaAnterior }));
+      setToast(null);
+      try {
+        const r = await deshacerTandaPrendas(
+          ids.map((id) => ({ id, etapaAnterior })),
+          token,
+        );
+        if (r) return rechazoCodigo(r);
+        renovar();
+        // Los puntos de la sesión se restan solo cuando la base sí deshizo la tanda.
+        if (pts) setSesionPts((s) => Math.round((s - pts) * 10) / 10);
+        setToast({ msg: `Se deshizo la tanda (${ids.length} prendas)`, tono: 'gold' });
+      } catch {
+        falloGenerico();
+      }
+    });
   const deshacer = (id: string, etapaAnterior: string, pts: number, token?: string) =>
     startTransition(async () => {
       aplicar({ id, etapa: etapaAnterior });
@@ -234,12 +256,14 @@ export function TableroPipeline({
           }
         }),
       ),
-    rechazar: (id, destino) =>
+    rechazar: (id, destino, motivo) =>
       conOperador((token) =>
         startTransition(async () => {
           aplicar({ id, etapa: destino });
           try {
-            const r = await rechazarPrenda(id, destino, token);
+            const r = await rechazarPrenda(id, destino, motivo, token);
+            // MOTIVO: la base pidió un motivo; no es un problema del operador, no se le pide el código.
+            if (r?.startsWith('MOTIVO:')) return setToast({ msg: r.replace(/^MOTIVO:\s*/, ''), tono: 'warn' });
             if (r) return rechazoCodigo(r);
             renovar();
             setToast({ msg: `Devuelto a ${NOMBRE[destino] ?? destino}`, tono: 'warn' });
@@ -248,16 +272,38 @@ export function TableroPipeline({
           }
         }),
       ),
-    avanzarTanda: (ids, destino) =>
+    avanzarTanda: (ids, destino, desde) =>
       conOperador((token) =>
         startTransition(async () => {
           ids.forEach((id) => aplicar({ id, etapa: destino }));
           try {
-            const pts = await avanzarTandaPrendas(ids, destino, token);
-            if (typeof pts === 'string') return rechazoCodigo(pts);
+            const res = await avanzarTandaPrendas(ids, destino, token);
+            if (typeof res === 'string') return rechazoCodigo(res);
             renovar();
-            if (pts) setSesionPts((s) => Math.round((s + pts) * 10) / 10);
-            setToast({ msg: `${ids.length} prendas → ${NOMBRE[destino] ?? destino} · +${pts ?? 0} pts`, tono: 'ok' });
+            if (res.puntos) setSesionPts((s) => Math.round((s + res.puntos) * 10) / 10);
+            // El aviso dice la verdad: cuántas se movieron de las que se eligieron (0155).
+            const omit = res.omitidas > 0 ? ` · ${res.omitidas} no se pudieron mover` : '';
+            setToast({
+              msg: `${res.movidas} de ${ids.length} prendas → ${NOMBRE[destino] ?? destino} · +${res.puntos} pts${omit}`,
+              tono: res.omitidas > 0 ? 'warn' : 'ok',
+              // Deshacer la tanda: solo las que sí se movieron, todo o nada.
+              undo: res.movidas > 0 && desde ? () => deshacerTanda(res.idsMovidos, desde, res.puntos, token) : undefined,
+            });
+          } catch {
+            falloGenerico();
+          }
+        }),
+      ),
+    anularEnvio: (id, motivo) =>
+      conOperador((token) =>
+        startTransition(async () => {
+          aplicar({ id, etapa: 'listo' });
+          try {
+            const r = await anularEnvioPrenda(id, motivo, token);
+            if (r?.startsWith('MOTIVO:')) return setToast({ msg: r.replace(/^MOTIVO:\s*/, ''), tono: 'warn' });
+            if (r) return rechazoCodigo(r);
+            renovar();
+            setToast({ msg: 'Envío anulado: la prenda vuelve a Listo p/ envío', tono: 'gold' });
           } catch {
             falloGenerico();
           }
@@ -332,7 +378,7 @@ export function TableroPipeline({
   );
 
   // Tarea 6: mapa hijo→madre para ofrecer "Deshacer división" en las tarjetas -S/-P. Las madres
-  // (etapa 'dividido') SÍ están en `optimistas` — listarPasadas no filtra por etapa — pero ninguna
+  // (etapa 'dividido') SÍ están en `optimistas` — listarPasadas({ soloActivas }) solo excluye las recibidas — pero ninguna
   // columna del kanban las pinta (COLUMNAS no tiene 'dividido'); solo se leen acá para el vínculo.
   const madrePorHijo = useMemo(() => {
     const m = new Map<string, string>();
@@ -484,12 +530,12 @@ export function TableroPipeline({
               <button
                 key={d}
                 onClick={() => {
-                  h.avanzarTanda([...sel], d);
+                  h.avanzarTanda([...sel], d, selEtapa ?? '');
                   limpiarSel();
                 }}
                 className="inline-flex items-center gap-1.5 rounded-r-pastilla bg-navy px-4 py-2 text-cuerpo font-semibold text-white transition hover:bg-[#26345c] active:scale-[.98]"
               >
-                {NOMBRE[d] ?? d} <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
+                {selEtapa === 'codificacion' ? `Etiqueta puesta · ${NOMBRE[d] ?? d}` : (NOMBRE[d] ?? d)} <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
               </button>
             ))
           )}
@@ -761,17 +807,72 @@ function Tarjeta({
           Confirmar en Envíos <ArrowRight className="h-3 w-3" strokeWidth={2.5} />
         </a>
       )}
+      {p.etapa === 'enviado' && <AnularEnvio p={p} h={h} />}
+    </div>
+  );
+}
+
+// Anular un envío equivocado (0156): pide el motivo y devuelve la prenda a «Listo p/ envío».
+function AnularEnvio({ p, h }: { p: PrendaPasada; h: Handlers }) {
+  const [abierto, setAbierto] = useState(false);
+  const [motivo, setMotivo] = useState('');
+  const motivoOk = motivo.trim().length >= 3;
+  return (
+    <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
+      {!abierto ? (
+        <button
+          onClick={() => setAbierto(true)}
+          className="inline-flex w-full items-center justify-center gap-1 rounded-r-pastilla border border-line px-2 py-1 text-micro font-medium text-muted transition hover:border-error-line hover:text-error-deep"
+        >
+          <Undo2 className="h-3 w-3" strokeWidth={2.5} /> Anular envío
+        </button>
+      ) : (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <input
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            maxLength={500}
+            placeholder="¿Por qué se anula? (obligatorio)"
+            aria-label="Motivo de la anulación del envío"
+            className="w-full rounded-r-pastilla border border-line bg-white px-2 py-1 text-apoyo text-navy placeholder:text-muted"
+          />
+          <button
+            onClick={() => h.anularEnvio(p.id, motivo.trim())}
+            disabled={!motivoOk}
+            title={motivoOk ? undefined : 'Escribe el motivo para poder anular'}
+            className="inline-flex flex-1 items-center justify-center gap-1 rounded-r-pastilla border border-error-line bg-error-soft px-2 py-1.5 text-apoyo font-medium text-error-deep transition disabled:cursor-not-allowed disabled:opacity-50 active:scale-[.98]"
+          >
+            Confirmar anulación
+          </button>
+          <button
+            onClick={() => setAbierto(false)}
+            className="inline-flex items-center rounded-r-pastilla px-2 py-1.5 text-apoyo text-muted hover:text-navy"
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
     </div>
   );
 }
 
 function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
   const [destino, setDestino] = useState('planchado');
+  const [motivo, setMotivo] = useState('');
+  const motivoOk = motivo.trim().length >= 3;
   return (
     // stopPropagation en el contenedor (tarea 4): el select y el botón Rechazar están dentro de
     // la tarjeta ahora clicable entera; sin esto, abrir el desplegable o rechazar también
     // seleccionaría/deseleccionaría la tarjeta de rebote.
-    <div className="mt-1.5 flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+    <div className="mt-1.5 flex flex-wrap items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+      <input
+        value={motivo}
+        onChange={(e) => setMotivo(e.target.value)}
+        maxLength={500}
+        placeholder="¿Por qué se rechaza? (obligatorio)"
+        aria-label="Motivo del rechazo"
+        className="w-full rounded-r-pastilla border border-line bg-white px-2 py-1 text-apoyo text-navy placeholder:text-muted"
+      />
       <select
         value={destino}
         onChange={(e) => setDestino(e.target.value)}
@@ -786,8 +887,10 @@ function Rechazar({ p, h }: { p: PrendaPasada; h: Handlers }) {
         <option value="planchado">Planchado</option>
       </select>
       <button
-        onClick={() => h.rechazar(p.id, destino)}
-        className="inline-flex flex-1 items-center justify-center gap-1 rounded-r-pastilla border border-error-line bg-error-soft px-2 py-1.5 text-apoyo font-medium text-error-deep transition hover:bg-error-soft active:scale-[.98]"
+        onClick={() => h.rechazar(p.id, destino, motivo.trim())}
+        disabled={!motivoOk}
+        title={motivoOk ? undefined : 'Escribe el motivo para poder rechazar'}
+        className="inline-flex flex-1 disabled:cursor-not-allowed disabled:opacity-50 items-center justify-center gap-1 rounded-r-pastilla border border-error-line bg-error-soft px-2 py-1.5 text-apoyo font-medium text-error-deep transition hover:bg-error-soft active:scale-[.98]"
       >
         <Undo2 className="h-3.5 w-3.5" strokeWidth={2.5} /> Rechazar
       </button>

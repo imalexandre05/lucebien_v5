@@ -1,6 +1,6 @@
 const router = require('express').Router();
 const { getDB } = require('../database/db');
-const jwt=require('jsonwebtoken');const SECRET=process.env.JWT_SECRET||'lucebien-secret-2026-xK9mP3qR';
+const jwt=require('jsonwebtoken');const SECRET=require('../middleware/auth').JWT_SECRET;
 function verifyToken(q,r,n){try{var h=q.headers['authorization'];if(!h||!h.startsWith('Bearer '))return r.status(401).json({error:'Token requerido'});q.user=jwt.verify(h.slice(7),SECRET);n();}catch(e){return r.status(401).json({error:'Token invalido'});}}
 function requireAdmin(q,r,n){verifyToken(q,r,function(){if(q.user.rol!=='admin'&&q.user.rol!=='dueno')return r.status(403).json({error:'Solo admin'});n();});}
 

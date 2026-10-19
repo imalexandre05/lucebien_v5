@@ -309,6 +309,16 @@ export async function listarEmpleados(): Promise<EmpPicker[]> {
     .sort((a, b) => a.nombre.localeCompare(b.nombre));
 }
 
+// Sólo las personas activas: reportes_crear rechaza un colaborador suspendido (0171). Cruza el
+// directorio con app_directorio_activos(), que devuelve id y nombre de los activos.
+export async function listarEmpleadosActivos(): Promise<EmpPicker[]> {
+  const sb = getServerClient();
+  const [todos, activos] = await Promise.all([listarEmpleados(), sb.rpc('app_directorio_activos')]);
+  if (activos.error) throw new Error(activos.error.message);
+  const ids = new Set(((activos.data as { id: string }[]) ?? []).map((d) => String(d.id)));
+  return todos.filter((e) => ids.has(e.id));
+}
+
 // ¿Ya existe un reporte para esta sede/fecha/turno? Devuelve id + estadoEnvio (para enrutar a
 // evaluación, como el viejo: si el turno ya se envió, la pantalla pasa a Evaluación) — el
 // estadoEnvio deja distinguir en la UI un envío real de uno auto-cerrado (Fase 4 tarea 4).
@@ -437,7 +447,7 @@ export async function crearReporte(p: {
   // monto_total ya NO se mandan desde el cliente (el RPC los ignora si vinieran): son insumo de
   // pago/desempeño, el server es quien decide.
   extras: { cod: string | null; tipo: string; nombre: string; cantidad: number; detalle: string; registrado_por_id: string | null }[];
-}): Promise<string> {
+}, operador?: string | null): Promise<string> {
   const sb = getServerClient();
   const { data, error } = await sb.rpc('reportes_crear', {
     p_id: p.id,
@@ -449,9 +459,17 @@ export async function crearReporte(p: {
     p_actividades: p.actividades,
     p_extras: p.extras,
     p_encargado: p.encargado ?? null,
+    // Código personal (0146): token del operador de un equipo compartido; null = actor es la sesión.
+    p_operador: operador ?? null,
   });
   if (error) throw parsearErrorCrear(error.message);
   return String(data);
+}
+
+/** Encargado con que quedó un reporte (con código de operador es quien lo ingresó). */
+export async function encargadoDeReporte(id: string): Promise<string | null> {
+  const { data } = await getServerClient().from('reportes').select('encargado_id').eq('id', id).maybeSingle();
+  return (data?.encargado_id as string | null | undefined) ?? null;
 }
 
 export async function evaluarReporte(

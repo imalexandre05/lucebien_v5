@@ -4,10 +4,9 @@ import { getServerClient } from './supabase/server';
 // Envíos de prendas a tienda (envios_prendas + prenda_pasada.envio_id, 0005/0009).
 // Lectura para la vista de confirmación en tienda y el historial del almacén.
 //
-// La restricción por tienda NO vive acá: la pone la RLS de envios_prendas (`envios_rw`, por sede
-// destino). Los filtros sólo achican lo que la RLS ya deja ver. El join es `!inner` para que la
-// RLS y los filtros actúen ANTES del límite: con un join suelto, las prendas cuyo envío la RLS
-// oculta llegaban con `envios_prendas = null`, ocupaban cupo y se descartaban después.
+// La restricción por tienda NO vive acá: la pone la vista `prendas_despachadas` (0151), que solo
+// muestra a cada tienda lo que le enviaron y con columnas limitadas (sin lavador, planchador ni
+// observaciones internas). Los filtros sólo achican lo que la vista ya deja ver.
 // Spec: docs/superpowers/specs/pipeline/2026-10-03-envios-filtro-tienda-design.md
 
 export type PrendaEnviada = {
@@ -26,7 +25,7 @@ export type PrendaEnviada = {
 };
 
 const COLUMNAS =
-  'id, codigo, tipo, color, talla, sede_origen_cod, etapa, fecha_actualizado, envios_prendas!inner(id, sede_destino_cod, fecha, estado)';
+  'id, codigo, tipo, color, talla, sede_origen_cod, etapa, fecha_actualizado, envio_id, sede_destino_cod, fecha_envio, estado_envio';
 
 // DEFAULT DE PANTALLA, no regla de negocio. Lo en camino es una cola de trabajo y se trae
 // entera, sin paginar: una prenda pendiente que no se ve es una prenda que nadie confirma. El
@@ -41,7 +40,6 @@ export const TOPE_EN_CAMINO = 1000;
 export const POR_PAGINA_RECIBIDAS = 50;
 
 function mapear(r: Record<string, unknown>): PrendaEnviada {
-  const e = r.envios_prendas as Record<string, unknown>;
   return {
     id: String(r.id),
     codigo: String(r.codigo),
@@ -51,10 +49,10 @@ function mapear(r: Record<string, unknown>): PrendaEnviada {
     sedeOrigenCod: String(r.sede_origen_cod ?? ''),
     etapa: String(r.etapa),
     fechaActualizado: (r.fecha_actualizado as string | null) ?? null,
-    envioId: String(e.id),
-    sedeDestinoCod: String(e.sede_destino_cod),
-    fechaEnvio: String(e.fecha ?? ''),
-    estadoEnvio: String(e.estado ?? ''),
+    envioId: String(r.envio_id),
+    sedeDestinoCod: String(r.sede_destino_cod),
+    fechaEnvio: String(r.fecha_envio ?? ''),
+    estadoEnvio: String(r.estado_envio ?? ''),
   };
 }
 
@@ -63,11 +61,10 @@ export async function listarEnviosEnCamino(f: {
   sede: string | null;
 }): Promise<{ prendas: PrendaEnviada[]; truncado: boolean }> {
   let q = getServerClient()
-    .from('prenda_pasada')
+    .from('prendas_despachadas')
     .select(COLUMNAS)
-    .eq('etapa', 'enviado')
-    .not('envio_id', 'is', null);
-  if (f.sede) q = q.eq('envios_prendas.sede_destino_cod', f.sede);
+    .eq('etapa', 'enviado');
+  if (f.sede) q = q.eq('sede_destino_cod', f.sede);
   // Las más antiguas primero: si algún día se llega al tope, lo que queda fuera es lo último que
   // llegó, nunca lo que lleva más tiempo esperando. Una fila de más dice si hay más.
   const { data, error } = await q
@@ -87,14 +84,13 @@ export async function listarEnviosRecibidos(f: {
   pagina: number;
 }): Promise<{ prendas: PrendaEnviada[]; hayMas: boolean }> {
   let q = getServerClient()
-    .from('prenda_pasada')
+    .from('prendas_despachadas')
     .select(COLUMNAS)
-    .eq('etapa', 'recibido')
-    .not('envio_id', 'is', null);
-  if (f.sede) q = q.eq('envios_prendas.sede_destino_cod', f.sede);
+    .eq('etapa', 'recibido');
+  if (f.sede) q = q.eq('sede_destino_cod', f.sede);
   const { gte, lt } = limitesRangoPeru(f.desde, f.hasta);
-  if (gte) q = q.gte('envios_prendas.fecha', gte);
-  if (lt) q = q.lt('envios_prendas.fecha', lt);
+  if (gte) q = q.gte('fecha_envio', gte);
+  if (lt) q = q.lt('fecha_envio', lt);
   // Una fila de más para saber si hay página siguiente sin pedir un count.
   const desdeFila = (f.pagina - 1) * POR_PAGINA_RECIBIDAS;
   const { data, error } = await q

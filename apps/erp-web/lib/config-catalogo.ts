@@ -50,6 +50,7 @@ const SECCION_ACCESO = 'Acceso';
 const SECCION_ESCALAS = 'Escalas salariales';
 const SECCION_INGRESO = 'Ingreso de personal';
 const SECCION_CAPACITACION = 'Capacitación';
+const SECCION_PANEL = 'Panel de inicio';
 
 // Orden de aparición de las secciones en /configuracion (las secciones sin ningún item presente
 // simplemente no se muestran; "Personalizados" — parámetros creados por el admin — va siempre al
@@ -61,6 +62,7 @@ export const ORDEN_SECCIONES = [
   SECCION_ESCALAS,
   SECCION_PAGO_PUNTOS,
   SECCION_REPORTES,
+  SECCION_PANEL,
   SECCION_INVENTARIO,
   SECCION_POS,
   SECCION_VALORES,
@@ -140,12 +142,13 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   // no se podía editar desde ninguna pantalla. El default sigue siendo 1 justamente para no
   // cambiar ningún cálculo ya hecho (39 filas de pipeline_puntos con etapa='recepcion').
   ptsItem('pts_recepcion', 'Recepción', '1'),
+  ptsItem('pts_codificacion', 'Codificación (etiqueta puesta)', '1'),
   ptsItem('pts_lavado_normal', 'Lavado normal', '1'),
   ptsItem('pts_lavado_seco', 'Lavado en seco', '3'),
   ptsItem('pts_lavado_especializado', 'Lavado especializado', '5'),
   ptsItem('pts_empatado', 'Empatado', '0.5'),
   ptsItem('pts_refaccion', 'Refacción', '2'),
-  ptsItem('pts_compostura', 'Compostura / codificación', '5'),
+  ptsItem('pts_compostura', 'Compostura', '5'),
   ptsItem('pts_planchado', 'Planchado', '3'),
   ptsItem('pts_control_calidad', 'Control de calidad', '2'),
   ptsItem('pts_accesorio', 'Accesorio', '0.5'),
@@ -168,6 +171,16 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: '15',
     min: 1,
     step: 1,
+  },
+  {
+    clave: 'eval_puntualidad_modo',
+    seccion: SECCION_EVALUACION,
+    etiqueta: 'Cómo se calcula la nota de puntualidad',
+    descripcion:
+      "«proporcion» (por defecto): 20 × días puntuales ÷ días que debía asistir, según la huella. «minutos»: resta 1 punto por cada bloque de minutos de tardanza (ver arriba).",
+    tipo: 'lista',
+    default: 'proporcion',
+    opciones: ['proporcion', 'minutos'],
   },
   {
     clave: 'eval_bonus_ventas_max',
@@ -272,6 +285,17 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
   },
 
   // ── Reportes de turno (Fase 4, migración 0052 — pendiente de aplicar) ──────────────────────
+  {
+    clave: 'reporte_extra_cantidad_max',
+    seccion: SECCION_REPORTES,
+    etiqueta: 'Máximo de unidades por extra en un reporte',
+    descripcion:
+      'Cuántas veces se puede contar un mismo extra en un reporte de turno. La base rechaza el reporte si se pasa (migración 0171). Default provisional, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '50',
+    min: 1,
+    step: 1,
+  },
   {
     clave: 'turno_m_cierre',
     seccion: SECCION_REPORTES,
@@ -790,9 +814,9 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     seccion: SECCION_CODIGO,
     etiqueta: 'Minutos de operador activo sin actividad',
     descripcion:
-      'Tras ingresar su código, quien opera el tablero de un equipo compartido sigue activo hasta que pasen estos minutos sin mover ninguna prenda; después tiene que volver a ingresar el código.',
+      'Tras ingresar su código, quien opera el tablero de un equipo compartido sigue activo hasta que pasen estos minutos sin mover ninguna prenda (el cierre es automático para que otra persona no mueva con su código); después tiene que volver a ingresar el código.',
     tipo: 'numero',
-    default: '10',
+    default: '5',
     min: 1,
     step: 1,
   },
@@ -913,6 +937,150 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     step: 0.01,
     permiteVacio: true,
   },
+  {
+    clave: 'dash_prenda_ambar_dias',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Prendas: ámbar desde (días sin moverse)',
+    descripcion:
+      'Una prenda que lleva tantos días en la misma etapa se cuenta como «atención» (ámbar). Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '2',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_prenda_rojo_dias',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Prendas: rojo desde (días sin moverse)',
+    descripcion:
+      'Una prenda que lleva tantos días en la misma etapa se cuenta como «atrasada» (rojo). Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '4',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_eval_ambar',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Reportes por evaluar: ámbar desde',
+    descripcion:
+      'Cantidad de reportes sin evaluar desde la cual el semáforo pasa a ámbar. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '3',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_eval_rojo',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Reportes por evaluar: rojo desde',
+    descripcion:
+      'Cantidad de reportes sin evaluar desde la cual el semáforo pasa a rojo. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '8',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_incid_ambar',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Incidencias del día: ámbar desde',
+    descripcion:
+      'Incidencias registradas hoy desde las cuales el semáforo pasa a ámbar. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_incid_rojo',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Incidencias del día: rojo desde',
+    descripcion:
+      'Incidencias registradas hoy desde las cuales el semáforo pasa a rojo. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '3',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_faltas_ambar',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Faltas de hoy: ámbar desde',
+    descripcion:
+      'Personas con falta hoy desde las cuales el semáforo pasa a ámbar. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '1',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_faltas_rojo',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Faltas de hoy: rojo desde',
+    descripcion:
+      'Personas con falta hoy desde las cuales el semáforo pasa a rojo. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '3',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_tardanzas_ambar',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Tardanzas de hoy: ámbar desde',
+    descripcion:
+      'Personas con tardanza hoy desde las cuales el semáforo pasa a ámbar. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '2',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_tardanzas_rojo',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Tardanzas de hoy: rojo desde',
+    descripcion:
+      'Personas con tardanza hoy desde las cuales el semáforo pasa a rojo. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '5',
+    min: 0,
+    max: 999,
+    step: 1,
+  },
+  {
+    clave: 'dash_metas_ambar_pct',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Metas semanales: ámbar por debajo de (%)',
+    descripcion:
+      'Si el porcentaje de metas cumplidas queda por debajo de este valor, el semáforo pasa a ámbar. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '70',
+    min: 0,
+    max: 100,
+    step: 1,
+  },
+  {
+    clave: 'dash_metas_rojo_pct',
+    seccion: SECCION_PANEL,
+    etiqueta: 'Metas semanales: rojo por debajo de (%)',
+    descripcion:
+      'Si el porcentaje de metas cumplidas queda por debajo de este valor, el semáforo pasa a rojo. Default propuesto, no confirmado por el dueño.',
+    tipo: 'numero',
+    default: '40',
+    min: 0,
+    max: 100,
+    step: 1,
+  },
   ...escalaItems(),
 ];
 
@@ -959,8 +1127,13 @@ export type ConfigItem = {
 
 // Orden de secciones para la UI: catálogo en su orden fijo, luego cualquier sección personalizada
 // (alfabético), con "Personalizados" siempre al final de todas.
+// Secciones que /configuracion no muestra: Inventario y POS salieron de la navegación (18-oct-2026,
+// decisión del dueño n.º 9). Sus valores siguen en la base sin cambios: la pantalla reenvía cada
+// valor tal como llegó.
+export const SECCIONES_OCULTAS: readonly string[] = [SECCION_INVENTARIO, SECCION_POS];
+
 export function ordenarSecciones(items: ConfigItem[]): { nombre: string; items: ConfigItem[] }[] {
-  const nombres = new Set(items.map((i) => i.seccion));
+  const nombres = new Set(items.map((i) => i.seccion).filter((s) => !SECCIONES_OCULTAS.includes(s)));
   const catalogadas = ORDEN_SECCIONES.filter((s) => nombres.has(s));
   const otras = [...nombres].filter((s) => !ORDEN_SECCIONES.includes(s) && s !== 'Personalizados').sort();
   const orden = [...catalogadas, ...otras, ...(nombres.has('Personalizados') ? ['Personalizados'] : [])];

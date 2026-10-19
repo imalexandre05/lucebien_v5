@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { getSesion } from '../../../lib/auth';
 import { soloHastaHoy } from '@scilb/core';
 import { hoyPeru } from '../../../lib/fechas';
-import { declararDia, type CondicionDia } from '../../../lib/asistencias-repo';
+import { declararDia, guardarHorarioAcordado, marcarRevisados, type CondicionDia } from '../../../lib/asistencias-repo';
 
 /**
  * Acciones de la declaración de asistencia.
@@ -92,4 +92,56 @@ export async function accionDeclararVarios(dias: DiaForm[]): Promise<Resultado &
           ? `${hechos} día(s) declarados. ${descartados} día(s) son posteriores a hoy y no se declararon.`
           : undefined,
   };
+}
+
+/**
+ * Marca días como revisados («Está bien» y «Todo bien» de la ficha). No cambia ningún dato: el
+ * pago sale igual. Un día sin fila no tiene nada que marcar, así que los de tipo «sin marca» no
+ * se cierran por aquí (spec ficha-unica-asistencia-por-revisar §4).
+ */
+export async function accionMarcarRevisados(empleadoId: string, fechas: string[]): Promise<Resultado> {
+  try {
+    const sesion = await getSesion();
+    if (!sesion || !(sesion.usuario.rol === 'admin' || sesion.usuario.rol === 'dueno')) {
+      return { ok: false, error: 'Sólo el administrador o el dueño revisan la asistencia.' };
+    }
+    if (!Array.isArray(fechas) || fechas.some((f) => typeof f !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(f))) {
+      return { ok: false, error: 'La lista de días no es válida.' };
+    }
+    const hechos = await marcarRevisados(empleadoId, fechas, sesion.usuario.id);
+    revalidatePath('/personal');
+    revalidatePath('/sueldos/asistencia');
+    return hechos > 0 || fechas.length === 0
+      ? { ok: true }
+      : { ok: false, error: 'No se encontró ningún día para marcar. Recarga la página e inténtalo de nuevo.' };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'No se pudo marcar como revisado.' };
+  }
+}
+
+/**
+ * «Horario acordado ese día» de la lista «Por revisar» (decisión del dueño n.º 1, 19-oct-2026).
+ * Guarda la hora de inicio acordada (o la quita con `inicio = null`); desde entonces la tardanza de
+ * ese día se mide contra ella. Las horas trabajadas no cambian.
+ */
+export async function accionHorarioAcordado(
+  empleadoId: string,
+  fecha: string,
+  inicio: string | null,
+  motivo: string | null,
+): Promise<Resultado> {
+  try {
+    if (!(await esAdmin())) return { ok: false, error: 'Sólo el administrador o el dueño acuerdan el horario de un día.' };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return { ok: false, error: 'El día no es válido.' };
+    if (inicio !== null && !/^([01]\d|2[0-3]):[0-5]\d$/.test(inicio)) return { ok: false, error: 'Pon la hora de inicio, por ejemplo 09:00.' };
+    const limpio = motivo?.trim() ? motivo.trim() : null;
+    if (limpio && limpio.length > 300) return { ok: false, error: 'El motivo puede tener hasta 300 letras.' };
+    const hechos = await guardarHorarioAcordado(empleadoId, fecha, inicio, limpio);
+    if (hechos === 0) return { ok: false, error: 'No se encontró ese día. Recarga la página e inténtalo de nuevo.' };
+    revalidatePath('/personal');
+    revalidatePath('/sueldos/asistencia');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'No se pudo guardar el horario acordado.' };
+  }
 }

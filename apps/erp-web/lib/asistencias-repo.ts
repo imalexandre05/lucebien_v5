@@ -202,6 +202,10 @@ export type AsistenciaDia = {
   /** Ídem `Asistencia.entradaEstimada`/`salidaEstimada`: la puso el sistema, no una marca. */
   entradaEstimada: boolean;
   salidaEstimada: boolean;
+  /** El administrador ya miró este día (0165). `null` = nadie lo ha revisado, o el dato cambió después. */
+  revisadaEn: string | null;
+  /** Hora de inicio acordada ese día (0168): la tardanza se mide contra ella. `null` = sin acuerdo. */
+  inicioAcordado: string | null;
 };
 
 type RowDia = Row & {
@@ -209,6 +213,8 @@ type RowDia = Row & {
   tardanza_justificada: boolean;
   falta_justificada: boolean;
   motivo_justificacion: string | null;
+  revisada_en: string | null;
+  inicio_acordado: string | null;
 };
 
 // Postgres devuelve `time` como 'HH:MM:SS'; el formulario y el motor quieren 'HH:MM'.
@@ -229,7 +235,7 @@ export async function listarAsistenciasPeriodo(
   const { data, error } = await sb
     .from('asistencias')
     .select(
-      'id, empleado_id, fecha, turno, hora_entrada, hora_salida, minutos_tardanza, fuente, obs, condicion, tardanza_justificada, falta_justificada, motivo_justificacion, entrada_estimada, salida_estimada',
+      'id, empleado_id, fecha, turno, hora_entrada, hora_salida, minutos_tardanza, fuente, obs, condicion, tardanza_justificada, falta_justificada, motivo_justificacion, entrada_estimada, salida_estimada, revisada_en, inicio_acordado',
     )
     .eq('empleado_id', empleadoId)
     .gte('fecha', desde)
@@ -251,7 +257,55 @@ export async function listarAsistenciasPeriodo(
     fuente: r.fuente,
     entradaEstimada: Boolean(r.entrada_estimada),
     salidaEstimada: Boolean(r.salida_estimada),
+    revisadaEn: r.revisada_en ?? null,
+    inicioAcordado: hhmm(r.inicio_acordado ?? null),
   }));
+}
+
+/**
+ * Marca como revisados los días dados de una persona (0165). No cambia ningún dato ni ningún pago:
+ * sólo deja de listar el día en «Por revisar». Si después cambia una hora o la condición, la base
+ * borra la marca sola y el día vuelve a aparecer.
+ */
+export async function marcarRevisados(empleadoId: string, fechas: string[], adminId: string): Promise<number> {
+  const unicas = [...new Set(fechas)];
+  if (unicas.length === 0) return 0;
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('asistencias')
+    .update({ revisada_en: new Date().toISOString(), revisada_por: adminId })
+    .eq('empleado_id', empleadoId)
+    .in('fecha', unicas)
+    .select('id');
+  if (error) throw new Error(error.message);
+  return (data ?? []).length;
+}
+
+/**
+ * «Horario acordado ese día» (0168): deja la hora de inicio acordada en TODAS las filas del día
+ * (`null` la quita). No cambia ninguna hora trabajada: sólo contra qué se mide la tardanza.
+ */
+export async function guardarHorarioAcordado(
+  empleadoId: string,
+  fecha: string,
+  inicio: string | null,
+  motivo: string | null,
+): Promise<number> {
+  const sb = getServerClient();
+  const { data, error } = await sb
+    .from('asistencias')
+    .update({
+      inicio_acordado: inicio,
+      motivo_acordado: inicio ? motivo : null,
+      // El dato del día cambió: vuelve a «Por revisar» si con la hora acordada hay algo que mirar.
+      revisada_en: null,
+      revisada_por: null,
+    })
+    .eq('empleado_id', empleadoId)
+    .eq('fecha', fecha)
+    .select('id');
+  if (error) throw new Error(error.message);
+  return (data ?? []).length;
 }
 
 export type DeclaracionDia = {
@@ -282,11 +336,11 @@ export async function declararDia(d: DeclaracionDia): Promise<void> {
   if (d.condicion === 'trabajado' && (!d.horaEntrada || !d.horaSalida)) {
     throw new Error(
       `${d.fecha}: un día trabajado necesita hora de entrada y de salida. ` +
-        'Si la persona no vino, declaralo como falta; si todavía no se sabe, dejalo sin dato.',
+        'Si la persona no vino, decláralo como falta; si todavía no se sabe, déjalo sin dato.',
     );
   }
   if (d.condicion === 'falta' && (d.horaEntrada || d.horaSalida)) {
-    throw new Error(`${d.fecha}: una falta no lleva horas. Quitá las horas o cambiá la condición.`);
+    throw new Error(`${d.fecha}: una falta no lleva horas. Quita las horas o cambia la condición.`);
   }
 
   const sb = getServerClient();

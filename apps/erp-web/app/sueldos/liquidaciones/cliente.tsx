@@ -2,7 +2,7 @@
 
 import { Fragment, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertTriangle, Ban, Calculator, Eye, Lock, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { AlertTriangle, Ban, Calculator, Check, Eye, RefreshCw, Trash2 } from 'lucide-react';
 import { finDePeriodo, frecuenciaVigente, type LineaLiquidacion } from '@scilb/core';
 import { Badge } from '../../../components/ui/badge';
 import { Button } from '../../../components/ui/button';
@@ -10,14 +10,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui
 import { Input, Label, Select } from '../../../components/ui/form';
 import { Modal, ModalBody, ModalFooter } from '../../../components/ui/modal';
 import { Table, TBody, TD, TH, THead, TR } from '../../../components/ui/table';
+import { HorasDelPago } from '../../../components/liquidacion/horas-del-pago';
+import { detalleHoras } from '../../../lib/horas-del-pago';
 import { DialogoConfirmar, useConfirmacion } from '../../../components/ui/confirmar';
+import { fraseDeError } from '../../../lib/errores-cierre';
 import type { AcuerdoSueldo, EstadoLiquidacion, LiquidacionDetalle, LiquidacionResumen } from '../../../lib/sueldos-repo';
 import {
   accionAnular,
   accionCalcular,
-  accionCerrar,
-  accionCorregir,
-  accionCrearBorrador,
+  accionConfirmarYCerrar,
+  accionCorregirYCerrar,
   accionEliminarBorrador,
   accionVerDetalle,
   type Preview,
@@ -32,6 +34,19 @@ const TONO: Record<EstadoLiquidacion, 'gray' | 'green' | 'red'> = {
   anulada: 'red',
 };
 
+// Una liquidación guardada sin cerrar es interna: en pantalla es «Por cerrar».
+const ETIQUETA: Record<EstadoLiquidacion, string> = {
+  borrador: 'Por cerrar',
+  cerrada: 'Cerrada',
+  anulada: 'Anulada',
+};
+
+const ETIQUETA_CONTRATO: Record<string, string> = {
+  borrador: 'en preparación',
+  vigente: 'vigente',
+  liquidado: 'liquidado',
+};
+
 const GRUPO_LABEL: Record<string, string> = {
   ingreso: 'Ingresos',
   descuento: 'Descuentos',
@@ -42,7 +57,14 @@ const GRUPO_LABEL: Record<string, string> = {
 };
 
 /** El desglose, agrupado como lo lee una persona: primero lo que suma, después lo que resta. */
-function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; concepto: string; detalle: string; regla: string; monto: number })[] }) {
+function Desglose({
+  lineas,
+  sinRegla = false,
+}: {
+  lineas: (LineaLiquidacion | { grupo: string; concepto: string; detalle: string; regla: string; monto: number })[];
+  /** Pago por horas: sin la columna de reglas (códigos internos). */
+  sinRegla?: boolean;
+}) {
   const grupos = ['ingreso', 'descuento', 'ajuste', 'final'];
   return (
     <Table>
@@ -50,7 +72,7 @@ function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; con
         <TR>
           <TH>Concepto</TH>
           <TH>De dónde sale</TH>
-          <TH>Regla</TH>
+          {!sinRegla && <TH>Regla</TH>}
           <TH className="text-right">Monto</TH>
         </TR>
       </THead>
@@ -63,7 +85,7 @@ function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; con
             // cada grupo. Envolver en <tbody> no sirve: rompería el <table>.
             <Fragment key={g}>
               <TR>
-                <TD colSpan={4} className="bg-paper text-rotulo font-medium uppercase text-muted">
+                <TD colSpan={sinRegla ? 3 : 4} className="bg-paper text-rotulo font-medium uppercase text-muted">
                   {GRUPO_LABEL[g] ?? g}
                 </TD>
               </TR>
@@ -71,7 +93,7 @@ function Desglose({ lineas }: { lineas: (LineaLiquidacion | { grupo: string; con
                 <TR key={`${g}-${i}`} className={g === 'final' ? 'font-medium text-navy' : undefined}>
                   <TD>{l.concepto}</TD>
                   <TD className="text-cuerpo text-muted">{l.detalle}</TD>
-                  <TD className="text-apoyo text-muted">{l.regla}</TD>
+                  {!sinRegla && <TD className="text-apoyo text-muted">{l.regla}</TD>}
                   <TD className={`text-right tabular-nums ${l.monto < 0 ? 'text-error-deep' : ''}`}>
                     {soles(l.monto)}
                   </TD>
@@ -171,20 +193,14 @@ export function LiquidacionesCliente({
   // cuando el modal ya se cerró.
   const [errorCorregir, setErrorCorregir] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [codigo, setCodigo] = useState<string | null>(null);
-  // El borrador cuyo cierre se rechazó por DESACTUALIZADA: es el que «Recalcular borrador» reemplaza.
-  const [desactualizada, setDesactualizada] = useState<LiquidacionResumen | null>(null);
   const [pendiente, empezar] = useTransition();
   const conf = useConfirmacion();
 
   const fallo = (r: { error?: string; codigo?: string }) => {
-    setError(r.error ?? 'Error desconocido.');
-    setCodigo(r.codigo ?? null);
+    setError(fraseDeError(r));
   };
   const limpiar = () => {
     setError(null);
-    setCodigo(null);
-    setDesactualizada(null);
   };
 
   const elegirAcuerdo = (id: string) => {
@@ -204,62 +220,15 @@ export function LiquidacionesCliente({
     });
   };
 
-  const guardarBorrador = () => {
+  // «Confirmar y cerrar»: un solo paso. El servidor vuelve a calcular el rango, lo guarda y lo cierra.
+  const confirmar = (contrato: string, desde: string, hasta: string) => {
     limpiar();
     empezar(async () => {
-      const r = await accionCrearBorrador(acuerdoId, rango.desde, rango.hasta);
+      const r = await accionConfirmarYCerrar(contrato, desde, hasta);
       if (r.ok) {
         setPreview(null);
         router.refresh();
       } else fallo(r);
-    });
-  };
-
-  const cerrar = (l: LiquidacionResumen) => {
-    // El monto va en el TÍTULO, no enterrado en el cuerpo: es el dato que hay que mirar antes de
-    // sellar algo que no se puede modificar. El confirm nativo lo dejaba en la segunda línea de un
-    // párrafo con saltos de línea.
-    conf.pedir({
-      titulo: `¿Cerrar la liquidación de ${l.empleadoNombre ?? 'esta persona'} por ${soles(l.total)}?`,
-      detalle:
-        'Una vez cerrada no se puede modificar. Sólo se puede anular, con motivo, y eso queda registrado.',
-      confirmarLabel: 'Cerrar liquidación',
-      alConfirmar: () => {
-        limpiar();
-        empezar(async () => {
-          const r = await accionCerrar(l.id);
-          if (r.ok) {
-            conf.cerrar();
-            router.refresh();
-          } else {
-            // El diálogo de confirmación tapa el banner: se cierra para que se vea el motivo y,
-            // si los datos cambiaron, el botón para recalcular.
-            if (r.codigo === 'DESACTUALIZADA') conf.cerrar();
-            fallo(r);
-            if (r.codigo === 'DESACTUALIZADA') setDesactualizada(l);
-          }
-        });
-      },
-    });
-  };
-
-  // «Recalcular borrador»: descarta el borrador desactualizado y guarda uno nuevo del mismo contrato
-  // y rango. Reutiliza las dos acciones que ya existen; el total lo vuelve a calcular el servidor.
-  const recalcular = (l: LiquidacionResumen) => {
-    limpiar();
-    empezar(async () => {
-      const d = await accionEliminarBorrador(l.id);
-      if (!d.ok) return fallo(d);
-      const r = await accionCrearBorrador(l.acuerdoId, l.periodoDesde, l.periodoHasta);
-      if (r.ok) router.refresh();
-      else {
-        // El borrador viejo ya se descartó: se dice, para que no se busque en la lista.
-        fallo({
-          ...r,
-          error: `${r.error ?? 'No se pudo recalcular.'} El borrador anterior ya se descartó; corrige lo indicado y vuelve a calcular el período.`,
-        });
-        router.refresh();
-      }
     });
   };
 
@@ -274,8 +243,8 @@ export function LiquidacionesCliente({
 
   const descartar = (l: LiquidacionResumen) => {
     conf.pedir({
-      titulo: '¿Descartar este borrador?',
-      detalle: 'No deja rastro: todavía no se pagó nada. El período se puede volver a calcular.',
+      titulo: '¿Descartar este cálculo?',
+      detalle: 'No deja rastro: todavía no se cerró ni se pagó nada. El período se puede volver a calcular.',
       confirmarLabel: 'Descartar',
       tono: 'aviso',
       alConfirmar: () => {
@@ -317,49 +286,41 @@ export function LiquidacionesCliente({
   };
 
   /**
-   * Anula la liquidación cerrada y crea, en el mismo paso, el borrador de reemplazo (spec
-   * 2026-08-25-reunion-admin-hoja-de-ruta.md §3.1). Tres desenlaces, no dos:
-   *
-   * 1. Sale bien: se cierra el modal, se refresca la lista y se deja al administrador parado en el
-   *    borrador nuevo (el mismo modal de "Ver el desglose" que ya existe), listo para revisar y
-   *    cerrar.
-   * 2. Falla ANTES de anular (nada se escribió): el modal se queda abierto, como ya hace "Anular",
-   *    y el error se muestra adentro — reintentar tiene sentido acá.
-   * 3. Anula y el borrador nuevo NO se pudo crear (`r.parcial`): la anulación ya quedó firme y no
-   *    hay forma de deshacerla, así que reintentar ACÁ no tiene sentido — el modal se cierra, se
-   *    refresca la lista para que la anulación se vea en el acto, y el contrato + período exactos
-   *    quedan cargados arriba, en el selector de "Calcular", que es el camino de vuelta.
+   * «Corregir» en un solo paso (decisión del dueño n.º 7): anula la liquidación cerrada, con motivo,
+   * y cierra la nueva calculada con los datos de hoy. Lo ya abonado se conserva. Si el cierre falla,
+   * el pago queda «Por cerrar» y el mensaje dice qué resolver; «Confirmar y cerrar» lo termina.
    */
   const corregir = () => {
     if (!corrigiendo) return;
     setErrorCorregir(null);
     empezar(async () => {
-      const r = await accionCorregir(corrigiendo.id, motivoCorregir);
-
-      if (r.ok && r.nuevoBorradorId) {
+      const r = await accionCorregirYCerrar(corrigiendo.id, motivoCorregir);
+      if (r.ok && r.datos) {
         cerrarModalCorregir();
         router.refresh();
-        const d = await accionVerDetalle(r.nuevoBorradorId);
+        const d = await accionVerDetalle(r.datos.id);
         if (d.ok && d.datos) setDetalle(d.datos);
         return;
       }
-
-      if (r.parcial) {
-        cerrarModalCorregir();
-        router.refresh();
-        if (r.acuerdoId) setAcuerdoId(r.acuerdoId);
-        if (r.periodoDesde && r.periodoHasta) setRango({ desde: r.periodoDesde, hasta: r.periodoHasta });
-        setPreview(null);
-        setError(r.error ?? 'Error desconocido.');
-        setCodigo('PARCIAL');
-        return;
-      }
-
-      setErrorCorregir(r.error ?? 'Error desconocido.');
+      setErrorCorregir(fraseDeError(r));
+      router.refresh();
     });
   };
 
   const liq = preview?.liquidacion;
+  // Pago por horas: las tres filas y el día por día. Null = sueldo fijo, todo como siempre.
+  const horasPreview = liq
+    ? detalleHoras({ modo: liq.modo, asistencia: liq.asistencia, referencia: liq.base.referencia, dias: liq.dias, lineas: liq.lineas })
+    : null;
+  const horasDetalle = detalle
+    ? detalleHoras({
+        modo: detalle.resultado.modo,
+        asistencia: detalle.resultado.asistencia,
+        referencia: detalle.resultado.base?.referencia,
+        dias: detalle.resultado.dias,
+        lineas: detalle.lineas.length > 0 ? detalle.lineas : detalle.resultado.lineas,
+      })
+    : null;
 
   return (
     <>
@@ -371,7 +332,7 @@ export function LiquidacionesCliente({
             <Select id="acuerdo" value={acuerdoId} onChange={(e) => elegirAcuerdo(e.target.value)}>
               {acuerdos.map((a) => (
                 <option key={a.id} value={a.id}>
-                  {a.empleadoNombre ?? 'Sin nombre'} · {a.fechaInicio} → {a.fechaFin} ({a.estado})
+                  {a.empleadoNombre ?? 'Sin nombre'} · {a.fechaInicio} → {a.fechaFin} ({ETIQUETA_CONTRATO[a.estado] ?? a.estado})
                 </option>
               ))}
             </Select>
@@ -416,37 +377,6 @@ export function LiquidacionesCliente({
       {error && (
         <div className="mb-5 rounded-r-chico bg-error/10 px-4 py-3 text-cuerpo text-error-deep">
           <p>{error}</p>
-          {codigo === 'DATO' && (
-            <p className="mt-1 text-apoyo">
-              Faltan días por declarar. Andá a <strong>Declarar asistencia</strong> y decí qué pasó
-              cada uno de esos días — un día sin dato no es una falta.
-            </p>
-          )}
-          {codigo === 'DESACTUALIZADA' && (
-            <p className="mt-1 text-apoyo">
-              Se cargó o se corrigió algo después de calcular. Recalcula el borrador y ciérralo de
-              nuevo: si no, ese dato quedaría fuera del pago o sellado sin estar en él.
-            </p>
-          )}
-          {codigo === 'DESACTUALIZADA' && desactualizada && (
-            <div className="mt-3">
-              <Button
-                variant="outline"
-                onClick={() => recalcular(desactualizada)}
-                pending={pendiente}
-              >
-                Recalcular borrador
-              </Button>
-            </div>
-          )}
-          {codigo === 'PARCIAL' && (
-            <p className="mt-1 text-apoyo font-medium">
-              La anulación SÍ se aplicó — ya figura como «anulada» en la lista de abajo, con el
-              motivo que pusiste. El contrato y el período quedaron cargados arriba: apretá{' '}
-              <strong>Calcular</strong> y, si el número es el que esperás, <strong>Guardar
-              borrador</strong>.
-            </p>
-          )}
         </div>
       )}
 
@@ -454,12 +384,12 @@ export function LiquidacionesCliente({
       {liq && (
         <Card className="mb-5">
           <CardHeader>
-            <CardTitle>Vista previa — nada guardado todavía</CardTitle>
+            <CardTitle>El cálculo — todavía no se cerró</CardTitle>
             <Button
-              onClick={guardarBorrador}
+              onClick={() => confirmar(acuerdoId, rango.desde, rango.hasta)}
               pending={pendiente}
-              // F-5: sólo se guarda el rango que de verdad se calculó. Sin este guard, cambiar
-              // Desde/Hasta después de "Calcular" (sin volver a apretarlo) guardaba un período que
+              // F-5: sólo se cierra el rango que de verdad se calculó. Sin este guard, cambiar
+              // Desde/Hasta después de "Calcular" (sin volver a apretarlo) cerraba un período que
               // nadie vio en pantalla.
               disabled={
                 !preview ||
@@ -467,15 +397,21 @@ export function LiquidacionesCliente({
                 preview.entrada.fechaFin !== rango.hasta
               }
             >
-              <Save className="h-4 w-4" /> Guardar borrador
+              <Check className="h-4 w-4" /> Confirmar y cerrar
             </Button>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
               <Dato etiqueta="Días del periodo" valor={liq.periodo.dias} />
-              <Dato etiqueta="Horas contratadas" valor={liq.base.horasContratadas.toFixed(2)} />
-              <Dato etiqueta="Horas trabajadas" valor={liq.asistencia.horasTrabajadas.toFixed(2)} />
-              <Dato etiqueta="Valor de la hora" valor={soles(liq.base.valorPorHora)} />
+              {horasPreview ? (
+                <Dato etiqueta="Tarifa por hora" valor={soles(liq.base.tarifaHora ?? liq.base.valorPorHora)} />
+              ) : (
+                <>
+                  <Dato etiqueta="Horas contratadas" valor={liq.base.horasContratadas.toFixed(2)} />
+                  <Dato etiqueta="Horas trabajadas" valor={liq.asistencia.horasTrabajadas.toFixed(2)} />
+                  <Dato etiqueta="Valor de la hora" valor={soles(liq.base.valorPorHora)} />
+                </>
+              )}
               <Dato etiqueta="Tardanzas" valor={`${liq.asistencia.tardanzas} (${liq.asistencia.tardanzasInjustificadas} cobradas)`} />
               <Dato etiqueta="Faltas" valor={`${liq.asistencia.faltas} (${liq.asistencia.faltasInjustificadas} sin justificar)`} />
               <Dato etiqueta="Ventas" valor={soles(liq.ventas.total)} />
@@ -485,9 +421,13 @@ export function LiquidacionesCliente({
                 valor={`${liq.ventas.semanasCumplidas} de ${liq.ventas.semanas.length}`}
               />
               <Dato etiqueta="Almuerzos a pagar" valor={liq.asistencia.almuerzosAPagar} />
-              <Dato etiqueta="Horas fuera de contrato" valor={liq.asistencia.horasFueraDeContrato.toFixed(2)} />
+              {!horasPreview && (
+                <Dato etiqueta="Horas fuera de contrato" valor={liq.asistencia.horasFueraDeContrato.toFixed(2)} />
+              )}
               <Dato etiqueta="Total" valor={soles(liq.total)} />
             </div>
+
+            {horasPreview && <HorasDelPago h={horasPreview} />}
 
             {(() => {
               const sinVentas = liq.advertencias.some((a) =>
@@ -541,7 +481,7 @@ export function LiquidacionesCliente({
             })()}
           </CardContent>
           <div className="border-t border-line">
-            <Desglose lineas={liq.lineas} />
+            <Desglose lineas={liq.lineas} sinRegla={Boolean(horasPreview)} />
           </div>
         </Card>
       )}
@@ -554,7 +494,7 @@ export function LiquidacionesCliente({
         <CardContent className="px-0 pb-0">
           {liquidaciones.length === 0 ? (
             <p className="px-5 py-8 text-center text-cuerpo text-muted">
-              Todavía no se guardó ninguna. Calculá un contrato y guardá el borrador.
+              Todavía no hay ninguna. Elige un contrato, mira el cálculo y confirma para cerrarlo.
             </p>
           ) : (
             <Table>
@@ -576,7 +516,7 @@ export function LiquidacionesCliente({
                       {l.periodoDesde} → {l.periodoHasta}
                     </TD>
                     <TD>
-                      <Badge tone={TONO[l.estado]}>{l.estado}</Badge>
+                      <Badge tone={TONO[l.estado]}>{ETIQUETA[l.estado]}</Badge>
                       {l.anuladaMotivo && (
                         <span className="ml-2 text-apoyo text-muted">{l.anuladaMotivo}</span>
                       )}
@@ -590,10 +530,14 @@ export function LiquidacionesCliente({
                         </Button>
                         {l.estado === 'borrador' && (
                           <>
-                            <Button variant="outline" onClick={() => cerrar(l)} pending={pendiente}>
-                              <Lock className="h-4 w-4" /> Cerrar
+                            <Button
+                              variant="outline"
+                              onClick={() => confirmar(l.acuerdoId, l.periodoDesde, l.periodoHasta)}
+                              pending={pendiente}
+                            >
+                              <Check className="h-4 w-4" /> Confirmar y cerrar
                             </Button>
-                            <Button variant="ghost" onClick={() => descartar(l)} aria-label="Descartar el borrador">
+                            <Button variant="ghost" onClick={() => descartar(l)} aria-label="Descartar">
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </>
@@ -638,7 +582,7 @@ export function LiquidacionesCliente({
         title={detalle ? `${detalle.empleadoNombre ?? 'Sin nombre'} · ${soles(detalle.total)}` : ''}
         subtitle={
           detalle
-            ? `${detalle.periodoDesde} → ${detalle.periodoHasta} · ${detalle.estado} · motor ${detalle.motorVersion}`
+            ? `${detalle.periodoDesde} → ${detalle.periodoHasta} · ${ETIQUETA[detalle.estado]} · motor ${detalle.motorVersion}`
             : ''
         }
         size="lg"
@@ -650,7 +594,15 @@ export function LiquidacionesCliente({
                 Esto es el desglose tal como se emitió. No se recalcula al abrirlo: si mañana cambia
                 un parámetro de Configuración, este recibo sigue diciendo lo mismo.
               </p>
-              <Desglose lineas={detalle.lineas.length > 0 ? detalle.lineas : detalle.resultado.lineas} />
+              {horasDetalle && (
+                <div className="mb-3">
+                  <HorasDelPago h={horasDetalle} />
+                </div>
+              )}
+              <Desglose
+                lineas={detalle.lineas.length > 0 ? detalle.lineas : detalle.resultado.lineas}
+                sinRegla={Boolean(horasDetalle)}
+              />
               {detalle.resultado.advertencias.length > 0 && (
                 <div className="mt-3 rounded-r-chico bg-aviso/10 px-3 py-2">
                   {detalle.resultado.advertencias.map((a) => (
@@ -704,7 +656,7 @@ export function LiquidacionesCliente({
         open={corrigiendo != null}
         onClose={cerrarModalCorregir}
         title="Corregir esta liquidación"
-        subtitle="Anula esta liquidación y crea, en el momento, un borrador nuevo para el mismo contrato y el mismo período — recalculado con los datos de hoy."
+        subtitle="Anula esta liquidación y cierra otra para el mismo contrato y el mismo período, recalculada con los datos de hoy. Lo ya abonado se conserva."
       >
         <ModalBody>
           {errorCorregir && (
@@ -714,7 +666,7 @@ export function LiquidacionesCliente({
           )}
           <p className="mb-3 text-apoyo text-muted">
             Una liquidación cerrada no se edita: corregir es esto — anularla, con motivo, y volver a
-            emitirla desde cero. Las dos quedan en la lista, con el rastro completo.
+            cerrarla de nuevo desde cero. Las dos quedan en la lista, con el rastro completo.
           </p>
           <Label htmlFor="motivo-corregir">Motivo de la corrección</Label>
           <Input

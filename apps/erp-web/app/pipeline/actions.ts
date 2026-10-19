@@ -4,9 +4,13 @@ import { revalidatePath } from 'next/cache';
 import {
   avanzarPasada,
   enviarPasada,
+  enviarTandaPasadas,
+  anularEnvioPasada,
   rechazarPasada,
   deshacerPasada,
-  avanzarTanda,
+  avanzarTandaResultado,
+  deshacerTandaPasadas,
+  type ResultadoTanda,
   dividirPasada,
   deshacerDivisionPasada,
   calificarPasada,
@@ -40,7 +44,7 @@ async function conCodigo<T>(fn: () => Promise<T>): Promise<T | string> {
   try {
     return await fn();
   } catch (e) {
-    if (e instanceof Error && e.message.startsWith('CODIGO:')) return e.message;
+    if (e instanceof Error && (e.message.startsWith('CODIGO:') || e.message.startsWith('MOTIVO:'))) return e.message;
     throw e;
   }
 }
@@ -65,16 +69,30 @@ export async function enviarTandaPrendas(ids: string[], sede: string, operador?:
   if (!ids.length || !sede) return null;
   const r = await conCodigo(async () => {
     const token = await operadorParaAccion(operador);
-    await Promise.all(ids.map((id) => enviarPasada(id, sede, token)));
+    // Atómico (0153): o sale toda la tanda o no sale ninguna.
+    await enviarTandaPasadas(ids, sede, token);
   });
   if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
   return null;
 }
 
-export async function rechazarPrenda(id: string, destino: string, operador?: string): Promise<string | null> {
+export async function anularEnvioPrenda(id: string, motivo: string, operador?: string): Promise<string | null> {
+  if (!id) return null;
+  const r = await conCodigo(async () => anularEnvioPasada(id, motivo, await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
+  revalidatePath('/pipeline');
+  return null;
+}
+
+export async function rechazarPrenda(
+  id: string,
+  destino: string,
+  motivo: string,
+  operador?: string,
+): Promise<string | null> {
   if (!id || !destino) return null;
-  const r = await conCodigo(async () => rechazarPasada(id, destino, await operadorParaAccion(operador)));
+  const r = await conCodigo(async () => rechazarPasada(id, destino, motivo, await operadorParaAccion(operador)));
   if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
   return null;
@@ -88,12 +106,28 @@ export async function deshacerPrenda(id: string, etapaAnterior: string, operador
   return null;
 }
 
-export async function avanzarTandaPrendas(ids: string[], destino: string, operador?: string): Promise<number | string> {
-  if (!ids.length || !destino) return 0;
-  const r = await conCodigo(async () => avanzarTanda(ids, destino, await operadorParaAccion(operador)));
+export async function avanzarTandaPrendas(
+  ids: string[],
+  destino: string,
+  operador?: string,
+): Promise<ResultadoTanda | string> {
+  if (!ids.length || !destino) return { puntos: 0, movidas: 0, omitidas: 0, idsMovidos: [] };
+  const r = await conCodigo(async () => avanzarTandaResultado(ids, destino, await operadorParaAccion(operador)));
   if (typeof r === 'string') return r;
   revalidatePath('/pipeline');
   return r;
+}
+
+// «Deshacer» de una tanda (0155): todo o nada. Devuelve el error como valor si es CODIGO:.
+export async function deshacerTandaPrendas(
+  items: { id: string; etapaAnterior: string }[],
+  operador?: string,
+): Promise<string | null> {
+  if (!items.length) return null;
+  const r = await conCodigo(async () => deshacerTandaPasadas(items, await operadorParaAccion(operador)));
+  if (typeof r === 'string') return r;
+  revalidatePath('/pipeline');
+  return null;
 }
 
 export async function dividirPrenda(id: string, operador?: string): Promise<string | null> {

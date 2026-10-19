@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { Search } from 'lucide-react';
 import { estadoTrazabilidad, type EstadoTrazabilidad } from '@scilb/core';
 import { buscarTrazabilidad } from '../../lib/trazabilidad-repo';
@@ -14,6 +13,7 @@ import { EmptyState } from '../../components/ui/empty-state';
 // en esos archivos en vez de forzar una abstracción compartida nueva.
 const ETAPA_LABEL: Record<string, string> = {
   recepcion: 'Recepción',
+  codificacion: 'Codificación',
   lavado: 'Lavado',
   empatado: 'Empatado',
   vacio: 'Vacío',
@@ -92,9 +92,8 @@ export default async function BuscarPage(props: { searchParams: Promise<{ q?: st
                   return (
                     <TR key={activo.id}>
                       <TD className="pl-5 tabular-nums font-medium text-navy">
-                        <Link href="/inventario" className="transition-colors hover:text-gold">
-                          {activo.codigo}
-                        </Link>
+                        {/* Sin enlace a /inventario: salió de la navegación (18-oct-2026). */}
+                        {activo.codigo}
                       </TD>
                       <TD>{activo.tipo}</TD>
                       <TD>
