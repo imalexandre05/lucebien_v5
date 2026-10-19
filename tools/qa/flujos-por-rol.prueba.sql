@@ -33,6 +33,8 @@ begin
   insert into empleados (cod,nombre,iniciales,rol,sede_cod,fecha_ingreso,cuenta_compartida) values ('QA-CMP','QA Cuenta Taller','CT','encargado_almacen','QA-A',current_date-300,true) returning id into comp;
   insert into dispositivos_autorizados (device_id,nombre,sede_cod,estado,compartido) values ('qa-dev','QA taller','QA-A','aprobado',true);
   insert into config (clave,valor) values ('pts_recepcion','1'),('pts_lavado_normal','1'),('pts_empatado','1'),('pts_refaccion','1'),('pts_compostura','1'),('pts_planchado','1'),('pts_control_calidad','1') on conflict (clave) do update set valor=excluded.valor;
+  -- Esta prueba cubre el modo usuario + PIN; desde la 0179 el modo por defecto es 'cod'.
+  insert into config (clave,valor) values ('codigo_modo','pin'),('codigo_exigir_admin','false') on conflict (clave) do update set valor=excluded.valor;
   r := r || 'montaje=ok; ';
 
   -- 1) LOGIN / PIN: la confeccionista define su PIN; la persona nueva no tiene.

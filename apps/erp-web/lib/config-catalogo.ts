@@ -819,13 +819,23 @@ export const CONFIG_CATALOGO: ConfigCatalogoItem[] = [
     default: 'true',
   },
   {
+    clave: 'codigo_modo',
+    seccion: SECCION_CODIGO,
+    etiqueta: 'Qué se teclea como código',
+    descripcion:
+      'cod (default): el código de empleado de 4 dígitos (el mismo de la ficha de la persona); no es secreto, así que quien lo conozca puede operar a su nombre. pin: usuario más el PIN que cada persona define en «Mi desempeño».',
+    tipo: 'lista',
+    opciones: ['cod', 'pin'],
+    default: 'cod',
+  },
+  {
     clave: 'codigo_exigir_admin',
     seccion: SECCION_CODIGO,
     etiqueta: 'Exigir código también al administrador',
     descripcion:
-      'Apagado (default): el administrador mueve prendas y envía reportes sin código si ya entró con su usuario. Encendido: también debe dar su código personal.',
+      'Encendido (default): el administrador también debe dar su código personal para mover prendas y enviar reportes. Apagado: si ya entró con su usuario, opera sin código.',
     tipo: 'booleano',
-    default: 'false',
+    default: 'true',
   },
   {
     clave: 'codigo_operador_min',

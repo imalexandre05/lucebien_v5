@@ -394,7 +394,7 @@ export type ValidacionCodigo =
       ok: false;
       bloqueadoMin?: number;
       intentosRestantes?: number;
-      motivo?: 'equipo_no_compartido' | 'sin_pin';
+      motivo?: 'equipo_no_compartido' | 'sin_pin' | 'codigo_no_encontrado' | 'codigo_repetido';
     };
 
 export async function validarCodigoOperador(
@@ -432,8 +432,22 @@ export async function validarCodigoOperador(
     ok: false,
     bloqueadoMin: r.bloqueado_min,
     intentosRestantes: r.intentos_restantes,
-    motivo: r.motivo === 'equipo_no_compartido' || r.motivo === 'sin_pin' ? r.motivo : undefined,
+    motivo:
+      r.motivo === 'equipo_no_compartido' ||
+      r.motivo === 'sin_pin' ||
+      r.motivo === 'codigo_no_encontrado' ||
+      r.motivo === 'codigo_repetido'
+        ? r.motivo
+        : undefined,
   };
+}
+
+// Modo del código personal (0179): 'cod' = código de empleado de 4 dígitos (default); 'pin' = usuario +
+// PIN. Si la función aún no existe (0179 sin aplicar) se asume 'pin', que es lo que la base sabe hacer.
+export async function modoCodigoPersonal(): Promise<'cod' | 'pin'> {
+  const { data, error } = await getServerClient().rpc('codigo_modo');
+  if (error) return 'pin';
+  return data === 'pin' ? 'pin' : 'cod';
 }
 
 export type ResultadoPin =
