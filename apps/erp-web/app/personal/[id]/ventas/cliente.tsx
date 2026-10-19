@@ -302,6 +302,7 @@ export function MetaPeriodoTarjeta({
   meta,
   ventas,
   cumplida,
+  aplica,
   puesta,
   cerrada,
   esUnPago,
@@ -314,6 +315,8 @@ export function MetaPeriodoTarjeta({
   ventas: number | null;
   /** Lo que dice el motor (no se recalcula acá); null si todavía no se puede calcular. */
   cumplida: boolean | null;
+  /** false = sin horas trabajadas: la 1.ª comisión no aplica. */
+  aplica: boolean;
   /** La meta la puso el administrador (no es la estimada). */
   puesta: boolean;
   cerrada: boolean;
@@ -352,7 +355,8 @@ export function MetaPeriodoTarjeta({
             Meta del período: {meta === null ? 'aún sin calcular' : soles(meta)}{' '}
             {meta !== null && <span className="font-normal text-muted">({puesta ? 'puesta por ti' : 'estimada'})</span>}
           </p>
-          {cumplida !== null && <Badge tone={cumplida ? 'green' : 'amber'}>{cumplida ? 'Cumplida' : 'No cumplida'}</Badge>}
+          {!aplica && <Badge tone="gray">No aplica</Badge>}
+          {aplica && cumplida !== null && <Badge tone={cumplida ? 'green' : 'amber'}>{cumplida ? 'Cumplida' : 'No cumplida'}</Badge>}
           {!cerrada && esUnPago && !editando && (
             <button type="button" className="text-apoyo text-gold-deep underline" onClick={() => setEditando(true)}>
               editar
@@ -361,7 +365,9 @@ export function MetaPeriodoTarjeta({
         </div>
         <p className="mt-1 text-apoyo tabular-nums text-muted">
           {ventas !== null ? `Ventas del período: ${soles(ventas)}. ` : ''}
-          {cumplida === null
+          {!aplica
+            ? 'No hay horas trabajadas en este período, así que la comisión del 2% no aplica.'
+            : cumplida === null
             ? 'Aparece cuando estén declarados los días del período.'
             : cumplida
               ? 'Con la meta cumplida se paga la comisión del 2% sobre las boletas mayores a S/120.'

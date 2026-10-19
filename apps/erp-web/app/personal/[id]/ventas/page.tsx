@@ -138,6 +138,7 @@ export default async function VentasColaboradorPage(
         meta={preview?.liquidacion.ventas.metaPeriodo ?? null}
         ventas={preview?.liquidacion.ventas.total ?? null}
         cumplida={preview ? preview.liquidacion.ventas.metaAlcanzada : null}
+        aplica={preview ? preview.liquidacion.ventas.primeraComisionAplica : true}
         puesta={metaPuesta !== null}
         cerrada={estadoPeriodo?.estado === 'cerrado'}
         // La meta se guarda por el período exacto de un pago: con otro rango se ignoraría en silencio.
