@@ -142,12 +142,12 @@ describe('golden test — spec §5', () => {
 
   it('ventas y meta del periodo (RN-10, RN-11, RN-13)', () => {
     expect(l.ventas.total).toBe(7200);
-    // Sin meta pactada, se sugiere por horas: 33 h × S/45.4545 = S/1.500 por semana, y la semana
-    // que absorbe los días sobrantes pide el doble (C-02). La del periodo es la suma de las
-    // cuatro, no un cálculo aparte.
-    expect(l.ventas.metaPeriodo).toBe(7500);
+    // Sin meta pactada, la meta del PERIODO sale de las horas TRABAJADAS (decisión del dueño,
+    // 19-oct-2026): 179,98 h × S/45.4545 = S/8.181,06. (Las metas semanales siguen siendo las de
+    // las horas contratadas: 33 h × S/45.4545 = S/1.500, y la semana larga pide el doble.)
+    expect(l.ventas.metaPeriodo).toBe(8181.06);
     expect(l.ventas.baseComision).toBe(2320);
-    // Las ventas del mes (7.200) NO llegan a la meta del mes (7.500), así que no hay comisión.
+    // Las ventas del periodo (7.200) NO llegan a la meta del periodo (8.181,06), así que no hay comisión.
     // La base se calcula igual: es el dato del que saldría la comisión si la meta se alcanzara.
     expect(l.ventas.metaAlcanzada).toBe(false);
     expect(linea('Comisión').monto).toBe(0);
@@ -227,22 +227,22 @@ describe('golden test — spec §5', () => {
     const fija = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanalFija: true } });
     expect(fija.ventas.semanas.map((s) => s.meta)).toEqual([1500, 1500, 1500, 1500]);
     expect(fija.ventas.semanasCumplidas).toBe(4);
-    expect(fija.ventas.metaPeriodo).toBe(6000);
-    expect(fija.ventas.metaAlcanzada).toBe(true);
+    // La meta del periodo ya no es la suma de las semanales: sale de las horas trabajadas, así que
+    // `metaSemanalFija` sólo mueve el bono semanal (S/120) y no la comisión.
+    expect(fija.ventas.metaPeriodo).toBe(8181.06);
+    expect(fija.ventas.metaAlcanzada).toBe(false);
     expect(fija.lineas.find((x) => x.concepto === 'Bono por metas semanales')!.monto).toBe(120);
-    expect(fija.lineas.find((x) => x.concepto.startsWith('Comisión'))!.monto).toBe(46.4);
-    expect(fija.total).toBe(751.7);
+    expect(fija.lineas.find((x) => x.concepto.startsWith('Comisión'))!.monto).toBe(0);
+    expect(fija.total).toBe(705.3);
   });
 
-  // Lo que la spec no había previsto y sólo aparece corriendo el motor: como la meta del mes es
-  // la SUMA de las semanales (RN-11), subir la de la semana larga sube también el umbral de la
-  // comisión. Acá lo sube de 6.000 a 7.500 y las mismas 7.200 de venta dejan de alcanzarlo.
-  // El cambio no cuesta S/30 de bono: cuesta S/76.40 entre bono y comisión.
-  it('C-02 sube la meta del MES, no sólo la de la semana larga', () => {
+  // La meta del periodo (la que desbloquea la comisión) sale de las horas trabajadas y no de la suma
+  // de las semanales: `metaSemanalFija` sólo cambia el bono de la semana larga (S/30 de diferencia).
+  it('metaSemanalFija no mueve la meta del periodo, sólo el bono de la semana larga', () => {
     const fija = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanalFija: true } });
-    expect(fija.ventas.metaPeriodo).toBe(6000);
-    expect(l.ventas.metaPeriodo).toBe(7500);
-    expect(fija.total - l.total).toBeCloseTo(76.4, 2);
+    expect(fija.ventas.metaPeriodo).toBe(8181.06);
+    expect(l.ventas.metaPeriodo).toBe(8181.06);
+    expect(fija.total - l.total).toBeCloseTo(30, 2);
   });
 
   it('el bono semanal y la comisión son premios distintos (RN-12 y RN-13)', () => {
@@ -1014,7 +1014,7 @@ describe('parámetros configurables (spec §3.3)', () => {
     const fija = liquidarPeriodo({ ...GOLDEN, parametros: { metaSemanalFija: true } });
     expect(fija.ventas.semanas.map((s) => s.meta)).toEqual([1500, 1500, 1500, 1500]);
     expect(fija.ventas.semanasCumplidas).toBe(4);
-    expect(fija.total).toBe(751.7);
+    expect(fija.total).toBe(705.3);
   });
 });
 
