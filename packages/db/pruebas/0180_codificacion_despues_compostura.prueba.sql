@@ -104,5 +104,16 @@ begin
   if v_err = 'ok' and v_etapa = 'compostura' then r := r || '[ok] caso 5: deshacer vuelve a compostura;';
   else r := r || format('[FALLA] caso 5: err=%s etapa=%s;', v_err, v_etapa); end if;
 
+  -- 6) la salida vieja vale solo si la ÚLTIMA entrada a codificación vino de recepción
+  insert into prenda_pasada (codigo, tipo, tipo_lavado, sede_origen_cod, etapa)
+    values ('P0180-8', 'Chaqueta', 'normal', v_a, 'codificacion') returning id into p;
+  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, fecha) values (p, 'recepcion', 'codificacion', now() - interval '2 days');
+  insert into prenda_historial (pasada_id, etapa_anterior, etapa_nueva, fecha) values (p, 'compostura', 'codificacion', now());
+  perform pg_temp.como(e_cf);
+  v_err := pg_temp.mensaje(format('select pipeline_avanzar(%L, %L)', p, 'lavado'));
+  perform pg_temp.dueno();
+  if v_err like 'TRANSICION:%' then r := r || '[ok] caso 6: tras volver desde compostura ya no sale a lavado;';
+  else r := r || format('[FALLA] caso 6: %s;', v_err); end if;
+
   raise exception 'RESULTADO 0180 --> %', r;
 end $$;
