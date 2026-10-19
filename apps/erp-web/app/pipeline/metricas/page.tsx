@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ArrowLeft, Gauge, PackageCheck, Send, Trophy, Zap } from 'lucide-react';
-import { listarPasadas, rankingHoy, movimientosRecientes } from '../../../lib/pipeline-repo';
+import { listarPasadas, contarRecibidas, rankingHoy, movimientosRecientes } from '../../../lib/pipeline-repo';
 import { hoyPeru } from '../../../lib/fechas';
 import { PageHeader } from '../../../components/shell/page-header';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
@@ -29,7 +29,7 @@ const diaLabel = (iso: string) => {
 
 // Métricas del pipeline: qué se movió, quién lo movió y dónde está la carga hoy.
 export default async function MetricasPage() {
-  const [pasadas, ranking, movs] = await Promise.all([listarPasadas(), rankingHoy(), movimientosRecientes(7)]);
+  const [pasadas, ranking, movs, recibidas] = await Promise.all([listarPasadas(), rankingHoy(), movimientosRecientes(7), contarRecibidas()]);
 
   const hoy = hoyPeru();
   const enProceso = pasadas.filter((p) => !['enviado', 'recibido'].includes(p.etapa)).length;
@@ -40,7 +40,7 @@ export default async function MetricasPage() {
 
   // Carga actual por etapa (solo etapas con prendas, orden del pipeline).
   const porEtapa = Object.keys(ETAPAS)
-    .map((k) => ({ k, n: ETAPAS[k], c: pasadas.filter((p) => p.etapa === k).length }))
+    .map((k) => ({ k, n: ETAPAS[k], c: k === 'recibido' ? recibidas : pasadas.filter((p) => p.etapa === k).length }))
     .filter((e) => e.c > 0);
   const maxEtapa = Math.max(1, ...porEtapa.map((e) => e.c));
 

@@ -86,6 +86,9 @@ SQL
 aplicar() {
   local hasta="${1:-9999}" fallos=0 n
   levantar; bootstrap
+  # En producción existe public.schema_migrations (tabla del registro viejo); la 0103 le activa RLS.
+  echo "create table if not exists public.schema_migrations (version text, name text);" > "$DIR/previo.sql"
+  chmod a+r "$DIR/previo.sql"; psql_pg -f "$DIR/previo.sql" >/dev/null 2>&1
   for f in $(ls packages/db/migrations/*.sql | sort); do
     n=$(basename "$f" | cut -c1-4)
     [ "$n" -gt "$((10#$hasta))" ] 2>/dev/null && break
@@ -94,8 +97,26 @@ aplicar() {
       fallos=$((fallos+1)); echo "✗ $(basename "$f"): $(printf '%s' "$salida" | grep -m1 -i 'error')"
     fi
   done
-  # Semilla mínima: las pruebas necesitan al menos una persona con rol admin (hacen set_config del jwt).
-  psql_pg -c "insert into empleados(cod, nombre, iniciales, rol) values ('ADM-LOCAL', 'Admin Local', 'AL', 'admin') on conflict (cod) do nothing" >/dev/null 2>&1
+  # Semilla mínima, parecida a producción: las pruebas antiguas (0072–0105) buscan en la base una
+  # persona admin, al menos nueve más, una con tiendas asignadas y las sedes reales. Todo con
+  # prefijo SEED-, para reconocerlo y borrarlo (las pruebas se descartan solas y no lo tocan).
+  cat > "$DIR/semilla.sql" <<'SQL'
+    insert into sedes(cod, nombre, interna) values ('AL','Almacén Central',true),('LB','Lucebien',false),('ST','Stand',false),('TR','Trece',false) on conflict do nothing;
+    insert into empleados(cod, nombre, iniciales, rol, sede_cod, fecha_ingreso)
+      select 'SEED-' || lpad(g::text, 2, '0'), 'Seed Persona ' || g, 'S' || g,
+             case when g in (0, 11) then 'admin' when g = 1 then 'encargado_tienda' else 'confeccionista' end,
+             (array['AL','LB','ST','TR'])[1 + g % 4], date '2024-01-01'
+        from generate_series(0, 11) g on conflict (cod) do nothing;
+    insert into reportes(id, sede_cod, turno, fecha, encargado_id, evaluado)
+      select '01-01-24_SEED', 'LB', 'M', date '2024-01-01', id, true from empleados where cod = 'SEED-01' on conflict do nothing;
+    -- En producción el auto-cierre de reportes está desprogramado a propósito (CLAUDE.md, «No tocar»).
+    delete from cron.job where jobname like 'reportes-auto-cierre%';
+    insert into empleado_tiendas(empleado_id, sede_cod)
+      select id, 'LB' from empleados where cod = 'SEED-01' on conflict do nothing;
+SQL
+  chmod a+r "$DIR/semilla.sql"
+  psql_pg -v ON_ERROR_STOP=1 -f "$DIR/semilla.sql" >/dev/null 2>&1 \
+    || echo "✗ la semilla mínima falló (revisa columnas de sedes / empleado_tiendas)"
   echo "Migraciones aplicadas hasta $hasta; $fallos con error (lo que falla suele depender de piezas de Supabase que no se imitan)."
 }
 
