@@ -105,6 +105,40 @@ begin
   select count(*) into v_n from notificaciones where dedup_key like 'rec-reporte:P185A:%';
   if v_n = 2 then r := r || '[ok] caso 6e: pasada la hora no avisa;'; else r := r || '[FALLA] caso 6e: ' || v_n || ';'; end if;
 
+  -- 9) extras: cada extra queda a nombre de quien lo registró, no del encargado
+  insert into actividades_config (sede_cod, cod, nombre, categoria, tipo_act, peso, precio_unitario)
+    values (v_s, 'EXT-P184', 'Extra de prueba', 'EXT', 'por_puntos', 2, 1.5);
+  insert into reporte_drafts (sede_cod, fecha, turno, encargado_id, payload) values
+    (v_s, date '2026-10-24', 'M', e_enc, jsonb_build_object('trabajadores', jsonb_build_array(e_trab),
+      'actividades','[]'::jsonb, 'extras', jsonb_build_array(jsonb_build_object('cod','EXT-P184','cantidad',2,'registradoPorId', e_trab))));
+  perform reportes_auto_enviar(timestamptz '2026-10-24 20:05+00');
+  select registrado_por_id into e_otro from reporte_extras where reporte_id = '24-10-26_M-' || v_s limit 1;
+  if e_otro = e_trab then r := r || '[ok] caso 9: el extra va a nombre de quien lo hizo;';
+  else r := r || '[FALLA] caso 9: registrado_por=' || coalesce(e_otro::text,'null') || ';'; end if;
+
+  -- 10) un borrador que solo tiene encargado (sin nada marcado) no genera reporte y no bloquea otro turno
+  insert into reporte_drafts (sede_cod, fecha, turno, encargado_id, payload) values (v_s, date '2026-10-25', 'M', e_enc, '{}'::jsonb);
+  perform reportes_auto_enviar(timestamptz '2026-10-25 20:05+00');
+  select count(*) into v_n from reportes where sede_cod = v_s and fecha = date '2026-10-25';
+  if v_n = 0 then r := r || '[ok] caso 10: borrador vacío no crea reporte;'; else r := r || '[FALLA] caso 10: reportes=' || v_n || ';'; end if;
+  select count(*) into v_n from reporte_drafts where sede_cod = v_s and fecha = date '2026-10-25';
+  if v_n = 0 then r := r || '[ok] caso 10b: el borrador vacío se limpia;'; else r := r || '[FALLA] caso 10b;'; end if;
+
+  -- 11) un borrador roto (cantidad no numérica) no frena a los demás
+  insert into reporte_drafts (sede_cod, fecha, turno, encargado_id, payload) values
+    (v_s, date '2026-10-26', 'M', e_enc, jsonb_build_object('trabajadores', jsonb_build_array(e_trab),
+      'actividades','[]'::jsonb, 'extras', jsonb_build_array(jsonb_build_object('cod','EXT-P184','cantidad','x2'))));
+  insert into reporte_drafts (sede_cod, fecha, turno, encargado_id, payload) values
+    (v_s, date '2026-10-26', 'T', e_enc, jsonb_build_object('trabajadores', jsonb_build_array(e_trab), 'actividades','[]'::jsonb,'extras','[]'::jsonb));
+  perform reportes_auto_enviar(timestamptz '2026-10-27 05:00+00');
+  select count(*) into v_n from reportes where sede_cod = v_s and fecha = date '2026-10-26' and turno = 'T';
+  if v_n = 1 then r := r || '[ok] caso 11: el borrador roto no frena al siguiente;'; else r := r || '[FALLA] caso 11: T=' || v_n || ';'; end if;
+
+  -- 12) una hora global inválida en config no tumba la corrida
+  update config set valor = 'no-es-hora' where clave = 'turno_c_cierre';
+  v_txt := pg_temp.mensaje('select reportes_auto_enviar(timestamptz ''2026-10-27 05:00+00'')');
+  if v_txt = 'ok' then r := r || '[ok] caso 12: hora inválida no tumba la corrida;'; else r := r || '[FALLA] caso 12: ' || v_txt || ';'; end if;
+
   -- 7) hora por sede: no-admin no puede; admin sí; hora nula borra; queda auditado
   perform pg_temp.como(e_otro);
   v_txt := pg_temp.mensaje(format('select reporte_hora_limite_guardar(%L,%L,%L)', v_s, 'M', '16:00'));
