@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from 'react';
 import { KeyRound, Wallet } from 'lucide-react';
-import { ROL_LABEL, ROLES_BASE, puede, type Rol, type MatrizPermisos } from '@scilb/core';
-import type { RolDerivado } from '../../lib/roles-repo';
+import { puede, type MatrizPermisos } from '@scilb/core';
+import type { OpcionRol } from '../../lib/opciones-rol';
 import type { Sede } from '../../lib/sedes-repo';
 import { accionContrasenaTemporal, accionTogglePosCobro } from './actions';
 import { Button } from '../../components/ui/button';
@@ -46,23 +46,12 @@ function Pill({
   );
 }
 
-// Opciones de rol combinadas: los 7 base + los roles derivados activos (Fase 1). Un rol derivado
-// lleva su rol_base entre paréntesis porque ESE es el que manda para la RLS/alcance por sede.
-//
 // Exportado (con CamposPerfil, opcionesRol, OperaCajaToggle y ContrasenaForm): esta ficha se monta
 // para UNA persona desde dos lugares — la pestaña Datos del expediente
 // (app/personal/[id]/datos/cliente.tsx) para editar, y el alta encadenada
 // (app/personal/nuevo/cliente.tsx) para crear — un formulario, dos lugares que lo montan.
-export type OpcionRol = { valor: string; label: string; rolBase: Rol; rolCod: string | null };
-
-export function opcionesRol(rolesDerivados: RolDerivado[]): OpcionRol[] {
-  return [
-    ...ROLES_BASE.map((r) => ({ valor: r, label: ROL_LABEL[r], rolBase: r, rolCod: null })),
-    ...rolesDerivados
-      .filter((r) => r.activo)
-      .map((r) => ({ valor: r.cod, label: `${r.nombre} (${ROL_LABEL[r.rolBase]})`, rolBase: r.rolBase, rolCod: r.cod })),
-  ];
-}
+// opcionesRol vive en lib/opciones-rol.ts (también la usa una página del servidor).
+export { opcionesRol, type OpcionRol } from '../../lib/opciones-rol';
 
 // ── Campos compartidos entre Crear y Editar (identidad + rol + sedes + notas) ──────────────────
 export function CamposPerfil({
