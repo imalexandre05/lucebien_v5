@@ -27,11 +27,17 @@ create trigger trg_audit_reporte_hora_limite after insert or update or delete on
 
 -- Hora límite efectiva: la de la sede, si no la global del turno.
 create or replace function private.reporte_hora_limite(p_sede text, p_turno text)
-  returns time language sql stable security definer set search_path = public, pg_temp as $$
-  select coalesce(
+  returns time language plpgsql stable security definer set search_path = public, pg_temp as $$
+begin
+  return coalesce(
     (select hora from reporte_hora_limite where sede_cod = p_sede and turno = p_turno),
     (select valor from config where clave = 'turno_' || lower(p_turno) || '_cierre')::time,
     case p_turno when 'M' then time '15:00' else time '23:00' end);
+exception when others then
+  -- Una hora global mal escrita en config no debe tumbar el envío de todas las sedes: cae al default
+  -- heredado (el mismo del catálogo de /configuracion).
+  return case p_turno when 'M' then time '15:00' else time '23:00' end;
+end;
 $$;
 
 create or replace function public.reporte_hora_limite_guardar(p_sede text, p_turno text, p_hora text)
@@ -79,6 +85,7 @@ declare
   v_res      jsonb := '[]'::jsonb;
 begin
   for d in select * from reporte_drafts where fecha between v_hoy - 1 and v_hoy order by fecha, sede_cod, turno loop
+  begin
     v_limite := (d.fecha + private.reporte_hora_limite(d.sede_cod, d.turno)) at time zone 'America/Lima';
     if p_ahora < v_limite then continue; end if;
 
@@ -112,13 +119,18 @@ begin
     end if;
 
     v_contenido := jsonb_array_length(v_trabs) > 0 or v_done > 0 or jsonb_array_length(v_extras) > 0
-                   or jsonb_array_length(v_limp) > 0 or d.encargado_id is not null;
+                   or jsonb_array_length(v_limp) > 0;
 
     if v_contenido then
       insert into reportes (id, sede_cod, turno, fecha, encargado_id, puntaje, act_total, act_done,
                             evaluado, bloqueado, auto_enviado, auto_enviado_razon, no_evaluable, estado_envio)
       values (v_id, d.sede_cod, d.turno, d.fecha, v_enc, 0, coalesce(v_total, 0), coalesce(v_done, 0),
-              false, true, true, 'auto-envio-hora-limite', false, 'enviado');
+              false, true, true, 'auto-envio-hora-limite', false, 'enviado')
+      on conflict (id) do nothing;
+      if not found then
+        delete from reporte_drafts where sede_cod = d.sede_cod and fecha = d.fecha and turno = d.turno;
+        continue;
+      end if;
 
       insert into reporte_trabajadores (reporte_id, empleado_id)
       select distinct v_id, t from (
@@ -145,13 +157,14 @@ begin
              coalesce(nullif(e ->> 'tipo', ''), cat.tipo_act, 'libre'),
              coalesce(nullif(e ->> 'nombre', ''), cat.nombre, 'Extra'),
              nullif(e ->> 'cod', ''),
-             coalesce((e ->> 'cantidad')::int, 1),
+             greatest(1, round(coalesce((e ->> 'cantidad')::numeric, 1))::int),
              coalesce(cat.precio_unitario, 0),
              coalesce(cat.peso, 0),
-             coalesce(cat.precio_unitario, 0) * coalesce((e ->> 'cantidad')::int, 1),
+             coalesce(cat.precio_unitario, 0) * greatest(1, round(coalesce((e ->> 'cantidad')::numeric, 1))::int),
              (cat.cod is null),
              '',
-             v_enc
+             -- cada extra a nombre de quien lo registró (si sigue activo); si no, el encargado
+             coalesce((select p.id from empleados p where p.activo and p.id::text = nullif(e ->> 'registradoPorId', '')), v_enc)
       from jsonb_array_elements(v_extras) e
       left join actividades_config cat
         on cat.sede_cod = d.sede_cod and cat.cod = nullif(e ->> 'cod', '') and cat.categoria = 'EXT'
@@ -161,6 +174,11 @@ begin
     end if;
 
     delete from reporte_drafts where sede_cod = d.sede_cod and fecha = d.fecha and turno = d.turno;
+  exception when others then
+    -- Un borrador roto (dato mal formado, persona borrada, choque con un envío manual) no frena a los demás:
+    -- queda para la próxima corrida y se avisa en el log de Postgres.
+    raise warning 'reportes_auto_enviar: borrador % % % falló: %', d.sede_cod, d.fecha, d.turno, sqlerrm;
+  end;
   end loop;
   return v_res;
 end;
@@ -186,6 +204,7 @@ begin
   if v_umbrales is null then v_umbrales := array[10, 30]; end if;
 
   for d in select * from reporte_drafts where fecha = v_hoy loop
+  begin
     v_falta := extract(epoch from
       ((d.fecha + private.reporte_hora_limite(d.sede_cod, d.turno)) at time zone 'America/Lima' - p_ahora)) / 60;
     if v_falta <= 0 then continue; end if;
@@ -206,6 +225,9 @@ begin
     on conflict (dedup_key) do nothing;
     get diagnostics v_cuenta = row_count;
     v_n := v_n + v_cuenta;
+  exception when others then
+    raise warning 'reportes_recordar: borrador % % falló: %', d.sede_cod, d.turno, sqlerrm;
+  end;
   end loop;
   return v_n;
 end;

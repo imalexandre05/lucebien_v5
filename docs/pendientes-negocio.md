@@ -2251,3 +2251,5 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - **Sin encargado en el borrador**, el reporte automático va a nombre del encargado de tienda activo de la sede (el de menor código). **Pendiente:** confirmar si debe haber una asignación explícita sede/turno.
 - **Cron reactivado** (`reportes-auto-enviar`, cada 5 min) por pedido del dueño; los tres jobs viejos siguen desprogramados.
 - La hora límite por sede se edita en `/configuracion/hora-limite`; sin ajuste vale la general.
+- **Hora límite después de medianoche:** la hora se cuenta dentro del mismo día del turno (p. ej. 00:30 en el turno Tarde envía de inmediato). **Pendiente:** definir si algún turno cierra pasada la medianoche.
+- El envío automático **no aplica el tope de extras** de `reportes_crear`: copia el borrador tal cual. **Pendiente:** decidir si debe validarse.

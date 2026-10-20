@@ -24,7 +24,7 @@ declare
   v_f date := date '2026-10-20';
   e_enc uuid; e_trab uuid; e_adm uuid; e_otro uuid;
   v_n int; v_rep reportes%rowtype; v_txt text;
-  v_t timestamptz;
+  v_t timestamptz; v_reg uuid;
 begin
   perform pg_temp.dueno();
   insert into sedes (cod, nombre) values (v_s, 'P0184 Sede');
@@ -112,9 +112,9 @@ begin
     (v_s, date '2026-10-24', 'M', e_enc, jsonb_build_object('trabajadores', jsonb_build_array(e_trab),
       'actividades','[]'::jsonb, 'extras', jsonb_build_array(jsonb_build_object('cod','EXT-P184','cantidad',2,'registradoPorId', e_trab))));
   perform reportes_auto_enviar(timestamptz '2026-10-24 20:05+00');
-  select registrado_por_id into e_otro from reporte_extras where reporte_id = '24-10-26_M-' || v_s limit 1;
-  if e_otro = e_trab then r := r || '[ok] caso 9: el extra va a nombre de quien lo hizo;';
-  else r := r || '[FALLA] caso 9: registrado_por=' || coalesce(e_otro::text,'null') || ';'; end if;
+  select registrado_por_id into v_reg from reporte_extras where reporte_id = '24-10-26_M-' || v_s limit 1;
+  if v_reg = e_trab then r := r || '[ok] caso 9: el extra va a nombre de quien lo hizo;';
+  else r := r || '[FALLA] caso 9: registrado_por=' || coalesce(v_reg::text,'null') || ';'; end if;
 
   -- 10) un borrador que solo tiene encargado (sin nada marcado) no genera reporte y no bloquea otro turno
   insert into reporte_drafts (sede_cod, fecha, turno, encargado_id, payload) values (v_s, date '2026-10-25', 'M', e_enc, '{}'::jsonb);

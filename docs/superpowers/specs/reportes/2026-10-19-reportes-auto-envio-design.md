@@ -39,6 +39,10 @@ Si el borrador no tiene encargado ni contenido, no se crea reporte y el borrador
 El **puntaje no se toca**: nace sin evaluar (`puntaje 0`, `evaluado false`), igual que un envío manual;
 lo evalúa SOLO el administrador (0183), como cualquier reporte. Esta spec no cambia fórmula alguna de puntos ni sueldo.
 
+Un borrador que solo tiene encargado (nada marcado, sin trabajadores, extras ni limpieza) **no cuenta como contenido**:
+se limpia sin crear reporte, para no bloquear con un turno vacío el turno que sí se trabajó. Cada extra queda a nombre de quien
+lo registró (`registradoPorId`, si sigue activo; si no, el encargado). Cada borrador se procesa aislado: uno roto no frena a los demás.
+
 **3.3 Recordatorios** (`reportes_recordar()`): por cada borrador de hoy sin reporte, y por cada minuto
 `m` de `reporte_recordatorios_min` (default `30,10`), cuando falta `<= m` min y todavía no pasó la hora,
 inserta una notificación a la sede (`destinatario_sede`, rol encargado, tipo `reporte_por_vencer`) con
