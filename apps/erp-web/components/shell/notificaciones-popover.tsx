@@ -107,7 +107,12 @@ export function NotificacionesBell({ notificaciones, esAdmin }: { notificaciones
 
   function marcar(id: string) {
     startTransition(async () => {
-      await marcarLeidaAction(id);
+      // Un fallo al marcar no debe tumbar la pantalla (la campana está en todas): solo se avisa.
+      try {
+        await marcarLeidaAction(id);
+      } catch {
+        setAviso('No se pudo marcar como leída. Inténtalo de nuevo.');
+      }
       router.refresh();
     });
   }
@@ -127,7 +132,12 @@ export function NotificacionesBell({ notificaciones, esAdmin }: { notificaciones
   }
   function marcarTodas() {
     startTransition(async () => {
-      await marcarTodasLeidasAction();
+      // Un fallo al marcar no debe tumbar la pantalla (la campana está en todas): solo se avisa.
+      try {
+        await marcarTodasLeidasAction();
+      } catch {
+        setAviso('No se pudo marcar como leída. Inténtalo de nuevo.');
+      }
       router.refresh();
     });
   }

@@ -14,6 +14,7 @@ import { Aviso, campoCls } from '../../../components/ui/form';
 export type FilaUsuario = { id: string; nombre: string; cod: string; sedeCod: string; rolValor: string; activo: boolean };
 type OpcionRol = { valor: string; label: string; rolBase: Rol; rolCod: string | null };
 type Edicion = { cod: string; sedeCod: string; rolValor: string; activo: boolean; restablecer: boolean };
+const inicial = (f: FilaUsuario): Edicion => ({ cod: f.cod, sedeCod: f.sedeCod, rolValor: f.rolValor, activo: f.activo, restablecer: false });
 
 export function UsuariosCliente({
   filas,
@@ -28,7 +29,7 @@ export function UsuariosCliente({
   const [pending, startTransition] = useTransition();
   const base = useMemo(() => new Map(filas.map((f) => [f.id, f])), [filas]);
   const [ed, setEd] = useState<Record<string, Edicion>>(() =>
-    Object.fromEntries(filas.map((f) => [f.id, { cod: f.cod, sedeCod: f.sedeCod, rolValor: f.rolValor, activo: f.activo, restablecer: false }])),
+    Object.fromEntries(filas.map((f) => [f.id, inicial(f)])),
   );
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [busca, setBusca] = useState('');
@@ -37,7 +38,11 @@ export function UsuariosCliente({
   const [temporales, setTemporales] = useState<{ nombre: string; temporal: string }[] | null>(null);
 
   const visibles = filas.filter((f) => f.nombre.toLowerCase().includes(busca.trim().toLowerCase()));
-  const poner = (id: string, p: Partial<Edicion>) => setEd((e) => ({ ...e, [id]: { ...e[id], ...p } }));
+  const edicionDe = (e: Record<string, Edicion>, id: string): Edicion => {
+    const f = base.get(id);
+    return e[id] ?? (f ? inicial(f) : { cod: '', sedeCod: '', rolValor: '', activo: true, restablecer: false });
+  };
+  const poner = (id: string, p: Partial<Edicion>) => setEd((e) => ({ ...e, [id]: { ...edicionDe(e, id), ...p } }));
   const alternar = (id: string) =>
     setSel((s) => {
       const n = new Set(s);
@@ -51,7 +56,7 @@ export function UsuariosCliente({
   function paraSeleccion(p: Partial<Edicion>) {
     setEd((e) => {
       const n = { ...e };
-      for (const id of sel) n[id] = { ...n[id], ...p };
+      for (const id of sel) n[id] = { ...edicionDe(n, id), ...p };
       return n;
     });
   }
@@ -59,7 +64,8 @@ export function UsuariosCliente({
   const cambios = useMemo(() => {
     const out: CambioUsuario[] = [];
     for (const f of filas) {
-      const e = ed[f.id];
+      // Una persona que llegó después (otro admin la dio de alta y se refrescó) aún no tiene edición.
+      const e = ed[f.id] ?? inicial(f);
       const c: CambioUsuario = { id: f.id };
       if (e.cod.trim() !== f.cod) c.cod = e.cod.trim();
       if (e.sedeCod !== f.sedeCod) c.sedeCod = e.sedeCod;
@@ -127,7 +133,7 @@ export function UsuariosCliente({
           </THead>
           <TBody>
             {visibles.map((f) => {
-              const e = ed[f.id];
+              const e = ed[f.id] ?? inicial(f);
               const cambiada = cambios.some((c) => c.id === f.id);
               return (
                 <TR key={f.id}>
