@@ -380,13 +380,21 @@ export async function cambiarCodigoEmpleado(id: string, nuevo: string): Promise<
   const sb = getServerClient();
   const { data: anterior, error } = await sb.rpc('empleado_codigo_cambiar', { p_id: id, p_cod: nuevo });
   if (error) throw new Error(error.message.replace(/^(PERMISO|DATO):\s*/, ''));
-  if (anterior === nuevo) return;
+  // Aunque el código no cambie se vuelve a sincronizar el correo de Auth: así un reintento repara
+  // una corrida anterior que se cortó entre la base y Auth.
   const { error: eAuth } = await getAdminClient().auth.admin.updateUserById(id, {
     email: `${nuevo}@${EMAIL_DOMAIN}`,
     email_confirm: true,
   });
   if (eAuth) {
-    await sb.rpc('empleado_codigo_cambiar', { p_id: id, p_cod: String(anterior) });
+    if (anterior !== nuevo) {
+      const { error: eRev } = await sb.rpc('empleado_codigo_cambiar', { p_id: id, p_cod: String(anterior) });
+      if (eRev) {
+        throw new Error(
+          `El código quedó en ${nuevo} pero no se pudo actualizar su acceso. Vuelve a guardar el mismo código para repararlo.`,
+        );
+      }
+    }
     throw new Error('No se pudo cambiar el código de acceso. Elige otro código e inténtalo de nuevo.');
   }
 }
@@ -409,7 +417,9 @@ export async function cambiarSedeRolEmpleado(
     rolBase: p.rolBase ?? (actual.rol as Rol),
     rolCod: p.rolBase ? (p.rolCod ?? null) : actual.rolCod,
     sedeCod: p.sedeCod ?? actual.sedeCod ?? '',
-    tiendas: actual.tiendas,
+    // La RPC siempre suma la sede primaria a las tiendas: al cambiar de sede se saca la vieja, o la
+    // persona seguiría viendo la sede anterior (aislamiento por sede).
+    tiendas: p.sedeCod && p.sedeCod !== actual.sedeCod ? actual.tiendas.filter((t) => t !== actual.sedeCod) : actual.tiendas,
     fechaIngreso: actual.fechaIngreso,
     notas: actual.notas ?? '',
     telefono: actual.telefono ?? '',

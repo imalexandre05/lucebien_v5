@@ -56,7 +56,8 @@ export async function accionGuardarUsuarios(
       let temporal: string | undefined;
       if (c.restablecer) {
         temporal = await generarContrasenaTemporalEmpleado(c.id);
-        await auditarAccionEmpleado(c.id, 'contraseña temporal generada');
+        // La contraseña ya cambió: si la auditoría falla no se pierde la temporal (nadie más la conoce).
+        await auditarAccionEmpleado(c.id, 'contraseña temporal generada').catch(() => {});
       }
       resultados.push({ id: c.id, ok: true, temporal });
     } catch (e) {
