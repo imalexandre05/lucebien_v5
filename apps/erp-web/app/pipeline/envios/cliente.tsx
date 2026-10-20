@@ -170,6 +170,14 @@ export function EnviosCliente({
         >
           <ArrowLeft className="h-4 w-4" strokeWidth={2} /> Volver al kanban
         </Link>
+        {/* La tienda confirma aquí las prendas y en Accesorios las remesas (camisas, zapatos…): sin
+            este enlace solo llegaba pasando por el kanban del almacén. */}
+        <Link
+          href="/pipeline/accesorios"
+          className="text-cuerpo text-muted underline-offset-2 transition-colors duration-150 hover:text-navy hover:underline"
+        >
+          Accesorios por confirmar
+        </Link>
         <span className="ml-auto rounded-r-pastilla bg-navy/5 px-2.5 py-1 tabular-nums text-dato font-medium text-navy">
           {enCamino.length} por confirmar
         </span>

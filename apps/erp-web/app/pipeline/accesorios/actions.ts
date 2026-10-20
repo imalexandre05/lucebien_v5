@@ -33,8 +33,10 @@ export async function confirmarRemesaAccesorios(id: string, operador?: string): 
   try {
     await validarEnvioAccesorios(id, await operadorParaAccion(operador));
   } catch (e) {
-    if (e instanceof Error && esAviso(e.message)) return limpio(e.message);
-    throw e;
+    // Cualquier otro error (p. ej. PERMISO: el código es de otra sede) también vuelve como texto:
+    // si se lanzara, la pantalla entera caería en «Algo salió mal».
+    if (e instanceof Error) return esAviso(e.message) ? limpio(e.message) : e.message.replace(/^PERMISO: ?/, '');
+    return 'No se pudo confirmar la remesa.';
   }
   revalidatePath('/pipeline/accesorios');
   return null;

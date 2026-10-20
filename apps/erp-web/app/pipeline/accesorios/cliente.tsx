@@ -70,8 +70,11 @@ export function AccesoriosCliente({
   function confirmar(id: string) {
     conOperador((token) =>
       startTransition(async () => {
-        const err = await confirmarRemesaAccesorios(id, token);
-        resultado(err);
+        try {
+          resultado(await confirmarRemesaAccesorios(id, token));
+        } catch {
+          setError('No se pudo confirmar la remesa. Actualiza la página e inténtalo de nuevo.');
+        }
         router.refresh();
       }),
     );
