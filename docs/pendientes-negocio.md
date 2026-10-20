@@ -2243,3 +2243,8 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - [ ] **Capturas de la interfaz de Jordan** para el rediseño visual.
 - [ ] **Pago por puntos**: la spec se hace en otra sesión.
 - [ ] **Correos**: falta configurar `RESEND_API_KEY` para que salgan.
+
+## Gestión rápida de usuarios (sesión 10B, 20-oct-2026) — [spec](superpowers/specs/empleados/2026-10-20-usuarios-gestion-rapida-design.md)
+
+- El código (`empleados.cod`) ahora se puede cambiar desde `/personal/usuarios` (4 dígitos, único). Cambiarlo cambia también el correo interno de acceso `{cod}@lucebien.local`. **Pendiente:** intercambiar códigos entre dos personas necesita dos guardados (el código es único).
+- La contraseña temporal se muestra una sola vez; solo queda en la auditoría «contraseña temporal generada», sin el valor.

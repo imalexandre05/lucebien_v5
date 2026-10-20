@@ -116,9 +116,14 @@ export default async function ColaboradoresPage(
         subtitle={`${activos} activos · elige a quién mirar y en qué período`}
         action={
           esAdmin ? (
-            <Link href="/personal/nuevo" className={buttonVariants({ variant: 'primary' })}>
-              <Plus className="h-4 w-4" strokeWidth={2} /> Nueva persona
-            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/personal/usuarios" className={buttonVariants({ variant: 'outline' })}>
+                Usuarios y códigos
+              </Link>
+              <Link href="/personal/nuevo" className={buttonVariants({ variant: 'primary' })}>
+                <Plus className="h-4 w-4" strokeWidth={2} /> Nueva persona
+              </Link>
+            </div>
           ) : undefined
         }
       />

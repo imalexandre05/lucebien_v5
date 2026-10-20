@@ -368,3 +368,61 @@ export async function crearEmpleado(p: NuevoEmpleadoInput): Promise<{ id: string
 
   return { id, cod };
 }
+
+// ── Gestión rápida de usuarios (spec empleados/2026-10-20-usuarios-gestion-rapida-design.md) ──
+// Cambiar el código de una persona. El código es también el correo interno de Auth
+// ({cod}@EMAIL_DOMAIN), así que se cambian los dos: primero la base (RPC con guard de admin, única y
+// auditada), después el correo de Auth. Si Auth falla —p. ej. el correo ya existe— se devuelve el
+// código anterior para no dejar a la persona sin poder entrar. Usa el cliente admin que este archivo
+// ya usa; no agrega ningún archivo a la lista de getAdminClient().
+export async function cambiarCodigoEmpleado(id: string, nuevo: string): Promise<void> {
+  if (!/^[0-9]{4}$/.test(nuevo)) throw new Error('El código debe tener exactamente 4 dígitos.');
+  const sb = getServerClient();
+  const { data: anterior, error } = await sb.rpc('empleado_codigo_cambiar', { p_id: id, p_cod: nuevo });
+  if (error) throw new Error(error.message.replace(/^(PERMISO|DATO):\s*/, ''));
+  if (anterior === nuevo) return;
+  const { error: eAuth } = await getAdminClient().auth.admin.updateUserById(id, {
+    email: `${nuevo}@${EMAIL_DOMAIN}`,
+    email_confirm: true,
+  });
+  if (eAuth) {
+    await sb.rpc('empleado_codigo_cambiar', { p_id: id, p_cod: String(anterior) });
+    throw new Error('No se pudo cambiar el código de acceso. Elige otro código e inténtalo de nuevo.');
+  }
+}
+
+/** Deja en la auditoría una acción sin secretos (p. ej. «contraseña temporal generada»). */
+export async function auditarAccionEmpleado(id: string, accion: string): Promise<void> {
+  const { error } = await getServerClient().rpc('empleado_auditar_accion', { p_id: id, p_accion: accion });
+  if (error) throw new Error(error.message.replace(/^(PERMISO|DATO):\s*/, ''));
+}
+
+/** Cambia sede y/o rol de una persona reusando `empleado_actualizar` con el resto de sus datos tal cual. */
+export async function cambiarSedeRolEmpleado(
+  id: string,
+  p: { sedeCod?: string; rolBase?: Rol; rolCod?: string | null },
+): Promise<void> {
+  const actual = (await listarEmpleadosAdmin()).find((e) => e.id === id);
+  if (!actual) throw new Error('La persona no existe.');
+  await actualizarEmpleado(id, {
+    nombre: actual.nombre,
+    rolBase: p.rolBase ?? (actual.rol as Rol),
+    rolCod: p.rolBase ? (p.rolCod ?? null) : actual.rolCod,
+    sedeCod: p.sedeCod ?? actual.sedeCod ?? '',
+    tiendas: actual.tiendas,
+    fechaIngreso: actual.fechaIngreso,
+    notas: actual.notas ?? '',
+    telefono: actual.telefono ?? '',
+    dni: actual.dni ?? '',
+    direccion: actual.direccion ?? '',
+    salarioBase: actual.salarioBase,
+    recomendaciones: actual.recomendaciones ?? '',
+  });
+}
+
+/** id → código personal (empleados.cod). Para la pantalla de usuarios; la RLS decide quién lo puede leer. */
+export async function listarCodigosEmpleados(): Promise<Record<string, string>> {
+  const { data, error } = await getServerClient().from('empleados').select('id, cod');
+  if (error) throw new Error(error.message);
+  return Object.fromEntries(((data as { id: string; cod: string }[]) ?? []).map((e) => [e.id, e.cod]));
+}
