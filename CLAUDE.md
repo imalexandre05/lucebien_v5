@@ -188,8 +188,9 @@ El protocolo completo para trabajar en varias secciones a la vez está en
 - `database/lucebien.db*` — base viva del sistema viejo. Nunca versionar ni sobreescribir.
 - `public/js/patches-v3.js`, `patches-v4.js`, `patches-v5.js` — deuda de alto riesgo.
 - La base de producción sin backup previo.
-- El cron de auto-cierre de reportes: está desprogramado a propósito y **no se reactiva hasta que
-  exista el sistema de horarios** (ver `docs/mapa-verificado.md` §2).
+- El cron viejo de auto-cierre de reportes (`reportes-auto-cierre-*`): sigue desprogramado. Lo reemplaza
+  `reportes-auto-enviar` (0184, decisión del dueño del 19-oct-2026), que sólo actúa sobre turnos con borrador
+  y no crea cascarones vacíos (ver `docs/mapa-verificado.md` §2).
 
 ---
 

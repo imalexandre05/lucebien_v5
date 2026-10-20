@@ -105,6 +105,7 @@ export default async function ReporteDetalle(props: { params: Promise<{ id: stri
           action={
             <div className="flex items-center gap-3">
               {r.estadoEnvio === 'no_enviado' && <Badge tone="amber">No enviado</Badge>}
+{r.estadoEnvio === 'enviado' && r.autoEnviado && <Badge tone="amber">Enviado automáticamente</Badge>}
               <Badge tone={ESTADO_TONE[estado]}>{ESTADO_REPORTE_LABEL[estado]}</Badge>
               <PrintButton />
             </div>

@@ -47,6 +47,9 @@ export default async function ConfiguracionPage() {
             <Link href="/configuracion/tipos-incidencia" className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
               <AlertOctagon className="h-3.5 w-3.5" strokeWidth={2} /> Tipos de incidencia
             </Link>
+            <Link href="/configuracion/hora-limite" className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
+              <CalendarRange className="h-3.5 w-3.5" strokeWidth={2} /> Hora límite de reportes
+            </Link>
             <Link href="/configuracion/notificaciones" className={cn(buttonVariants({ variant: 'outline' }), 'text-apoyo')}>
               <Bell className="h-3.5 w-3.5" strokeWidth={2} /> Notificaciones
             </Link>
