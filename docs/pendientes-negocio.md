@@ -2253,3 +2253,7 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - La hora límite por sede se edita en `/configuracion/hora-limite`; sin ajuste vale la general.
 - **Hora límite después de medianoche:** la hora se cuenta dentro del mismo día del turno (p. ej. 00:30 en el turno Tarde envía de inmediato). **Pendiente:** definir si algún turno cierra pasada la medianoche.
 - El envío automático **no aplica el tope de extras** de `reportes_crear`: copia el borrador tal cual. **Pendiente:** decidir si debe validarse.
+## Gestión rápida de usuarios (sesión 10B, 20-oct-2026) — [spec](superpowers/specs/empleados/2026-10-20-usuarios-gestion-rapida-design.md)
+
+- El código (`empleados.cod`) ahora se puede cambiar desde `/personal/usuarios` (4 dígitos, único). Cambiarlo cambia también el correo interno de acceso `{cod}@lucebien.local`. **Pendiente:** intercambiar códigos entre dos personas necesita dos guardados (el código es único).
+- La contraseña temporal se muestra una sola vez; solo queda en la auditoría «contraseña temporal generada», sin el valor.
