@@ -2243,3 +2243,13 @@ Defaults **propuestos, no confirmados por el dueño**. Se editan en `/configurac
 - [ ] **Capturas de la interfaz de Jordan** para el rediseño visual.
 - [ ] **Pago por puntos**: la spec se hace en otra sesión.
 - [ ] **Correos**: falta configurar `RESEND_API_KEY` para que salgan.
+
+## Reportes que se envían solos (sesión 10B, 19-oct-2026) — [spec](superpowers/specs/reportes/2026-10-19-reportes-auto-envio-design.md)
+
+- **Recordatorios a 30 y 10 min** antes de la hora límite: default propuesto (0184). Editable en `/configuracion` → `reporte_recordatorios_min`. **Pendiente:** que el dueño confirme los minutos.
+- **Solo se envían los turnos con borrador** (de ayer o de hoy). Sin borrador no se crea reporte: aún no existe el sistema de horarios que diga quién debía reportar. **Pendiente:** el conteo «cuántos reportes debía enviar cada persona» necesita ese sistema.
+- **Sin encargado en el borrador**, el reporte automático va a nombre del encargado de tienda activo de la sede (el de menor código). **Pendiente:** confirmar si debe haber una asignación explícita sede/turno.
+- **Cron reactivado** (`reportes-auto-enviar`, cada 5 min) por pedido del dueño; los tres jobs viejos siguen desprogramados.
+- La hora límite por sede se edita en `/configuracion/hora-limite`; sin ajuste vale la general.
+- **Hora límite después de medianoche:** la hora se cuenta dentro del mismo día del turno (p. ej. 00:30 en el turno Tarde envía de inmediato). **Pendiente:** definir si algún turno cierra pasada la medianoche.
+- El envío automático **no aplica el tope de extras** de `reportes_crear`: copia el borrador tal cual. **Pendiente:** decidir si debe validarse.

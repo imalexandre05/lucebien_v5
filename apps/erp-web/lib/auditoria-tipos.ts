@@ -34,6 +34,7 @@ export const TABLAS_AUDITADAS = [
   'pedidos',
   'caja_movimientos',
   'pagos',
+  'reporte_hora_limite',
 ] as const;
 export type TablaAuditada = (typeof TABLAS_AUDITADAS)[number];
 
@@ -53,6 +54,7 @@ export const TABLA_LABEL: Record<TablaAuditada, string> = {
   pedidos: 'Pedidos',
   caja_movimientos: 'Caja',
   pagos: 'Pagos',
+  reporte_hora_limite: 'Hora límite de reportes',
 };
 
 // El tamaño de la ventana de CADA consulta, no del módulo entero. Vive acá —y no sólo en el
