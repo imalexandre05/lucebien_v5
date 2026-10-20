@@ -4,7 +4,7 @@ import { listarEmpleadosAdmin, listarCodigosEmpleados } from '../../../lib/emple
 import { listarSedes } from '../../../lib/sedes-repo';
 import { listarRoles } from '../../../lib/roles-repo';
 import { PageHeader } from '../../../components/shell/page-header';
-import { opcionesRol } from '../../empleados/cliente';
+import { opcionesRol } from '../../../lib/opciones-rol';
 import { UsuariosCliente, type FilaUsuario } from './cliente';
 
 // Gestión rápida de usuarios: una tabla para cambiar código, contraseña, estado, sede y rol por
